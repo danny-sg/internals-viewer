@@ -19,15 +19,21 @@ namespace InternalsViewer.Internals
         private readonly Dictionary<int, Pfs> pfs = new Dictionary<int, Pfs>();
         private readonly Dictionary<int, Allocation> sGam = new Dictionary<int, Allocation>();
         private List<DatabaseFile> files = new List<DatabaseFile>();
+        private SqlServerConnection server;
 
-        public Database(int databaseId, string name, int state, byte compatibilityLevel)
+        public Database(SqlServerConnection server, int databaseId, string name, int state, byte compatibilityLevel)
         {
+            this.Server = server;
             this.databaseId = databaseId;
             this.name = name;
             this.compatibilityLevel = compatibilityLevel;
 
             compatible = (compatibilityLevel >= 90 && state == 0);
-            LoadFiles();
+
+            if (server != null)
+            {
+                LoadFiles();
+            }
         }
 
         public void Refresh()
@@ -68,7 +74,7 @@ namespace InternalsViewer.Internals
         {
             string sqlCommand = Properties.Resources.SQL_Files;
 
-            DataTable filesDataTable = DataAccess.GetDataTable(SqlServerConnection.CurrentConnection().ConnectionString, sqlCommand, this.Name, "Files", CommandType.Text);
+            DataTable filesDataTable = DataAccess.GetDataTable(this.Server.ConnectionString, sqlCommand, this.Name, "Files", CommandType.Text);
 
             foreach (DataRow r in filesDataTable.Rows)
             {
@@ -88,19 +94,20 @@ namespace InternalsViewer.Internals
         {
             string sqlCommand = Properties.Resources.SQL_Database_Tables;
 
-            return DataAccess.GetDataTable(SqlServerConnection.CurrentConnection().ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
+            return DataAccess.GetDataTable(this.Server.ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
         }
 
         public DataTable AllocationUnits()
         {
             string sqlCommand = Properties.Resources.SQL_Allocation_Units;
 
-            return DataAccess.GetDataTable(SqlServerConnection.CurrentConnection().ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
+            return DataAccess.GetDataTable(this.Server.ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
         }
 
         public DataTable TableInfo(int objectId)
         {
-            return DataAccess.GetDataTable(SqlServerConnection.CurrentConnection().ConnectionString, Properties.Resources.SQL_Table_Info,
+            return DataAccess.GetDataTable(this.Server.ConnectionString, 
+                                           Properties.Resources.SQL_Table_Info,
                                            Name,
                                            "Tables",
                                            CommandType.Text,
@@ -114,7 +121,11 @@ namespace InternalsViewer.Internals
 
         internal int GetSize(DatabaseFile databaseFile)
         {
-            return (int)DataAccess.GetScalar(Name, Properties.Resources.SQL_File_Size, CommandType.Text, new SqlParameter[1] { new SqlParameter("file_id", databaseFile.FileId) });
+            return (int)DataAccess.GetScalar(this.Server.ConnectionString, 
+                                             this.Name, 
+                                             Properties.Resources.SQL_File_Size, 
+                                             CommandType.Text, 
+                                             new SqlParameter[1] { new SqlParameter("file_id", databaseFile.FileId) });
         }
 
         #region Properties
@@ -203,6 +214,12 @@ namespace InternalsViewer.Internals
         public int CompatibilityLevel
         {
             get { return compatibilityLevel; }
+        }
+
+        public SqlServerConnection Server
+        {
+            get { return server; }
+            set { server = value; }
         }
 
         #endregion

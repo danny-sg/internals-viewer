@@ -75,7 +75,7 @@ namespace InternalsViewer
             builder.IntegratedSecurity = string.IsNullOrEmpty(connection.Password);
             builder.Password = connection.Password;
             builder.UserID = connection.UserName;
-            builder.InitialCatalog = connection.AdvancedOptions["DATABASE"];
+            builder.InitialCatalog = connection.AdvancedOptions["DATABASE"] ?? "master";
             builder.ApplicationName = "SQL Internals Viewer 2";
 
             return builder.ToString();

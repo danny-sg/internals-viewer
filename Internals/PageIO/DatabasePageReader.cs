@@ -13,10 +13,12 @@ namespace InternalsViewer.Internals.PageIO
     public class DatabasePageReader : PageReader
     {
         private readonly Dictionary<string, string> headerData = new Dictionary<string, string>();
+        private string connectionString;
 
-        public DatabasePageReader(PageAddress pageAddress, int databaseId)
+        public DatabasePageReader(string connectionString, PageAddress pageAddress, int databaseId)
             : base(pageAddress, databaseId)
         {
+            this.ConnectionString = connectionString;
         }
 
         /// <summary>
@@ -47,7 +49,7 @@ namespace InternalsViewer.Internals.PageIO
             int offset = 0;
             byte[] data = new byte[8192];
 
-            using (SqlConnection conn = new SqlConnection(SqlServerConnection.CurrentConnection().ConnectionString))
+            using (SqlConnection conn = new SqlConnection(this.ConnectionString))
             {
                 SqlCommand cmd = new SqlCommand(pageCommand, conn);
                 cmd.CommandType = CommandType.Text;
@@ -116,6 +118,12 @@ namespace InternalsViewer.Internals.PageIO
             Header = header;
 
             return parsed;
+        }
+
+        public string ConnectionString
+        {
+            get { return connectionString; }
+            set { connectionString = value; }
         }
     }
 }

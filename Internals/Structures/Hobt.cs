@@ -17,9 +17,10 @@ namespace InternalsViewer.Internals.Structures
         /// <param name="databaseName">Name of the database.</param>
         /// <param name="objectName">Name of the object.</param>
         /// <returns></returns>
-        public static StructureType HobtType(string databaseName, string objectName)
+        public static StructureType HobtType(string connectionString, string databaseName, string objectName)
         {
-            if (Convert.ToBoolean(DataAccess.GetScalar(databaseName,
+            if (Convert.ToBoolean(DataAccess.GetScalar(connectionString,
+                                                       databaseName,
                                                        Properties.Resources.SQL_ObjectHasClusteredIndex,
                                                        System.Data.CommandType.Text,
                                                        new System.Data.SqlClient.SqlParameter[] { new SqlParameter("TableName", objectName) })))
@@ -39,9 +40,9 @@ namespace InternalsViewer.Internals.Structures
         /// <param name="database">The database.</param>
         /// <param name="objectName">Name of the object.</param>
         /// <returns></returns>
-        public static List<HobtEntryPoint> HeapEntryPoints(string database, string objectName)
+        public static List<HobtEntryPoint> HeapEntryPoints(string connectionString, string database, string objectName)
         {
-            return EntryPoints(database, objectName, "-1");
+            return EntryPoints(connectionString, database, objectName, "-1");
         }
 
         /// <summary>
@@ -51,11 +52,11 @@ namespace InternalsViewer.Internals.Structures
         /// <param name="objectName">Name of the object.</param>
         /// <param name="indexName">Name of the index.</param>
         /// <returns></returns>
-        public static List<HobtEntryPoint> EntryPoints(string database, string objectName, string indexName)
+        public static List<HobtEntryPoint> EntryPoints(string connectionString, string database, string objectName, string indexName)
         {
             List<HobtEntryPoint> entryPoints = new List<HobtEntryPoint>();
 
-            DataTable entryPointDataTable = DataAccess.GetDataTable(SqlServerConnection.CurrentConnection().ConnectionString, 
+            DataTable entryPointDataTable = DataAccess.GetDataTable(connectionString, 
                                                                     Properties.Resources.SQL_EntryPoints,
                                                                     database,
                                                                     string.Empty,

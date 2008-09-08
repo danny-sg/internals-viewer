@@ -91,7 +91,8 @@ namespace InternalsViewer.Internals
 
             foreach (DataRow r in databasesDataTable.Rows)
             {
-                databases.Add(new Database((int)r["database_id"],
+                databases.Add(new Database(this,
+                                           (int)r["database_id"],
                                            (string)r["name"],
                                            (byte)r["state"],
                                            (byte)r["compatibility_level"]));

@@ -299,4 +299,7 @@ WHERE Operation NOT LIKE '%XACT%'
       AND 
       Operation NOT LIKE '%CKPT%'</value>
   </data>
+  <data name="SQL_DatabaseId" xml:space="preserve">
+    <value>SELECT DB_ID(@DatabaseName)</value>
+  </data>
 </root>

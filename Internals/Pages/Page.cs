@@ -22,14 +22,13 @@ namespace InternalsViewer.Internals.Pages
         private List<int> offsetTable;
         private byte[] pageData;
         private CompressionType compressionType;
+        private string connectionString;
 
         /// <summary>
         /// Create a Page with a DatabasePageReader
         /// </summary>
         public Page(Database database, PageAddress pageAddress)
         {
-            System.Diagnostics.Debug.Print(pageAddress.ToString());
-
             this.pageAddress = pageAddress;
             this.database = database;
             this.databaseId = database.DatabaseId;
@@ -39,7 +38,19 @@ namespace InternalsViewer.Internals.Pages
                 return;
             }
 
-            this.reader = new DatabasePageReader(this.PageAddress, this.DatabaseId);
+            this.reader = new DatabasePageReader(this.Database.Server.ConnectionString, this.PageAddress, this.DatabaseId);
+
+            this.LoadPage();
+        }
+
+        public Page(string connectionString, string database, PageAddress pageAddress)
+        {
+            this.PageAddress = pageAddress;
+            this.ConnectionString = connectionString;
+            this.DatabaseId = this.GetDatabaseId(database);
+            this.database = new Database(null, this.DatabaseId, database, 1, 90);
+
+            this.reader = new DatabasePageReader(connectionString, this.PageAddress, this.PageAddress.FileId);
 
             this.LoadPage();
         }
@@ -82,13 +93,13 @@ namespace InternalsViewer.Internals.Pages
                 this.Header.PageType != PageType.Sgam ||
                 this.Header.PageType != PageType.Pfs)
             {
-                this.databaseName = LookupDatabaseName(this.DatabaseId);
+                this.databaseName = LookupDatabaseName(this.ConnectionString, this.DatabaseId);
                 this.Header.PageTypeName = GetPageTypeName(Header.PageType);
                 this.Header.AllocationUnit = this.LookupAllocationUnit(Header.AllocationUnitId);
 
-                if (SqlServerConnection.CurrentConnection().Version > 9)
+                if (this.Database.CompatibilityLevel > 90)
                 {
-                    this.CompressionType = this.GetPageCompressionType();
+                    this.CompressionType = this.GetPageCompressionType(this.ConnectionString);
                 }
             }
 
@@ -151,11 +162,12 @@ namespace InternalsViewer.Internals.Pages
         /// </summary>
         /// <param name="databaseId">The database id.</param>
         /// <returns></returns>
-        private static string LookupDatabaseName(int databaseId)
+        private static string LookupDatabaseName(string connectionString, int databaseId)
         {
             string databaseName;
 
-            databaseName = (string)DataAccess.GetScalar("master",
+            databaseName = (string)DataAccess.GetScalar(connectionString,
+                                                        "master",
                                                         Properties.Resources.SQL_Database,
                                                         CommandType.Text,
                                                         new SqlParameter[1] { new SqlParameter("database_id", databaseId) });
@@ -167,12 +179,15 @@ namespace InternalsViewer.Internals.Pages
         /// Gets the type of the page compression.
         /// </summary>
         /// <returns></returns>
-        private CompressionType GetPageCompressionType()
+        private CompressionType GetPageCompressionType(string connectionString)
         {
             if (Header != null)
             {
-                return (CompressionType)(DataAccess.GetScalar(this.DatabaseName, Properties.Resources.SQL_Compression, CommandType.Text,
-                                                                        new SqlParameter[1]
+                return (CompressionType)(DataAccess.GetScalar(connectionString,
+                                                              this.DatabaseName,
+                                                              Properties.Resources.SQL_Compression,
+                                                              CommandType.Text,
+                                                              new SqlParameter[1]
                                                                            {
                                                                            new SqlParameter("partition_id",
                                                                                             this.Header.PartitionId)
@@ -222,17 +237,33 @@ namespace InternalsViewer.Internals.Pages
             }
             else
             {
-                allocationUnitName = (string)DataAccess.GetScalar(this.DatabaseName,
-                                                                   sqlCommand,
+                allocationUnitName = (string)DataAccess.GetScalar(this.ConnectionString,
+                                                                  this.DatabaseName,
+                                                                  sqlCommand,
                                                                    CommandType.Text,
                                                                    new SqlParameter[1]
                                                                        {
                                                                            new SqlParameter("allocation_unit_id",
-                                                                                            allocationUnitId)
+                                                                                           allocationUnitId)
                                                                        });
             }
 
             return allocationUnitName;
+        }
+
+        private short GetDatabaseId(string database)
+        {
+            short databaseId;
+
+            databaseId = (short)DataAccess.GetScalar(this.ConnectionString,
+                                                     "master",
+                                                     Properties.Resources.SQL_DatabaseId,
+                                                     CommandType.Text,
+                                                       new SqlParameter[1]
+                                                                         {
+                                                                             new SqlParameter("DatabaseName", database)
+                                                                         });
+            return databaseId;
         }
 
         #region Properties
@@ -322,6 +353,17 @@ namespace InternalsViewer.Internals.Pages
         public byte PageByte(int offset)
         {
             return this.pageData[offset];
+        }
+
+
+        /// <summary>
+        /// Gets or sets the connection string.
+        /// </summary>
+        /// <value>The connection string.</value>
+        public string ConnectionString
+        {
+            get { return connectionString; }
+            set { connectionString = value; }
         }
 
         #endregion

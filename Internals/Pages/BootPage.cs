@@ -20,6 +20,12 @@ namespace InternalsViewer.Internals.Pages
             this.LoadCheckpointLsn();
         }
 
+        public BootPage(string connectionString, string databaseName)
+            :base(connectionString, databaseName, new PageAddress(1, 9))
+        {
+            this.LoadCheckpointLsn();
+        }
+
         /// <summary>
         /// Gets or sets the last checkpoint LSN.
         /// </summary>

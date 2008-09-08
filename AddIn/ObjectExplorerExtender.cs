@@ -11,15 +11,30 @@ namespace InternalsViewer.SSMSAddIn
 {
     class ObjectExplorerExtender
     {
-        public ObjectExplorerExtender(SqlConnectionInfo connection)
+        public ObjectExplorerExtender()
         {
-            IExplorerHierarchy hierarchy = GetHierarchyForConnection(connection);
-            HierarchyTreeNode databasesNode = GetUserDatabasesNode(hierarchy.Root);
+            TreeView tree = GetObjectExplorerTreeView();
 
-            databasesNode.Parent.TreeView.AfterExpand += new TreeViewEventHandler(TreeView_AfterExpand);
-            databasesNode.Parent.TreeView.BeforeExpand += new TreeViewCancelEventHandler(TreeView_BeforeExpand);
+            tree.AfterExpand += new TreeViewEventHandler(TreeView_AfterExpand);
+            tree.BeforeExpand += new TreeViewCancelEventHandler(TreeView_BeforeExpand);
 
-            databasesNode.Parent.TreeView.ImageList.Images.Add("Page", Properties.Resources.pageImage);
+            tree.ImageList.Images.Add("Page", Properties.Resources.pageImage);
+        }
+
+
+        private TreeView GetObjectExplorerTreeView()
+        {
+            Type t = ServiceCache.GetObjectExplorer().GetType();
+            FieldInfo field = t.GetField("tree", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            if (field != null)
+            {
+                return (TreeView)field.GetValue(ServiceCache.GetObjectExplorer());
+            }
+            else
+            {
+                return null;
+            }
         }
 
         private void TreeView_AfterExpand(object sender, System.Windows.Forms.TreeViewEventArgs e)
@@ -56,7 +71,7 @@ namespace InternalsViewer.SSMSAddIn
 
                 string databaseName = e.Node.Parent.Parent.Parent.Text;
 
-                if (Hobt.HobtType(databaseName, tableName) == StructureType.Heap)
+                if (Hobt.HobtType(GetConnectionString(), databaseName, tableName) == StructureType.Heap)
                 {
                     TreeNode heapNode = new TreeNode("(Heap)", tableImageIndex, tableImageIndex);
 
@@ -67,12 +82,17 @@ namespace InternalsViewer.SSMSAddIn
             }
         }
 
+        private string GetConnectionString()
+        {
+            return ConnectionManager.GetConnectionString(ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo);
+        }
+
         private void AddIndexPageNodes(TreeNode node, string databaseName, string tableName, string indexName, int folderImageIndex)
         {
-            // This suppresses the Object Explorer expand behaviour
+            // This suppresses the Object Explorer expand behavior
             ChildrenEnumerated(node, true);
 
-            List<HobtEntryPoint> entryPoints = Hobt.EntryPoints(databaseName, tableName, indexName);
+            List<HobtEntryPoint> entryPoints = Hobt.EntryPoints(GetConnectionString(), databaseName, tableName, indexName);
 
             bool partitioned = entryPoints.Count > 1;
 
@@ -111,52 +131,11 @@ namespace InternalsViewer.SSMSAddIn
             }
         }
 
-        private IExplorerHierarchy GetHierarchyForConnection(SqlConnectionInfo connection)
-        {
-            IObjectExplorerService objExplorer = ServiceCache.GetObjectExplorer();
-            Type t = objExplorer.GetType();
-            MethodInfo getHierarchyMethod = t.GetMethod("GetHierarchy", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            if (getHierarchyMethod != null)
-            {
-                IExplorerHierarchy hierarchy = getHierarchyMethod.Invoke(objExplorer, new object[] { connection }) as IExplorerHierarchy;
-                return hierarchy;
-            }
-
-            return null;
-        }
-
-        private HierarchyTreeNode GetUserDatabasesNode(HierarchyTreeNode rootNode)
-        {
-            if (rootNode != null)
-            {
-                if (rootNode.Expandable)
-                {
-                    EnumerateChildrenSynchronously(rootNode);
-                    rootNode.Expand();
-
-                    return (HierarchyTreeNode)rootNode.Nodes[0];
-                }
-            }
-
-            return null;
-        }
-
-        private void EnumerateChildrenSynchronously(HierarchyTreeNode node)
-        {
-            Type t = node.GetType();
-            MethodInfo method = t.GetMethod("EnumerateChildren", new Type[] { typeof(Boolean) });
-
-            if (method != null)
-            {
-                method.Invoke(node, new object[] { false });
-            }
-            else
-            {
-                node.EnumerateChildren();
-            }
-        }
-
+        /// <summary>
+        /// Get the Node Name property
+        /// </summary>
+        /// <param name="node">The node.</param>
+        /// <returns></returns>
         private static string NodeName(TreeNode node)
         {
             Type t = node.GetType();

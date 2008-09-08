@@ -17,11 +17,11 @@ namespace InternalsViewer.Internals
         /// <param name="commandType">Type of the command.</param>
         /// <param name="parameters">The parameters.</param>
         /// <returns></returns>
-        public static object GetScalar(string database, string command, CommandType commandType, SqlParameter[] parameters)
+        public static object GetScalar(string connectionString, string database, string command, CommandType commandType, SqlParameter[] parameters)
         {
             object returnObject;
 
-            using (SqlConnection conn = new SqlConnection(SqlServerConnection.CurrentConnection().ConnectionString))
+            using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 SqlCommand cmd = new SqlCommand(command, conn);
 

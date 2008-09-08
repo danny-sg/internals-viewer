@@ -8,18 +8,15 @@ namespace InternalsViewer.Internals
     {
         public static LogSequenceNumber StartMonitoring(string connectionString, string database)
         {
-            SqlServerConnection.CurrentConnection().SetCurrentDatabase(database);
-
             Checkpoint(connectionString, database);
-            BootPage bootPage = new BootPage(SqlServerConnection.CurrentConnection().CurrentDatabase);
+
+            BootPage bootPage = new BootPage(connectionString, database);
 
             return bootPage.CheckpointLsn;
         }
 
         public static DataTable StopMonitoring(string database, LogSequenceNumber startLsn, string connectionString)
         {
-            SqlServerConnection.CurrentConnection().SetCurrentDatabase(database);
-
             DataTable logTable = DataAccess.GetDataTable(connectionString,
                                                          Properties.Resources.SQL_TransactionLog,
                                                          database,

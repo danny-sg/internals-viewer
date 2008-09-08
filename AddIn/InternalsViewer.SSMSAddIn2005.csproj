@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.30729</ProductVersion>
+    <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{B3ED9567-EDF2-46CA-AF84-2256B9908D4E}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -69,7 +69,9 @@
     <Compile Include="QueryEditorExtender.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="CommandBar.resx" />
+    <EmbeddedResource Include="CommandBar.resx">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

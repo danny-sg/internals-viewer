@@ -8,10 +8,10 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace InternalsViewer.Internals.Properties
-{
-
-
+namespace InternalsViewer.Internals.Properties {
+    using System;
+    
+    
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -138,6 +138,15 @@ namespace InternalsViewer.Internals.Properties
         internal static string SQL_Database_Tables {
             get {
                 return ResourceManager.GetString("SQL_Database_Tables", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to SELECT DB_ID(@DatabaseName).
+        /// </summary>
+        internal static string SQL_DatabaseId {
+            get {
+                return ResourceManager.GetString("SQL_DatabaseId", resourceCulture);
             }
         }
         
