@@ -10,7 +10,7 @@
     </StartupObject>
     <NoStandardLibraries>false</NoStandardLibraries>
     <AssemblyName>InternalsViewer.SSMSAddIn</AssemblyName>
-    <RootNamespace>InternalsViewer</RootNamespace>
+    <RootNamespace>InternalsViewer.SSMSAddIn</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -53,11 +53,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AllocationWindow.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="AllocationWindow.Designer.cs">
+      <DependentUpon>AllocationWindow.cs</DependentUpon>
+    </Compile>
     <Compile Include="AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Connect.cs">
-      <SubType>Code</SubType>
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="ConnectionManager.cs" />
     <Compile Include="ObjectExplorerExtender.cs" />
@@ -69,6 +75,10 @@
     <Compile Include="QueryEditorExtender.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="AllocationWindow.resx">
+      <DependentUpon>AllocationWindow.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="CommandBar.resx">
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -135,6 +145,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\page.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\AppWindow.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\allocationMapToolbarIcon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\allocationMapIcon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\allocationMapIconMask.png" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSHARP.Targets" />
   <PropertyGroup>

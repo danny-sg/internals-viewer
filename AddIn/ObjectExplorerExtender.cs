@@ -56,7 +56,9 @@ namespace InternalsViewer.SSMSAddIn
                 {
                     if (node.Text != "(Heap)")
                     {
-                        AddIndexPageNodes(node, databaseName, tableName, NodeName(node), 1);
+                        string connectionString = GetConnectionString(node);
+
+                        AddIndexPageNodes(connectionString, node, databaseName, tableName, NodeName(node), 1);
                     }
                 }
             }
@@ -70,29 +72,41 @@ namespace InternalsViewer.SSMSAddIn
                 int tableImageIndex = e.Node.Parent.ImageIndex;
 
                 string databaseName = e.Node.Parent.Parent.Parent.Text;
+                string connectionString = GetConnectionString(e.Node);
 
-                if (Hobt.HobtType(GetConnectionString(), databaseName, tableName) == StructureType.Heap)
+                if (Hobt.HobtType(connectionString, databaseName, tableName) == StructureType.Heap)
                 {
                     TreeNode heapNode = new TreeNode("(Heap)", tableImageIndex, tableImageIndex);
-
-                    AddIndexPageNodes(heapNode, databaseName, tableName, string.Empty, e.Node.Parent.Parent.ImageIndex);
-
                     e.Node.Nodes.Add(heapNode);
+
+                    AddIndexPageNodes(connectionString, heapNode, databaseName, tableName, string.Empty, e.Node.Parent.Parent.ImageIndex);
+
+                    
                 }
             }
         }
 
-        private string GetConnectionString()
+        private string GetConnectionString(TreeNode node)
         {
-            return ConnectionManager.GetConnectionString(ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo);
+            INodeInformation service = null;
+            IServiceProvider provider = node as IServiceProvider;
+
+            if (provider != null)
+            {
+                service = provider.GetService(typeof(INodeInformation)) as INodeInformation;
+            }
+
+            System.Diagnostics.Debug.Print(service.Connection.ConnectionString);
+
+            return service.Connection.ConnectionString;
         }
 
-        private void AddIndexPageNodes(TreeNode node, string databaseName, string tableName, string indexName, int folderImageIndex)
+        private void AddIndexPageNodes(string connectionString, TreeNode node, string databaseName, string tableName, string indexName, int folderImageIndex)
         {
             // This suppresses the Object Explorer expand behavior
             ChildrenEnumerated(node, true);
 
-            List<HobtEntryPoint> entryPoints = Hobt.EntryPoints(GetConnectionString(), databaseName, tableName, indexName);
+            List<HobtEntryPoint> entryPoints = Hobt.EntryPoints(connectionString, databaseName, tableName, indexName);
 
             bool partitioned = entryPoints.Count > 1;
 

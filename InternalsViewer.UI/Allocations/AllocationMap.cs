@@ -6,7 +6,6 @@ using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 
-
 namespace InternalsViewer.UI.Allocations
 {
     /// <summary>

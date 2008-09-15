@@ -8,10 +8,10 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace InternalsViewer.Properties
-{
-
-
+namespace InternalsViewer.SSMSAddIn.Properties {
+    using System;
+    
+    
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -39,7 +39,7 @@ namespace InternalsViewer.Properties
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("InternalsViewer.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("InternalsViewer.SSMSAddIn.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -57,6 +57,34 @@ namespace InternalsViewer.Properties
             }
             set {
                 resourceCulture = value;
+            }
+        }
+        
+        internal static System.Drawing.Bitmap AllocationMap {
+            get {
+                object obj = ResourceManager.GetObject("AllocationMap", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        internal static System.Drawing.Bitmap allocationMapIcon {
+            get {
+                object obj = ResourceManager.GetObject("allocationMapIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        internal static System.Drawing.Bitmap allocationMapIconMask {
+            get {
+                object obj = ResourceManager.GetObject("allocationMapIconMask", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        internal static System.Drawing.Bitmap AppWindow {
+            get {
+                object obj = ResourceManager.GetObject("AppWindow", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         

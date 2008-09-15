@@ -41,11 +41,26 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Allocations\AllocationContainer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Allocations\AllocationContainer.designer.cs">
+      <DependentUpon>AllocationContainer.cs</DependentUpon>
+    </Compile>
     <Compile Include="Allocations\AllocationLayer.cs" />
     <Compile Include="Allocations\AllocationMap.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="AllocationWindow.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="AllocationWindow.Designer.cs">
+      <DependentUpon>AllocationWindow.cs</DependentUpon>
+    </Compile>
     <Compile Include="ExtentColour.cs" />
+    <Compile Include="FlatMenuStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="HsvColour.cs" />
     <Compile Include="Allocations\MapMode.cs" />
     <Compile Include="Renderers\FullMapRenderer.cs" />
@@ -56,8 +71,16 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Allocations\AllocationContainer.resx">
+      <DependentUpon>AllocationContainer.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Allocations\AllocationMap.resx">
       <DependentUpon>AllocationMap.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AllocationWindow.resx">
+      <DependentUpon>AllocationWindow.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="TransactionLogTabPage.resx">

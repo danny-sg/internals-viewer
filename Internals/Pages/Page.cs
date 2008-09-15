@@ -50,7 +50,7 @@ namespace InternalsViewer.Internals.Pages
             this.DatabaseId = this.GetDatabaseId(database);
             this.database = new Database(null, this.DatabaseId, database, 1, 90);
 
-            this.reader = new DatabasePageReader(connectionString, this.PageAddress, this.PageAddress.FileId);
+            this.reader = new DatabasePageReader(connectionString, this.PageAddress, this.DatabaseId);
 
             this.LoadPage();
         }

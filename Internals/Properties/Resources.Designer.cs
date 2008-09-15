@@ -182,7 +182,7 @@ namespace InternalsViewer.Internals.Properties {
         ///       INNER JOIN sys.indexes    i ON p.object_id = i.object_id
         ///                                      AND
         ///                                      i.index_id   = p.index_id
-        ///WHERE p.object_id = OBJECT_ID(@ObjectName) AND ISNULL(i.name, &apos;&apos;) = @IndexName
+        ///WHERE p.object_id = OBJECT_ID(@ObjectName) AND ISNULL(i.name, &apos;&apos;) = @IndexName AND type = 1
         ///ORDER BY partition_number.
         /// </summary>
         internal static string SQL_EntryPoints {
