@@ -51,6 +51,7 @@
     <Compile Include="Allocations\AllocationMap.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Allocations\AllocationUnitLayer.cs" />
     <Compile Include="AllocationWindow.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -63,8 +64,14 @@
     </Compile>
     <Compile Include="HsvColour.cs" />
     <Compile Include="Allocations\MapMode.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Renderers\FullMapRenderer.cs" />
     <Compile Include="Renderers\PageExtentRenderer.cs" />
+    <Compile Include="Renderers\PfsRenderer.cs" />
     <Compile Include="TransactionLogTabPage.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -83,6 +90,11 @@
       <DependentUpon>AllocationWindow.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="TransactionLogTabPage.resx">
       <DependentUpon>TransactionLogTabPage.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -93,6 +105,18 @@
       <Project>{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}</Project>
       <Name>InternalsViewer.Internals</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\connect.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Refresh.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\pfs.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\bufferpool11.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

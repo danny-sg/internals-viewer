@@ -61,7 +61,7 @@ namespace InternalsViewer
 
         internal void ConnectInternalsViewer(SqlConnectionInfo connection)
         {
-            SqlServerConnection.CurrentConnection().SetCurrentServer(connection.ServerName, 
+            InternalsViewerConnection.CurrentConnection().SetCurrentServer(connection.ServerName, 
                                                                      connection.UseIntegratedSecurity, 
                                                                      connection.UserName, 
                                                                      connection.Password);

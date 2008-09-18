@@ -99,6 +99,21 @@ namespace InternalsViewer.Internals.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to SELECT file_id
+        ///      ,page_id
+        ///      ,is_modified
+        ///      ,row_count
+        ///      ,free_space_in_bytes
+        ///FROM   sys.dm_os_buffer_descriptors WITH (NOLOCK)
+        ///WHERE  database_id = DB_ID(@database).
+        /// </summary>
+        internal static string SQL_Buffer_Pool {
+            get {
+                return ResourceManager.GetString("SQL_Buffer_Pool", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to CHECKPOINT.
         /// </summary>
         internal static string SQL_Checkpoint {
@@ -182,8 +197,8 @@ namespace InternalsViewer.Internals.Properties {
         ///       INNER JOIN sys.indexes    i ON p.object_id = i.object_id
         ///                                      AND
         ///                                      i.index_id   = p.index_id
-        ///WHERE p.object_id = OBJECT_ID(@ObjectName) AND ISNULL(i.name, &apos;&apos;) = @IndexName AND type = 1
-        ///ORDER BY partition_number.
+        ///WHERE p.object_id = OBJECT_ID(@ObjectName) AND ISNULL(i.name, &apos;&apos;) = @IndexName AND iau.type = 1
+        ///ORDER BY partition_num [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string SQL_EntryPoints {
             get {

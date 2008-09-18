@@ -96,12 +96,12 @@ namespace InternalsViewer.Internals.PageIO
             Dictionary<string, string> headerData = new Dictionary<string, string>();
 
             string pageCommand = string.Format(Properties.Resources.SQL_Page,
-                                               SqlServerConnection.CurrentConnection().CurrentDatabase.DatabaseId,
+                                               InternalsViewerConnection.CurrentConnection().CurrentDatabase.DatabaseId,
                                                pageAddress.FileId,
                                                pageAddress.PageId,
                                                0);
 
-            using (SqlConnection conn = new SqlConnection(SqlServerConnection.CurrentConnection().ConnectionString))
+            using (SqlConnection conn = new SqlConnection(InternalsViewerConnection.CurrentConnection().ConnectionString))
             {
                 SqlCommand cmd = new SqlCommand(pageCommand, conn);
                 cmd.CommandType = CommandType.Text;

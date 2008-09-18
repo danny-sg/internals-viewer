@@ -28,22 +28,21 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.allocationWindow1 = new InternalsViewer.UI.AllocationWindow();
+            this.allocationWindowControl = new InternalsViewer.UI.AllocationWindow();
             this.SuspendLayout();
             // 
             // allocationWindow1
             // 
-            this.allocationWindow1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.allocationWindow1.Location = new System.Drawing.Point(0, 0);
-            this.allocationWindow1.Name = "allocationWindow1";
-            this.allocationWindow1.Size = new System.Drawing.Size(800, 600);
-            this.allocationWindow1.TabIndex = 0;
+            this.allocationWindowControl.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.allocationWindowControl.Location = new System.Drawing.Point(0, 0);
+            this.allocationWindowControl.Size = new System.Drawing.Size(800, 600);
+            this.allocationWindowControl.TabIndex = 0;
             // 
             // AllocationWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Controls.Add(this.allocationWindow1);
+            this.Controls.Add(this.allocationWindowControl);
             this.Name = "AllocationWindow";
             this.Size = new System.Drawing.Size(800, 600);
             this.ResumeLayout(false);
@@ -52,6 +51,6 @@
 
         #endregion
 
-        private InternalsViewer.UI.AllocationWindow allocationWindow1;
+        private InternalsViewer.UI.AllocationWindow allocationWindowControl;
     }
 }

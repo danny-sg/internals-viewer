@@ -22,7 +22,6 @@ namespace InternalsViewer.Internals.Pages
         private List<int> offsetTable;
         private byte[] pageData;
         private CompressionType compressionType;
-        private string connectionString;
 
         /// <summary>
         /// Create a Page with a DatabasePageReader
@@ -46,9 +45,11 @@ namespace InternalsViewer.Internals.Pages
         public Page(string connectionString, string database, PageAddress pageAddress)
         {
             this.PageAddress = pageAddress;
-            this.ConnectionString = connectionString;
-            this.DatabaseId = this.GetDatabaseId(database);
+
+            this.DatabaseId = Page.GetDatabaseId(connectionString, database);
             this.database = new Database(null, this.DatabaseId, database, 1, 90);
+            this.database.Server = new InternalsViewerConnection();
+            this.database.Server.ConnectionString = connectionString;
 
             this.reader = new DatabasePageReader(connectionString, this.PageAddress, this.DatabaseId);
 
@@ -93,13 +94,13 @@ namespace InternalsViewer.Internals.Pages
                 this.Header.PageType != PageType.Sgam ||
                 this.Header.PageType != PageType.Pfs)
             {
-                this.databaseName = LookupDatabaseName(this.ConnectionString, this.DatabaseId);
+                this.databaseName = LookupDatabaseName(this.Database.Server.ConnectionString, this.DatabaseId);
                 this.Header.PageTypeName = GetPageTypeName(Header.PageType);
                 this.Header.AllocationUnit = this.LookupAllocationUnit(Header.AllocationUnitId);
 
                 if (this.Database.CompatibilityLevel > 90)
                 {
-                    this.CompressionType = this.GetPageCompressionType(this.ConnectionString);
+                    this.CompressionType = this.GetPageCompressionType(this.Database.Server.ConnectionString);
                 }
             }
 
@@ -237,7 +238,7 @@ namespace InternalsViewer.Internals.Pages
             }
             else
             {
-                allocationUnitName = (string)DataAccess.GetScalar(this.ConnectionString,
+                allocationUnitName = (string)DataAccess.GetScalar(this.Database.Server.ConnectionString,
                                                                   this.DatabaseName,
                                                                   sqlCommand,
                                                                    CommandType.Text,
@@ -251,11 +252,11 @@ namespace InternalsViewer.Internals.Pages
             return allocationUnitName;
         }
 
-        private short GetDatabaseId(string database)
+        private static short GetDatabaseId(string connectionString, string database)
         {
             short databaseId;
 
-            databaseId = (short)DataAccess.GetScalar(this.ConnectionString,
+            databaseId = (short)DataAccess.GetScalar(connectionString,
                                                      "master",
                                                      Properties.Resources.SQL_DatabaseId,
                                                      CommandType.Text,
@@ -353,17 +354,6 @@ namespace InternalsViewer.Internals.Pages
         public byte PageByte(int offset)
         {
             return this.pageData[offset];
-        }
-
-
-        /// <summary>
-        /// Gets or sets the connection string.
-        /// </summary>
-        /// <value>The connection string.</value>
-        public string ConnectionString
-        {
-            get { return connectionString; }
-            set { connectionString = value; }
         }
 
         #endregion

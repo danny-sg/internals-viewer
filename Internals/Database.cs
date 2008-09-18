@@ -19,9 +19,9 @@ namespace InternalsViewer.Internals
         private readonly Dictionary<int, Pfs> pfs = new Dictionary<int, Pfs>();
         private readonly Dictionary<int, Allocation> sGam = new Dictionary<int, Allocation>();
         private List<DatabaseFile> files = new List<DatabaseFile>();
-        private SqlServerConnection server;
+        private InternalsViewerConnection server;
 
-        public Database(SqlServerConnection server, int databaseId, string name, int state, byte compatibilityLevel)
+        public Database(InternalsViewerConnection server, int databaseId, string name, int state, byte compatibilityLevel)
         {
             this.Server = server;
             this.databaseId = databaseId;
@@ -216,7 +216,7 @@ namespace InternalsViewer.Internals
             get { return compatibilityLevel; }
         }
 
-        public SqlServerConnection Server
+        public InternalsViewerConnection Server
         {
             get { return server; }
             set { server = value; }

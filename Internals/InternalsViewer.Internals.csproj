@@ -40,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Allocation.cs" />
+    <Compile Include="BufferPool.cs" />
     <Compile Include="Compression\CompressionType.cs" />
     <Compile Include="DataAccess.cs" />
     <Compile Include="Database.cs" />
@@ -66,7 +67,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="SqlServerConnection.cs" />
+    <Compile Include="InternalsViewerConnection.cs" />
     <Compile Include="Structures\HobtEntryPoint.cs" />
     <Compile Include="Structures\Hobt.cs" />
     <Compile Include="Structures\StructureType.cs" />

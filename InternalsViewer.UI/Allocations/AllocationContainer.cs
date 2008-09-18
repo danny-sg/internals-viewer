@@ -330,6 +330,22 @@ namespace InternalsViewer.UI.Allocations
             }
         }
 
+        internal Dictionary<int, Pfs> Pfs
+        {
+            set
+            {
+                foreach (AllocationMap allocationMap in allocationMaps.Values)
+                {
+                    allocationMap.Pfs = value[allocationMap.FileId];
+                }
+            }
+        }
+
+        internal PfsByte PagePfsByte(PageAddress pageAddress)
+        {
+            return allocationMaps[pageAddress.FileId].Pfs.PagePfsByte(pageAddress.PageId);
+        }
+
         /// <summary>
         /// Gets the map layers collection
         /// </summary>
@@ -422,7 +438,7 @@ namespace InternalsViewer.UI.Allocations
             {
                 if (this.allocationMaps.Count > 1)
                 {
-                    return this.allocationMaps[SqlServerConnection.CurrentConnection().CurrentDatabase.Files[0].FileId].Holding;
+                    return this.allocationMaps[InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files[0].FileId].Holding;
                 }
                 else
                 {

@@ -59,9 +59,9 @@ namespace InternalsViewer
             }
         }
 
-        internal void ConnectInternalsViewer(SqlConnectionInfo connection)
+        internal static void ConnectInternalsViewer(SqlConnectionInfo connection)
         {
-            SqlServerConnection.CurrentConnection().SetCurrentServer(connection.ServerName, 
+            InternalsViewerConnection.CurrentConnection().SetCurrentServer(connection.ServerName, 
                                                                      connection.UseIntegratedSecurity, 
                                                                      connection.UserName, 
                                                                      connection.Password);
@@ -89,7 +89,7 @@ namespace InternalsViewer
             return nodes;
         }
 
-        private SqlConnectionInfo CreateSqlConnectionInfo(UIConnectionInfo connectionInfo)
+        private static SqlConnectionInfo CreateSqlConnectionInfo(UIConnectionInfo connectionInfo)
         {
             SqlConnectionInfo sqlConnInfo = new SqlConnectionInfo();
             sqlConnInfo.ServerName = connectionInfo.ServerName;
@@ -105,6 +105,11 @@ namespace InternalsViewer
             }
 
             return sqlConnInfo;
+        }
+
+        internal static void ConnectInternalsViewer(UIConnectionInfo connectionInfo)
+        {
+            ConnectInternalsViewer(ConnectionManager.CreateSqlConnectionInfo(connectionInfo));
         }
     }
 }

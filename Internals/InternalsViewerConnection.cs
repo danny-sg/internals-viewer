@@ -8,17 +8,30 @@ namespace InternalsViewer.Internals
     /// <summary>
     /// Manages the connection to the SQL Server
     /// </summary>
-    public class SqlServerConnection
+    public class InternalsViewerConnection
     {
-        private static SqlServerConnection currentServer;
+        private static InternalsViewerConnection currentServer;
         private string connectionString;
         private int version = 9;
         private readonly List<Database> databases = new List<Database>();
+
+        public List<Database> Databases
+        {
+            get { return databases; }
+        }
+
         private Database currentDatabase;
 
         public Database CurrentDatabase
         {
-            get { return currentDatabase; }
+            get
+            {
+                return currentDatabase;
+            }
+            set
+            {
+                this.currentDatabase = value;
+            }
         }
 
         public int Version
@@ -31,11 +44,11 @@ namespace InternalsViewer.Internals
         /// Returns the current connection, if it exists or creates a new connection object
         /// </summary>
         /// <returns></returns>
-        public static SqlServerConnection CurrentConnection()
+        public static InternalsViewerConnection CurrentConnection()
         {
             if (null == currentServer)
             {
-                currentServer = new SqlServerConnection();
+                currentServer = new InternalsViewerConnection();
             }
 
             return currentServer;
@@ -82,7 +95,7 @@ namespace InternalsViewer.Internals
                 conn.Close();
             }
 
-            DataTable databasesDataTable = DataAccess.GetDataTable(SqlServerConnection.CurrentConnection().ConnectionString,
+            DataTable databasesDataTable = DataAccess.GetDataTable(InternalsViewerConnection.CurrentConnection().ConnectionString,
                                                                    Properties.Resources.SQL_Databases,
                                                                    "master",
                                                                    "Databases",
@@ -124,7 +137,7 @@ namespace InternalsViewer.Internals
 
             if (reader.Read())
             {
-                this.Version = int.Parse(reader[0].ToString().Split(".".ToCharArray())[0]);
+                this.Version = int.Parse(reader[0].ToString().Split('.')[0]);
             }
 
             reader.Close();
@@ -137,8 +150,6 @@ namespace InternalsViewer.Internals
 
         public Database SetCurrentDatabase(string databaseName)
         {
-            // PageHistory.GetPageHistory().Clear();
-
             Database database = databases.Find(delegate(Database d) { return d.Name == databaseName; });
 
             if (null != database)

@@ -156,7 +156,7 @@ FROM   sys.system_internals_allocation_units iau
        INNER JOIN sys.indexes    i ON p.object_id = i.object_id
                                       AND
                                       i.index_id   = p.index_id
-WHERE p.object_id = OBJECT_ID(@ObjectName) AND ISNULL(i.name, '') = @IndexName AND type = 1
+WHERE p.object_id = OBJECT_ID(@ObjectName) AND ISNULL(i.name, '') = @IndexName AND iau.type = 1
 ORDER BY partition_number</value>
   </data>
   <data name="SQL_Files" xml:space="preserve">
@@ -301,5 +301,14 @@ WHERE Operation NOT LIKE '%XACT%'
   </data>
   <data name="SQL_DatabaseId" xml:space="preserve">
     <value>SELECT DB_ID(@DatabaseName)</value>
+  </data>
+  <data name="SQL_Buffer_Pool" xml:space="preserve">
+    <value>SELECT file_id
+      ,page_id
+      ,is_modified
+      ,row_count
+      ,free_space_in_bytes
+FROM   sys.dm_os_buffer_descriptors WITH (NOLOCK)
+WHERE  database_id = DB_ID(@database)</value>
   </data>
 </root>

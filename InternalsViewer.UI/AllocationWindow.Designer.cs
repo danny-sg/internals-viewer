@@ -29,14 +29,32 @@
         private void InitializeComponent()
         {
             this.splitContainer = new System.Windows.Forms.SplitContainer();
+            this.statusStrip = new System.Windows.Forms.StatusStrip();
+            this.errorImageToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.errorToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.allocUnitProgressBar = new System.Windows.Forms.ToolStripProgressBar();
+            this.allocUnitToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.spacerToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.AllocUnitLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.pageAddressToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.iconToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.label1 = new System.Windows.Forms.Label();
+            this.allocUnitBackgroundWorker = new System.ComponentModel.BackgroundWorker();
             this.allocationContainer = new InternalsViewer.UI.Allocations.AllocationContainer();
             this.flatMenuStrip = new InternalsViewer.UI.FlatMenuStrip();
-            this.toolStripComboBox1 = new System.Windows.Forms.ToolStripComboBox();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
+            this.databaseToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
+            this.connectToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+            this.pfsToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.bufferPoolToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+            this.extentSizeToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
             this.splitContainer.Panel1.SuspendLayout();
             this.splitContainer.Panel2.SuspendLayout();
             this.splitContainer.SuspendLayout();
+            this.statusStrip.SuspendLayout();
             this.flatMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -54,10 +72,86 @@
             // 
             // splitContainer.Panel2
             // 
+            this.splitContainer.Panel2.Controls.Add(this.statusStrip);
             this.splitContainer.Panel2.Controls.Add(this.label1);
             this.splitContainer.Size = new System.Drawing.Size(945, 579);
-            this.splitContainer.SplitterDistance = 315;
+            this.splitContainer.SplitterDistance = 500;
             this.splitContainer.TabIndex = 0;
+            // 
+            // statusStrip
+            // 
+            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.errorImageToolStripStatusLabel,
+            this.errorToolStripStatusLabel,
+            this.allocUnitProgressBar,
+            this.allocUnitToolStripStatusLabel,
+            this.spacerToolStripStatusLabel,
+            this.toolStripStatusLabel2,
+            this.AllocUnitLabel,
+            this.pageAddressToolStripStatusLabel,
+            this.iconToolStripStatusLabel});
+            this.statusStrip.Location = new System.Drawing.Point(0, 53);
+            this.statusStrip.Name = "statusStrip";
+            this.statusStrip.Size = new System.Drawing.Size(945, 22);
+            this.statusStrip.SizingGrip = false;
+            this.statusStrip.TabIndex = 1;
+            this.statusStrip.Text = "statusStrip1";
+            // 
+            // errorImageToolStripStatusLabel
+            // 
+            this.errorImageToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.errorImageToolStripStatusLabel.Name = "errorImageToolStripStatusLabel";
+            this.errorImageToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            this.errorImageToolStripStatusLabel.Text = "iii";
+            // 
+            // errorToolStripStatusLabel
+            // 
+            this.errorToolStripStatusLabel.Name = "errorToolStripStatusLabel";
+            this.errorToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // allocUnitProgressBar
+            // 
+            this.allocUnitProgressBar.Enabled = false;
+            this.allocUnitProgressBar.Name = "allocUnitProgressBar";
+            this.allocUnitProgressBar.Size = new System.Drawing.Size(100, 16);
+            this.allocUnitProgressBar.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
+            this.allocUnitProgressBar.Visible = false;
+            // 
+            // allocUnitToolStripStatusLabel
+            // 
+            this.allocUnitToolStripStatusLabel.Name = "allocUnitToolStripStatusLabel";
+            this.allocUnitToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // spacerToolStripStatusLabel
+            // 
+            this.spacerToolStripStatusLabel.Name = "spacerToolStripStatusLabel";
+            this.spacerToolStripStatusLabel.Size = new System.Drawing.Size(930, 17);
+            this.spacerToolStripStatusLabel.Spring = true;
+            // 
+            // toolStripStatusLabel2
+            // 
+            this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
+            this.toolStripStatusLabel2.Size = new System.Drawing.Size(0, 17);
+            // 
+            // AllocUnitLabel
+            // 
+            this.AllocUnitLabel.Name = "AllocUnitLabel";
+            this.AllocUnitLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // pageAddressToolStripStatusLabel
+            // 
+            this.pageAddressToolStripStatusLabel.ForeColor = System.Drawing.Color.Navy;
+            this.pageAddressToolStripStatusLabel.Name = "pageAddressToolStripStatusLabel";
+            this.pageAddressToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // iconToolStripStatusLabel
+            // 
+            this.iconToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.iconToolStripStatusLabel.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
+            this.iconToolStripStatusLabel.ImageTransparentColor = System.Drawing.Color.Fuchsia;
+            this.iconToolStripStatusLabel.Name = "iconToolStripStatusLabel";
+            this.iconToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            this.iconToolStripStatusLabel.Text = "iconToolStripStatusLabel";
             // 
             // label1
             // 
@@ -68,6 +162,14 @@
             this.label1.TabIndex = 0;
             this.label1.Text = "(Key Information)";
             // 
+            // allocUnitBackgroundWorker
+            // 
+            this.allocUnitBackgroundWorker.WorkerReportsProgress = true;
+            this.allocUnitBackgroundWorker.WorkerSupportsCancellation = true;
+            this.allocUnitBackgroundWorker.DoWork += new System.ComponentModel.DoWorkEventHandler(this.AllocUnitBackgroundWorker_DoWork);
+            this.allocUnitBackgroundWorker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.AllocUnitBackgroundWorker_RunWorkerCompleted);
+            this.allocUnitBackgroundWorker.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.AllocUnitBackgroundWorker_ProgressChanged);
+            // 
             // allocationContainer
             // 
             this.allocationContainer.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -77,12 +179,13 @@
             this.allocationContainer.HoldingMessage = "";
             this.allocationContainer.IncludeIam = false;
             this.allocationContainer.LayoutStyle = InternalsViewer.UI.Allocations.LayoutStyle.Horizontal;
-            this.allocationContainer.Location = new System.Drawing.Point(0, 25);
+            this.allocationContainer.Location = new System.Drawing.Point(0, 30);
             this.allocationContainer.Mode = InternalsViewer.UI.Allocations.MapMode.Standard;
             this.allocationContainer.Name = "allocationContainer";
             this.allocationContainer.ShowFileInformation = false;
-            this.allocationContainer.Size = new System.Drawing.Size(945, 290);
+            this.allocationContainer.Size = new System.Drawing.Size(945, 470);
             this.allocationContainer.TabIndex = 0;
+            this.allocationContainer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageOver);
             // 
             // flatMenuStrip
             // 
@@ -90,24 +193,90 @@
             this.flatMenuStrip.GripStyle = System.Windows.Forms.ToolStripGripStyle.Hidden;
             this.flatMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripLabel1,
-            this.toolStripComboBox1});
+            this.databaseToolStripComboBox,
+            this.connectToolStripButton,
+            this.toolStripSeparator1,
+            this.pfsToolStripButton,
+            this.bufferPoolToolStripButton,
+            this.toolStripSeparator2,
+            this.extentSizeToolStripComboBox});
             this.flatMenuStrip.Location = new System.Drawing.Point(0, 0);
             this.flatMenuStrip.Name = "flatMenuStrip";
             this.flatMenuStrip.Padding = new System.Windows.Forms.Padding(4, 0, 1, 0);
-            this.flatMenuStrip.Size = new System.Drawing.Size(945, 25);
+            this.flatMenuStrip.Size = new System.Drawing.Size(945, 30);
             this.flatMenuStrip.TabIndex = 1;
             this.flatMenuStrip.Text = "flatMenuStrip1";
-            // 
-            // toolStripComboBox1
-            // 
-            this.toolStripComboBox1.Name = "toolStripComboBox1";
-            this.toolStripComboBox1.Size = new System.Drawing.Size(121, 25);
             // 
             // toolStripLabel1
             // 
             this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(57, 22);
-            this.toolStripLabel1.Text = "Database:";
+            this.toolStripLabel1.Size = new System.Drawing.Size(53, 27);
+            this.toolStripLabel1.Text = "Database";
+            // 
+            // databaseToolStripComboBox
+            // 
+            this.databaseToolStripComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.databaseToolStripComboBox.Enabled = false;
+            this.databaseToolStripComboBox.Name = "databaseToolStripComboBox";
+            this.databaseToolStripComboBox.Size = new System.Drawing.Size(121, 30);
+            this.databaseToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.databaseToolStripComboBox_SelectedIndexChanged);
+            // 
+            // connectToolStripButton
+            // 
+            this.connectToolStripButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.connectToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.connect;
+            this.connectToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
+            this.connectToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.connectToolStripButton.Name = "connectToolStripButton";
+            this.connectToolStripButton.Size = new System.Drawing.Size(23, 27);
+            this.connectToolStripButton.Text = "Connect to database";
+            this.connectToolStripButton.Click += new System.EventHandler(this.OnConnect);
+            // 
+            // toolStripSeparator1
+            // 
+            this.toolStripSeparator1.Name = "toolStripSeparator1";
+            this.toolStripSeparator1.Size = new System.Drawing.Size(6, 30);
+            // 
+            // pfsToolStripButton
+            // 
+            this.pfsToolStripButton.CheckOnClick = true;
+            this.pfsToolStripButton.Enabled = false;
+            this.pfsToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.pfs;
+            this.pfsToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.pfsToolStripButton.Name = "pfsToolStripButton";
+            this.pfsToolStripButton.Size = new System.Drawing.Size(45, 27);
+            this.pfsToolStripButton.Text = "PFS";
+            this.pfsToolStripButton.Click += new System.EventHandler(this.PfsToolStripButton_Click);
+            // 
+            // bufferPoolToolStripButton
+            // 
+            this.bufferPoolToolStripButton.CheckOnClick = true;
+            this.bufferPoolToolStripButton.Enabled = false;
+            this.bufferPoolToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.bufferpool11;
+            this.bufferPoolToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.bufferPoolToolStripButton.Name = "bufferPoolToolStripButton";
+            this.bufferPoolToolStripButton.Size = new System.Drawing.Size(80, 27);
+            this.bufferPoolToolStripButton.Text = "Buffer Pool";
+            this.bufferPoolToolStripButton.Click += new System.EventHandler(this.BufferPoolToolStripButton_Click);
+            // 
+            // toolStripSeparator2
+            // 
+            this.toolStripSeparator2.Name = "toolStripSeparator2";
+            this.toolStripSeparator2.Size = new System.Drawing.Size(6, 30);
+            // 
+            // extentSizeToolStripComboBox
+            // 
+            this.extentSizeToolStripComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.extentSizeToolStripComboBox.Enabled = false;
+            this.extentSizeToolStripComboBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
+            this.extentSizeToolStripComboBox.Items.AddRange(new object[] {
+            "Small",
+            "Medium",
+            "Large",
+            "Fit"});
+            this.extentSizeToolStripComboBox.Name = "extentSizeToolStripComboBox";
+            this.extentSizeToolStripComboBox.Size = new System.Drawing.Size(100, 30);
+            this.extentSizeToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.extentSizeToolStripComboBox_SelectedIndexChanged);
             // 
             // AllocationWindow
             // 
@@ -120,6 +289,8 @@
             this.splitContainer.Panel2.ResumeLayout(false);
             this.splitContainer.Panel2.PerformLayout();
             this.splitContainer.ResumeLayout(false);
+            this.statusStrip.ResumeLayout(false);
+            this.statusStrip.PerformLayout();
             this.flatMenuStrip.ResumeLayout(false);
             this.flatMenuStrip.PerformLayout();
             this.ResumeLayout(false);
@@ -133,6 +304,23 @@
         private System.Windows.Forms.Label label1;
         private FlatMenuStrip flatMenuStrip;
         private System.Windows.Forms.ToolStripLabel toolStripLabel1;
-        private System.Windows.Forms.ToolStripComboBox toolStripComboBox1;
+        private System.Windows.Forms.ToolStripComboBox databaseToolStripComboBox;
+        private System.Windows.Forms.ToolStripButton connectToolStripButton;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
+        private System.ComponentModel.BackgroundWorker allocUnitBackgroundWorker;
+        private System.Windows.Forms.ToolStripComboBox extentSizeToolStripComboBox;
+        private System.Windows.Forms.ToolStripButton pfsToolStripButton;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
+        private System.Windows.Forms.ToolStripButton bufferPoolToolStripButton;
+        private System.Windows.Forms.StatusStrip statusStrip;
+        private System.Windows.Forms.ToolStripStatusLabel errorImageToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel errorToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripProgressBar allocUnitProgressBar;
+        private System.Windows.Forms.ToolStripStatusLabel allocUnitToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel spacerToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel2;
+        private System.Windows.Forms.ToolStripStatusLabel AllocUnitLabel;
+        private System.Windows.Forms.ToolStripStatusLabel pageAddressToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel iconToolStripStatusLabel;
     }
 }

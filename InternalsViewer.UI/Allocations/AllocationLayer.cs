@@ -127,7 +127,7 @@ namespace InternalsViewer.UI.Allocations
                                                   Color colour,
                                                   PageAddress firstPage)
         {
-            Allocation allocation = new Allocation(SqlServerConnection.CurrentConnection().CurrentDatabase, firstPage);
+            Allocation allocation = new Allocation(InternalsViewerConnection.CurrentConnection().CurrentDatabase, firstPage);
 
             return CreateLayer(name, invert, transparent, colour, allocation);
         }

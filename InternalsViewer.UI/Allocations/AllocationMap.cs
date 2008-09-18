@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.UI.Renderers;
 
 namespace InternalsViewer.UI.Allocations
 {
@@ -25,6 +26,7 @@ namespace InternalsViewer.UI.Allocations
         private int extentsVertical;
         private int visibleExtents;
         private int windowPosition;
+        private Pfs pfs;
         private DatabaseFile file;
         private int fileId;
         private bool includeIam;
@@ -39,6 +41,7 @@ namespace InternalsViewer.UI.Allocations
         public event EventHandler<PageEventArgs> PageOver;
         public event EventHandler WindowPositionChanged;
         private readonly PageExtentRenderer pageExtentRenderer;
+        private readonly PfsRenderer pfsRenderer;
         private bool holding;
         private string holdingMessage;
 
@@ -85,6 +88,7 @@ namespace InternalsViewer.UI.Allocations
             this.imageBufferBackgroundWorker.WorkerSupportsCancellation = true;
 
             this.pageExtentRenderer = new PageExtentRenderer(Color.WhiteSmoke, Color.FromArgb(234, 234, 234));
+            pfsRenderer = new PfsRenderer(new Rectangle(0, 0, Large.Height, Large.Width / 8), Color.WhiteSmoke);
 
             this.pageExtentRenderer.CreateBrushesAndPens(this.ExtentSize);
         }
@@ -436,11 +440,19 @@ namespace InternalsViewer.UI.Allocations
                             }
 
                             this.DrawSinglePages(e);
+
+                            int mapWidth = this.extentsHorizontal * this.extentSize.Width;
+                            
+                            e.Graphics.FillRectangle(SystemBrushes.Control, mapWidth, 0, this.Width - mapWidth, this.Height);
+
+                            e.Graphics.DrawLine(SystemPens.ControlDark, mapWidth, 0, mapWidth, this.Height);
+
                             break;
 
                         case MapMode.Pfs:
 
-                            // DrawPfsPages(e);
+                            DrawPfsPages(e);
+
                             break;
 
                         case MapMode.Map:
@@ -460,6 +472,8 @@ namespace InternalsViewer.UI.Allocations
                     }
                 }
             }
+
+
 
             ControlPaint.DrawBorder(e.Graphics,
                                     new Rectangle(0, 0, Width, Height),
@@ -565,6 +579,19 @@ namespace InternalsViewer.UI.Allocations
                             }
                         }
                     }
+                }
+            }
+        }
+
+        private void DrawPfsPages(PaintEventArgs e)
+        {
+            if (pfs != null)
+            {
+                for (int i = 0; i < (visibleExtents * 8) && i + (WindowPosition * 8) < extentCount * 8; i++)
+                {
+                    int pageId = i + (WindowPosition * 8);
+
+                    pfsRenderer.DrawPfsPage(e.Graphics, PagePosition(i), Pfs.PagePfsByte(pageId));
                 }
             }
         }
@@ -787,6 +814,12 @@ namespace InternalsViewer.UI.Allocations
         {
             get { return this.holdingMessage; }
             set { this.holdingMessage = value; }
+        }
+
+        public Pfs Pfs
+        {
+            get { return pfs; }
+            set { pfs = value; }
         }
 
         #endregion
