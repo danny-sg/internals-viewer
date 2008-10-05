@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
-using System.Data;
-using System.Text;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
-using InternalsViewer.UI.Allocations;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.UI.Allocations;
+using System.Data;
 
 namespace InternalsViewer.UI
 {
@@ -16,6 +15,8 @@ namespace InternalsViewer.UI
         public event EventHandler Connect;
         protected delegate void LoadDatabaseDelegate();
         private BufferPool bufferPool = new BufferPool();
+        private DataTable allocationInfo;
+        private bool keyChanging;
 
         public AllocationWindow()
         {
@@ -127,7 +128,7 @@ namespace InternalsViewer.UI
 
         private void AllocUnitBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
         {
-            e.Result = AllocationUnitsLayer.GenerateLayers(InternalsViewerConnection.CurrentConnection().CurrentDatabase, (BackgroundWorker)sender);
+            e.Result = AllocationUnitsLayer.GenerateLayers(InternalsViewerConnection.CurrentConnection().CurrentDatabase, (BackgroundWorker)sender, true, false);
         }
 
         private void AllocUnitBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -171,6 +172,8 @@ namespace InternalsViewer.UI
             {
                 this.allocationContainer.ShowFittedMap();
             }
+
+            this.allocationBindingSource.DataSource = layers;
         }
         private void ShowPfs(bool show)
         {
@@ -179,7 +182,7 @@ namespace InternalsViewer.UI
                 allocationContainer.Pfs = InternalsViewerConnection.CurrentConnection().CurrentDatabase.Pfs;
                 allocationContainer.ExtentSize = AllocationMap.Large;
                 allocationContainer.Mode = MapMode.Pfs;
-                
+
             }
             else
             {
@@ -357,6 +360,7 @@ namespace InternalsViewer.UI
                         AllocUnitLabel.Text += name;
                     }
                     break;
+
                 case MapMode.Pfs:
 
                     AllocUnitLabel.Text = allocationContainer.PagePfsByte(e.Address).ToString();
@@ -367,6 +371,70 @@ namespace InternalsViewer.UI
         private void allocationContainer_PageOver(object sender, PageEventArgs e)
         {
 
+        }
+
+        private void fileDetailsToolStripButton_Click(object sender, EventArgs e)
+        {
+            this.allocationContainer.ShowFileInformation = fileDetailsToolStripButton.Checked;
+            this.allocationContainer.CreateAllocationMaps(this.allocationContainer.AllocationMaps);
+            LoadDatabase();
+        }
+
+        private void keysDataGridView_SelectionChanged(object sender, EventArgs e)
+        {
+            keyChanging = true;
+
+            if (keysDataGridView.SelectedRows.Count > 0)
+            {
+                foreach (AllocationMap map in allocationContainer.AllocationMaps.Values)
+                {
+                    foreach (AllocationLayer layer in map.MapLayers)
+                    {
+                        if (layer.Name != ("Buffer Pool"))
+                        {
+                            layer.Transparent = !(layer.Name == keysDataGridView.SelectedRows[0].Cells[1].Value.ToString() && layer.IndexName == keysDataGridView.SelectedRows[0].Cells[2].Value.ToString());
+                        }
+                    }
+
+                    map.Invalidate();
+                }
+            }
+            else
+            {
+                foreach (AllocationMap map in allocationContainer.AllocationMaps.Values)
+                {
+                    foreach (AllocationLayer layer in map.MapLayers)
+                    {
+                        if (layer.Name != ("Buffer Pool"))
+                        {
+                            layer.Transparent = false;
+                        }
+                    }
+
+                    map.Invalidate();
+                }
+
+            }
+
+            keysDataGridView.Invalidate();
+        }
+
+        private void keysDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void keysDataGridView_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (!keyChanging)
+            {
+                if (keysDataGridView.SelectedRows.Count > 0)
+                {
+                    keysDataGridView.ClearSelection();
+                }
+            }
+
+            keyChanging = false;
         }
     }
 }

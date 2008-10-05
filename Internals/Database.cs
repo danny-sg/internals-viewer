@@ -79,6 +79,7 @@ namespace InternalsViewer.Internals
             foreach (DataRow r in filesDataTable.Rows)
             {
                 DatabaseFile file = new DatabaseFile((int)r["file_id"], this);
+
                 file.FileGroup = r["filegroup_name"].ToString();
                 file.Name = r["name"].ToString();
                 file.PhysicalName = r["physical_name"].ToString();

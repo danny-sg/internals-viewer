@@ -76,21 +76,23 @@ namespace InternalsViewer.Internals.Properties {
         
         /// <summary>
         ///   Looks up a localized string similar to SELECT o.object_id
-        ///	  ,s.name AS schema_name
-        ///	  ,o.name AS table_name
-        ///	  ,is_ms_shipped AS system 
         ///	  ,iau.first_iam_page
-        ///                     ,p.index_id
+        ///      ,s.name AS schema_name
+        ///	  ,o.name AS table_name
+        ///      ,i.name AS index_name
+        ///	  ,is_ms_shipped AS system
+        ///      ,p.index_id
+        ///      ,i.type AS index_type
+        ///      ,iau.type AS allocation_unit_type
         ///	  ,CASE iau.type
         ///			WHEN 1 THEN &apos;Row Data&apos;
         ///			WHEN 2 THEN &apos;LOB Data&apos;
         ///			WHEN 3 THEN &apos;Row Overflow Data&apos;
         ///	   END AS type_description
-        ///	  ,iau.type
+        ///      ,iau.used_pages
+        ///      ,iau.total_pages
         ///FROM   sys.all_objects o
-        ///	   INNER JOIN sys.schemas s ON o.schema_id = s.schema_id 
-        ///	   INNER JOIN sys.partitions p ON p.object_id = o.object_id
-        ///	   INNER JOIN sys.system_internals_allocation_unit [rest of string was truncated]&quot;;.
+        ///	   INNER JOIN sys.schemas s ON o.schema_id = s.schema [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string SQL_Allocation_Units {
             get {

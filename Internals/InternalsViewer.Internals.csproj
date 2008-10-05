@@ -46,6 +46,7 @@
     <Compile Include="Database.cs" />
     <Compile Include="DatabaseFile.cs" />
     <Compile Include="IamAllocation.cs" />
+    <Compile Include="IndexTypes.cs" />
     <Compile Include="LogSequenceNumber.cs" />
     <Compile Include="PageIO\DatabaseHeaderReader.cs" />
     <Compile Include="PageIO\DatabasePageReader.cs" />

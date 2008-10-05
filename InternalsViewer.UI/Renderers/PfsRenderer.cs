@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Drawing.Drawing2D;
 using System.Drawing;
-using InternalsViewer.Internals;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using InternalsViewer.Internals;
 
 namespace InternalsViewer.UI.Renderers
 {

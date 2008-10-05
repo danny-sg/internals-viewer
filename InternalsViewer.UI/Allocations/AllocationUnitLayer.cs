@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Data;
 using System.ComponentModel;
+using System.Data;
+using System.Drawing;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
-using System.Drawing;
 
 namespace InternalsViewer.UI.Allocations
 {
@@ -21,7 +20,7 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="database">The database.</param>
         /// <param name="worker">The backgroundWorker object.</param>
         /// <returns></returns>
-        public static List<AllocationLayer> GenerateLayers(Database database, BackgroundWorker worker)
+        public static List<AllocationLayer> GenerateLayers(Database database, BackgroundWorker worker, bool separateIndexes, bool separateSystemObjects)
         {
             List<AllocationLayer> layers = new List<AllocationLayer>();
             AllocationLayer layer = null;
@@ -32,9 +31,19 @@ namespace InternalsViewer.UI.Allocations
 
             DataTable allocationUnits = database.AllocationUnits();
 
-            int userObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", "type=1 AND system=0 AND index_id < 2");
+            string filter;
 
-            int systemObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", "type=1 AND system=1 AND index_id < 2");
+            if (separateIndexes)
+            {
+                filter = "allocation_unit_type=1 AND index_id < 2";
+            }
+            else
+            {
+                filter = string.Empty;
+            }
+            int userObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", filter + " AND system=0");// "allocation_unit_type=1 AND system=0 AND index_id < 2");
+
+            int systemObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", filter + " AND system=1"); //, "allocation_unit_type=1 AND system=1 AND index_id < 2");
 
             foreach (DataRow row in allocationUnits.Rows)
             {
@@ -47,20 +56,32 @@ namespace InternalsViewer.UI.Allocations
 
                 string currentObjectName;
 
-                if ((bool)row["system"])
+                if ((bool)row["system"] && !separateSystemObjects)
                 {
                     currentObjectName = "(System object)";
                 }
                 else
                 {
-                    currentObjectName = row["schema_name"] + "." + row["table_name"];
+                    if (separateIndexes)
+                    {
+                        currentObjectName = row["schema_name"] + "." + row["table_name"] + "." + row["index_name"];
+                    }
+                    else
+                    {
+                        currentObjectName = row["schema_name"] + "." + row["table_name"];
+                    }
                 }
 
                 if (currentObjectName != previousObjectName)
                 {
                     layer = new AllocationLayer();
 
-                    layer.Name = currentObjectName;
+                    layer.Name = row["schema_name"] + "." + row["table_name"];
+                    layer.IndexName = row["index_name"].ToString();
+                    layer.UsedPages = Convert.ToInt32(row["used_pages"]);
+                    layer.TotalPages = Convert.ToInt32(row["total_pages"]);
+                    layer.IndexType = (IndexTypes)Convert.ToInt32(row["index_type"]);
+
                     layer.UseDefaultSinglePageColour = false;
 
                     if ((bool)row["system"])

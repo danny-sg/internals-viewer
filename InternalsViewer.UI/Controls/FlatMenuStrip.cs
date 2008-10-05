@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 
-namespace InternalsViewer.UI
+namespace InternalsViewer.UI.Controls
 {
     /// <summary>
     /// Menu Strip without the rounded corners

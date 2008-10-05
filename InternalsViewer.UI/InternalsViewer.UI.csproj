@@ -58,8 +58,17 @@
     <Compile Include="AllocationWindow.Designer.cs">
       <DependentUpon>AllocationWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="ColourRange.cs" />
+    <Compile Include="Controls\BarColumn.cs" />
+    <Compile Include="Controls\KeyImageColumn.cs" />
     <Compile Include="ExtentColour.cs" />
-    <Compile Include="FlatMenuStrip.cs">
+    <Compile Include="FileInformationControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="FileInformationControl.Designer.cs">
+      <DependentUpon>FileInformationControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\FlatMenuStrip.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="HsvColour.cs" />
@@ -88,6 +97,10 @@
     </EmbeddedResource>
     <EmbeddedResource Include="AllocationWindow.resx">
       <DependentUpon>AllocationWindow.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FileInformationControl.resx">
+      <DependentUpon>FileInformationControl.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">

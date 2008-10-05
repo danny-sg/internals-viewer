@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
@@ -51,6 +52,7 @@ namespace InternalsViewer.UI.Allocations
         private BackgroundWorker imageBufferBackgroundWorker = new BackgroundWorker();
 
         private Pen backgroundLine = new Pen(Color.FromArgb(242, 242, 242), 2);
+        private LinearGradientBrush backgroundBrush;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AllocationMap"/> class.
@@ -77,7 +79,7 @@ namespace InternalsViewer.UI.Allocations
             this.MouseClick += this.AllocationMapPanel_MouseClick;
             this.scrollBar.ValueChanged += this.ScrollBar_ValueChanged;
             this.MouseMove += this.AllocationMapPanel_MouseMove;
-
+            this.Resize += new EventHandler(AllocationMap_Resize);
             this.extentSize = AllocationMap.Small;
 
             this.imageBufferBackgroundWorker.DoWork += this.ImageBufferBackgroundWorker_DoWork;
@@ -91,6 +93,18 @@ namespace InternalsViewer.UI.Allocations
             pfsRenderer = new PfsRenderer(new Rectangle(0, 0, Large.Height, Large.Width / 8), Color.WhiteSmoke);
 
             this.pageExtentRenderer.CreateBrushesAndPens(this.ExtentSize);
+
+            this.backgroundBrush = new LinearGradientBrush(this.ClientRectangle, SystemColors.Control, SystemColors.ControlLightLight, LinearGradientMode.Horizontal);
+            this.backgroundBrush.WrapMode = WrapMode.TileFlipX;
+            
+        }
+
+        void AllocationMap_Resize(object sender, EventArgs e)
+        {
+            this.backgroundBrush.ResetTransform();
+            this.backgroundBrush.ScaleTransform(this.Bounds.Height / this.backgroundBrush.Rectangle.Height,
+                                                this.Bounds.Width / this.backgroundBrush.Rectangle.Width,
+                                                MatrixOrder.Append);
         }
 
         /// <summary>
@@ -397,12 +411,12 @@ namespace InternalsViewer.UI.Allocations
             if (this.imageBufferBackgroundWorker.IsBusy || this.Holding)
             {
                 // SolidBrush brush = new SolidBrush(Color.FromArgb(200, Color.Black));
-                // e.Graphics.FillRectangle(brush, this.Bounds);
+                 e.Graphics.FillRectangle(backgroundBrush, this.Bounds);
 
-                for (int l = 0; l < Height; l += 4)
-                {
-                    e.Graphics.DrawLine(this.backgroundLine, 0, l, Width, l);
-                }
+                //for (int l = 0; l < Height; l += 4)
+                //{
+                //    e.Graphics.DrawLine(this.backgroundLine, 0, l, Width, l);
+                //}
 
                 TextRenderer.DrawText(e.Graphics, this.HoldingMessage, this.Font, new Point(4, 4), Color.Black);
             }
@@ -412,10 +426,12 @@ namespace InternalsViewer.UI.Allocations
                 {
                     if (this.Mode != MapMode.Full)
                     {
-                        for (int l = 0; l < Height; l += 4)
-                        {
-                            e.Graphics.DrawLine(this.backgroundLine, 0, l, Width, l);
-                        }
+                       // e.Graphics.FillRectangle(backgroundBrush, this.Bounds);
+
+                        //for (int l = 0; l < Height; l += 4)
+                        //{
+                        //    e.Graphics.DrawLine(this.backgroundLine, 0, l, Width, l);
+                        //}
 
                         this.CalculateVisibleExtents();
 
@@ -443,7 +459,7 @@ namespace InternalsViewer.UI.Allocations
 
                             int mapWidth = this.extentsHorizontal * this.extentSize.Width;
                             
-                            e.Graphics.FillRectangle(SystemBrushes.Control, mapWidth, 0, this.Width - mapWidth, this.Height);
+                            e.Graphics.FillRectangle(backgroundBrush, mapWidth, 0, this.Width - mapWidth, this.Height);
 
                             e.Graphics.DrawLine(SystemPens.ControlDark, mapWidth, 0, mapWidth, this.Height);
 
@@ -677,8 +693,6 @@ namespace InternalsViewer.UI.Allocations
                 this.CalculateVisibleExtents();
 
                 this.pageExtentRenderer.ResizeExtentBrush(this.extentSize);
-
-                Invalidate();
             }
         }
 
@@ -737,7 +751,6 @@ namespace InternalsViewer.UI.Allocations
             {
                 this.mode = value;
                 this.BackgroundImage = null;
-                this.Refresh();
             }
         }
 
@@ -828,6 +841,7 @@ namespace InternalsViewer.UI.Allocations
         {
             this.backgroundLine.Dispose();
             this.pageExtentRenderer.Dispose();
+            this.backgroundBrush.Dispose();
         }
     }
 }

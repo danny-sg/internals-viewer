@@ -1,4 +1,5 @@
-﻿namespace InternalsViewer.UI
+﻿using InternalsViewer.UI.Controls;
+namespace InternalsViewer.UI
 {
     partial class AllocationWindow
     {
@@ -28,7 +29,32 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AllocationWindow));
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
+            this.allocationContainer = new InternalsViewer.UI.Allocations.AllocationContainer();
             this.splitContainer = new System.Windows.Forms.SplitContainer();
+            this.flatMenuStrip = new InternalsViewer.UI.Controls.FlatMenuStrip();
+            this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
+            this.databaseToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
+            this.connectToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+            this.pfsToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.bufferPoolToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+            this.extentSizeToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
+            this.fileDetailsToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.keysDataGridView = new System.Windows.Forms.DataGridView();
+            this.KeyColumn = new InternalsViewer.UI.Controls.KeyImageColumn();
+            this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.IndexNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.IndexTypeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.TotalPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.UsedPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.allocationBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.errorImageToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.errorToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
@@ -39,136 +65,16 @@
             this.AllocUnitLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.pageAddressToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.iconToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.label1 = new System.Windows.Forms.Label();
             this.allocUnitBackgroundWorker = new System.ComponentModel.BackgroundWorker();
-            this.allocationContainer = new InternalsViewer.UI.Allocations.AllocationContainer();
-            this.flatMenuStrip = new InternalsViewer.UI.FlatMenuStrip();
-            this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
-            this.databaseToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
-            this.connectToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
-            this.pfsToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.bufferPoolToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
-            this.extentSizeToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
+            this.keyImageColumn1 = new InternalsViewer.UI.Controls.KeyImageColumn();
             this.splitContainer.Panel1.SuspendLayout();
             this.splitContainer.Panel2.SuspendLayout();
             this.splitContainer.SuspendLayout();
-            this.statusStrip.SuspendLayout();
             this.flatMenuStrip.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.keysDataGridView)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.allocationBindingSource)).BeginInit();
+            this.statusStrip.SuspendLayout();
             this.SuspendLayout();
-            // 
-            // splitContainer
-            // 
-            this.splitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer.Location = new System.Drawing.Point(0, 0);
-            this.splitContainer.Name = "splitContainer";
-            this.splitContainer.Orientation = System.Windows.Forms.Orientation.Horizontal;
-            // 
-            // splitContainer.Panel1
-            // 
-            this.splitContainer.Panel1.Controls.Add(this.allocationContainer);
-            this.splitContainer.Panel1.Controls.Add(this.flatMenuStrip);
-            // 
-            // splitContainer.Panel2
-            // 
-            this.splitContainer.Panel2.Controls.Add(this.statusStrip);
-            this.splitContainer.Panel2.Controls.Add(this.label1);
-            this.splitContainer.Size = new System.Drawing.Size(945, 579);
-            this.splitContainer.SplitterDistance = 500;
-            this.splitContainer.TabIndex = 0;
-            // 
-            // statusStrip
-            // 
-            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.errorImageToolStripStatusLabel,
-            this.errorToolStripStatusLabel,
-            this.allocUnitProgressBar,
-            this.allocUnitToolStripStatusLabel,
-            this.spacerToolStripStatusLabel,
-            this.toolStripStatusLabel2,
-            this.AllocUnitLabel,
-            this.pageAddressToolStripStatusLabel,
-            this.iconToolStripStatusLabel});
-            this.statusStrip.Location = new System.Drawing.Point(0, 53);
-            this.statusStrip.Name = "statusStrip";
-            this.statusStrip.Size = new System.Drawing.Size(945, 22);
-            this.statusStrip.SizingGrip = false;
-            this.statusStrip.TabIndex = 1;
-            this.statusStrip.Text = "statusStrip1";
-            // 
-            // errorImageToolStripStatusLabel
-            // 
-            this.errorImageToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.errorImageToolStripStatusLabel.Name = "errorImageToolStripStatusLabel";
-            this.errorImageToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            this.errorImageToolStripStatusLabel.Text = "iii";
-            // 
-            // errorToolStripStatusLabel
-            // 
-            this.errorToolStripStatusLabel.Name = "errorToolStripStatusLabel";
-            this.errorToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            // 
-            // allocUnitProgressBar
-            // 
-            this.allocUnitProgressBar.Enabled = false;
-            this.allocUnitProgressBar.Name = "allocUnitProgressBar";
-            this.allocUnitProgressBar.Size = new System.Drawing.Size(100, 16);
-            this.allocUnitProgressBar.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
-            this.allocUnitProgressBar.Visible = false;
-            // 
-            // allocUnitToolStripStatusLabel
-            // 
-            this.allocUnitToolStripStatusLabel.Name = "allocUnitToolStripStatusLabel";
-            this.allocUnitToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            // 
-            // spacerToolStripStatusLabel
-            // 
-            this.spacerToolStripStatusLabel.Name = "spacerToolStripStatusLabel";
-            this.spacerToolStripStatusLabel.Size = new System.Drawing.Size(930, 17);
-            this.spacerToolStripStatusLabel.Spring = true;
-            // 
-            // toolStripStatusLabel2
-            // 
-            this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
-            this.toolStripStatusLabel2.Size = new System.Drawing.Size(0, 17);
-            // 
-            // AllocUnitLabel
-            // 
-            this.AllocUnitLabel.Name = "AllocUnitLabel";
-            this.AllocUnitLabel.Size = new System.Drawing.Size(0, 17);
-            // 
-            // pageAddressToolStripStatusLabel
-            // 
-            this.pageAddressToolStripStatusLabel.ForeColor = System.Drawing.Color.Navy;
-            this.pageAddressToolStripStatusLabel.Name = "pageAddressToolStripStatusLabel";
-            this.pageAddressToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            // 
-            // iconToolStripStatusLabel
-            // 
-            this.iconToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.iconToolStripStatusLabel.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
-            this.iconToolStripStatusLabel.ImageTransparentColor = System.Drawing.Color.Fuchsia;
-            this.iconToolStripStatusLabel.Name = "iconToolStripStatusLabel";
-            this.iconToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            this.iconToolStripStatusLabel.Text = "iconToolStripStatusLabel";
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(4, 4);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(86, 13);
-            this.label1.TabIndex = 0;
-            this.label1.Text = "(Key Information)";
-            // 
-            // allocUnitBackgroundWorker
-            // 
-            this.allocUnitBackgroundWorker.WorkerReportsProgress = true;
-            this.allocUnitBackgroundWorker.WorkerSupportsCancellation = true;
-            this.allocUnitBackgroundWorker.DoWork += new System.ComponentModel.DoWorkEventHandler(this.AllocUnitBackgroundWorker_DoWork);
-            this.allocUnitBackgroundWorker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.AllocUnitBackgroundWorker_RunWorkerCompleted);
-            this.allocUnitBackgroundWorker.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.AllocUnitBackgroundWorker_ProgressChanged);
             // 
             // allocationContainer
             // 
@@ -184,8 +90,27 @@
             this.allocationContainer.Name = "allocationContainer";
             this.allocationContainer.ShowFileInformation = false;
             this.allocationContainer.Size = new System.Drawing.Size(945, 470);
-            this.allocationContainer.TabIndex = 0;
-            this.allocationContainer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageOver);
+            this.allocationContainer.TabIndex = 2;
+            // 
+            // splitContainer
+            // 
+            this.splitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.splitContainer.Location = new System.Drawing.Point(0, 0);
+            this.splitContainer.Name = "splitContainer";
+            this.splitContainer.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            // 
+            // splitContainer.Panel1
+            // 
+            this.splitContainer.Panel1.Controls.Add(this.allocationContainer);
+            this.splitContainer.Panel1.Controls.Add(this.flatMenuStrip);
+            // 
+            // splitContainer.Panel2
+            // 
+            this.splitContainer.Panel2.Controls.Add(this.keysDataGridView);
+            this.splitContainer.Panel2.Controls.Add(this.statusStrip);
+            this.splitContainer.Size = new System.Drawing.Size(945, 579);
+            this.splitContainer.SplitterDistance = 500;
+            this.splitContainer.TabIndex = 0;
             // 
             // flatMenuStrip
             // 
@@ -199,7 +124,8 @@
             this.pfsToolStripButton,
             this.bufferPoolToolStripButton,
             this.toolStripSeparator2,
-            this.extentSizeToolStripComboBox});
+            this.extentSizeToolStripComboBox,
+            this.fileDetailsToolStripButton});
             this.flatMenuStrip.Location = new System.Drawing.Point(0, 0);
             this.flatMenuStrip.Name = "flatMenuStrip";
             this.flatMenuStrip.Padding = new System.Windows.Forms.Padding(4, 0, 1, 0);
@@ -278,6 +204,213 @@
             this.extentSizeToolStripComboBox.Size = new System.Drawing.Size(100, 30);
             this.extentSizeToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.extentSizeToolStripComboBox_SelectedIndexChanged);
             // 
+            // fileDetailsToolStripButton
+            // 
+            this.fileDetailsToolStripButton.CheckOnClick = true;
+            this.fileDetailsToolStripButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.fileDetailsToolStripButton.Image = ((System.Drawing.Image)(resources.GetObject("fileDetailsToolStripButton.Image")));
+            this.fileDetailsToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.fileDetailsToolStripButton.Name = "fileDetailsToolStripButton";
+            this.fileDetailsToolStripButton.Size = new System.Drawing.Size(62, 27);
+            this.fileDetailsToolStripButton.Text = "File Details";
+            this.fileDetailsToolStripButton.Click += new System.EventHandler(this.fileDetailsToolStripButton_Click);
+            // 
+            // keysDataGridView
+            // 
+            this.keysDataGridView.AllowUserToAddRows = false;
+            this.keysDataGridView.AllowUserToDeleteRows = false;
+            this.keysDataGridView.AllowUserToOrderColumns = true;
+            this.keysDataGridView.AllowUserToResizeColumns = false;
+            this.keysDataGridView.AllowUserToResizeRows = false;
+            this.keysDataGridView.AutoGenerateColumns = false;
+            this.keysDataGridView.BackgroundColor = System.Drawing.Color.White;
+            this.keysDataGridView.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.keysDataGridView.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
+            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.keysDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            this.keysDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.keysDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.KeyColumn,
+            this.NameColumn,
+            this.IndexNameColumn,
+            this.IndexTypeColumn,
+            this.TotalPagesColumn,
+            this.UsedPagesColumn});
+            this.keysDataGridView.DataSource = this.allocationBindingSource;
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.ControlLight;
+            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.keysDataGridView.DefaultCellStyle = dataGridViewCellStyle3;
+            this.keysDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.keysDataGridView.GridColor = System.Drawing.Color.White;
+            this.keysDataGridView.Location = new System.Drawing.Point(0, 0);
+            this.keysDataGridView.Name = "keysDataGridView";
+            this.keysDataGridView.ReadOnly = true;
+            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle4.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle4.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
+            this.keysDataGridView.RowHeadersVisible = false;
+            this.keysDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.keysDataGridView.Size = new System.Drawing.Size(945, 53);
+            this.keysDataGridView.TabIndex = 2;
+            this.keysDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.keysDataGridView_CellClick);
+            this.keysDataGridView.SelectionChanged += new System.EventHandler(this.keysDataGridView_SelectionChanged);
+            this.keysDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.keysDataGridView_CellContentClick);
+            // 
+            // KeyColumn
+            // 
+            this.KeyColumn.DataPropertyName = "Colour";
+            this.KeyColumn.HeaderText = "";
+            this.KeyColumn.Name = "KeyColumn";
+            this.KeyColumn.ReadOnly = true;
+            this.KeyColumn.Width = 30;
+            // 
+            // NameColumn
+            // 
+            this.NameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.NameColumn.DataPropertyName = "Name";
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
+            this.NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
+            this.NameColumn.HeaderText = "Table";
+            this.NameColumn.Name = "NameColumn";
+            this.NameColumn.ReadOnly = true;
+            // 
+            // IndexNameColumn
+            // 
+            this.IndexNameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.IndexNameColumn.DataPropertyName = "IndexName";
+            this.IndexNameColumn.HeaderText = "Index";
+            this.IndexNameColumn.Name = "IndexNameColumn";
+            this.IndexNameColumn.ReadOnly = true;
+            // 
+            // IndexTypeColumn
+            // 
+            this.IndexTypeColumn.DataPropertyName = "IndexType";
+            this.IndexTypeColumn.HeaderText = "Index Type";
+            this.IndexTypeColumn.Name = "IndexTypeColumn";
+            this.IndexTypeColumn.ReadOnly = true;
+            // 
+            // TotalPagesColumn
+            // 
+            this.TotalPagesColumn.DataPropertyName = "TotalPages";
+            this.TotalPagesColumn.HeaderText = "Total Pages";
+            this.TotalPagesColumn.Name = "TotalPagesColumn";
+            this.TotalPagesColumn.ReadOnly = true;
+            this.TotalPagesColumn.Width = 90;
+            // 
+            // UsedPagesColumn
+            // 
+            this.UsedPagesColumn.DataPropertyName = "UsedPages";
+            this.UsedPagesColumn.HeaderText = "Used Pages";
+            this.UsedPagesColumn.Name = "UsedPagesColumn";
+            this.UsedPagesColumn.ReadOnly = true;
+            this.UsedPagesColumn.Width = 90;
+            // 
+            // statusStrip
+            // 
+            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.errorImageToolStripStatusLabel,
+            this.errorToolStripStatusLabel,
+            this.allocUnitProgressBar,
+            this.allocUnitToolStripStatusLabel,
+            this.spacerToolStripStatusLabel,
+            this.toolStripStatusLabel2,
+            this.AllocUnitLabel,
+            this.pageAddressToolStripStatusLabel,
+            this.iconToolStripStatusLabel});
+            this.statusStrip.Location = new System.Drawing.Point(0, 53);
+            this.statusStrip.Name = "statusStrip";
+            this.statusStrip.Size = new System.Drawing.Size(945, 22);
+            this.statusStrip.SizingGrip = false;
+            this.statusStrip.TabIndex = 1;
+            this.statusStrip.Text = "statusStrip1";
+            // 
+            // errorImageToolStripStatusLabel
+            // 
+            this.errorImageToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.errorImageToolStripStatusLabel.Name = "errorImageToolStripStatusLabel";
+            this.errorImageToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            this.errorImageToolStripStatusLabel.Text = "iii";
+            // 
+            // errorToolStripStatusLabel
+            // 
+            this.errorToolStripStatusLabel.Name = "errorToolStripStatusLabel";
+            this.errorToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // allocUnitProgressBar
+            // 
+            this.allocUnitProgressBar.Enabled = false;
+            this.allocUnitProgressBar.Name = "allocUnitProgressBar";
+            this.allocUnitProgressBar.Size = new System.Drawing.Size(100, 16);
+            this.allocUnitProgressBar.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
+            this.allocUnitProgressBar.Visible = false;
+            // 
+            // allocUnitToolStripStatusLabel
+            // 
+            this.allocUnitToolStripStatusLabel.Name = "allocUnitToolStripStatusLabel";
+            this.allocUnitToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // spacerToolStripStatusLabel
+            // 
+            this.spacerToolStripStatusLabel.Name = "spacerToolStripStatusLabel";
+            this.spacerToolStripStatusLabel.Size = new System.Drawing.Size(930, 17);
+            this.spacerToolStripStatusLabel.Spring = true;
+            // 
+            // toolStripStatusLabel2
+            // 
+            this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
+            this.toolStripStatusLabel2.Size = new System.Drawing.Size(0, 17);
+            // 
+            // AllocUnitLabel
+            // 
+            this.AllocUnitLabel.Name = "AllocUnitLabel";
+            this.AllocUnitLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // pageAddressToolStripStatusLabel
+            // 
+            this.pageAddressToolStripStatusLabel.ForeColor = System.Drawing.Color.Navy;
+            this.pageAddressToolStripStatusLabel.Name = "pageAddressToolStripStatusLabel";
+            this.pageAddressToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // iconToolStripStatusLabel
+            // 
+            this.iconToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.iconToolStripStatusLabel.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
+            this.iconToolStripStatusLabel.ImageTransparentColor = System.Drawing.Color.Fuchsia;
+            this.iconToolStripStatusLabel.Name = "iconToolStripStatusLabel";
+            this.iconToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            this.iconToolStripStatusLabel.Text = "iconToolStripStatusLabel";
+            // 
+            // allocUnitBackgroundWorker
+            // 
+            this.allocUnitBackgroundWorker.WorkerReportsProgress = true;
+            this.allocUnitBackgroundWorker.WorkerSupportsCancellation = true;
+            this.allocUnitBackgroundWorker.DoWork += new System.ComponentModel.DoWorkEventHandler(this.AllocUnitBackgroundWorker_DoWork);
+            this.allocUnitBackgroundWorker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.AllocUnitBackgroundWorker_RunWorkerCompleted);
+            this.allocUnitBackgroundWorker.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.AllocUnitBackgroundWorker_ProgressChanged);
+            // 
+            // keyImageColumn1
+            // 
+            this.keyImageColumn1.DataPropertyName = "Colour";
+            this.keyImageColumn1.HeaderText = "";
+            this.keyImageColumn1.Name = "keyImageColumn1";
+            this.keyImageColumn1.Width = 30;
+            // 
             // AllocationWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -289,10 +422,12 @@
             this.splitContainer.Panel2.ResumeLayout(false);
             this.splitContainer.Panel2.PerformLayout();
             this.splitContainer.ResumeLayout(false);
-            this.statusStrip.ResumeLayout(false);
-            this.statusStrip.PerformLayout();
             this.flatMenuStrip.ResumeLayout(false);
             this.flatMenuStrip.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.keysDataGridView)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.allocationBindingSource)).EndInit();
+            this.statusStrip.ResumeLayout(false);
+            this.statusStrip.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -301,7 +436,6 @@
 
         private System.Windows.Forms.SplitContainer splitContainer;
         private InternalsViewer.UI.Allocations.AllocationContainer allocationContainer;
-        private System.Windows.Forms.Label label1;
         private FlatMenuStrip flatMenuStrip;
         private System.Windows.Forms.ToolStripLabel toolStripLabel1;
         private System.Windows.Forms.ToolStripComboBox databaseToolStripComboBox;
@@ -322,5 +456,15 @@
         private System.Windows.Forms.ToolStripStatusLabel AllocUnitLabel;
         private System.Windows.Forms.ToolStripStatusLabel pageAddressToolStripStatusLabel;
         private System.Windows.Forms.ToolStripStatusLabel iconToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripButton fileDetailsToolStripButton;
+        private System.Windows.Forms.BindingSource allocationBindingSource;
+        private System.Windows.Forms.DataGridView keysDataGridView;
+        private KeyImageColumn keyImageColumn1;
+        private KeyImageColumn KeyColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn NameColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn IndexNameColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn IndexTypeColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn TotalPagesColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn UsedPagesColumn;
     }
 }

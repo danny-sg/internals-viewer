@@ -23,6 +23,28 @@ namespace InternalsViewer.UI.Allocations
         private int transparency = 40;
         private bool useDefaultSinglePageColour = false;
         private bool visible = true;
+        private string indexName;
+        private int usedPages;
+        private IndexTypes indexType;
+
+        public IndexTypes IndexType
+        {
+            get { return indexType; }
+            set { indexType = value; }
+        }
+        public int UsedPages
+        {
+            get { return usedPages; }
+            set { usedPages = value; }
+        }
+        private int totalPages;
+
+        public int TotalPages
+        {
+            get { return totalPages; }
+            set { totalPages = value; }
+        }
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AllocationLayer"/> class.
@@ -355,6 +377,12 @@ namespace InternalsViewer.UI.Allocations
         {
             get { return this.transparency; }
             set { this.transparency = value; }
+        }
+
+        public string IndexName
+        {
+            get { return indexName; }
+            set { indexName = value; }
         }
 
         #endregion

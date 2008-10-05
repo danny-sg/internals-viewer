@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.UI.Allocations
 {
@@ -82,6 +82,10 @@ namespace InternalsViewer.UI.Allocations
                 {
                     filePanel.Margin = new Padding(0);
                 }
+                else
+                {
+                    filePanel.Controls.Add(new FileInformationControl(file));
+                }
 
                 fileIndex++;
             }
@@ -90,6 +94,12 @@ namespace InternalsViewer.UI.Allocations
             this.tableLayoutPanel.ResumeLayout();
 
             ResumeLayout();
+        }
+
+
+        internal void CreateAllocationMaps(Dictionary<int, AllocationMap> dictionary)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -325,8 +335,6 @@ namespace InternalsViewer.UI.Allocations
                 {
                     allocationMap.Mode = this.mode;
                 }
-
-                this.Invalidate();
             }
         }
 
@@ -479,6 +487,7 @@ namespace InternalsViewer.UI.Allocations
         }
 
         #endregion
+
     }
 
     /// <summary>
