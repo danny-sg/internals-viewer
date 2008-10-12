@@ -11,6 +11,10 @@ namespace InternalsViewer.SSMSAddIn
 {
     class ObjectExplorerExtender
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ObjectExplorerExtender"/> class.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
         public ObjectExplorerExtender(SqlConnectionInfo connection)
         {
             TreeView tree = GetObjectExplorerTreeView();
@@ -21,6 +25,10 @@ namespace InternalsViewer.SSMSAddIn
             tree.ImageList.Images.Add("Page", Properties.Resources.pageImage);
         }
 
+        /// <summary>
+        /// Gets the object explorer TreeView.
+        /// </summary>
+        /// <returns></returns>
         private TreeView GetObjectExplorerTreeView()
         {
             Type t =  ServiceCache.GetObjectExplorer().GetType();
@@ -36,6 +44,11 @@ namespace InternalsViewer.SSMSAddIn
             }
         }
 
+        /// <summary>
+        /// Handles the AfterExpand event of the TreeView control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.Windows.Forms.TreeViewEventArgs"/> instance containing the event data.</param>
         private void TreeView_AfterExpand(object sender, System.Windows.Forms.TreeViewEventArgs e)
         {
             if (e.Node.FullPath.Substring(e.Node.FullPath.LastIndexOf(@"\") + 1).StartsWith("Indexes"))
@@ -61,6 +74,11 @@ namespace InternalsViewer.SSMSAddIn
             }
         }
 
+        /// <summary>
+        /// Handles the BeforeExpand event of the TreeView control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.Windows.Forms.TreeViewCancelEventArgs"/> instance containing the event data.</param>
         private void TreeView_BeforeExpand(object sender, System.Windows.Forms.TreeViewCancelEventArgs e)
         {
             if (e.Node.Text == "Indexes")
@@ -81,6 +99,14 @@ namespace InternalsViewer.SSMSAddIn
             }
         }
 
+        /// <summary>
+        /// Adds the index page nodes.
+        /// </summary>
+        /// <param name="node">The node.</param>
+        /// <param name="databaseName">Name of the database.</param>
+        /// <param name="tableName">Name of the table.</param>
+        /// <param name="indexName">Name of the index.</param>
+        /// <param name="folderImageIndex">Index of the folder image.</param>
         private void AddIndexPageNodes(TreeNode node, string databaseName, string tableName, string indexName, int folderImageIndex)
         {
             // This suppresses the Object Explorer expand behaviour
@@ -125,6 +151,11 @@ namespace InternalsViewer.SSMSAddIn
             }
         }
 
+        /// <summary>
+        /// Get the node name of a given TreeNode
+        /// </summary>
+        /// <param name="node">The node.</param>
+        /// <returns></returns>
         private static string NodeName(TreeNode node)
         {
             Type t = node.GetType();
