@@ -815,7 +815,7 @@
             // 
             // nextToolStripButton
             // 
-            this.nextToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.LeftToRightDoucmentHS1;
+           // this.nextToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.LeftToRightDoucmentHS1;
             this.nextToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.nextToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.nextToolStripButton.Name = "nextToolStripButton";
