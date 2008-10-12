@@ -127,7 +127,31 @@
   <data name="connect" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\connect.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="bufferpool11" type="System.Resources.ResXFileRef, System.Windows.Forms">
+  <data name="bufferpool" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\bufferpool11.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="LeftToRightDoucmentHS1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\LeftToRightDoucmentHS1.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="RightToLeftDoucmentHS" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\RightToLeftDoucmentHS.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="showhidedetailstoolbarbutton" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\showhidedetailstoolbarbutton.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Rtf_ColourHighlightTag" xml:space="preserve">
+    <value>{{\cf{0}\highlight{1} </value>
+  </data>
+  <data name="Rtf_ColourTable" xml:space="preserve">
+    <value>\red{0}\green{1}\blue{2};</value>
+  </data>
+  <data name="Rtf_ColourTag" xml:space="preserve">
+    <value>{{\cf{0} </value>
+  </data>
+  <data name="Rtf_HeaderEnd" xml:space="preserve">
+    <value>}}\viewkind4\uc1\pard\f0\fs17</value>
+  </data>
+  <data name="Rtf_HeaderStart" xml:space="preserve">
+    <value>{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Courier New;}{\colortbl;</value>
   </data>
 </root>

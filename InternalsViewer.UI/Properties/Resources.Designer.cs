@@ -8,10 +8,10 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace InternalsViewer.UI.Properties
-{
-
-
+namespace InternalsViewer.UI.Properties {
+    using System;
+    
+    
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -60,9 +60,9 @@ namespace InternalsViewer.UI.Properties
             }
         }
         
-        internal static System.Drawing.Bitmap bufferpool11 {
+        internal static System.Drawing.Bitmap bufferpool {
             get {
-                object obj = ResourceManager.GetObject("bufferpool11", resourceCulture);
+                object obj = ResourceManager.GetObject("bufferpool", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -70,6 +70,13 @@ namespace InternalsViewer.UI.Properties
         internal static System.Drawing.Bitmap connect {
             get {
                 object obj = ResourceManager.GetObject("connect", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        internal static System.Drawing.Bitmap LeftToRightDoucmentHS1 {
+            get {
+                object obj = ResourceManager.GetObject("LeftToRightDoucmentHS1", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -84,6 +91,65 @@ namespace InternalsViewer.UI.Properties
         internal static System.Drawing.Bitmap Refresh {
             get {
                 object obj = ResourceManager.GetObject("Refresh", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        internal static System.Drawing.Bitmap RightToLeftDoucmentHS {
+            get {
+                object obj = ResourceManager.GetObject("RightToLeftDoucmentHS", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {{\cf{0}\highlight{1} .
+        /// </summary>
+        internal static string Rtf_ColourHighlightTag {
+            get {
+                return ResourceManager.GetString("Rtf_ColourHighlightTag", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to \red{0}\green{1}\blue{2};.
+        /// </summary>
+        internal static string Rtf_ColourTable {
+            get {
+                return ResourceManager.GetString("Rtf_ColourTable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {{\cf{0} .
+        /// </summary>
+        internal static string Rtf_ColourTag {
+            get {
+                return ResourceManager.GetString("Rtf_ColourTag", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to }}\viewkind4\uc1\pard\f0\fs17.
+        /// </summary>
+        internal static string Rtf_HeaderEnd {
+            get {
+                return ResourceManager.GetString("Rtf_HeaderEnd", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Courier New;}{\colortbl;.
+        /// </summary>
+        internal static string Rtf_HeaderStart {
+            get {
+                return ResourceManager.GetString("Rtf_HeaderStart", resourceCulture);
+            }
+        }
+        
+        internal static System.Drawing.Bitmap showhidedetailstoolbarbutton {
+            get {
+                object obj = ResourceManager.GetObject("showhidedetailstoolbarbutton", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
