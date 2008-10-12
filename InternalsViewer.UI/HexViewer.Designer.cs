@@ -54,6 +54,7 @@
             this.headerPanel.Padding = new System.Windows.Forms.Padding(2, 1, 2, 0);
             this.headerPanel.Size = new System.Drawing.Size(428, 22);
             this.headerPanel.TabIndex = 2;
+            this.headerPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.HeaderPanel_Paint);
             // 
             // mainPanel
             // 
@@ -74,6 +75,7 @@
             this.leftPanel.Name = "leftPanel";
             this.leftPanel.Size = new System.Drawing.Size(64, 412);
             this.leftPanel.TabIndex = 9;
+            this.leftPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.LeftPanel_Paint);
             // 
             // addressLabel
             // 

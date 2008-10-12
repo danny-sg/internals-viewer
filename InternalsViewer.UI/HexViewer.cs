@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
-using System.Data;
+using System.Drawing.Drawing2D;
+using System.Globalization;
 using System.Text;
 using System.Windows.Forms;
-using InternalsViewer.Internals.Pages;
 using System.Windows.Forms.VisualStyles;
 using InternalsViewer.Internals;
-using System.Globalization;
-using System.Drawing.Drawing2D;
+using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.UI
 {
@@ -54,9 +52,6 @@ namespace InternalsViewer.UI
             this.rtfColours.Add(this.offsetColour);
 
             this.rtfHeader = RtfColour.CreateRtfHeader(this.rtfColours);
-
-            leftPanel.Paint += this.LeftPanel_Paint;
-            headerPanel.Paint += this.HeaderPanel_Paint;
 
             if (VisualStyleRenderer.IsSupported)
             {
@@ -399,13 +394,13 @@ namespace InternalsViewer.UI
 
             TextRenderer.DrawText(e.Graphics,
                                   "Address",
-                                  Font,
+                                  this.Font,
                                   new Point(addressRectangle.X + 2, addressRectangle.Y + 4),
                                   SystemColors.ControlText);
 
             TextRenderer.DrawText(e.Graphics,
                                   "Data",
-                                  Font,
+                                  this.Font,
                                   new Point(dataRectangle.X + 2, dataRectangle.Y + 4),
                                   SystemColors.ControlText);
 
