@@ -45,6 +45,7 @@
     <Compile Include="DataAccess.cs" />
     <Compile Include="Database.cs" />
     <Compile Include="DatabaseFile.cs" />
+    <Compile Include="DataConverter.cs" />
     <Compile Include="IamAllocation.cs" />
     <Compile Include="IndexTypes.cs" />
     <Compile Include="LogSequenceNumber.cs" />
