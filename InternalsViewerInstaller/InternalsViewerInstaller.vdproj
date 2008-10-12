@@ -4822,6 +4822,92 @@
                                     "Transitive" = "11:FALSE"
                                         "Keys"
                                         {
+                                            "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_2FB3FD8591274292B94890D200DB9D68"
+                                            {
+                                            "Name" = "8:100"
+                                            "Condition" = "8:"
+                                            "AlwaysCreate" = "11:FALSE"
+                                            "DeleteAtUninstall" = "11:FALSE"
+                                            "Transitive" = "11:FALSE"
+                                                "Keys"
+                                                {
+                                                    "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_6A1EEB8D7D26427387B554FAB042E6A7"
+                                                    {
+                                                    "Name" = "8:Tools"
+                                                    "Condition" = "8:"
+                                                    "AlwaysCreate" = "11:FALSE"
+                                                    "DeleteAtUninstall" = "11:FALSE"
+                                                    "Transitive" = "11:FALSE"
+                                                        "Keys"
+                                                        {
+                                                            "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_CB3D9ED17A8F473E8A9EB99A928520D9"
+                                                            {
+                                                            "Name" = "8:Shell"
+                                                            "Condition" = "8:"
+                                                            "AlwaysCreate" = "11:FALSE"
+                                                            "DeleteAtUninstall" = "11:FALSE"
+                                                            "Transitive" = "11:FALSE"
+                                                                "Keys"
+                                                                {
+                                                                    "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_37CA1F312A93406C8D4DFEDAD0F4944D"
+                                                                    {
+                                                                    "Name" = "8:Addins"
+                                                                    "Condition" = "8:"
+                                                                    "AlwaysCreate" = "11:FALSE"
+                                                                    "DeleteAtUninstall" = "11:FALSE"
+                                                                    "Transitive" = "11:FALSE"
+                                                                        "Keys"
+                                                                        {
+                                                                            "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_D6ACAB8384FE4A2EB8D400ADEC285F43"
+                                                                            {
+                                                                            "Name" = "8:InternalsViewer.SSMSAddIn.Connect"
+                                                                            "Condition" = "8:"
+                                                                            "AlwaysCreate" = "11:FALSE"
+                                                                            "DeleteAtUninstall" = "11:FALSE"
+                                                                            "Transitive" = "11:FALSE"
+                                                                                "Keys"
+                                                                                {
+                                                                                }
+                                                                                "Values"
+                                                                                {
+                                                                                    "{ADCFDA98-8FDD-45E4-90BC-E3D20B029870}:_EC19A114B92742F98D3E02A51C86FF2E"
+                                                                                    {
+                                                                                    "Name" = "8:SatelliteDllPath"
+                                                                                    "Condition" = "8:"
+                                                                                    "Transitive" = "11:FALSE"
+                                                                                    "ValueTypes" = "3:1"
+                                                                                    "Value" = "8:[ProgramFilesFolder][ProductName]"
+                                                                                    }
+                                                                                    "{ADCFDA98-8FDD-45E4-90BC-E3D20B029870}:_F5653A05F84D4C63A6C3C3C88CA78F7B"
+                                                                                    {
+                                                                                    "Name" = "8:SatelliteDllName"
+                                                                                    "Condition" = "8:"
+                                                                                    "Transitive" = "11:FALSE"
+                                                                                    "ValueTypes" = "3:1"
+                                                                                    "Value" = "8:InternalsViewer.SSMSAddin.dll"
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        "Values"
+                                                                        {
+                                                                        }
+                                                                    }
+                                                                }
+                                                                "Values"
+                                                                {
+                                                                }
+                                                            }
+                                                        }
+                                                        "Values"
+                                                        {
+                                                        }
+                                                    }
+                                                }
+                                                "Values"
+                                                {
+                                                }
+                                            }
                                             "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_A66CE24C0CC2468091E995CB20E15B83"
                                             {
                                             "Name" = "8:90"
@@ -4831,7 +4917,7 @@
                                             "Transitive" = "11:FALSE"
                                                 "Keys"
                                                 {
-                                                    "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_114EBC57A1B547389D3A770845393053"
+                                                    "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_D306D3E742634F2C9ED8E4F07898B1B3"
                                                     {
                                                     "Name" = "8:Tools"
                                                     "Condition" = "8:"
