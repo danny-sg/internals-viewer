@@ -89,8 +89,10 @@ namespace InternalsViewer.UI
             this.allocationContainer.Mode = InternalsViewer.UI.Allocations.MapMode.Standard;
             this.allocationContainer.Name = "allocationContainer";
             this.allocationContainer.ShowFileInformation = false;
-            this.allocationContainer.Size = new System.Drawing.Size(945, 470);
+            this.allocationContainer.Size = new System.Drawing.Size(945, 422);
             this.allocationContainer.TabIndex = 2;
+            this.allocationContainer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageOver);
+            this.allocationContainer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.allocationContainer_PageClicked);
             // 
             // splitContainer
             // 
@@ -109,7 +111,7 @@ namespace InternalsViewer.UI
             this.splitContainer.Panel2.Controls.Add(this.keysDataGridView);
             this.splitContainer.Panel2.Controls.Add(this.statusStrip);
             this.splitContainer.Size = new System.Drawing.Size(945, 579);
-            this.splitContainer.SplitterDistance = 500;
+            this.splitContainer.SplitterDistance = 452;
             this.splitContainer.TabIndex = 0;
             // 
             // flatMenuStrip
@@ -178,7 +180,7 @@ namespace InternalsViewer.UI
             // 
             this.bufferPoolToolStripButton.CheckOnClick = true;
             this.bufferPoolToolStripButton.Enabled = false;
-            this.bufferPoolToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.bufferpool11;
+            this.bufferPoolToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.bufferpool;
             this.bufferPoolToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.bufferPoolToolStripButton.Name = "bufferPoolToolStripButton";
             this.bufferPoolToolStripButton.Size = new System.Drawing.Size(80, 27);
@@ -266,7 +268,7 @@ namespace InternalsViewer.UI
             this.keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
             this.keysDataGridView.RowHeadersVisible = false;
             this.keysDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.keysDataGridView.Size = new System.Drawing.Size(945, 53);
+            this.keysDataGridView.Size = new System.Drawing.Size(945, 101);
             this.keysDataGridView.TabIndex = 2;
             this.keysDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.keysDataGridView_CellClick);
             this.keysDataGridView.SelectionChanged += new System.EventHandler(this.keysDataGridView_SelectionChanged);
@@ -333,7 +335,7 @@ namespace InternalsViewer.UI
             this.AllocUnitLabel,
             this.pageAddressToolStripStatusLabel,
             this.iconToolStripStatusLabel});
-            this.statusStrip.Location = new System.Drawing.Point(0, 53);
+            this.statusStrip.Location = new System.Drawing.Point(0, 101);
             this.statusStrip.Name = "statusStrip";
             this.statusStrip.Size = new System.Drawing.Size(945, 22);
             this.statusStrip.SizingGrip = false;

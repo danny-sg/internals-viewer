@@ -13,9 +13,10 @@ namespace InternalsViewer.UI
     public partial class AllocationWindow : UserControl
     {
         public event EventHandler Connect;
+        public event EventHandler<PageEventArgs> ViewPage;
+
         protected delegate void LoadDatabaseDelegate();
         private BufferPool bufferPool = new BufferPool();
-        private DataTable allocationInfo;
         private bool keyChanging;
 
         public AllocationWindow()
@@ -34,6 +35,14 @@ namespace InternalsViewer.UI
             if (this.Connect != null)
             {
                 this.Connect(sender, e);
+            }
+        }
+
+        internal virtual void OnViewPage(object sender, PageEventArgs e)
+        {
+            if (this.ViewPage != null)
+            {
+                this.ViewPage(sender, e);
             }
         }
 
@@ -435,6 +444,11 @@ namespace InternalsViewer.UI
             }
 
             keyChanging = false;
+        }
+
+        private void allocationContainer_PageClicked(object sender, PageEventArgs e)
+        {
+            this.OnViewPage(sender, e);
         }
     }
 }

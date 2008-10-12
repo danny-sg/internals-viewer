@@ -58,8 +58,15 @@
     <Compile Include="AllocationWindow.Designer.cs">
       <DependentUpon>AllocationWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="BlockSelection.cs" />
     <Compile Include="ColourRange.cs" />
     <Compile Include="Controls\BarColumn.cs" />
+    <Compile Include="Controls\BorderPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\HexRichTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Controls\KeyImageColumn.cs" />
     <Compile Include="ExtentColour.cs" />
     <Compile Include="FileInformationControl.cs">
@@ -71,8 +78,23 @@
     <Compile Include="Controls\FlatMenuStrip.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Marker.cs" />
+    <Compile Include="OffsetEventArgs.cs" />
+    <Compile Include="RtfColour.cs" />
+    <Compile Include="HexViewer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="HexViewer.Designer.cs">
+      <DependentUpon>HexViewer.cs</DependentUpon>
+    </Compile>
     <Compile Include="HsvColour.cs" />
     <Compile Include="Allocations\MapMode.cs" />
+    <Compile Include="PageViewerWindow.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="PageViewerWindow.Designer.cs">
+      <DependentUpon>PageViewerWindow.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -103,6 +125,14 @@
       <DependentUpon>FileInformationControl.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="HexViewer.resx">
+      <DependentUpon>HexViewer.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PageViewerWindow.resx">
+      <DependentUpon>PageViewerWindow.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -130,6 +160,19 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\bufferpool11.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\RightToLeftDoucmentHS.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\LeftToRightDoucmentHS1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\LeftToRightDoucmentHS.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Properties\DataSources\InternalsViewer.Internals.Pages.Header.datasource" />
+    <None Include="Resources\showhidedetailstoolbarbutton.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
