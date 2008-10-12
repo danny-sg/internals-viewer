@@ -86,6 +86,7 @@ namespace InternalsViewer
         {
             string database = ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo.AdvancedOptions["DATABASE"];
             string connectionString = ConnectionManager.GetConnectionString(ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo);
+
             // Get all window pointers for the app
             List<IntPtr> pointers = GetChildWindows(ServiceCache.MainShellWindow.Handle);
 
@@ -119,7 +120,15 @@ namespace InternalsViewer
             }
         }
 
-        void QueryExecute_BeforeExecute(string Guid, int ID, object CustomIn, object CustomOut, ref bool CancelDefault)
+        /// <summary>
+        /// Queries the execute_ before execute.
+        /// </summary>
+        /// <param name="Guid">The GUID.</param>
+        /// <param name="ID">The ID.</param>
+        /// <param name="CustomIn">The custom in.</param>
+        /// <param name="CustomOut">The custom out.</param>
+        /// <param name="CancelDefault">if set to <c>true</c> [cancel default].</param>
+        private void QueryExecute_BeforeExecute(string Guid, int ID, object CustomIn, object CustomOut, ref bool CancelDefault)
         {
             string database = ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo.AdvancedOptions["DATABASE"];
             string connectionString = ConnectionManager.GetConnectionString(ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo);
@@ -132,6 +141,7 @@ namespace InternalsViewer
             int length = GetWindowTextLength(hWnd);
             StringBuilder sb = new StringBuilder(length + 1);
             GetWindowText(hWnd, sb, sb.Capacity);
+
             return sb.ToString();
         }
 

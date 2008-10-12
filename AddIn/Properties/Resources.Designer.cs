@@ -88,6 +88,24 @@ namespace InternalsViewer.SSMSAddIn.Properties {
             }
         }
         
+        /// <summary>
+        ///   Looks up a localized string similar to Address.
+        /// </summary>
+        internal static string Display_HexViewerAddress {
+            get {
+                return ResourceManager.GetString("Display_HexViewerAddress", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Data.
+        /// </summary>
+        internal static string Display_HexViewerData {
+            get {
+                return ResourceManager.GetString("Display_HexViewerData", resourceCulture);
+            }
+        }
+        
         internal static System.Drawing.Bitmap pageImage {
             get {
                 object obj = ResourceManager.GetObject("pageImage", resourceCulture);

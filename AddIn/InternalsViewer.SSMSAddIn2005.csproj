@@ -71,12 +71,19 @@
     </Compile>
     <Compile Include="ConnectionManager.cs" />
     <Compile Include="ObjectExplorerExtender.cs" />
+    <Compile Include="PageViewerWindow.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="PageViewerWindow.Designer.cs">
+      <DependentUpon>PageViewerWindow.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="QueryEditorExtender.cs" />
+    <Compile Include="WindowManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="AllocationWindow.resx">
@@ -84,6 +91,10 @@
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="CommandBar.resx">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PageViewerWindow.resx">
+      <DependentUpon>PageViewerWindow.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
