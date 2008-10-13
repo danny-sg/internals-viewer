@@ -41,5 +41,10 @@ namespace InternalsViewer.SSMSAddIn
             get { return this.window; }
             set { this.window = value; }
         }
+
+        internal void LoadPage(string connectionString, PageAddress pageAddress)
+        {
+            this.pageViewerWindow1.LoadPage(connectionString, pageAddress);
+        }
     }
 }

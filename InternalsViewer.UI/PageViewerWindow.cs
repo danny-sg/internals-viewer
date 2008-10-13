@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 using System.Drawing;
+using System.Data.SqlClient;
 
 namespace InternalsViewer.UI
 {
@@ -40,6 +41,17 @@ namespace InternalsViewer.UI
         public void LoadPage(PageAddress pageAddress)
         {
             this.Page = new Page(InternalsViewerConnection.CurrentConnection().CurrentDatabase, pageAddress);
+        }
+
+        /// <summary>
+        /// Loads the page into the viewer
+        /// </summary>
+        /// <param name="connectionString">The connection string.</param>
+        /// <param name="database">The database name.</param>
+        /// <param name="pageAddress">The page address.</param>
+        public void LoadPage(string connectionString, string database, PageAddress pageAddress)
+        {
+            this.Page = new Page(connectionString, database, pageAddress);
         }
 
         /// <summary>
@@ -150,6 +162,16 @@ namespace InternalsViewer.UI
         private void NextToolStripButton_Click(object sender, EventArgs e)
         {
             this.LoadPage(new PageAddress(this.Page.PageAddress.FileId, page.PageAddress.PageId + 1));
+        }
+
+        public void LoadPage(string connectionString, PageAddress pageAddress)
+        {
+            if (pageAddress.FileId > 0)
+            {
+                SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
+
+                this.Page = new Page(connectionString, builder.InitialCatalog, pageAddress);
+            }
         }
     }
 }

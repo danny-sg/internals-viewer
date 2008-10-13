@@ -6,21 +6,44 @@ using InternalsViewer.Internals.Structures;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
 using Microsoft.SqlServer.Management.UI.VSIntegration.ObjectExplorer;
+using InternalsViewer.Internals.Pages;
+using Microsoft.SqlServer.Management.Sdk.Sfc;
+using System.Data.SqlClient;
 
 namespace InternalsViewer.SSMSAddIn
 {
     class ObjectExplorerExtender
     {
-        public ObjectExplorerExtender()
+        private ContextMenuStrip contextMenuStrip;
+        private WindowManager windowManager;
+
+        public ObjectExplorerExtender(WindowManager windowManager)
         {
             TreeView tree = GetObjectExplorerTreeView();
 
             tree.AfterExpand += new TreeViewEventHandler(TreeView_AfterExpand);
             tree.BeforeExpand += new TreeViewCancelEventHandler(TreeView_BeforeExpand);
+            tree.NodeMouseDoubleClick += new TreeNodeMouseClickEventHandler(tree_NodeMouseDoubleClick);
 
             tree.ImageList.Images.Add("Page", Properties.Resources.pageImage);
+
+            contextMenuStrip = new ContextMenuStrip();
+
+            contextMenuStrip.Items.Add("Open in Page Viewer...");
+
+            this.windowManager = windowManager;
         }
 
+        void tree_NodeMouseDoubleClick(object sender, TreeNodeMouseClickEventArgs e)
+        {
+            if ((e.Node.Tag ?? Type.Missing).GetType() == typeof(PageAddress))
+            {
+                string connectionString = this.GetConnectionString(e.Node.Parent.Parent);
+
+                windowManager.CreatePageViewerWindow(connectionString, (PageAddress)e.Node.Tag);
+            }
+
+        }
 
         private TreeView GetObjectExplorerTreeView()
         {
@@ -80,8 +103,6 @@ namespace InternalsViewer.SSMSAddIn
                     e.Node.Nodes.Add(heapNode);
 
                     AddIndexPageNodes(connectionString, heapNode, databaseName, tableName, string.Empty, e.Node.Parent.Parent.ImageIndex);
-
-                    
                 }
             }
         }
@@ -96,9 +117,15 @@ namespace InternalsViewer.SSMSAddIn
                 service = provider.GetService(typeof(INodeInformation)) as INodeInformation;
             }
 
+            Urn urn = new Urn(service.Context);
+
             System.Diagnostics.Debug.Print(service.Connection.ConnectionString);
 
-            return service.Connection.ConnectionString;
+            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(service.Connection.ConnectionString);
+
+            builder.InitialCatalog = urn.GetAttribute("Name", "Database");
+
+            return builder.ToString();
         }
 
         private void AddIndexPageNodes(string connectionString, TreeNode node, string databaseName, string tableName, string indexName, int folderImageIndex)
@@ -130,14 +157,20 @@ namespace InternalsViewer.SSMSAddIn
                 TreeNode firstIam = new TreeNode(string.Format("First IAM {0}", entryPoint.FirstIam));
                 firstIam.SelectedImageKey = "Page";
                 firstIam.ImageKey = "Page";
+                firstIam.ContextMenuStrip = contextMenuStrip;
+                firstIam.Tag = entryPoint.FirstIam;
 
                 TreeNode rootPage = new TreeNode(string.Format("Root Page {0}", entryPoint.RootPage));
                 rootPage.SelectedImageKey = "Page";
                 rootPage.ImageKey = "Page";
+                rootPage.ContextMenuStrip = contextMenuStrip;
+                rootPage.Tag = entryPoint.RootPage;
 
                 TreeNode firstPage = new TreeNode(string.Format("First Page {0}", entryPoint.FirstPage));
                 firstPage.SelectedImageKey = "Page";
                 firstPage.ImageKey = "Page";
+                firstPage.ContextMenuStrip = contextMenuStrip;
+                firstPage.Tag = entryPoint.FirstPage;
 
                 parentNode.Nodes.Add(firstIam);
                 parentNode.Nodes.Add(rootPage);

@@ -82,5 +82,40 @@ namespace InternalsViewer.SSMSAddIn
                 return null;
             }
         }
+
+        public PageViewerWindow CreatePageViewerWindow(string connectionString, PageAddress pageAddress)
+        {
+            Guid id = Guid.NewGuid();
+
+            Windows2 windows2 = applicationObject.Windows as Windows2;
+
+            if (windows2 != null)
+            {
+                object controlObject = null;
+                Assembly asm = Assembly.GetExecutingAssembly();
+
+                Window toolWindow = windows2.CreateToolWindow2(this.addInInstance,
+                                                               asm.Location,
+                                                               "InternalsViewer.SSMSAddIn.PageViewerWindow",
+                                                               "Page Viewer " + pageAddress.ToString(), "{" + id.ToString() + "}",
+                                                               ref controlObject);
+
+                toolWindow.Linkable = false;
+                toolWindow.IsFloating = false;
+
+                PageViewerWindow pageViewerWindow = (controlObject as PageViewerWindow);
+
+                pageViewerWindow.Window = toolWindow;
+                pageViewerWindow.LoadPage(connectionString, pageAddress);
+
+                toolWindow.Visible = true;
+
+                return pageViewerWindow;
+            }
+            else
+            {
+                return null;
+            }
+        }
     }
 }
