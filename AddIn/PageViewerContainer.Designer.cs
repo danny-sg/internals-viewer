@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.SSMSAddIn
 {
-    partial class PageViewerWindow
+    partial class PageViewerContainer
     {
         /// <summary> 
         /// Required designer variable.
@@ -28,29 +28,31 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.pageViewerWindow1 = new InternalsViewer.UI.PageViewerWindow();
+            this.pageViewerWindow = new InternalsViewer.UI.PageViewerWindow();
             this.SuspendLayout();
             // 
-            // pageViewerWindow1
+            // pageViewerWindow
             // 
-            this.pageViewerWindow1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pageViewerWindow1.Location = new System.Drawing.Point(0, 0);
-            this.pageViewerWindow1.Name = "pageViewerWindow1";
-            this.pageViewerWindow1.Size = new System.Drawing.Size(150, 150);
-            this.pageViewerWindow1.TabIndex = 0;
+            this.pageViewerWindow.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pageViewerWindow.Location = new System.Drawing.Point(0, 0);
+            this.pageViewerWindow.Name = "pageViewerWindow";
+            this.pageViewerWindow.Page = null;
+            this.pageViewerWindow.Size = new System.Drawing.Size(800, 600);
+            this.pageViewerWindow.TabIndex = 0;
             // 
-            // PageViewerWindow
+            // PageViewerContainer
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Controls.Add(this.pageViewerWindow1);
-            this.Name = "PageViewerWindow";
+            this.Controls.Add(this.pageViewerWindow);
+            this.Name = "PageViewerContainer";
+            this.Size = new System.Drawing.Size(800, 600);
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private InternalsViewer.UI.PageViewerWindow pageViewerWindow1;
+        private InternalsViewer.UI.PageViewerWindow pageViewerWindow;
     }
 }

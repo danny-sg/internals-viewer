@@ -112,5 +112,12 @@ namespace InternalsViewer.SSMSAddIn.Properties {
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
+        
+        internal static System.Drawing.Bitmap TransactionLogIcon {
+            get {
+                object obj = ResourceManager.GetObject("TransactionLogIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
     }
 }

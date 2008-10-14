@@ -67,7 +67,11 @@ namespace InternalsViewer.UI
             set
             {
                 this.page = value;
-                this.RefreshPage(this.Page);
+
+                if (this.page != null)
+                {
+                    this.RefreshPage(this.Page);
+                }
             }
         }
 

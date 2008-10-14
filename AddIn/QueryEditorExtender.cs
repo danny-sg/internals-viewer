@@ -8,8 +8,9 @@ using EnvDTE80;
 using InternalsViewer.Internals;
 using InternalsViewer.UI;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
+using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer
+namespace InternalsViewer.SSMSAddIn
 {
     class QueryEditorExtender
     {
@@ -26,13 +27,18 @@ namespace InternalsViewer
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
 
+        public delegate bool EnumWindowProc(IntPtr hWnd, IntPtr parameter);
+
         CommandEvents queryExecute;
         private DTE2 dte;
         private LogSequenceNumber startLsn;
+        private bool displayTransactionLog;
+        private WindowManager windowManager;
 
-        public QueryEditorExtender(DTE2 dte)
+        public QueryEditorExtender(DTE2 dte, WindowManager windowManager)
         {
             this.dte = dte;
+            this.windowManager = windowManager;
 
             queryExecute = dte.Events.get_CommandEvents("{52692960-56BC-4989-B5D3-94C47A513E8D}", 1);
 
@@ -80,39 +86,48 @@ namespace InternalsViewer
             return true;
         }
 
-        public delegate bool EnumWindowProc(IntPtr hWnd, IntPtr parameter);
-
-        void QueryExecute_AfterExecute(string Guid, int ID, object CustomIn, object CustomOut)
+        /// <summary>
+        /// Handles the AfterExecute event once a query has been executed
+        /// </summary>
+        /// <param name="Guid">The GUID.</param>
+        /// <param name="ID">The ID.</param>
+        /// <param name="CustomIn">The custom in.</param>
+        /// <param name="CustomOut">The custom out.</param>
+        private void QueryExecute_AfterExecute(string Guid, int ID, object CustomIn, object CustomOut)
         {
-            string database = ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo.AdvancedOptions["DATABASE"];
-            string connectionString = ConnectionManager.GetConnectionString(ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo);
-
-            // Get all window pointers for the app
-            List<IntPtr> pointers = GetChildWindows(ServiceCache.MainShellWindow.Handle);
-
-            // Get the active doc window
-            Window w = dte.ActiveDocument.Windows.Item(1);
-
-            if (w.Document != null)
+            if (this.DisplayTransactionLog)
             {
-                foreach (IntPtr ptr in pointers)
+                string database = ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo.AdvancedOptions["DATABASE"];
+                string connectionString = ConnectionManager.GetConnectionString(ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo);
+
+                // Get all window pointers for the app
+                List<IntPtr> pointers = GetChildWindows(ServiceCache.MainShellWindow.Handle);
+
+                // Get the active doc window
+                Window w = dte.ActiveDocument.Windows.Item(1);
+
+                if (w.Document != null)
                 {
-                    // Try and match the windows based on the caption
-                    if (w.Caption.StartsWith(GetText(ptr)))
+                    foreach (IntPtr ptr in pointers)
                     {
-                        // Enumerate through the window pointers to find the tab control
-                        foreach (IntPtr controlPtr in GetChildWindows(ptr))
+                        // Try and match the windows based on the caption
+                        if (w.Caption.StartsWith(GetText(ptr)))
                         {
-                            if (ClassName(controlPtr).StartsWith("WindowsForms10.SysTabControl32.app.0."))
+                            // Enumerate through the window pointers to find the tab control
+                            foreach (IntPtr controlPtr in GetChildWindows(ptr))
                             {
-                                TabControl c = (TabControl)Control.FromHandle(controlPtr);
+                                if (ClassName(controlPtr).StartsWith("WindowsForms10.SysTabControl32.app.0."))
+                                {
+                                    TabControl tabControl = (TabControl)Control.FromHandle(controlPtr);
 
-                                TransactionLogTabPage transactionLogTabPage = new TransactionLogTabPage();
+                                    TransactionLogTabPage transactionLogTabPage = new TransactionLogTabPage();
 
-                                transactionLogTabPage.SetTransactionLogData(TransactionLog.StopMonitoring(database, startLsn, connectionString));
-                                c.TabPages.Add(transactionLogTabPage);
+                                    transactionLogTabPage.SetTransactionLogData(TransactionLog.StopMonitoring(database, startLsn, connectionString));
+                                    tabControl.TabPages.Add(transactionLogTabPage);
 
-                                return;
+                                    transactionLogTabPage.PageClicked += delegate(object sender, PageEventArgs args) { this.windowManager.CreatePageViewerWindow(connectionString, args.Address); };
+                                    return;
+                                }
                             }
                         }
                     }
@@ -121,19 +136,21 @@ namespace InternalsViewer
         }
 
         /// <summary>
-        /// Queries the execute_ before execute.
+        /// Handles the AfterExecute event before a query has been executed
         /// </summary>
         /// <param name="Guid">The GUID.</param>
         /// <param name="ID">The ID.</param>
         /// <param name="CustomIn">The custom in.</param>
         /// <param name="CustomOut">The custom out.</param>
-        /// <param name="CancelDefault">if set to <c>true</c> [cancel default].</param>
         private void QueryExecute_BeforeExecute(string Guid, int ID, object CustomIn, object CustomOut, ref bool CancelDefault)
         {
-            string database = ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo.AdvancedOptions["DATABASE"];
-            string connectionString = ConnectionManager.GetConnectionString(ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo);
+            if (this.DisplayTransactionLog)
+            {
+                string database = ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo.AdvancedOptions["DATABASE"];
+                string connectionString = ConnectionManager.GetConnectionString(ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo);
 
-            this.startLsn = TransactionLog.StartMonitoring(connectionString, database);
+                this.startLsn = TransactionLog.StartMonitoring(connectionString, database);
+            }
         }
 
         public string GetText(IntPtr hWnd)
@@ -151,5 +168,12 @@ namespace InternalsViewer
             GetClassName(hWnd, sb, sb.Capacity);
             return sb.ToString();
         }
+
+        public bool DisplayTransactionLog
+        {
+            get { return displayTransactionLog; }
+            set { displayTransactionLog = value; }
+        }
+
     }
 }

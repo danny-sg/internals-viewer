@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.SSMSAddIn
 {
-    partial class AllocationWindow
+    partial class AllocationContainer
     {
         /// <summary> 
         /// Required designer variable.

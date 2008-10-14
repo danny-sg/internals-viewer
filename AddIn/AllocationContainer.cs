@@ -7,7 +7,7 @@ using Microsoft.SqlServer.Management.UI.VSIntegration;
 
 namespace InternalsViewer.SSMSAddIn
 {
-    public partial class AllocationWindow : UserControl
+    public partial class AllocationContainer : UserControl
     {
         private WindowManager windowManager;
 
@@ -17,16 +17,15 @@ namespace InternalsViewer.SSMSAddIn
             set { windowManager = value; }
         }
 
-        public AllocationWindow()
+        public AllocationContainer()
         {
             InitializeComponent();
 
             this.allocationWindowControl.Connect += new EventHandler(AllocationWindow_Connect);
-            this.allocationWindowControl.ViewPage += new EventHandler<PageEventArgs>(allocationWindowControl_ViewPage);
-
+            this.allocationWindowControl.ViewPage += new EventHandler<PageEventArgs>(AllocationWindowControl_ViewPage);
         }
 
-        void allocationWindowControl_ViewPage(object sender, PageEventArgs e)
+        void AllocationWindowControl_ViewPage(object sender, PageEventArgs e)
         {
             windowManager.CreatePageViewerWindow(e.Address);
         }

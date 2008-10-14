@@ -1,10 +1,12 @@
 ﻿using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
+using InternalsViewer.Internals.Pages;
+using System;
 
 namespace InternalsViewer.UI
 {
-    public class TransactionLogTabPage: TabPage
+    public class TransactionLogTabPage : TabPage
     {
         private DataGridViewTextBoxColumn LsnColumn;
         private DataGridViewTextBoxColumn OperationColumn;
@@ -16,6 +18,8 @@ namespace InternalsViewer.UI
         private DataGridViewTextBoxColumn isSystemColumn;
         private DataGridViewTextBoxColumn IsAllocationColumn;
         private DataGridView dataGridView;
+        public event EventHandler<PageEventArgs> PageClicked;
+
 
         public TransactionLogTabPage()
         {
@@ -76,6 +80,7 @@ namespace InternalsViewer.UI
             this.dataGridView.Size = new System.Drawing.Size(200, 100);
             this.dataGridView.TabIndex = 1;
             this.dataGridView.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.dataGridView_CellFormatting);
+            this.dataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.DataGridView_CellContentClick);
             // 
             // LsnColumn
             // 
@@ -183,6 +188,28 @@ namespace InternalsViewer.UI
             }
 
             e.CellStyle.SelectionForeColor = e.CellStyle.ForeColor;
+        }
+
+        private void DataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (dataGridView.Columns[e.ColumnIndex].DataPropertyName == "PageAddress" ||
+                dataGridView.Columns[e.ColumnIndex].DataPropertyName == "SlotId")
+            {
+                PageAddress pageAddress = PageAddress.Parse(dataGridView[3, e.RowIndex].Value.ToString());
+
+                int slot = (int)dataGridView[4, e.RowIndex].Value;
+
+                this.OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, slot), false));
+            }
+        }
+
+        internal virtual void OnPageClicked(object sender, PageEventArgs e)
+        {
+            if (this.PageClicked != null)
+            {
+                this.PageClicked(sender, e);
+            }
+
         }
     }
 }

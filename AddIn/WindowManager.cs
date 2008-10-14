@@ -19,7 +19,7 @@ namespace InternalsViewer.SSMSAddIn
             this.applicationObject = applicationObject;
         }
 
-        public AllocationWindow CreateAllocationWindow()
+        public AllocationContainer CreateAllocationWindow()
         {
             Guid id = new Guid("{65a48117-79b3-4863-b268-eb7eafc21feb}");
 
@@ -32,7 +32,7 @@ namespace InternalsViewer.SSMSAddIn
 
                 Window toolWindow = windows2.CreateToolWindow2(this.addInInstance,
                                                                asm.Location,
-                                                               "InternalsViewer.SSMSAddIn.AllocationWindow",
+                                                               "InternalsViewer.SSMSAddIn.AllocationContainer",
                                                                "Internals Viewer", "{" + id.ToString() + "}",
                                                                ref controlObject);
                 toolWindow.Linkable = false;
@@ -40,7 +40,7 @@ namespace InternalsViewer.SSMSAddIn
 
                 toolWindow.Visible = true;
 
-                return controlObject as AllocationWindow;
+                return controlObject as AllocationContainer;
             }
             else
             {
@@ -48,7 +48,7 @@ namespace InternalsViewer.SSMSAddIn
             }
         }
 
-        public PageViewerWindow CreatePageViewerWindow(PageAddress pageAddress)
+        public PageViewerContainer CreatePageViewerWindow(PageAddress pageAddress)
         {
             Guid id = Guid.NewGuid();
 
@@ -61,21 +61,21 @@ namespace InternalsViewer.SSMSAddIn
 
                 Window toolWindow = windows2.CreateToolWindow2(this.addInInstance,
                                                                asm.Location,
-                                                               "InternalsViewer.SSMSAddIn.PageViewerWindow",
+                                                               "InternalsViewer.SSMSAddIn.PageViewerContainer",
                                                                "Page Viewer " + pageAddress.ToString(), "{" + id.ToString() + "}",
                                                                ref controlObject);
 
                 toolWindow.Linkable = false;
                 toolWindow.IsFloating = false;
 
-                PageViewerWindow pageViewerWindow = (controlObject as PageViewerWindow);
+                PageViewerContainer pageViewerContainer = (controlObject as PageViewerContainer);
 
-                pageViewerWindow.Window = toolWindow;
-                pageViewerWindow.LoadPage(pageAddress);
+                pageViewerContainer.Window = toolWindow;
+                pageViewerContainer.PageViewerWindow.LoadPage(pageAddress);
 
                 toolWindow.Visible = true;
 
-                return pageViewerWindow;
+                return pageViewerContainer;
             }
             else
             {
@@ -83,7 +83,7 @@ namespace InternalsViewer.SSMSAddIn
             }
         }
 
-        public PageViewerWindow CreatePageViewerWindow(string connectionString, PageAddress pageAddress)
+        public PageViewerContainer CreatePageViewerWindow(string connectionString, PageAddress pageAddress)
         {
             Guid id = Guid.NewGuid();
 
@@ -96,21 +96,21 @@ namespace InternalsViewer.SSMSAddIn
 
                 Window toolWindow = windows2.CreateToolWindow2(this.addInInstance,
                                                                asm.Location,
-                                                               "InternalsViewer.SSMSAddIn.PageViewerWindow",
+                                                               "InternalsViewer.SSMSAddIn.PageViewerContainer",
                                                                "Page Viewer " + pageAddress.ToString(), "{" + id.ToString() + "}",
                                                                ref controlObject);
 
                 toolWindow.Linkable = false;
                 toolWindow.IsFloating = false;
 
-                PageViewerWindow pageViewerWindow = (controlObject as PageViewerWindow);
+                PageViewerContainer pageViewerContainer = (controlObject as PageViewerContainer);
 
-                pageViewerWindow.Window = toolWindow;
-                pageViewerWindow.LoadPage(connectionString, pageAddress);
+                pageViewerContainer.Window = toolWindow;
+                pageViewerContainer.PageViewerWindow.LoadPage(connectionString, pageAddress);
 
                 toolWindow.Visible = true;
 
-                return pageViewerWindow;
+                return pageViewerContainer;
             }
             else
             {

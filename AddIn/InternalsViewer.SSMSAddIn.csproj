@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.30729</ProductVersion>
+    <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{B3ED9567-EDF2-46CA-AF84-2256B9908D4E}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -42,10 +42,13 @@
     <Reference Include="Microsoft.SqlServer.ConnectionInfo, Version=9.0.242.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
     </Reference>
-    <Reference Include="Microsoft.SqlServer.Management.Sdk.Sfc, Version=10.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.SqlServer.Management.Sdk.Sfc, Version=10.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
     <Reference Include="Microsoft.SqlServer.RegSvrEnum, Version=9.0.242.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
     </Reference>
+    <Reference Include="Microsoft.SqlServer.SmoEnum, Version=9.0.242.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
     <Reference Include="Microsoft.SqlServer.SqlTools.VSIntegration, Version=9.0.242.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\Program Files\Microsoft SQL Server\90\Tools\binn\VSShell\Common7\IDE\Microsoft.SqlServer.SqlTools.VSIntegration.dll</HintPath>
@@ -61,25 +64,27 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AllocationWindow.cs">
+    <Compile Include="AllocationContainer.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="AllocationWindow.Designer.cs">
-      <DependentUpon>AllocationWindow.cs</DependentUpon>
+    <Compile Include="AllocationContainer.Designer.cs">
+      <DependentUpon>AllocationContainer.cs</DependentUpon>
     </Compile>
     <Compile Include="AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Connect.cs">
-      <SubType>Component</SubType>
     </Compile>
     <Compile Include="ConnectionManager.cs" />
+    <Compile Include="ImageConverter.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="ObjectExplorerExtender.cs" />
-    <Compile Include="PageViewerWindow.cs">
+    <Compile Include="PageViewerContainer.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="PageViewerWindow.Designer.cs">
-      <DependentUpon>PageViewerWindow.cs</DependentUpon>
+    <Compile Include="PageViewerContainer.Designer.cs">
+      <DependentUpon>PageViewerContainer.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -90,15 +95,15 @@
     <Compile Include="WindowManager.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="AllocationWindow.resx">
-      <DependentUpon>AllocationWindow.cs</DependentUpon>
+    <EmbeddedResource Include="AllocationContainer.resx">
+      <DependentUpon>AllocationContainer.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="CommandBar.resx">
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="PageViewerWindow.resx">
-      <DependentUpon>PageViewerWindow.cs</DependentUpon>
+    <EmbeddedResource Include="PageViewerContainer.resx">
+      <DependentUpon>PageViewerContainer.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -176,6 +181,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\allocationMapIconMask.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\TransactionLogIcon.png" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSHARP.Targets" />
   <PropertyGroup>

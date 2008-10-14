@@ -6,7 +6,7 @@ using Microsoft.SqlServer.Management.Smo.RegSvrEnum;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
 using Microsoft.SqlServer.Management.UI.VSIntegration.ObjectExplorer;
 
-namespace InternalsViewer
+namespace InternalsViewer.SSMSAddIn
 {
     class ConnectionManager
     {

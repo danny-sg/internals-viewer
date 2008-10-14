@@ -7,7 +7,7 @@ using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
 using Microsoft.SqlServer.Management.UI.VSIntegration.ObjectExplorer;
 using InternalsViewer.Internals.Pages;
-using Microsoft.SqlServer.Management.Sdk.Sfc;
+using Microsoft.SqlServer.Management.Smo;
 using System.Data.SqlClient;
 
 namespace InternalsViewer.SSMSAddIn
