@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using stdole;
+﻿using System.Drawing;
 using System.Windows.Forms;
-using System.Drawing;
+using stdole;
 
 namespace InternalsViewer.SSMSAddIn
 {

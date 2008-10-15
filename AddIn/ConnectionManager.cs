@@ -13,6 +13,10 @@ namespace InternalsViewer.SSMSAddIn
         private UIConnectionInfo currentUIConnection;
         private SqlConnectionInfo currentConnection;
 
+        /// <summary>
+        /// Gets the active window connection.
+        /// </summary>
+        /// <returns></returns>
         internal SqlConnectionInfo GetActiveWindowConnection()
         {
             SqlConnectionInfo info = null;
@@ -59,6 +63,19 @@ namespace InternalsViewer.SSMSAddIn
             }
         }
 
+        /// <summary>
+        /// Connects the internals viewer singleton
+        /// </summary>
+        /// <param name="connectionInfo">The connection info.</param>
+        internal static void ConnectInternalsViewer(UIConnectionInfo connectionInfo)
+        {
+            ConnectInternalsViewer(ConnectionManager.CreateSqlConnectionInfo(connectionInfo));
+        }
+
+        /// <summary>
+        /// Connects the internals viewer singleton
+        /// </summary>
+        /// <param name="connection">The connection.</param>
         internal static void ConnectInternalsViewer(SqlConnectionInfo connection)
         {
             InternalsViewerConnection.CurrentConnection().SetCurrentServer(connection.ServerName, 
@@ -67,6 +84,11 @@ namespace InternalsViewer.SSMSAddIn
                                                                      connection.Password);
         }
 
+        /// <summary>
+        /// Gets the connection string from a UIConnectionInfo object
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <returns></returns>
         internal static string GetConnectionString(UIConnectionInfo connection)
         {
             SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
@@ -76,22 +98,35 @@ namespace InternalsViewer.SSMSAddIn
             builder.Password = connection.Password;
             builder.UserID = connection.UserName;
             builder.InitialCatalog = connection.AdvancedOptions["DATABASE"] ?? "master";
-            builder.ApplicationName = "SQL Internals Viewer 2";
+            builder.ApplicationName = "Internals Viewer";
 
             return builder.ToString();
         }
+
+        /// <summary>
+        /// Gets the object explorer selected nodes.
+        /// </summary>
+        /// <returns></returns>
         private INodeInformation[] GetObjectExplorerSelectedNodes()
         {
             IObjectExplorerService objExplorer = ServiceCache.GetObjectExplorer();
             int arraySize;
             INodeInformation[] nodes;
+
             objExplorer.GetSelectedNodes(out arraySize, out nodes);
+            
             return nodes;
         }
 
+        /// <summary>
+        /// Creates a SqlConnectionInfo object from a UIConnectionInfo object
+        /// </summary>
+        /// <param name="connectionInfo">The connection info.</param>
+        /// <returns></returns>
         private static SqlConnectionInfo CreateSqlConnectionInfo(UIConnectionInfo connectionInfo)
         {
             SqlConnectionInfo sqlConnInfo = new SqlConnectionInfo();
+
             sqlConnInfo.ServerName = connectionInfo.ServerName;
             sqlConnInfo.UserName = connectionInfo.UserName;
 
@@ -107,9 +142,6 @@ namespace InternalsViewer.SSMSAddIn
             return sqlConnInfo;
         }
 
-        internal static void ConnectInternalsViewer(UIConnectionInfo connectionInfo)
-        {
-            ConnectInternalsViewer(ConnectionManager.CreateSqlConnectionInfo(connectionInfo));
-        }
+
     }
 }

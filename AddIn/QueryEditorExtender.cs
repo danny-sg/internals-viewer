@@ -6,9 +6,9 @@ using System.Windows.Forms;
 using EnvDTE;
 using EnvDTE80;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
-using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.SSMSAddIn
 {

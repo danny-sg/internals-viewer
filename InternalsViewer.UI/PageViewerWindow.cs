@@ -14,6 +14,7 @@ namespace InternalsViewer.UI
         private readonly ProfessionalColorTable colourTable;
         private Page page;
         private ImageList keyImages;
+        private string connectionString;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
@@ -32,15 +33,6 @@ namespace InternalsViewer.UI
         private void CreateKeyImages()
         {
             keyImages = new ImageList();
-        }
-
-        /// <summary>
-        /// Loads the page into the viewer
-        /// </summary>
-        /// <param name="pageAddress">The page address.</param>
-        public void LoadPage(PageAddress pageAddress)
-        {
-            this.Page = new Page(InternalsViewerConnection.CurrentConnection().CurrentDatabase, pageAddress);
         }
 
         /// <summary>
@@ -139,7 +131,7 @@ namespace InternalsViewer.UI
             {
                 try
                 {
-                    this.LoadPage(PageAddress.Parse(pageToolStripTextBox.Text));
+                    this.LoadPage(this.ConnectionString, PageAddress.Parse(pageToolStripTextBox.Text));
                 }
                 catch (Exception ex)
                 {
@@ -155,7 +147,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void PreviousToolStripButton_Click(object sender, EventArgs e)
         {
-            this.LoadPage(new PageAddress(this.Page.PageAddress.FileId, page.PageAddress.PageId - 1));
+            this.LoadPage(this.ConnectionString, new PageAddress(this.Page.PageAddress.FileId, page.PageAddress.PageId - 1));
         }
 
         /// <summary>
@@ -165,7 +157,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void NextToolStripButton_Click(object sender, EventArgs e)
         {
-            this.LoadPage(new PageAddress(this.Page.PageAddress.FileId, page.PageAddress.PageId + 1));
+            this.LoadPage(this.ConnectionString, new PageAddress(this.Page.PageAddress.FileId, page.PageAddress.PageId + 1));
         }
 
         public void LoadPage(string connectionString, PageAddress pageAddress)
@@ -173,9 +165,21 @@ namespace InternalsViewer.UI
             if (pageAddress.FileId > 0)
             {
                 SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
+                
+                this.ConnectionString = connectionString;
 
-                this.Page = new Page(connectionString, builder.InitialCatalog, pageAddress);
+                this.Page = new Page(this.ConnectionString, builder.InitialCatalog, pageAddress);
             }
+        }
+
+        /// <summary>
+        /// Gets or sets the connection string.
+        /// </summary>
+        /// <value>The connection string.</value>
+        public string ConnectionString
+        {
+            get { return connectionString; }
+            set { connectionString = value; }
         }
     }
 }

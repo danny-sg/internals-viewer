@@ -31,6 +31,12 @@ namespace InternalsViewer.Internals
             set
             {
                 this.currentDatabase = value;
+
+                SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(this.ConnectionString);
+
+                builder.InitialCatalog = this.currentDatabase.Name;
+
+                this.ConnectionString = builder.ToString();
             }
         }
 
@@ -68,7 +74,7 @@ namespace InternalsViewer.Internals
             SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
 
             builder.DataSource = serverName;
-            builder.ApplicationName = "SQL Internals Viewer 2";
+            builder.ApplicationName = "SQL Internals Viewer";
             builder.InitialCatalog = databaseName;
 
             if (!integratedSecurity)
@@ -145,21 +151,6 @@ namespace InternalsViewer.Internals
             if (version < 9)
             {
                 throw new NotSupportedException("This application currently only supports SQL Server 2005 and 2008.");
-            }
-        }
-
-        public Database SetCurrentDatabase(string databaseName)
-        {
-            Database database = databases.Find(delegate(Database d) { return d.Name == databaseName; });
-
-            if (null != database)
-            {
-                this.currentDatabase = database;
-                return currentDatabase;
-            }
-            else
-            {
-                throw new Exception("Database not found");
             }
         }
 

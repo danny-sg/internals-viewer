@@ -8,10 +8,10 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace InternalsViewer.SSMSAddIn.Properties {
-    using System;
-    
-    
+namespace InternalsViewer.SSMSAddIn.Properties
+{
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
