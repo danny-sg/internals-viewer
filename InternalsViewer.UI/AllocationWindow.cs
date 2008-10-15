@@ -28,6 +28,8 @@ namespace InternalsViewer.UI
             SetStyle(ControlStyles.DoubleBuffer, true);
 
             extentSizeToolStripComboBox.SelectedIndex = 0;
+
+            this.OnConnect(null, EventArgs.Empty);
         }
 
         internal virtual void OnConnect(object sender, EventArgs e)

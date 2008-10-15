@@ -160,6 +160,11 @@ namespace InternalsViewer.UI
             this.LoadPage(this.ConnectionString, new PageAddress(this.Page.PageAddress.FileId, page.PageAddress.PageId + 1));
         }
 
+        /// <summary>
+        /// Loads a page.
+        /// </summary>
+        /// <param name="connectionString">The connection string.</param>
+        /// <param name="pageAddress">The page address.</param>
         public void LoadPage(string connectionString, PageAddress pageAddress)
         {
             if (pageAddress.FileId > 0)
@@ -170,6 +175,26 @@ namespace InternalsViewer.UI
 
                 this.Page = new Page(this.ConnectionString, builder.InitialCatalog, pageAddress);
             }
+        }
+
+        /// <summary>
+        /// Handles the MouseClick event of the nextPageTextBox control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
+        private void NextPageTextBox_MouseClick(object sender, MouseEventArgs e)
+        {
+            this.LoadPage(this.ConnectionString, this.Page.Header.NextPage);
+        }
+
+        /// <summary>
+        /// Handles the MouseClick event of the PreviousPageTextBox control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
+        private void PreviousPageTextBox_MouseClick(object sender, MouseEventArgs e)
+        {
+            this.LoadPage(this.ConnectionString, this.Page.Header.PreviousPage);
         }
 
         /// <summary>

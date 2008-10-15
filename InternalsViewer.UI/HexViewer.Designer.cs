@@ -60,10 +60,10 @@
             // 
             this.mainPanel.Controls.Add(this.dataRichTextBox);
             this.mainPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.mainPanel.Location = new System.Drawing.Point(64, 22);
+            this.mainPanel.Location = new System.Drawing.Point(53, 22);
             this.mainPanel.Name = "mainPanel";
-            this.mainPanel.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
-            this.mainPanel.Size = new System.Drawing.Size(364, 412);
+            this.mainPanel.Padding = new System.Windows.Forms.Padding(8, 0, 0, 0);
+            this.mainPanel.Size = new System.Drawing.Size(375, 412);
             this.mainPanel.TabIndex = 8;
             // 
             // leftPanel
@@ -73,7 +73,7 @@
             this.leftPanel.Location = new System.Drawing.Point(0, 22);
             this.leftPanel.Margin = new System.Windows.Forms.Padding(3, 3, 10, 3);
             this.leftPanel.Name = "leftPanel";
-            this.leftPanel.Size = new System.Drawing.Size(64, 412);
+            this.leftPanel.Size = new System.Drawing.Size(53, 412);
             this.leftPanel.TabIndex = 9;
             this.leftPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.LeftPanel_Paint);
             // 
@@ -85,7 +85,7 @@
             this.addressLabel.Location = new System.Drawing.Point(-2, 5);
             this.addressLabel.Margin = new System.Windows.Forms.Padding(0);
             this.addressLabel.Name = "addressLabel";
-            this.addressLabel.Size = new System.Drawing.Size(68, 402);
+            this.addressLabel.Size = new System.Drawing.Size(62, 402);
             this.addressLabel.TabIndex = 1;
             this.addressLabel.Text = "No Data";
             // 
@@ -133,9 +133,9 @@
             // 
             this.dataRichTextBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.dataRichTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.dataRichTextBox.Location = new System.Drawing.Point(10, 0);
+            this.dataRichTextBox.Location = new System.Drawing.Point(8, 0);
             this.dataRichTextBox.Name = "dataRichTextBox";
-            this.dataRichTextBox.Size = new System.Drawing.Size(354, 412);
+            this.dataRichTextBox.Size = new System.Drawing.Size(367, 412);
             this.dataRichTextBox.TabIndex = 0;
             this.dataRichTextBox.Text = "";
             this.dataRichTextBox.TextLineSize = new System.Drawing.Size(0, 0);

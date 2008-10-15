@@ -538,6 +538,7 @@
             this.previousPageTextBox.ReadOnly = true;
             this.previousPageTextBox.Size = new System.Drawing.Size(75, 13);
             this.previousPageTextBox.TabIndex = 233;
+            this.previousPageTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PreviousPageTextBox_MouseClick);
             // 
             // nextPageTextBox
             // 
@@ -552,6 +553,7 @@
             this.nextPageTextBox.ReadOnly = true;
             this.nextPageTextBox.Size = new System.Drawing.Size(75, 13);
             this.nextPageTextBox.TabIndex = 232;
+            this.nextPageTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NextPageTextBox_MouseClick);
             // 
             // label18
             // 

@@ -419,7 +419,7 @@ namespace InternalsViewer.UI
                                                                                Color.WhiteSmoke,
                                                                                LinearGradientMode.Horizontal))
             {
-                e.Graphics.FillRectangle(gradientBrush, leftPanel.Bounds);
+                e.Graphics.FillRectangle(gradientBrush, leftPanel.ClientRectangle);
             }
         }
 
