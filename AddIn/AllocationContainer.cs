@@ -43,6 +43,11 @@ namespace InternalsViewer.SSMSAddIn
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         void AllocationWindow_Connect(object sender, EventArgs e)
         {
+            this.Connect();
+        }
+
+        public void Connect()
+        {
             using (ShellConnectionDialog dialog = new ShellConnectionDialog())
             {
                 IServerType serverType = new SqlServerType();

@@ -47,6 +47,7 @@ namespace InternalsViewer.SSMSAddIn
 
                 toolWindow.Visible = true;
 
+                
                 return controlObject as AllocationContainer;
             }
             else

@@ -14,7 +14,7 @@ namespace InternalsViewer.UI.Allocations
         private Color borderColour;
         private Color colour;
         private bool invert;
-        private string name;
+        private string name = string.Empty;
         private int order;
         private bool singleSlotsOnly = false;
         private bool transparent;
@@ -23,28 +23,10 @@ namespace InternalsViewer.UI.Allocations
         private int transparency = 40;
         private bool useDefaultSinglePageColour = false;
         private bool visible = true;
-        private string indexName;
+        private string indexName = string.Empty;
         private int usedPages;
         private IndexTypes indexType;
-
-        public IndexTypes IndexType
-        {
-            get { return indexType; }
-            set { indexType = value; }
-        }
-        public int UsedPages
-        {
-            get { return usedPages; }
-            set { usedPages = value; }
-        }
-        private int totalPages;
-
-        public int TotalPages
-        {
-            get { return totalPages; }
-            set { totalPages = value; }
-        }
-
+       private int totalPages;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AllocationLayer"/> class.
@@ -383,6 +365,23 @@ namespace InternalsViewer.UI.Allocations
         {
             get { return indexName; }
             set { indexName = value; }
+        }
+
+        public IndexTypes IndexType
+        {
+            get { return indexType; }
+            set { indexType = value; }
+        }
+        public int UsedPages
+        {
+            get { return usedPages; }
+            set { usedPages = value; }
+        }
+
+        public int TotalPages
+        {
+            get { return totalPages; }
+            set { totalPages = value; }
         }
 
         #endregion

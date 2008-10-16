@@ -41,6 +41,7 @@ namespace InternalsViewer.UI.Allocations
             {
                 filter = string.Empty;
             }
+
             int userObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", filter + " AND system=0");// "allocation_unit_type=1 AND system=0 AND index_id < 2");
 
             int systemObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", filter + " AND system=1"); //, "allocation_unit_type=1 AND system=1 AND index_id < 2");
@@ -76,11 +77,14 @@ namespace InternalsViewer.UI.Allocations
                 {
                     layer = new AllocationLayer();
 
-                    layer.Name = row["schema_name"] + "." + row["table_name"];
-                    layer.IndexName = row["index_name"].ToString();
-                    layer.UsedPages = Convert.ToInt32(row["used_pages"]);
-                    layer.TotalPages = Convert.ToInt32(row["total_pages"]);
-                    layer.IndexType = (IndexTypes)Convert.ToInt32(row["index_type"]);
+                    layer.Name = currentObjectName;
+                    if (!Convert.ToBoolean(row["system"]))
+                    {
+                        layer.IndexName = row["index_name"].ToString();
+                        layer.UsedPages = Convert.ToInt32(row["used_pages"]);
+                        layer.TotalPages = Convert.ToInt32(row["total_pages"]);
+                        layer.IndexType = (IndexTypes)Convert.ToInt32(row["index_type"]);
+                    }
 
                     layer.UseDefaultSinglePageColour = false;
 

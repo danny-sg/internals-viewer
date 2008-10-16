@@ -28,8 +28,6 @@ namespace InternalsViewer.UI
             SetStyle(ControlStyles.DoubleBuffer, true);
 
             extentSizeToolStripComboBox.SelectedIndex = 0;
-
-            this.OnConnect(null, EventArgs.Empty);
         }
 
         internal virtual void OnConnect(object sender, EventArgs e)
@@ -114,9 +112,6 @@ namespace InternalsViewer.UI
 
             this.CancelWorkerAndWait(allocUnitBackgroundWorker);
 
-            allocationContainer.Holding = true;
-            allocationContainer.HoldingMessage = "Scanning allocations...";
-
             allocUnitBackgroundWorker.RunWorkerAsync();
         }
 
@@ -185,7 +180,10 @@ namespace InternalsViewer.UI
             }
 
             this.allocationBindingSource.DataSource = layers;
+
+            this.keysDataGridView.ClearSelection();
         }
+
         private void ShowPfs(bool show)
         {
             if (show)
