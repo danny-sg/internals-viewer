@@ -2,8 +2,8 @@
 using System.Reflection;
 using EnvDTE;
 using EnvDTE80;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.SSMSAddIn
 {

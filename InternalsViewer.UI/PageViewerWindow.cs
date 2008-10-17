@@ -1,10 +1,9 @@
 ﻿using System;
+using System.Data.SqlClient;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
-using System.Drawing;
-using System.Data.SqlClient;
 
 namespace InternalsViewer.UI
 {

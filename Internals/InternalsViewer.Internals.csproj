@@ -36,10 +36,17 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Allocation.cs" />
+    <Compile Include="BlobPointers\BlobChildLinks.cs" />
+    <Compile Include="BlobPointers\BlobField.cs" />
+    <Compile Include="BlobPointers\BlobFieldType.cs" />
+    <Compile Include="BlobPointers\OverflowField.cs" />
+    <Compile Include="BlobPointers\PointerField.cs" />
+    <Compile Include="BlobPointers\RootField.cs" />
     <Compile Include="BufferPool.cs" />
     <Compile Include="Compression\CompressionType.cs" />
     <Compile Include="DataAccess.cs" />
@@ -47,8 +54,11 @@
     <Compile Include="DatabaseFile.cs" />
     <Compile Include="DataConverter.cs" />
     <Compile Include="IamAllocation.cs" />
+    <Compile Include="IMarkerProvider.cs" />
     <Compile Include="IndexTypes.cs" />
     <Compile Include="LogSequenceNumber.cs" />
+    <Compile Include="Marker.cs" />
+    <Compile Include="MarkerType.cs" />
     <Compile Include="PageIO\DatabaseHeaderReader.cs" />
     <Compile Include="PageIO\DatabasePageReader.cs" />
     <Compile Include="PageIO\PageReader.cs" />
@@ -70,9 +80,21 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="InternalsViewerConnection.cs" />
+    <Compile Include="RecordLoaders\SparseVectorLoader.cs" />
+    <Compile Include="Records\ColumnDescriptor.cs" />
+    <Compile Include="Records\DataRecord.cs" />
+    <Compile Include="RecordLoaders\DataRecordLoader.cs" />
+    <Compile Include="Records\Record.cs" />
+    <Compile Include="Records\RecordField.cs" />
+    <Compile Include="RecordLoaders\RecordLoader.cs" />
+    <Compile Include="Records\RecordType.cs" />
+    <Compile Include="Records\SpareVector.cs" />
+    <Compile Include="Structures\Column.cs" />
     <Compile Include="Structures\HobtEntryPoint.cs" />
     <Compile Include="Structures\Hobt.cs" />
+    <Compile Include="Structures\Structure.cs" />
     <Compile Include="Structures\StructureType.cs" />
+    <Compile Include="Structures\TableStructure.cs" />
     <Compile Include="TransactionLog.cs" />
   </ItemGroup>
   <ItemGroup>

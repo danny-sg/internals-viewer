@@ -1,8 +1,8 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Pages;
-using System;
 
 namespace InternalsViewer.UI
 {

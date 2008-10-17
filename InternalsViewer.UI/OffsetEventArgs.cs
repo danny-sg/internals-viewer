@@ -1,19 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Drawing;
 
 namespace InternalsViewer.UI
 {
     public class OffsetEventArgs : EventArgs
     {
-        private short offset;
+        private Int16 offset;
         private string markerDescription;
         private Color foreColour;
         private Color backColour;
 
 
-        public OffsetEventArgs(short offset, string markerDescription, Color foreColour, Color backColour)
+        public OffsetEventArgs(Int16 offset, string markerDescription, Color foreColour, Color backColour)
         {
             Offset = offset;
             MarkerDescription = markerDescription;
@@ -39,7 +37,7 @@ namespace InternalsViewer.UI
             set { markerDescription = value; }
         }
 
-        public short Offset
+        public Int16 Offset
         {
             get { return offset; }
             set { offset = value; }

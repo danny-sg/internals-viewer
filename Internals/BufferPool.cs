@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Data.SqlClient;
-using InternalsViewer.Internals.Properties;
-using InternalsViewer.Internals.Pages;
+﻿using System.Collections.Generic;
 using System.Data;
+using System.Data.SqlClient;
+using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Properties;
 
 namespace InternalsViewer.Internals
 {

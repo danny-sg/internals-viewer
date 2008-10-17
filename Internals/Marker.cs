@@ -1,30 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Drawing;
 
-namespace InternalsViewer.UI
+namespace InternalsViewer.Internals
 {
     public class Marker
     {
-        #region MarkerType enum
-
-        [Flags]
-        public enum MarkerType
-        {
-            Undefined,
-            PageAddress,
-            VariableLengthField,
-            FixedLengthField,
-            Uniqueifier,
-            Flag,
-            Bitmap,
-            Internal,
-            Lob,
-            Compressed
-        }
-
-        #endregion
-
         private Color backColour;
         private int endPosition;
         private Color foreColour;
@@ -35,20 +15,24 @@ namespace InternalsViewer.UI
         private string value;
         private bool visible;
 
-        public Marker(string name, MarkerType markerType, int startPosition, int endPosition, Color backColour, Color foreColour)
+        public Marker(string name, MarkerType markerType, int start, int end, Color backColour, Color foreColour)
         {
-            this.name = name;
-            this.startPosition = startPosition;
-            this.endPosition = endPosition;
-            this.backColour = backColour;
-            this.foreColour = foreColour;
-            this.markerType = markerType;
+            this.Name = name;
+            this.StartPosition = start;
+            this.EndPosition = end;
+            this.BackColour = backColour;
+            this.ForeColour = foreColour;
+            this.MarkerType = markerType;
+
             visible = true;
         }
 
         public static Marker GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
         {
-            return markers.Find(delegate(Marker marker) { return marker.StartPosition >= startPosition & marker.endPosition <= endPosition; });
+            return markers.Find(delegate(Marker marker) 
+                               { 
+                                   return marker.StartPosition >= startPosition & marker.endPosition <= endPosition; 
+                               });
         }
 
         public override string ToString()
@@ -99,7 +83,7 @@ namespace InternalsViewer.UI
             set { this.value = value; }
         }
 
-        public MarkerType DataType
+        public MarkerType MarkerType
         {
             get { return markerType; }
             set { markerType = value; }

@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlTypes;
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace InternalsViewer.Internals
@@ -224,7 +224,7 @@ namespace InternalsViewer.Internals
 
             int datePart = BitConverter.ToInt32(dateData, 0);
             long timePart = BitConverter.ToInt64(timeData, 0);
-            short time = BitConverter.ToInt16(data, data.Length - 2);
+            Int16 time = BitConverter.ToInt16(data, data.Length - 2);
 
             DateTime returnDate = new DateTime(0001, 01, 01);
             returnDate = returnDate.AddDays(datePart);
@@ -582,7 +582,7 @@ namespace InternalsViewer.Internals
             return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
         }
 
-        public static string EncodeInt16(short value)
+        public static string EncodeInt16(Int16 value)
         {
             return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
         }
@@ -603,13 +603,13 @@ namespace InternalsViewer.Internals
         public static string[] EncodeSmallDateTime(DateTime value)
         {
 
-            ushort timePart = (ushort)((value - value.Date).TotalMinutes);
-            ushort datePart = (ushort)(value - new DateTime(1900, 1, 1)).Days;
+            UInt16 timePart = (UInt16)((value - value.Date).TotalMinutes);
+            UInt16 datePart = (UInt16)(value - new DateTime(1900, 1, 1)).Days;
 
             return new string[] { EncodeUInt16(timePart), EncodeUInt16(datePart) };
         }
 
-        public static string EncodeUInt16(ushort value)
+        public static string EncodeUInt16(UInt16 value)
         {
             return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
         }

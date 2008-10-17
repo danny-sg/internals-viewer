@@ -6,7 +6,6 @@ using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Allocations;
-using System.Data;
 
 namespace InternalsViewer.UI
 {
@@ -166,8 +165,6 @@ namespace InternalsViewer.UI
             {
                 this.allocationContainer.AddMapLayer(layer);
             }
-
-            // this.ChangeRowKeyColours(layers);
 
             if (this.bufferPoolToolStripButton.Checked)
             {

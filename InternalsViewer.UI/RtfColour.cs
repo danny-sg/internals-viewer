@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Drawing;
-using InternalsViewer.UI.Properties;
 using System.Globalization;
+using System.Text;
+using InternalsViewer.UI.Properties;
 
 namespace InternalsViewer.UI
 {

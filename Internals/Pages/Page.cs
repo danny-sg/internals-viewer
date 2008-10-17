@@ -252,11 +252,11 @@ namespace InternalsViewer.Internals.Pages
             return allocationUnitName;
         }
 
-        private static short GetDatabaseId(string connectionString, string database)
+        private static Int16 GetDatabaseId(string connectionString, string database)
         {
-            short databaseId;
+            Int16 databaseId;
 
-            databaseId = (short)DataAccess.GetScalar(connectionString,
+            databaseId = (Int16)DataAccess.GetScalar(connectionString,
                                                      "master",
                                                      Properties.Resources.SQL_DatabaseId,
                                                      CommandType.Text,

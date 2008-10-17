@@ -4,7 +4,6 @@ using InternalsViewer.Internals.Pages;
 using Microsoft.SqlServer.Management.Smo.RegSvrEnum;
 using Microsoft.SqlServer.Management.UI.ConnectionDlg;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
-using InternalsViewer.Internals;
 
 namespace InternalsViewer.SSMSAddIn
 {

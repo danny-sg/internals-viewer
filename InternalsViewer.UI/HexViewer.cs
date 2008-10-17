@@ -21,7 +21,7 @@ namespace InternalsViewer.UI
         private bool addressHex;
         private Dictionary<int, Color> colourAndOffsetDictionary;
         private bool colourise;
-        private short currentOffset;
+        private Int16 currentOffset;
         private string dataRtf;
         private string dataText;
         private Color headerColour = Color.FromArgb(245, 245, 250);
@@ -216,7 +216,7 @@ namespace InternalsViewer.UI
         /// </summary>
         /// <param name="offset">The offset.</param>
         /// <returns></returns>
-        private Marker GetMarkerAtPosition(short offset)
+        private Marker GetMarkerAtPosition(Int16 offset)
         {
             return this.markers.Find(delegate(Marker marker)
                 {
@@ -475,7 +475,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
         private void DataRichTextBox_MouseMove(object sender, MouseEventArgs e)
         {
-            short offset = (short)(dataRichTextBox.GetCharIndexFromPosition(e.Location) / 3);
+            Int16 offset = (Int16)(dataRichTextBox.GetCharIndexFromPosition(e.Location) / 3);
 
             setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
             this.currentOffset = offset;
