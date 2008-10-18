@@ -28,7 +28,7 @@ namespace InternalsViewer.Internals.RecordLoaders
             }
 
             dataRecord.FixedColumnDataOffset = BitConverter.ToInt16(dataRecord.Page.PageData,
-                                                                    dataRecord.SlotOffset + 2);
+                                                                    dataRecord.SlotOffset + sizeof(Int16));
 
             dataRecord.ColumnCount = BitConverter.ToInt16(dataRecord.Page.PageData,
                                                           dataRecord.SlotOffset + dataRecord.FixedColumnDataOffset);
@@ -47,7 +47,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                 {
                     dataRecord.VariableLengthColumnCount = 1;
 
-                    offsetStart = (Int16)(dataRecord.FixedColumnDataOffset + 1 + dataRecord.NullBitmapSize);
+                    offsetStart = (Int16)(dataRecord.FixedColumnDataOffset + sizeof(byte) + dataRecord.NullBitmapSize);
                 }
                 else
                 {

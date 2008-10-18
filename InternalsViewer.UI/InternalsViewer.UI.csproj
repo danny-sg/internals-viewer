@@ -80,6 +80,12 @@
     </Compile>
     <Compile Include="Marker.cs" />
     <Compile Include="OffsetEventArgs.cs" />
+    <Compile Include="OffsetTable.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="OffsetTable.Designer.cs">
+      <DependentUpon>OffsetTable.cs</DependentUpon>
+    </Compile>
     <Compile Include="RtfColour.cs" />
     <Compile Include="HexViewer.cs">
       <SubType>UserControl</SubType>
@@ -127,6 +133,10 @@
     </EmbeddedResource>
     <EmbeddedResource Include="HexViewer.resx">
       <DependentUpon>HexViewer.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="OffsetTable.resx">
+      <DependentUpon>OffsetTable.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="PageViewerWindow.resx">

@@ -67,7 +67,7 @@ namespace InternalsViewer.UI
         }
 
         /// <summary>
-        /// Refreshes the current paeg in the page viewer
+        /// Refreshes the current page in the page viewer
         /// </summary>
         /// <param name="page">The page.</param>
         private void RefreshPage(Page page)
@@ -75,6 +75,7 @@ namespace InternalsViewer.UI
             this.pageToolStripTextBox.Text = page.PageAddress.ToString();
             this.hexViewer.Page = this.Page;
             this.pageBindingSource.DataSource = this.Page.Header;
+            this.offsetTable.Page = this.Page;
 
             this.OnPageChanged(this, new PageEventArgs(new RowIdentifier(this.Page.PageAddress, 0), false));
         }
