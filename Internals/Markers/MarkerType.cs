@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace InternalsViewer.Internals
+namespace InternalsViewer.Internals.Markers
 {
     [Flags]
     public enum MarkerType

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using InternalsViewer.Internals.Markers;
 
 namespace InternalsViewer.Internals
 {

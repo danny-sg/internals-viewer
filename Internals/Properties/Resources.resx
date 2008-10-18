@@ -316,4 +316,48 @@ WHERE Operation NOT LIKE '%XACT%'
 FROM   sys.dm_os_buffer_descriptors WITH (NOLOCK)
 WHERE  database_id = DB_ID(@database)</value>
   </data>
+  <data name="SQL_Table_Columns_2005" xml:space="preserve">
+    <value>SELECT CASE WHEN is_uniqueifier = 1 THEN 'Uniqueifier'
+            WHEN is_dropped     = 1 THEN '(Dropped)'
+            ELSE c.name END AS name,
+       ISNULL(c.column_id,-1) AS column_id,
+       TYPE_NAME(pc.system_type_id) as type_name,
+       pc.system_type_id,
+       pc.max_length,
+       pc.precision,
+       pc.scale,
+       pc.leaf_offset,
+       pc.is_uniqueifier,
+       pc.is_dropped,
+       pc.leaf_null_bit,
+       CONVERT(BIT, 0) AS is_sparse
+FROM   sys.allocation_units au
+       INNER JOIN sys.partitions p ON au.container_id = p.partition_id
+       INNER JOIN sys.system_internals_partition_columns pc ON p.partition_id = pc.partition_id
+       INNER JOIN sys.all_objects o ON p.object_id = o.object_id
+       LEFT JOIN sys.all_columns c ON column_id = partition_column_id AND c.object_id = p.object_id
+WHERE  au.allocation_unit_id  = @allocation_unit_id</value>
+  </data>
+  <data name="SQL_Table_Columns_2008" xml:space="preserve">
+    <value>SELECT CASE WHEN is_uniqueifier = 1 THEN 'Uniqueifier'
+            WHEN is_dropped     = 1 THEN '(Dropped)'
+            ELSE c.name END AS name,
+       ISNULL(c.column_id,-1) AS column_id,
+       TYPE_NAME(pc.system_type_id) as type_name,
+       pc.system_type_id,
+       pc.max_length,
+       pc.precision,
+       pc.scale,
+       pc.leaf_offset,
+       pc.is_uniqueifier,
+       pc.is_dropped,
+       ISNULL(c.is_sparse, 0) AS is_sparse,
+       pc.leaf_null_bit
+FROM   sys.allocation_units au
+       INNER JOIN sys.partitions p ON au.container_id = p.partition_id
+       INNER JOIN sys.system_internals_partition_columns pc ON p.partition_id = pc.partition_id
+       INNER JOIN sys.all_objects o ON p.object_id = o.object_id
+       LEFT JOIN sys.all_columns c ON column_id = partition_column_id AND c.object_id = p.object_id
+WHERE  au.allocation_unit_id  = @allocation_unit_id</value>
+  </data>
 </root>

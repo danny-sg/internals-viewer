@@ -272,6 +272,54 @@ namespace InternalsViewer.Internals.Properties
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to SELECT CASE WHEN is_uniqueifier = 1 THEN &apos;Uniqueifier&apos;
+        ///            WHEN is_dropped     = 1 THEN &apos;(Dropped)&apos;
+        ///            ELSE c.name END AS name,
+        ///       ISNULL(c.column_id,-1) AS column_id,
+        ///       TYPE_NAME(pc.system_type_id) as type_name,
+        ///       pc.system_type_id,
+        ///       pc.max_length,
+        ///       pc.precision,
+        ///       pc.scale,
+        ///       pc.leaf_offset,
+        ///       pc.is_uniqueifier,
+        ///       pc.is_dropped,
+        ///       pc.leaf_null_bit,
+        ///       CONVERT(BIT, 0) AS is_sparse
+        ///FROM   sys.allocation_units au
+        ///       IN [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string SQL_Table_Columns_2005 {
+            get {
+                return ResourceManager.GetString("SQL_Table_Columns_2005", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to SELECT CASE WHEN is_uniqueifier = 1 THEN &apos;Uniqueifier&apos;
+        ///            WHEN is_dropped     = 1 THEN &apos;(Dropped)&apos;
+        ///            ELSE c.name END AS name,
+        ///       ISNULL(c.column_id,-1) AS column_id,
+        ///       TYPE_NAME(pc.system_type_id) as type_name,
+        ///       pc.system_type_id,
+        ///       pc.max_length,
+        ///       pc.precision,
+        ///       pc.scale,
+        ///       pc.leaf_offset,
+        ///       pc.is_uniqueifier,
+        ///       pc.is_dropped,
+        ///       ISNULL(c.is_sparse, 0) AS is_sparse,
+        ///       pc.leaf_null_bit
+        ///FROM   sys.allocation_units au
+        ///   [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string SQL_Table_Columns_2008 {
+            get {
+                return ResourceManager.GetString("SQL_Table_Columns_2008", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to SELECT o.object_id
         ///      ,s.name AS schema_name
         ///      ,CASE WHEN i.name IS NULL 

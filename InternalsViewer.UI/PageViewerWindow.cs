@@ -4,6 +4,8 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.UI
 {
@@ -170,7 +172,7 @@ namespace InternalsViewer.UI
             if (pageAddress.FileId > 0)
             {
                 SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
-                
+
                 this.ConnectionString = connectionString;
 
                 this.Page = new Page(this.ConnectionString, builder.InitialCatalog, pageAddress);
@@ -205,6 +207,25 @@ namespace InternalsViewer.UI
         {
             get { return connectionString; }
             set { connectionString = value; }
+        }
+
+        private void OffsetTable_SlotChanged(object sender, EventArgs e)
+        {
+            this.LoadRecord(offsetTable.SelectedOffset);
+        }
+
+        private void LoadRecord(ushort offset)
+        {
+            if (this.Page.Header.PageType == PageType.Data)
+            {
+                Structure tableStructure = new TableStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
+
+                Record r = new DataRecord(this.Page, offset, tableStructure);
+            }
+            else
+            {
+
+            }
         }
     }
 }

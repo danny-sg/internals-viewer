@@ -13,7 +13,7 @@ namespace InternalsViewer.Internals.Structures
         private UInt16 dataLength = 0;
         private SqlDbType dataType;
         private bool dropped;
-        private UInt16 leafOffset;
+        private Int16 leafOffset;
         private byte precision;
         private byte scale;
         private bool uniqueifer;
@@ -30,7 +30,7 @@ namespace InternalsViewer.Internals.Structures
         /// <param name="leafOffset">The leaf offset.</param>
         /// <param name="precision">The precision.</param>
         /// <param name="scale">The scale.</param>
-        public Column(string columnName, int columnId, SqlDbType dataType, UInt16 dataLength, UInt16 leafOffset, byte precision, byte scale)
+        public Column(string columnName, int columnId, SqlDbType dataType, UInt16 dataLength, Int16 leafOffset, byte precision, byte scale)
         {
             this.columnName = columnName;
             this.columnId = columnId;
@@ -115,7 +115,7 @@ namespace InternalsViewer.Internals.Structures
         /// Gets or sets the leaf offset.
         /// </summary>
         /// <value>The leaf offset.</value>
-        public UInt16 LeafOffset
+        public Int16 LeafOffset
         {
             get { return leafOffset; }
             set { leafOffset = value; }

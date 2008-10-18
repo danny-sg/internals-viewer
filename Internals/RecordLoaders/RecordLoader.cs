@@ -13,7 +13,7 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <param name="record">The record.</param>
         /// <param name="size">The size.</param>
         /// <param name="offset">The offset.</param>
-        /// <returns></returns>
+        /// <returns>An array of 2-byte integers</returns>
         protected static UInt16[] GetOffsetArray(byte[] record, int size, int offset)
         {
             UInt16[] offsetArray = new UInt16[size];
@@ -22,7 +22,7 @@ namespace InternalsViewer.Internals.RecordLoaders
             {
                 offsetArray[i] = BitConverter.ToUInt16(record, offset);
 
-                offset += 2;
+                offset += sizeof(UInt16);
             }
 
             return offsetArray;

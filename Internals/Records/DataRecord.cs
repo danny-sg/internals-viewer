@@ -1,16 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using InternalsViewer.Internals.Markers;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.RecordLoaders;
+using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.Records
 {
-    class DataRecord : Record, IMarkerProvider
+    public class DataRecord : Record, IMarkerProvider
     {
         private SparseVector sparseVector;
 
-        public DataRecord(Page page, Int16 slotOffset)
-            : base(page, slotOffset)
+        public DataRecord(Page page, UInt16 slotOffset, Structure structure)
+            : base(page, slotOffset, structure)
         {
             DataRecordLoader.Load(this);
         }

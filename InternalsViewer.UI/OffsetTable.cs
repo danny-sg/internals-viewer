@@ -106,7 +106,7 @@ namespace InternalsViewer.UI
             {
                 if (this.offsetDataGridView.SelectedRows.Count > 0)
                 {
-                    return UInt16.Parse(this.offsetDataGridView.SelectedRows[0].Cells[2].Value.ToString());
+                    return UInt16.Parse(this.offsetDataGridView.SelectedRows[0].Cells[1].Value.ToString());
                 }
                 else
                 {

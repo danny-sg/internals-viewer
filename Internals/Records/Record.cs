@@ -14,7 +14,7 @@ namespace InternalsViewer.Internals.Records
     {
         private Page page;
         private RecordType recordType;
-        private Int16 slotOffset;
+        private UInt16 slotOffset;
 
         private UInt16[] colOffsetArray;
 
@@ -23,7 +23,7 @@ namespace InternalsViewer.Internals.Records
 
         private Int16 columnCountBytes;
         private Int16 columnCount;
-        private Int16 fixedColumnDataOffset;
+        private Int16 columnCountOffset;
         private bool hasVariableLengthColumns;
         private UInt16 variableLengthDataOffset;
         private UInt16 variableLengthColumnCount;
@@ -43,10 +43,12 @@ namespace InternalsViewer.Internals.Records
         /// </summary>
         /// <param name="page">The page.</param>
         /// <param name="offset">The offset.</param>
-        public Record(Page page, Int16 slotOffset)
+        public Record(Page page, UInt16 slotOffset, Structure structure)
         {
             this.Page = page;
             this.SlotOffset = slotOffset;
+            this.Structure = structure;
+            this.Fields = new List<RecordField>();
         }
 
         /// <summary>
@@ -148,7 +150,7 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the slot offset in the page
         /// </summary>
         /// <value>The slot offset.</value>
-        public Int16 SlotOffset
+        public UInt16 SlotOffset
         {
             get { return this.slotOffset; }
             set { this.slotOffset = value; }
@@ -209,10 +211,10 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the fixed column offset.
         /// </summary>
         /// <value>The offset location of the start of the fixed column fields</value>
-        public Int16 FixedColumnDataOffset
+        public Int16 ColumnCountOffset
         {
-            get { return this.fixedColumnDataOffset; }
-            set { this.fixedColumnDataOffset = value; }
+            get { return this.columnCountOffset; }
+            set { this.columnCountOffset = value; }
         }
 
         /// <summary>

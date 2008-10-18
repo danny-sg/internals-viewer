@@ -10,11 +10,11 @@ namespace InternalsViewer.Internals.Structures
         private DataTable structureDataTable;
         private bool hasSparseColumns;
 
-        public Structure(long allocationUnitId, DataTable structure)
+        public Structure(long allocationUnitId, Database database)
         {
             this.columns = new List<Column>();
             this.AllocationUnitId = allocationUnitId;
-            this.StructureDataTable = structure;
+            this.StructureDataTable = this.LoadStructure(allocationUnitId, database);
         }
 
         internal abstract void AddColumns(DataTable structure);

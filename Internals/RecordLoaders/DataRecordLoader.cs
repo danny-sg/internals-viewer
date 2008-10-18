@@ -7,7 +7,7 @@ using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
 namespace InternalsViewer.Internals.RecordLoaders
 {
-    class DataRecordLoader : RecordLoader
+    public class DataRecordLoader : RecordLoader
     {
         internal static void Load(DataRecord dataRecord)
         {
@@ -27,11 +27,13 @@ namespace InternalsViewer.Internals.RecordLoaders
                 return;
             }
 
-            dataRecord.FixedColumnDataOffset = BitConverter.ToInt16(dataRecord.Page.PageData,
-                                                                    dataRecord.SlotOffset + sizeof(Int16));
+            // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
+            dataRecord.ColumnCountOffset = BitConverter.ToInt16(dataRecord.Page.PageData,
+                                                                    dataRecord.SlotOffset + sizeof(byte) + sizeof(byte));
 
+            // Column count 2-byte int located at the column count offset
             dataRecord.ColumnCount = BitConverter.ToInt16(dataRecord.Page.PageData,
-                                                          dataRecord.SlotOffset + dataRecord.FixedColumnDataOffset);
+                                                          dataRecord.SlotOffset + dataRecord.ColumnCountOffset);
 
             if (dataRecord.HasNullBitmap)
             {
@@ -47,20 +49,23 @@ namespace InternalsViewer.Internals.RecordLoaders
                 {
                     dataRecord.VariableLengthColumnCount = 1;
 
-                    offsetStart = (Int16)(dataRecord.FixedColumnDataOffset + sizeof(byte) + dataRecord.NullBitmapSize);
+                    offsetStart = (Int16)(dataRecord.SlotOffset + dataRecord.ColumnCountOffset + sizeof(byte) + dataRecord.NullBitmapSize);
                 }
                 else
                 {
-                    int varColCountOffset = dataRecord.SlotOffset + dataRecord.FixedColumnDataOffset + 2 + dataRecord.NullBitmapSize;
+                    int varColCountOffset = dataRecord.SlotOffset + dataRecord.ColumnCountOffset + sizeof(Int16) + dataRecord.NullBitmapSize;
 
+                    // Number of variable length columns (2-byte int) located after null bitmap
                     dataRecord.VariableLengthColumnCount = BitConverter.ToUInt16(dataRecord.Page.PageData, varColCountOffset);
 
-                    offsetStart = (Int16)(dataRecord.FixedColumnDataOffset + 4 + dataRecord.NullBitmapSize);
+                    // Offset starts after the variable length column count (2-bytes)
+                    offsetStart = (Int16)(varColCountOffset + sizeof(Int16));
                 }
 
+                // Load offset array of 2-byte ints indicating the end offset of each variable length field
                 dataRecord.ColOffsetArray = GetOffsetArray(dataRecord.Page.PageData,
                                                            dataRecord.VariableLengthColumnCount,
-                                                           dataRecord.SlotOffset + offsetStart);
+                                                           offsetStart);
             }
             else
             {
@@ -68,7 +73,8 @@ namespace InternalsViewer.Internals.RecordLoaders
                 dataRecord.ColOffsetArray = null;
             }
 
-            dataRecord.VariableLengthDataOffset = (UInt16)(offsetStart + (2 * dataRecord.VariableLengthColumnCount));
+            // Varible length data starts after the offset array length (2 byte ints * number of variable length columns)
+            dataRecord.VariableLengthDataOffset = (UInt16)(offsetStart + (sizeof(UInt16) * dataRecord.VariableLengthColumnCount));
 
             DataRecordLoader.LoadColumnValues(dataRecord);
 
@@ -86,15 +92,15 @@ namespace InternalsViewer.Internals.RecordLoaders
         {
             byte[] nullBitmapBytes = new byte[dataRecord.NullBitmapSize];
 
+            // Null bitmap located after column count offset + column count 2-byte int
             Array.Copy(dataRecord.Page.PageData,
-                       dataRecord.SlotOffset + dataRecord.FixedColumnDataOffset + 2,
+                       dataRecord.SlotOffset + dataRecord.ColumnCountOffset + sizeof(Int16),
                        nullBitmapBytes,
                        0,
                        dataRecord.NullBitmapSize);
 
             dataRecord.NullBitmap = new BitArray(nullBitmapBytes);
         }
-
 
         /// <summary>
         /// Loads the sparse vector.
@@ -148,30 +154,40 @@ namespace InternalsViewer.Internals.RecordLoaders
 
                     if (column.Sparse)
                     {
+                        // Can't remember what needs to happen here, will fix when I revisit the sparse column support
                     }
-                    else if (column.LeafOffset >= 0 && column.LeafOffset < 8192) // Fixed length field
+                    else if (column.LeafOffset >= 0 && column.LeafOffset < 8192)
                     {
-                        offset = column.LeafOffset;
+                        // Fixed length field
+
+                        // Fixed offset given by the column leaf offset field in sys.columns
+                        offset = (UInt16)column.LeafOffset;
+
+                        // Length fixed from data type/data length
                         length = column.DataLength;
 
                         data = new byte[length];
 
                         Array.Copy(dataRecord.Page.PageData, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
                     }
-                    else if (dataRecord.HasVariableLengthColumns && dataRecord.HasNullBitmap && !column.Dropped 
+                    else if (dataRecord.HasVariableLengthColumns && dataRecord.HasNullBitmap && !column.Dropped
                              && (column.ColumnId < 0 || !dataRecord.NullBitmapValue(column)))
                     {
-                        //TODO: Clean up the logic here
+                        // Variable Length fields
+
+                        // Use the leaf offset to get the variable length column ordinal
                         variableIndex = (UInt16)((column.LeafOffset * -1) - 1);
 
                         if (variableIndex == 0)
                         {
+                            // If it's position 0 the start of the data will be at the variable length data offset...
                             offset = dataRecord.VariableLengthDataOffset;
                         }
                         else
                         {
                             if (variableIndex < dataRecord.ColOffsetArray.Length)
                             {
+                                // ...else use the end offset of the previous column as the start of this one
                                 offset = RecordLoader.DecodeOffset(dataRecord.ColOffsetArray[variableIndex - 1]);
                             }
                         }
@@ -216,6 +232,7 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <param name="data">The data.</param>
         private static void LoadLobField(RecordField field, byte[] data)
         {
+            // First byte gives the Blob field type
             switch ((BlobFieldType)data[0])
             {
                 case BlobFieldType.LobPointer:
@@ -239,11 +256,12 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// Loads the status bits.
         /// </summary>
         /// <param name="dataRecord">The data record.</param>
-        /// <returns></returns>
+        /// <returns>The Record Type property in Status Bits A</returns>
         private static RecordType LoadStatusBits(DataRecord dataRecord)
         {
             byte statusA = dataRecord.Page.PageData[dataRecord.SlotOffset];
 
+            // bytes 0 and 1 are Status Bits A and B
             dataRecord.StatusBitsA = new BitArray(new byte[] { statusA });
             dataRecord.StatusBitsB = new BitArray(new byte[] { dataRecord.Page.PageData[dataRecord.SlotOffset + 1] });
 
@@ -254,8 +272,8 @@ namespace InternalsViewer.Internals.RecordLoaders
                 return dataRecord.RecordType;
             }
 
-            dataRecord.HasVariableLengthColumns = dataRecord.StatusBitsA[5];
             dataRecord.HasNullBitmap = dataRecord.StatusBitsA[4];
+            dataRecord.HasVariableLengthColumns = dataRecord.StatusBitsA[5];
 
             return dataRecord.RecordType;
         }
@@ -276,6 +294,5 @@ namespace InternalsViewer.Internals.RecordLoaders
 
             dataRecord.Fields.Add(field);
         }
-
     }
 }
