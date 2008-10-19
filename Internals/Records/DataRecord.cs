@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using InternalsViewer.Internals.Markers;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.RecordLoaders;
 using InternalsViewer.Internals.Structures;
+using System.Text;
 
 namespace InternalsViewer.Internals.Records
 {
-    public class DataRecord : Record, IMarkerProvider
+    public class DataRecord : Record
     {
         private SparseVector sparseVector;
 
@@ -38,15 +38,34 @@ namespace InternalsViewer.Internals.Records
             return statusDescription;
         }
 
-        public List<Marker> ProvideMarkers()
-        {
-            throw new NotImplementedException();
-        }
-
         public SparseVector SparseVector
         {
             get { return sparseVector; }
             set { sparseVector = value; }
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendFormat("DataRecord | Page: {0} | Slot Offset: {1} | Allocation Unit: {2}\n",
+                            this.Page.Header.PageAddress,
+                            this.SlotOffset,
+                            this.Page.Header.AllocationUnit);
+
+            sb.Append("-----------------------------------------------------------------------------------------\n");
+            sb.AppendFormat("Status Bits A:                {0}\n", GetStatusBitsDescription(this));
+            sb.AppendFormat("Column count offset:          {0}\n", this.ColumnCountOffset);
+            sb.AppendFormat("Number of columns:            {0}\n", this.ColumnCount);
+            sb.AppendFormat("Null bitmap:                  {0}\n", this.HasNullBitmap ? GetNullBitmapString(this.NullBitmap) : "(No null bitmap)");
+            sb.AppendFormat("Variable length column count: {0}\n", this.VariableLengthColumnCount);
+            sb.AppendFormat("Column offset array:          {0}\n", this.HasVariableLengthColumns ? GetArrayString(this.ColOffsetArray) : "(no variable length columns)");
+
+            foreach (RecordField field in this.Fields)
+            {
+                sb.AppendLine(field.ToString());
+            }
+            return sb.ToString();
         }
     }
 }

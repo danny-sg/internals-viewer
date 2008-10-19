@@ -31,7 +31,7 @@ namespace InternalsViewer.Internals.Records
         private bool hasNullBitmap;
         private Int16 nullBitmapSize;
         private BitArray nullBitmap;
-        
+
         private bool hasUniqueifier;
         private bool compressed;
 
@@ -76,23 +76,33 @@ namespace InternalsViewer.Internals.Records
         /// Gets a string representation of the null bitmap
         /// </summary>
         /// <returns></returns>
-        protected string GetNullBitmapString()
+        protected static string GetNullBitmapString(BitArray nullBitmap)
         {
-            if (this.HasNullBitmap)
-            {
-                StringBuilder stringBuilder = new StringBuilder();
+            StringBuilder stringBuilder = new StringBuilder();
 
-                for (int i = 0; i < this.NullBitmap.Length; i++)
+            for (int i = 0; i < nullBitmap.Length; i++)
+            {
+                stringBuilder.Insert(0, nullBitmap[i] ? "1" : "0");
+            }
+
+            return stringBuilder.ToString();
+        }
+
+        public static string GetArrayString(UInt16[] array)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (UInt16 offset in array)
+            {
+                if (sb.Length > 0)
                 {
-                    stringBuilder.Insert(0, this.NullBitmap[i] ? "1" : "0");
+                    sb.Append(", ");
                 }
 
-                return stringBuilder.ToString();
+                sb.AppendFormat("{0} - 0x{0:X}", offset);
             }
-            else
-            {
-                return string.Empty;
-            }
+
+            return sb.ToString();
         }
 
         /// <summary>
@@ -122,7 +132,7 @@ namespace InternalsViewer.Internals.Records
             {
                 return this.NullBitmap.Get(column.NullBit - 1);
             }
-        }   
+        }
 
         #region Properties
 

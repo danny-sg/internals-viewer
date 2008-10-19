@@ -78,5 +78,16 @@ namespace InternalsViewer.Internals.Records
             get { return this.sparse; }
             set { this.sparse = value; }
         }
+
+        public override string ToString()
+        {
+            return string.Format("  Offset: {0, -4} Leaf Offset: {1, -4} Length: {2, -4} Field: {3, -30} Data type: {4, -10} Value: {5}", 
+                                 this.Offset, 
+                                 this.LeafOffset,
+                                 this.Length, 
+                                 this.Column.ColumnName,
+                                 this.Column.DataType,
+                                 DataConverter.ToHexString(this.Data));
+        }
     }
 }

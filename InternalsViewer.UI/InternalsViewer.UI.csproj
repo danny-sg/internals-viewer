@@ -78,7 +78,11 @@
     <Compile Include="Controls\FlatMenuStrip.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Marker.cs" />
+    <Compile Include="Markers\Marker.cs" />
+    <Compile Include="Markers\MarkerDefinition.cs" />
+    <Compile Include="Markers\MarkerDefinitionStore.cs" />
+    <Compile Include="Markers\MarkerItem.cs" />
+    <Compile Include="Markers\MarkerType.cs" />
     <Compile Include="OffsetEventArgs.cs" />
     <Compile Include="OffsetTable.cs">
       <SubType>UserControl</SubType>

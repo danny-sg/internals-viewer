@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.UI.Markers;
 
 namespace InternalsViewer.UI
 {

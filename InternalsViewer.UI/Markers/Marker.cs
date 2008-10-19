@@ -1,39 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Drawing;
 
-namespace InternalsViewer.UI
+namespace InternalsViewer.UI.Markers
 {
     public class Marker
     {
-        #region MarkerType enum
-
-        [Flags]
-        public enum MarkerType
-        {
-            Undefined,
-            PageAddress,
-            VariableLengthField,
-            FixedLengthField,
-            Uniqueifier,
-            Flag,
-            Bitmap,
-            Internal,
-            Lob,
-            Compressed
-        }
-
-        #endregion
-
-        private Color backColour;
         private int endPosition;
+        private int startPosition;
         private Color foreColour;
+        private Color backColour;
         private bool isNull;
         private MarkerType markerType;
         private string name;
-        private int startPosition;
+
         private string value;
         private bool visible;
+
+        public Marker(MarkerDefinition definition, int startPosition, int endPosition)
+        {
+            this.D
+        }
 
         public Marker(string name, MarkerType markerType, int startPosition, int endPosition, Color backColour, Color foreColour)
         {
@@ -61,62 +49,58 @@ namespace InternalsViewer.UI
                                  ForeColour.Name);
         }
 
-        #region Properties
-
         public string Name
         {
-            get { return name; }
-            set { name = value; }
+            get { return this.name; }
+            set { this.name = value; }
         }
 
         public int StartPosition
         {
-            get { return startPosition; }
-            set { startPosition = value; }
+            get { return this.startPosition; }
+            set { this.startPosition = value; }
         }
 
         public int EndPosition
         {
-            get { return endPosition; }
-            set { endPosition = value; }
+            get { return this.endPosition; }
+            set { this.endPosition = value; }
         }
 
         public Color BackColour
         {
-            get { return backColour; }
-            set { backColour = value; }
+            get { return this.backColour; }
+            set { this.backColour = value; }
         }
 
         public Color ForeColour
         {
-            get { return foreColour; }
-            set { foreColour = value; }
+            get { return this.foreColour; }
+            set { this.foreColour = value; }
         }
 
         public string Value
         {
-            get { return value; }
+            get { return this.value; }
             set { this.value = value; }
         }
 
         public MarkerType DataType
         {
-            get { return markerType; }
-            set { markerType = value; }
+            get { return this.markerType; }
+            set { this.markerType = value; }
         }
 
         public bool IsNull
         {
-            get { return isNull; }
-            set { isNull = value; }
+            get { return this.isNull; }
+            set { this.isNull = value; }
         }
 
         public bool Visible
         {
-            get { return visible; }
-            set { visible = value; }
+            get { return this.visible; }
+            set { this.visible = value; }
         }
-
-        #endregion
     }
 }

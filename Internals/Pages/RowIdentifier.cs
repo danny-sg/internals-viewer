@@ -89,6 +89,20 @@ namespace InternalsViewer.Internals.Pages
         }
 
         /// <summary>
+        /// Returns the fully qualified type name of this instance.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="T:System.String"/> containing a fully qualified type name.
+        /// </returns>
+        public override string ToString()
+        {
+            return string.Format(CultureInfo.CurrentCulture, "({0}:{1}:{2})",
+                                 this.pageAddress.FileId,
+                                 this.pageAddress.PageId,
+                                 this.slotId);
+        }
+
+        /// <summary>
         /// Gets or sets the page address.
         /// </summary>
         /// <value>The page address.</value>
@@ -108,18 +122,5 @@ namespace InternalsViewer.Internals.Pages
             set { this.slotId = value; }
         }
 
-        /// <summary>
-        /// Returns the fully qualified type name of this instance.
-        /// </summary>
-        /// <returns>
-        /// A <see cref="T:System.String"/> containing a fully qualified type name.
-        /// </returns>
-        public override string ToString()
-        {
-            return string.Format(CultureInfo.CurrentCulture, "({0}:{1}:{2})",
-                                 this.pageAddress.FileId,
-                                 this.pageAddress.PageId,
-                                 this.slotId);
-        }
     }
 }

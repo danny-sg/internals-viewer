@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Structures
     {
         private int columnId;
         private string columnName;
-        private UInt16 dataLength = 0;
+        private Int16 dataLength = 0;
         private SqlDbType dataType;
         private bool dropped;
         private Int16 leafOffset;
@@ -30,7 +30,7 @@ namespace InternalsViewer.Internals.Structures
         /// <param name="leafOffset">The leaf offset.</param>
         /// <param name="precision">The precision.</param>
         /// <param name="scale">The scale.</param>
-        public Column(string columnName, int columnId, SqlDbType dataType, UInt16 dataLength, Int16 leafOffset, byte precision, byte scale)
+        public Column(string columnName, int columnId, SqlDbType dataType, Int16 dataLength, Int16 leafOffset, byte precision, byte scale)
         {
             this.columnName = columnName;
             this.columnId = columnId;
@@ -105,7 +105,7 @@ namespace InternalsViewer.Internals.Structures
         /// Gets or sets the data length
         /// </summary>
         /// <value>The length of the data.</value>
-        public UInt16 DataLength
+        public Int16 DataLength
         {
             get { return dataLength; }
             set { dataLength = value; }

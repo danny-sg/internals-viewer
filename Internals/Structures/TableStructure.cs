@@ -27,7 +27,7 @@ namespace InternalsViewer.Internals.Structures
                     currentColumn = new Column(tableColumn["name"].ToString(),
                                                Convert.ToInt32(tableColumn["column_id"]),
                                                DataConverter.ToSqlType(Convert.ToByte(tableColumn["system_type_id"])),
-                                               Convert.ToUInt16(tableColumn["max_length"]),
+                                               Convert.ToInt16(tableColumn["max_length"]),
                                                Convert.ToInt16(tableColumn["leaf_offset"]),
                                                Convert.ToByte(tableColumn["precision"]),
                                                Convert.ToByte(tableColumn["scale"]));

@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace InternalsViewer.Internals.Markers
+namespace InternalsViewer.UI.Markers
 {
     [Flags]
     public enum MarkerType
@@ -16,5 +18,4 @@ namespace InternalsViewer.Internals.Markers
         Lob,
         Compressed
     }
-
 }

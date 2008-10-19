@@ -29,7 +29,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
             // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
             dataRecord.ColumnCountOffset = BitConverter.ToInt16(dataRecord.Page.PageData,
-                                                                    dataRecord.SlotOffset + sizeof(byte) + sizeof(byte));
+                                                                dataRecord.SlotOffset + sizeof(byte) + sizeof(byte));
 
             // Column count 2-byte int located at the column count offset
             dataRecord.ColumnCount = BitConverter.ToInt16(dataRecord.Page.PageData,
@@ -49,14 +49,15 @@ namespace InternalsViewer.Internals.RecordLoaders
                 {
                     dataRecord.VariableLengthColumnCount = 1;
 
-                    offsetStart = (Int16)(dataRecord.SlotOffset + dataRecord.ColumnCountOffset + sizeof(byte) + dataRecord.NullBitmapSize);
+                    offsetStart = (Int16)(dataRecord.ColumnCountOffset + sizeof(byte) + dataRecord.NullBitmapSize);
                 }
                 else
                 {
-                    int varColCountOffset = dataRecord.SlotOffset + dataRecord.ColumnCountOffset + sizeof(Int16) + dataRecord.NullBitmapSize;
-
                     // Number of variable length columns (2-byte int) located after null bitmap
-                    dataRecord.VariableLengthColumnCount = BitConverter.ToUInt16(dataRecord.Page.PageData, varColCountOffset);
+                    int varColCountOffset = dataRecord.ColumnCountOffset + sizeof(Int16) + dataRecord.NullBitmapSize;
+
+                    
+                    dataRecord.VariableLengthColumnCount = BitConverter.ToUInt16(dataRecord.Page.PageData, dataRecord.SlotOffset + varColCountOffset);
 
                     // Offset starts after the variable length column count (2-bytes)
                     offsetStart = (Int16)(varColCountOffset + sizeof(Int16));
@@ -65,7 +66,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                 // Load offset array of 2-byte ints indicating the end offset of each variable length field
                 dataRecord.ColOffsetArray = GetOffsetArray(dataRecord.Page.PageData,
                                                            dataRecord.VariableLengthColumnCount,
-                                                           offsetStart);
+                                                           dataRecord.SlotOffset + offsetStart);
             }
             else
             {
@@ -146,7 +147,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                 {
                     field = new RecordField(column);
 
-                    UInt16 length = 0;
+                    Int16 length = 0;
                     UInt16 offset = 0;
                     bool isLob = false;
                     byte[] data = null;
@@ -195,7 +196,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                         if (variableIndex < dataRecord.ColOffsetArray.Length)
                         {
                             isLob = (dataRecord.ColOffsetArray[variableIndex] & 0x8000) == 0x8000;
-                            length = (UInt16)(RecordLoader.DecodeOffset(dataRecord.ColOffsetArray[variableIndex]) - offset);
+                            length = (Int16)(RecordLoader.DecodeOffset(dataRecord.ColOffsetArray[variableIndex]) - offset);
                         }
                         else
                         {

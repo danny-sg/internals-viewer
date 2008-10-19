@@ -221,6 +221,8 @@ namespace InternalsViewer.UI
                 Structure tableStructure = new TableStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
 
                 Record r = new DataRecord(this.Page, offset, tableStructure);
+
+                System.Diagnostics.Debug.Print(r.ToString());
             }
             else
             {

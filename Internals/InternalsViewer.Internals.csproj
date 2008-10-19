@@ -36,7 +36,6 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
@@ -54,12 +53,8 @@
     <Compile Include="DatabaseFile.cs" />
     <Compile Include="DataConverter.cs" />
     <Compile Include="IamAllocation.cs" />
-    <Compile Include="IMarkerProvider.cs" />
     <Compile Include="IndexTypes.cs" />
     <Compile Include="LogSequenceNumber.cs" />
-    <Compile Include="Markers\Marker.cs" />
-    <Compile Include="Markers\MarkerDefinition.cs" />
-    <Compile Include="Markers\MarkerType.cs" />
     <Compile Include="PageIO\DatabaseHeaderReader.cs" />
     <Compile Include="PageIO\DatabasePageReader.cs" />
     <Compile Include="PageIO\PageReader.cs" />
