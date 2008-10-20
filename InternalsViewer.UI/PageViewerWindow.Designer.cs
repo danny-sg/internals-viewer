@@ -86,6 +86,7 @@
             this.hexViewer = new InternalsViewer.UI.HexViewer();
             this.topLeftPanel = new System.Windows.Forms.Panel();
             this.offsetTable = new InternalsViewer.UI.OffsetTable();
+            this.markerKeyTable = new InternalsViewer.UI.Controls.MarkerKeyTable();
             this.flatMenuStrip1 = new InternalsViewer.UI.Controls.FlatMenuStrip();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
             this.pageToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
@@ -102,6 +103,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
+            this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.topLeftPanel.SuspendLayout();
             this.flatMenuStrip1.SuspendLayout();
@@ -756,7 +758,8 @@
             // 
             // splitContainer1.Panel2
             // 
-            this.splitContainer1.Panel2.BackColor = System.Drawing.Color.Transparent;
+            this.splitContainer1.Panel2.BackColor = System.Drawing.Color.White;
+            this.splitContainer1.Panel2.Controls.Add(this.markerKeyTable);
             this.splitContainer1.Size = new System.Drawing.Size(698, 595);
             this.splitContainer1.SplitterDistance = 301;
             this.splitContainer1.TabIndex = 247;
@@ -766,7 +769,7 @@
             this.hexViewer.AddressHex = false;
             this.hexViewer.BackColor = System.Drawing.Color.White;
             this.hexViewer.ColourAndOffsetDictionary = null;
-            this.hexViewer.Colourise = false;
+            this.hexViewer.Colourise = true;
             this.hexViewer.DataRtf = null;
             this.hexViewer.DataText = null;
             this.hexViewer.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -802,6 +805,19 @@
             this.offsetTable.Size = new System.Drawing.Size(177, 301);
             this.offsetTable.TabIndex = 0;
             this.offsetTable.SlotChanged += new System.EventHandler(this.OffsetTable_SlotChanged);
+            // 
+            // markerKeyTable
+            // 
+            this.markerKeyTable.BackColor = System.Drawing.Color.White;
+            this.markerKeyTable.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.markerKeyTable.Location = new System.Drawing.Point(0, 0);
+            this.markerKeyTable.Name = "markerKeyTable";
+            this.markerKeyTable.Padding = new System.Windows.Forms.Padding(1);
+            this.markerKeyTable.Size = new System.Drawing.Size(698, 290);
+            this.markerKeyTable.TabIndex = 0;
+            this.markerKeyTable.SelectionClicked += new System.EventHandler(this.MarkerKeyTable_SelectionClicked);
+            this.markerKeyTable.SelectionChanged += new System.EventHandler(this.MarkerKeyTable_SelectionChanged);
+            this.markerKeyTable.PageNavigated += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.MarkerKeyTable_PageNavigated);
             // 
             // flatMenuStrip1
             // 
@@ -895,6 +911,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).EndInit();
             this.splitContainer1.Panel1.ResumeLayout(false);
+            this.splitContainer1.Panel2.ResumeLayout(false);
             this.splitContainer1.ResumeLayout(false);
             this.topLeftPanel.ResumeLayout(false);
             this.flatMenuStrip1.ResumeLayout(false);
@@ -970,6 +987,7 @@
         private HexViewer hexViewer;
         private System.Windows.Forms.Panel topLeftPanel;
         private OffsetTable offsetTable;
+        private InternalsViewer.UI.Controls.MarkerKeyTable markerKeyTable;
 
     }
 }

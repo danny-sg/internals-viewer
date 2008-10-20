@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Text;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.RecordLoaders;
 using InternalsViewer.Internals.Structures;
-using System.Text;
 
 namespace InternalsViewer.Internals.Records
 {
@@ -67,5 +66,18 @@ namespace InternalsViewer.Internals.Records
             }
             return sb.ToString();
         }
+
+        [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
+        public string StatusBitsADescription
+        {
+            get { return GetRecordTypeDescription(this.RecordType) + GetStatusBitsDescription(this); }
+        }
+
+        [MarkAttribute("Status Bits B", "Maroon", "Gainsboro", true)]
+        public string StatusBitsBDescription
+        {
+            get { return ""; }
+        }
+
     }
 }

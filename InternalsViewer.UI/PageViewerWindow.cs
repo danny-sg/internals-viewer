@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -6,6 +7,7 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
+using InternalsViewer.UI.Markers;
 
 namespace InternalsViewer.UI
 {
@@ -209,9 +211,15 @@ namespace InternalsViewer.UI
             set { connectionString = value; }
         }
 
+        /// <summary>
+        /// Handles the SlotChanged event of the OffsetTable control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void OffsetTable_SlotChanged(object sender, EventArgs e)
         {
             this.LoadRecord(offsetTable.SelectedOffset);
+
         }
 
         private void LoadRecord(ushort offset)
@@ -220,14 +228,31 @@ namespace InternalsViewer.UI
             {
                 Structure tableStructure = new TableStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
 
-                Record r = new DataRecord(this.Page, offset, tableStructure);
+                Record record = new DataRecord(this.Page, offset, tableStructure);
 
-                System.Diagnostics.Debug.Print(r.ToString());
-            }
-            else
-            {
+                List<Marker> markers = MarkerBuilder.BuildMarkers((IMarkable)record);
 
+                this.hexViewer.AddMarkers(markers);
+
+                this.markerKeyTable.SetMarkers(markers);
+
+                this.hexViewer.ScrollToOffset(offset);
             }
+        }
+
+        private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
+        {
+        }
+
+        private void MarkerKeyTable_SelectionChanged(object sender, EventArgs e)
+        {
+
+            this.hexViewer.SelectMarker(markerKeyTable.SelectedMarker);
+        }
+
+        private void MarkerKeyTable_SelectionClicked(object sender, EventArgs e)
+        {
+            this.hexViewer.HideToolTip();
         }
     }
 }

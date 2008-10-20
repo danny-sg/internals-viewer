@@ -72,6 +72,7 @@
             this.dataRichTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dataRichTextBox.Location = new System.Drawing.Point(8, 0);
             this.dataRichTextBox.Name = "dataRichTextBox";
+            this.dataRichTextBox.ShowSelectionMargin = true;
             this.dataRichTextBox.Size = new System.Drawing.Size(367, 412);
             this.dataRichTextBox.TabIndex = 0;
             this.dataRichTextBox.Text = "";

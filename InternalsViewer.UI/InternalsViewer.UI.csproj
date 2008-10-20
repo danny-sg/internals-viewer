@@ -68,6 +68,12 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Controls\KeyImageColumn.cs" />
+    <Compile Include="Controls\MarkerKeyTable.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\MarkerKeyTable.designer.cs">
+      <DependentUpon>MarkerKeyTable.cs</DependentUpon>
+    </Compile>
     <Compile Include="ExtentColour.cs" />
     <Compile Include="FileInformationControl.cs">
       <SubType>UserControl</SubType>
@@ -79,9 +85,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Markers\Marker.cs" />
-    <Compile Include="Markers\MarkerDefinition.cs" />
-    <Compile Include="Markers\MarkerDefinitionStore.cs" />
-    <Compile Include="Markers\MarkerItem.cs" />
+    <Compile Include="Markers\MarkerBuilder.cs" />
     <Compile Include="Markers\MarkerType.cs" />
     <Compile Include="OffsetEventArgs.cs" />
     <Compile Include="OffsetTable.cs">
@@ -129,6 +133,10 @@
     </EmbeddedResource>
     <EmbeddedResource Include="AllocationWindow.resx">
       <DependentUpon>AllocationWindow.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\MarkerKeyTable.resx">
+      <DependentUpon>MarkerKeyTable.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="FileInformationControl.resx">

@@ -36,6 +36,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
@@ -53,6 +54,7 @@
     <Compile Include="DatabaseFile.cs" />
     <Compile Include="DataConverter.cs" />
     <Compile Include="IamAllocation.cs" />
+    <Compile Include="IMarkable.cs" />
     <Compile Include="IndexTypes.cs" />
     <Compile Include="LogSequenceNumber.cs" />
     <Compile Include="PageIO\DatabaseHeaderReader.cs" />
@@ -81,8 +83,10 @@
     <Compile Include="Records\DataRecord.cs" />
     <Compile Include="RecordLoaders\DataRecordLoader.cs" />
     <Compile Include="Records\Record.cs" />
+    <Compile Include="Records\MarkAttribute.cs" />
     <Compile Include="Records\RecordField.cs" />
     <Compile Include="RecordLoaders\RecordLoader.cs" />
+    <Compile Include="MarkItem.cs" />
     <Compile Include="Records\RecordType.cs" />
     <Compile Include="Records\SpareVector.cs" />
     <Compile Include="Structures\Column.cs" />

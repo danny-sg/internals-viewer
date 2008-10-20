@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Records
     /// <summary>
     /// Database Record Stucture
     /// </summary>
-    public abstract class Record
+    public abstract class Record: IMarkable
     {
         private Page page;
         private RecordType recordType;
@@ -37,6 +37,7 @@ namespace InternalsViewer.Internals.Records
 
         private List<RecordField> fields;
         private Structure structure;
+        private List<MarkItem> markItems = new List<MarkItem>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Record"/> class.
@@ -105,6 +106,16 @@ namespace InternalsViewer.Internals.Records
             return sb.ToString();
         }
 
+        public void Mark(string propertyName, int startPosition, int length)
+        {
+            this.markItems.Add(new MarkItem(propertyName, startPosition, length));
+        }
+
+        public void Mark(string propertyName, int startPosition, int length, int index)
+        {
+            this.markItems.Add(new MarkItem(propertyName, startPosition, length, index));
+        }
+
         /// <summary>
         /// Get a specific null bitmap value
         /// </summary>
@@ -160,6 +171,7 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the slot offset in the page
         /// </summary>
         /// <value>The slot offset.</value>
+        [MarkAttribute("Slot Offset")]
         public UInt16 SlotOffset
         {
             get { return this.slotOffset; }
@@ -174,6 +186,12 @@ namespace InternalsViewer.Internals.Records
         {
             get { return this.colOffsetArray; }
             set { this.colOffsetArray = value; }
+        }
+
+        [MarkAttribute("Column Offset Array", "Blue", "AliceBlue", true)]
+        public string ColOffsetArrayDescription
+        {
+            get { return GetArrayString(this.ColOffsetArray); }
         }
 
         /// <summary>
@@ -211,6 +229,7 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the number of columns.
         /// </summary>
         /// <value>The number of columns in the record</value>
+        [MarkAttribute("Column Count", "DarkGreen", "Gainsboro", true)]
         public Int16 ColumnCount
         {
             get { return this.columnCount; }
@@ -221,6 +240,7 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the fixed column offset.
         /// </summary>
         /// <value>The offset location of the start of the fixed column fields</value>
+        [MarkAttribute("Column Count Offset", "Blue", "Gainsboro", true)]
         public Int16 ColumnCountOffset
         {
             get { return this.columnCountOffset; }
@@ -253,6 +273,7 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the variable length column count.
         /// </summary>
         /// <value>The variable length column count.</value>
+        [MarkAttribute("Variable Length Column Count", "Black", "AliceBlue", true)]
         public UInt16 VariableLengthColumnCount
         {
             get { return this.variableLengthColumnCount; }
@@ -291,6 +312,12 @@ namespace InternalsViewer.Internals.Records
             set { this.nullBitmap = value; }
         }
 
+        [MarkAttribute("Null Bitmap", "Purple", "Gainsboro", true)]
+        public string NullBitmapDescription
+        {
+            get { return this.HasNullBitmap ? GetNullBitmapString(this.NullBitmap) : string.Empty; }
+        }
+
         /// <summary>
         /// Gets or sets a value indicating whether this instance has a uniqueifier.
         /// </summary>
@@ -323,6 +350,12 @@ namespace InternalsViewer.Internals.Records
             set { this.fields = value; }
         }
 
+        [MarkAttribute("[Field]", "Gray", "LemonChiffon", "PaleGoldenrod", true)]
+        public RecordField[] FieldsArray
+        {
+            get { return this.Fields.ToArray(); }
+        }
+
 
         /// <summary>
         /// Gets or sets the record structure.
@@ -333,6 +366,13 @@ namespace InternalsViewer.Internals.Records
             get { return structure; }
             set { structure = value; }
         }
+
+        public List<MarkItem> MarkItems
+        {
+            get { return markItems; }
+        }
+
         #endregion
+
     }
 }

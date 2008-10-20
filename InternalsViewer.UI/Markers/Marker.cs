@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 using System.Drawing;
 
 namespace InternalsViewer.UI.Markers
@@ -18,19 +16,19 @@ namespace InternalsViewer.UI.Markers
         private string value;
         private bool visible;
 
-        public Marker(MarkerDefinition definition, int startPosition, int endPosition)
+        public Marker()
         {
-            this.D
         }
 
         public Marker(string name, MarkerType markerType, int startPosition, int endPosition, Color backColour, Color foreColour)
         {
-            this.name = name;
-            this.startPosition = startPosition;
-            this.endPosition = endPosition;
-            this.backColour = backColour;
-            this.foreColour = foreColour;
+            this.Name = name;
+            this.StartPosition = startPosition;
+            this.EndPosition = endPosition;
+            this.BackColour = backColour;
+            this.ForeColour = foreColour;
             this.markerType = markerType;
+
             visible = true;
         }
 
