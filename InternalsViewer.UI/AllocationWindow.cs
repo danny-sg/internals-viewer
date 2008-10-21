@@ -138,7 +138,8 @@ namespace InternalsViewer.UI
 
         private void AllocUnitBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-
+            this.allocUnitProgressBar.Value = e.ProgressPercentage;
+            this.allocUnitToolStripStatusLabel.Text = "Loading " + (string)e.UserState;
         }
 
         private void AllocUnitBackgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)

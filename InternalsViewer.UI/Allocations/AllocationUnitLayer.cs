@@ -63,8 +63,9 @@ namespace InternalsViewer.UI.Allocations
                 }
                 else
                 {
-                    if (separateIndexes)
+                    if (separateIndexes && !string.IsNullOrEmpty(row["index_name"].ToString()))
                     {
+
                         currentObjectName = row["schema_name"] + "." + row["table_name"] + "." + row["index_name"];
                     }
                     else
