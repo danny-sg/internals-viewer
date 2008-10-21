@@ -26,7 +26,8 @@ namespace InternalsViewer.UI.Allocations
         private string indexName = string.Empty;
         private int usedPages;
         private IndexTypes indexType;
-       private int totalPages;
+        private int totalPages;
+        private string objectName;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AllocationLayer"/> class.
@@ -382,6 +383,12 @@ namespace InternalsViewer.UI.Allocations
         {
             get { return totalPages; }
             set { totalPages = value; }
+        }
+
+        public string ObjectName
+        {
+            get { return objectName; }
+            set { objectName = value; }
         }
 
         #endregion

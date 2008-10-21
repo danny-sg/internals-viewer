@@ -79,7 +79,7 @@ namespace InternalsViewer.UI
             this.dataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dataGridView.Size = new System.Drawing.Size(200, 100);
             this.dataGridView.TabIndex = 1;
-            this.dataGridView.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.dataGridView_CellFormatting);
+            this.dataGridView.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.DataGridView_CellFormatting);
             this.dataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.DataGridView_CellContentClick);
             // 
             // LsnColumn
@@ -173,7 +173,12 @@ namespace InternalsViewer.UI
 
         }
 
-        void dataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        /// <summary>
+        /// Handles the CellFormatting event of the DataGridView control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.Windows.Forms.DataGridViewCellFormattingEventArgs"/> instance containing the event data.</param>
+        void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
             bool isSystem = (bool)dataGridView["isSystemColumn", e.RowIndex].Value;
             bool isAllocation = (bool)dataGridView["isAllocationColumn", e.RowIndex].Value;
@@ -190,6 +195,11 @@ namespace InternalsViewer.UI
             e.CellStyle.SelectionForeColor = e.CellStyle.ForeColor;
         }
 
+        /// <summary>
+        /// Handles the CellContentClick event of the DataGridView control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.Windows.Forms.DataGridViewCellEventArgs"/> instance containing the event data.</param>
         private void DataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (dataGridView.Columns[e.ColumnIndex].DataPropertyName == "PageAddress" ||
@@ -203,6 +213,11 @@ namespace InternalsViewer.UI
             }
         }
 
+        /// <summary>
+        /// Called when [page clicked].
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         internal virtual void OnPageClicked(object sender, PageEventArgs e)
         {
             if (this.PageClicked != null)

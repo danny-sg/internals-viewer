@@ -125,7 +125,10 @@ namespace InternalsViewer.SSMSAddIn
                                     transactionLogTabPage.SetTransactionLogData(TransactionLog.StopMonitoring(database, startLsn, connectionString));
                                     tabControl.TabPages.Add(transactionLogTabPage);
 
-                                    transactionLogTabPage.PageClicked += delegate(object sender, PageEventArgs args) { this.windowManager.CreatePageViewerWindow(connectionString, args.Address); };
+                                    transactionLogTabPage.PageClicked += delegate(object sender, PageEventArgs args) 
+                                                                         { 
+                                                                             this.windowManager.CreatePageViewerWindow(connectionString, args.RowId); 
+                                                                         };
                                     return;
                                 }
                             }

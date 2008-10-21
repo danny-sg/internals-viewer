@@ -12,6 +12,7 @@ namespace InternalsViewer.UI
     {
         private Page page;
         public event EventHandler SlotChanged;
+        private bool slotChanging;
 
         public OffsetTable()
         {
@@ -67,7 +68,7 @@ namespace InternalsViewer.UI
 
         internal virtual void OnSlotChanged(object sender, EventArgs e)
         {
-            if (this.SlotChanged != null)
+            if (this.SlotChanged != null && !this.slotChanging)
             {
                 this.SlotChanged(sender, e);
             }
@@ -108,9 +109,38 @@ namespace InternalsViewer.UI
                 }
                 else
                 {
+
                     return 0;
                 }
             }
         }
+
+        public int SelectedSlot
+        {
+            get
+            {
+                if (this.offsetDataGridView.SelectedRows.Count > 0)
+                {
+                    return this.offsetDataGridView.SelectedRows[0].Index;
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+            set
+            {
+                if (value >= 0 && this.offsetDataGridView.Rows.Count > 0)
+                {
+                    this.offsetDataGridView.Rows[value].Selected = true;
+                    this.offsetDataGridView.FirstDisplayedScrollingRowIndex = this.offsetDataGridView.SelectedRows[0].Index;
+                }
+                else if (value < 0)
+                {
+                    this.offsetDataGridView.ClearSelection();
+                }
+            }
+        }
+
     }
 }

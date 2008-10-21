@@ -14,20 +14,8 @@ namespace InternalsViewer.UI.Controls
 
         public HexRichTextBox()
         {
-            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
-            SetStyle(ControlStyles.AllPaintingInWmPaint, true);
-        }
-
-        public Size TextSize
-        {
-            get { return textSize; }
-            set { textSize = value; }
-        }
-
-        public Size TextLineSize
-        {
-            get { return textLineSize; }
-            set { textLineSize = value; }
+            this.SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
         }
 
         protected override void WndProc(ref Message m)
@@ -36,7 +24,9 @@ namespace InternalsViewer.UI.Controls
             {
                 base.WndProc(ref m);
                 Graphics graphic = CreateGraphics();
-                OnPaint(new PaintEventArgs(graphic, ClientRectangle));
+
+                this.OnPaint(new PaintEventArgs(graphic, ClientRectangle));
+                
                 graphic.Dispose();
             }
             else
@@ -49,7 +39,7 @@ namespace InternalsViewer.UI.Controls
         {
             foreach (BlockSelection block in blocks)
             {
-                DrawBlock(e.Graphics, block);
+                this.DrawBlock(e.Graphics, block);
             }
         }
 
@@ -164,5 +154,18 @@ namespace InternalsViewer.UI.Controls
         {
             blocks.Clear();
         }
+
+        public Size TextSize
+        {
+            get { return this.textSize; }
+            set { this.textSize = value; }
+        }
+
+        public Size TextLineSize
+        {
+            get { return this.textLineSize; }
+            set { this.textLineSize = value; }
+        }
+
     }
 }

@@ -17,7 +17,6 @@ namespace InternalsViewer.UI
         private readonly ProfessionalColorTable colourTable;
         private Page page;
         private ImageList keyImages;
-        private string connectionString;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
@@ -38,36 +37,18 @@ namespace InternalsViewer.UI
             keyImages = new ImageList();
         }
 
+
         /// <summary>
-        /// Loads the page into the viewer
+        /// Loads the page.
         /// </summary>
         /// <param name="connectionString">The connection string.</param>
-        /// <param name="database">The database name.</param>
-        /// <param name="pageAddress">The page address.</param>
-        public void LoadPage(string connectionString, string database, PageAddress pageAddress)
+        /// <param name="database">The database.</param>
+        /// <param name="rowIdentifier">The row identifier.</param>
+        public void LoadPage(string connectionString, string database, RowIdentifier rowIdentifier)
         {
-            this.Page = new Page(connectionString, database, pageAddress);
-        }
+            this.Page = new Page(connectionString, database, rowIdentifier.PageAddress);
 
-        /// <summary>
-        /// Gets or sets the current Page.
-        /// </summary>
-        /// <value>The page.</value>
-        public Page Page
-        {
-            get
-            {
-                return this.page;
-            }
-            set
-            {
-                this.page = value;
-
-                if (this.page != null)
-                {
-                    this.RefreshPage(this.Page);
-                }
-            }
+            this.SetSlot(rowIdentifier.SlotId);
         }
 
         /// <summary>
@@ -164,6 +145,13 @@ namespace InternalsViewer.UI
             this.LoadPage(this.ConnectionString, new PageAddress(this.Page.PageAddress.FileId, page.PageAddress.PageId + 1));
         }
 
+        public void LoadPage(string connectionString, RowIdentifier rowIdentifier)
+        {
+            this.LoadPage(connectionString, rowIdentifier.PageAddress);
+
+            this.offsetTable.SelectedSlot = rowIdentifier.SlotId;
+        }
+
         /// <summary>
         /// Loads a page.
         /// </summary>
@@ -202,16 +190,6 @@ namespace InternalsViewer.UI
         }
 
         /// <summary>
-        /// Gets or sets the connection string.
-        /// </summary>
-        /// <value>The connection string.</value>
-        public string ConnectionString
-        {
-            get { return connectionString; }
-            set { connectionString = value; }
-        }
-
-        /// <summary>
         /// Handles the SlotChanged event of the OffsetTable control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
@@ -219,9 +197,12 @@ namespace InternalsViewer.UI
         private void OffsetTable_SlotChanged(object sender, EventArgs e)
         {
             this.LoadRecord(offsetTable.SelectedOffset);
-
         }
 
+        /// <summary>
+        /// Loads a record
+        /// </summary>
+        /// <param name="offset">The offset.</param>
         private void LoadRecord(ushort offset)
         {
             if (this.Page.Header.PageType == PageType.Data)
@@ -240,19 +221,65 @@ namespace InternalsViewer.UI
             }
         }
 
+        /// <summary>
+        /// Sets record by slot
+        /// </summary>
+        /// <param name="slotId">The slot id.</param>
+        public void SetSlot(int slotId)
+        {
+            this.offsetTable.SelectedSlot = slotId;
+        }
+
         private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
         {
         }
 
+        /// <summary>
+        /// Handles the SelectionChanged event of the MarkerKeyTable control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void MarkerKeyTable_SelectionChanged(object sender, EventArgs e)
         {
 
             this.hexViewer.SelectMarker(markerKeyTable.SelectedMarker);
         }
 
+        /// <summary>
+        /// Handles the SelectionClicked event of the MarkerKeyTable control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void MarkerKeyTable_SelectionClicked(object sender, EventArgs e)
         {
             this.hexViewer.HideToolTip();
         }
+
+        /// <summary>
+        /// Gets or sets the current Page.
+        /// </summary>
+        /// <value>The page.</value>
+        public Page Page
+        {
+            get
+            {
+                return this.page;
+            }
+            set
+            {
+                this.page = value;
+
+                if (this.page != null)
+                {
+                    this.RefreshPage(this.Page);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the connection string.
+        /// </summary>
+        /// <value>The connection string.</value>
+        public string ConnectionString { get; set; }
     }
 }

@@ -32,7 +32,7 @@ namespace InternalsViewer.SSMSAddIn
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         void AllocationWindowControl_ViewPage(object sender, PageEventArgs e)
         {
-            windowManager.CreatePageViewerWindow(e.Address);
+            windowManager.CreatePageViewerWindow(new RowIdentifier(e.Address, 0));
         }
 
         /// <summary>

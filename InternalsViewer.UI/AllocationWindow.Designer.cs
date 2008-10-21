@@ -48,12 +48,6 @@ namespace InternalsViewer.UI
             this.extentSizeToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
             this.fileDetailsToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.keysDataGridView = new System.Windows.Forms.DataGridView();
-            this.KeyColumn = new InternalsViewer.UI.Controls.KeyImageColumn();
-            this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.IndexNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.IndexTypeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.TotalPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.UsedPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.allocationBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.errorImageToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
@@ -67,6 +61,12 @@ namespace InternalsViewer.UI
             this.iconToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.allocUnitBackgroundWorker = new System.ComponentModel.BackgroundWorker();
             this.keyImageColumn1 = new InternalsViewer.UI.Controls.KeyImageColumn();
+            this.KeyColumn = new InternalsViewer.UI.Controls.KeyImageColumn();
+            this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.IndexNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.IndexTypeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.TotalPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.UsedPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.splitContainer.Panel1.SuspendLayout();
             this.splitContainer.Panel2.SuspendLayout();
             this.splitContainer.SuspendLayout();
@@ -274,55 +274,6 @@ namespace InternalsViewer.UI
             this.keysDataGridView.SelectionChanged += new System.EventHandler(this.keysDataGridView_SelectionChanged);
             this.keysDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.keysDataGridView_CellContentClick);
             // 
-            // KeyColumn
-            // 
-            this.KeyColumn.DataPropertyName = "Colour";
-            this.KeyColumn.HeaderText = "";
-            this.KeyColumn.Name = "KeyColumn";
-            this.KeyColumn.ReadOnly = true;
-            this.KeyColumn.Width = 30;
-            // 
-            // NameColumn
-            // 
-            this.NameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            this.NameColumn.DataPropertyName = "Name";
-            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
-            this.NameColumn.HeaderText = "Table";
-            this.NameColumn.Name = "NameColumn";
-            this.NameColumn.ReadOnly = true;
-            // 
-            // IndexNameColumn
-            // 
-            this.IndexNameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            this.IndexNameColumn.DataPropertyName = "IndexName";
-            this.IndexNameColumn.HeaderText = "Index";
-            this.IndexNameColumn.Name = "IndexNameColumn";
-            this.IndexNameColumn.ReadOnly = true;
-            // 
-            // IndexTypeColumn
-            // 
-            this.IndexTypeColumn.DataPropertyName = "IndexType";
-            this.IndexTypeColumn.HeaderText = "Index Type";
-            this.IndexTypeColumn.Name = "IndexTypeColumn";
-            this.IndexTypeColumn.ReadOnly = true;
-            // 
-            // TotalPagesColumn
-            // 
-            this.TotalPagesColumn.DataPropertyName = "TotalPages";
-            this.TotalPagesColumn.HeaderText = "Total Pages";
-            this.TotalPagesColumn.Name = "TotalPagesColumn";
-            this.TotalPagesColumn.ReadOnly = true;
-            this.TotalPagesColumn.Width = 90;
-            // 
-            // UsedPagesColumn
-            // 
-            this.UsedPagesColumn.DataPropertyName = "UsedPages";
-            this.UsedPagesColumn.HeaderText = "Used Pages";
-            this.UsedPagesColumn.Name = "UsedPagesColumn";
-            this.UsedPagesColumn.ReadOnly = true;
-            this.UsedPagesColumn.Width = 90;
-            // 
             // statusStrip
             // 
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -412,6 +363,55 @@ namespace InternalsViewer.UI
             this.keyImageColumn1.HeaderText = "";
             this.keyImageColumn1.Name = "keyImageColumn1";
             this.keyImageColumn1.Width = 30;
+            // 
+            // KeyColumn
+            // 
+            this.KeyColumn.DataPropertyName = "Colour";
+            this.KeyColumn.HeaderText = "";
+            this.KeyColumn.Name = "KeyColumn";
+            this.KeyColumn.ReadOnly = true;
+            this.KeyColumn.Width = 30;
+            // 
+            // NameColumn
+            // 
+            this.NameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.NameColumn.DataPropertyName = "ObjectName";
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
+            this.NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
+            this.NameColumn.HeaderText = "Table";
+            this.NameColumn.Name = "NameColumn";
+            this.NameColumn.ReadOnly = true;
+            // 
+            // IndexNameColumn
+            // 
+            this.IndexNameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.IndexNameColumn.DataPropertyName = "IndexName";
+            this.IndexNameColumn.HeaderText = "Index";
+            this.IndexNameColumn.Name = "IndexNameColumn";
+            this.IndexNameColumn.ReadOnly = true;
+            // 
+            // IndexTypeColumn
+            // 
+            this.IndexTypeColumn.DataPropertyName = "IndexType";
+            this.IndexTypeColumn.HeaderText = "Index Type";
+            this.IndexTypeColumn.Name = "IndexTypeColumn";
+            this.IndexTypeColumn.ReadOnly = true;
+            // 
+            // TotalPagesColumn
+            // 
+            this.TotalPagesColumn.DataPropertyName = "TotalPages";
+            this.TotalPagesColumn.HeaderText = "Total Pages";
+            this.TotalPagesColumn.Name = "TotalPagesColumn";
+            this.TotalPagesColumn.ReadOnly = true;
+            this.TotalPagesColumn.Width = 90;
+            // 
+            // UsedPagesColumn
+            // 
+            this.UsedPagesColumn.DataPropertyName = "UsedPages";
+            this.UsedPagesColumn.HeaderText = "Used Pages";
+            this.UsedPagesColumn.Name = "UsedPagesColumn";
+            this.UsedPagesColumn.ReadOnly = true;
+            this.UsedPagesColumn.Width = 90;
             // 
             // AllocationWindow
             // 

@@ -15,16 +15,16 @@ namespace InternalsViewer.UI
         public event EventHandler<PageEventArgs> ViewPage;
 
         protected delegate void LoadDatabaseDelegate();
-        private BufferPool bufferPool = new BufferPool();
+        private readonly BufferPool bufferPool = new BufferPool();
         private bool keyChanging;
 
         public AllocationWindow()
         {
             InitializeComponent();
 
-            SetStyle(ControlStyles.UserPaint, true);
-            SetStyle(ControlStyles.AllPaintingInWmPaint, true);
-            SetStyle(ControlStyles.DoubleBuffer, true);
+            this.SetStyle(ControlStyles.UserPaint, true);
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+            this.SetStyle(ControlStyles.DoubleBuffer, true);
 
             extentSizeToolStripComboBox.SelectedIndex = 0;
         }
@@ -434,9 +434,9 @@ namespace InternalsViewer.UI
         {
             if (!keyChanging)
             {
-                if (keysDataGridView.SelectedRows.Count > 0)
+                if (this.keysDataGridView.SelectedRows.Count > 0)
                 {
-                    keysDataGridView.ClearSelection();
+                    this.keysDataGridView.ClearSelection();
                 }
             }
 

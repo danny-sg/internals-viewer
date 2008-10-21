@@ -54,7 +54,7 @@ namespace InternalsViewer.Internals.Pages
         {
             int fileId;
             int pageId;
-            int slot = 0;
+            Int16 slot = 0;
 
             bool parsed;
 
@@ -75,7 +75,7 @@ namespace InternalsViewer.Internals.Pages
 
             if (splitAddress.Length > 2)
             {
-                parsed = parsed & int.TryParse(splitAddress[2], out slot);
+                parsed = parsed & short.TryParse(splitAddress[2], out slot);
             }
 
             if (parsed)

@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Structures;
 using Microsoft.SqlServer.Management.Smo;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
 using Microsoft.SqlServer.Management.UI.VSIntegration.ObjectExplorer;
+using Microsoft.SqlServer.Management.Sdk.Sfc;
 
 namespace InternalsViewer.SSMSAddIn
 {
@@ -51,7 +52,7 @@ namespace InternalsViewer.SSMSAddIn
             {
                 string connectionString = this.GetConnectionString(e.Node.Parent.Parent);
 
-                windowManager.CreatePageViewerWindow(connectionString, (PageAddress)e.Node.Tag);
+                windowManager.CreatePageViewerWindow(connectionString, new RowIdentifier((PageAddress)e.Node.Tag, 0));
             }
 
         }

@@ -61,9 +61,9 @@ namespace InternalsViewer.SSMSAddIn
         /// </summary>
         /// <param name="pageAddress">The page address.</param>
         /// <returns></returns>
-        public PageViewerContainer CreatePageViewerWindow(PageAddress pageAddress)
+        public PageViewerContainer CreatePageViewerWindow(RowIdentifier rowIdentifier)
         {
-            return CreatePageViewerWindow(InternalsViewerConnection.CurrentConnection().ConnectionString, pageAddress);
+            return CreatePageViewerWindow(InternalsViewerConnection.CurrentConnection().ConnectionString, rowIdentifier);
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace InternalsViewer.SSMSAddIn
         /// <param name="connectionString">The connection string.</param>
         /// <param name="pageAddress">The page address.</param>
         /// <returns></returns>
-        public PageViewerContainer CreatePageViewerWindow(string connectionString, PageAddress pageAddress)
+        public PageViewerContainer CreatePageViewerWindow(string connectionString, RowIdentifier rowIdentifier)
         {
             Guid id = Guid.NewGuid();
 
@@ -86,7 +86,7 @@ namespace InternalsViewer.SSMSAddIn
                 Window toolWindow = windows2.CreateToolWindow2(this.addInInstance,
                                                                asm.Location,
                                                                "InternalsViewer.SSMSAddIn.PageViewerContainer",
-                                                               "Page Viewer " + pageAddress.ToString(), "{" + id.ToString() + "}",
+                                                               "Page Viewer " + rowIdentifier.PageAddress.ToString(), "{" + id.ToString() + "}",
                                                                ref controlObject);
 
                 // Make the window a tabbed document
@@ -96,9 +96,12 @@ namespace InternalsViewer.SSMSAddIn
                 PageViewerContainer pageViewerContainer = (controlObject as PageViewerContainer);
 
                 pageViewerContainer.Window = toolWindow;
-                pageViewerContainer.PageViewerWindow.LoadPage(connectionString, pageAddress);
+
+                pageViewerContainer.PageViewerWindow.LoadPage(connectionString, rowIdentifier);
 
                 toolWindow.Visible = true;
+
+                pageViewerContainer.PageViewerWindow.SetSlot(rowIdentifier.SlotId);
 
                 return pageViewerContainer;
             }

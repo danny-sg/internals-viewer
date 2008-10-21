@@ -78,6 +78,8 @@ namespace InternalsViewer.UI.Allocations
                     layer = new AllocationLayer();
 
                     layer.Name = currentObjectName;
+                    layer.ObjectName = row["schema_name"] + "." + row["table_name"];
+
                     if (!Convert.ToBoolean(row["system"]))
                     {
                         layer.IndexName = row["index_name"].ToString();
