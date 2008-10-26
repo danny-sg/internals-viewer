@@ -10,12 +10,17 @@ namespace InternalsViewer.UI.Markers
     /// </summary>
     class MarkerBuilder
     {
+        public static List<Marker> BuildMarkers(Markable markedObject)
+        {
+            return BuildMarkers(markedObject, string.Empty);
+        }
+
         /// <summary>
         /// Builds the markers using an IMarkable collection and reflection to access the property values
         /// </summary>
         /// <param name="markedObject">The marked object.</param>
         /// <returns></returns>
-        public static List<Marker> BuildMarkers(IMarkable markedObject)
+        public static List<Marker> BuildMarkers(Markable markedObject, string prefix)
         {
             bool alternate = false;
 
@@ -35,7 +40,7 @@ namespace InternalsViewer.UI.Markers
                 {
                     MarkAttribute attribute = (description[0] as MarkAttribute);
 
-                    marker.Name = attribute.Description;
+                    marker.Name = prefix + attribute.Description;
                     marker.ForeColour = attribute.ForeColour;
 
                     marker.BackColour = alternate ? attribute.AlternateBackColour : attribute.BackColour;
@@ -59,17 +64,15 @@ namespace InternalsViewer.UI.Markers
                 {
                     object[] array = (object[])property.GetValue(markedObject, null);
 
-                    // Assume objects in the array always have a Name and Value property
-                    PropertyInfo nameInfo = array[item.Index].GetType().GetProperty("Name");
-                    PropertyInfo valueInfo = array[item.Index].GetType().GetProperty("Value");
+                    Markable markableItem = (Markable)array[item.Index];
 
-                    marker.Name = nameInfo.GetValue(array[item.Index], null).ToString();
-                    object value = valueInfo.GetValue(array[item.Index], null);
-
-                    SetValue(markers, marker, value);
+                    markers.AddRange(BuildMarkers(markableItem, item.Prefix));
                 }
 
-                markers.Add(marker);
+                if (item.StartPosition > 0)
+                {
+                    markers.Add(marker);
+                }
             }
             // Sort the markers in order of their positions
             markers.Sort(delegate(Marker marker1, Marker marker2) { return marker1.StartPosition.CompareTo(marker2.StartPosition); });
@@ -105,9 +108,13 @@ namespace InternalsViewer.UI.Markers
         /// <param name="value">The value.</param>
         private static void SetValue(List<Marker> markers, Marker marker, object value)
         {
-            if (value is IMarkable)
+            if (value is Markable)
             {
-                markers.AddRange(BuildMarkers((IMarkable)value));
+                markers.AddRange(BuildMarkers((Markable)value));
+            }
+            else if (value is byte[])
+            {
+                marker.Value = DataConverter.BinaryToString((byte[])value, System.Data.SqlDbType.VarChar, 0, 0);
             }
             else
             {

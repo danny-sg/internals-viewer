@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.21022</ProductVersion>
+    <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -44,6 +44,7 @@
     <Compile Include="BlobPointers\BlobChildLinks.cs" />
     <Compile Include="BlobPointers\BlobField.cs" />
     <Compile Include="BlobPointers\BlobFieldType.cs" />
+    <Compile Include="BlobPointers\Field.cs" />
     <Compile Include="BlobPointers\OverflowField.cs" />
     <Compile Include="BlobPointers\PointerField.cs" />
     <Compile Include="BlobPointers\RootField.cs" />
@@ -54,9 +55,9 @@
     <Compile Include="DatabaseFile.cs" />
     <Compile Include="DataConverter.cs" />
     <Compile Include="IamAllocation.cs" />
-    <Compile Include="IMarkable.cs" />
     <Compile Include="IndexTypes.cs" />
     <Compile Include="LogSequenceNumber.cs" />
+    <Compile Include="Markable.cs" />
     <Compile Include="PageIO\DatabaseHeaderReader.cs" />
     <Compile Include="PageIO\DatabasePageReader.cs" />
     <Compile Include="PageIO\PageReader.cs" />
@@ -78,7 +79,10 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="InternalsViewerConnection.cs" />
+    <Compile Include="RecordLoaders\BlobRecordLoader.cs" />
     <Compile Include="RecordLoaders\SparseVectorLoader.cs" />
+    <Compile Include="Records\BlobRecord.cs" />
+    <Compile Include="Records\BlobType.cs" />
     <Compile Include="Records\ColumnDescriptor.cs" />
     <Compile Include="Records\DataRecord.cs" />
     <Compile Include="RecordLoaders\DataRecordLoader.cs" />

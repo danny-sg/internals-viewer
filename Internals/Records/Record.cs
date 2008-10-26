@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Records
     /// <summary>
     /// Database Record Stucture
     /// </summary>
-    public abstract class Record: IMarkable
+    public abstract class Record: Markable
     {
         private Page page;
         private RecordType recordType;
@@ -37,7 +37,6 @@ namespace InternalsViewer.Internals.Records
 
         private List<RecordField> fields;
         private Structure structure;
-        private List<MarkItem> markItems = new List<MarkItem>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Record"/> class.
@@ -106,16 +105,6 @@ namespace InternalsViewer.Internals.Records
             return sb.ToString();
         }
 
-        public void Mark(string propertyName, int startPosition, int length)
-        {
-            this.markItems.Add(new MarkItem(propertyName, startPosition, length));
-        }
-
-        public void Mark(string propertyName, int startPosition, int length, int index)
-        {
-            this.markItems.Add(new MarkItem(propertyName, startPosition, length, index));
-        }
-
         /// <summary>
         /// Get a specific null bitmap value
         /// </summary>
@@ -144,8 +133,6 @@ namespace InternalsViewer.Internals.Records
                 return this.NullBitmap.Get(column.NullBit - 1);
             }
         }
-
-        #region Properties
 
         /// <summary>
         /// Gets or sets the record's underlying Page
@@ -350,7 +337,6 @@ namespace InternalsViewer.Internals.Records
             set { this.fields = value; }
         }
 
-        [MarkAttribute("[Field]", "Gray", "LemonChiffon", "PaleGoldenrod", true)]
         public RecordField[] FieldsArray
         {
             get { return this.Fields.ToArray(); }
@@ -366,13 +352,5 @@ namespace InternalsViewer.Internals.Records
             get { return structure; }
             set { structure = value; }
         }
-
-        public List<MarkItem> MarkItems
-        {
-            get { return markItems; }
-        }
-
-        #endregion
-
     }
 }

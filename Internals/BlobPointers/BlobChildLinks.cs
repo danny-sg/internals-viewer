@@ -1,12 +1,19 @@
 ﻿using InternalsViewer.Internals.Pages;
+using System.Collections.Generic;
+using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.BlobPointers
 {
-    public class BlobChildLink
+    public class BlobChildLink: Markable
     {
         private int length;
         private int offset;
         private RowIdentifier rowIdentifier;
+        private List<MarkItem> markItems = new List<MarkItem>();
+
+        public BlobChildLink()
+        {
+        }
 
         public BlobChildLink(RowIdentifier rowIdentifier, int offset, int length)
         {
@@ -15,13 +22,14 @@ namespace InternalsViewer.Internals.BlobPointers
             this.Length = length;
         }
 
+        [MarkAttribute("Row Identifier", "DarkMagenta", "Thistle", true)]
         public RowIdentifier RowIdentifier
         {
             get { return this.rowIdentifier; }
             set { this.rowIdentifier = value; }
         }
 
-        // TODO: Can these be changed to Int16?
+        [MarkAttribute("Offset", "Blue", "Thistle", true)]
         public int Offset
         {
             get { return this.offset; }

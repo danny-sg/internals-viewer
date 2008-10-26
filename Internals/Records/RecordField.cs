@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Records
     /// <summary>
     /// Record field
     /// </summary>
-    public class RecordField
+    public class RecordField: Field
     {
         private BlobField blobInlineRoot;
         private Column column;
@@ -84,6 +84,7 @@ namespace InternalsViewer.Internals.Records
             get { return this.Column.ColumnName; }
         }
 
+        [MarkAttribute("", "Gray", "LemonChiffon", "PaleGoldenrod", true)]
         public string Value
         {
             get { return DataConverter.BinaryToString(this.Data, this.Column.DataType, this.Column.Precision, this.Column.Scale); }

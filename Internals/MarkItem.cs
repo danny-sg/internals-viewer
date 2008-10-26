@@ -6,6 +6,7 @@ namespace InternalsViewer.Internals
         private int startPosition;
         private int length;
         private string propertyName;
+        private string prefix;
         private int index = -1;
 
         public MarkItem(string propertName, int startPosition, int length)
@@ -21,6 +22,14 @@ namespace InternalsViewer.Internals
             this.Index = index;
         }
 
+        public MarkItem(string propertyName, string prefix, int index)
+        {
+            this.PropertyName = propertyName;
+            this.Prefix = prefix;
+            this.Index = index;
+            this.StartPosition = -1;
+
+        }
 
         public int StartPosition
         {
@@ -44,6 +53,12 @@ namespace InternalsViewer.Internals
         {
             get { return this.index; }
             set { this.index = value; }
+        }
+
+        public string Prefix
+        {
+            get { return prefix; }
+            set { prefix = value; }
         }
     }
 }

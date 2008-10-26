@@ -1,10 +1,10 @@
-﻿
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using InternalsViewer.Internals.BlobPointers;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
+
 namespace InternalsViewer.Internals.RecordLoaders
 {
     public class DataRecordLoader : RecordLoader
@@ -37,7 +37,7 @@ namespace InternalsViewer.Internals.RecordLoaders
             // Column count 2-byte int located at the column count offset
             int columnCountPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset;
 
-            dataRecord.ColumnCount = BitConverter.ToInt16(dataRecord.Page.PageData,columnCountPosition);
+            dataRecord.ColumnCount = BitConverter.ToInt16(dataRecord.Page.PageData, columnCountPosition);
 
             dataRecord.Mark("ColumnCount", columnCountPosition, sizeof(Int16));
 
@@ -230,7 +230,9 @@ namespace InternalsViewer.Internals.RecordLoaders
                     field.Data = data;
                     field.VariableOffset = variableIndex;
 
-                    dataRecord.Mark("FieldsArray", dataRecord.SlotOffset + field.Offset, field.Length, index);
+                    field.Mark("Value", dataRecord.SlotOffset + field.Offset, field.Length);
+
+                    dataRecord.Mark("FieldsArray", field.Name, index);
                     index++;
 
                     if (isLob)

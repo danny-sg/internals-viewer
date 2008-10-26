@@ -3,7 +3,7 @@ using System.Text;
 
 namespace InternalsViewer.Internals.BlobPointers
 {
-    public abstract class BlobField
+    public abstract class BlobField : Field
     {
         private byte[] data;
         private Collection<BlobChildLink> links;

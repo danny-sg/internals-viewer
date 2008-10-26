@@ -205,13 +205,29 @@ namespace InternalsViewer.UI
         /// <param name="offset">The offset.</param>
         private void LoadRecord(ushort offset)
         {
-            if (this.Page.Header.PageType == PageType.Data)
+            Record record = null;
+
+            switch (this.Page.Header.PageType)
             {
-                Structure tableStructure = new TableStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
+                case PageType.Data:
 
-                Record record = new DataRecord(this.Page, offset, tableStructure);
+                    Structure tableStructure = new TableStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
 
-                List<Marker> markers = MarkerBuilder.BuildMarkers((IMarkable)record);
+                    record = new DataRecord(this.Page, offset, tableStructure);
+
+                    break;
+
+                case PageType.Lob3:
+                case PageType.Lob4:
+
+                    record = new BlobRecord(this.Page, offset);
+
+                    break;
+            }
+
+            if (record != null)
+            {
+                List<Marker> markers = MarkerBuilder.BuildMarkers((Markable)record);
 
                 this.hexViewer.AddMarkers(markers);
 
