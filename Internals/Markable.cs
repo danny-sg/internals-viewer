@@ -23,6 +23,12 @@ namespace InternalsViewer.Internals
             this.markItems.Add(new MarkItem(propertyName, prefix, index));
         }
 
+        public void Mark(string propertyName)
+        {
+            this.markItems.Add(new MarkItem(propertyName, string.Empty, -1));
+        }
+
+
         public List<MarkItem> MarkItems
         {
             get { return this.markItems; }

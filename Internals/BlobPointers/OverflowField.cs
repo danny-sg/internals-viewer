@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using InternalsViewer.Internals.Pages;
+using System.Collections.Generic;
 
 namespace InternalsViewer.Internals.BlobPointers
 {
@@ -17,8 +18,8 @@ namespace InternalsViewer.Internals.BlobPointers
         private byte unused;
         private short updateSeq;
 
-        public OverflowField(byte[] data)
-            : base(data)
+        public OverflowField(byte[] data, int offset)
+            : base(data, offset)
         {
             this.unused = data[UnusedOffset];
             this.Level = data[LevelOffset];
@@ -28,7 +29,7 @@ namespace InternalsViewer.Internals.BlobPointers
 
         protected override void LoadLinks()
         {
-            this.Links = new Collection<BlobChildLink>();
+            this.Links = new List<BlobChildLink>();
             RowIdentifier rowId;
             byte[] rowIdData;
 

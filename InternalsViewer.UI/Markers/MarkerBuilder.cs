@@ -2,6 +2,7 @@
 using System.Reflection;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.UI.Markers
 {
@@ -58,15 +59,13 @@ namespace InternalsViewer.UI.Markers
                 {
                     object value = property.GetValue(markedObject, null);
 
-                    SetValue(markers, marker, value);
+                    SetValue(markers, marker, value, prefix + item.Prefix);
                 }
                 else
                 {
                     object[] array = (object[])property.GetValue(markedObject, null);
 
-                    Markable markableItem = (Markable)array[item.Index];
-
-                    markers.AddRange(BuildMarkers(markableItem, item.Prefix));
+                    SetValue(markers, marker, array[item.Index], prefix + item.Prefix);
                 }
 
                 if (item.StartPosition > 0)
@@ -106,11 +105,11 @@ namespace InternalsViewer.UI.Markers
         /// <param name="markers">The markers.</param>
         /// <param name="marker">The marker.</param>
         /// <param name="value">The value.</param>
-        private static void SetValue(List<Marker> markers, Marker marker, object value)
+        private static void SetValue(List<Marker> markers, Marker marker, object value, string prefix)
         {
             if (value is Markable)
             {
-                markers.AddRange(BuildMarkers((Markable)value));
+                markers.AddRange(BuildMarkers((Markable)value, prefix));
             }
             else if (value is byte[])
             {
@@ -119,6 +118,11 @@ namespace InternalsViewer.UI.Markers
             else
             {
                 marker.Value = value.ToString();
+
+                if (value is PageAddress || value is RowIdentifier)
+                {
+                    marker.DataType = MarkerType.PageAddress;
+                }
             }
         }
     }

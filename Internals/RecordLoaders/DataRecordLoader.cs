@@ -230,15 +230,18 @@ namespace InternalsViewer.Internals.RecordLoaders
                     field.Data = data;
                     field.VariableOffset = variableIndex;
 
-                    field.Mark("Value", dataRecord.SlotOffset + field.Offset, field.Length);
-
-                    dataRecord.Mark("FieldsArray", field.Name, index);
-                    index++;
-
                     if (isLob)
                     {
-                        LoadLobField(field, data);
+                        LoadLobField(field, data, dataRecord.SlotOffset + offset);
                     }
+                    else
+                    {
+                        field.Mark("Value", dataRecord.SlotOffset + field.Offset, field.Length);
+                    }
+
+                    dataRecord.Mark("FieldsArray", field.Name + " - ", index);
+                    
+                    index++;
 
                     columnValues.Add(field);
                 }
@@ -252,24 +255,26 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// </summary>
         /// <param name="field">The field.</param>
         /// <param name="data">The data.</param>
-        private static void LoadLobField(RecordField field, byte[] data)
+        private static void LoadLobField(RecordField field, byte[] data, int offset)
         {
+            field.Mark("BlobInlineRoot");
+
             // First byte gives the Blob field type
             switch ((BlobFieldType)data[0])
             {
                 case BlobFieldType.LobPointer:
 
-                    field.BlobInlineRoot = new PointerField(data);
+                    field.BlobInlineRoot = new PointerField(data, offset);
                     break;
 
                 case BlobFieldType.LobRoot:
 
-                    field.BlobInlineRoot = new RootField(data);
+                    field.BlobInlineRoot = new RootField(data, offset);
                     break;
 
                 case BlobFieldType.RowOverflow:
 
-                    field.BlobInlineRoot = new OverflowField(data);
+                    field.BlobInlineRoot = new OverflowField(data, offset);
                     break;
             }
         }

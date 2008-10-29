@@ -248,6 +248,7 @@ namespace InternalsViewer.UI
 
         private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
         {
+            LoadPage(this.ConnectionString,e.RowId);
         }
 
         /// <summary>
@@ -257,7 +258,6 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void MarkerKeyTable_SelectionChanged(object sender, EventArgs e)
         {
-
             this.hexViewer.SelectMarker(markerKeyTable.SelectedMarker);
         }
 

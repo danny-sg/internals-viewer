@@ -1,23 +1,31 @@
 ﻿using System.Collections.ObjectModel;
 using System.Text;
+using System;
+using System.Collections.Generic;
+using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.BlobPointers
 {
     public abstract class BlobField : Field
     {
         private byte[] data;
-        private Collection<BlobChildLink> links;
+        private List<BlobChildLink> links;
         private BlobFieldType pointerType;
         private int timestamp;
+        private int offset;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BlobField"/> class.
         /// </summary>
         /// <param name="data">The data.</param>
-        public BlobField(byte[] data)
+        public BlobField(byte[] data, int offset)
         {
             this.data = data;
             this.pointerType = (BlobFieldType)data[0];
+            this.Offset = offset;
+
+            this.Mark("PointerType", offset, sizeof(byte));
+            
             this.LoadLinks();
         }
 
@@ -25,6 +33,7 @@ namespace InternalsViewer.Internals.BlobPointers
         /// Gets or sets the timestamp.
         /// </summary>
         /// <value>The timestamp.</value>
+        [MarkAttribute("Timestamp", "DarkGreen", "PeachPuff", true)]
         public int Timestamp
         {
             get { return this.timestamp; }
@@ -35,10 +44,16 @@ namespace InternalsViewer.Internals.BlobPointers
         /// Gets or sets the links.
         /// </summary>
         /// <value>The links.</value>
-        public Collection<BlobChildLink> Links
+        public List<BlobChildLink> Links
         {
             get { return this.links; }
             set { this.links = value; }
+        }
+
+        [MarkAttribute("Row Id", "Blue", "PeachPuff", true)]
+        public BlobChildLink[] LinksArray
+        {
+            get { return this.Links.ToArray(); }
         }
 
         /// <summary>
@@ -55,10 +70,17 @@ namespace InternalsViewer.Internals.BlobPointers
         /// Gets or sets the type of the blob pointer.
         /// </summary>
         /// <value>The type of the blob pointer.</value>
+        [MarkAttribute("Type", "DarkGreen", "PeachPuff", true)]
         public BlobFieldType PointerType
         {
             get { return this.pointerType; }
             set { this.pointerType = value; }
+        }
+        
+        public int Offset
+        {
+            get { return offset; }
+            set { offset = value; }
         }
 
         /// <summary>

@@ -382,7 +382,7 @@ namespace InternalsViewer.UI
 
         private void fileDetailsToolStripButton_Click(object sender, EventArgs e)
         {
-            this.allocationContainer.ShowFileInformation = fileDetailsToolStripButton.Checked;
+            //this.allocationContainer.ShowFileInformation = fileDetailsToolStripButton.Checked;
             this.allocationContainer.CreateAllocationMaps(this.allocationContainer.AllocationMaps);
             LoadDatabase();
         }
@@ -447,6 +447,21 @@ namespace InternalsViewer.UI
         private void allocationContainer_PageClicked(object sender, PageEventArgs e)
         {
             this.OnViewPage(sender, e);
+        }
+
+        private void pageToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Return)
+            {
+                try
+                {
+                    this.OnViewPage(this, new PageEventArgs(new RowIdentifier(PageAddress.Parse(pageToolStripTextBox.Text),0), e.Shift));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.Print(ex.ToString());
+                }
+            }
         }
     }
 }

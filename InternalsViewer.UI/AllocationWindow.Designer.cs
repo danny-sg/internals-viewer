@@ -30,7 +30,6 @@ namespace InternalsViewer.UI
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AllocationWindow));
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
@@ -46,8 +45,15 @@ namespace InternalsViewer.UI
             this.bufferPoolToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.extentSizeToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
-            this.fileDetailsToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.pageToolStripTextBox = new InternalsViewer.UI.Controls.PageAddressTextBox();
+            this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
             this.keysDataGridView = new System.Windows.Forms.DataGridView();
+            this.KeyColumn = new InternalsViewer.UI.Controls.KeyImageColumn();
+            this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.IndexNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.IndexTypeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.TotalPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.UsedPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.allocationBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.errorImageToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
@@ -61,12 +67,6 @@ namespace InternalsViewer.UI
             this.iconToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.allocUnitBackgroundWorker = new System.ComponentModel.BackgroundWorker();
             this.keyImageColumn1 = new InternalsViewer.UI.Controls.KeyImageColumn();
-            this.KeyColumn = new InternalsViewer.UI.Controls.KeyImageColumn();
-            this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.IndexNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.IndexTypeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.TotalPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.UsedPagesColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.splitContainer.Panel1.SuspendLayout();
             this.splitContainer.Panel2.SuspendLayout();
             this.splitContainer.SuspendLayout();
@@ -127,7 +127,8 @@ namespace InternalsViewer.UI
             this.bufferPoolToolStripButton,
             this.toolStripSeparator2,
             this.extentSizeToolStripComboBox,
-            this.fileDetailsToolStripButton});
+            this.pageToolStripTextBox,
+            this.toolStripLabel2});
             this.flatMenuStrip.Location = new System.Drawing.Point(0, 0);
             this.flatMenuStrip.Name = "flatMenuStrip";
             this.flatMenuStrip.Padding = new System.Windows.Forms.Padding(4, 0, 1, 0);
@@ -206,16 +207,23 @@ namespace InternalsViewer.UI
             this.extentSizeToolStripComboBox.Size = new System.Drawing.Size(100, 30);
             this.extentSizeToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.extentSizeToolStripComboBox_SelectedIndexChanged);
             // 
-            // fileDetailsToolStripButton
+            // pageToolStripTextBox
             // 
-            this.fileDetailsToolStripButton.CheckOnClick = true;
-            this.fileDetailsToolStripButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.fileDetailsToolStripButton.Image = ((System.Drawing.Image)(resources.GetObject("fileDetailsToolStripButton.Image")));
-            this.fileDetailsToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.fileDetailsToolStripButton.Name = "fileDetailsToolStripButton";
-            this.fileDetailsToolStripButton.Size = new System.Drawing.Size(62, 27);
-            this.fileDetailsToolStripButton.Text = "File Details";
-            this.fileDetailsToolStripButton.Click += new System.EventHandler(this.fileDetailsToolStripButton_Click);
+            this.pageToolStripTextBox.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.pageToolStripTextBox.AutoSize = false;
+            this.pageToolStripTextBox.ForeColor = System.Drawing.SystemColors.WindowText;
+            this.pageToolStripTextBox.Name = "pageToolStripTextBox";
+            this.pageToolStripTextBox.Padding = new System.Windows.Forms.Padding(0, 0, 2, 0);
+            this.pageToolStripTextBox.Size = new System.Drawing.Size(90, 28);
+            this.pageToolStripTextBox.Text = "(File Id:Page Id)";
+            this.pageToolStripTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.pageToolStripTextBox_KeyDown);
+            // 
+            // toolStripLabel2
+            // 
+            this.toolStripLabel2.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.toolStripLabel2.Name = "toolStripLabel2";
+            this.toolStripLabel2.Size = new System.Drawing.Size(35, 27);
+            this.toolStripLabel2.Text = "Page:";
             // 
             // keysDataGridView
             // 
@@ -273,6 +281,55 @@ namespace InternalsViewer.UI
             this.keysDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.keysDataGridView_CellClick);
             this.keysDataGridView.SelectionChanged += new System.EventHandler(this.keysDataGridView_SelectionChanged);
             this.keysDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.keysDataGridView_CellContentClick);
+            // 
+            // KeyColumn
+            // 
+            this.KeyColumn.DataPropertyName = "Colour";
+            this.KeyColumn.HeaderText = "";
+            this.KeyColumn.Name = "KeyColumn";
+            this.KeyColumn.ReadOnly = true;
+            this.KeyColumn.Width = 30;
+            // 
+            // NameColumn
+            // 
+            this.NameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.NameColumn.DataPropertyName = "ObjectName";
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
+            this.NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
+            this.NameColumn.HeaderText = "Table";
+            this.NameColumn.Name = "NameColumn";
+            this.NameColumn.ReadOnly = true;
+            // 
+            // IndexNameColumn
+            // 
+            this.IndexNameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.IndexNameColumn.DataPropertyName = "IndexName";
+            this.IndexNameColumn.HeaderText = "Index";
+            this.IndexNameColumn.Name = "IndexNameColumn";
+            this.IndexNameColumn.ReadOnly = true;
+            // 
+            // IndexTypeColumn
+            // 
+            this.IndexTypeColumn.DataPropertyName = "IndexType";
+            this.IndexTypeColumn.HeaderText = "Index Type";
+            this.IndexTypeColumn.Name = "IndexTypeColumn";
+            this.IndexTypeColumn.ReadOnly = true;
+            // 
+            // TotalPagesColumn
+            // 
+            this.TotalPagesColumn.DataPropertyName = "TotalPages";
+            this.TotalPagesColumn.HeaderText = "Total Pages";
+            this.TotalPagesColumn.Name = "TotalPagesColumn";
+            this.TotalPagesColumn.ReadOnly = true;
+            this.TotalPagesColumn.Width = 90;
+            // 
+            // UsedPagesColumn
+            // 
+            this.UsedPagesColumn.DataPropertyName = "UsedPages";
+            this.UsedPagesColumn.HeaderText = "Used Pages";
+            this.UsedPagesColumn.Name = "UsedPagesColumn";
+            this.UsedPagesColumn.ReadOnly = true;
+            this.UsedPagesColumn.Width = 90;
             // 
             // statusStrip
             // 
@@ -364,55 +421,6 @@ namespace InternalsViewer.UI
             this.keyImageColumn1.Name = "keyImageColumn1";
             this.keyImageColumn1.Width = 30;
             // 
-            // KeyColumn
-            // 
-            this.KeyColumn.DataPropertyName = "Colour";
-            this.KeyColumn.HeaderText = "";
-            this.KeyColumn.Name = "KeyColumn";
-            this.KeyColumn.ReadOnly = true;
-            this.KeyColumn.Width = 30;
-            // 
-            // NameColumn
-            // 
-            this.NameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            this.NameColumn.DataPropertyName = "ObjectName";
-            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
-            this.NameColumn.HeaderText = "Table";
-            this.NameColumn.Name = "NameColumn";
-            this.NameColumn.ReadOnly = true;
-            // 
-            // IndexNameColumn
-            // 
-            this.IndexNameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            this.IndexNameColumn.DataPropertyName = "IndexName";
-            this.IndexNameColumn.HeaderText = "Index";
-            this.IndexNameColumn.Name = "IndexNameColumn";
-            this.IndexNameColumn.ReadOnly = true;
-            // 
-            // IndexTypeColumn
-            // 
-            this.IndexTypeColumn.DataPropertyName = "IndexType";
-            this.IndexTypeColumn.HeaderText = "Index Type";
-            this.IndexTypeColumn.Name = "IndexTypeColumn";
-            this.IndexTypeColumn.ReadOnly = true;
-            // 
-            // TotalPagesColumn
-            // 
-            this.TotalPagesColumn.DataPropertyName = "TotalPages";
-            this.TotalPagesColumn.HeaderText = "Total Pages";
-            this.TotalPagesColumn.Name = "TotalPagesColumn";
-            this.TotalPagesColumn.ReadOnly = true;
-            this.TotalPagesColumn.Width = 90;
-            // 
-            // UsedPagesColumn
-            // 
-            this.UsedPagesColumn.DataPropertyName = "UsedPages";
-            this.UsedPagesColumn.HeaderText = "Used Pages";
-            this.UsedPagesColumn.Name = "UsedPagesColumn";
-            this.UsedPagesColumn.ReadOnly = true;
-            this.UsedPagesColumn.Width = 90;
-            // 
             // AllocationWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -458,7 +466,6 @@ namespace InternalsViewer.UI
         private System.Windows.Forms.ToolStripStatusLabel AllocUnitLabel;
         private System.Windows.Forms.ToolStripStatusLabel pageAddressToolStripStatusLabel;
         private System.Windows.Forms.ToolStripStatusLabel iconToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripButton fileDetailsToolStripButton;
         private System.Windows.Forms.BindingSource allocationBindingSource;
         private System.Windows.Forms.DataGridView keysDataGridView;
         private KeyImageColumn keyImageColumn1;
@@ -468,5 +475,7 @@ namespace InternalsViewer.UI
         private System.Windows.Forms.DataGridViewTextBoxColumn IndexTypeColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn TotalPagesColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn UsedPagesColumn;
+        private PageAddressTextBox pageToolStripTextBox;
+        private System.Windows.Forms.ToolStripLabel toolStripLabel2;
     }
 }

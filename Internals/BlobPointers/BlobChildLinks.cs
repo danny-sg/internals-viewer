@@ -36,6 +36,7 @@ namespace InternalsViewer.Internals.BlobPointers
             set { this.offset = value; }
         }
 
+        [MarkAttribute("Length", "Red", "Thistle", true)]
         public int Length
         {
             get { return this.length; }
