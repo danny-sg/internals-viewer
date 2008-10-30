@@ -211,7 +211,7 @@ namespace InternalsViewer.UI
             // 
             this.pageToolStripTextBox.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
             this.pageToolStripTextBox.AutoSize = false;
-            this.pageToolStripTextBox.ForeColor = System.Drawing.SystemColors.WindowText;
+            this.pageToolStripTextBox.ForeColor = System.Drawing.SystemColors.InactiveCaption;
             this.pageToolStripTextBox.Name = "pageToolStripTextBox";
             this.pageToolStripTextBox.Padding = new System.Windows.Forms.Padding(0, 0, 2, 0);
             this.pageToolStripTextBox.Size = new System.Drawing.Size(90, 28);
