@@ -4,11 +4,19 @@ using System.Collections.Generic;
 using InternalsViewer.Internals.BlobPointers;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
+using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.RecordLoaders
 {
+    /// <summary>
+    /// Loads a DataRecord object
+    /// </summary>
     public class DataRecordLoader : RecordLoader
     {
+        /// <summary>
+        /// Loads the specified data record.
+        /// </summary>
+        /// <param name="dataRecord">The data record.</param>
         internal static void Load(DataRecord dataRecord)
         {
             if (dataRecord.Structure.Columns.Count == 0)
@@ -173,7 +181,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                     {
                         // Can't remember what needs to happen here, will fix when I revisit the sparse column support
                     }
-                    else if (column.LeafOffset >= 0 && column.LeafOffset < 8192)
+                    else if (column.LeafOffset >= 0 && column.LeafOffset < Page.Size)
                     {
                         // Fixed length field
 
@@ -202,11 +210,8 @@ namespace InternalsViewer.Internals.RecordLoaders
                         }
                         else
                         {
-                            if (variableIndex < dataRecord.ColOffsetArray.Length)
-                            {
-                                // ...else use the end offset of the previous column as the start of this one
-                                offset = RecordLoader.DecodeOffset(dataRecord.ColOffsetArray[variableIndex - 1]);
-                            }
+                            // ...else use the end offset of the previous column as the start of this one
+                            offset = RecordLoader.DecodeOffset(dataRecord.ColOffsetArray[variableIndex - 1]);
                         }
 
                         if (variableIndex < dataRecord.ColOffsetArray.Length)
@@ -239,8 +244,8 @@ namespace InternalsViewer.Internals.RecordLoaders
                         field.Mark("Value", dataRecord.SlotOffset + field.Offset, field.Length);
                     }
 
-                    dataRecord.Mark("FieldsArray", field.Name + " - ", index);
-                    
+                    dataRecord.Mark("FieldsArray", field.Name, index);
+
                     index++;
 
                     columnValues.Add(field);

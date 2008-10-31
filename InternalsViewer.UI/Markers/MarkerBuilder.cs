@@ -41,7 +41,16 @@ namespace InternalsViewer.UI.Markers
                 {
                     MarkAttribute attribute = (description[0] as MarkAttribute);
 
-                    marker.Name = prefix + attribute.Description;
+                    if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(attribute.Description))
+                    {
+
+                        marker.Name = prefix + attribute.Description;
+                    }
+                    else
+                    {
+                        marker.Name = prefix + " - " + attribute.Description;
+                    }
+
                     marker.ForeColour = attribute.ForeColour;
 
                     marker.BackColour = alternate ? attribute.AlternateBackColour : attribute.BackColour;

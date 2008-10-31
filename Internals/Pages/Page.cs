@@ -12,7 +12,7 @@ namespace InternalsViewer.Internals.Pages
     /// </summary>
     public class Page
     {
-        public const int MaxSize = 8192;
+        public const int Size = 8192;
         private PageAddress pageAddress;
         private readonly PageReader reader;
         private readonly Database database;

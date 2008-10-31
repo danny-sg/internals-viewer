@@ -6,6 +6,9 @@ using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.BlobPointers
 {
+    /// <summary>
+    /// BLOB internal field
+    /// </summary>
     public abstract class BlobField : Field
     {
         private byte[] data;
@@ -76,7 +79,11 @@ namespace InternalsViewer.Internals.BlobPointers
             get { return this.pointerType; }
             set { this.pointerType = value; }
         }
-        
+
+        /// <summary>
+        /// Gets or sets the offset in the page for this blob field
+        /// </summary>
+        /// <value>The offset.</value>
         public int Offset
         {
             get { return offset; }
