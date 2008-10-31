@@ -46,6 +46,9 @@ namespace InternalsViewer.UI
         /// <param name="rowIdentifier">The row identifier.</param>
         public void LoadPage(string connectionString, string database, RowIdentifier rowIdentifier)
         {
+            pageAddressToolStripStatusLabel.Text = string.Empty;
+            offsetToolStripStatusLabel.Text = string.Empty;
+
             this.Page = new Page(connectionString, database, rowIdentifier.PageAddress);
 
             this.SetSlot(rowIdentifier.SlotId);
@@ -159,6 +162,9 @@ namespace InternalsViewer.UI
         /// <param name="pageAddress">The page address.</param>
         public void LoadPage(string connectionString, PageAddress pageAddress)
         {
+            pageAddressToolStripStatusLabel.Text = string.Empty;
+            offsetToolStripStatusLabel.Text = string.Empty;
+
             if (pageAddress.FileId > 0)
             {
                 SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
@@ -214,7 +220,7 @@ namespace InternalsViewer.UI
                     Structure tableStructure = new TableStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
 
                     record = new DataRecord(this.Page, offset, tableStructure);
-                    iamViewer.Visible = false;
+                    allocationViewer.Visible = false;
                     markerKeyTable.Visible = true;
                     break;
 
@@ -224,9 +230,13 @@ namespace InternalsViewer.UI
                 case PageType.Bcm:
                 case PageType.Dcm:
 
-                    iamViewer.SetAllocationPage(this.Page.Header.PageAddress, this.Page.Database.Name, this.ConnectionString);
+                    allocationViewer.SetAllocationPage(this.Page.Header.PageAddress, 
+                                                this.Page.Database.Name, 
+                                                this.ConnectionString,
+                                                (this.Page.Header.PageType== PageType.Iam));
+
                     markerKeyTable.Visible = false;
-                    iamViewer.Visible = true;
+                    allocationViewer.Visible = true;
                     break;
 
                 case PageType.Lob3:
@@ -234,6 +244,8 @@ namespace InternalsViewer.UI
 
                     record = new BlobRecord(this.Page, offset);
 
+                    allocationViewer.Visible = false;
+                    markerKeyTable.Visible = true;
                     break;
             }
 
@@ -309,5 +321,55 @@ namespace InternalsViewer.UI
         /// </summary>
         /// <value>The connection string.</value>
         public string ConnectionString { get; set; }
+
+        private void HexViewer_OffsetOver(object sender, OffsetEventArgs e)
+        {
+            switch (this.Page.Header.PageType)
+            {
+                case PageType.Bcm:
+                case PageType.Dcm:
+                case PageType.Gam:
+                case PageType.Iam:
+                case PageType.Sgam:
+
+                    if (e.Offset >= AllocationPage.AllocationArrayOffset)
+                    {
+                        int startExtent = (e.Offset - AllocationPage.AllocationArrayOffset) * 8;
+                        int endExtent = startExtent + 7;
+
+                        markerDescriptionToolStripStatusLabel.Text = string.Format("Extents {0} - {1} | Pages {2} - {3}",
+                                                                                   startExtent,
+                                                                                   endExtent,
+                                                                                   startExtent * 8,
+                                                                                   (endExtent * 8) + 7);
+                    }
+                    else
+                    {
+                        markerDescriptionToolStripStatusLabel.Text = e.MarkerDescription;
+                    }
+
+                    break;
+
+                default:
+
+                    markerDescriptionToolStripStatusLabel.Text = e.MarkerDescription;
+                    break;
+            }
+
+            markerDescriptionToolStripStatusLabel.ForeColor = e.ForeColour;
+            markerDescriptionToolStripStatusLabel.BackColor = e.BackColour;
+
+            offsetToolStripStatusLabel.Text = string.Format("Offset: {0:0000}", e.Offset);
+        }
+
+        private void AllocationViewer_PageOver(object sender, PageEventArgs e)
+        {
+            pageAddressToolStripStatusLabel.Text = e.Address.ToString();
+        }
+
+        private void AllocationViewer_PageClicked(object sender, PageEventArgs e)
+        {
+            this.LoadPage(this.ConnectionString, e.Address);
+        }
     }
 }

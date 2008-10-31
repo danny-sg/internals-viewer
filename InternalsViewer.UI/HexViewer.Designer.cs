@@ -150,6 +150,7 @@
             this.dataRichTextBox.SelectionChanged += new System.EventHandler(this.DataRichTextBox_SelectionChanged);
             this.dataRichTextBox.Resize += new System.EventHandler(this.DataRichTextBox_Resize);
             this.dataRichTextBox.Leave += new System.EventHandler(this.DataRichTextBox_Leave);
+            this.dataRichTextBox.MouseMove += new System.Windows.Forms.MouseEventHandler(this.DataRichTextBox_MouseMove);
             this.dataRichTextBox.MouseLeave += new System.EventHandler(this.DataRichTextBox_MouseLeave);
             // 
             // HexViewer

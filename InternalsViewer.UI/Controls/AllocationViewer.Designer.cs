@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Pages;
 namespace InternalsViewer.UI.Controls
 {
-    partial class IamViewer
+    partial class AllocationViewer
     {
         /// <summary> 
         /// Required designer variable.
@@ -29,7 +29,7 @@ namespace InternalsViewer.UI.Controls
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(IamViewer));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AllocationViewer));
             this.topPanel = new System.Windows.Forms.Panel();
             this.slot7Box = new System.Windows.Forms.PictureBox();
             this.slot3Box = new System.Windows.Forms.PictureBox();
@@ -114,7 +114,7 @@ namespace InternalsViewer.UI.Controls
             // 
             // slot7Box
             // 
-            this.slot7Box.Location = new System.Drawing.Point(496, 87);
+            this.slot7Box.Location = new System.Drawing.Point(496, 89);
             this.slot7Box.Name = "slot7Box";
             this.slot7Box.Size = new System.Drawing.Size(16, 16);
             this.slot7Box.TabIndex = 274;
@@ -122,7 +122,7 @@ namespace InternalsViewer.UI.Controls
             // 
             // slot3Box
             // 
-            this.slot3Box.Location = new System.Drawing.Point(496, 65);
+            this.slot3Box.Location = new System.Drawing.Point(496, 67);
             this.slot3Box.Name = "slot3Box";
             this.slot3Box.Size = new System.Drawing.Size(16, 16);
             this.slot3Box.TabIndex = 273;
@@ -130,7 +130,7 @@ namespace InternalsViewer.UI.Controls
             // 
             // slot6Box
             // 
-            this.slot6Box.Location = new System.Drawing.Point(347, 87);
+            this.slot6Box.Location = new System.Drawing.Point(347, 89);
             this.slot6Box.Name = "slot6Box";
             this.slot6Box.Size = new System.Drawing.Size(16, 16);
             this.slot6Box.TabIndex = 272;
@@ -138,7 +138,7 @@ namespace InternalsViewer.UI.Controls
             // 
             // slot2Box
             // 
-            this.slot2Box.Location = new System.Drawing.Point(347, 65);
+            this.slot2Box.Location = new System.Drawing.Point(347, 67);
             this.slot2Box.Name = "slot2Box";
             this.slot2Box.Size = new System.Drawing.Size(16, 16);
             this.slot2Box.TabIndex = 271;
@@ -146,7 +146,7 @@ namespace InternalsViewer.UI.Controls
             // 
             // slot5Box
             // 
-            this.slot5Box.Location = new System.Drawing.Point(198, 87);
+            this.slot5Box.Location = new System.Drawing.Point(198, 89);
             this.slot5Box.Name = "slot5Box";
             this.slot5Box.Size = new System.Drawing.Size(16, 16);
             this.slot5Box.TabIndex = 270;
@@ -154,7 +154,7 @@ namespace InternalsViewer.UI.Controls
             // 
             // slot1Box
             // 
-            this.slot1Box.Location = new System.Drawing.Point(198, 65);
+            this.slot1Box.Location = new System.Drawing.Point(198, 67);
             this.slot1Box.Name = "slot1Box";
             this.slot1Box.Size = new System.Drawing.Size(16, 16);
             this.slot1Box.TabIndex = 269;
@@ -162,7 +162,7 @@ namespace InternalsViewer.UI.Controls
             // 
             // slot4Box
             // 
-            this.slot4Box.Location = new System.Drawing.Point(49, 87);
+            this.slot4Box.Location = new System.Drawing.Point(49, 89);
             this.slot4Box.Name = "slot4Box";
             this.slot4Box.Size = new System.Drawing.Size(16, 16);
             this.slot4Box.TabIndex = 268;
@@ -170,7 +170,7 @@ namespace InternalsViewer.UI.Controls
             // 
             // slot0Box
             // 
-            this.slot0Box.Location = new System.Drawing.Point(49, 65);
+            this.slot0Box.Location = new System.Drawing.Point(49, 67);
             this.slot0Box.Name = "slot0Box";
             this.slot0Box.Size = new System.Drawing.Size(16, 16);
             this.slot0Box.TabIndex = 267;
@@ -178,7 +178,7 @@ namespace InternalsViewer.UI.Controls
             // 
             // startPageBox
             // 
-            this.startPageBox.Location = new System.Drawing.Point(72, 23);
+            this.startPageBox.Location = new System.Drawing.Point(72, 25);
             this.startPageBox.Name = "startPageBox";
             this.startPageBox.Size = new System.Drawing.Size(16, 16);
             this.startPageBox.TabIndex = 266;
@@ -187,7 +187,7 @@ namespace InternalsViewer.UI.Controls
             // label15
             // 
             this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(8, 47);
+            this.label15.Location = new System.Drawing.Point(8, 49);
             this.label15.Margin = new System.Windows.Forms.Padding(3);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(140, 13);
@@ -197,7 +197,7 @@ namespace InternalsViewer.UI.Controls
             // label14
             // 
             this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(8, 5);
+            this.label14.Location = new System.Drawing.Point(8, 7);
             this.label14.Margin = new System.Windows.Forms.Padding(3);
             this.label14.Name = "label14";
             this.label14.Size = new System.Drawing.Size(64, 13);
@@ -211,7 +211,7 @@ namespace InternalsViewer.UI.Controls
             this.slotSixTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.slotSixTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.slotSixTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.slotSixTextBox.Location = new System.Drawing.Point(370, 89);
+            this.slotSixTextBox.Location = new System.Drawing.Point(370, 91);
             this.slotSixTextBox.Name = "slotSixTextBox";
             this.slotSixTextBox.ReadOnly = true;
             this.slotSixTextBox.Size = new System.Drawing.Size(70, 13);
@@ -224,7 +224,7 @@ namespace InternalsViewer.UI.Controls
             this.slotFiveTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.slotFiveTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.slotFiveTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.slotFiveTextBox.Location = new System.Drawing.Point(221, 89);
+            this.slotFiveTextBox.Location = new System.Drawing.Point(221, 91);
             this.slotFiveTextBox.Name = "slotFiveTextBox";
             this.slotFiveTextBox.ReadOnly = true;
             this.slotFiveTextBox.Size = new System.Drawing.Size(70, 13);
@@ -236,7 +236,7 @@ namespace InternalsViewer.UI.Controls
             this.label10.BackColor = System.Drawing.Color.Transparent;
             this.label10.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label10.ForeColor = System.Drawing.Color.Gray;
-            this.label10.Location = new System.Drawing.Point(455, 89);
+            this.label10.Location = new System.Drawing.Point(455, 91);
             this.label10.Margin = new System.Windows.Forms.Padding(4);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(34, 13);
@@ -250,7 +250,7 @@ namespace InternalsViewer.UI.Controls
             this.slotSevenTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.slotSevenTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.slotSevenTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.slotSevenTextBox.Location = new System.Drawing.Point(519, 89);
+            this.slotSevenTextBox.Location = new System.Drawing.Point(519, 91);
             this.slotSevenTextBox.Name = "slotSevenTextBox";
             this.slotSevenTextBox.ReadOnly = true;
             this.slotSevenTextBox.Size = new System.Drawing.Size(70, 13);
@@ -262,7 +262,7 @@ namespace InternalsViewer.UI.Controls
             this.label11.BackColor = System.Drawing.Color.Transparent;
             this.label11.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label11.ForeColor = System.Drawing.Color.Gray;
-            this.label11.Location = new System.Drawing.Point(306, 89);
+            this.label11.Location = new System.Drawing.Point(306, 91);
             this.label11.Margin = new System.Windows.Forms.Padding(4);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(34, 13);
@@ -275,7 +275,7 @@ namespace InternalsViewer.UI.Controls
             this.label12.BackColor = System.Drawing.Color.Transparent;
             this.label12.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label12.ForeColor = System.Drawing.Color.Gray;
-            this.label12.Location = new System.Drawing.Point(157, 89);
+            this.label12.Location = new System.Drawing.Point(157, 91);
             this.label12.Margin = new System.Windows.Forms.Padding(4);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(34, 13);
@@ -289,7 +289,7 @@ namespace InternalsViewer.UI.Controls
             this.slotFourTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.slotFourTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.slotFourTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.slotFourTextBox.Location = new System.Drawing.Point(72, 89);
+            this.slotFourTextBox.Location = new System.Drawing.Point(72, 91);
             this.slotFourTextBox.Name = "slotFourTextBox";
             this.slotFourTextBox.ReadOnly = true;
             this.slotFourTextBox.Size = new System.Drawing.Size(70, 13);
@@ -301,7 +301,7 @@ namespace InternalsViewer.UI.Controls
             this.label13.BackColor = System.Drawing.Color.Transparent;
             this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label13.ForeColor = System.Drawing.Color.Gray;
-            this.label13.Location = new System.Drawing.Point(8, 89);
+            this.label13.Location = new System.Drawing.Point(8, 91);
             this.label13.Margin = new System.Windows.Forms.Padding(4);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(34, 13);
@@ -315,7 +315,7 @@ namespace InternalsViewer.UI.Controls
             this.slotTwoTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.slotTwoTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.slotTwoTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.slotTwoTextBox.Location = new System.Drawing.Point(370, 67);
+            this.slotTwoTextBox.Location = new System.Drawing.Point(370, 69);
             this.slotTwoTextBox.Name = "slotTwoTextBox";
             this.slotTwoTextBox.ReadOnly = true;
             this.slotTwoTextBox.Size = new System.Drawing.Size(70, 13);
@@ -328,7 +328,7 @@ namespace InternalsViewer.UI.Controls
             this.slotOneTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.slotOneTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.slotOneTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.slotOneTextBox.Location = new System.Drawing.Point(221, 67);
+            this.slotOneTextBox.Location = new System.Drawing.Point(221, 69);
             this.slotOneTextBox.Name = "slotOneTextBox";
             this.slotOneTextBox.ReadOnly = true;
             this.slotOneTextBox.Size = new System.Drawing.Size(70, 13);
@@ -340,7 +340,7 @@ namespace InternalsViewer.UI.Controls
             this.label9.BackColor = System.Drawing.Color.Transparent;
             this.label9.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label9.ForeColor = System.Drawing.Color.Gray;
-            this.label9.Location = new System.Drawing.Point(455, 67);
+            this.label9.Location = new System.Drawing.Point(455, 69);
             this.label9.Margin = new System.Windows.Forms.Padding(4);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(34, 13);
@@ -354,7 +354,7 @@ namespace InternalsViewer.UI.Controls
             this.slotThreeTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.slotThreeTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.slotThreeTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.slotThreeTextBox.Location = new System.Drawing.Point(519, 67);
+            this.slotThreeTextBox.Location = new System.Drawing.Point(519, 69);
             this.slotThreeTextBox.Name = "slotThreeTextBox";
             this.slotThreeTextBox.ReadOnly = true;
             this.slotThreeTextBox.Size = new System.Drawing.Size(70, 13);
@@ -366,7 +366,7 @@ namespace InternalsViewer.UI.Controls
             this.label8.BackColor = System.Drawing.Color.Transparent;
             this.label8.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label8.ForeColor = System.Drawing.Color.Gray;
-            this.label8.Location = new System.Drawing.Point(306, 67);
+            this.label8.Location = new System.Drawing.Point(306, 69);
             this.label8.Margin = new System.Windows.Forms.Padding(4);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(34, 13);
@@ -379,7 +379,7 @@ namespace InternalsViewer.UI.Controls
             this.label7.BackColor = System.Drawing.Color.Transparent;
             this.label7.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label7.ForeColor = System.Drawing.Color.Gray;
-            this.label7.Location = new System.Drawing.Point(157, 67);
+            this.label7.Location = new System.Drawing.Point(157, 69);
             this.label7.Margin = new System.Windows.Forms.Padding(4);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(34, 13);
@@ -393,7 +393,7 @@ namespace InternalsViewer.UI.Controls
             this.slotZeroTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.slotZeroTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.slotZeroTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.slotZeroTextBox.Location = new System.Drawing.Point(72, 67);
+            this.slotZeroTextBox.Location = new System.Drawing.Point(72, 69);
             this.slotZeroTextBox.Name = "slotZeroTextBox";
             this.slotZeroTextBox.ReadOnly = true;
             this.slotZeroTextBox.Size = new System.Drawing.Size(70, 13);
@@ -405,7 +405,7 @@ namespace InternalsViewer.UI.Controls
             this.label6.BackColor = System.Drawing.Color.Transparent;
             this.label6.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label6.ForeColor = System.Drawing.Color.Gray;
-            this.label6.Location = new System.Drawing.Point(8, 67);
+            this.label6.Location = new System.Drawing.Point(8, 69);
             this.label6.Margin = new System.Windows.Forms.Padding(4);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(34, 13);
@@ -419,7 +419,7 @@ namespace InternalsViewer.UI.Controls
             this.startPageTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.startPageTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.startPageTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.startPageTextBox.Location = new System.Drawing.Point(94, 25);
+            this.startPageTextBox.Location = new System.Drawing.Point(94, 27);
             this.startPageTextBox.Name = "startPageTextBox";
             this.startPageTextBox.ReadOnly = true;
             this.startPageTextBox.Size = new System.Drawing.Size(63, 13);
@@ -431,7 +431,7 @@ namespace InternalsViewer.UI.Controls
             this.label2.BackColor = System.Drawing.Color.Transparent;
             this.label2.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label2.ForeColor = System.Drawing.Color.Gray;
-            this.label2.Location = new System.Drawing.Point(8, 25);
+            this.label2.Location = new System.Drawing.Point(8, 27);
             this.label2.Margin = new System.Windows.Forms.Padding(4);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(57, 13);
@@ -460,7 +460,6 @@ namespace InternalsViewer.UI.Controls
             this.allocationMap.SelectionEndExtent = -1;
             this.allocationMap.SelectionStartExtent = -1;
             this.allocationMap.Size = new System.Drawing.Size(670, 299);
-            this.allocationMap.StartPage = PageAddress.Empty;
             this.allocationMap.TabIndex = 1;
             this.allocationMap.VisibleExtents = 0;
             this.allocationMap.WindowPosition = 0;

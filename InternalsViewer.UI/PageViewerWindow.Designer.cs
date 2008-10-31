@@ -37,9 +37,16 @@
             this.leftPanel = new System.Windows.Forms.Panel();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.topLeftPanel = new System.Windows.Forms.Panel();
+            this.statusStrip = new System.Windows.Forms.StatusStrip();
+            this.pageAddressToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.errorImageToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.errorToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.markerDescriptionToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.offsetToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.hexViewer = new InternalsViewer.UI.HexViewer();
             this.offsetTable = new InternalsViewer.UI.OffsetTable();
-            this.iamViewer = new InternalsViewer.UI.Controls.IamViewer();
+            this.allocationViewer = new InternalsViewer.UI.Controls.AllocationViewer();
             this.markerKeyTable = new InternalsViewer.UI.Controls.MarkerKeyTable();
             this.headerBorderPanel = new InternalsViewer.UI.Controls.BorderPanel();
             this.bcmPictureBox = new System.Windows.Forms.PictureBox();
@@ -101,6 +108,7 @@
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.topLeftPanel.SuspendLayout();
+            this.statusStrip.SuspendLayout();
             this.headerBorderPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dcmPictureBox)).BeginInit();
@@ -148,7 +156,7 @@
             this.leftPanel.Location = new System.Drawing.Point(0, 28);
             this.leftPanel.Name = "leftPanel";
             this.leftPanel.Padding = new System.Windows.Forms.Padding(0, 0, 3, 0);
-            this.leftPanel.Size = new System.Drawing.Size(176, 595);
+            this.leftPanel.Size = new System.Drawing.Size(176, 573);
             this.leftPanel.TabIndex = 246;
             // 
             // splitContainer1
@@ -168,10 +176,10 @@
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.BackColor = System.Drawing.Color.White;
-            this.splitContainer1.Panel2.Controls.Add(this.iamViewer);
+            this.splitContainer1.Panel2.Controls.Add(this.allocationViewer);
             this.splitContainer1.Panel2.Controls.Add(this.markerKeyTable);
-            this.splitContainer1.Size = new System.Drawing.Size(698, 595);
-            this.splitContainer1.SplitterDistance = 301;
+            this.splitContainer1.Size = new System.Drawing.Size(698, 573);
+            this.splitContainer1.SplitterDistance = 289;
             this.splitContainer1.TabIndex = 247;
             // 
             // topLeftPanel
@@ -182,8 +190,60 @@
             this.topLeftPanel.Location = new System.Drawing.Point(518, 0);
             this.topLeftPanel.Name = "topLeftPanel";
             this.topLeftPanel.Padding = new System.Windows.Forms.Padding(3, 0, 0, 0);
-            this.topLeftPanel.Size = new System.Drawing.Size(180, 301);
+            this.topLeftPanel.Size = new System.Drawing.Size(180, 289);
             this.topLeftPanel.TabIndex = 1;
+            // 
+            // statusStrip
+            // 
+            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.pageAddressToolStripStatusLabel,
+            this.errorImageToolStripStatusLabel,
+            this.errorToolStripStatusLabel,
+            this.toolStripStatusLabel3,
+            this.markerDescriptionToolStripStatusLabel,
+            this.offsetToolStripStatusLabel});
+            this.statusStrip.Location = new System.Drawing.Point(0, 601);
+            this.statusStrip.Name = "statusStrip";
+            this.statusStrip.Size = new System.Drawing.Size(874, 22);
+            this.statusStrip.SizingGrip = false;
+            this.statusStrip.TabIndex = 201;
+            this.statusStrip.Text = "statusStrip";
+            // 
+            // pageAddressToolStripStatusLabel
+            // 
+            this.pageAddressToolStripStatusLabel.Name = "pageAddressToolStripStatusLabel";
+            this.pageAddressToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // errorImageToolStripStatusLabel
+            // 
+            this.errorImageToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.errorImageToolStripStatusLabel.Name = "errorImageToolStripStatusLabel";
+            this.errorImageToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            this.errorImageToolStripStatusLabel.Text = "Error Image";
+            // 
+            // errorToolStripStatusLabel
+            // 
+            this.errorToolStripStatusLabel.Name = "errorToolStripStatusLabel";
+            this.errorToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // toolStripStatusLabel3
+            // 
+            this.toolStripStatusLabel3.Name = "toolStripStatusLabel3";
+            this.toolStripStatusLabel3.Size = new System.Drawing.Size(859, 17);
+            this.toolStripStatusLabel3.Spring = true;
+            // 
+            // markerDescriptionToolStripStatusLabel
+            // 
+            this.markerDescriptionToolStripStatusLabel.AutoToolTip = true;
+            this.markerDescriptionToolStripStatusLabel.BackColor = System.Drawing.Color.Red;
+            this.markerDescriptionToolStripStatusLabel.ImageTransparentColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.markerDescriptionToolStripStatusLabel.Name = "markerDescriptionToolStripStatusLabel";
+            this.markerDescriptionToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // offsetToolStripStatusLabel
+            // 
+            this.offsetToolStripStatusLabel.Name = "offsetToolStripStatusLabel";
+            this.offsetToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
             // 
             // hexViewer
             // 
@@ -202,8 +262,9 @@
             this.hexViewer.Page = null;
             this.hexViewer.SelectedOffset = -1;
             this.hexViewer.SelectedRecord = -1;
-            this.hexViewer.Size = new System.Drawing.Size(518, 301);
+            this.hexViewer.Size = new System.Drawing.Size(518, 289);
             this.hexViewer.TabIndex = 0;
+            this.hexViewer.OffsetOver += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_OffsetOver);
             // 
             // offsetTable
             // 
@@ -213,17 +274,19 @@
             this.offsetTable.Padding = new System.Windows.Forms.Padding(1);
             this.offsetTable.Page = null;
             this.offsetTable.SelectedSlot = -1;
-            this.offsetTable.Size = new System.Drawing.Size(177, 301);
+            this.offsetTable.Size = new System.Drawing.Size(177, 289);
             this.offsetTable.TabIndex = 0;
             this.offsetTable.SlotChanged += new System.EventHandler(this.OffsetTable_SlotChanged);
             // 
-            // iamViewer
+            // allocationViewer
             // 
-            this.iamViewer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.iamViewer.Location = new System.Drawing.Point(0, 0);
-            this.iamViewer.Name = "iamViewer";
-            this.iamViewer.Size = new System.Drawing.Size(698, 290);
-            this.iamViewer.TabIndex = 1;
+            this.allocationViewer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.allocationViewer.Location = new System.Drawing.Point(0, 0);
+            this.allocationViewer.Name = "allocationViewer";
+            this.allocationViewer.Size = new System.Drawing.Size(698, 280);
+            this.allocationViewer.TabIndex = 1;
+            this.allocationViewer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationViewer_PageOver);
+            this.allocationViewer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationViewer_PageClicked);
             // 
             // markerKeyTable
             // 
@@ -232,7 +295,7 @@
             this.markerKeyTable.Location = new System.Drawing.Point(0, 0);
             this.markerKeyTable.Name = "markerKeyTable";
             this.markerKeyTable.Padding = new System.Windows.Forms.Padding(1);
-            this.markerKeyTable.Size = new System.Drawing.Size(698, 290);
+            this.markerKeyTable.Size = new System.Drawing.Size(698, 280);
             this.markerKeyTable.TabIndex = 0;
             this.markerKeyTable.SelectionClicked += new System.EventHandler(this.MarkerKeyTable_SelectionClicked);
             this.markerKeyTable.SelectionChanged += new System.EventHandler(this.MarkerKeyTable_SelectionChanged);
@@ -289,7 +352,7 @@
             this.headerBorderPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.headerBorderPanel.Location = new System.Drawing.Point(0, 0);
             this.headerBorderPanel.Name = "headerBorderPanel";
-            this.headerBorderPanel.Size = new System.Drawing.Size(173, 595);
+            this.headerBorderPanel.Size = new System.Drawing.Size(173, 573);
             this.headerBorderPanel.TabIndex = 0;
             // 
             // bcmPictureBox
@@ -909,6 +972,7 @@
             this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.leftPanel);
             this.Controls.Add(this.flatMenuStrip1);
+            this.Controls.Add(this.statusStrip);
             this.Name = "PageViewerWindow";
             this.Size = new System.Drawing.Size(874, 623);
             this.leftPanel.ResumeLayout(false);
@@ -916,6 +980,8 @@
             this.splitContainer1.Panel2.ResumeLayout(false);
             this.splitContainer1.ResumeLayout(false);
             this.topLeftPanel.ResumeLayout(false);
+            this.statusStrip.ResumeLayout(false);
+            this.statusStrip.PerformLayout();
             this.headerBorderPanel.ResumeLayout(false);
             this.headerBorderPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).EndInit();
@@ -926,6 +992,7 @@
             this.flatMenuStrip1.ResumeLayout(false);
             this.flatMenuStrip1.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -997,7 +1064,14 @@
         private System.Windows.Forms.Panel topLeftPanel;
         private OffsetTable offsetTable;
         private InternalsViewer.UI.Controls.MarkerKeyTable markerKeyTable;
-        private InternalsViewer.UI.Controls.IamViewer iamViewer;
+        private InternalsViewer.UI.Controls.AllocationViewer allocationViewer;
+        private System.Windows.Forms.StatusStrip statusStrip;
+        private System.Windows.Forms.ToolStripStatusLabel pageAddressToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel errorImageToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel errorToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel3;
+        private System.Windows.Forms.ToolStripStatusLabel markerDescriptionToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel offsetToolStripStatusLabel;
 
     }
 }

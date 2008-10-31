@@ -11,13 +11,19 @@ using InternalsViewer.UI.Allocations;
 
 namespace InternalsViewer.UI.Controls
 {
-    public partial class IamViewer : UserControl
+    public partial class AllocationViewer : UserControl
     {
-        public IamViewer()
+        public event EventHandler<PageEventArgs> PageOver;
+        public event EventHandler<PageEventArgs> PageClicked;
+
+        public AllocationViewer()
         {
             InitializeComponent();
+
+            this.allocationMap.PageOver += this.OnPageOver;
+            this.allocationMap.PageClicked += this.OnPageClicked;
             
-            this.SetColours(IamViewer.CreateIamColours());
+            this.SetColours(AllocationViewer.CreateIamColours());
         }
 
         private static List<Color> CreateIamColours()
@@ -74,8 +80,10 @@ namespace InternalsViewer.UI.Controls
                                     ButtonBorderStyle.Solid);
         }
 
-        public List<Marker> SetAllocationPage(PageAddress pageAddress, string databaseName, string connectionString)
+        public List<Marker> SetAllocationPage(PageAddress pageAddress, string databaseName, string connectionString, bool showHeader)
         {
+            this.topPanel.Visible = showHeader;
+
             AllocationPage allocationPage = new AllocationPage(connectionString, databaseName, pageAddress);
             
             allocationMap.ExtentCount = 63903;
@@ -98,6 +106,22 @@ namespace InternalsViewer.UI.Controls
             List<Marker> markers = MarkerBuilder.BuildMarkers(allocationPage, string.Empty);
 
             return markers;
+        }
+
+        internal virtual void OnPageOver(object sender, PageEventArgs e)
+        {
+            if (this.PageOver != null)
+            {
+                this.PageOver(sender, e);
+            }
+        }
+
+        internal virtual void OnPageClicked(object sender, PageEventArgs e)
+        {
+            if (this.PageClicked != null)
+            {
+                this.PageClicked(sender, e);
+            }
         }
     }
 }
