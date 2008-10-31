@@ -35,6 +35,12 @@
             this.rowLogContents3ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.rowLogContents4ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.leftPanel = new System.Windows.Forms.Panel();
+            this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.topLeftPanel = new System.Windows.Forms.Panel();
+            this.hexViewer = new InternalsViewer.UI.HexViewer();
+            this.offsetTable = new InternalsViewer.UI.OffsetTable();
+            this.iamViewer = new InternalsViewer.UI.Controls.IamViewer();
+            this.markerKeyTable = new InternalsViewer.UI.Controls.MarkerKeyTable();
             this.headerBorderPanel = new InternalsViewer.UI.Controls.BorderPanel();
             this.bcmPictureBox = new System.Windows.Forms.PictureBox();
             this.dcmPictureBox = new System.Windows.Forms.PictureBox();
@@ -82,11 +88,6 @@
             this.label7 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
-            this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.hexViewer = new InternalsViewer.UI.HexViewer();
-            this.topLeftPanel = new System.Windows.Forms.Panel();
-            this.offsetTable = new InternalsViewer.UI.OffsetTable();
-            this.markerKeyTable = new InternalsViewer.UI.Controls.MarkerKeyTable();
             this.flatMenuStrip1 = new InternalsViewer.UI.Controls.FlatMenuStrip();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
             this.pageToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
@@ -96,16 +97,16 @@
             this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
             this.toolStripTextBox1 = new System.Windows.Forms.ToolStripTextBox();
             this.leftPanel.SuspendLayout();
+            this.splitContainer1.Panel1.SuspendLayout();
+            this.splitContainer1.Panel2.SuspendLayout();
+            this.splitContainer1.SuspendLayout();
+            this.topLeftPanel.SuspendLayout();
             this.headerBorderPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dcmPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.sGamPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).BeginInit();
-            this.splitContainer1.Panel1.SuspendLayout();
-            this.splitContainer1.Panel2.SuspendLayout();
-            this.splitContainer1.SuspendLayout();
-            this.topLeftPanel.SuspendLayout();
             this.flatMenuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -149,6 +150,93 @@
             this.leftPanel.Padding = new System.Windows.Forms.Padding(0, 0, 3, 0);
             this.leftPanel.Size = new System.Drawing.Size(176, 595);
             this.leftPanel.TabIndex = 246;
+            // 
+            // splitContainer1
+            // 
+            this.splitContainer1.BackColor = System.Drawing.Color.Transparent;
+            this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.splitContainer1.Location = new System.Drawing.Point(176, 28);
+            this.splitContainer1.Name = "splitContainer1";
+            this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            // 
+            // splitContainer1.Panel1
+            // 
+            this.splitContainer1.Panel1.BackColor = System.Drawing.Color.Transparent;
+            this.splitContainer1.Panel1.Controls.Add(this.hexViewer);
+            this.splitContainer1.Panel1.Controls.Add(this.topLeftPanel);
+            // 
+            // splitContainer1.Panel2
+            // 
+            this.splitContainer1.Panel2.BackColor = System.Drawing.Color.White;
+            this.splitContainer1.Panel2.Controls.Add(this.iamViewer);
+            this.splitContainer1.Panel2.Controls.Add(this.markerKeyTable);
+            this.splitContainer1.Size = new System.Drawing.Size(698, 595);
+            this.splitContainer1.SplitterDistance = 301;
+            this.splitContainer1.TabIndex = 247;
+            // 
+            // topLeftPanel
+            // 
+            this.topLeftPanel.BackColor = System.Drawing.Color.Transparent;
+            this.topLeftPanel.Controls.Add(this.offsetTable);
+            this.topLeftPanel.Dock = System.Windows.Forms.DockStyle.Right;
+            this.topLeftPanel.Location = new System.Drawing.Point(518, 0);
+            this.topLeftPanel.Name = "topLeftPanel";
+            this.topLeftPanel.Padding = new System.Windows.Forms.Padding(3, 0, 0, 0);
+            this.topLeftPanel.Size = new System.Drawing.Size(180, 301);
+            this.topLeftPanel.TabIndex = 1;
+            // 
+            // hexViewer
+            // 
+            this.hexViewer.AddressHex = false;
+            this.hexViewer.BackColor = System.Drawing.Color.White;
+            this.hexViewer.ColourAndOffsetDictionary = null;
+            this.hexViewer.Colourise = true;
+            this.hexViewer.DataRtf = null;
+            this.hexViewer.DataText = null;
+            this.hexViewer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.hexViewer.Font = new System.Drawing.Font("Courier New", 8.25F);
+            this.hexViewer.Location = new System.Drawing.Point(0, 0);
+            this.hexViewer.Margin = new System.Windows.Forms.Padding(1, 0, 0, 0);
+            this.hexViewer.Name = "hexViewer";
+            this.hexViewer.Padding = new System.Windows.Forms.Padding(1, 0, 1, 1);
+            this.hexViewer.Page = null;
+            this.hexViewer.SelectedOffset = -1;
+            this.hexViewer.SelectedRecord = -1;
+            this.hexViewer.Size = new System.Drawing.Size(518, 301);
+            this.hexViewer.TabIndex = 0;
+            // 
+            // offsetTable
+            // 
+            this.offsetTable.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.offsetTable.Location = new System.Drawing.Point(3, 0);
+            this.offsetTable.Name = "offsetTable";
+            this.offsetTable.Padding = new System.Windows.Forms.Padding(1);
+            this.offsetTable.Page = null;
+            this.offsetTable.SelectedSlot = -1;
+            this.offsetTable.Size = new System.Drawing.Size(177, 301);
+            this.offsetTable.TabIndex = 0;
+            this.offsetTable.SlotChanged += new System.EventHandler(this.OffsetTable_SlotChanged);
+            // 
+            // iamViewer
+            // 
+            this.iamViewer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.iamViewer.Location = new System.Drawing.Point(0, 0);
+            this.iamViewer.Name = "iamViewer";
+            this.iamViewer.Size = new System.Drawing.Size(698, 290);
+            this.iamViewer.TabIndex = 1;
+            // 
+            // markerKeyTable
+            // 
+            this.markerKeyTable.BackColor = System.Drawing.Color.White;
+            this.markerKeyTable.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.markerKeyTable.Location = new System.Drawing.Point(0, 0);
+            this.markerKeyTable.Name = "markerKeyTable";
+            this.markerKeyTable.Padding = new System.Windows.Forms.Padding(1);
+            this.markerKeyTable.Size = new System.Drawing.Size(698, 290);
+            this.markerKeyTable.TabIndex = 0;
+            this.markerKeyTable.SelectionClicked += new System.EventHandler(this.MarkerKeyTable_SelectionClicked);
+            this.markerKeyTable.SelectionChanged += new System.EventHandler(this.MarkerKeyTable_SelectionChanged);
+            this.markerKeyTable.PageNavigated += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.MarkerKeyTable_PageNavigated);
             // 
             // headerBorderPanel
             // 
@@ -742,83 +830,6 @@
             this.label2.TabIndex = 218;
             this.label2.Text = "Next Page";
             // 
-            // splitContainer1
-            // 
-            this.splitContainer1.BackColor = System.Drawing.Color.Transparent;
-            this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Location = new System.Drawing.Point(176, 28);
-            this.splitContainer1.Name = "splitContainer1";
-            this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
-            // 
-            // splitContainer1.Panel1
-            // 
-            this.splitContainer1.Panel1.BackColor = System.Drawing.Color.Transparent;
-            this.splitContainer1.Panel1.Controls.Add(this.hexViewer);
-            this.splitContainer1.Panel1.Controls.Add(this.topLeftPanel);
-            // 
-            // splitContainer1.Panel2
-            // 
-            this.splitContainer1.Panel2.BackColor = System.Drawing.Color.White;
-            this.splitContainer1.Panel2.Controls.Add(this.markerKeyTable);
-            this.splitContainer1.Size = new System.Drawing.Size(698, 595);
-            this.splitContainer1.SplitterDistance = 301;
-            this.splitContainer1.TabIndex = 247;
-            // 
-            // hexViewer
-            // 
-            this.hexViewer.AddressHex = false;
-            this.hexViewer.BackColor = System.Drawing.Color.White;
-            this.hexViewer.ColourAndOffsetDictionary = null;
-            this.hexViewer.Colourise = true;
-            this.hexViewer.DataRtf = null;
-            this.hexViewer.DataText = null;
-            this.hexViewer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.hexViewer.Font = new System.Drawing.Font("Courier New", 8.25F);
-            this.hexViewer.Location = new System.Drawing.Point(0, 0);
-            this.hexViewer.Margin = new System.Windows.Forms.Padding(1, 0, 0, 0);
-            this.hexViewer.Name = "hexViewer";
-            this.hexViewer.Padding = new System.Windows.Forms.Padding(1, 0, 1, 1);
-            this.hexViewer.Page = null;
-            this.hexViewer.SelectedOffset = -1;
-            this.hexViewer.SelectedRecord = -1;
-            this.hexViewer.Size = new System.Drawing.Size(518, 301);
-            this.hexViewer.TabIndex = 0;
-            // 
-            // topLeftPanel
-            // 
-            this.topLeftPanel.BackColor = System.Drawing.Color.Transparent;
-            this.topLeftPanel.Controls.Add(this.offsetTable);
-            this.topLeftPanel.Dock = System.Windows.Forms.DockStyle.Right;
-            this.topLeftPanel.Location = new System.Drawing.Point(518, 0);
-            this.topLeftPanel.Name = "topLeftPanel";
-            this.topLeftPanel.Padding = new System.Windows.Forms.Padding(3, 0, 0, 0);
-            this.topLeftPanel.Size = new System.Drawing.Size(180, 301);
-            this.topLeftPanel.TabIndex = 1;
-            // 
-            // offsetTable
-            // 
-            this.offsetTable.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.offsetTable.Location = new System.Drawing.Point(3, 0);
-            this.offsetTable.Name = "offsetTable";
-            this.offsetTable.Padding = new System.Windows.Forms.Padding(1);
-            this.offsetTable.Page = null;
-            this.offsetTable.Size = new System.Drawing.Size(177, 301);
-            this.offsetTable.TabIndex = 0;
-            this.offsetTable.SlotChanged += new System.EventHandler(this.OffsetTable_SlotChanged);
-            // 
-            // markerKeyTable
-            // 
-            this.markerKeyTable.BackColor = System.Drawing.Color.White;
-            this.markerKeyTable.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.markerKeyTable.Location = new System.Drawing.Point(0, 0);
-            this.markerKeyTable.Name = "markerKeyTable";
-            this.markerKeyTable.Padding = new System.Windows.Forms.Padding(1);
-            this.markerKeyTable.Size = new System.Drawing.Size(698, 290);
-            this.markerKeyTable.TabIndex = 0;
-            this.markerKeyTable.SelectionClicked += new System.EventHandler(this.MarkerKeyTable_SelectionClicked);
-            this.markerKeyTable.SelectionChanged += new System.EventHandler(this.MarkerKeyTable_SelectionChanged);
-            this.markerKeyTable.PageNavigated += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.MarkerKeyTable_PageNavigated);
-            // 
             // flatMenuStrip1
             // 
             this.flatMenuStrip1.AutoSize = false;
@@ -854,22 +865,20 @@
             // 
             // previousToolStripButton
             // 
-            this.previousToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.RightToLeftDoucmentHS;
             this.previousToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.previousToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.previousToolStripButton.Name = "previousToolStripButton";
-            this.previousToolStripButton.Size = new System.Drawing.Size(49, 25);
+            this.previousToolStripButton.Size = new System.Drawing.Size(33, 25);
             this.previousToolStripButton.Text = "Back";
             this.previousToolStripButton.ToolTipText = "Page ID - 1";
             this.previousToolStripButton.Click += new System.EventHandler(this.PreviousToolStripButton_Click);
             // 
             // nextToolStripButton
             // 
-            this.nextToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.LeftToRightDoucmentHS1;
             this.nextToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.nextToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.nextToolStripButton.Name = "nextToolStripButton";
-            this.nextToolStripButton.Size = new System.Drawing.Size(72, 25);
+            this.nextToolStripButton.Size = new System.Drawing.Size(56, 25);
             this.nextToolStripButton.Text = "Forwards";
             this.nextToolStripButton.ToolTipText = "Page ID +1";
             this.nextToolStripButton.Click += new System.EventHandler(this.NextToolStripButton_Click);
@@ -903,6 +912,10 @@
             this.Name = "PageViewerWindow";
             this.Size = new System.Drawing.Size(874, 623);
             this.leftPanel.ResumeLayout(false);
+            this.splitContainer1.Panel1.ResumeLayout(false);
+            this.splitContainer1.Panel2.ResumeLayout(false);
+            this.splitContainer1.ResumeLayout(false);
+            this.topLeftPanel.ResumeLayout(false);
             this.headerBorderPanel.ResumeLayout(false);
             this.headerBorderPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).EndInit();
@@ -910,10 +923,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.sGamPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).EndInit();
-            this.splitContainer1.Panel1.ResumeLayout(false);
-            this.splitContainer1.Panel2.ResumeLayout(false);
-            this.splitContainer1.ResumeLayout(false);
-            this.topLeftPanel.ResumeLayout(false);
             this.flatMenuStrip1.ResumeLayout(false);
             this.flatMenuStrip1.PerformLayout();
             this.ResumeLayout(false);
@@ -988,6 +997,7 @@
         private System.Windows.Forms.Panel topLeftPanel;
         private OffsetTable offsetTable;
         private InternalsViewer.UI.Controls.MarkerKeyTable markerKeyTable;
+        private InternalsViewer.UI.Controls.IamViewer iamViewer;
 
     }
 }

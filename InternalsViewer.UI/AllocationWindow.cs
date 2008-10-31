@@ -196,7 +196,7 @@ namespace InternalsViewer.UI
                 allocationContainer.Mode = MapMode.Standard;
                 allocationContainer.ExtentSize = AllocationMap.Small;
 
-                if (allocationContainer.MapLayers.Count == 0)
+                if (allocationContainer.AllocationLayers.Count == 0)
                 {
                     DisplayLayers();
                 }
@@ -356,7 +356,7 @@ namespace InternalsViewer.UI
                         }
                     }
 
-                    List<string> layers = AllocationLayer.FindPage(e.Address, allocationContainer.MapLayers);
+                    List<string> layers = AllocationLayer.FindPage(e.Address, allocationContainer.AllocationLayers);
 
                     foreach (string name in layers)
                     {

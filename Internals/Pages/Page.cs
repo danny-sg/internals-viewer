@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Pages
     /// <summary>
     /// Database Page
     /// </summary>
-    public class Page
+    public class Page: Markable
     {
         public const int Size = 8192;
         private PageAddress pageAddress;

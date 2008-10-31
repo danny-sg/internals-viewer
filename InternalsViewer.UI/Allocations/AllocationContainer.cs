@@ -12,7 +12,7 @@ namespace InternalsViewer.UI.Allocations
     /// </summary>
     public partial class AllocationContainer : UserControl
     {
-        private readonly List<AllocationLayer> mapLayers = new List<AllocationLayer>();
+        private readonly List<AllocationLayer> allocationLayers = new List<AllocationLayer>();
         private readonly Dictionary<int, AllocationMap> allocationMaps = new Dictionary<int, AllocationMap>();
         private Size extentSize = new Size(64, 8);
         private bool includeIam;
@@ -123,7 +123,7 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="layer">The layer.</param>
         public void AddMapLayer(AllocationLayer layer)
         {
-            this.mapLayers.Add(layer);
+            this.allocationLayers.Add(layer);
 
             foreach (AllocationMap allocationMap in this.allocationMaps.Values)
             {
@@ -136,7 +136,7 @@ namespace InternalsViewer.UI.Allocations
         /// </summary>
         public void ClearMapLayers()
         {
-            this.mapLayers.Clear();
+            this.allocationLayers.Clear();
 
             foreach (AllocationMap allocationMap in this.allocationMaps.Values)
             {
@@ -151,11 +151,11 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         public bool RemoveLayer(string name)
         {
-            AllocationLayer existing = this.mapLayers.Find(delegate(AllocationLayer layer) { return (layer.Name == name); });
+            AllocationLayer existing = this.allocationLayers.Find(delegate(AllocationLayer layer) { return (layer.Name == name); });
 
             if (existing != null)
             {
-                this.mapLayers.Remove(existing);
+                this.allocationLayers.Remove(existing);
 
                 foreach (AllocationMap allocationMap in this.allocationMaps.Values)
                 {
@@ -238,7 +238,7 @@ namespace InternalsViewer.UI.Allocations
             allocationMap.File = file;
             allocationMap.ExtentCount = file.Size / 8;
             allocationMap.Dock = DockStyle.Fill;
-            allocationMap.MapLayers = this.MapLayers;
+            allocationMap.MapLayers = this.AllocationLayers;
 
             allocationMap.PageClicked += this.AllocationMap_PageClicked;
             allocationMap.PageOver += this.AllocationMap_PageOver;
@@ -358,9 +358,9 @@ namespace InternalsViewer.UI.Allocations
         /// Gets the map layers collection
         /// </summary>
         /// <value>The map layers.</value>
-        public List<AllocationLayer> MapLayers
+        public List<AllocationLayer> AllocationLayers
         {
-            get { return this.mapLayers; }
+            get { return this.allocationLayers; }
         }
 
         /// <summary>

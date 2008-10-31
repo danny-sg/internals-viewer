@@ -2,12 +2,15 @@
 using System.Drawing;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
+using System.Runtime.Serialization;
+using System;
 
 namespace InternalsViewer.UI.Allocations
 {
     /// <summary>
     /// Contains an Allocation structure to be displayed on the Allocation Map
     /// </summary>
+    [Serializable]
     public class AllocationLayer
     {
         private readonly List<Allocation> allocations = new List<Allocation>();

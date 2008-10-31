@@ -6,6 +6,9 @@ using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.BlobPointers
 {
+    /// <summary>
+    /// Row Overflow field
+    /// </summary>
     public class OverflowField : BlobField
     {
         public const int ChildOffset = 12;
@@ -61,6 +64,10 @@ namespace InternalsViewer.Internals.BlobPointers
             this.Links.Add(link);
         }
 
+        /// <summary>
+        /// Gets or sets the B-Tree level.
+        /// </summary>
+        /// <value>The level.</value>
         [MarkAttribute("Level", "Red", "PeachPuff", true)]
         public byte Level
         {
@@ -68,6 +75,10 @@ namespace InternalsViewer.Internals.BlobPointers
             set { this.level = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the length.
+        /// </summary>
+        /// <value>The length.</value>
         [MarkAttribute("Length", "Red", "PeachPuff", true)]
         public int Length
         {
@@ -82,6 +93,10 @@ namespace InternalsViewer.Internals.BlobPointers
             set { this.unused = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the update seq (used by optomistic concurrency control for cursors)
+        /// </summary>
+        /// <value>The update seq.</value>
         [MarkAttribute("UpdateSeq", "DarkGreen", "PeachPuff", true)]
         public short UpdateSeq
         {

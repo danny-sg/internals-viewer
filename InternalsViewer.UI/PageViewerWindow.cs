@@ -214,7 +214,19 @@ namespace InternalsViewer.UI
                     Structure tableStructure = new TableStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
 
                     record = new DataRecord(this.Page, offset, tableStructure);
+                    iamViewer.Visible = false;
+                    markerKeyTable.Visible = true;
+                    break;
 
+                case PageType.Iam:
+                case PageType.Gam:
+                case PageType.Sgam:
+                case PageType.Bcm:
+                case PageType.Dcm:
+
+                    iamViewer.SetAllocationPage(this.Page.Header.PageAddress, this.Page.Database.Name, this.ConnectionString);
+                    markerKeyTable.Visible = false;
+                    iamViewer.Visible = true;
                     break;
 
                 case PageType.Lob3:

@@ -33,7 +33,7 @@ namespace InternalsViewer.Internals.BlobPointers
         }
 
         /// <summary>
-        /// Gets or sets the timestamp.
+        /// Gets or sets the timestamp used by DBCC CHECKTABLE
         /// </summary>
         /// <value>The timestamp.</value>
         [MarkAttribute("Timestamp", "DarkGreen", "PeachPuff", true)]

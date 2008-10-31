@@ -44,6 +44,12 @@ namespace InternalsViewer.Internals.Pages
             this.LoadAllocationMap();
         }
 
+        public AllocationPage(string connectionString, string database, PageAddress pageAddress)
+            : base(connectionString, database, pageAddress)
+        {
+            this.LoadAllocationMap();
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="AllocationPage"/> class.
         /// </summary>

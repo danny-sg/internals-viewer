@@ -31,7 +31,7 @@ namespace InternalsViewer.UI.Allocations
         private DatabaseFile file;
         private int fileId;
         private bool includeIam;
-        private List<AllocationLayer> mapLayers = new List<AllocationLayer>();
+        private List<AllocationLayer> mapLayers;
         private Size extentSize;
         private MapMode mode;
         private readonly VScrollBar scrollBar;
@@ -96,7 +96,8 @@ namespace InternalsViewer.UI.Allocations
 
             this.backgroundBrush = new LinearGradientBrush(this.ClientRectangle, SystemColors.Control, SystemColors.ControlLightLight, LinearGradientMode.Horizontal);
             this.backgroundBrush.WrapMode = WrapMode.TileFlipX;
-            
+
+            this.mapLayers = new List<AllocationLayer>();
         }
 
         void AllocationMap_Resize(object sender, EventArgs e)
@@ -411,7 +412,7 @@ namespace InternalsViewer.UI.Allocations
             if (this.imageBufferBackgroundWorker.IsBusy || this.Holding)
             {
                 // SolidBrush brush = new SolidBrush(Color.FromArgb(200, Color.Black));
-                 e.Graphics.FillRectangle(backgroundBrush, this.Bounds);
+                e.Graphics.FillRectangle(backgroundBrush, this.Bounds);
 
                 //for (int l = 0; l < Height; l += 4)
                 //{
@@ -426,7 +427,7 @@ namespace InternalsViewer.UI.Allocations
                 {
                     if (this.Mode != MapMode.Full)
                     {
-                       // e.Graphics.FillRectangle(backgroundBrush, this.Bounds);
+                        // e.Graphics.FillRectangle(backgroundBrush, this.Bounds);
 
                         //for (int l = 0; l < Height; l += 4)
                         //{
@@ -458,7 +459,7 @@ namespace InternalsViewer.UI.Allocations
                             this.DrawSinglePages(e);
 
                             int mapWidth = this.extentsHorizontal * this.extentSize.Width;
-                            
+
                             e.Graphics.FillRectangle(backgroundBrush, mapWidth, 0, this.Width - mapWidth, this.Height);
 
                             e.Graphics.DrawLine(SystemPens.ControlDark, mapWidth, 0, mapWidth, this.Height);
@@ -778,7 +779,6 @@ namespace InternalsViewer.UI.Allocations
         /// Gets or sets the start page.
         /// </summary>
         /// <value>The start page.</value>
-        [Browsable(false)]
         public PageAddress StartPage
         {
             get
