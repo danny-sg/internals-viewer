@@ -117,24 +117,4 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="allocationMap.MapLayers" mimetype="application/x-microsoft.net.object.binary.base64">
-    <value>
-        AAEAAAD/////AQAAAAAAAAAMAgAAAElJbnRlcm5hbHNWaWV3ZXIuVUksIFZlcnNpb249MS4wLjAuMCwg
-        Q3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsBAEAAACeAVN5c3RlbS5Db2xsZWN0aW9u
-        cy5HZW5lcmljLkxpc3RgMVtbSW50ZXJuYWxzVmlld2VyLlVJLkFsbG9jYXRpb25zLkFsbG9jYXRpb25M
-        YXllciwgSW50ZXJuYWxzVmlld2VyLlVJLCBWZXJzaW9uPTEuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwg
-        UHVibGljS2V5VG9rZW49bnVsbF1dAwAAAAZfaXRlbXMFX3NpemUIX3ZlcnNpb24EAAAwSW50ZXJuYWxz
-        Vmlld2VyLlVJLkFsbG9jYXRpb25zLkFsbG9jYXRpb25MYXllcltdAgAAAAgICQMAAAAAAAAAAAAAAAcD
-        AAAAAAEAAAAAAAAABC5JbnRlcm5hbHNWaWV3ZXIuVUkuQWxsb2NhdGlvbnMuQWxsb2NhdGlvbkxheWVy
-        AgAAAAs=
-</value>
-  </data>
-  <data name="allocationMap.StartPage" mimetype="application/x-microsoft.net.object.binary.base64">
-    <value>
-        AAEAAAD/////AQAAAAAAAAAMAgAAAFBJbnRlcm5hbHNWaWV3ZXIuSW50ZXJuYWxzLCBWZXJzaW9uPTEu
-        MC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49bnVsbAUBAAAAK0ludGVybmFsc1Zp
-        ZXdlci5JbnRlcm5hbHMuUGFnZXMuUGFnZUFkZHJlc3MCAAAABmZpbGVJZAZwYWdlSWQAAAgIAgAAAAEA
-        AAAAAAAACw==
-</value>
-  </data>
 </root>

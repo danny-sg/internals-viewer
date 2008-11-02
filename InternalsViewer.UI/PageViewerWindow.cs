@@ -202,7 +202,10 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void OffsetTable_SlotChanged(object sender, EventArgs e)
         {
-            this.LoadRecord(offsetTable.SelectedOffset);
+            if (offsetTable.SelectedOffset > 0)
+            {
+                this.LoadRecord(offsetTable.SelectedOffset);
+            }
         }
 
         /// <summary>

@@ -74,7 +74,7 @@ namespace InternalsViewer.Internals
             SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
 
             builder.DataSource = serverName;
-            builder.ApplicationName = "SQL Internals Viewer";
+            builder.ApplicationName = "Internals Viewer";
             builder.InitialCatalog = databaseName;
 
             if (!integratedSecurity)

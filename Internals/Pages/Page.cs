@@ -50,7 +50,7 @@ namespace InternalsViewer.Internals.Pages
             this.database = new Database(null, this.DatabaseId, database, 1, 90);
             this.database.Server = new InternalsViewerConnection();
             this.database.Server.ConnectionString = connectionString;
-
+            this.database.CompatibilityLevel = Database.GetCompatabilityLevel(connectionString, database);
             this.reader = new DatabasePageReader(connectionString, this.PageAddress, this.DatabaseId);
 
             this.LoadPage();

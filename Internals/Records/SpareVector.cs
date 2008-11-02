@@ -4,17 +4,20 @@ using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.Records
 {
-    public class SparseVector
+    public class SparseVector: Markable
     {
         private byte[] data;
         private TableStructure structure;
 
         private UInt16[] columns;
-        private Int16[] offset;
+        private UInt16[] offset;
         private Int16 colCount;
         private DataRecord parentRecord;
         private Int16 complexHeader;
         private Int16 recordOffset;
+
+        public const int ColCountOffset = 2;
+        public const int ColumnsOffset = 4;
 
         internal SparseVector(byte[] sparseRecord, TableStructure structure, DataRecord parentRecord, Int16 recordOffset)
         {
@@ -26,7 +29,7 @@ namespace InternalsViewer.Internals.Records
             SparseVectorLoader.Load(this);
         }
 
-        public static string ComplexHeaderDescription(Int16 complexVector)
+        public static string GetComplexHeaderDescription(Int16 complexVector)
         {
             switch (complexVector)
             {
@@ -61,12 +64,25 @@ namespace InternalsViewer.Internals.Records
             set { this.columns = value; }
         }
 
-        public Int16[] Offset
+        [MarkAttribute("Sparse Columns", "Black", "Olive", true)]
+        public string ColumnsDescription
+        {
+            get { return Record.GetArrayString(this.Columns); }
+        }
+
+        [MarkAttribute("Sparse Column Offsets", "Black", "DarkKhaki", true)]
+        public string OffsetsDescription
+        {
+            get { return Record.GetArrayString(this.Offset); }
+        }
+
+        public UInt16[] Offset
         {
             get { return this.offset; }
             set { this.offset = value; }
         }
 
+        [MarkAttribute("Sparse Column Count", "Black", "SeaGreen", true)]
         public Int16 ColCount
         {
             get { return this.colCount; }
@@ -84,5 +100,13 @@ namespace InternalsViewer.Internals.Records
             get { return this.complexHeader; }
             set { this.complexHeader = value; }
         }
+
+        [MarkAttribute("Complex Header", "Green", "Gainsboro", true)]
+        public string ComplexHeaderDescription
+        {
+            get { return GetComplexHeaderDescription(this.ComplexHeader); }
+        }
+
+
     }
 }

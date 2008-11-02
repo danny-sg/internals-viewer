@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals
         public const int AllocationInterval = 511230;
         public const int PfsInterval = 8088;
         private readonly Dictionary<int, Allocation> bcm = new Dictionary<int, Allocation>();
-        private readonly int compatibilityLevel;
+        private byte compatibilityLevel;
         private readonly bool compatible;
         private readonly int databaseId;
         private readonly string name;
@@ -212,9 +212,10 @@ namespace InternalsViewer.Internals
             get { return compatible; }
         }
 
-        public int CompatibilityLevel
+        public byte CompatibilityLevel
         {
-            get { return compatibilityLevel; }
+            get { return this.compatibilityLevel; }
+            set { this.compatibilityLevel = value; }
         }
 
         public InternalsViewerConnection Server
@@ -224,5 +225,20 @@ namespace InternalsViewer.Internals
         }
 
         #endregion
+
+        internal static byte GetCompatabilityLevel(string connectionString, string database)
+        {
+            byte compatabilityLevel;
+
+            compatabilityLevel = (byte)DataAccess.GetScalar(connectionString,
+                                                           "master",
+                                                           Properties.Resources.SQL_CompatabilityLevel,
+                                                           CommandType.Text,
+                                                           new SqlParameter[1]
+                                                                         {
+                                                                             new SqlParameter("name", database)
+                                                                         });
+            return compatabilityLevel;
+        }
     }
 }

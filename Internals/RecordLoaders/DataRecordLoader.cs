@@ -149,6 +149,8 @@ namespace InternalsViewer.Internals.RecordLoaders
 
             Array.Copy(dataRecord.Page.PageData, dataRecord.SlotOffset + startOffset, sparseRecord, 0, endOffset - startOffset);
 
+            dataRecord.Mark("SparseVector");
+
             dataRecord.SparseVector = new SparseVector(sparseRecord, (TableStructure)dataRecord.Structure, dataRecord, (short)startOffset);
         }
 

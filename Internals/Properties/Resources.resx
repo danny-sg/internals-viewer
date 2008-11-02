@@ -360,4 +360,7 @@ FROM   sys.allocation_units au
        LEFT JOIN sys.all_columns c ON column_id = partition_column_id AND c.object_id = p.object_id
 WHERE  au.allocation_unit_id  = @allocation_unit_id</value>
   </data>
+  <data name="SQL_CompatabilityLevel" xml:space="preserve">
+    <value>SELECT compatibility_level FROM sys.databases WHERE name = @name</value>
+  </data>
 </root>
