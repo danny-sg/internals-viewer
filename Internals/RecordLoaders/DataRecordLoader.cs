@@ -324,13 +324,11 @@ namespace InternalsViewer.Internals.RecordLoaders
         {
             byte[] forwardingRecord = new byte[8];
 
-            Array.Copy(dataRecord.Page.PageData, dataRecord.SlotOffset + 1, forwardingRecord, 0, 6);
+            Array.Copy(dataRecord.Page.PageData, dataRecord.SlotOffset + sizeof(byte), forwardingRecord, 0, 6);
 
-            RecordField field = new RecordField(null);
+            dataRecord.ForwardingRecord = new RowIdentifier(forwardingRecord);
 
-            field.Data = forwardingRecord;
-
-            dataRecord.Fields.Add(field);
+            dataRecord.Mark("ForwardingRecord", dataRecord.SlotOffset + sizeof(byte), 6);
         }
     }
 }

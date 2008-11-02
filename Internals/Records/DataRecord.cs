@@ -9,7 +9,8 @@ namespace InternalsViewer.Internals.Records
     public class DataRecord : Record
     {
         private SparseVector sparseVector;
-
+        private RowIdentifier forwardingRecord;
+        
         public DataRecord(Page page, UInt16 slotOffset, Structure structure)
             : base(page, slotOffset, structure)
         {
@@ -77,6 +78,13 @@ namespace InternalsViewer.Internals.Records
         public string StatusBitsBDescription
         {
             get { return ""; }
+        }
+
+        [MarkAttribute("Forwarding Record", "DarkBlue", "Gainsboro", true)]
+        public RowIdentifier ForwardingRecord
+        {
+            get { return this.forwardingRecord; }
+            set { this.forwardingRecord = value; }
         }
 
     }
