@@ -8,7 +8,7 @@ using InternalsViewer.Internals.Structures;
 using Microsoft.SqlServer.Management.Smo;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
 using Microsoft.SqlServer.Management.UI.VSIntegration.ObjectExplorer;
-using Microsoft.SqlServer.Management.Sdk.Sfc;
+//using Microsoft.SqlServer.Management.Sdk.Sfc;
 
 namespace InternalsViewer.SSMSAddIn
 {
