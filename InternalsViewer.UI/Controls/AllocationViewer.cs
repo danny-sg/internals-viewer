@@ -123,5 +123,12 @@ namespace InternalsViewer.UI.Controls
                 this.PageClicked(sender, e);
             }
         }
+
+        private void PageAddressTextBox_TextChanged(object sender, EventArgs e)
+        {
+            PageAddress pageAddress = PageAddress.Parse((sender as TextBox).Text);
+
+            this.OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, 0));
+        }
     }
 }

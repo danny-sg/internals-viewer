@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.30729</ProductVersion>
+    <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -80,12 +80,14 @@
     </Compile>
     <Compile Include="InternalsViewerConnection.cs" />
     <Compile Include="RecordLoaders\BlobRecordLoader.cs" />
+    <Compile Include="RecordLoaders\IndexRecordLoader.cs" />
     <Compile Include="RecordLoaders\SparseVectorLoader.cs" />
     <Compile Include="Records\BlobRecord.cs" />
     <Compile Include="Records\BlobType.cs" />
     <Compile Include="Records\ColumnDescriptor.cs" />
     <Compile Include="Records\DataRecord.cs" />
     <Compile Include="RecordLoaders\DataRecordLoader.cs" />
+    <Compile Include="Records\IndexRecord.cs" />
     <Compile Include="Records\Record.cs" />
     <Compile Include="Records\MarkAttribute.cs" />
     <Compile Include="Records\RecordField.cs" />
@@ -96,6 +98,8 @@
     <Compile Include="Structures\Column.cs" />
     <Compile Include="Structures\HobtEntryPoint.cs" />
     <Compile Include="Structures\Hobt.cs" />
+    <Compile Include="Structures\IndexColumn.cs" />
+    <Compile Include="Structures\IndexStructure.cs" />
     <Compile Include="Structures\Structure.cs" />
     <Compile Include="Structures\StructureType.cs" />
     <Compile Include="Structures\TableStructure.cs" />

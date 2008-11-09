@@ -291,29 +291,29 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// </summary>
         /// <param name="dataRecord">The data record.</param>
         /// <returns>The Record Type property in Status Bits A</returns>
-        private static RecordType LoadStatusBits(DataRecord dataRecord)
+        private static RecordType LoadStatusBits(DataRecord record)
         {
-            byte statusA = dataRecord.Page.PageData[dataRecord.SlotOffset];
+            byte statusA = record.Page.PageData[record.SlotOffset];
 
             // bytes 0 and 1 are Status Bits A and B
-            dataRecord.StatusBitsA = new BitArray(new byte[] { statusA });
-            dataRecord.StatusBitsB = new BitArray(new byte[] { dataRecord.Page.PageData[dataRecord.SlotOffset + 1] });
+            record.StatusBitsA = new BitArray(new byte[] { statusA });
+            record.StatusBitsB = new BitArray(new byte[] { record.Page.PageData[record.SlotOffset + 1] });
 
-            dataRecord.Mark("StatusBitsADescription", dataRecord.SlotOffset, 1);
+            record.Mark("StatusBitsADescription", record.SlotOffset, 1);
 
-            dataRecord.RecordType = (RecordType)((statusA >> 1) & 7);
+            record.RecordType = (RecordType)((statusA >> 1) & 7);
 
-            if (dataRecord.RecordType == RecordType.Forwarding)
+            if (record.RecordType == RecordType.Forwarding)
             {
-                return dataRecord.RecordType;
+                return record.RecordType;
             }
 
-            dataRecord.HasNullBitmap = dataRecord.StatusBitsA[4];
-            dataRecord.HasVariableLengthColumns = dataRecord.StatusBitsA[5];
+            record.HasNullBitmap = record.StatusBitsA[4];
+            record.HasVariableLengthColumns = record.StatusBitsA[5];
 
-            dataRecord.Mark("StatusBitsBDescription", dataRecord.SlotOffset + sizeof(byte), 1);
+            record.Mark("StatusBitsBDescription", record.SlotOffset + sizeof(byte), 1);
 
-            return dataRecord.RecordType;
+            return record.RecordType;
         }
 
         /// <summary>

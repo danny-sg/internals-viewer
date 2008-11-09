@@ -134,6 +134,27 @@ namespace InternalsViewer.Internals.Records
             }
         }
 
+        internal static string GetStatusBitsDescription(Record record)
+        {
+            string statusDescription = string.Empty;
+
+            if (record.HasVariableLengthColumns)
+            {
+                statusDescription += ", Variable Length Flag";
+            }
+
+            if (record.HasNullBitmap && record.HasVariableLengthColumns)
+            {
+                statusDescription += " | NULL Bitmap Flag";
+            }
+            else if (record.HasNullBitmap)
+            {
+                statusDescription += ", NULL Bitmap Flag";
+            }
+
+            return statusDescription;
+        }
+
         /// <summary>
         /// Gets or sets the record's underlying Page
         /// </summary>
@@ -189,6 +210,12 @@ namespace InternalsViewer.Internals.Records
         {
             get { return this.statusBitsA; }
             set { this.statusBitsA = value; }
+        }
+
+        [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
+        public string StatusBitsADescription
+        {
+            get { return GetRecordTypeDescription(this.RecordType) + GetStatusBitsDescription(this); }
         }
 
         /// <summary>

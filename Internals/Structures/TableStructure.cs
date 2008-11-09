@@ -24,14 +24,15 @@ namespace InternalsViewer.Internals.Structures
                 {
                     columnCount++;
 
-                    currentColumn = new Column(tableColumn["name"].ToString(),
-                                               Convert.ToInt32(tableColumn["column_id"]),
-                                               DataConverter.ToSqlType(Convert.ToByte(tableColumn["system_type_id"])),
-                                               Convert.ToInt16(tableColumn["max_length"]),
-                                               Convert.ToInt16(tableColumn["leaf_offset"]),
-                                               Convert.ToByte(tableColumn["precision"]),
-                                               Convert.ToByte(tableColumn["scale"]));
+                    currentColumn = new Column();
 
+                    currentColumn.ColumnName = tableColumn["name"].ToString();
+                    currentColumn.ColumnId = Convert.ToInt32(tableColumn["column_id"]);
+                    currentColumn.DataType = DataConverter.ToSqlType(Convert.ToByte(tableColumn["system_type_id"]));
+                    currentColumn.DataLength = Convert.ToInt16(tableColumn["max_length"]);
+                    currentColumn.LeafOffset = Convert.ToInt16(tableColumn["leaf_offset"]);
+                    currentColumn.Precision = Convert.ToByte(tableColumn["precision"]);
+                    currentColumn.Scale = Convert.ToByte(tableColumn["scale"]);
                     currentColumn.Dropped = Convert.ToBoolean(tableColumn["is_dropped"]);
                     currentColumn.Uniqueifer = Convert.ToBoolean(tableColumn["is_uniqueifier"]);
                     currentColumn.Sparse = Convert.ToBoolean(tableColumn["is_sparse"] ?? false);
@@ -47,7 +48,7 @@ namespace InternalsViewer.Internals.Structures
             }
         }
 
-        public override DataTable LoadStructure(long allocationUnitId, Database database)
+        public override DataTable GetStructure(long allocationUnitId, Database database)
         {
             DataTable returnDataTable = new DataTable();
 

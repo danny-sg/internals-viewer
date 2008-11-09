@@ -17,27 +17,6 @@ namespace InternalsViewer.Internals.Records
             DataRecordLoader.Load(this);
         }
 
-        internal static string GetStatusBitsDescription(DataRecord dataRecord)
-        {
-            string statusDescription = string.Empty;
-
-            if (dataRecord.HasVariableLengthColumns)
-            {
-                statusDescription += ", Variable Length Flag";
-            }
-
-            if (dataRecord.HasNullBitmap && dataRecord.HasVariableLengthColumns)
-            {
-                statusDescription += " | NULL Bitmap Flag";
-            }
-            else if (dataRecord.HasNullBitmap)
-            {
-                statusDescription += ", NULL Bitmap Flag";
-            }
-
-            return statusDescription;
-        }
-
         public SparseVector SparseVector
         {
             get { return sparseVector; }
@@ -66,12 +45,6 @@ namespace InternalsViewer.Internals.Records
                 sb.AppendLine(field.ToString());
             }
             return sb.ToString();
-        }
-
-        [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
-        public string StatusBitsADescription
-        {
-            get { return GetRecordTypeDescription(this.RecordType) + GetStatusBitsDescription(this); }
         }
 
         [MarkAttribute("Status Bits B", "Maroon", "Gainsboro", true)]

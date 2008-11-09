@@ -12,6 +12,7 @@ namespace InternalsViewer.Internals.Pages
     public struct PageAddress : IEquatable<PageAddress>, IComparable<PageAddress>
     {
         public static readonly PageAddress Empty = new PageAddress();
+        public const int Size = sizeof(Int32) + sizeof(Int16);
         private int fileId;
         private int pageId;
 

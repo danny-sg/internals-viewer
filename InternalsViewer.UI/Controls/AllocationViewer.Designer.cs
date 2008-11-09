@@ -216,6 +216,7 @@ namespace InternalsViewer.UI.Controls
             this.slotSixTextBox.ReadOnly = true;
             this.slotSixTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotSixTextBox.TabIndex = 263;
+            this.slotSixTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
             // 
             // slotFiveTextBox
             // 
@@ -229,6 +230,7 @@ namespace InternalsViewer.UI.Controls
             this.slotFiveTextBox.ReadOnly = true;
             this.slotFiveTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotFiveTextBox.TabIndex = 262;
+            this.slotFiveTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
             // 
             // label10
             // 
@@ -255,6 +257,7 @@ namespace InternalsViewer.UI.Controls
             this.slotSevenTextBox.ReadOnly = true;
             this.slotSevenTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotSevenTextBox.TabIndex = 260;
+            this.slotSevenTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
             // 
             // label11
             // 
@@ -294,6 +297,7 @@ namespace InternalsViewer.UI.Controls
             this.slotFourTextBox.ReadOnly = true;
             this.slotFourTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotFourTextBox.TabIndex = 257;
+            this.slotFourTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
             // 
             // label13
             // 
@@ -320,6 +324,7 @@ namespace InternalsViewer.UI.Controls
             this.slotTwoTextBox.ReadOnly = true;
             this.slotTwoTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotTwoTextBox.TabIndex = 255;
+            this.slotTwoTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
             // 
             // slotOneTextBox
             // 
@@ -333,6 +338,7 @@ namespace InternalsViewer.UI.Controls
             this.slotOneTextBox.ReadOnly = true;
             this.slotOneTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotOneTextBox.TabIndex = 254;
+            this.slotOneTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
             // 
             // label9
             // 
@@ -359,6 +365,7 @@ namespace InternalsViewer.UI.Controls
             this.slotThreeTextBox.ReadOnly = true;
             this.slotThreeTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotThreeTextBox.TabIndex = 252;
+            this.slotThreeTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
             // 
             // label8
             // 
@@ -398,6 +405,7 @@ namespace InternalsViewer.UI.Controls
             this.slotZeroTextBox.ReadOnly = true;
             this.slotZeroTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotZeroTextBox.TabIndex = 249;
+            this.slotZeroTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
             // 
             // label6
             // 
@@ -424,6 +432,8 @@ namespace InternalsViewer.UI.Controls
             this.startPageTextBox.ReadOnly = true;
             this.startPageTextBox.Size = new System.Drawing.Size(63, 13);
             this.startPageTextBox.TabIndex = 247;
+            this.startPageTextBox.TextChanged += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.startPageTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
             // 
             // label2
             // 
@@ -452,6 +462,7 @@ namespace InternalsViewer.UI.Controls
             this.allocationMap.HoldingMessage = null;
             this.allocationMap.IncludeIam = false;
             this.allocationMap.Location = new System.Drawing.Point(0, 115);
+            this.allocationMap.MapLayers = ((System.Collections.Generic.List<InternalsViewer.UI.Allocations.AllocationLayer>)(resources.GetObject("allocationMap.MapLayers")));
             this.allocationMap.Mode = InternalsViewer.UI.Allocations.MapMode.Standard;
             this.allocationMap.Name = "allocationMap";
             this.allocationMap.Padding = new System.Windows.Forms.Padding(1);
@@ -460,17 +471,18 @@ namespace InternalsViewer.UI.Controls
             this.allocationMap.SelectionEndExtent = -1;
             this.allocationMap.SelectionStartExtent = -1;
             this.allocationMap.Size = new System.Drawing.Size(670, 299);
+            this.allocationMap.StartPage = ((InternalsViewer.Internals.Pages.PageAddress)(resources.GetObject("allocationMap.StartPage")));
             this.allocationMap.TabIndex = 1;
             this.allocationMap.VisibleExtents = 0;
             this.allocationMap.WindowPosition = 0;
             // 
-            // IamViewer
+            // AllocationViewer
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.allocationMap);
             this.Controls.Add(this.topPanel);
-            this.Name = "IamViewer";
+            this.Name = "AllocationViewer";
             this.Size = new System.Drawing.Size(670, 414);
             this.topPanel.ResumeLayout(false);
             this.topPanel.PerformLayout();

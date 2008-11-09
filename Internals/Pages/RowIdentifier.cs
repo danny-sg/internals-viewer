@@ -11,6 +11,7 @@ namespace InternalsViewer.Internals.Pages
     {
         private PageAddress pageAddress;
         private int slotId;
+        public const int Size = sizeof(Int16) + sizeof(Int16) + sizeof(Int32);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RowIdentifier"/> struct.

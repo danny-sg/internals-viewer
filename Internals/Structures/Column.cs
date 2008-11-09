@@ -23,22 +23,8 @@ namespace InternalsViewer.Internals.Structures
         /// <summary>
         /// Initializes a new instance of the <see cref="Column"/> class.
         /// </summary>
-        /// <param name="columnName">Name of the column.</param>
-        /// <param name="columnId">The column id.</param>
-        /// <param name="dataType">Type of the data.</param>
-        /// <param name="dataLength">Length of the data.</param>
-        /// <param name="leafOffset">The leaf offset.</param>
-        /// <param name="precision">The precision.</param>
-        /// <param name="scale">The scale.</param>
-        public Column(string columnName, int columnId, SqlDbType dataType, Int16 dataLength, Int16 leafOffset, byte precision, byte scale)
+        public Column()
         {
-            this.columnName = columnName;
-            this.columnId = columnId;
-            this.dataType = dataType;
-            this.dataLength = dataLength;
-            this.leafOffset = leafOffset;
-            this.precision = precision;
-            this.scale = scale;
         }
 
         /// <summary>

@@ -14,12 +14,12 @@ namespace InternalsViewer.Internals.Structures
         {
             this.columns = new List<Column>();
             this.AllocationUnitId = allocationUnitId;
-            this.StructureDataTable = this.LoadStructure(allocationUnitId, database);
+            this.StructureDataTable = this.GetStructure(allocationUnitId, database);
         }
 
         internal abstract void AddColumns(DataTable structure);
 
-        public abstract DataTable LoadStructure(long allocationUnitId, Database database);
+        public abstract DataTable GetStructure(long allocationUnitId, Database database);
 
         public long AllocationUnitId
         {

@@ -227,6 +227,16 @@ namespace InternalsViewer.UI
                     markerKeyTable.Visible = true;
                     break;
 
+                case PageType.Index:
+
+                    Structure indexStructure = new IndexStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
+
+                    record = new IndexRecord(this.Page, offset, indexStructure);
+
+                    allocationViewer.Visible = false;
+                    markerKeyTable.Visible = true;
+                    break;
+
                 case PageType.Iam:
                 case PageType.Gam:
                 case PageType.Sgam:
@@ -234,9 +244,9 @@ namespace InternalsViewer.UI
                 case PageType.Dcm:
 
                     allocationViewer.SetAllocationPage(this.Page.Header.PageAddress, 
-                                                this.Page.Database.Name, 
-                                                this.ConnectionString,
-                                                (this.Page.Header.PageType== PageType.Iam));
+                                                       this.Page.Database.Name, 
+                                                       this.ConnectionString,
+                                                      (this.Page.Header.PageType== PageType.Iam));
 
                     markerKeyTable.Visible = false;
                     allocationViewer.Visible = true;
