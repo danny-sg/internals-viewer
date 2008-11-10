@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Drawing;
+﻿using System.Drawing;
+using System.Collections.Generic;
 
 namespace InternalsViewer.UI.Markers
 {
@@ -9,27 +9,15 @@ namespace InternalsViewer.UI.Markers
         private int startPosition;
         private Color foreColour;
         private Color backColour;
+        private Color alternateBackColour;
         private bool isNull;
         private MarkerType markerType;
         private string name;
-
         private string value;
         private bool visible;
 
         public Marker()
         {
-        }
-
-        public Marker(string name, MarkerType markerType, int startPosition, int endPosition, Color backColour, Color foreColour)
-        {
-            this.Name = name;
-            this.StartPosition = startPosition;
-            this.EndPosition = endPosition;
-            this.BackColour = backColour;
-            this.ForeColour = foreColour;
-            this.markerType = markerType;
-
-            visible = true;
         }
 
         public static Marker GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
@@ -69,6 +57,12 @@ namespace InternalsViewer.UI.Markers
         {
             get { return this.backColour; }
             set { this.backColour = value; }
+        }
+
+        public Color AlternateBackColour
+        {
+            get { return alternateBackColour; }
+            set { alternateBackColour = value; }
         }
 
         public Color ForeColour

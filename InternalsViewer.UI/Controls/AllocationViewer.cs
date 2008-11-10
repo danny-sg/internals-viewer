@@ -128,7 +128,7 @@ namespace InternalsViewer.UI.Controls
         {
             PageAddress pageAddress = PageAddress.Parse((sender as TextBox).Text);
 
-            this.OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, 0));
+            this.OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, 0), false));
         }
     }
 }

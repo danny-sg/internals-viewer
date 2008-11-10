@@ -23,8 +23,6 @@ namespace InternalsViewer.UI.Markers
         /// <returns></returns>
         public static List<Marker> BuildMarkers(Markable markedObject, string prefix)
         {
-            bool alternate = false;
-
             List<Marker> markers = new List<Marker>();
 
             foreach (MarkItem item in markedObject.MarkItems)
@@ -52,9 +50,8 @@ namespace InternalsViewer.UI.Markers
                     }
 
                     marker.ForeColour = attribute.ForeColour;
-
-                    marker.BackColour = alternate ? attribute.AlternateBackColour : attribute.BackColour;
-                    alternate = !alternate;
+                    marker.BackColour = attribute.BackColour;
+                    marker.AlternateBackColour = attribute.AlternateBackColour;
 
                     marker.Visible = attribute.Visible;
                 }

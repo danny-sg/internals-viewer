@@ -31,6 +31,7 @@
             this.components = new System.ComponentModel.Container();
             this.headerPanel = new System.Windows.Forms.Panel();
             this.mainPanel = new System.Windows.Forms.Panel();
+            this.dataRichTextBox = new InternalsViewer.UI.Controls.HexRichTextBox();
             this.leftPanel = new System.Windows.Forms.Panel();
             this.addressLabel = new System.Windows.Forms.Label();
             this.dataToolTip = new System.Windows.Forms.ToolTip(this.components);
@@ -39,7 +40,6 @@
             this.findRecordToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.addressContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.hexNumericToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.dataRichTextBox = new InternalsViewer.UI.Controls.HexRichTextBox();
             this.mainPanel.SuspendLayout();
             this.leftPanel.SuspendLayout();
             this.dataContextMenuStrip.SuspendLayout();
@@ -65,6 +65,31 @@
             this.mainPanel.Padding = new System.Windows.Forms.Padding(8, 0, 0, 0);
             this.mainPanel.Size = new System.Drawing.Size(375, 412);
             this.mainPanel.TabIndex = 8;
+            // 
+            // dataRichTextBox
+            // 
+            this.dataRichTextBox.BackColor = System.Drawing.Color.White;
+            this.dataRichTextBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.dataRichTextBox.Cursor = System.Windows.Forms.Cursors.Arrow;
+            this.dataRichTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.dataRichTextBox.HideSelection = false;
+            this.dataRichTextBox.Location = new System.Drawing.Point(8, 0);
+            this.dataRichTextBox.Name = "dataRichTextBox";
+            this.dataRichTextBox.ReadOnly = true;
+            this.dataRichTextBox.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
+            this.dataRichTextBox.ShowSelectionMargin = true;
+            this.dataRichTextBox.Size = new System.Drawing.Size(367, 412);
+            this.dataRichTextBox.TabIndex = 0;
+            this.dataRichTextBox.Text = "";
+            this.dataRichTextBox.TextLineSize = new System.Drawing.Size(0, 0);
+            this.dataRichTextBox.TextSize = new System.Drawing.Size(0, 0);
+            this.dataRichTextBox.WordWrap = false;
+            this.dataRichTextBox.VScroll += new System.EventHandler(this.DataRichTextBox_VScroll);
+            this.dataRichTextBox.SelectionChanged += new System.EventHandler(this.DataRichTextBox_SelectionChanged);
+            this.dataRichTextBox.Resize += new System.EventHandler(this.DataRichTextBox_Resize);
+            this.dataRichTextBox.Leave += new System.EventHandler(this.DataRichTextBox_Leave);
+            this.dataRichTextBox.MouseMove += new System.Windows.Forms.MouseEventHandler(this.DataRichTextBox_MouseMove);
+            this.dataRichTextBox.MouseLeave += new System.EventHandler(this.DataRichTextBox_MouseLeave);
             // 
             // leftPanel
             // 
@@ -128,30 +153,6 @@
             this.hexNumericToolStripMenuItem.Name = "hexNumericToolStripMenuItem";
             this.hexNumericToolStripMenuItem.Size = new System.Drawing.Size(93, 22);
             this.hexNumericToolStripMenuItem.Text = "Hex";
-            // 
-            // dataRichTextBox
-            // 
-            this.dataRichTextBox.BackColor = System.Drawing.Color.White;
-            this.dataRichTextBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.dataRichTextBox.Cursor = System.Windows.Forms.Cursors.Arrow;
-            this.dataRichTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.dataRichTextBox.HideSelection = false;
-            this.dataRichTextBox.Location = new System.Drawing.Point(8, 0);
-            this.dataRichTextBox.Name = "dataRichTextBox";
-            this.dataRichTextBox.ReadOnly = true;
-            this.dataRichTextBox.ShowSelectionMargin = true;
-            this.dataRichTextBox.Size = new System.Drawing.Size(367, 412);
-            this.dataRichTextBox.TabIndex = 0;
-            this.dataRichTextBox.Text = "";
-            this.dataRichTextBox.TextLineSize = new System.Drawing.Size(0, 0);
-            this.dataRichTextBox.TextSize = new System.Drawing.Size(0, 0);
-            this.dataRichTextBox.WordWrap = false;
-            this.dataRichTextBox.VScroll += new System.EventHandler(this.DataRichTextBox_VScroll);
-            this.dataRichTextBox.SelectionChanged += new System.EventHandler(this.DataRichTextBox_SelectionChanged);
-            this.dataRichTextBox.Resize += new System.EventHandler(this.DataRichTextBox_Resize);
-            this.dataRichTextBox.Leave += new System.EventHandler(this.DataRichTextBox_Leave);
-            this.dataRichTextBox.MouseMove += new System.Windows.Forms.MouseEventHandler(this.DataRichTextBox_MouseMove);
-            this.dataRichTextBox.MouseLeave += new System.EventHandler(this.DataRichTextBox_MouseLeave);
             // 
             // HexViewer
             // 

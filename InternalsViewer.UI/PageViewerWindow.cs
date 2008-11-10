@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
 using InternalsViewer.UI.Markers;
+using System.Drawing;
 
 namespace InternalsViewer.UI
 {
@@ -51,6 +52,8 @@ namespace InternalsViewer.UI
 
             this.Page = new Page(connectionString, database, rowIdentifier.PageAddress);
 
+            RefreshAllocationStatus();
+
             this.SetSlot(rowIdentifier.SlotId);
         }
 
@@ -68,14 +71,18 @@ namespace InternalsViewer.UI
             this.OnPageChanged(this, new PageEventArgs(new RowIdentifier(this.Page.PageAddress, 0), false));
         }
 
-        private void RefreshAllocationStatus(Database database, int extent)
+        private void RefreshAllocationStatus()
         {
-            int fileId = this.Page.PageAddress.FileId;
+            Image unallocated = ExtentColour.KeyImage(Color.Gainsboro);
+            Image gamAllocated = ExtentColour.KeyImage(Color.FromArgb(172, 186, 214));
+            Image sGamAllocated = ExtentColour.KeyImage(Color.FromArgb(168, 204, 162));
+            Image dcmAllocated = ExtentColour.KeyImage(Color.FromArgb(120, 150, 150));
+            Image bcmAllocated = ExtentColour.KeyImage(Color.FromArgb(150, 120, 150));
 
-            //gamPictureBox.Image = database.Gam[fileId].Allocated(extent, fileId) ? unallocated : gamAllocated;
-            //sGamPictureBox.Image = database.SGam[fileId].Allocated(extent, fileId) ? sGamAllocated : unallocated;
-            //dcmPictureBox.Image = database.Dcm[fileId].Allocated(extent, fileId) ? dcmAllocated : unallocated;
-            //bcmPictureBox.Image = database.Bcm[fileId].Allocated(extent, fileId) ? bcmAllocated : unallocated;
+            gamPictureBox.Image = page.Header.AllocationStatus[AllocationPageType.Gam] ? gamAllocated : unallocated;
+            sGamPictureBox.Image = page.Header.AllocationStatus[AllocationPageType.Sgam] ? sGamAllocated : unallocated;
+            dcmPictureBox.Image = page.Header.AllocationStatus[AllocationPageType.Dcm] ? dcmAllocated : unallocated;
+            bcmPictureBox.Image = page.Header.AllocationStatus[AllocationPageType.Bcm] ? bcmAllocated : unallocated;
         }
 
         /// <summary>
@@ -153,6 +160,8 @@ namespace InternalsViewer.UI
             this.LoadPage(connectionString, rowIdentifier.PageAddress);
 
             this.offsetTable.SelectedSlot = rowIdentifier.SlotId;
+
+            RefreshAllocationStatus();
         }
 
         /// <summary>
@@ -243,10 +252,10 @@ namespace InternalsViewer.UI
                 case PageType.Bcm:
                 case PageType.Dcm:
 
-                    allocationViewer.SetAllocationPage(this.Page.Header.PageAddress, 
-                                                       this.Page.Database.Name, 
+                    allocationViewer.SetAllocationPage(this.Page.Header.PageAddress,
+                                                       this.Page.Database.Name,
                                                        this.ConnectionString,
-                                                      (this.Page.Header.PageType== PageType.Iam));
+                                                      (this.Page.Header.PageType == PageType.Iam));
 
                     markerKeyTable.Visible = false;
                     allocationViewer.Visible = true;
@@ -271,6 +280,8 @@ namespace InternalsViewer.UI
                 this.markerKeyTable.SetMarkers(markers);
 
                 this.hexViewer.ScrollToOffset(offset);
+
+                this.offsetTableToolStripTextBox.Text = string.Format("{0:0000}", offset);
             }
         }
 
@@ -285,7 +296,7 @@ namespace InternalsViewer.UI
 
         private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
         {
-            LoadPage(this.ConnectionString,e.RowId);
+            LoadPage(this.ConnectionString, e.RowId);
         }
 
         /// <summary>
@@ -383,6 +394,24 @@ namespace InternalsViewer.UI
         private void AllocationViewer_PageClicked(object sender, PageEventArgs e)
         {
             this.LoadPage(this.ConnectionString, e.Address);
+        }
+
+        private void offsetTableToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Return)
+            {
+                ushort offset;
+
+                if (ushort.TryParse(offsetTableToolStripTextBox.Text, out offset) && offset < Page.Size && offset > 0)
+                {
+                    this.LoadRecord(offset);
+                }
+            }
+        }
+
+        private void decodeToolStripButton_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

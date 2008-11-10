@@ -462,7 +462,6 @@ namespace InternalsViewer.UI.Controls
             this.allocationMap.HoldingMessage = null;
             this.allocationMap.IncludeIam = false;
             this.allocationMap.Location = new System.Drawing.Point(0, 115);
-            this.allocationMap.MapLayers = ((System.Collections.Generic.List<InternalsViewer.UI.Allocations.AllocationLayer>)(resources.GetObject("allocationMap.MapLayers")));
             this.allocationMap.Mode = InternalsViewer.UI.Allocations.MapMode.Standard;
             this.allocationMap.Name = "allocationMap";
             this.allocationMap.Padding = new System.Windows.Forms.Padding(1);
@@ -471,7 +470,6 @@ namespace InternalsViewer.UI.Controls
             this.allocationMap.SelectionEndExtent = -1;
             this.allocationMap.SelectionStartExtent = -1;
             this.allocationMap.Size = new System.Drawing.Size(670, 299);
-            this.allocationMap.StartPage = ((InternalsViewer.Internals.Pages.PageAddress)(resources.GetObject("allocationMap.StartPage")));
             this.allocationMap.TabIndex = 1;
             this.allocationMap.VisibleExtents = 0;
             this.allocationMap.WindowPosition = 0;

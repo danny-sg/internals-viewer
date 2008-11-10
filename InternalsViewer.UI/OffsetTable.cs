@@ -130,7 +130,7 @@ namespace InternalsViewer.UI
             }
             set
             {
-                if (value >= 0 && this.offsetDataGridView.Rows.Count > 0)
+                if (value >= 0 && this.offsetDataGridView.SelectedRows.Count > 0)
                 {
                     this.offsetDataGridView.Rows[value].Selected = true;
                     this.offsetDataGridView.FirstDisplayedScrollingRowIndex = this.offsetDataGridView.SelectedRows[0].Index;

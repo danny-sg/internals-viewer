@@ -333,24 +333,36 @@ namespace InternalsViewer.UI
                         switch (e.Address.PageId % Database.AllocationInterval)
                         {
                             case 0:
+                                
                                 if (e.Address.PageId == 0)
                                 {
                                     AllocUnitLabel.Text = "File Header";
                                 }
+
                                 break;
-                            case 2:
+
+                            case (int)AllocationPageType.Gam:
+
                                 AllocUnitLabel.Text = "GAM";
                                 break;
-                            case 3:
+
+                            case (int)AllocationPageType.Sgam:
+
                                 AllocUnitLabel.Text = "SGAM";
                                 break;
-                            case 6:
+
+                            case (int)AllocationPageType.Dcm:
+
                                 AllocUnitLabel.Text = "DCM";
                                 break;
-                            case 7:
+
+                            case (int)AllocationPageType.Bcm:
+
                                 AllocUnitLabel.Text = "BCM";
                                 break;
+
                             case 9:
+
                                 AllocUnitLabel.Text = "Boot Page";
                                 break;
                         }
@@ -455,7 +467,7 @@ namespace InternalsViewer.UI
             {
                 try
                 {
-                    this.OnViewPage(this, new PageEventArgs(new RowIdentifier(PageAddress.Parse(pageToolStripTextBox.Text),0), e.Shift));
+                    this.OnViewPage(this, new PageEventArgs(new RowIdentifier(PageAddress.Parse(pageToolStripTextBox.Text), 0), e.Shift));
                 }
                 catch (Exception ex)
                 {

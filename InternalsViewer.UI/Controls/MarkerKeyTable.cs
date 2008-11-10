@@ -53,7 +53,17 @@ namespace InternalsViewer.UI.Controls
                 if (e.ColumnIndex == 0)
                 {
                     markersDataGridView.Rows[e.RowIndex].SetValues("00");
-                    e.CellStyle.BackColor = (Color)markersDataGridView.Rows[e.RowIndex].Cells["BackColourColumn"].Value;
+
+                    if (e.RowIndex % 2 == 0)
+                    {
+                        e.CellStyle.BackColor = (Color)markersDataGridView.Rows[e.RowIndex].Cells["BackColourColumn"].Value;
+                    }
+                    else
+                    {
+
+                        e.CellStyle.BackColor = (Color)markersDataGridView.Rows[e.RowIndex].Cells["AlternateBackColourColumn"].Value;
+                    }
+
                     e.CellStyle.SelectionBackColor = e.CellStyle.BackColor;
 
                     e.CellStyle.ForeColor = (Color)markersDataGridView.Rows[e.RowIndex].Cells["ForeColourColumn"].Value;

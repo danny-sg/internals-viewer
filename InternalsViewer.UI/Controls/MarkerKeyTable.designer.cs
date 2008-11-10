@@ -43,6 +43,7 @@ namespace InternalsViewer.UI.Controls
             this.navigateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.navigateToInNewWindowToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.KeyColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.AlternateBackColourColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.BackColourColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ForeColourColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.IsNullColumn = new System.Windows.Forms.DataGridViewCheckBoxColumn();
@@ -70,6 +71,7 @@ namespace InternalsViewer.UI.Controls
             this.markersDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             this.markersDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.KeyColumn,
+            this.AlternateBackColourColumn,
             this.BackColourColumn,
             this.ForeColourColumn,
             this.IsNullColumn,
@@ -91,8 +93,8 @@ namespace InternalsViewer.UI.Controls
             this.markersDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.markersDataGridView.Size = new System.Drawing.Size(248, 148);
             this.markersDataGridView.TabIndex = 0;
-            this.markersDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.MarkersDataGridView_CellClick);
             this.markersDataGridView.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.MarkersDataGridView_CellFormatting);
+            this.markersDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.MarkersDataGridView_CellClick);
             this.markersDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.MarkersDataGridView_CellContentClick);
             // 
             // markerBindingSource
@@ -165,6 +167,14 @@ namespace InternalsViewer.UI.Controls
             this.KeyColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             this.KeyColumn.ToolTipText = "Key";
             this.KeyColumn.Width = 5;
+            // 
+            // AlternateBackColourColumn
+            // 
+            this.AlternateBackColourColumn.DataPropertyName = "AlternateBackColour";
+            this.AlternateBackColourColumn.HeaderText = "AlternateBackColour";
+            this.AlternateBackColourColumn.Name = "AlternateBackColourColumn";
+            this.AlternateBackColourColumn.ReadOnly = true;
+            this.AlternateBackColourColumn.Visible = false;
             // 
             // BackColourColumn
             // 
@@ -286,6 +296,7 @@ namespace InternalsViewer.UI.Controls
         private System.Windows.Forms.ToolStripMenuItem navigateToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem navigateToInNewWindowToolStripMenuItem1;
         private System.Windows.Forms.DataGridViewTextBoxColumn KeyColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn AlternateBackColourColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn BackColourColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn ForeColourColumn;
         private System.Windows.Forms.DataGridViewCheckBoxColumn IsNullColumn;

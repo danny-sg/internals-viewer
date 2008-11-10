@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.21022</ProductVersion>
+    <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{B3ED9567-EDF2-46CA-AF84-2256B9908D4E}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -76,6 +76,12 @@
     <Compile Include="Connect.cs">
     </Compile>
     <Compile Include="ConnectionManager.cs" />
+    <Compile Include="DecodeContainer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="DecodeContainer.Designer.cs">
+      <DependentUpon>DecodeContainer.cs</DependentUpon>
+    </Compile>
     <Compile Include="ImageConverter.cs">
       <SubType>Component</SubType>
     </Compile>

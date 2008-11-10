@@ -71,6 +71,8 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         private string FormatPageDetails(Page targetPage)
         {
+            bool alternate = false;
+
             StringBuilder sb = new StringBuilder();
 
             sb.Append(this.rtfHeader);
@@ -104,7 +106,7 @@ namespace InternalsViewer.UI
                     // Start marker/colour tag
                     if (this.colourise)
                     {
-                        this.FindStartMarkers(currentPos, sb);
+                        alternate = this.FindStartMarkers(currentPos, sb, alternate);
                     }
 
                     // Add the byte
@@ -182,14 +184,20 @@ namespace InternalsViewer.UI
         /// </summary>
         /// <param name="position">The current position.</param>
         /// <param name="sb">The StringBuilder.</param>
-        private void FindStartMarkers(int position, StringBuilder sb)
+        private bool FindStartMarkers(int position, StringBuilder sb, bool alternate)
         {
             List<Marker> startMarkers = this.markers.FindAll(delegate(Marker marker) { return marker.StartPosition == position; });
 
             foreach (Marker startMarker in startMarkers)
             {
-                sb.Append(RtfColour.RtfTag(this.rtfColours, startMarker.ForeColour.Name, startMarker.BackColour.Name));
+                sb.Append(RtfColour.RtfTag(this.rtfColours,
+                                            startMarker.ForeColour.Name,
+                                            alternate ? startMarker.AlternateBackColour.Name : startMarker.BackColour.Name));
+
+                alternate = !alternate;
             }
+
+            return alternate;
         }
 
         /// <summary>
