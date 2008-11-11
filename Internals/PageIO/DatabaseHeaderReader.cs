@@ -63,11 +63,6 @@ namespace InternalsViewer.Internals.PageIO
             parsed &= int.TryParse(headerData["m_xactReserved"], out xactReservedCount);
             parsed &= long.TryParse(headerData["m_tornBits"], out tornBits);
 
-            header.AllocationStatus.Add(AllocationPageType.Gam, headerData["GAM (1:2)"] == "ALLOCATED");
-            header.AllocationStatus.Add(AllocationPageType.Sgam, headerData["SGAM (1:3)"] == "ALLOCATED");
-            header.AllocationStatus.Add(AllocationPageType.Bcm, headerData["DIFF (1:6)"] == "ALLOCATED");
-            header.AllocationStatus.Add(AllocationPageType.Dcm, headerData["ML (1:7)"] == "ALLOCATED");
-
             header.PageAddress = new PageAddress(headerData["m_pageId"]);
             header.PageType = (PageType)pageType;
             header.Lsn = new LogSequenceNumber(headerData["m_lsn"]);

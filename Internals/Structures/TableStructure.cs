@@ -52,7 +52,7 @@ namespace InternalsViewer.Internals.Structures
         {
             DataTable returnDataTable = new DataTable();
 
-            using (SqlConnection conn = new SqlConnection(database.Server.ConnectionString))
+            using (SqlConnection conn = new SqlConnection(database.ConnectionString))
             {
                 string commandText;
 

@@ -321,6 +321,7 @@
             this.pfsPanel.Name = "pfsPanel";
             this.pfsPanel.Size = new System.Drawing.Size(33, 33);
             this.pfsPanel.TabIndex = 253;
+            this.pfsPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.PfsPanel_Paint);
             // 
             // label6
             // 

@@ -27,7 +27,6 @@ namespace InternalsViewer.Internals.Pages
         private int slotCount;
         private long tornBits;
         private int xactReservedCount;
-        private Dictionary<AllocationPageType, bool> allocationStatus = new Dictionary<AllocationPageType, bool>();
 
         /// <summary>
         /// Gets or sets the page address.
@@ -227,12 +226,6 @@ namespace InternalsViewer.Internals.Pages
         {
             get { return this.pageTypeName; }
             set { this.pageTypeName = value; }
-        }
-
-        public Dictionary<AllocationPageType, bool> AllocationStatus
-        {
-            get { return allocationStatus; }
-            set { allocationStatus = value; }
         }
     }
 }

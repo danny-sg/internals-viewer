@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Pages
     /// <summary>
     /// Database Page
     /// </summary>
-    public class Page: Markable
+    public class Page : Markable
     {
         public const int Size = 8192;
         private PageAddress pageAddress;
@@ -37,7 +37,7 @@ namespace InternalsViewer.Internals.Pages
                 return;
             }
 
-            this.reader = new DatabasePageReader(this.Database.Server.ConnectionString, this.PageAddress, this.DatabaseId);
+            this.reader = new DatabasePageReader(this.Database.ConnectionString, this.PageAddress, this.DatabaseId);
 
             this.LoadPage();
         }
@@ -47,10 +47,10 @@ namespace InternalsViewer.Internals.Pages
             this.PageAddress = pageAddress;
 
             this.DatabaseId = Page.GetDatabaseId(connectionString, database);
-            this.database = new Database(null, this.DatabaseId, database, 1, 90);
-            this.database.Server = new InternalsViewerConnection();
-            this.database.Server.ConnectionString = connectionString;
-            this.database.CompatibilityLevel = Database.GetCompatabilityLevel(connectionString, database);
+
+            byte compatabilityLevel = Database.GetCompatabilityLevel(connectionString, database);
+            this.database = new Database(connectionString, this.DatabaseId, database, 1, compatabilityLevel);
+
             this.reader = new DatabasePageReader(connectionString, this.PageAddress, this.DatabaseId);
 
             this.LoadPage();
@@ -94,13 +94,13 @@ namespace InternalsViewer.Internals.Pages
                 this.Header.PageType != PageType.Sgam ||
                 this.Header.PageType != PageType.Pfs)
             {
-                this.databaseName = LookupDatabaseName(this.Database.Server.ConnectionString, this.DatabaseId);
+                this.databaseName = LookupDatabaseName(this.Database.ConnectionString, this.DatabaseId);
                 this.Header.PageTypeName = GetPageTypeName(Header.PageType);
                 this.Header.AllocationUnit = this.LookupAllocationUnit(Header.AllocationUnitId);
 
                 if (this.Database.CompatibilityLevel > 90)
                 {
-                    this.CompressionType = this.GetPageCompressionType(this.Database.Server.ConnectionString);
+                    this.CompressionType = this.GetPageCompressionType(this.Database.ConnectionString);
                 }
             }
 
@@ -156,6 +156,13 @@ namespace InternalsViewer.Internals.Pages
         public virtual void Refresh()
         {
             this.Refresh(false);
+        }
+
+        public bool AllocationStatus(AllocationPageType pageType)
+        {
+            Allocation allocation = new Allocation(this.Database, new PageAddress(this.Header.PageAddress.FileId, (int)pageType));
+
+            return allocation.Allocated(this.PageAddress.PageId / 8, this.PageAddress.FileId);
         }
 
         /// <summary>
@@ -238,7 +245,7 @@ namespace InternalsViewer.Internals.Pages
             }
             else
             {
-                allocationUnitName = (string)DataAccess.GetScalar(this.Database.Server.ConnectionString,
+                allocationUnitName = (string)DataAccess.GetScalar(this.Database.ConnectionString,
                                                                   this.DatabaseName,
                                                                   sqlCommand,
                                                                    CommandType.Text,

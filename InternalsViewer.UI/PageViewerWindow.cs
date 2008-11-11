@@ -9,6 +9,7 @@ using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
 using InternalsViewer.UI.Markers;
 using System.Drawing;
+using InternalsViewer.UI.Renderers;
 
 namespace InternalsViewer.UI
 {
@@ -18,6 +19,8 @@ namespace InternalsViewer.UI
         private readonly ProfessionalColorTable colourTable;
         private Page page;
         private ImageList keyImages;
+        private readonly PfsRenderer pfsRenderer;
+        private PfsByte pfsByte;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
@@ -28,6 +31,9 @@ namespace InternalsViewer.UI
 
             this.colourTable = new ProfessionalColorTable();
             this.colourTable.UseSystemColors = true;
+
+            this.pfsRenderer = new PfsRenderer(new Rectangle(1, 1, 34, 34), Color.White, SystemColors.ControlDark);
+
         }
 
         /// <summary>
@@ -52,7 +58,7 @@ namespace InternalsViewer.UI
 
             this.Page = new Page(connectionString, database, rowIdentifier.PageAddress);
 
-            RefreshAllocationStatus();
+            RefreshAllocationStatus(this.Page.PageAddress);
 
             this.SetSlot(rowIdentifier.SlotId);
         }
@@ -71,18 +77,25 @@ namespace InternalsViewer.UI
             this.OnPageChanged(this, new PageEventArgs(new RowIdentifier(this.Page.PageAddress, 0), false));
         }
 
-        private void RefreshAllocationStatus()
+        private void RefreshAllocationStatus(PageAddress pageAddress)
         {
+            int extent = pageAddress.PageId / 8;
+            int fileId = pageAddress.FileId;
+
+            Database database = page.Database;
+
             Image unallocated = ExtentColour.KeyImage(Color.Gainsboro);
             Image gamAllocated = ExtentColour.KeyImage(Color.FromArgb(172, 186, 214));
             Image sGamAllocated = ExtentColour.KeyImage(Color.FromArgb(168, 204, 162));
             Image dcmAllocated = ExtentColour.KeyImage(Color.FromArgb(120, 150, 150));
             Image bcmAllocated = ExtentColour.KeyImage(Color.FromArgb(150, 120, 150));
 
-            gamPictureBox.Image = page.Header.AllocationStatus[AllocationPageType.Gam] ? gamAllocated : unallocated;
-            sGamPictureBox.Image = page.Header.AllocationStatus[AllocationPageType.Sgam] ? sGamAllocated : unallocated;
-            dcmPictureBox.Image = page.Header.AllocationStatus[AllocationPageType.Dcm] ? dcmAllocated : unallocated;
-            bcmPictureBox.Image = page.Header.AllocationStatus[AllocationPageType.Bcm] ? bcmAllocated : unallocated;
+            gamPictureBox.Image = page.Database.Gam[fileId].Allocated(extent, fileId) ? unallocated : gamAllocated;
+            sGamPictureBox.Image = page.Database.SGam[fileId].Allocated(extent, fileId) ? sGamAllocated : unallocated;
+            dcmPictureBox.Image = page.Database.Dcm[fileId].Allocated(extent, fileId) ? dcmAllocated : unallocated;
+            bcmPictureBox.Image = page.Database.Bcm[fileId].Allocated(extent, fileId) ? bcmAllocated : unallocated;
+
+            this.pfsByte = page.Database.Pfs[fileId].PagePfsByte(pageAddress.PageId);
         }
 
         /// <summary>
@@ -161,7 +174,7 @@ namespace InternalsViewer.UI
 
             this.offsetTable.SelectedSlot = rowIdentifier.SlotId;
 
-            RefreshAllocationStatus();
+            RefreshAllocationStatus(this.Page.PageAddress);
         }
 
         /// <summary>
@@ -408,7 +421,12 @@ namespace InternalsViewer.UI
                 }
             }
         }
-
+        
+        private void PfsPanel_Paint(object sender, PaintEventArgs e)
+        {
+            this.pfsRenderer.DrawPfsPage(e.Graphics, new Rectangle(0, 0, 32, 32), pfsByte);
+        }
+        
         private void decodeToolStripButton_Click(object sender, EventArgs e)
         {
 

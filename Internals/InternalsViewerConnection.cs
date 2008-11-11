@@ -110,7 +110,7 @@ namespace InternalsViewer.Internals
 
             foreach (DataRow r in databasesDataTable.Rows)
             {
-                databases.Add(new Database(this,
+                databases.Add(new Database(this.ConnectionString,
                                            (int)r["database_id"],
                                            (string)r["name"],
                                            (byte)r["state"],
