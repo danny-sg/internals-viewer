@@ -160,9 +160,11 @@ namespace InternalsViewer.Internals.Pages
 
         public bool AllocationStatus(AllocationPageType pageType)
         {
-            Allocation allocation = new Allocation(this.Database, new PageAddress(this.Header.PageAddress.FileId, (int)pageType));
+            int interval = Database.AllocationInterval;
 
-            return allocation.Allocated(this.PageAddress.PageId / 8, this.PageAddress.FileId);
+            AllocationPage page = new AllocationPage(this.Database, Header.AllocationPageAddress(this.PageAddress, pageType));
+
+            return page.AllocationMap[(interval / 8) + 1];
         }
 
         /// <summary>

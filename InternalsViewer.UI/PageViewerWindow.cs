@@ -33,7 +33,6 @@ namespace InternalsViewer.UI
             this.colourTable.UseSystemColors = true;
 
             this.pfsRenderer = new PfsRenderer(new Rectangle(1, 1, 34, 34), Color.White, SystemColors.ControlDark);
-
         }
 
         /// <summary>
@@ -43,7 +42,6 @@ namespace InternalsViewer.UI
         {
             keyImages = new ImageList();
         }
-
 
         /// <summary>
         /// Loads the page.
@@ -57,8 +55,6 @@ namespace InternalsViewer.UI
             offsetToolStripStatusLabel.Text = string.Empty;
 
             this.Page = new Page(connectionString, database, rowIdentifier.PageAddress);
-
-            RefreshAllocationStatus(this.Page.PageAddress);
 
             this.SetSlot(rowIdentifier.SlotId);
         }
@@ -79,23 +75,23 @@ namespace InternalsViewer.UI
 
         private void RefreshAllocationStatus(PageAddress pageAddress)
         {
-            int extent = pageAddress.PageId / 8;
-            int fileId = pageAddress.FileId;
-
-            Database database = page.Database;
-
             Image unallocated = ExtentColour.KeyImage(Color.Gainsboro);
             Image gamAllocated = ExtentColour.KeyImage(Color.FromArgb(172, 186, 214));
             Image sGamAllocated = ExtentColour.KeyImage(Color.FromArgb(168, 204, 162));
             Image dcmAllocated = ExtentColour.KeyImage(Color.FromArgb(120, 150, 150));
             Image bcmAllocated = ExtentColour.KeyImage(Color.FromArgb(150, 120, 150));
 
-            gamPictureBox.Image = page.Database.Gam[fileId].Allocated(extent, fileId) ? unallocated : gamAllocated;
-            sGamPictureBox.Image = page.Database.SGam[fileId].Allocated(extent, fileId) ? sGamAllocated : unallocated;
-            dcmPictureBox.Image = page.Database.Dcm[fileId].Allocated(extent, fileId) ? dcmAllocated : unallocated;
-            bcmPictureBox.Image = page.Database.Bcm[fileId].Allocated(extent, fileId) ? bcmAllocated : unallocated;
+            gamPictureBox.Image = page.AllocationStatus(AllocationPageType.Gam) ? unallocated : gamAllocated;
+            sGamPictureBox.Image = page.AllocationStatus(AllocationPageType.Sgam) ? sGamAllocated : unallocated;
+            dcmPictureBox.Image = page.AllocationStatus(AllocationPageType.Dcm) ? dcmAllocated : unallocated;
+            bcmPictureBox.Image = page.AllocationStatus(AllocationPageType.Bcm) ? bcmAllocated : unallocated;
 
-            this.pfsByte = page.Database.Pfs[fileId].PagePfsByte(pageAddress.PageId);
+            gamTextBox.Text = Header.AllocationPageAddress(pageAddress, AllocationPageType.Gam).ToString();
+            sgamTextBox.Text = Header.AllocationPageAddress(pageAddress, AllocationPageType.Sgam).ToString();
+            dcmTextBox.Text = Header.AllocationPageAddress(pageAddress, AllocationPageType.Dcm).ToString();
+            bcmTextBox.Text = Header.AllocationPageAddress(pageAddress, AllocationPageType.Bcm).ToString();
+
+            //      this.pfsByte = page.Database.Pfs[fileId].PagePfsByte(pageAddress.PageId);
         }
 
         /// <summary>
@@ -173,8 +169,6 @@ namespace InternalsViewer.UI
             this.LoadPage(connectionString, rowIdentifier.PageAddress);
 
             this.offsetTable.SelectedSlot = rowIdentifier.SlotId;
-
-            RefreshAllocationStatus(this.Page.PageAddress);
         }
 
         /// <summary>
@@ -194,6 +188,8 @@ namespace InternalsViewer.UI
                 this.ConnectionString = connectionString;
 
                 this.Page = new Page(this.ConnectionString, builder.InitialCatalog, pageAddress);
+
+                RefreshAllocationStatus(this.Page.PageAddress);
             }
         }
 
@@ -332,33 +328,6 @@ namespace InternalsViewer.UI
             this.hexViewer.HideToolTip();
         }
 
-        /// <summary>
-        /// Gets or sets the current Page.
-        /// </summary>
-        /// <value>The page.</value>
-        public Page Page
-        {
-            get
-            {
-                return this.page;
-            }
-            set
-            {
-                this.page = value;
-
-                if (this.page != null)
-                {
-                    this.RefreshPage(this.Page);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the connection string.
-        /// </summary>
-        /// <value>The connection string.</value>
-        public string ConnectionString { get; set; }
-
         private void HexViewer_OffsetOver(object sender, OffsetEventArgs e)
         {
             switch (this.Page.Header.PageType)
@@ -421,15 +390,84 @@ namespace InternalsViewer.UI
                 }
             }
         }
-        
+
         private void PfsPanel_Paint(object sender, PaintEventArgs e)
         {
-            this.pfsRenderer.DrawPfsPage(e.Graphics, new Rectangle(0, 0, 32, 32), pfsByte);
+            if (this.pfsByte != null)
+            {
+                this.pfsRenderer.DrawPfsPage(e.Graphics, new Rectangle(0, 0, 32, 32), pfsByte);
+            }
         }
-        
-        private void decodeToolStripButton_Click(object sender, EventArgs e)
+
+        private void HexViewer_RecordFind(object sender, OffsetEventArgs e)
+        {
+            int offset = e.Offset;
+
+            FindRecord(offset);
+        }
+
+        private void FindRecord(int offset)
+        {
+            List<ushort> sortedOffsetTable = new List<ushort>(this.Page.OffsetTable.ToArray());
+
+            sortedOffsetTable.Sort();
+
+            ushort currentOffset = 0;
+
+            foreach (short i in sortedOffsetTable)
+            {
+                if (offset < i)
+                {
+                    break;
+                }
+                else
+                {
+                    currentOffset = (ushort)i;
+                }
+            }
+
+            if (currentOffset > 0)
+            {
+                this.offsetTable.SelectedSlot = Page.OffsetTable.IndexOf(currentOffset);
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the current Page.
+        /// </summary>
+        /// <value>The page.</value>
+        public Page Page
+        {
+            get
+            {
+                return this.page;
+            }
+            set
+            {
+                this.page = value;
+
+                if (this.page != null)
+                {
+                    this.RefreshPage(this.Page);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the connection string.
+        /// </summary>
+        /// <value>The connection string.</value>
+        public string ConnectionString { get; set; }
+
+        private void hexViewer_RecordFind(object sender, OffsetEventArgs e)
         {
 
         }
+
+        private void HexViewer_OffsetSet(object sender, OffsetEventArgs e)
+        {
+            this.LoadRecord(e.Offset);
+        }
+
     }
 }

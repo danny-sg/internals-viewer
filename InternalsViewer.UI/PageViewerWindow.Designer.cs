@@ -36,6 +36,11 @@
             this.rowLogContents4ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.leftPanel = new System.Windows.Forms.Panel();
             this.headerBorderPanel = new InternalsViewer.UI.Controls.BorderPanel();
+            this.bcmTextBox = new System.Windows.Forms.TextBox();
+            this.pageBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            this.dcmTextBox = new System.Windows.Forms.TextBox();
+            this.sgamTextBox = new System.Windows.Forms.TextBox();
+            this.gamTextBox = new System.Windows.Forms.TextBox();
             this.bcmPictureBox = new System.Windows.Forms.PictureBox();
             this.dcmPictureBox = new System.Windows.Forms.PictureBox();
             this.sGamPictureBox = new System.Windows.Forms.PictureBox();
@@ -48,7 +53,6 @@
             this.pfsPanel = new System.Windows.Forms.Panel();
             this.label6 = new System.Windows.Forms.Label();
             this.textBox15 = new System.Windows.Forms.TextBox();
-            this.pageBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.label5 = new System.Windows.Forms.Label();
             this.textBox4 = new System.Windows.Forms.TextBox();
             this.label4 = new System.Windows.Forms.Label();
@@ -106,11 +110,11 @@
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.leftPanel.SuspendLayout();
             this.headerBorderPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dcmPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.sGamPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
@@ -163,6 +167,10 @@
             // headerBorderPanel
             // 
             this.headerBorderPanel.BackColor = System.Drawing.Color.White;
+            this.headerBorderPanel.Controls.Add(this.bcmTextBox);
+            this.headerBorderPanel.Controls.Add(this.dcmTextBox);
+            this.headerBorderPanel.Controls.Add(this.sgamTextBox);
+            this.headerBorderPanel.Controls.Add(this.gamTextBox);
             this.headerBorderPanel.Controls.Add(this.bcmPictureBox);
             this.headerBorderPanel.Controls.Add(this.dcmPictureBox);
             this.headerBorderPanel.Controls.Add(this.sGamPictureBox);
@@ -213,6 +221,62 @@
             this.headerBorderPanel.Name = "headerBorderPanel";
             this.headerBorderPanel.Size = new System.Drawing.Size(173, 573);
             this.headerBorderPanel.TabIndex = 0;
+            // 
+            // bcmTextBox
+            // 
+            this.bcmTextBox.BackColor = System.Drawing.Color.White;
+            this.bcmTextBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.bcmTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.bcmTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.bcmTextBox.ForeColor = System.Drawing.Color.Blue;
+            this.bcmTextBox.Location = new System.Drawing.Point(90, 473);
+            this.bcmTextBox.Name = "bcmTextBox";
+            this.bcmTextBox.ReadOnly = true;
+            this.bcmTextBox.Size = new System.Drawing.Size(75, 13);
+            this.bcmTextBox.TabIndex = 266;
+            // 
+            // pageBindingSource
+            // 
+            this.pageBindingSource.DataSource = typeof(InternalsViewer.Internals.Pages.Header);
+            // 
+            // dcmTextBox
+            // 
+            this.dcmTextBox.BackColor = System.Drawing.Color.White;
+            this.dcmTextBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.dcmTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.dcmTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.dcmTextBox.ForeColor = System.Drawing.Color.Blue;
+            this.dcmTextBox.Location = new System.Drawing.Point(90, 454);
+            this.dcmTextBox.Name = "dcmTextBox";
+            this.dcmTextBox.ReadOnly = true;
+            this.dcmTextBox.Size = new System.Drawing.Size(75, 13);
+            this.dcmTextBox.TabIndex = 265;
+            // 
+            // sgamTextBox
+            // 
+            this.sgamTextBox.BackColor = System.Drawing.Color.White;
+            this.sgamTextBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.sgamTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.sgamTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.sgamTextBox.ForeColor = System.Drawing.Color.Blue;
+            this.sgamTextBox.Location = new System.Drawing.Point(90, 435);
+            this.sgamTextBox.Name = "sgamTextBox";
+            this.sgamTextBox.ReadOnly = true;
+            this.sgamTextBox.Size = new System.Drawing.Size(75, 13);
+            this.sgamTextBox.TabIndex = 264;
+            // 
+            // gamTextBox
+            // 
+            this.gamTextBox.BackColor = System.Drawing.Color.White;
+            this.gamTextBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.gamTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.gamTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.gamTextBox.ForeColor = System.Drawing.Color.Blue;
+            this.gamTextBox.Location = new System.Drawing.Point(90, 416);
+            this.gamTextBox.Name = "gamTextBox";
+            this.gamTextBox.ReadOnly = true;
+            this.gamTextBox.Size = new System.Drawing.Size(75, 13);
+            this.gamTextBox.TabIndex = 263;
             // 
             // bcmPictureBox
             // 
@@ -304,7 +368,7 @@
             this.label15.BackColor = System.Drawing.Color.Transparent;
             this.label15.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label15.ForeColor = System.Drawing.Color.Gray;
-            this.label15.Location = new System.Drawing.Point(87, 435);
+            this.label15.Location = new System.Drawing.Point(5, 494);
             this.label15.Margin = new System.Windows.Forms.Padding(4);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(27, 13);
@@ -317,7 +381,7 @@
             this.pfsPanel.BackColor = System.Drawing.Color.Transparent;
             this.pfsPanel.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             this.pfsPanel.Font = new System.Drawing.Font("Microsoft Sans Serif", 6F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.pfsPanel.Location = new System.Drawing.Point(121, 435);
+            this.pfsPanel.Location = new System.Drawing.Point(50, 493);
             this.pfsPanel.Name = "pfsPanel";
             this.pfsPanel.Size = new System.Drawing.Size(33, 33);
             this.pfsPanel.TabIndex = 253;
@@ -346,10 +410,6 @@
             this.textBox15.ReadOnly = true;
             this.textBox15.Size = new System.Drawing.Size(77, 13);
             this.textBox15.TabIndex = 251;
-            // 
-            // pageBindingSource
-            // 
-            this.pageBindingSource.DataSource = typeof(InternalsViewer.Internals.Pages.Header);
             // 
             // label5
             // 
@@ -795,6 +855,8 @@
             this.hexViewer.SelectedRecord = -1;
             this.hexViewer.Size = new System.Drawing.Size(518, 289);
             this.hexViewer.TabIndex = 0;
+            this.hexViewer.RecordFind += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_RecordFind);
+            this.hexViewer.OffsetSet += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_OffsetSet);
             this.hexViewer.OffsetOver += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_OffsetOver);
             // 
             // topLeftPanel
@@ -932,22 +994,20 @@
             // 
             // previousToolStripButton
             // 
-            this.previousToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.RightToLeftDoucmentHS;
             this.previousToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.previousToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.previousToolStripButton.Name = "previousToolStripButton";
-            this.previousToolStripButton.Size = new System.Drawing.Size(49, 25);
+            this.previousToolStripButton.Size = new System.Drawing.Size(33, 25);
             this.previousToolStripButton.Text = "Back";
             this.previousToolStripButton.ToolTipText = "Page ID - 1";
             this.previousToolStripButton.Click += new System.EventHandler(this.PreviousToolStripButton_Click);
             // 
             // nextToolStripButton
             // 
-            this.nextToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.LeftToRightDoucmentHS1;
             this.nextToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.nextToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.nextToolStripButton.Name = "nextToolStripButton";
-            this.nextToolStripButton.Size = new System.Drawing.Size(72, 25);
+            this.nextToolStripButton.Size = new System.Drawing.Size(56, 25);
             this.nextToolStripButton.Text = "Forwards";
             this.nextToolStripButton.ToolTipText = "Page ID +1";
             this.nextToolStripButton.Click += new System.EventHandler(this.NextToolStripButton_Click);
@@ -990,11 +1050,11 @@
             this.leftPanel.ResumeLayout(false);
             this.headerBorderPanel.ResumeLayout(false);
             this.headerBorderPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.dcmPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.sGamPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).EndInit();
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
             this.splitContainer1.ResumeLayout(false);
@@ -1085,6 +1145,10 @@
         private System.Windows.Forms.ToolStripStatusLabel markerDescriptionToolStripStatusLabel;
         private System.Windows.Forms.ToolStripStatusLabel offsetToolStripStatusLabel;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
+        private System.Windows.Forms.TextBox bcmTextBox;
+        private System.Windows.Forms.TextBox dcmTextBox;
+        private System.Windows.Forms.TextBox sgamTextBox;
+        private System.Windows.Forms.TextBox gamTextBox;
 
     }
 }

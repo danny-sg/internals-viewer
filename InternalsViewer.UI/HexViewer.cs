@@ -22,7 +22,7 @@ namespace InternalsViewer.UI
         private bool addressHex;
         private Dictionary<int, Color> colourAndOffsetDictionary;
         private bool colourise;
-        private Int16 currentOffset;
+        private UInt16 currentOffset;
         private string dataRtf;
         private string dataText;
         private Color headerColour = Color.FromArgb(245, 245, 250);
@@ -225,7 +225,7 @@ namespace InternalsViewer.UI
         /// </summary>
         /// <param name="offset">The offset.</param>
         /// <returns></returns>
-        private Marker GetMarkerAtPosition(Int16 offset)
+        private Marker GetMarkerAtPosition(UInt16 offset)
         {
             return this.markers.Find(delegate(Marker marker)
                 {
@@ -484,7 +484,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
         private void DataRichTextBox_MouseMove(object sender, MouseEventArgs e)
         {
-            Int16 offset = (Int16)(dataRichTextBox.GetCharIndexFromPosition(e.Location) / 3);
+            UInt16 offset = (UInt16)(dataRichTextBox.GetCharIndexFromPosition(e.Location) / 3);
 
             setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
             this.currentOffset = offset;
@@ -500,6 +500,8 @@ namespace InternalsViewer.UI
                 foreColour = hoverMarker.ForeColour;
                 backColour = hoverMarker.BackColour;
             }
+            
+            this.setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
 
             EventHandler<OffsetEventArgs> temp = this.OffsetOver;
 
@@ -704,5 +706,25 @@ namespace InternalsViewer.UI
         }
 
         #endregion
+
+        private void SetOffsetToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            EventHandler<OffsetEventArgs> temp = OffsetSet;
+
+            if (temp != null)
+            {
+                temp(this, new OffsetEventArgs(currentOffset, string.Empty, Color.Black, Color.Transparent));
+            }
+        }
+
+        private void FindRecordToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            EventHandler<OffsetEventArgs> temp = RecordFind;
+
+            if (temp != null)
+            {
+                temp(this, new OffsetEventArgs(currentOffset, string.Empty, Color.Black, Color.Transparent));
+            }
+        }
     }
 }

@@ -5,13 +5,13 @@ namespace InternalsViewer.UI
 {
     public class OffsetEventArgs : EventArgs
     {
-        private Int16 offset;
+        private UInt16 offset;
         private string markerDescription;
         private Color foreColour;
         private Color backColour;
 
 
-        public OffsetEventArgs(Int16 offset, string markerDescription, Color foreColour, Color backColour)
+        public OffsetEventArgs(UInt16 offset, string markerDescription, Color foreColour, Color backColour)
         {
             Offset = offset;
             MarkerDescription = markerDescription;
@@ -37,7 +37,7 @@ namespace InternalsViewer.UI
             set { markerDescription = value; }
         }
 
-        public Int16 Offset
+        public UInt16 Offset
         {
             get { return offset; }
             set { offset = value; }

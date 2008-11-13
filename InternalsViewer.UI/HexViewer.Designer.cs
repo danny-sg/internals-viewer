@@ -32,17 +32,17 @@
             this.headerPanel = new System.Windows.Forms.Panel();
             this.mainPanel = new System.Windows.Forms.Panel();
             this.dataRichTextBox = new InternalsViewer.UI.Controls.HexRichTextBox();
-            this.leftPanel = new System.Windows.Forms.Panel();
-            this.addressLabel = new System.Windows.Forms.Label();
-            this.dataToolTip = new System.Windows.Forms.ToolTip(this.components);
             this.dataContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.setOffsetToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.findRecordToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.leftPanel = new System.Windows.Forms.Panel();
+            this.addressLabel = new System.Windows.Forms.Label();
+            this.dataToolTip = new System.Windows.Forms.ToolTip(this.components);
             this.addressContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.hexNumericToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainPanel.SuspendLayout();
-            this.leftPanel.SuspendLayout();
             this.dataContextMenuStrip.SuspendLayout();
+            this.leftPanel.SuspendLayout();
             this.addressContextMenuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -70,6 +70,7 @@
             // 
             this.dataRichTextBox.BackColor = System.Drawing.Color.White;
             this.dataRichTextBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.dataRichTextBox.ContextMenuStrip = this.dataContextMenuStrip;
             this.dataRichTextBox.Cursor = System.Windows.Forms.Cursors.Arrow;
             this.dataRichTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dataRichTextBox.HideSelection = false;
@@ -90,6 +91,28 @@
             this.dataRichTextBox.Leave += new System.EventHandler(this.DataRichTextBox_Leave);
             this.dataRichTextBox.MouseMove += new System.Windows.Forms.MouseEventHandler(this.DataRichTextBox_MouseMove);
             this.dataRichTextBox.MouseLeave += new System.EventHandler(this.DataRichTextBox_MouseLeave);
+            // 
+            // dataContextMenuStrip
+            // 
+            this.dataContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.setOffsetToolStripMenuItem,
+            this.findRecordToolStripMenuItem});
+            this.dataContextMenuStrip.Name = "dataContextMenuStrip";
+            this.dataContextMenuStrip.Size = new System.Drawing.Size(153, 70);
+            // 
+            // setOffsetToolStripMenuItem
+            // 
+            this.setOffsetToolStripMenuItem.Name = "setOffsetToolStripMenuItem";
+            this.setOffsetToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.setOffsetToolStripMenuItem.Text = "Set Offset";
+            this.setOffsetToolStripMenuItem.Click += new System.EventHandler(this.SetOffsetToolStripMenuItem_Click);
+            // 
+            // findRecordToolStripMenuItem
+            // 
+            this.findRecordToolStripMenuItem.Name = "findRecordToolStripMenuItem";
+            this.findRecordToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.findRecordToolStripMenuItem.Text = "Select Record";
+            this.findRecordToolStripMenuItem.Click += new System.EventHandler(this.FindRecordToolStripMenuItem_Click);
             // 
             // leftPanel
             // 
@@ -120,26 +143,6 @@
             this.dataToolTip.BackColor = System.Drawing.Color.WhiteSmoke;
             this.dataToolTip.ToolTipTitle = "Data Value";
             // 
-            // dataContextMenuStrip
-            // 
-            this.dataContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.setOffsetToolStripMenuItem,
-            this.findRecordToolStripMenuItem});
-            this.dataContextMenuStrip.Name = "dataContextMenuStrip";
-            this.dataContextMenuStrip.Size = new System.Drawing.Size(141, 48);
-            // 
-            // setOffsetToolStripMenuItem
-            // 
-            this.setOffsetToolStripMenuItem.Name = "setOffsetToolStripMenuItem";
-            this.setOffsetToolStripMenuItem.Size = new System.Drawing.Size(140, 22);
-            this.setOffsetToolStripMenuItem.Text = "Set Offset";
-            // 
-            // findRecordToolStripMenuItem
-            // 
-            this.findRecordToolStripMenuItem.Name = "findRecordToolStripMenuItem";
-            this.findRecordToolStripMenuItem.Size = new System.Drawing.Size(140, 22);
-            this.findRecordToolStripMenuItem.Text = "Select Record";
-            // 
             // addressContextMenuStrip
             // 
             this.addressContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -165,8 +168,8 @@
             this.Name = "HexViewer";
             this.Size = new System.Drawing.Size(428, 434);
             this.mainPanel.ResumeLayout(false);
-            this.leftPanel.ResumeLayout(false);
             this.dataContextMenuStrip.ResumeLayout(false);
+            this.leftPanel.ResumeLayout(false);
             this.addressContextMenuStrip.ResumeLayout(false);
             this.ResumeLayout(false);
 
