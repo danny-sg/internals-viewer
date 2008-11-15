@@ -21,6 +21,9 @@ namespace InternalsViewer.UI.Controls
         private readonly Color blankColour = Color.Gray;
         private readonly Color normalColour;
 
+        private int databaseId;
+
+
         public PageAddressTextBox()
         {
             normalColour = this.ForeColor;
@@ -141,13 +144,17 @@ namespace InternalsViewer.UI.Controls
             CopyDbccPageToClipboard(3, PageAddress.Parse(Text));
         }
 
-        public static void CopyDbccPageToClipboard(int option, PageAddress address)
+        public void CopyDbccPageToClipboard(int option, PageAddress address)
         {
-            //Clipboard.SetText(string.Format("",
-            //                                ServerConnection.CurrentConnection().CurrentDatabase.Name,
-            //                                address.FileId,
-            //                                address.PageId,
-            //                                option));
+            string text = string.Format(Properties.Resources.SQL_CopyDbccPage, this.DatabaseId, address.FileId, address.PageId, option);
+
+            Clipboard.SetText(text);
+        }
+
+        public int DatabaseId
+        {
+            get { return databaseId; }
+            set { databaseId = value; }
         }
     }
 }

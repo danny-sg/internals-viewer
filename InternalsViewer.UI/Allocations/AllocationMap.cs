@@ -584,7 +584,7 @@ namespace InternalsViewer.UI.Allocations
 
                         if (temp != null)
                         {
-                            temp(this, new PageEventArgs(new RowIdentifier(this.FileId, page + this.startPage.PageId, 0), false));
+                            temp(this, new PageEventArgs(new RowIdentifier(this.startPage.FileId, page + this.startPage.PageId, 0), false));
                         }
 
                         if (this.Mode == MapMode.RangeSelection)

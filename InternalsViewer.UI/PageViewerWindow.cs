@@ -44,22 +44,6 @@ namespace InternalsViewer.UI
         }
 
         /// <summary>
-        /// Loads the page.
-        /// </summary>
-        /// <param name="connectionString">The connection string.</param>
-        /// <param name="database">The database.</param>
-        /// <param name="rowIdentifier">The row identifier.</param>
-        public void LoadPage(string connectionString, string database, RowIdentifier rowIdentifier)
-        {
-            pageAddressToolStripStatusLabel.Text = string.Empty;
-            offsetToolStripStatusLabel.Text = string.Empty;
-
-            this.Page = new Page(connectionString, database, rowIdentifier.PageAddress);
-
-            this.SetSlot(rowIdentifier.SlotId);
-        }
-
-        /// <summary>
         /// Refreshes the current page in the page viewer
         /// </summary>
         /// <param name="page">The page.</param>
@@ -90,8 +74,11 @@ namespace InternalsViewer.UI
             sgamTextBox.Text = Header.AllocationPageAddress(pageAddress, AllocationPageType.Sgam).ToString();
             dcmTextBox.Text = Header.AllocationPageAddress(pageAddress, AllocationPageType.Dcm).ToString();
             bcmTextBox.Text = Header.AllocationPageAddress(pageAddress, AllocationPageType.Bcm).ToString();
+            pfsTextBox.Text = Header.AllocationPageAddress(pageAddress, AllocationPageType.Pfs).ToString();
 
-            //      this.pfsByte = page.Database.Pfs[fileId].PagePfsByte(pageAddress.PageId);
+            this.pfsByte = page.PfsStatus();
+
+            this.pfsPanel.Invalidate();
         }
 
         /// <summary>
@@ -190,27 +177,19 @@ namespace InternalsViewer.UI
                 this.Page = new Page(this.ConnectionString, builder.InitialCatalog, pageAddress);
 
                 RefreshAllocationStatus(this.Page.PageAddress);
+
+                this.pageToolStripTextBox.DatabaseId = this.Page.DatabaseId;
             }
         }
 
         /// <summary>
-        /// Handles the MouseClick event of the nextPageTextBox control.
+        /// Handles the MouseClick event of the Page text boxes control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
-        private void NextPageTextBox_MouseClick(object sender, MouseEventArgs e)
+        private void PageTextBox_MouseClick(object sender, MouseEventArgs e)
         {
-            this.LoadPage(this.ConnectionString, this.Page.Header.NextPage);
-        }
-
-        /// <summary>
-        /// Handles the MouseClick event of the PreviousPageTextBox control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
-        private void PreviousPageTextBox_MouseClick(object sender, MouseEventArgs e)
-        {
-            this.LoadPage(this.ConnectionString, this.Page.Header.PreviousPage);
+            this.LoadPage(this.ConnectionString, PageAddress.Parse((sender as TextBox).Text));
         }
 
         /// <summary>
@@ -265,6 +244,16 @@ namespace InternalsViewer.UI
                                                        this.Page.Database.Name,
                                                        this.ConnectionString,
                                                       (this.Page.Header.PageType == PageType.Iam));
+
+                    markerKeyTable.Visible = false;
+                    allocationViewer.Visible = true;
+                    break;
+
+                case PageType.Pfs:
+
+                    allocationViewer.SetPfsPage(this.Page.Header.PageAddress,
+                                                this.Page.Database.Name,
+                                                this.ConnectionString);
 
                     markerKeyTable.Visible = false;
                     allocationViewer.Visible = true;
@@ -370,7 +359,14 @@ namespace InternalsViewer.UI
 
         private void AllocationViewer_PageOver(object sender, PageEventArgs e)
         {
-            pageAddressToolStripStatusLabel.Text = e.Address.ToString();
+            if (this.Page.Header.PageType == PageType.Pfs)
+            {
+                pageAddressToolStripStatusLabel.Text = e.Address.ToString(); //+ " " + this.allocationViewer.allocationContainer.PagePfsByte(e.Address).ToString();
+            }
+            else
+            {
+                pageAddressToolStripStatusLabel.Text = e.Address.ToString();
+            }
         }
 
         private void AllocationViewer_PageClicked(object sender, PageEventArgs e)

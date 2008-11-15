@@ -47,6 +47,8 @@ namespace InternalsViewer.UI
             this.extentSizeToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
             this.pageToolStripTextBox = new InternalsViewer.UI.Controls.PageAddressTextBox();
             this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
+            this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
+            this.showKeyToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.keysDataGridView = new System.Windows.Forms.DataGridView();
             this.KeyColumn = new InternalsViewer.UI.Controls.KeyImageColumn();
             this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -92,7 +94,7 @@ namespace InternalsViewer.UI
             this.allocationContainer.Size = new System.Drawing.Size(945, 422);
             this.allocationContainer.TabIndex = 2;
             this.allocationContainer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageOver);
-            this.allocationContainer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.allocationContainer_PageClicked);
+            this.allocationContainer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageClicked);
             // 
             // splitContainer
             // 
@@ -128,7 +130,9 @@ namespace InternalsViewer.UI
             this.toolStripSeparator2,
             this.extentSizeToolStripComboBox,
             this.pageToolStripTextBox,
-            this.toolStripLabel2});
+            this.toolStripLabel2,
+            this.toolStripSeparator3,
+            this.showKeyToolStripButton});
             this.flatMenuStrip.Location = new System.Drawing.Point(0, 0);
             this.flatMenuStrip.Name = "flatMenuStrip";
             this.flatMenuStrip.Padding = new System.Windows.Forms.Padding(4, 0, 1, 0);
@@ -148,7 +152,7 @@ namespace InternalsViewer.UI
             this.databaseToolStripComboBox.Enabled = false;
             this.databaseToolStripComboBox.Name = "databaseToolStripComboBox";
             this.databaseToolStripComboBox.Size = new System.Drawing.Size(121, 30);
-            this.databaseToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.databaseToolStripComboBox_SelectedIndexChanged);
+            this.databaseToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.DatabaseToolStripComboBox_SelectedIndexChanged);
             // 
             // connectToolStripButton
             // 
@@ -205,18 +209,19 @@ namespace InternalsViewer.UI
             "Fit"});
             this.extentSizeToolStripComboBox.Name = "extentSizeToolStripComboBox";
             this.extentSizeToolStripComboBox.Size = new System.Drawing.Size(100, 30);
-            this.extentSizeToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.extentSizeToolStripComboBox_SelectedIndexChanged);
+            this.extentSizeToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.ExtentSizeToolStripComboBox_SelectedIndexChanged);
             // 
             // pageToolStripTextBox
             // 
             this.pageToolStripTextBox.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
             this.pageToolStripTextBox.AutoSize = false;
+            this.pageToolStripTextBox.DatabaseId = 0;
             this.pageToolStripTextBox.ForeColor = System.Drawing.SystemColors.InactiveCaption;
             this.pageToolStripTextBox.Name = "pageToolStripTextBox";
             this.pageToolStripTextBox.Padding = new System.Windows.Forms.Padding(0, 0, 2, 0);
             this.pageToolStripTextBox.Size = new System.Drawing.Size(90, 28);
             this.pageToolStripTextBox.Text = "(File Id:Page Id)";
-            this.pageToolStripTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.pageToolStripTextBox_KeyDown);
+            this.pageToolStripTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.PageToolStripTextBox_KeyDown);
             // 
             // toolStripLabel2
             // 
@@ -224,6 +229,25 @@ namespace InternalsViewer.UI
             this.toolStripLabel2.Name = "toolStripLabel2";
             this.toolStripLabel2.Size = new System.Drawing.Size(35, 27);
             this.toolStripLabel2.Text = "Page:";
+            // 
+            // toolStripSeparator3
+            // 
+            this.toolStripSeparator3.Name = "toolStripSeparator3";
+            this.toolStripSeparator3.Size = new System.Drawing.Size(6, 30);
+            // 
+            // showKeyToolStripButton
+            // 
+            this.showKeyToolStripButton.Checked = true;
+            this.showKeyToolStripButton.CheckOnClick = true;
+            this.showKeyToolStripButton.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.showKeyToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.WindowSplit;
+            this.showKeyToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
+            this.showKeyToolStripButton.Margin = new System.Windows.Forms.Padding(0, 2, 0, 2);
+            this.showKeyToolStripButton.Name = "showKeyToolStripButton";
+            this.showKeyToolStripButton.Padding = new System.Windows.Forms.Padding(0, 2, 0, 2);
+            this.showKeyToolStripButton.Size = new System.Drawing.Size(45, 26);
+            this.showKeyToolStripButton.Text = "Key";
+            this.showKeyToolStripButton.Click += new System.EventHandler(this.ShowKeyToolStripButton_Click);
             // 
             // keysDataGridView
             // 
@@ -278,9 +302,8 @@ namespace InternalsViewer.UI
             this.keysDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.keysDataGridView.Size = new System.Drawing.Size(945, 101);
             this.keysDataGridView.TabIndex = 2;
-            this.keysDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.keysDataGridView_CellClick);
-            this.keysDataGridView.SelectionChanged += new System.EventHandler(this.keysDataGridView_SelectionChanged);
-            this.keysDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.keysDataGridView_CellContentClick);
+            this.keysDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.KeysDataGridView_CellClick);
+            this.keysDataGridView.SelectionChanged += new System.EventHandler(this.KeysDataGridView_SelectionChanged);
             // 
             // KeyColumn
             // 
@@ -477,5 +500,7 @@ namespace InternalsViewer.UI
         private System.Windows.Forms.DataGridViewTextBoxColumn UsedPagesColumn;
         private PageAddressTextBox pageToolStripTextBox;
         private System.Windows.Forms.ToolStripLabel toolStripLabel2;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
+        private System.Windows.Forms.ToolStripButton showKeyToolStripButton;
     }
 }

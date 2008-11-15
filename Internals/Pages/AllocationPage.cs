@@ -41,7 +41,25 @@ namespace InternalsViewer.Internals.Pages
             : base(database, address)
         {
             PageAddress = address;
-            this.LoadAllocationMap();
+
+            switch (this.Header.PageType)
+            {
+                case PageType.Bcm:
+                case PageType.Dcm:
+                case PageType.Iam:
+                case PageType.Sgam:
+                case PageType.Gam:
+
+
+                    this.LoadAllocationMap();
+                    break;
+                default:
+                    throw new InvalidOperationException(this.Header.PageType + " is not an allocation page");
+                    break;
+
+
+            }
+
         }
 
         public AllocationPage(string connectionString, string database, PageAddress pageAddress)

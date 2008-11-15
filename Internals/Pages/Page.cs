@@ -167,6 +167,13 @@ namespace InternalsViewer.Internals.Pages
             return page.AllocationMap[(interval / 8) + 1];
         }
 
+        public PfsByte PfsStatus()
+        {
+            PfsPage pfsPage = new PfsPage(this.Database, Header.AllocationPageAddress(pageAddress, AllocationPageType.Pfs));
+
+            return pfsPage.PfsBytes[pageAddress.PageId % Database.PfsInterval];
+        }
+
         /// <summary>
         /// Lookups the name of the database.
         /// </summary>
@@ -353,16 +360,6 @@ namespace InternalsViewer.Internals.Pages
         public List<UInt16> OffsetTable
         {
             get { return this.offsetTable; }
-        }
-
-        /// <summary>
-        /// Returns a byte at a given offset
-        /// </summary>
-        /// <param name="offset">The offset.</param>
-        /// <returns></returns>
-        public byte PageByte(int offset)
-        {
-            return this.pageData[offset];
         }
 
         #endregion

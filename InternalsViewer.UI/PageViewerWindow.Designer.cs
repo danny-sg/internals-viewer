@@ -1,4 +1,5 @@
-﻿namespace InternalsViewer.UI
+﻿using InternalsViewer.UI.Controls;
+namespace InternalsViewer.UI
 {
     partial class PageViewerWindow
     {
@@ -36,8 +37,8 @@
             this.rowLogContents4ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.leftPanel = new System.Windows.Forms.Panel();
             this.headerBorderPanel = new InternalsViewer.UI.Controls.BorderPanel();
+            this.pfsTextBox = new System.Windows.Forms.TextBox();
             this.bcmTextBox = new System.Windows.Forms.TextBox();
-            this.pageBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.dcmTextBox = new System.Windows.Forms.TextBox();
             this.sgamTextBox = new System.Windows.Forms.TextBox();
             this.gamTextBox = new System.Windows.Forms.TextBox();
@@ -53,6 +54,7 @@
             this.pfsPanel = new System.Windows.Forms.Panel();
             this.label6 = new System.Windows.Forms.Label();
             this.textBox15 = new System.Windows.Forms.TextBox();
+            this.pageBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.label5 = new System.Windows.Forms.Label();
             this.textBox4 = new System.Windows.Forms.TextBox();
             this.label4 = new System.Windows.Forms.Label();
@@ -101,7 +103,7 @@
             this.offsetToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.flatMenuStrip1 = new InternalsViewer.UI.Controls.FlatMenuStrip();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
-            this.pageToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
+            this.pageToolStripTextBox = new InternalsViewer.UI.Controls.PageAddressTextBox();
             this.previousToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.nextToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
@@ -110,11 +112,11 @@
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.leftPanel.SuspendLayout();
             this.headerBorderPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dcmPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.sGamPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
@@ -167,6 +169,7 @@
             // headerBorderPanel
             // 
             this.headerBorderPanel.BackColor = System.Drawing.Color.White;
+            this.headerBorderPanel.Controls.Add(this.pfsTextBox);
             this.headerBorderPanel.Controls.Add(this.bcmTextBox);
             this.headerBorderPanel.Controls.Add(this.dcmTextBox);
             this.headerBorderPanel.Controls.Add(this.sgamTextBox);
@@ -222,6 +225,20 @@
             this.headerBorderPanel.Size = new System.Drawing.Size(173, 573);
             this.headerBorderPanel.TabIndex = 0;
             // 
+            // pfsTextBox
+            // 
+            this.pfsTextBox.BackColor = System.Drawing.Color.White;
+            this.pfsTextBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.pfsTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.pfsTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.pfsTextBox.ForeColor = System.Drawing.Color.Blue;
+            this.pfsTextBox.Location = new System.Drawing.Point(90, 498);
+            this.pfsTextBox.Name = "pfsTextBox";
+            this.pfsTextBox.ReadOnly = true;
+            this.pfsTextBox.Size = new System.Drawing.Size(75, 13);
+            this.pfsTextBox.TabIndex = 267;
+            this.pfsTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PageTextBox_MouseClick);
+            // 
             // bcmTextBox
             // 
             this.bcmTextBox.BackColor = System.Drawing.Color.White;
@@ -229,15 +246,12 @@
             this.bcmTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.bcmTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.bcmTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.bcmTextBox.Location = new System.Drawing.Point(90, 473);
+            this.bcmTextBox.Location = new System.Drawing.Point(90, 478);
             this.bcmTextBox.Name = "bcmTextBox";
             this.bcmTextBox.ReadOnly = true;
             this.bcmTextBox.Size = new System.Drawing.Size(75, 13);
             this.bcmTextBox.TabIndex = 266;
-            // 
-            // pageBindingSource
-            // 
-            this.pageBindingSource.DataSource = typeof(InternalsViewer.Internals.Pages.Header);
+            this.bcmTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PageTextBox_MouseClick);
             // 
             // dcmTextBox
             // 
@@ -246,11 +260,12 @@
             this.dcmTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.dcmTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.dcmTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.dcmTextBox.Location = new System.Drawing.Point(90, 454);
+            this.dcmTextBox.Location = new System.Drawing.Point(90, 458);
             this.dcmTextBox.Name = "dcmTextBox";
             this.dcmTextBox.ReadOnly = true;
             this.dcmTextBox.Size = new System.Drawing.Size(75, 13);
             this.dcmTextBox.TabIndex = 265;
+            this.dcmTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PageTextBox_MouseClick);
             // 
             // sgamTextBox
             // 
@@ -259,11 +274,12 @@
             this.sgamTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.sgamTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.sgamTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.sgamTextBox.Location = new System.Drawing.Point(90, 435);
+            this.sgamTextBox.Location = new System.Drawing.Point(90, 439);
             this.sgamTextBox.Name = "sgamTextBox";
             this.sgamTextBox.ReadOnly = true;
             this.sgamTextBox.Size = new System.Drawing.Size(75, 13);
             this.sgamTextBox.TabIndex = 264;
+            this.sgamTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PageTextBox_MouseClick);
             // 
             // gamTextBox
             // 
@@ -272,15 +288,16 @@
             this.gamTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.gamTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.gamTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.gamTextBox.Location = new System.Drawing.Point(90, 416);
+            this.gamTextBox.Location = new System.Drawing.Point(90, 420);
             this.gamTextBox.Name = "gamTextBox";
             this.gamTextBox.ReadOnly = true;
             this.gamTextBox.Size = new System.Drawing.Size(75, 13);
             this.gamTextBox.TabIndex = 263;
+            this.gamTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PageTextBox_MouseClick);
             // 
             // bcmPictureBox
             // 
-            this.bcmPictureBox.Location = new System.Drawing.Point(50, 471);
+            this.bcmPictureBox.Location = new System.Drawing.Point(48, 476);
             this.bcmPictureBox.Name = "bcmPictureBox";
             this.bcmPictureBox.Size = new System.Drawing.Size(16, 16);
             this.bcmPictureBox.TabIndex = 262;
@@ -288,7 +305,7 @@
             // 
             // dcmPictureBox
             // 
-            this.dcmPictureBox.Location = new System.Drawing.Point(50, 452);
+            this.dcmPictureBox.Location = new System.Drawing.Point(48, 457);
             this.dcmPictureBox.Name = "dcmPictureBox";
             this.dcmPictureBox.Size = new System.Drawing.Size(16, 16);
             this.dcmPictureBox.TabIndex = 261;
@@ -296,7 +313,7 @@
             // 
             // sGamPictureBox
             // 
-            this.sGamPictureBox.Location = new System.Drawing.Point(50, 433);
+            this.sGamPictureBox.Location = new System.Drawing.Point(48, 438);
             this.sGamPictureBox.Name = "sGamPictureBox";
             this.sGamPictureBox.Size = new System.Drawing.Size(16, 16);
             this.sGamPictureBox.TabIndex = 260;
@@ -304,7 +321,7 @@
             // 
             // gamPictureBox
             // 
-            this.gamPictureBox.Location = new System.Drawing.Point(50, 414);
+            this.gamPictureBox.Location = new System.Drawing.Point(48, 419);
             this.gamPictureBox.Name = "gamPictureBox";
             this.gamPictureBox.Size = new System.Drawing.Size(16, 16);
             this.gamPictureBox.TabIndex = 259;
@@ -316,7 +333,7 @@
             this.label1.BackColor = System.Drawing.Color.Transparent;
             this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label1.ForeColor = System.Drawing.Color.Gray;
-            this.label1.Location = new System.Drawing.Point(5, 435);
+            this.label1.Location = new System.Drawing.Point(5, 440);
             this.label1.Margin = new System.Windows.Forms.Padding(4);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(38, 13);
@@ -329,7 +346,7 @@
             this.label19.BackColor = System.Drawing.Color.Transparent;
             this.label19.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label19.ForeColor = System.Drawing.Color.Gray;
-            this.label19.Location = new System.Drawing.Point(5, 473);
+            this.label19.Location = new System.Drawing.Point(5, 478);
             this.label19.Margin = new System.Windows.Forms.Padding(4);
             this.label19.Name = "label19";
             this.label19.Size = new System.Drawing.Size(30, 13);
@@ -342,7 +359,7 @@
             this.label20.BackColor = System.Drawing.Color.Transparent;
             this.label20.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label20.ForeColor = System.Drawing.Color.Gray;
-            this.label20.Location = new System.Drawing.Point(5, 416);
+            this.label20.Location = new System.Drawing.Point(5, 421);
             this.label20.Margin = new System.Windows.Forms.Padding(4);
             this.label20.Name = "label20";
             this.label20.Size = new System.Drawing.Size(31, 13);
@@ -355,7 +372,7 @@
             this.label21.BackColor = System.Drawing.Color.Transparent;
             this.label21.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label21.ForeColor = System.Drawing.Color.Gray;
-            this.label21.Location = new System.Drawing.Point(5, 454);
+            this.label21.Location = new System.Drawing.Point(5, 459);
             this.label21.Margin = new System.Windows.Forms.Padding(4);
             this.label21.Name = "label21";
             this.label21.Size = new System.Drawing.Size(31, 13);
@@ -368,7 +385,7 @@
             this.label15.BackColor = System.Drawing.Color.Transparent;
             this.label15.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label15.ForeColor = System.Drawing.Color.Gray;
-            this.label15.Location = new System.Drawing.Point(5, 494);
+            this.label15.Location = new System.Drawing.Point(5, 499);
             this.label15.Margin = new System.Windows.Forms.Padding(4);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(27, 13);
@@ -381,7 +398,7 @@
             this.pfsPanel.BackColor = System.Drawing.Color.Transparent;
             this.pfsPanel.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             this.pfsPanel.Font = new System.Drawing.Font("Microsoft Sans Serif", 6F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.pfsPanel.Location = new System.Drawing.Point(50, 493);
+            this.pfsPanel.Location = new System.Drawing.Point(48, 498);
             this.pfsPanel.Name = "pfsPanel";
             this.pfsPanel.Size = new System.Drawing.Size(33, 33);
             this.pfsPanel.TabIndex = 253;
@@ -410,6 +427,10 @@
             this.textBox15.ReadOnly = true;
             this.textBox15.Size = new System.Drawing.Size(77, 13);
             this.textBox15.TabIndex = 251;
+            // 
+            // pageBindingSource
+            // 
+            this.pageBindingSource.DataSource = typeof(InternalsViewer.Internals.Pages.Header);
             // 
             // label5
             // 
@@ -614,7 +635,7 @@
             this.previousPageTextBox.ReadOnly = true;
             this.previousPageTextBox.Size = new System.Drawing.Size(75, 13);
             this.previousPageTextBox.TabIndex = 233;
-            this.previousPageTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PreviousPageTextBox_MouseClick);
+            this.previousPageTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PageTextBox_MouseClick);
             // 
             // nextPageTextBox
             // 
@@ -629,7 +650,7 @@
             this.nextPageTextBox.ReadOnly = true;
             this.nextPageTextBox.Size = new System.Drawing.Size(75, 13);
             this.nextPageTextBox.TabIndex = 232;
-            this.nextPageTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NextPageTextBox_MouseClick);
+            this.nextPageTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PageTextBox_MouseClick);
             // 
             // label18
             // 
@@ -986,6 +1007,8 @@
             // pageToolStripTextBox
             // 
             this.pageToolStripTextBox.AutoSize = false;
+            this.pageToolStripTextBox.DatabaseId = 0;
+            this.pageToolStripTextBox.ForeColor = System.Drawing.SystemColors.WindowText;
             this.pageToolStripTextBox.Name = "pageToolStripTextBox";
             this.pageToolStripTextBox.Padding = new System.Windows.Forms.Padding(0, 0, 2, 0);
             this.pageToolStripTextBox.Size = new System.Drawing.Size(90, 28);
@@ -1050,11 +1073,11 @@
             this.leftPanel.ResumeLayout(false);
             this.headerBorderPanel.ResumeLayout(false);
             this.headerBorderPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.dcmPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.sGamPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).EndInit();
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
             this.splitContainer1.ResumeLayout(false);
@@ -1081,7 +1104,7 @@
         private System.Windows.Forms.ToolStripButton nextToolStripButton;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.ToolStripLabel toolStripLabel2;
-        private System.Windows.Forms.ToolStripTextBox pageToolStripTextBox;
+        private PageAddressTextBox pageToolStripTextBox;
         private System.Windows.Forms.ToolStripTextBox offsetTableToolStripTextBox;
         private System.Windows.Forms.Panel leftPanel;
         private InternalsViewer.UI.Controls.BorderPanel headerBorderPanel;
@@ -1149,6 +1172,7 @@
         private System.Windows.Forms.TextBox dcmTextBox;
         private System.Windows.Forms.TextBox sgamTextBox;
         private System.Windows.Forms.TextBox gamTextBox;
+        private System.Windows.Forms.TextBox pfsTextBox;
 
     }
 }

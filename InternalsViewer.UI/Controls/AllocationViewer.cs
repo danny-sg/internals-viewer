@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Allocations;
+using InternalsViewer.Internals;
 
 namespace InternalsViewer.UI.Controls
 {
@@ -22,7 +23,7 @@ namespace InternalsViewer.UI.Controls
 
             this.allocationMap.PageOver += this.OnPageOver;
             this.allocationMap.PageClicked += this.OnPageClicked;
-            
+
             this.SetColours(AllocationViewer.CreateIamColours());
         }
 
@@ -85,8 +86,11 @@ namespace InternalsViewer.UI.Controls
             this.topPanel.Visible = showHeader;
 
             AllocationPage allocationPage = new AllocationPage(connectionString, databaseName, pageAddress);
-            
+
+            allocationMap.Mode = MapMode.Map;
             allocationMap.ExtentCount = 63903;
+            allocationMap.ExtentSize = AllocationMap.Small;
+
             allocationMap.StartPage = allocationPage.StartPage;
             allocationMap.FileId = allocationPage.StartPage.FileId;
 
@@ -95,17 +99,44 @@ namespace InternalsViewer.UI.Controls
                                                         Color.Brown);
 
             layer.SingleSlotsOnly = false;
-            
+
             allocationMap.MapLayers.Clear();
             allocationMap.MapLayers.Add(layer);
 
             allocationMap.Invalidate();
 
-            this.SetIamInformation(allocationPage);
+            if (showHeader)
+            {
+                this.SetIamInformation(allocationPage);
+            }
 
             List<Marker> markers = MarkerBuilder.BuildMarkers(allocationPage, string.Empty);
 
             return markers;
+        }
+
+        public void SetPfsPage(PageAddress pageAddress, string databaseName, string connectionString)
+        {
+            this.topPanel.Visible = false;
+
+            PfsPage pfsPage = new PfsPage(connectionString, databaseName, pageAddress);
+
+            allocationMap.Mode = MapMode.Pfs;
+
+            allocationMap.Pfs = new Pfs(pfsPage);
+            allocationMap.ExtentCount = 1011;
+            allocationMap.ExtentSize = AllocationMap.Large;
+
+            if (pfsPage.PageAddress.PageId > 1)
+            {
+                allocationMap.StartPage = pfsPage.PageAddress;
+            }
+            else
+            {
+                allocationMap.StartPage = new PageAddress(pfsPage.PageAddress.FileId, 0);
+            }
+
+            allocationMap.Invalidate();
         }
 
         internal virtual void OnPageOver(object sender, PageEventArgs e)

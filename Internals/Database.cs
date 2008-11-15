@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals
 {
     public class Database
     {
-        public const int AllocationInterval = 511230;
+        public const int AllocationInterval = 511232;
         public const int PfsInterval = 8088;
         private readonly Dictionary<int, Allocation> bcm = new Dictionary<int, Allocation>();
         private byte compatibilityLevel;

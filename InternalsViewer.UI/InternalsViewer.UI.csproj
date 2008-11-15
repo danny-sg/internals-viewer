@@ -109,6 +109,11 @@
     <Compile Include="OffsetTable.Designer.cs">
       <DependentUpon>OffsetTable.cs</DependentUpon>
     </Compile>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
     <Compile Include="RtfColour.cs" />
     <Compile Include="HexViewer.cs">
       <SubType>UserControl</SubType>
@@ -217,7 +222,20 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Properties\DataSources\InternalsViewer.Internals.Pages.Header.datasource" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
     <None Include="Resources\showhidedetailstoolbarbutton.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Collapse_large.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\allocationWindowSplit1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\WindowSplit.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

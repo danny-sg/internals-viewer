@@ -205,14 +205,14 @@ namespace InternalsViewer.UI
             allocationContainer.Refresh();
         }
 
-        private void databaseToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        private void DatabaseToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             InternalsViewerConnection.CurrentConnection().CurrentDatabase = (Database)databaseToolStripComboBox.SelectedItem;
 
             this.LoadDatabase();
         }
 
-        private void extentSizeToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        private void ExtentSizeToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             ChangeExtentSize();
         }
@@ -387,19 +387,14 @@ namespace InternalsViewer.UI
             }
         }
 
-        private void allocationContainer_PageOver(object sender, PageEventArgs e)
-        {
-
-        }
-
-        private void fileDetailsToolStripButton_Click(object sender, EventArgs e)
+        private void FileDetailsToolStripButton_Click(object sender, EventArgs e)
         {
             //this.allocationContainer.ShowFileInformation = fileDetailsToolStripButton.Checked;
             this.allocationContainer.CreateAllocationMaps(this.allocationContainer.AllocationMaps);
             LoadDatabase();
         }
 
-        private void keysDataGridView_SelectionChanged(object sender, EventArgs e)
+        private void KeysDataGridView_SelectionChanged(object sender, EventArgs e)
         {
             keyChanging = true;
 
@@ -438,12 +433,7 @@ namespace InternalsViewer.UI
             keysDataGridView.Invalidate();
         }
 
-        private void keysDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-
-        }
-
-        private void keysDataGridView_CellClick(object sender, DataGridViewCellEventArgs e)
+        private void KeysDataGridView_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (!keyChanging)
             {
@@ -456,12 +446,12 @@ namespace InternalsViewer.UI
             keyChanging = false;
         }
 
-        private void allocationContainer_PageClicked(object sender, PageEventArgs e)
+        private void AllocationContainer_PageClicked(object sender, PageEventArgs e)
         {
             this.OnViewPage(sender, e);
         }
 
-        private void pageToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
+        private void PageToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Return)
             {
@@ -474,6 +464,11 @@ namespace InternalsViewer.UI
                     System.Diagnostics.Debug.Print(ex.ToString());
                 }
             }
+        }
+
+        private void ShowKeyToolStripButton_Click(object sender, EventArgs e)
+        {
+            splitContainer.Panel2Collapsed = !showKeyToolStripButton.Checked;
         }
     }
 }

@@ -31,6 +31,19 @@ namespace InternalsViewer.Internals.Pages
             this.LoadPfsBytes();
         }
 
+        public PfsPage(string connectionString, string database, PageAddress pageAddress)
+            : base(connectionString, database, pageAddress)
+        {
+            if (Header.PageType != PageType.Pfs)
+            {
+                throw new InvalidOperationException("Page type is not PFS");
+            }
+
+            this.pfsBytes = new List<PfsByte>();
+
+            this.LoadPfsBytes();
+        }
+
         /// <summary>
         /// Returns a <see cref="T:System.String"/> that represents the current <see cref="T:System.Object"/>.
         /// </summary>
