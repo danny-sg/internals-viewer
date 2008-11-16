@@ -10,6 +10,10 @@ namespace InternalsViewer.Internals.RecordLoaders
 {
     class BlobRecordLoader : RecordLoader
     {
+        /// <summary>
+        /// Loads the specified record.
+        /// </summary>
+        /// <param name="record">The record.</param>
         internal static void Load(BlobRecord record)
         {
             byte statusByte = record.Page.PageData[record.SlotOffset];

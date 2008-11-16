@@ -118,6 +118,82 @@ namespace InternalsViewer.Internals
             }
         }
 
+        /// <summary>
+        /// Returns a page address for the allocation page that corresponds to a page address and allocation page type
+        /// </summary>
+        /// <param name="pageAddress">The page address.</param>
+        /// <param name="pageType">Type of the page.</param>
+        /// <returns></returns>
+        public static PageAddress AllocationPageAddress(PageAddress pageAddress, PageType pageType)
+        {
+            int pageId;
+
+            switch (pageType)
+            {
+                case PageType.Pfs:
+
+                    if (pageAddress.PageId < Database.PfsInterval)
+                    {
+                        return new PageAddress(pageAddress.FileId, 1);
+                    }
+                    else
+                    {
+                        pageId = (pageAddress.PageId / Database.PfsInterval) * Database.PfsInterval;
+
+                        return new PageAddress(pageAddress.FileId, pageId);
+                    }
+
+                default:
+
+                    if (pageAddress.PageId < Database.AllocationInterval)
+                    {
+                        pageId = 2;
+
+                        switch (pageType)
+                        {
+                            case PageType.Sgam:
+
+                                pageId += 1;
+                                break;
+
+                            case PageType.Dcm:
+
+                                pageId += 4;
+                                break;
+
+                            case PageType.Bcm:
+
+                                pageId += 5;
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        pageId = (pageAddress.PageId / Database.AllocationInterval) * Database.AllocationInterval;
+
+                        switch (pageType)
+                        {
+                            case PageType.Sgam:
+
+                                pageId += 1;
+                                break;
+
+                            case PageType.Dcm:
+
+                                pageId += 6;
+                                break;
+
+                            case PageType.Bcm:
+
+                                pageId += 7;
+                                break;
+                        }
+                    }
+
+                    return new PageAddress(pageAddress.FileId, pageId);
+            }
+        }
+
         #region Properties
 
         /// <summary>

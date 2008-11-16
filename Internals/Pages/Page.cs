@@ -158,18 +158,18 @@ namespace InternalsViewer.Internals.Pages
             this.Refresh(false);
         }
 
-        public bool AllocationStatus(AllocationPageType pageType)
+        public bool AllocationStatus(PageType pageType)
         {
             int interval = Database.AllocationInterval;
 
-            AllocationPage page = new AllocationPage(this.Database, Header.AllocationPageAddress(this.PageAddress, pageType));
+            AllocationPage page = new AllocationPage(this.Database, Allocation.AllocationPageAddress(this.PageAddress, pageType));
 
             return page.AllocationMap[(interval / 8) + 1];
         }
 
         public PfsByte PfsStatus()
         {
-            PfsPage pfsPage = new PfsPage(this.Database, Header.AllocationPageAddress(pageAddress, AllocationPageType.Pfs));
+            PfsPage pfsPage = new PfsPage(this.Database, Allocation.AllocationPageAddress(pageAddress, PageType.Pfs));
 
             return pfsPage.PfsBytes[pageAddress.PageId % Database.PfsInterval];
         }

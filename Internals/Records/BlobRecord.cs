@@ -38,7 +38,7 @@ namespace InternalsViewer.Internals.Records
         }
 
         [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
-        public string StatusBitsADescription
+        public new string StatusBitsADescription
         {
             get { return "TODO"; }
         }

@@ -341,22 +341,22 @@ namespace InternalsViewer.UI
 
                                 break;
 
-                            case (int)AllocationPageType.Gam:
+                            case 1:
 
                                 AllocUnitLabel.Text = "GAM";
                                 break;
 
-                            case (int)AllocationPageType.Sgam:
+                            case 2:
 
                                 AllocUnitLabel.Text = "SGAM";
                                 break;
 
-                            case (int)AllocationPageType.Dcm:
+                            case 6:
 
                                 AllocUnitLabel.Text = "DCM";
                                 break;
 
-                            case (int)AllocationPageType.Bcm:
+                            case 7:
 
                                 AllocUnitLabel.Text = "BCM";
                                 break;

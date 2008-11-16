@@ -28,54 +28,6 @@ namespace InternalsViewer.Internals.Pages
         private long tornBits;
         private int xactReservedCount;
 
-        public static PageAddress AllocationPageAddress(PageAddress pageAddress, AllocationPageType pageType)
-        {
-            int pageId;
-
-            switch (pageType)
-            {
-                case AllocationPageType.Pfs:
-
-                    if (pageAddress.PageId < Database.PfsInterval)
-                    {
-                        return new PageAddress(pageAddress.FileId, (int)pageType);
-                    }
-                    else
-                    {
-                        pageId = (pageAddress.PageId / Database.PfsInterval) * Database.PfsInterval;
-
-                        return new PageAddress(pageAddress.FileId, pageId);
-                    }
-
-                default:
-
-                    if (pageAddress.PageId < Database.AllocationInterval)
-                    {
-                        return new PageAddress(pageAddress.FileId, (int)pageType);
-                    }
-                    else
-                    {
-                        pageId = (pageAddress.PageId / Database.AllocationInterval) * Database.AllocationInterval;
-
-                        switch (pageType)
-                        {
-                            case AllocationPageType.Sgam:
-
-                                pageId += 1;
-                                break;
-
-                            case AllocationPageType.Dcm:
-                            case AllocationPageType.Bcm:
-
-                                pageId += (int)pageType;
-                                break;
-                        }
-
-                        return new PageAddress(pageAddress.FileId, pageId);
-                    }
-            }
-        }
-
         /// <summary>
         /// Gets or sets the page address.
         /// </summary>

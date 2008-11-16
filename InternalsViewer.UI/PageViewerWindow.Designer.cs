@@ -92,7 +92,7 @@ namespace InternalsViewer.UI
             this.hexViewer = new InternalsViewer.UI.HexViewer();
             this.topLeftPanel = new System.Windows.Forms.Panel();
             this.offsetTable = new InternalsViewer.UI.OffsetTable();
-            this.allocationViewer = new InternalsViewer.UI.Controls.AllocationViewer();
+            this.allocationViewer = new InternalsViewer.UI.AllocationViewer();
             this.markerKeyTable = new InternalsViewer.UI.Controls.MarkerKeyTable();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.pageAddressToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
@@ -1017,20 +1017,22 @@ namespace InternalsViewer.UI
             // 
             // previousToolStripButton
             // 
+            this.previousToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.RightToLeftDoucmentHS;
             this.previousToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.previousToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.previousToolStripButton.Name = "previousToolStripButton";
-            this.previousToolStripButton.Size = new System.Drawing.Size(33, 25);
+            this.previousToolStripButton.Size = new System.Drawing.Size(49, 25);
             this.previousToolStripButton.Text = "Back";
             this.previousToolStripButton.ToolTipText = "Page ID - 1";
             this.previousToolStripButton.Click += new System.EventHandler(this.PreviousToolStripButton_Click);
             // 
             // nextToolStripButton
             // 
+            this.nextToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.LeftToRightDoucmentHS1;
             this.nextToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.nextToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.nextToolStripButton.Name = "nextToolStripButton";
-            this.nextToolStripButton.Size = new System.Drawing.Size(56, 25);
+            this.nextToolStripButton.Size = new System.Drawing.Size(72, 25);
             this.nextToolStripButton.Text = "Forwards";
             this.nextToolStripButton.ToolTipText = "Page ID +1";
             this.nextToolStripButton.Click += new System.EventHandler(this.NextToolStripButton_Click);
@@ -1053,7 +1055,7 @@ namespace InternalsViewer.UI
             this.offsetTableToolStripTextBox.Padding = new System.Windows.Forms.Padding(0, 0, 2, 0);
             this.offsetTableToolStripTextBox.Size = new System.Drawing.Size(32, 28);
             this.offsetTableToolStripTextBox.Text = "0000";
-            this.offsetTableToolStripTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.offsetTableToolStripTextBox_KeyDown);
+            this.offsetTableToolStripTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.OffsetTableToolStripTextBox_KeyDown);
             // 
             // toolStripSeparator1
             // 
@@ -1159,7 +1161,7 @@ namespace InternalsViewer.UI
         private System.Windows.Forms.Panel topLeftPanel;
         private OffsetTable offsetTable;
         private InternalsViewer.UI.Controls.MarkerKeyTable markerKeyTable;
-        private InternalsViewer.UI.Controls.AllocationViewer allocationViewer;
+        private InternalsViewer.UI.AllocationViewer allocationViewer;
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel pageAddressToolStripStatusLabel;
         private System.Windows.Forms.ToolStripStatusLabel errorImageToolStripStatusLabel;

@@ -21,6 +21,11 @@ namespace InternalsViewer.Internals.Pages
         public PfsPage(Database database, PageAddress address)
             : base(database, address)
         {
+            LoadPage();
+        }
+
+        private void LoadPage()
+        {
             if (Header.PageType != PageType.Pfs)
             {
                 throw new InvalidOperationException("Page type is not PFS");
@@ -31,17 +36,16 @@ namespace InternalsViewer.Internals.Pages
             this.LoadPfsBytes();
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PfsPage"/> class.
+        /// </summary>
+        /// <param name="connectionString">The connection string.</param>
+        /// <param name="database">The database.</param>
+        /// <param name="pageAddress">The page address.</param>
         public PfsPage(string connectionString, string database, PageAddress pageAddress)
             : base(connectionString, database, pageAddress)
         {
-            if (Header.PageType != PageType.Pfs)
-            {
-                throw new InvalidOperationException("Page type is not PFS");
-            }
-
-            this.pfsBytes = new List<PfsByte>();
-
-            this.LoadPfsBytes();
+            LoadPage();
         }
 
         /// <summary>
@@ -74,7 +78,7 @@ namespace InternalsViewer.Internals.Pages
         }
 
         /// <summary>
-        /// Loads the PFS bytes.
+        /// Loads the PFS bytes collection
         /// </summary>
         private void LoadPfsBytes()
         {

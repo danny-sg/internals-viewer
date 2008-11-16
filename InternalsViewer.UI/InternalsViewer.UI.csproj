@@ -67,10 +67,10 @@
     <Compile Include="Controls\HexRichTextBox.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Controls\AllocationViewer.cs">
+    <Compile Include="AllocationViewer.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Controls\AllocationViewer.Designer.cs">
+    <Compile Include="AllocationViewer.Designer.cs">
       <DependentUpon>AllocationViewer.cs</DependentUpon>
     </Compile>
     <Compile Include="Controls\KeyImageColumn.cs" />
@@ -108,11 +108,6 @@
     </Compile>
     <Compile Include="OffsetTable.Designer.cs">
       <DependentUpon>OffsetTable.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-      <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
     <Compile Include="RtfColour.cs" />
     <Compile Include="HexViewer.cs">
@@ -155,7 +150,7 @@
       <DependentUpon>AllocationWindow.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Controls\AllocationViewer.resx">
+    <EmbeddedResource Include="AllocationViewer.resx">
       <DependentUpon>AllocationViewer.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -222,10 +217,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Properties\DataSources\InternalsViewer.Internals.Pages.Header.datasource" />
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
     <None Include="Resources\showhidedetailstoolbarbutton.png" />
   </ItemGroup>
   <ItemGroup>

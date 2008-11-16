@@ -10,13 +10,19 @@ using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Allocations;
 using InternalsViewer.Internals;
 
-namespace InternalsViewer.UI.Controls
+namespace InternalsViewer.UI
 {
+    /// <summary>
+    /// Allocation Viewer control for Allocation Pages (IAM, GAM, SGAM, PFS etc.)
+    /// </summary>
     public partial class AllocationViewer : UserControl
     {
         public event EventHandler<PageEventArgs> PageOver;
         public event EventHandler<PageEventArgs> PageClicked;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AllocationViewer"/> class.
+        /// </summary>
         public AllocationViewer()
         {
             InitializeComponent();
@@ -27,6 +33,10 @@ namespace InternalsViewer.UI.Controls
             this.SetColours(AllocationViewer.CreateIamColours());
         }
 
+        /// <summary>
+        /// Creates the IAM key colours for the header information
+        /// </summary>
+        /// <returns></returns>
         private static List<Color> CreateIamColours()
         {
             List<Color> colours = new List<Color>(9);
@@ -44,6 +54,10 @@ namespace InternalsViewer.UI.Controls
             return colours;
         }
 
+        /// <summary>
+        /// Sets the IAM header information.
+        /// </summary>
+        /// <param name="page">The page.</param>
         private void SetIamInformation(AllocationPage page)
         {
             if (page.SinglePageSlots.Count == 8)
@@ -60,6 +74,10 @@ namespace InternalsViewer.UI.Controls
             }
         }
 
+        /// <summary>
+        /// Sets the header key images
+        /// </summary>
+        /// <param name="colours">The colours.</param>
         public void SetColours(List<Color> colours)
         {
             startPageBox.Image = ExtentColour.KeyImage(colours[0]);
@@ -73,21 +91,21 @@ namespace InternalsViewer.UI.Controls
             slot7Box.Image = ExtentColour.KeyImage(colours[8]);
         }
 
-        private void topPanel_Paint(object sender, PaintEventArgs e)
-        {
-            ControlPaint.DrawBorder(e.Graphics,
-                                    new Rectangle(topPanel.Bounds.X, topPanel.Bounds.Y, topPanel.Width, topPanel.Height + 2),
-                                    SystemColors.ControlDark,
-                                    ButtonBorderStyle.Solid);
-        }
-
+        /// <summary>
+        /// Sets an allocation page to be displayed
+        /// </summary>
+        /// <param name="pageAddress">The page address.</param>
+        /// <param name="databaseName">Name of the database.</param>
+        /// <param name="connectionString">The connection string.</param>
+        /// <param name="showHeader">if set to <c>true</c> [show header].</param>
+        /// <returns></returns>
         public List<Marker> SetAllocationPage(PageAddress pageAddress, string databaseName, string connectionString, bool showHeader)
         {
             this.topPanel.Visible = showHeader;
 
             AllocationPage allocationPage = new AllocationPage(connectionString, databaseName, pageAddress);
 
-            allocationMap.Mode = MapMode.Map;
+            allocationMap.Mode = MapMode.Standard;
             allocationMap.ExtentCount = 63903;
             allocationMap.ExtentSize = AllocationMap.Small;
 
@@ -115,6 +133,12 @@ namespace InternalsViewer.UI.Controls
             return markers;
         }
 
+        /// <summary>
+        /// Sets the PFS page to be displayed
+        /// </summary>
+        /// <param name="pageAddress">The page address.</param>
+        /// <param name="databaseName">Name of the database.</param>
+        /// <param name="connectionString">The connection string.</param>
         public void SetPfsPage(PageAddress pageAddress, string databaseName, string connectionString)
         {
             this.topPanel.Visible = false;
@@ -139,6 +163,11 @@ namespace InternalsViewer.UI.Controls
             allocationMap.Invalidate();
         }
 
+        /// <summary>
+        /// Called when the mouse hovers over a page on the allocation map
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         internal virtual void OnPageOver(object sender, PageEventArgs e)
         {
             if (this.PageOver != null)
@@ -147,6 +176,11 @@ namespace InternalsViewer.UI.Controls
             }
         }
 
+        /// <summary>
+        /// Called when a page is clicked on the allocation map
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         internal virtual void OnPageClicked(object sender, PageEventArgs e)
         {
             if (this.PageClicked != null)
@@ -155,11 +189,29 @@ namespace InternalsViewer.UI.Controls
             }
         }
 
-        private void PageAddressTextBox_TextChanged(object sender, EventArgs e)
+        /// <summary>
+        /// Handles the Click event of various text boxes with page addresses
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
+        private void PageAddressTextBox_Click(object sender, EventArgs e)
         {
             PageAddress pageAddress = PageAddress.Parse((sender as TextBox).Text);
 
             this.OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, 0), false));
+        }
+
+        /// <summary>
+        /// Handles the Paint event of the TopPanel control to draw a border around it
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
+        private void TopPanel_Paint(object sender, PaintEventArgs e)
+        {
+            ControlPaint.DrawBorder(e.Graphics,
+                                    new Rectangle(topPanel.Bounds.X, topPanel.Bounds.Y, topPanel.Width, topPanel.Height + 2),
+                                    SystemColors.ControlDark,
+                                    ButtonBorderStyle.Solid);
         }
     }
 }

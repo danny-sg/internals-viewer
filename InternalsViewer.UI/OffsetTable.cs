@@ -12,7 +12,6 @@ namespace InternalsViewer.UI
     {
         private Page page;
         public event EventHandler SlotChanged;
-        private bool slotChanging;
 
         public OffsetTable()
         {
@@ -68,7 +67,7 @@ namespace InternalsViewer.UI
 
         internal virtual void OnSlotChanged(object sender, EventArgs e)
         {
-            if (this.SlotChanged != null && !this.slotChanging)
+            if (this.SlotChanged != null)
             {
                 this.SlotChanged(sender, e);
             }

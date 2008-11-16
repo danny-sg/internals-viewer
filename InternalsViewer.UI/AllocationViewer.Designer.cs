@@ -1,5 +1,5 @@
 ﻿using InternalsViewer.Internals.Pages;
-namespace InternalsViewer.UI.Controls
+namespace InternalsViewer.UI
 {
     partial class AllocationViewer
     {
@@ -110,7 +110,7 @@ namespace InternalsViewer.UI.Controls
             this.topPanel.Name = "topPanel";
             this.topPanel.Size = new System.Drawing.Size(670, 115);
             this.topPanel.TabIndex = 0;
-            this.topPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.topPanel_Paint);
+            this.topPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.TopPanel_Paint);
             // 
             // slot7Box
             // 
@@ -216,7 +216,7 @@ namespace InternalsViewer.UI.Controls
             this.slotSixTextBox.ReadOnly = true;
             this.slotSixTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotSixTextBox.TabIndex = 263;
-            this.slotSixTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.slotSixTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // slotFiveTextBox
             // 
@@ -230,7 +230,7 @@ namespace InternalsViewer.UI.Controls
             this.slotFiveTextBox.ReadOnly = true;
             this.slotFiveTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotFiveTextBox.TabIndex = 262;
-            this.slotFiveTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.slotFiveTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // label10
             // 
@@ -257,7 +257,7 @@ namespace InternalsViewer.UI.Controls
             this.slotSevenTextBox.ReadOnly = true;
             this.slotSevenTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotSevenTextBox.TabIndex = 260;
-            this.slotSevenTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.slotSevenTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // label11
             // 
@@ -297,7 +297,7 @@ namespace InternalsViewer.UI.Controls
             this.slotFourTextBox.ReadOnly = true;
             this.slotFourTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotFourTextBox.TabIndex = 257;
-            this.slotFourTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.slotFourTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // label13
             // 
@@ -324,7 +324,7 @@ namespace InternalsViewer.UI.Controls
             this.slotTwoTextBox.ReadOnly = true;
             this.slotTwoTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotTwoTextBox.TabIndex = 255;
-            this.slotTwoTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.slotTwoTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // slotOneTextBox
             // 
@@ -338,7 +338,7 @@ namespace InternalsViewer.UI.Controls
             this.slotOneTextBox.ReadOnly = true;
             this.slotOneTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotOneTextBox.TabIndex = 254;
-            this.slotOneTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.slotOneTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // label9
             // 
@@ -365,7 +365,7 @@ namespace InternalsViewer.UI.Controls
             this.slotThreeTextBox.ReadOnly = true;
             this.slotThreeTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotThreeTextBox.TabIndex = 252;
-            this.slotThreeTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.slotThreeTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // label8
             // 
@@ -405,7 +405,7 @@ namespace InternalsViewer.UI.Controls
             this.slotZeroTextBox.ReadOnly = true;
             this.slotZeroTextBox.Size = new System.Drawing.Size(70, 13);
             this.slotZeroTextBox.TabIndex = 249;
-            this.slotZeroTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.slotZeroTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // label6
             // 
@@ -432,8 +432,8 @@ namespace InternalsViewer.UI.Controls
             this.startPageTextBox.ReadOnly = true;
             this.startPageTextBox.Size = new System.Drawing.Size(63, 13);
             this.startPageTextBox.TabIndex = 247;
-            this.startPageTextBox.TextChanged += new System.EventHandler(this.PageAddressTextBox_TextChanged);
-            this.startPageTextBox.Click += new System.EventHandler(this.PageAddressTextBox_TextChanged);
+            this.startPageTextBox.TextChanged += new System.EventHandler(this.PageAddressTextBox_Click);
+            this.startPageTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // label2
             // 

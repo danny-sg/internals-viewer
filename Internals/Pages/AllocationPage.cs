@@ -55,9 +55,6 @@ namespace InternalsViewer.Internals.Pages
                     break;
                 default:
                     throw new InvalidOperationException(this.Header.PageType + " is not an allocation page");
-                    break;
-
-
             }
 
         }

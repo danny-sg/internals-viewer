@@ -8,9 +8,7 @@ namespace InternalsViewer.Internals.Structures
     {
         private bool includedColumn;
         private int indexColumnId;
-        private int keyOrdinal;
         private bool key;
-        private byte nullBit;
 
         public bool Key
         {
@@ -28,18 +26,6 @@ namespace InternalsViewer.Internals.Structures
         {
             get { return indexColumnId; }
             set { indexColumnId = value; }
-        }
-
-        public int KeyOrdinal
-        {
-            get { return keyOrdinal; }
-            set { KeyOrdinal = value; }
-        }
-
-        public byte NullBit
-        {
-            get { return nullBit; }
-            set { nullBit = value; }
         }
     }
 }
