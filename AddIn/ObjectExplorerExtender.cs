@@ -8,8 +8,7 @@ using InternalsViewer.Internals.Structures;
 using Microsoft.SqlServer.Management.Smo;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
 using Microsoft.SqlServer.Management.UI.VSIntegration.ObjectExplorer;
-//using Microsoft.SqlServer.Management.Sdk.Sfc;
-
+using Microsoft.SqlServer.Management.Sdk.Sfc;
 
 namespace InternalsViewer.SSMSAddIn
 {
@@ -55,7 +54,6 @@ namespace InternalsViewer.SSMSAddIn
 
                 windowManager.CreatePageViewerWindow(connectionString, new RowIdentifier((PageAddress)e.Node.Tag, 0));
             }
-
         }
 
         /// <summary>
@@ -65,6 +63,7 @@ namespace InternalsViewer.SSMSAddIn
         private TreeView GetObjectExplorerTreeView()
         {
             Type t = ServiceCache.GetObjectExplorer().GetType();
+
             FieldInfo field = t.GetField("tree", BindingFlags.NonPublic | BindingFlags.Instance);
 
             if (field != null)

@@ -432,7 +432,6 @@ namespace InternalsViewer.UI
             this.startPageTextBox.ReadOnly = true;
             this.startPageTextBox.Size = new System.Drawing.Size(63, 13);
             this.startPageTextBox.TabIndex = 247;
-            this.startPageTextBox.TextChanged += new System.EventHandler(this.PageAddressTextBox_Click);
             this.startPageTextBox.Click += new System.EventHandler(this.PageAddressTextBox_Click);
             // 
             // label2

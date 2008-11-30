@@ -14,7 +14,7 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <param name="size">The size.</param>
         /// <param name="offset">The offset.</param>
         /// <returns>An array of 2-byte integers</returns>
-        protected static UInt16[] GetOffsetArray(byte[] record, int size, int offset)
+        public static UInt16[] GetOffsetArray(byte[] record, int size, int offset)
         {
             UInt16[] offsetArray = new UInt16[size];
 

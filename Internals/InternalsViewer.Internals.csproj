@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.21022</ProductVersion>
+    <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -51,6 +51,7 @@
     <Compile Include="BufferPool.cs" />
     <Compile Include="CompressedDataConverter.cs" />
     <Compile Include="Compression\CompressionType.cs" />
+    <Compile Include="Compression\Dictionary.cs" />
     <Compile Include="DataAccess.cs" />
     <Compile Include="Database.cs" />
     <Compile Include="DatabaseFile.cs" />
@@ -81,11 +82,15 @@
     </Compile>
     <Compile Include="InternalsViewerConnection.cs" />
     <Compile Include="RecordLoaders\BlobRecordLoader.cs" />
+    <Compile Include="RecordLoaders\CompressedDataRecordLoader.cs" />
     <Compile Include="RecordLoaders\IndexRecordLoader.cs" />
     <Compile Include="RecordLoaders\SparseVectorLoader.cs" />
     <Compile Include="Records\BlobRecord.cs" />
     <Compile Include="Records\BlobType.cs" />
     <Compile Include="Records\ColumnDescriptor.cs" />
+    <Compile Include="Records\CompressedDataRecord.cs" />
+    <Compile Include="Compression\CompressionInformation.cs" />
+    <Compile Include="Records\CompressedRecordField.cs" />
     <Compile Include="Records\DataRecord.cs" />
     <Compile Include="RecordLoaders\DataRecordLoader.cs" />
     <Compile Include="Records\IndexRecord.cs" />
