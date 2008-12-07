@@ -22,6 +22,7 @@ namespace InternalsViewer.Internals.Pages
         private List<UInt16> offsetTable;
         private byte[] pageData;
         private CompressionType compressionType;
+        private CompressionInformation compressionInformation;
 
         /// <summary>
         /// Create a Page with a DatabasePageReader
@@ -101,6 +102,11 @@ namespace InternalsViewer.Internals.Pages
                 if (this.Database.CompatibilityLevel > 90)
                 {
                     this.CompressionType = this.GetPageCompressionType(this.Database.ConnectionString);
+                }
+
+                if (this.CompressionType == CompressionType.Page)
+                {
+                    this.CompressionInformation = new CompressionInformation(this, 96);
                 }
             }
 
@@ -360,6 +366,12 @@ namespace InternalsViewer.Internals.Pages
         public List<UInt16> OffsetTable
         {
             get { return this.offsetTable; }
+        }
+
+        public CompressionInformation CompressionInformation
+        {
+            get { return this.compressionInformation; }
+            set { this.compressionInformation = value; }
         }
 
         #endregion

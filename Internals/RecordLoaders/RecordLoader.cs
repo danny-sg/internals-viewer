@@ -1,4 +1,6 @@
 ﻿using System;
+using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.BlobPointers;
 
 namespace InternalsViewer.Internals.RecordLoaders
 {
@@ -26,6 +28,35 @@ namespace InternalsViewer.Internals.RecordLoaders
             }
 
             return offsetArray;
+        }
+
+        /// <summary>
+        /// Loads a LOB field.
+        /// </summary>
+        /// <param name="field">The field.</param>
+        /// <param name="data">The data.</param>
+        public static void LoadLobField(RecordField field, byte[] data, int offset)
+        {
+            field.Mark("BlobInlineRoot");
+
+            // First byte gives the Blob field type
+            switch ((BlobFieldType)data[0])
+            {
+                case BlobFieldType.LobPointer:
+
+                    field.BlobInlineRoot = new PointerField(data, offset);
+                    break;
+
+                case BlobFieldType.LobRoot:
+
+                    field.BlobInlineRoot = new RootField(data, offset);
+                    break;
+
+                case BlobFieldType.RowOverflow:
+
+                    field.BlobInlineRoot = new OverflowField(data, offset);
+                    break;
+            }
         }
 
         /// <summary>

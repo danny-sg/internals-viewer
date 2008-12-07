@@ -10,6 +10,7 @@ using InternalsViewer.Internals.Structures;
 using InternalsViewer.UI.Markers;
 using System.Drawing;
 using InternalsViewer.UI.Renderers;
+using InternalsViewer.Internals.Compression;
 
 namespace InternalsViewer.UI
 {
@@ -158,7 +159,15 @@ namespace InternalsViewer.UI
 
                     Structure tableStructure = new TableStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
 
-                    record = new DataRecord(this.Page, offset, tableStructure);
+                    if (this.Page.CompressionType == CompressionType.None)
+                    {
+                        record = new DataRecord(this.Page, offset, tableStructure);
+                    }
+                    else
+                    {
+                        record = new CompressedDataRecord(this.Page, offset, tableStructure);
+                    }
+
                     allocationViewer.Visible = false;
                     markerKeyTable.Visible = true;
                     break;

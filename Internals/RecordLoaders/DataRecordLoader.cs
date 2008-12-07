@@ -258,35 +258,6 @@ namespace InternalsViewer.Internals.RecordLoaders
         }
 
         /// <summary>
-        /// Loads a LOB field.
-        /// </summary>
-        /// <param name="field">The field.</param>
-        /// <param name="data">The data.</param>
-        private static void LoadLobField(RecordField field, byte[] data, int offset)
-        {
-            field.Mark("BlobInlineRoot");
-
-            // First byte gives the Blob field type
-            switch ((BlobFieldType)data[0])
-            {
-                case BlobFieldType.LobPointer:
-
-                    field.BlobInlineRoot = new PointerField(data, offset);
-                    break;
-
-                case BlobFieldType.LobRoot:
-
-                    field.BlobInlineRoot = new RootField(data, offset);
-                    break;
-
-                case BlobFieldType.RowOverflow:
-
-                    field.BlobInlineRoot = new OverflowField(data, offset);
-                    break;
-            }
-        }
-
-        /// <summary>
         /// Loads the status bits.
         /// </summary>
         /// <param name="dataRecord">The data record.</param>
@@ -299,7 +270,7 @@ namespace InternalsViewer.Internals.RecordLoaders
             record.StatusBitsA = new BitArray(new byte[] { statusA });
             record.StatusBitsB = new BitArray(new byte[] { record.Page.PageData[record.SlotOffset + 1] });
 
-            record.Mark("StatusBitsADescription", record.SlotOffset, 1);
+            record.Mark("StatusBitsADescription", record.SlotOffset, sizeof(byte));
 
             record.RecordType = (RecordType)((statusA >> 1) & 7);
 
@@ -311,7 +282,7 @@ namespace InternalsViewer.Internals.RecordLoaders
             record.HasNullBitmap = record.StatusBitsA[4];
             record.HasVariableLengthColumns = record.StatusBitsA[5];
 
-            record.Mark("StatusBitsBDescription", record.SlotOffset + sizeof(byte), 1);
+            record.Mark("StatusBitsBDescription", record.SlotOffset + sizeof(byte), sizeof(byte));
 
             return record.RecordType;
         }

@@ -50,6 +50,7 @@
     <Compile Include="BlobPointers\RootField.cs" />
     <Compile Include="BufferPool.cs" />
     <Compile Include="CompressedDataConverter.cs" />
+    <Compile Include="Compression\CdArrayItem.cs" />
     <Compile Include="Compression\CompressionType.cs" />
     <Compile Include="Compression\Dictionary.cs" />
     <Compile Include="DataAccess.cs" />

@@ -91,7 +91,7 @@ namespace InternalsViewer.UI
             this.allocationContainer.Mode = InternalsViewer.UI.Allocations.MapMode.Standard;
             this.allocationContainer.Name = "allocationContainer";
             this.allocationContainer.ShowFileInformation = false;
-            this.allocationContainer.Size = new System.Drawing.Size(945, 422);
+            this.allocationContainer.Size = new System.Drawing.Size(945, 404);
             this.allocationContainer.TabIndex = 2;
             this.allocationContainer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageOver);
             this.allocationContainer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageClicked);
@@ -111,9 +111,8 @@ namespace InternalsViewer.UI
             // splitContainer.Panel2
             // 
             this.splitContainer.Panel2.Controls.Add(this.keysDataGridView);
-            this.splitContainer.Panel2.Controls.Add(this.statusStrip);
-            this.splitContainer.Size = new System.Drawing.Size(945, 579);
-            this.splitContainer.SplitterDistance = 452;
+            this.splitContainer.Size = new System.Drawing.Size(945, 557);
+            this.splitContainer.SplitterDistance = 434;
             this.splitContainer.TabIndex = 0;
             // 
             // flatMenuStrip
@@ -300,7 +299,7 @@ namespace InternalsViewer.UI
             this.keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
             this.keysDataGridView.RowHeadersVisible = false;
             this.keysDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.keysDataGridView.Size = new System.Drawing.Size(945, 101);
+            this.keysDataGridView.Size = new System.Drawing.Size(945, 119);
             this.keysDataGridView.TabIndex = 2;
             this.keysDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.KeysDataGridView_CellClick);
             this.keysDataGridView.SelectionChanged += new System.EventHandler(this.KeysDataGridView_SelectionChanged);
@@ -366,7 +365,7 @@ namespace InternalsViewer.UI
             this.AllocUnitLabel,
             this.pageAddressToolStripStatusLabel,
             this.iconToolStripStatusLabel});
-            this.statusStrip.Location = new System.Drawing.Point(0, 101);
+            this.statusStrip.Location = new System.Drawing.Point(0, 557);
             this.statusStrip.Name = "statusStrip";
             this.statusStrip.Size = new System.Drawing.Size(945, 22);
             this.statusStrip.SizingGrip = false;
@@ -449,11 +448,11 @@ namespace InternalsViewer.UI
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.splitContainer);
+            this.Controls.Add(this.statusStrip);
             this.Name = "AllocationWindow";
             this.Size = new System.Drawing.Size(945, 579);
             this.splitContainer.Panel1.ResumeLayout(false);
             this.splitContainer.Panel2.ResumeLayout(false);
-            this.splitContainer.Panel2.PerformLayout();
             this.splitContainer.ResumeLayout(false);
             this.flatMenuStrip.ResumeLayout(false);
             this.flatMenuStrip.PerformLayout();
@@ -462,6 +461,7 @@ namespace InternalsViewer.UI
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 

@@ -80,7 +80,7 @@ namespace InternalsViewer.Internals.Compression
 
             TableStructure structure = CreateTableStructure(records, ci);
 
-            ci.AnchorRecord = new CompressedDataRecord(ci.Page, (UInt16)startOffset, structure, ci);
+            ci.AnchorRecord = new CompressedDataRecord(ci.Page, (UInt16)startOffset, structure);
         }
 
         private static TableStructure CreateTableStructure(int records, CompressionInformation ci)

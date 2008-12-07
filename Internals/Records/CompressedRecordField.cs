@@ -74,5 +74,25 @@ namespace InternalsViewer.Internals.Records
             get { return this.pageSymbol; }
             set { this.pageSymbol = value; }
         }
+
+        [MarkAttribute("", "Gray", "LemonChiffon", "PaleGoldenrod", true)]
+        public string Value
+        {
+            get
+            {
+                if (this.Length < 1)
+                {
+                    if (!this.IsNull && this.AnchorField != null)
+                    {
+                        return CompressedDataConverter.CompressedBinaryToBinary(this.AnchorField.Data,
+                                                                                this.Column.DataType,
+                                                                                this.Column.Precision,
+                                                                                this.Column.Scale);
+                    }
+
+                }
+                return "";
+            }
+        }
     }
 }

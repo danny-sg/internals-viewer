@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Records
     /// <summary>
     /// Record field
     /// </summary>
-    public class RecordField: Field
+    public class RecordField : Field
     {
         private BlobField blobInlineRoot;
         private Column column;
@@ -87,7 +87,10 @@ namespace InternalsViewer.Internals.Records
         [MarkAttribute("", "Gray", "LemonChiffon", "PaleGoldenrod", true)]
         public string Value
         {
-            get { return DataConverter.BinaryToString(this.Data, this.Column.DataType, this.Column.Precision, this.Column.Scale); }
+            get
+            {
+                return DataConverter.BinaryToString(this.Data, this.Column.DataType, this.Column.Precision, this.Column.Scale);
+            }
         }
 
         public override string ToString()
