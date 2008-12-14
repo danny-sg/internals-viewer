@@ -12,7 +12,7 @@ namespace InternalsViewer.Internals.RecordLoaders
     /// <summary>
     /// Loads a Compressed Data Record
     /// </summary>
-    public class CompressedDataRecordLoader: RecordLoader
+    public class CompressedDataRecordLoader : RecordLoader
     {
         public static void Load(CompressedDataRecord record)
         {
@@ -167,7 +167,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                         field.AnchorField = record.Page.CompressionInformation.AnchorRecord.Fields.Find(
                                                             delegate(RecordField f)
                                                             {
-                                                                return f.Column.ColumnId == i;
+                                                                return f.Column.ColumnId == i + 1;
                                                             });
                     }
 

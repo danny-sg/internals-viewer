@@ -53,6 +53,7 @@
     <Compile Include="Compression\CdArrayItem.cs" />
     <Compile Include="Compression\CompressionType.cs" />
     <Compile Include="Compression\Dictionary.cs" />
+    <Compile Include="Compression\DictionaryEntry.cs" />
     <Compile Include="DataAccess.cs" />
     <Compile Include="Database.cs" />
     <Compile Include="DatabaseFile.cs" />

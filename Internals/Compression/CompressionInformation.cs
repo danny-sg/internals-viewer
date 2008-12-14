@@ -10,7 +10,7 @@ using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.Compression
 {
-    public class CompressionInformation
+    public class CompressionInformation: Markable
     {
         private short pageModCount;
         private short size;
@@ -45,16 +45,24 @@ namespace InternalsViewer.Internals.Compression
         {
             ci.StatusBits = new BitArray(new byte[] { ci.Page.PageData[ci.SlotOffset] });
 
+            ci.Mark("StatusDescription", ci.SlotOffset, 1);
+
             ci.hasAnchorRecord = ci.StatusBits[1];
             ci.hasDictionary = ci.StatusBits[2];
 
             ci.PageModCount = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 1);
+            
+            ci.Mark("PageModCount", ci.SlotOffset + sizeof(byte), sizeof(Int16));
 
             ci.Length = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 3);
+
+            ci.Mark("Length", ci.SlotOffset + sizeof(byte) + sizeof(Int16), sizeof(Int16));
 
             if (ci.HasDictionary)
             {
                 ci.Size = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 5);
+
+                ci.Mark("Size", ci.SlotOffset + sizeof(byte) + sizeof(Int16) + sizeof(Int16), sizeof(Int16));
             }
 
             if (ci.HasAnchorRecord)
@@ -105,12 +113,14 @@ namespace InternalsViewer.Internals.Compression
             return structure;
         }
 
+        [MarkAttribute("Page Mod Count", "DarkGreen", "Gainsboro", true)]
         public short PageModCount
         {
             get { return pageModCount; }
             set { pageModCount = value; }
         }
 
+        [MarkAttribute("Size", "Purple", "Gainsboro", true)]
         public short Size
         {
             get { return size; }
@@ -135,6 +145,7 @@ namespace InternalsViewer.Internals.Compression
             set { page = value; }
         }
 
+        [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
         public string StatusDescription
         {
             get
@@ -183,6 +194,7 @@ namespace InternalsViewer.Internals.Compression
             set { hasDictionary = value; }
         }
 
+        [MarkAttribute("Length", "Blue", "Gainsboro", true)]
         public short Length
         {
             get { return length; }

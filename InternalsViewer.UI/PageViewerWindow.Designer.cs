@@ -92,6 +92,8 @@ namespace InternalsViewer.UI
             this.hexViewer = new InternalsViewer.UI.HexViewer();
             this.topLeftPanel = new System.Windows.Forms.Panel();
             this.offsetTable = new InternalsViewer.UI.OffsetTable();
+            this.compressionInfoPanel = new System.Windows.Forms.Panel();
+            this.compressionInfoTable = new InternalsViewer.UI.Controls.CompressionInfoTable();
             this.allocationViewer = new InternalsViewer.UI.AllocationViewer();
             this.markerKeyTable = new InternalsViewer.UI.Controls.MarkerKeyTable();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
@@ -121,6 +123,7 @@ namespace InternalsViewer.UI
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.topLeftPanel.SuspendLayout();
+            this.compressionInfoPanel.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.flatMenuStrip1.SuspendLayout();
             this.SuspendLayout();
@@ -884,6 +887,7 @@ namespace InternalsViewer.UI
             // 
             this.topLeftPanel.BackColor = System.Drawing.Color.Transparent;
             this.topLeftPanel.Controls.Add(this.offsetTable);
+            this.topLeftPanel.Controls.Add(this.compressionInfoPanel);
             this.topLeftPanel.Dock = System.Windows.Forms.DockStyle.Right;
             this.topLeftPanel.Location = new System.Drawing.Point(518, 0);
             this.topLeftPanel.Name = "topLeftPanel";
@@ -899,9 +903,30 @@ namespace InternalsViewer.UI
             this.offsetTable.Padding = new System.Windows.Forms.Padding(1);
             this.offsetTable.Page = null;
             this.offsetTable.SelectedSlot = -1;
-            this.offsetTable.Size = new System.Drawing.Size(177, 289);
+            this.offsetTable.Size = new System.Drawing.Size(177, 183);
             this.offsetTable.TabIndex = 0;
             this.offsetTable.SlotChanged += new System.EventHandler(this.OffsetTable_SlotChanged);
+            // 
+            // compressionInfoPanel
+            // 
+            this.compressionInfoPanel.Controls.Add(this.compressionInfoTable);
+            this.compressionInfoPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.compressionInfoPanel.Location = new System.Drawing.Point(3, 183);
+            this.compressionInfoPanel.Name = "compressionInfoPanel";
+            this.compressionInfoPanel.Padding = new System.Windows.Forms.Padding(0, 4, 0, 0);
+            this.compressionInfoPanel.Size = new System.Drawing.Size(177, 106);
+            this.compressionInfoPanel.TabIndex = 2;
+            // 
+            // compressionInfoTable
+            // 
+            this.compressionInfoTable.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.compressionInfoTable.Location = new System.Drawing.Point(0, 4);
+            this.compressionInfoTable.Name = "compressionInfoTable";
+            this.compressionInfoTable.Padding = new System.Windows.Forms.Padding(1);
+            this.compressionInfoTable.SelectedStructure = InternalsViewer.Internals.Compression.CompressionInformation.CompressionInfoStructure.Header;
+            this.compressionInfoTable.Size = new System.Drawing.Size(177, 102);
+            this.compressionInfoTable.TabIndex = 0;
+            this.compressionInfoTable.PropertyChanged += new System.ComponentModel.PropertyChangedEventHandler(this.CompressionInfoTable_PropertyChanged);
             // 
             // allocationViewer
             // 
@@ -1084,6 +1109,7 @@ namespace InternalsViewer.UI
             this.splitContainer1.Panel2.ResumeLayout(false);
             this.splitContainer1.ResumeLayout(false);
             this.topLeftPanel.ResumeLayout(false);
+            this.compressionInfoPanel.ResumeLayout(false);
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
             this.flatMenuStrip1.ResumeLayout(false);
@@ -1175,6 +1201,8 @@ namespace InternalsViewer.UI
         private System.Windows.Forms.TextBox sgamTextBox;
         private System.Windows.Forms.TextBox gamTextBox;
         private System.Windows.Forms.TextBox pfsTextBox;
+        private System.Windows.Forms.Panel compressionInfoPanel;
+        private CompressionInfoTable compressionInfoTable;
 
     }
 }

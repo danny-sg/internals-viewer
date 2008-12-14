@@ -22,6 +22,12 @@ namespace InternalsViewer.Internals
             this.Index = index;
         }
 
+        public MarkItem(string propertName, string prefix, int startPosition, int length, int index)
+            : this(propertName, startPosition, length, index)
+        {
+            this.Prefix = prefix;
+        }
+
         public MarkItem(string propertyName, string prefix, int index)
         {
             this.PropertyName = propertyName;

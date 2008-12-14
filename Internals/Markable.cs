@@ -18,6 +18,11 @@ namespace InternalsViewer.Internals
             this.markItems.Add(new MarkItem(propertyName, startPosition, length, index));
         }
 
+        public void Mark(string propertyName, string prefix, int startPosition, int length, int index)
+        {
+            this.markItems.Add(new MarkItem(propertyName, startPosition, length, index));
+        }
+
         public void Mark(string propertyName, string prefix, int index)
         {
             this.markItems.Add(new MarkItem(propertyName, prefix, index));

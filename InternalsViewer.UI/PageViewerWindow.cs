@@ -55,6 +55,15 @@ namespace InternalsViewer.UI
             this.pageBindingSource.DataSource = this.Page.Header;
             this.offsetTable.Page = this.Page;
 
+            if (page.CompressionType == CompressionType.Page && !Page.OffsetTable.Contains(96))
+            {
+                this.compressionInfoPanel.Visible = true;
+            }
+            else
+            {
+                this.compressionInfoPanel.Visible = false;
+            }
+
             this.OnPageChanged(this, new PageEventArgs(new RowIdentifier(this.Page.PageAddress, 0), false));
         }
 
@@ -381,6 +390,42 @@ namespace InternalsViewer.UI
             offsetToolStripStatusLabel.Text = string.Format("Offset: {0:0000}", e.Offset);
         }
 
+        private void DisplayCompressionInfoStructure(CompressionInformation.CompressionInfoStructure compressionInfoStructure)
+        {
+            List<Marker> markers = new List<Marker>();
+
+            switch (compressionInfoStructure)
+            {
+                case CompressionInformation.CompressionInfoStructure.Anchor:
+
+                    if (this.Page.CompressionInformation.AnchorRecord != null)
+                    {
+                        markers = MarkerBuilder.BuildMarkers(this.Page.CompressionInformation.AnchorRecord);
+                    }
+
+                    break;
+
+                case CompressionInformation.CompressionInfoStructure.Dictionary:
+
+                    if (this.Page.CompressionInformation.HasDictionary)
+                    {
+                        markers = MarkerBuilder.BuildMarkers(this.Page.CompressionInformation.CompressionDictionary);
+                    }
+
+                    break;
+
+                case CompressionInformation.CompressionInfoStructure.Header:
+
+                    markers = MarkerBuilder.BuildMarkers(this.Page.CompressionInformation);
+                    break;
+            }
+
+            this.hexViewer.AddMarkers(markers);
+
+            this.markerKeyTable.SetMarkers(markers);
+        }
+
+
         /// <summary>
         /// Handles the PageOver event of the AllocationViewer control.
         /// </summary>
@@ -517,5 +562,12 @@ namespace InternalsViewer.UI
         /// </summary>
         /// <value>The connection string.</value>
         public string ConnectionString { get; set; }
+
+        private void CompressionInfoTable_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            offsetTable.SelectedSlot = -1;
+
+            this.DisplayCompressionInfoStructure(compressionInfoTable.SelectedStructure);
+        }
     }
 }
