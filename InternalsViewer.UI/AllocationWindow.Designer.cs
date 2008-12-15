@@ -49,6 +49,7 @@ namespace InternalsViewer.UI
             this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             this.showKeyToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.fileDetailsToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.keysDataGridView = new System.Windows.Forms.DataGridView();
             this.KeyColumn = new InternalsViewer.UI.Controls.KeyImageColumn();
             this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -131,7 +132,8 @@ namespace InternalsViewer.UI
             this.pageToolStripTextBox,
             this.toolStripLabel2,
             this.toolStripSeparator3,
-            this.showKeyToolStripButton});
+            this.showKeyToolStripButton,
+            this.fileDetailsToolStripButton});
             this.flatMenuStrip.Location = new System.Drawing.Point(0, 0);
             this.flatMenuStrip.Name = "flatMenuStrip";
             this.flatMenuStrip.Padding = new System.Windows.Forms.Padding(4, 0, 1, 0);
@@ -247,6 +249,18 @@ namespace InternalsViewer.UI
             this.showKeyToolStripButton.Size = new System.Drawing.Size(45, 26);
             this.showKeyToolStripButton.Text = "Key";
             this.showKeyToolStripButton.Click += new System.EventHandler(this.ShowKeyToolStripButton_Click);
+            // 
+            // fileDetailsToolStripButton
+            // 
+            this.fileDetailsToolStripButton.CheckOnClick = true;
+            this.fileDetailsToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.fileinfo1;
+            this.fileDetailsToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
+            this.fileDetailsToolStripButton.Margin = new System.Windows.Forms.Padding(4, 2, 0, 2);
+            this.fileDetailsToolStripButton.Name = "fileDetailsToolStripButton";
+            this.fileDetailsToolStripButton.Padding = new System.Windows.Forms.Padding(4, 2, 0, 2);
+            this.fileDetailsToolStripButton.Size = new System.Drawing.Size(82, 26);
+            this.fileDetailsToolStripButton.Text = "File Details";
+            this.fileDetailsToolStripButton.CheckedChanged += new System.EventHandler(this.FileDetailsToolStripButton_CheckedChanged);
             // 
             // keysDataGridView
             // 
@@ -502,5 +516,6 @@ namespace InternalsViewer.UI
         private System.Windows.Forms.ToolStripLabel toolStripLabel2;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
         private System.Windows.Forms.ToolStripButton showKeyToolStripButton;
+        private System.Windows.Forms.ToolStripButton fileDetailsToolStripButton;
     }
 }

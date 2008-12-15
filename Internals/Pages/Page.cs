@@ -19,7 +19,7 @@ namespace InternalsViewer.Internals.Pages
         private int databaseId;
         private string databaseName;
         private Header header;
-        private List<UInt16> offsetTable;
+        private List<UInt16> offsetTable = new List<UInt16>();
         private byte[] pageData;
         private CompressionType compressionType;
         private CompressionInformation compressionInformation;
@@ -235,8 +235,6 @@ namespace InternalsViewer.Internals.Pages
         /// </summary>
         private void LoadOffsetTable(int slotCount)
         {
-            this.offsetTable = new List<UInt16>();
-
             for (int i = 2; i <= (slotCount * 2); i += 2)
             {
                 this.offsetTable.Add(BitConverter.ToUInt16(this.pageData, this.pageData.Length - i));

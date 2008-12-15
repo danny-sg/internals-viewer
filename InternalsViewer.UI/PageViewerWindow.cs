@@ -150,6 +150,8 @@ namespace InternalsViewer.UI
         {
             if (offsetTable.SelectedOffset > 0)
             {
+                this.compressionInfoTable.SelectedStructure = CompressionInformation.CompressionInfoStructure.None;
+
                 this.LoadRecord(offsetTable.SelectedOffset);
             }
         }

@@ -470,5 +470,12 @@ namespace InternalsViewer.UI
         {
             splitContainer.Panel2Collapsed = !showKeyToolStripButton.Checked;
         }
+
+        private void FileDetailsToolStripButton_CheckedChanged(object sender, EventArgs e)
+        {
+            allocationContainer.ShowFileInformation = this.fileDetailsToolStripButton.Checked;
+            
+            
+        }
     }
 }

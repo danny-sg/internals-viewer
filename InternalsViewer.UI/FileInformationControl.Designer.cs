@@ -35,6 +35,7 @@
             this.label1 = new System.Windows.Forms.Label();
             this.label7 = new System.Windows.Forms.Label();
             this.label18 = new System.Windows.Forms.Label();
+            this.databaseFileBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.label19 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
             this.label17 = new System.Windows.Forms.Label();
@@ -51,10 +52,9 @@
             this.spaceUsedPanel = new System.Windows.Forms.Panel();
             this.label3 = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
-            this.databaseFileBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            ((System.ComponentModel.ISupportInitialize)(this.databaseFileBindingSource)).BeginInit();
             this.tableLayoutPanel1.SuspendLayout();
             this.panel1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.databaseFileBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
             // label4
@@ -98,12 +98,12 @@
             // 
             this.label1.AutoSize = true;
             this.label1.ForeColor = System.Drawing.Color.Gray;
-            this.label1.Location = new System.Drawing.Point(-1, 8);
+            this.label1.Location = new System.Drawing.Point(0, 9);
             this.label1.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(34, 13);
+            this.label1.Size = new System.Drawing.Size(35, 13);
             this.label1.TabIndex = 0;
-            this.label1.Text = "File id";
+            this.label1.Text = "File Id";
             // 
             // label7
             // 
@@ -120,7 +120,7 @@
             // 
             this.label18.AutoSize = true;
             this.label18.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.databaseFileBindingSource, "FileName", true));
-            this.label18.Location = new System.Drawing.Point(59, 25);
+            this.label18.Location = new System.Drawing.Point(59, 26);
             this.label18.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(12, 13);
@@ -131,7 +131,7 @@
             // 
             this.label19.AutoSize = true;
             this.label19.ForeColor = System.Drawing.Color.Gray;
-            this.label19.Location = new System.Drawing.Point(-1, 42);
+            this.label19.Location = new System.Drawing.Point(0, 43);
             this.label19.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label19.Name = "label19";
             this.label19.Size = new System.Drawing.Size(50, 13);
@@ -153,7 +153,7 @@
             // 
             this.label17.AutoSize = true;
             this.label17.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.databaseFileBindingSource, "Name", true));
-            this.label17.Location = new System.Drawing.Point(144, 8);
+            this.label17.Location = new System.Drawing.Point(126, 9);
             this.label17.Margin = new System.Windows.Forms.Padding(2);
             this.label17.Name = "label17";
             this.label17.Size = new System.Drawing.Size(12, 13);
@@ -164,7 +164,7 @@
             // 
             this.label16.AutoSize = true;
             this.label16.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.databaseFileBindingSource, "FileGroup", true));
-            this.label16.Location = new System.Drawing.Point(59, 42);
+            this.label16.Location = new System.Drawing.Point(59, 43);
             this.label16.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label16.Name = "label16";
             this.label16.Size = new System.Drawing.Size(12, 13);
@@ -175,7 +175,7 @@
             // 
             this.label15.AutoSize = true;
             this.label15.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.databaseFileBindingSource, "FileId", true));
-            this.label15.Location = new System.Drawing.Point(59, 8);
+            this.label15.Location = new System.Drawing.Point(59, 9);
             this.label15.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(12, 13);
@@ -197,7 +197,7 @@
             // 
             this.label2.AutoSize = true;
             this.label2.ForeColor = System.Drawing.Color.Gray;
-            this.label2.Location = new System.Drawing.Point(94, 8);
+            this.label2.Location = new System.Drawing.Point(87, 9);
             this.label2.Margin = new System.Windows.Forms.Padding(2);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(35, 13);
@@ -305,7 +305,7 @@
             // 
             this.label3.AutoSize = true;
             this.label3.ForeColor = System.Drawing.Color.Gray;
-            this.label3.Location = new System.Drawing.Point(-1, 25);
+            this.label3.Location = new System.Drawing.Point(0, 26);
             this.label3.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(52, 13);
@@ -314,6 +314,7 @@
             // 
             // panel1
             // 
+            this.panel1.BackColor = System.Drawing.Color.Transparent;
             this.panel1.Controls.Add(this.label1);
             this.panel1.Controls.Add(this.label17);
             this.panel1.Controls.Add(this.label2);
@@ -338,11 +339,11 @@
             this.Controls.Add(this.panel1);
             this.Name = "FileInformationControl";
             this.Size = new System.Drawing.Size(600, 62);
+            ((System.ComponentModel.ISupportInitialize)(this.databaseFileBindingSource)).EndInit();
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.databaseFileBindingSource)).EndInit();
             this.ResumeLayout(false);
 
         }

@@ -78,9 +78,9 @@ namespace InternalsViewer.Internals.Records
                 {
                     return GetPageSymbolValue();
                 }
-                else if (field.AnchorField != null && field.AnchorField.Data != null)
+                else if (this.AnchorField != null && this.AnchorField.Data != null)
                 {
-                    return GetValueFromAnchor();
+                    return GetValueWithAnchor();
                 }
                 else
                 {
@@ -92,37 +92,23 @@ namespace InternalsViewer.Internals.Records
             }
         }
 
-        private string GetValueFromAnchor()
+        private string GetValueWithAnchor()
         {
             if (this.Data.Length > 0)
             {
                 byte[] compositeData = this.ExpandAnchor(this.Data);
 
-                Marker anchorOffsetMarker = new Marker(string.Format("{0} data offset", field.Column.ColumnName),
-                                                Marker.MarkerType.Compressed,
-                                                offset,
-                                                offset + field.DataOffset - 1,
-                                                Color.LightGreen,
-                                                Color.Gray);
-
-                anchorOffsetMarker.Value = field.AnchorLength.ToString();
-
-                fieldMarker.StartPosition += field.DataOffset;
-                fieldMarker.EndPosition += field.DataOffset - 1;
-
-                markers.Add(anchorOffsetMarker);
-
                 return CompressedDataConverter.CompressedBinaryToBinary(compositeData,
-                                                                                     field.Column.DataType,
-                                                                                     field.Column.Precision,
-                                                                                     field.Column.Scale);
+                                                                        this.Column.DataType,
+                                                                        this.Column.Precision,
+                                                                        this.Column.Scale);
             }
             else
             {
-                return CompressedDataConverter.CompressedBinaryToBinary(field.AnchorField.Data,
-                                                 field.Column.DataType,
-                                                 field.Column.Precision,
-                                                 field.Column.Scale);
+                return CompressedDataConverter.CompressedBinaryToBinary(this.AnchorField.Data,
+                                                                        this.Column.DataType,
+                                                                        this.Column.Precision,
+                                                                        this.Column.Scale);
             }
         }
 

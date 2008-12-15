@@ -82,7 +82,7 @@ namespace InternalsViewer.UI.Allocations
                 {
                     filePanel.Margin = new Padding(0);
                 }
-                else
+                else if(this.showFileInformation)
                 {
                     filePanel.Controls.Add(new FileInformationControl(file));
                 }
@@ -312,6 +312,7 @@ namespace InternalsViewer.UI.Allocations
                 if (value != this.showFileInformation)
                 {
                     this.showFileInformation = value;
+                    this.CreateAllocationMaps(InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files);
                 }
             }
         }
