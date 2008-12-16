@@ -98,7 +98,7 @@
             // 
             this.label1.AutoSize = true;
             this.label1.ForeColor = System.Drawing.Color.Gray;
-            this.label1.Location = new System.Drawing.Point(0, 9);
+            this.label1.Location = new System.Drawing.Point(0, 11);
             this.label1.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(35, 13);
@@ -120,7 +120,7 @@
             // 
             this.label18.AutoSize = true;
             this.label18.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.databaseFileBindingSource, "FileName", true));
-            this.label18.Location = new System.Drawing.Point(59, 26);
+            this.label18.Location = new System.Drawing.Point(59, 28);
             this.label18.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(12, 13);
@@ -131,7 +131,7 @@
             // 
             this.label19.AutoSize = true;
             this.label19.ForeColor = System.Drawing.Color.Gray;
-            this.label19.Location = new System.Drawing.Point(0, 43);
+            this.label19.Location = new System.Drawing.Point(0, 45);
             this.label19.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label19.Name = "label19";
             this.label19.Size = new System.Drawing.Size(50, 13);
@@ -153,7 +153,7 @@
             // 
             this.label17.AutoSize = true;
             this.label17.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.databaseFileBindingSource, "Name", true));
-            this.label17.Location = new System.Drawing.Point(126, 9);
+            this.label17.Location = new System.Drawing.Point(126, 11);
             this.label17.Margin = new System.Windows.Forms.Padding(2);
             this.label17.Name = "label17";
             this.label17.Size = new System.Drawing.Size(12, 13);
@@ -164,7 +164,7 @@
             // 
             this.label16.AutoSize = true;
             this.label16.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.databaseFileBindingSource, "FileGroup", true));
-            this.label16.Location = new System.Drawing.Point(59, 43);
+            this.label16.Location = new System.Drawing.Point(59, 45);
             this.label16.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label16.Name = "label16";
             this.label16.Size = new System.Drawing.Size(12, 13);
@@ -175,7 +175,7 @@
             // 
             this.label15.AutoSize = true;
             this.label15.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.databaseFileBindingSource, "FileId", true));
-            this.label15.Location = new System.Drawing.Point(59, 9);
+            this.label15.Location = new System.Drawing.Point(59, 11);
             this.label15.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(12, 13);
@@ -197,7 +197,7 @@
             // 
             this.label2.AutoSize = true;
             this.label2.ForeColor = System.Drawing.Color.Gray;
-            this.label2.Location = new System.Drawing.Point(87, 9);
+            this.label2.Location = new System.Drawing.Point(87, 11);
             this.label2.Margin = new System.Windows.Forms.Padding(2);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(35, 13);
@@ -305,7 +305,7 @@
             // 
             this.label3.AutoSize = true;
             this.label3.ForeColor = System.Drawing.Color.Gray;
-            this.label3.Location = new System.Drawing.Point(0, 26);
+            this.label3.Location = new System.Drawing.Point(0, 28);
             this.label3.Margin = new System.Windows.Forms.Padding(0, 2, 2, 2);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(52, 13);
