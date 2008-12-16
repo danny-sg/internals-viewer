@@ -241,6 +241,7 @@ namespace InternalsViewer.UI
             this.showKeyToolStripButton.Checked = true;
             this.showKeyToolStripButton.CheckOnClick = true;
             this.showKeyToolStripButton.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.showKeyToolStripButton.Enabled = false;
             this.showKeyToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.WindowSplit;
             this.showKeyToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
             this.showKeyToolStripButton.Margin = new System.Windows.Forms.Padding(0, 2, 0, 2);
@@ -253,6 +254,7 @@ namespace InternalsViewer.UI
             // fileDetailsToolStripButton
             // 
             this.fileDetailsToolStripButton.CheckOnClick = true;
+            this.fileDetailsToolStripButton.Enabled = false;
             this.fileDetailsToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.fileinfo1;
             this.fileDetailsToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
             this.fileDetailsToolStripButton.Margin = new System.Windows.Forms.Padding(4, 2, 0, 2);

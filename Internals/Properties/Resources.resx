@@ -261,7 +261,7 @@ ORDER BY d.name</value>
     <value>SELECT CONVERT(BIT, IS_SRVROLEMEMBER('sysadmin'))</value>
   </data>
   <data name="SQL_Version" xml:space="preserve">
-    <value>SELECT SERVERPROPERTY('productversion'), size FROM sys.database_files WHERE file_id = 1</value>
+    <value>SELECT SERVERPROPERTY('productversion'), size FROM sysfiles WHERE fileid = 1</value>
   </data>
   <data name="SQL_Database" xml:space="preserve">
     <value>SELECT name FROM sys.databases WHERE database_id = @database_id</value>

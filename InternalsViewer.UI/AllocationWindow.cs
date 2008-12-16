@@ -47,10 +47,12 @@ namespace InternalsViewer.UI
 
         private void EnableToolbar(bool enabled)
         {
-            databaseToolStripComboBox.Enabled = enabled;
-            extentSizeToolStripComboBox.Enabled = enabled;
-            bufferPoolToolStripButton.Enabled = enabled;
-            pfsToolStripButton.Enabled = enabled;
+            this.databaseToolStripComboBox.Enabled = enabled;
+            this.extentSizeToolStripComboBox.Enabled = enabled;
+            this.bufferPoolToolStripButton.Enabled = enabled;
+            this.pfsToolStripButton.Enabled = enabled;
+            this.fileDetailsToolStripButton.Enabled = enabled;
+            this.showKeyToolStripButton.Enabled = enabled;
         }
 
         public void RefreshDatabases()
@@ -473,9 +475,10 @@ namespace InternalsViewer.UI
 
         private void FileDetailsToolStripButton_CheckedChanged(object sender, EventArgs e)
         {
-            allocationContainer.ShowFileInformation = this.fileDetailsToolStripButton.Checked;
-            
-            
+            if (this.fileDetailsToolStripButton.Enabled)
+            {
+                allocationContainer.ShowFileInformation = this.fileDetailsToolStripButton.Checked;
+            }
         }
     }
 }
