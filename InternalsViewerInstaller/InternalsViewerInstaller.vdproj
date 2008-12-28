@@ -87,12 +87,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_0B3546E1245A89045A95E2248E8C4B91"
-        "OwnerKey" = "8:_754796087D8641348B9B11E1D3DCB6E1"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_0BED674B35A05020AD90C76A2380B501"
         "OwnerKey" = "8:_A90D58A2C80FDF06E3A9E402DF235AF9"
         "MsmSig" = "8:_UNDEFINED"
@@ -131,18 +125,6 @@
         {
         "MsmKey" = "8:_14D2BFE46AE3C49E6DE3170961EB4289"
         "OwnerKey" = "8:_14B48246FBA904FBB80556964A744EB3"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_19D864C6E11F819AC943521D2EB4184A"
-        "OwnerKey" = "8:_0B3546E1245A89045A95E2248E8C4B91"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_19D864C6E11F819AC943521D2EB4184A"
-        "OwnerKey" = "8:_754796087D8641348B9B11E1D3DCB6E1"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -394,6 +376,12 @@
         "Entry"
         {
         "MsmKey" = "8:_441F66E9A872E531F7BAEADA0ABD77E6"
+        "OwnerKey" = "8:_754796087D8641348B9B11E1D3DCB6E1"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_47674CAF1EAAE8FF97D19D596DB36BD1"
         "OwnerKey" = "8:_754796087D8641348B9B11E1D3DCB6E1"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1107,6 +1095,18 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_AA4B31E9A880EBC19BDB67AAC1E18D90"
+        "OwnerKey" = "8:_754796087D8641348B9B11E1D3DCB6E1"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_AA4B31E9A880EBC19BDB67AAC1E18D90"
+        "OwnerKey" = "8:_47674CAF1EAAE8FF97D19D596DB36BD1"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_AAF10B7E55FC820E8C39CD20169B1EBD"
         "OwnerKey" = "8:_754796087D8641348B9B11E1D3DCB6E1"
         "MsmSig" = "8:_UNDEFINED"
@@ -1672,13 +1672,7 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_0B3546E1245A89045A95E2248E8C4B91"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_19D864C6E11F819AC943521D2EB4184A"
+        "OwnerKey" = "8:_47674CAF1EAAE8FF97D19D596DB36BD1"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -2119,6 +2113,12 @@
         "OwnerKey" = "8:_85A243D8E03B9264368A4BDD00CB8ED6"
         "MsmSig" = "8:_UNDEFINED"
         }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_AA4B31E9A880EBC19BDB67AAC1E18D90"
+        "MsmSig" = "8:_UNDEFINED"
+        }
     }
     "Configurations"
     {
@@ -2354,37 +2354,6 @@
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
-            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_0B3546E1245A89045A95E2248E8C4B91"
-            {
-            "AssemblyRegister" = "3:1"
-            "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:InternalsViewer.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL"
-                "ScatterAssemblies"
-                {
-                    "_0B3546E1245A89045A95E2248E8C4B91"
-                    {
-                    "Name" = "8:InternalsViewer.UI.dll"
-                    "Attributes" = "3:512"
-                    }
-                }
-            "SourcePath" = "8:InternalsViewer.UI.dll"
-            "TargetName" = "8:"
-            "Tag" = "8:"
-            "Folder" = "8:_EA66E84C4DEC483BB3F0DD862F3186B1"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:TRUE"
-            "IsolateTo" = "8:"
-            }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_0BED674B35A05020AD90C76A2380B501"
             {
             "AssemblyRegister" = "3:1"
@@ -2475,37 +2444,6 @@
             "PackageAs" = "3:1"
             "Register" = "3:1"
             "Exclude" = "11:TRUE"
-            "IsDependency" = "11:TRUE"
-            "IsolateTo" = "8:"
-            }
-            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_19D864C6E11F819AC943521D2EB4184A"
-            {
-            "AssemblyRegister" = "3:1"
-            "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:InternalsViewer.Internals, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL"
-                "ScatterAssemblies"
-                {
-                    "_19D864C6E11F819AC943521D2EB4184A"
-                    {
-                    "Name" = "8:InternalsViewer.Internals.dll"
-                    "Attributes" = "3:512"
-                    }
-                }
-            "SourcePath" = "8:InternalsViewer.Internals.dll"
-            "TargetName" = "8:"
-            "Tag" = "8:"
-            "Folder" = "8:_EA66E84C4DEC483BB3F0DD862F3186B1"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
@@ -2949,6 +2887,37 @@
             "PackageAs" = "3:1"
             "Register" = "3:1"
             "Exclude" = "11:TRUE"
+            "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_47674CAF1EAAE8FF97D19D596DB36BD1"
+            {
+            "AssemblyRegister" = "3:1"
+            "AssemblyIsInGAC" = "11:FALSE"
+            "AssemblyAsmDisplayName" = "8:InternalsViewer.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL"
+                "ScatterAssemblies"
+                {
+                    "_47674CAF1EAAE8FF97D19D596DB36BD1"
+                    {
+                    "Name" = "8:InternalsViewer.UI.dll"
+                    "Attributes" = "3:512"
+                    }
+                }
+            "SourcePath" = "8:InternalsViewer.UI.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_EA66E84C4DEC483BB3F0DD862F3186B1"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
@@ -3933,6 +3902,37 @@
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_AA4B31E9A880EBC19BDB67AAC1E18D90"
+            {
+            "AssemblyRegister" = "3:1"
+            "AssemblyIsInGAC" = "11:FALSE"
+            "AssemblyAsmDisplayName" = "8:InternalsViewer.Internals, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL"
+                "ScatterAssemblies"
+                {
+                    "_AA4B31E9A880EBC19BDB67AAC1E18D90"
+                    {
+                    "Name" = "8:InternalsViewer.Internals.dll"
+                    "Attributes" = "3:512"
+                    }
+                }
+            "SourcePath" = "8:InternalsViewer.Internals.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_EA66E84C4DEC483BB3F0DD862F3186B1"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
             "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_AAF10B7E55FC820E8C39CD20169B1EBD"
             {
             "AssemblyRegister" = "3:1"
@@ -4743,13 +4743,13 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Internals Viewer"
         "ProductCode" = "8:{35B26921-1887-4FE5-887D-3719E70549DE}"
-        "PackageCode" = "8:{5A4B9103-0EC7-46D5-A415-7AFFF94F7094}"
-        "UpgradeCode" = "8:{4CFEC262-0139-4F48-B5C7-7356B0C582E9}"
+        "PackageCode" = "8:{88B41C6D-BD4F-468A-9623-B39EA71B6190}"
+        "UpgradeCode" = "8:{6412EC6E-0608-47E7-8CF9-EDFEB8E44EBC}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:0.4"
+        "ProductVersion" = "8:2"
         "Manufacturer" = "8:Danny Gould"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
@@ -5366,7 +5366,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_754796087D8641348B9B11E1D3DCB6E1"
             {
-            "SourcePath" = "8:..\\AddIn\\obj\\Release\\InternalsViewer.SSMSAddIn.dll"
+            "SourcePath" = "8:..\\AddIn\\obj\\Debug\\InternalsViewer.SSMSAddIn.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_EA66E84C4DEC483BB3F0DD862F3186B1"
