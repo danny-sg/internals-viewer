@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Data;
 using System.Text;
 using System.Windows.Forms;
+using InternalsViewer.UI;
 
 namespace InternalsViewer.SSMSAddIn
 {
@@ -13,6 +14,11 @@ namespace InternalsViewer.SSMSAddIn
         public DecodeContainer()
         {
             InitializeComponent();
+        }
+
+        public DecodeWindow DecodeWindow
+        {
+            get { return this.decodeWindow; }
         }
     }
 }

@@ -17,11 +17,13 @@ namespace InternalsViewer.UI
     public partial class PageViewerWindow : UserControl
     {
         public event EventHandler<PageEventArgs> PageChanged;
+        public event EventHandler OpenDecodeWindow;
         private readonly ProfessionalColorTable colourTable;
         private Page page;
         private ImageList keyImages;
         private readonly PfsRenderer pfsRenderer;
         private PfsByte pfsByte;
+        int searchPos = 0;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
@@ -277,6 +279,36 @@ namespace InternalsViewer.UI
             }
         }
 
+        public void FindNext(string findHex, bool suppressContinue)
+        {
+            int startPos;
+            int endPos;
+
+            string hexString = this.hexViewer.Text.Replace(" ", string.Empty).Replace("\n", string.Empty);
+
+            startPos = hexString.IndexOf(findHex, searchPos + 1);
+
+            if (startPos > 0)
+            {
+                if (startPos % 2 == 0)
+                {
+                    endPos = startPos + findHex.Length - 1;
+                    searchPos = endPos;
+
+                    this.hexViewer.SetSelection(startPos / 2, endPos / 2);
+                }
+                else if (!suppressContinue)
+                {
+                    this.FindNext(findHex, true);
+                    return;
+                }
+            }
+            else
+            {
+                searchPos = 0;
+                MessageBox.Show("Search hex not found", "Find", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            }
+        }
         /// <summary>
         /// Handles the KeyDown event of the PageToolStripTextBox control.
         /// </summary>
@@ -538,6 +570,14 @@ namespace InternalsViewer.UI
             }
         }
 
+        internal virtual void OnOpenDecodeWindow(object sender, PageEventArgs e)
+        {
+            if (this.OpenDecodeWindow != null)
+            {
+                this.OpenDecodeWindow(sender, e);
+            }
+        }
+
         /// <summary>
         /// Gets or sets the current Page.
         /// </summary>
@@ -570,6 +610,16 @@ namespace InternalsViewer.UI
             offsetTable.SelectedSlot = -1;
 
             this.DisplayCompressionInfoStructure(compressionInfoTable.SelectedStructure);
+        }
+
+        private void encodeAndFindToolStripButton_Click(object sender, EventArgs e)
+        {
+            this.OpenDecodeWindow(this, EventArgs.Empty);
+        }
+
+        internal void FindNext(string hexString)
+        {
+            this.FindNext(hexString, false);
         }
     }
 }

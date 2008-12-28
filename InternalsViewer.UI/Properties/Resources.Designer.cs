@@ -102,6 +102,13 @@ namespace InternalsViewer.UI.Properties {
             }
         }
         
+        internal static System.Drawing.Bitmap FindHS {
+            get {
+                object obj = ResourceManager.GetObject("FindHS", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
         internal static System.Drawing.Bitmap LeftToRightDoucmentHS1 {
             get {
                 object obj = ResourceManager.GetObject("LeftToRightDoucmentHS1", resourceCulture);
