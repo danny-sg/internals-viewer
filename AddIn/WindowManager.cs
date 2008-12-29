@@ -154,11 +154,15 @@ namespace InternalsViewer.SSMSAddIn
 
                 toolWindow.Visible = true;
 
-                toolWindow.Width = 376;
-                toolWindow.Height = 135;
+                if (toolWindow.IsFloating)
+                {
+                    toolWindow.Width = 376;
+                    toolWindow.Height = 135;
+                }
+
                 toolWindow.Caption = "Decode and Find";
 
-                this.decodeContainer = controlObject as DecodeContainer; ;
+                this.decodeContainer = controlObject as DecodeContainer;
 
                 return this.decodeContainer;
             }
