@@ -19,6 +19,7 @@ namespace InternalsViewer.UI
         private bool keyChanging;
         private const string AllocationMapText = "Allocation Map";
         private const string AllocationUnitsText = "Allocation Units";
+        private const string PageFreeSpaceText = "PFS";
 
         public AllocationWindow()
         {
@@ -40,7 +41,6 @@ namespace InternalsViewer.UI
             this.databaseToolStripComboBox.Enabled = enabled;
             this.extentSizeToolStripComboBox.Enabled = enabled;
             this.bufferPoolToolStripButton.Enabled = enabled;
-            this.pfsToolStripButton.Enabled = enabled;
             this.fileDetailsToolStripButton.Enabled = enabled;
             this.showKeyToolStripButton.Enabled = enabled;
             this.mapToolStripButton.Enabled = enabled;
@@ -196,13 +196,15 @@ namespace InternalsViewer.UI
             }
 
             this.ShowExtendedColumns(true);
-            
+
             this.NameColumn.HeaderText = "Table";
             this.IndexNameColumn.HeaderText = "Index";
 
             this.allocationBindingSource.DataSource = layers;
 
             this.keysDataGridView.ClearSelection();
+
+            this.ShowPfs(false);
         }
 
         /// <summary>
@@ -242,21 +244,21 @@ namespace InternalsViewer.UI
 
                     this.allocationContainer.Mode = MapMode.Standard;
                     this.allocationContainer.ExtentSize = AllocationMap.Small;
-                    
+
                     break;
 
                 case "Medium":
 
                     this.allocationContainer.Mode = MapMode.Standard;
                     this.allocationContainer.ExtentSize = AllocationMap.Medium;
-                    
+
                     break;
 
                 case "Large":
 
                     this.allocationContainer.Mode = MapMode.Standard;
                     this.allocationContainer.ExtentSize = AllocationMap.Large;
-                    
+
                     break;
 
                 case "Fit":
@@ -264,7 +266,7 @@ namespace InternalsViewer.UI
                     this.allocationContainer.Mode = MapMode.Full;
 
                     this.allocationContainer.ShowFittedMap();
-                    
+
                     break;
             }
         }
@@ -280,27 +282,29 @@ namespace InternalsViewer.UI
 
             clean.SinglePageSlots.AddRange(this.bufferPool.CleanPages);
 
-            AllocationLayer bufferPoolLayer = new AllocationLayer("Buffer Pool", clean, Color.Black);
-            bufferPoolLayer.SingleSlotsOnly = true;
-            bufferPoolLayer.Transparency = 80;
-            bufferPoolLayer.Transparent = true;
-            bufferPoolLayer.BorderColour = Color.WhiteSmoke;
-            bufferPoolLayer.UseBorderColour = true;
-            bufferPoolLayer.UseDefaultSinglePageColour = false;
+            AllocationLayer bufferPoolLayer = new AllocationLayer("Buffer Pool", clean, Color.Black)
+                                                {
+                                                    SingleSlotsOnly = true,
+                                                    Transparency = 80,
+                                                    Transparent = true,
+                                                    BorderColour = Color.WhiteSmoke,
+                                                    UseBorderColour = true,
+                                                    UseDefaultSinglePageColour = false
+                                                };
 
             AllocationPage dirty = new AllocationPage();
 
             dirty.SinglePageSlots.AddRange(this.bufferPool.DirtyPages);
 
-            AllocationLayer bufferPoolDirtyLayer = new AllocationLayer("Buffer Pool (Dirty)", dirty, Color.IndianRed);
-
-            bufferPoolDirtyLayer.SingleSlotsOnly = true;
-            bufferPoolDirtyLayer.Transparent = false;
-
-            bufferPoolDirtyLayer.BorderColour = Color.WhiteSmoke;
-            bufferPoolDirtyLayer.UseBorderColour = true;
-            bufferPoolDirtyLayer.UseDefaultSinglePageColour = false;
-            bufferPoolDirtyLayer.LayerType = AllocationLayerType.TopLeftCorner;
+            AllocationLayer bufferPoolDirtyLayer = new AllocationLayer("Buffer Pool (Dirty)", dirty, Color.IndianRed)
+                                                   {
+                                                       SingleSlotsOnly = true,
+                                                       Transparent = false,
+                                                       BorderColour = Color.WhiteSmoke,
+                                                       UseBorderColour = true,
+                                                       UseDefaultSinglePageColour = false,
+                                                       LayerType = AllocationLayerType.TopLeftCorner
+                                                   };
 
             allocationContainer.AddMapLayer(bufferPoolLayer);
             allocationContainer.AddMapLayer(bufferPoolDirtyLayer);
@@ -376,6 +380,8 @@ namespace InternalsViewer.UI
             this.allocationBindingSource.DataSource = this.allocationContainer.AllocationLayers;
 
             this.keysDataGridView.ClearSelection();
+
+            this.ShowPfs(false);
         }
 
         /// <summary>
@@ -405,12 +411,12 @@ namespace InternalsViewer.UI
         {
             foreach (int fileId in allocation.Keys)
             {
-                allocationContainer.AddMapLayer(new AllocationLayer(allocation[fileId]) 
-                                                { 
+                allocationContainer.AddMapLayer(new AllocationLayer(allocation[fileId])
+                                                {
                                                     Name = layerName,
-                                                    ObjectName = layerName, 
+                                                    ObjectName = layerName,
                                                     IndexName = description,
-                                                    Invert = invert, 
+                                                    Invert = invert,
                                                     Colour = layerColour
                                                 });
             }
@@ -469,10 +475,10 @@ namespace InternalsViewer.UI
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
-        private void PfsToolStripButton_Click(object sender, EventArgs e)
-        {
-            this.ShowPfs(this.pfsToolStripButton.Checked);
-        }
+        //private void PfsToolStripButton_Click(object sender, EventArgs e)
+        //{
+        //    this.ShowPfs(this.pfsToolStripButton.Checked);
+        //}
 
         /// <summary>
         /// Handles the Click event of the BufferPoolToolStripButton control.
@@ -573,7 +579,7 @@ namespace InternalsViewer.UI
         private void FileDetailsToolStripButton_Click(object sender, EventArgs e)
         {
             this.allocationContainer.CreateAllocationMaps(this.allocationContainer.AllocationMaps);
-            
+
             this.LoadDatabase();
         }
 
@@ -724,6 +730,14 @@ namespace InternalsViewer.UI
             mapToolStripButton.HideDropDown();
 
             this.DisplayAllocationMapLayers();
+        }
+
+        private void pFSToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            mapToolStripButton.Image = (sender as ToolStripMenuItem).Image;
+            mapToolStripButton.Text = PageFreeSpaceText;
+
+            this.ShowPfs(true);
         }
     }
 }
