@@ -13,7 +13,7 @@ namespace InternalsViewer.UI.Allocations
     [Serializable]
     public class AllocationLayer
     {
-        private readonly List<Allocation> allocations = new List<Allocation>();
+        private List<Allocation> allocations = new List<Allocation>();
         private Color borderColour;
         private Color colour;
         private bool invert;
@@ -118,50 +118,6 @@ namespace InternalsViewer.UI.Allocations
                     page.Refresh();
                 }
             }
-        }
-
-        /// <summary>
-        /// Creates and return a layer.
-        /// </summary>
-        /// <param name="name">The layer name.</param>
-        /// <param name="invert">if set to <c>true</c> [invert].</param>
-        /// <param name="transparent">if set to <c>true</c> make [transparent].</param>
-        /// <param name="colour">The layer colour.</param>
-        /// <param name="firstPage">The first page.</param>
-        /// <returns></returns>
-        public static AllocationLayer CreateLayer(string name,
-                                                  bool invert,
-                                                  bool transparent,
-                                                  Color colour,
-                                                  PageAddress firstPage)
-        {
-            Allocation allocation = new Allocation(InternalsViewerConnection.CurrentConnection().CurrentDatabase, firstPage);
-
-            return CreateLayer(name, invert, transparent, colour, allocation);
-        }
-
-        /// <summary>
-        /// Creates and returns a layer.
-        /// </summary>
-        /// <param name="name">The layer name.</param>
-        /// <param name="invert">if set to <c>true</c> [invert].</param>
-        /// <param name="transparent">if set to <c>true</c> make [transparent].</param>
-        /// <param name="colour">The layer colour.</param>
-        /// <param name="allocation">The allocation to use.</param>
-        /// <returns></returns>
-        public static AllocationLayer CreateLayer(string name,
-                                                  bool invert,
-                                                  bool transparent,
-                                                  Color colour,
-                                                  Allocation allocation)
-        {
-            AllocationLayer layer = new AllocationLayer(allocation);
-            layer.Invert = invert;
-            layer.Transparent = transparent;
-            layer.Name = name;
-            layer.Colour = colour;
-
-            return layer;
         }
 
         /// <summary>
@@ -281,6 +237,7 @@ namespace InternalsViewer.UI.Allocations
         public List<Allocation> Allocations
         {
             get { return this.allocations; }
+            set { this.allocations = value; }
         }
 
         /// <summary>

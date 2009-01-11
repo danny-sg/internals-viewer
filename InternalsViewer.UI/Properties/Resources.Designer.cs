@@ -60,6 +60,13 @@ namespace InternalsViewer.UI.Properties {
             }
         }
         
+        internal static System.Drawing.Bitmap allocationMapIcon {
+            get {
+                object obj = ResourceManager.GetObject("allocationMapIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
         internal static System.Drawing.Bitmap allocationWindowSplit {
             get {
                 object obj = ResourceManager.GetObject("allocationWindowSplit", resourceCulture);
@@ -105,6 +112,13 @@ namespace InternalsViewer.UI.Properties {
         internal static System.Drawing.Bitmap FindHS {
             get {
                 object obj = ResourceManager.GetObject("FindHS", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        internal static System.Drawing.Bitmap GAMallocationMapIcon {
+            get {
+                object obj = ResourceManager.GetObject("GAMallocationMapIcon", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

@@ -731,5 +731,10 @@ namespace InternalsViewer.UI
         {
             this.dataRichTextBox.AddBlock(blockSelection);
         }
+
+        internal void ClearBlocks()
+        {
+            this.dataRichTextBox.ClearBlocks();
+        }
     }
 }

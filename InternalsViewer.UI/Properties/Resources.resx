@@ -121,6 +121,9 @@
   <data name="Refresh" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Refresh.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="Rtf_HeaderStart" xml:space="preserve">
+    <value>{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Courier New;}{\colortbl;</value>
+  </data>
   <data name="Collapse_large" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Collapse_large.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -172,13 +175,16 @@ GO</value>
   <data name="WindowSplit" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\WindowSplit.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Rtf_HeaderStart" xml:space="preserve">
-    <value>{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Courier New;}{\colortbl;</value>
+  <data name="TransactionLogIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\TransactionLogIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="allocationWindowSplit" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\allocationWindowSplit.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="TransactionLogIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\TransactionLogIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="allocationMapIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\allocationMapIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="GAMallocationMapIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\GAMallocationMapIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

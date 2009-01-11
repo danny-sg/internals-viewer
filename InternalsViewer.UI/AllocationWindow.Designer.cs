@@ -30,10 +30,10 @@ namespace InternalsViewer.UI
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle5 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle7 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle8 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle6 = new System.Windows.Forms.DataGridViewCellStyle();
             this.allocationContainer = new InternalsViewer.UI.Allocations.AllocationContainer();
             this.splitContainer = new System.Windows.Forms.SplitContainer();
             this.flatMenuStrip = new InternalsViewer.UI.Controls.FlatMenuStrip();
@@ -43,6 +43,13 @@ namespace InternalsViewer.UI
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.pfsToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.bufferPoolToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.mapToolStripButton = new System.Windows.Forms.ToolStripSplitButton();
+            this.allocationUnitsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.allocationMapsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.gamToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.sgamToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.bcmToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.dcmToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.extentSizeToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
             this.pageToolStripTextBox = new InternalsViewer.UI.Controls.PageAddressTextBox();
@@ -50,6 +57,7 @@ namespace InternalsViewer.UI
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             this.showKeyToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.fileDetailsToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.toolStripSeparator4 = new System.Windows.Forms.ToolStripSeparator();
             this.keysDataGridView = new System.Windows.Forms.DataGridView();
             this.KeyColumn = new InternalsViewer.UI.Controls.KeyImageColumn();
             this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -127,13 +135,15 @@ namespace InternalsViewer.UI
             this.toolStripSeparator1,
             this.pfsToolStripButton,
             this.bufferPoolToolStripButton,
+            this.mapToolStripButton,
             this.toolStripSeparator2,
             this.extentSizeToolStripComboBox,
             this.pageToolStripTextBox,
             this.toolStripLabel2,
             this.toolStripSeparator3,
             this.showKeyToolStripButton,
-            this.fileDetailsToolStripButton});
+            this.fileDetailsToolStripButton,
+            this.toolStripSeparator4});
             this.flatMenuStrip.Location = new System.Drawing.Point(0, 0);
             this.flatMenuStrip.Name = "flatMenuStrip";
             this.flatMenuStrip.Padding = new System.Windows.Forms.Padding(4, 0, 1, 0);
@@ -192,6 +202,72 @@ namespace InternalsViewer.UI
             this.bufferPoolToolStripButton.Size = new System.Drawing.Size(80, 27);
             this.bufferPoolToolStripButton.Text = "Buffer Pool";
             this.bufferPoolToolStripButton.Click += new System.EventHandler(this.BufferPoolToolStripButton_Click);
+            // 
+            // mapToolStripButton
+            // 
+            this.mapToolStripButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.mapToolStripButton.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.allocationUnitsToolStripMenuItem,
+            this.allocationMapsToolStripMenuItem});
+            this.mapToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.allocationMapIcon;
+            this.mapToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
+            this.mapToolStripButton.Name = "mapToolStripButton";
+            this.mapToolStripButton.Size = new System.Drawing.Size(32, 27);
+            this.mapToolStripButton.Text = "Allocation Units";
+            // 
+            // allocationUnitsToolStripMenuItem
+            // 
+            this.allocationUnitsToolStripMenuItem.Image = global::InternalsViewer.UI.Properties.Resources.allocationMapIcon;
+            this.allocationUnitsToolStripMenuItem.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
+            this.allocationUnitsToolStripMenuItem.Name = "allocationUnitsToolStripMenuItem";
+            this.allocationUnitsToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.allocationUnitsToolStripMenuItem.Text = "Allocation Units";
+            this.allocationUnitsToolStripMenuItem.Click += new System.EventHandler(this.AllocationUnitsToolStripMenuItem_Click);
+            // 
+            // allocationMapsToolStripMenuItem
+            // 
+            this.allocationMapsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.gamToolStripMenuItem,
+            this.sgamToolStripMenuItem,
+            this.bcmToolStripMenuItem,
+            this.dcmToolStripMenuItem});
+            this.allocationMapsToolStripMenuItem.Image = global::InternalsViewer.UI.Properties.Resources.GAMallocationMapIcon;
+            this.allocationMapsToolStripMenuItem.Name = "allocationMapsToolStripMenuItem";
+            this.allocationMapsToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.allocationMapsToolStripMenuItem.Text = "Allocation Maps";
+            this.allocationMapsToolStripMenuItem.Click += new System.EventHandler(this.AllocationMapsToolStripMenuItem_Click);
+            // 
+            // gamToolStripMenuItem
+            // 
+            this.gamToolStripMenuItem.Checked = true;
+            this.gamToolStripMenuItem.CheckOnClick = true;
+            this.gamToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.gamToolStripMenuItem.Name = "gamToolStripMenuItem";
+            this.gamToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.gamToolStripMenuItem.Text = "GAM";
+            // 
+            // sgamToolStripMenuItem
+            // 
+            this.sgamToolStripMenuItem.Checked = true;
+            this.sgamToolStripMenuItem.CheckOnClick = true;
+            this.sgamToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.sgamToolStripMenuItem.Name = "sgamToolStripMenuItem";
+            this.sgamToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.sgamToolStripMenuItem.Text = "SGAM";
+            // 
+            // bcmToolStripMenuItem
+            // 
+            this.bcmToolStripMenuItem.CheckOnClick = true;
+            this.bcmToolStripMenuItem.Name = "bcmToolStripMenuItem";
+            this.bcmToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.bcmToolStripMenuItem.Text = "BCM";
+            // 
+            // dcmToolStripMenuItem
+            // 
+            this.dcmToolStripMenuItem.CheckOnClick = true;
+            this.dcmToolStripMenuItem.Name = "dcmToolStripMenuItem";
+            this.dcmToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.dcmToolStripMenuItem.Text = "DCM";
             // 
             // toolStripSeparator2
             // 
@@ -264,6 +340,11 @@ namespace InternalsViewer.UI
             this.fileDetailsToolStripButton.Text = "File Details";
             this.fileDetailsToolStripButton.CheckedChanged += new System.EventHandler(this.FileDetailsToolStripButton_CheckedChanged);
             // 
+            // toolStripSeparator4
+            // 
+            this.toolStripSeparator4.Name = "toolStripSeparator4";
+            this.toolStripSeparator4.Size = new System.Drawing.Size(6, 30);
+            // 
             // keysDataGridView
             // 
             this.keysDataGridView.AllowUserToAddRows = false;
@@ -275,14 +356,14 @@ namespace InternalsViewer.UI
             this.keysDataGridView.BackgroundColor = System.Drawing.Color.White;
             this.keysDataGridView.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
             this.keysDataGridView.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.keysDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle5.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle5.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle5.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle5.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle5.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle5.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle5.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.keysDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle5;
             this.keysDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.keysDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.KeyColumn,
@@ -292,27 +373,27 @@ namespace InternalsViewer.UI
             this.TotalPagesColumn,
             this.UsedPagesColumn});
             this.keysDataGridView.DataSource = this.allocationBindingSource;
-            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle3.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.ControlLight;
-            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.keysDataGridView.DefaultCellStyle = dataGridViewCellStyle3;
+            dataGridViewCellStyle7.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle7.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle7.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle7.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle7.SelectionBackColor = System.Drawing.SystemColors.ControlLight;
+            dataGridViewCellStyle7.SelectionForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle7.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.keysDataGridView.DefaultCellStyle = dataGridViewCellStyle7;
             this.keysDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.keysDataGridView.GridColor = System.Drawing.Color.White;
             this.keysDataGridView.Location = new System.Drawing.Point(0, 0);
             this.keysDataGridView.Name = "keysDataGridView";
             this.keysDataGridView.ReadOnly = true;
-            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle4.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle4.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
+            dataGridViewCellStyle8.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle8.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle8.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle8.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle8.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle8.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle8.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle8;
             this.keysDataGridView.RowHeadersVisible = false;
             this.keysDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.keysDataGridView.Size = new System.Drawing.Size(945, 119);
@@ -332,8 +413,8 @@ namespace InternalsViewer.UI
             // 
             this.NameColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
             this.NameColumn.DataPropertyName = "ObjectName";
-            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
+            dataGridViewCellStyle6.BackColor = System.Drawing.Color.WhiteSmoke;
+            this.NameColumn.DefaultCellStyle = dataGridViewCellStyle6;
             this.NameColumn.HeaderText = "Table";
             this.NameColumn.Name = "NameColumn";
             this.NameColumn.ReadOnly = true;
@@ -519,5 +600,13 @@ namespace InternalsViewer.UI
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
         private System.Windows.Forms.ToolStripButton showKeyToolStripButton;
         private System.Windows.Forms.ToolStripButton fileDetailsToolStripButton;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator4;
+        private System.Windows.Forms.ToolStripSplitButton mapToolStripButton;
+        private System.Windows.Forms.ToolStripMenuItem allocationUnitsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem allocationMapsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem gamToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem sgamToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem bcmToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem dcmToolStripMenuItem;
     }
 }

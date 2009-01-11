@@ -643,9 +643,13 @@ namespace InternalsViewer.UI
 
             switch (logToolStripComboBox.SelectedItem.ToString())
             {
+                case "None":
+
+                    Page.Refresh();
+                    break;
 
                 case "Before":
-                   
+
                     if (this.logData.ContainsKey("Before"))
                     {
                         logData = this.logData["Before"];
@@ -671,10 +675,10 @@ namespace InternalsViewer.UI
 
                 this.hexViewer.AddBlock(new BlockSelection() { Colour = colour, StartPos = startPos, EndPos = endPos });
 
-                this.Refresh();
-
-                this.SetSlot(this.offsetTable.SelectedSlot);
             }
+
+            this.Refresh();
+            this.LoadRecord(this.offsetTable.SelectedOffset);
         }
     }
 }
