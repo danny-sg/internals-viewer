@@ -111,7 +111,8 @@
     <Compile Include="Structures\Structure.cs" />
     <Compile Include="Structures\StructureType.cs" />
     <Compile Include="Structures\TableStructure.cs" />
-    <Compile Include="TransactionLog.cs" />
+    <Compile Include="TransactionLog\LogData.cs" />
+    <Compile Include="TransactionLog\LogMonitor.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">

@@ -121,9 +121,6 @@
   <data name="Refresh" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Refresh.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="allocationWindowSplit" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\allocationWindowSplit.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="Collapse_large" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Collapse_large.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -138,6 +135,9 @@
   </data>
   <data name="Rtf_HeaderEnd" xml:space="preserve">
     <value>}}\viewkind4\uc1\pard\f0\fs17</value>
+  </data>
+  <data name="LeftToRightDoucmentHS1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\LeftToRightDoucmentHS1.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Rtf_ColourTag" xml:space="preserve">
     <value>{{\cf{0} </value>
@@ -166,16 +166,19 @@ GO</value>
   <data name="allocationWindowSplit1" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\allocationWindowSplit1.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="FindHS" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\FindHS.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="WindowSplit" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\WindowSplit.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Rtf_HeaderStart" xml:space="preserve">
     <value>{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fnil\fcharset0 Courier New;}{\colortbl;</value>
   </data>
-  <data name="LeftToRightDoucmentHS1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\LeftToRightDoucmentHS1.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="allocationWindowSplit" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\allocationWindowSplit.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="FindHS" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\FindHS.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="TransactionLogIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\TransactionLogIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

@@ -11,6 +11,7 @@ using InternalsViewer.UI.Markers;
 using System.Drawing;
 using InternalsViewer.UI.Renderers;
 using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.TransactionLog;
 
 namespace InternalsViewer.UI
 {
@@ -24,6 +25,7 @@ namespace InternalsViewer.UI
         private readonly PfsRenderer pfsRenderer;
         private PfsByte pfsByte;
         int searchPos = 0;
+        private Dictionary<string, LogData> logData;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
@@ -130,6 +132,9 @@ namespace InternalsViewer.UI
                 this.RefreshAllocationStatus(this.Page.PageAddress);
 
                 this.pageToolStripTextBox.DatabaseId = this.Page.DatabaseId;
+
+                this.serverToolStripStatusLabel.Text = builder.DataSource;
+                this.dataaseToolStripStatusLabel.Text = builder.InitialCatalog;
             }
         }
 
@@ -612,7 +617,7 @@ namespace InternalsViewer.UI
             this.DisplayCompressionInfoStructure(compressionInfoTable.SelectedStructure);
         }
 
-        private void encodeAndFindToolStripButton_Click(object sender, EventArgs e)
+        private void EncodeAndFindToolStripButton_Click(object sender, EventArgs e)
         {
             this.OpenDecodeWindow(this, EventArgs.Empty);
         }
@@ -620,6 +625,56 @@ namespace InternalsViewer.UI
         internal void FindNext(string hexString)
         {
             this.FindNext(hexString, false);
+        }
+
+        public void SetLogData(Dictionary<string, LogData> logData)
+        {
+            this.logData = logData;
+            this.logToolStripComboBox.Visible = true;
+            this.logToolStripLabel.Visible = true;
+        }
+
+        private void LogToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            int startPos;
+            int endPos;
+            Color colour = Color.Black;
+            LogData logData = null;
+
+            switch (logToolStripComboBox.SelectedItem.ToString())
+            {
+
+                case "Before":
+                   
+                    if (this.logData.ContainsKey("Before"))
+                    {
+                        logData = this.logData["Before"];
+                        colour = Color.Blue;
+                    }
+                    break;
+
+                case "After":
+
+                    if (this.logData.ContainsKey("After"))
+                    {
+                        logData = this.logData["After"];
+                        colour = Color.OrangeRed;
+                    }
+                    break;
+            }
+            if (logData != null)
+            {
+                logData.MergeData(this.Page);
+
+                startPos = this.Page.OffsetTable[logData.Slot] + logData.Offset;
+                endPos = startPos + logData.Data.Length;
+
+                this.hexViewer.AddBlock(new BlockSelection() { Colour = colour, StartPos = startPos, EndPos = endPos });
+
+                this.Refresh();
+
+                this.SetSlot(this.offsetTable.SelectedSlot);
+            }
         }
     }
 }

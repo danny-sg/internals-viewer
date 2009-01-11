@@ -3,11 +3,15 @@ using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals;
+using System.Collections.Generic;
+using InternalsViewer.Internals.TransactionLog;
 
 namespace InternalsViewer.UI
 {
     public class TransactionLogTabPage : TabPage
     {
+        private DataGridView dataGridView;
         private DataGridViewTextBoxColumn LsnColumn;
         private DataGridViewTextBoxColumn OperationColumn;
         private DataGridViewTextBoxColumn ContextColumn;
@@ -17,13 +21,14 @@ namespace InternalsViewer.UI
         private DataGridViewTextBoxColumn DescriptionColumn;
         private DataGridViewTextBoxColumn isSystemColumn;
         private DataGridViewTextBoxColumn IsAllocationColumn;
-        private DataGridView dataGridView;
-        public event EventHandler<PageEventArgs> PageClicked;
+        private Dictionary<string, LogData> logContents;
 
+        public event EventHandler<PageEventArgs> PageClicked;
 
         public TransactionLogTabPage()
         {
             this.Text = "Transaction Log";
+            this.LogContents = new Dictionary<string, LogData>();
 
             InitializeComponent();
         }
@@ -72,7 +77,6 @@ namespace InternalsViewer.UI
             this.dataGridView.Location = new System.Drawing.Point(0, 0);
             this.dataGridView.Margin = new System.Windows.Forms.Padding(0);
             this.dataGridView.Name = "dataGridView";
-            this.dataGridView.ReadOnly = true;
             this.dataGridView.RowHeadersVisible = false;
             this.dataGridView.RowTemplate.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.WhiteSmoke;
             this.dataGridView.RowTemplate.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.Black;
@@ -209,8 +213,15 @@ namespace InternalsViewer.UI
 
                 int slot = (int)dataGridView[4, e.RowIndex].Value;
 
+                SetSelectedLogContents(e.RowIndex);
+
                 this.OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, slot), false));
             }
+        }
+
+        private void SetSelectedLogContents(int rowId)
+        {
+            GetLogData(dataGridView.Rows[rowId].Cells["OperationColumn"].Value.ToString(), dataGridView.Rows[rowId]);
         }
 
         /// <summary>
@@ -222,9 +233,62 @@ namespace InternalsViewer.UI
         {
             if (this.PageClicked != null)
             {
-                this.PageClicked(sender, e);
+                this.PageClicked(this, e);
             }
 
         }
+
+        private void SetSelectedLogContents(PageAddress address)
+        {
+            this.LogContents.Clear();
+
+            foreach (DataGridViewRow row in this.dataGridView.Rows)
+            {
+                if (row.Cells["PageAddressColumn"].Value != DBNull.Value && (PageAddress)row.Cells["PageAddressColumn"].Value == address)
+                {
+                    GetLogData(row.Cells["OperationColumn"].Value.ToString(), row);
+                }
+            }
+        }
+
+        private void GetLogData(string operation, DataGridViewRow row)
+        {
+            this.LogContents.Clear();
+
+            switch (operation)
+            {
+                case "MODIFY ROW":
+
+                    this.LogContents.Add("Before", GetLogData(row, 0));
+                    this.LogContents.Add("After", GetLogData(row, 1));
+
+                    break;
+
+                case "INSERT ROWS":
+                    this.LogContents.Add("Before", GetLogData(row, 0));
+                    break;
+            }
+        }
+
+        private LogData GetLogData(DataGridViewRow row, int contentsIndex)
+        {
+            LogData logData = new LogData();
+
+            logData.Slot = Convert.ToUInt16((row.DataBoundItem as DataRowView)["SlotId"]);
+            logData.Offset = Convert.ToUInt16((row.DataBoundItem as DataRowView)["OffsetInRow"]);
+            // logData.LogSequenceNumber = new LogSequenceNumber((row.DataBoundItem as DataRowView)["LSN"].ToString());
+            logData.Data = (byte[])(row.DataBoundItem as DataRowView)["Contents" + contentsIndex];
+
+            System.Diagnostics.Debug.Print(logData.ToString());
+
+            return logData;
+        }
+
+        public Dictionary<string, LogData> LogContents
+        {
+            get { return logContents; }
+            set { logContents = value; }
+        }
+
     }
 }

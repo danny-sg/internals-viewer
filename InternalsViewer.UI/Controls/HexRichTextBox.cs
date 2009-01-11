@@ -26,7 +26,7 @@ namespace InternalsViewer.UI.Controls
                 Graphics graphic = CreateGraphics();
 
                 this.OnPaint(new PaintEventArgs(graphic, ClientRectangle));
-                
+
                 graphic.Dispose();
             }
             else
@@ -45,8 +45,13 @@ namespace InternalsViewer.UI.Controls
 
         private void DrawBlock(Graphics graphics, BlockSelection block)
         {
-            Point startPos = GetPositionFromCharIndex(block.StartPos * 3);
-            Point endPos = GetPositionFromCharIndex((block.EndPos - 1) * 3);
+            int startCharIndex = block.StartPos * 3;
+            int endCharIndex = (block.EndPos * 3) - 2;
+
+            Point topPos = GetPositionFromCharIndex(0);
+            Point startPos = GetPositionFromCharIndex(startCharIndex);
+            Point endPos = GetPositionFromCharIndex(endCharIndex);
+
             Pen blockPen = new Pen(block.Colour);
 
             int lines;
@@ -59,19 +64,26 @@ namespace InternalsViewer.UI.Controls
                 Rectangle middle;
                 Rectangle bottom;
 
-                top = new Rectangle(startPos.X - 2,
-                                    startPos.Y,
-                                    textLineSize.Width - startPos.X,
-                                    textSize.Height);
+                if (startPos.Y == endPos.Y)
+                {
+                    top = new Rectangle(startPos.X - 2, startPos.Y, endPos.X, textSize.Height);
+                }
+                else
+                {
+                    top = new Rectangle(startPos.X - 2,
+                                        startPos.Y,
+                                        3 + textLineSize.Width - startPos.X,
+                                        textSize.Height);
+                }
 
-                middle = new Rectangle(0,
+                middle = new Rectangle(topPos.X - 2,
                                        startPos.Y + textSize.Height,
-                                       textLineSize.Width - 2,
+                                       3 + textLineSize.Width - topPos.X,
                                        textSize.Height * (lines - 1));
 
-                bottom = new Rectangle(0,
+                bottom = new Rectangle(topPos.X - 2,
                                        endPos.Y,
-                                       endPos.X + textSize.Width - 3,
+                                       endPos.X,
                                        textSize.Height);
 
                 GraphicsPath path = new GraphicsPath();

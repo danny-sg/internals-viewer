@@ -726,5 +726,10 @@ namespace InternalsViewer.UI
                 temp(this, new OffsetEventArgs(currentOffset, string.Empty, Color.Black, Color.Transparent));
             }
         }
+
+        internal void AddBlock(BlockSelection blockSelection)
+        {
+            this.dataRichTextBox.AddBlock(blockSelection);
+        }
     }
 }

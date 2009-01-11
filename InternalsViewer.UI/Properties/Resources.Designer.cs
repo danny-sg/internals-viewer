@@ -201,6 +201,13 @@ namespace InternalsViewer.UI.Properties {
             }
         }
         
+        internal static System.Drawing.Bitmap TransactionLogIcon {
+            get {
+                object obj = ResourceManager.GetObject("TransactionLogIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
         internal static System.Drawing.Bitmap WindowSplit {
             get {
                 object obj = ResourceManager.GetObject("WindowSplit", resourceCulture);

@@ -287,9 +287,10 @@ ORDER BY d.name</value>
       ,[Old Value] AS OldValue
       ,[Description]
       ,[RowLog Contents 0] AS Contents0
-      ,[RowLog Contents 1] AS Contents0
-      ,[RowLog Contents 2] AS Contents0
-      ,[RowLog Contents 3] AS Contents0
+      ,[RowLog Contents 1] AS Contents1
+      ,[RowLog Contents 2] AS Contents2
+      ,[RowLog Contents 3] AS Contents3
+      ,[RowLog Contents 4] AS Contents4
       ,CONVERT(BIT,COALESCE(o.is_ms_shipped,1)) AS isSystem
       ,CONVERT(BIT,
         CASE WHEN Context IN ('LCX_GAM','LCX_SGAM', 'LCX_PFS','LCX_DIFF_MAP') 

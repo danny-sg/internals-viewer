@@ -1,10 +1,10 @@
-﻿
-using System.Data;
+﻿using System.Data;
 using System.Data.SqlClient;
 using InternalsViewer.Internals.Pages;
-namespace InternalsViewer.Internals
+
+namespace InternalsViewer.Internals.TransactionLog
 {
-    public class TransactionLog
+    public class LogMonitor
     {
         public static LogSequenceNumber StartMonitoring(string connectionString, string database)
         {

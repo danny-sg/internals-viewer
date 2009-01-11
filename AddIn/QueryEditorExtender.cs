@@ -9,6 +9,7 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
+using InternalsViewer.Internals.TransactionLog;
 
 namespace InternalsViewer.SSMSAddIn
 {
@@ -122,12 +123,14 @@ namespace InternalsViewer.SSMSAddIn
 
                                     TransactionLogTabPage transactionLogTabPage = new TransactionLogTabPage();
 
-                                    transactionLogTabPage.SetTransactionLogData(TransactionLog.StopMonitoring(database, startLsn, connectionString));
+                                    transactionLogTabPage.SetTransactionLogData(LogMonitor.StopMonitoring(database, startLsn, connectionString));
                                     tabControl.TabPages.Add(transactionLogTabPage);
 
                                     transactionLogTabPage.PageClicked += delegate(object sender, PageEventArgs args) 
                                                                          { 
-                                                                             this.windowManager.CreatePageViewerWindow(connectionString, args.RowId); 
+                                                                             PageViewerContainer c = this.windowManager.CreatePageViewerWindow(connectionString, args.RowId);
+                                                                             
+                                                                             c.PageViewerWindow.SetLogData((sender as TransactionLogTabPage).LogContents);
                                                                          };
                                     return;
                                 }
@@ -152,7 +155,7 @@ namespace InternalsViewer.SSMSAddIn
                 string database = ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo.AdvancedOptions["DATABASE"];
                 string connectionString = ConnectionManager.GetConnectionString(ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo.UIConnectionInfo);
 
-                this.startLsn = TransactionLog.StartMonitoring(connectionString, database);
+                this.startLsn = LogMonitor.StartMonitoring(connectionString, database);
             }
         }
 
