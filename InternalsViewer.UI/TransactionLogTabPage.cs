@@ -12,16 +12,15 @@ namespace InternalsViewer.UI
     public class TransactionLogTabPage : TabPage
     {
         private DataGridView dataGridView;
-        private DataGridViewTextBoxColumn LsnColumn;
-        private DataGridViewTextBoxColumn OperationColumn;
-        private DataGridViewTextBoxColumn ContextColumn;
-        private DataGridViewLinkColumn PageAddressColumn;
-        private DataGridViewLinkColumn SlotColumn;
-        private DataGridViewTextBoxColumn AllocUnitNameColumn;
-        private DataGridViewTextBoxColumn DescriptionColumn;
+        private DataGridViewTextBoxColumn lsnColumn;
+        private DataGridViewTextBoxColumn operationColumn;
+        private DataGridViewTextBoxColumn contextColumn;
+        private DataGridViewLinkColumn pageAddressColumn;
+        private DataGridViewLinkColumn slotColumn;
+        private DataGridViewTextBoxColumn allocUnitNameColumn;
+        private DataGridViewTextBoxColumn descriptionColumn;
         private DataGridViewTextBoxColumn isSystemColumn;
-        private DataGridViewTextBoxColumn IsAllocationColumn;
-        private Dictionary<string, LogData> logContents;
+        private DataGridViewTextBoxColumn isAllocationColumn;
 
         public event EventHandler<PageEventArgs> PageClicked;
 
@@ -42,15 +41,15 @@ namespace InternalsViewer.UI
         private void InitializeComponent()
         {
             this.dataGridView = new System.Windows.Forms.DataGridView();
-            this.LsnColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.OperationColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.ContextColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.PageAddressColumn = new System.Windows.Forms.DataGridViewLinkColumn();
-            this.SlotColumn = new System.Windows.Forms.DataGridViewLinkColumn();
-            this.AllocUnitNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.DescriptionColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.lsnColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.operationColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.contextColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.pageAddressColumn = new System.Windows.Forms.DataGridViewLinkColumn();
+            this.slotColumn = new System.Windows.Forms.DataGridViewLinkColumn();
+            this.allocUnitNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.descriptionColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.isSystemColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.IsAllocationColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.isAllocationColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView)).BeginInit();
             this.SuspendLayout();
             // 
@@ -63,15 +62,15 @@ namespace InternalsViewer.UI
             this.dataGridView.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
             this.dataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.LsnColumn,
-            this.OperationColumn,
-            this.ContextColumn,
-            this.PageAddressColumn,
-            this.SlotColumn,
-            this.AllocUnitNameColumn,
-            this.DescriptionColumn,
+            this.lsnColumn,
+            this.operationColumn,
+            this.contextColumn,
+            this.pageAddressColumn,
+            this.slotColumn,
+            this.allocUnitNameColumn,
+            this.descriptionColumn,
             this.isSystemColumn,
-            this.IsAllocationColumn});
+            this.isAllocationColumn});
             this.dataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dataGridView.GridColor = System.Drawing.SystemColors.Control;
             this.dataGridView.Location = new System.Drawing.Point(0, 0);
@@ -88,70 +87,70 @@ namespace InternalsViewer.UI
             // 
             // LsnColumn
             // 
-            this.LsnColumn.DataPropertyName = "LSN";
-            this.LsnColumn.HeaderText = "LSN";
-            this.LsnColumn.Name = "LsnColumn";
-            this.LsnColumn.ReadOnly = true;
-            this.LsnColumn.Width = 134;
+            this.lsnColumn.DataPropertyName = "LSN";
+            this.lsnColumn.HeaderText = "LSN";
+            this.lsnColumn.Name = "lsnColumn";
+            this.lsnColumn.ReadOnly = true;
+            this.lsnColumn.Width = 134;
             // 
             // OperationColumn
             // 
-            this.OperationColumn.DataPropertyName = "operation";
-            this.OperationColumn.HeaderText = "Operation";
-            this.OperationColumn.Name = "OperationColumn";
-            this.OperationColumn.ReadOnly = true;
-            this.OperationColumn.Width = 105;
+            this.operationColumn.DataPropertyName = "operation";
+            this.operationColumn.HeaderText = "Operation";
+            this.operationColumn.Name = "operationColumn";
+            this.operationColumn.ReadOnly = true;
+            this.operationColumn.Width = 105;
             // 
             // ContextColumn
             // 
-            this.ContextColumn.DataPropertyName = "context";
-            this.ContextColumn.HeaderText = "Context";
-            this.ContextColumn.Name = "ContextColumn";
-            this.ContextColumn.ReadOnly = true;
+            this.contextColumn.DataPropertyName = "context";
+            this.contextColumn.HeaderText = "Context";
+            this.contextColumn.Name = "contextColumn";
+            this.contextColumn.ReadOnly = true;
             // 
             // PageAddressColumn
             // 
-            this.PageAddressColumn.ActiveLinkColor = System.Drawing.Color.Blue;
-            this.PageAddressColumn.DataPropertyName = "PageAddress";
-            this.PageAddressColumn.HeaderText = "Page";
-            this.PageAddressColumn.Name = "PageAddressColumn";
-            this.PageAddressColumn.ReadOnly = true;
-            this.PageAddressColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.PageAddressColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
-            this.PageAddressColumn.TrackVisitedState = false;
-            this.PageAddressColumn.VisitedLinkColor = System.Drawing.Color.Blue;
-            this.PageAddressColumn.Width = 80;
+            this.pageAddressColumn.ActiveLinkColor = System.Drawing.Color.Blue;
+            this.pageAddressColumn.DataPropertyName = "PageAddress";
+            this.pageAddressColumn.HeaderText = "Page";
+            this.pageAddressColumn.Name = "pageAddressColumn";
+            this.pageAddressColumn.ReadOnly = true;
+            this.pageAddressColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.pageAddressColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
+            this.pageAddressColumn.TrackVisitedState = false;
+            this.pageAddressColumn.VisitedLinkColor = System.Drawing.Color.Blue;
+            this.pageAddressColumn.Width = 80;
             // 
             // SlotColumn
             // 
-            this.SlotColumn.ActiveLinkColor = System.Drawing.Color.Blue;
-            this.SlotColumn.DataPropertyName = "SlotId";
-            this.SlotColumn.HeaderText = "Slot";
-            this.SlotColumn.Name = "SlotColumn";
-            this.SlotColumn.ReadOnly = true;
-            this.SlotColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.SlotColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
-            this.SlotColumn.TrackVisitedState = false;
-            this.SlotColumn.VisitedLinkColor = System.Drawing.Color.Blue;
-            this.SlotColumn.Width = 50;
+            this.slotColumn.ActiveLinkColor = System.Drawing.Color.Blue;
+            this.slotColumn.DataPropertyName = "SlotId";
+            this.slotColumn.HeaderText = "Slot";
+            this.slotColumn.Name = "slotColumn";
+            this.slotColumn.ReadOnly = true;
+            this.slotColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.slotColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
+            this.slotColumn.TrackVisitedState = false;
+            this.slotColumn.VisitedLinkColor = System.Drawing.Color.Blue;
+            this.slotColumn.Width = 50;
             // 
             // AllocUnitNameColumn
             // 
-            this.AllocUnitNameColumn.DataPropertyName = "AllocUnitName";
-            this.AllocUnitNameColumn.FillWeight = 190.4762F;
-            this.AllocUnitNameColumn.HeaderText = "Allocation Unit";
-            this.AllocUnitNameColumn.Name = "AllocUnitNameColumn";
-            this.AllocUnitNameColumn.ReadOnly = true;
-            this.AllocUnitNameColumn.Width = 120;
+            this.allocUnitNameColumn.DataPropertyName = "AllocUnitName";
+            this.allocUnitNameColumn.FillWeight = 190.4762F;
+            this.allocUnitNameColumn.HeaderText = "Allocation Unit";
+            this.allocUnitNameColumn.Name = "allocUnitNameColumn";
+            this.allocUnitNameColumn.ReadOnly = true;
+            this.allocUnitNameColumn.Width = 120;
             // 
             // DescriptionColumn
             // 
-            this.DescriptionColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            this.DescriptionColumn.DataPropertyName = "Description";
-            this.DescriptionColumn.FillWeight = 9.523804F;
-            this.DescriptionColumn.HeaderText = "Description";
-            this.DescriptionColumn.Name = "DescriptionColumn";
-            this.DescriptionColumn.ReadOnly = true;
+            this.descriptionColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.descriptionColumn.DataPropertyName = "Description";
+            this.descriptionColumn.FillWeight = 9.523804F;
+            this.descriptionColumn.HeaderText = "Description";
+            this.descriptionColumn.Name = "descriptionColumn";
+            this.descriptionColumn.ReadOnly = true;
             // 
             // isSystemColumn
             // 
@@ -163,11 +162,11 @@ namespace InternalsViewer.UI
             // 
             // IsAllocationColumn
             // 
-            this.IsAllocationColumn.DataPropertyName = "isAllocation";
-            this.IsAllocationColumn.HeaderText = "Allocation";
-            this.IsAllocationColumn.Name = "IsAllocationColumn";
-            this.IsAllocationColumn.ReadOnly = true;
-            this.IsAllocationColumn.Visible = false;
+            this.isAllocationColumn.DataPropertyName = "isAllocation";
+            this.isAllocationColumn.HeaderText = "Allocation";
+            this.isAllocationColumn.Name = "isAllocationColumn";
+            this.isAllocationColumn.ReadOnly = true;
+            this.isAllocationColumn.Visible = false;
             // 
             // TransactionLogTabPage
             // 
@@ -184,8 +183,8 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.Windows.Forms.DataGridViewCellFormattingEventArgs"/> instance containing the event data.</param>
         void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
-            bool isSystem = (bool)dataGridView["isSystemColumn", e.RowIndex].Value;
-            bool isAllocation = (bool)dataGridView["isAllocationColumn", e.RowIndex].Value;
+            var isSystem = (bool)dataGridView["isSystemColumn", e.RowIndex].Value;
+            var isAllocation = (bool)dataGridView["isAllocationColumn", e.RowIndex].Value;
 
             if (isSystem & !isAllocation)
             {
@@ -209,9 +208,9 @@ namespace InternalsViewer.UI
             if (dataGridView.Columns[e.ColumnIndex].DataPropertyName == "PageAddress" ||
                 dataGridView.Columns[e.ColumnIndex].DataPropertyName == "SlotId")
             {
-                PageAddress pageAddress = PageAddress.Parse(dataGridView[3, e.RowIndex].Value.ToString());
+                var pageAddress = PageAddress.Parse(dataGridView[3, e.RowIndex].Value.ToString());
 
-                int slot = (int)dataGridView[4, e.RowIndex].Value;
+                var slot = (int)dataGridView[4, e.RowIndex].Value;
 
                 SetSelectedLogContents(e.RowIndex);
 
@@ -272,7 +271,7 @@ namespace InternalsViewer.UI
 
         private LogData GetLogData(DataGridViewRow row, int contentsIndex)
         {
-            LogData logData = new LogData();
+            var logData = new LogData();
 
             logData.Slot = Convert.ToUInt16((row.DataBoundItem as DataRowView)["SlotId"]);
             logData.Offset = Convert.ToUInt16((row.DataBoundItem as DataRowView)["OffsetInRow"]);
@@ -284,11 +283,6 @@ namespace InternalsViewer.UI
             return logData;
         }
 
-        public Dictionary<string, LogData> LogContents
-        {
-            get { return logContents; }
-            set { logContents = value; }
-        }
-
+        public Dictionary<string, LogData> LogContents { get; set; }
     }
 }

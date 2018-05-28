@@ -31,7 +31,7 @@ namespace InternalsViewer.UI
 
             extentSizeToolStripComboBox.SelectedIndex = 0;
         }
-
+        
         /// <summary>
         /// Enables buttons on the toolbar.
         /// </summary>
@@ -104,7 +104,7 @@ namespace InternalsViewer.UI
             this.allocationContainer.IncludeIam = false;
             this.allocationContainer.ClearMapLayers();
 
-            AllocationLayer unallocated = new AllocationLayer();
+            var unallocated = new AllocationLayer();
 
             unallocated.Name = "Available - (Unused)";
             unallocated.Colour = Color.Gainsboro;
@@ -178,9 +178,9 @@ namespace InternalsViewer.UI
 
             this.allocationContainer.ClearMapLayers();
 
-            List<AllocationLayer> layers = (List<AllocationLayer>)e.Result;
+            var layers = (List<AllocationLayer>)e.Result;
 
-            foreach (AllocationLayer layer in layers)
+            foreach (var layer in layers)
             {
                 this.allocationContainer.AddMapLayer(layer);
             }
@@ -278,11 +278,11 @@ namespace InternalsViewer.UI
         {
             this.bufferPool.Refresh();
 
-            AllocationPage clean = new AllocationPage();
+            var clean = new AllocationPage();
 
             clean.SinglePageSlots.AddRange(this.bufferPool.CleanPages);
 
-            AllocationLayer bufferPoolLayer = new AllocationLayer("Buffer Pool", clean, Color.Black)
+            var bufferPoolLayer = new AllocationLayer("Buffer Pool", clean, Color.Black)
                                                 {
                                                     SingleSlotsOnly = true,
                                                     Transparency = 80,
@@ -292,11 +292,11 @@ namespace InternalsViewer.UI
                                                     UseDefaultSinglePageColour = false
                                                 };
 
-            AllocationPage dirty = new AllocationPage();
+            var dirty = new AllocationPage();
 
             dirty.SinglePageSlots.AddRange(this.bufferPool.DirtyPages);
 
-            AllocationLayer bufferPoolDirtyLayer = new AllocationLayer("Buffer Pool (Dirty)", dirty, Color.IndianRed)
+            var bufferPoolDirtyLayer = new AllocationLayer("Buffer Pool (Dirty)", dirty, Color.IndianRed)
                                                    {
                                                        SingleSlotsOnly = true,
                                                        Transparent = false,
@@ -409,7 +409,7 @@ namespace InternalsViewer.UI
                                            bool invert,
                                            IDictionary<int, Allocation> allocation)
         {
-            foreach (int fileId in allocation.Keys)
+            foreach (var fileId in allocation.Keys)
             {
                 allocationContainer.AddMapLayer(new AllocationLayer(allocation[fileId])
                                                 {
@@ -550,9 +550,9 @@ namespace InternalsViewer.UI
                         }
                     }
 
-                    List<string> layers = AllocationLayer.FindPage(e.Address, allocationContainer.AllocationLayers);
+                    var layers = AllocationLayer.FindPage(e.Address, allocationContainer.AllocationLayers);
 
-                    foreach (string name in layers)
+                    foreach (var name in layers)
                     {
                         if (this.AllocUnitLabel.Text != string.Empty)
                         {
@@ -594,14 +594,14 @@ namespace InternalsViewer.UI
 
             if (keysDataGridView.SelectedRows.Count > 0)
             {
-                foreach (AllocationMap map in allocationContainer.AllocationMaps.Values)
+                foreach (var map in allocationContainer.AllocationMaps.Values)
                 {
-                    foreach (AllocationLayer layer in map.MapLayers)
+                    foreach (var layer in map.MapLayers)
                     {
                         if (layer.Name != "Buffer Pool")
                         {
-                            string name = (string)keysDataGridView.SelectedRows[0].Cells[1].Value;
-                            string indexName = (string)keysDataGridView.SelectedRows[0].Cells[2].Value;
+                            var name = (string)keysDataGridView.SelectedRows[0].Cells[1].Value;
+                            var indexName = (string)keysDataGridView.SelectedRows[0].Cells[2].Value;
 
                             layer.Transparent = !(layer.Name == name && layer.IndexName == indexName);
                         }
@@ -612,9 +612,9 @@ namespace InternalsViewer.UI
             }
             else
             {
-                foreach (AllocationMap map in allocationContainer.AllocationMaps.Values)
+                foreach (var map in allocationContainer.AllocationMaps.Values)
                 {
-                    foreach (AllocationLayer layer in map.MapLayers)
+                    foreach (var layer in map.MapLayers)
                     {
                         if (layer.Name != "Buffer Pool")
                         {

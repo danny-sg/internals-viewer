@@ -1,83 +1,64 @@
-﻿//------------------------------------------------------------------------------
-// <copyright file="InternalsViewerPackage.cs" company="Company">
-//     Copyright (c) Company.  All rights reserved.
-// </copyright>
-//------------------------------------------------------------------------------
-
-using System;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using InternalsViewer.SsmsAddin2017.Commands;
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.Win32;
-using InternalsViewer.Internals;
+using InternalsViewer.SsmsAddin2017.ToolWindowPanes;
 
 namespace InternalsViewer.SsmsAddin2017
 {
-    /// <summary>
-    /// This is the class that implements the package exposed by this assembly.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The minimum requirement for a class to be considered a valid package for Visual Studio
-    /// is to implement the IVsPackage interface and register itself with the shell.
-    /// This package uses the helper classes defined inside the Managed Package Framework (MPF)
-    /// to do it: it derives from the Package class that provides the implementation of the
-    /// IVsPackage interface and uses the registration attributes defined in the framework to
-    /// register itself and its components with the shell. These attributes tell the pkgdef creation
-    /// utility what data to put into .pkgdef file.
-    /// </para>
-    /// <para>
-    /// To get loaded into VS, the package must be referred by &lt;Asset Type="Microsoft.VisualStudio.VsPackage" ...&gt; in .vsixmanifest file.
-    /// </para>
-    /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true)]
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [Guid(InternalsViewerPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
+    [ProvideToolWindow(typeof(InternalsViewerToolWindow), Style = VsDockStyle.Tabbed, DocumentLikeTool = true)]
+    [ProvideToolWindow(typeof(PageViewerToolWindow), Style = VsDockStyle.Tabbed, DocumentLikeTool = true, MultiInstances = true)]
+    [ProvideAutoLoad("d114938f-591c-46cf-a785-500a82d97410")]
     public sealed class InternalsViewerPackage : Package
     {
-        /// <summary>
-        /// InternalsViewerPackage GUID string.
-        /// </summary>
         public const string PackageGuidString = "8fb4f60d-ef16-409e-9423-54ff173cb31f";
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="InternalsViewerPackage"/> class.
-        /// </summary>
         public InternalsViewerPackage()
         {
-            // Inside this method you can place any initialization code that does not require
-            // any Visual Studio service because at this point the package object is created but
-            // not sited yet inside Visual Studio environment. The place to do all the other
-            // initialization is the Initialize method.
         }
 
-        #region Package Members
-
-        /// <summary>
-        /// Initialization of the package; this method is called right after the package is sited, so this is the place
-        /// where you can put all the initialization code that rely on services provided by VisualStudio.
-        /// </summary>
         protected override void Initialize()
         {
             base.Initialize();
             ViewCommand.Initialize(this);
+
+            DelayAddSkipLoadingRegistryKey();
         }
 
         protected override int QueryClose(out bool canClose)
         {
-            UserRegistryRoot.CreateSubKey(@"Packages\{" + PackageGuidString + "}").SetValue("SkipLoading", 1);
+            AddSkipLoadingRegistryKey();
             return base.QueryClose(out canClose);
         }
 
-        #endregion
+        /// <remarks>
+        ///Method taken from https://github.com/nicholas-ross/SSMS-Schema-Folders
+        /// </remarks>>
+        private void DelayAddSkipLoadingRegistryKey()
+        {
+            var delay = new Timer();
+
+            delay.Tick += (s, e) =>
+            {
+                delay.Stop();
+                AddSkipLoadingRegistryKey();
+            };
+
+            delay.Interval = 1000;
+            delay.Start();
+        }
+
+        private void AddSkipLoadingRegistryKey()
+        {
+            var key = UserRegistryRoot.CreateSubKey(@"Packages\{" + PackageGuidString + "}");
+
+            key.SetValue("SkipLoading", 1);
+        }
     }
 }

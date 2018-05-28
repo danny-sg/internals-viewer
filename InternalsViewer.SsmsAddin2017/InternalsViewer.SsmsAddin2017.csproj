@@ -51,7 +51,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ConnectionManager.cs" />
     <Compile Include="InternalsViewerPackage.cs" />
+    <Compile Include="ToolWindowPanes\InternalsViewerToolWindow.cs" />
+    <Compile Include="ToolWindowPanes\PageViewerToolWindow.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Commands\ViewCommand.cs" />
   </ItemGroup>
@@ -63,6 +66,8 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Resources\InternalsViewerToolWindowCommand.png" />
+    <Content Include="Resources\PageViewerToolWindowCommand.png" />
     <Content Include="Resources\ViewCommand.png" />
     <VSCTCompile Include="InternalsViewerPackage.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
@@ -70,6 +75,9 @@
     <Content Include="Resources\InternalsViewerPackage.ico" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="ConnectionDlg">
+      <HintPath>C:\Program Files (x86)\Microsoft SQL Server\140\Tools\Binn\ManagementStudio\ConnectionDlg.dll</HintPath>
+    </Reference>
     <Reference Include="EnvDTE, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
@@ -84,6 +92,8 @@
     </Reference>
     <Reference Include="Microsoft.Build.Framework" />
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Microsoft.SqlServer.ConnectionInfo, Version=14.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.SqlServer.RegSvrEnum, Version=14.100.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
     <Reference Include="Microsoft.VisualStudio.CommandBars, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
@@ -162,6 +172,15 @@
       <HintPath>..\packages\Microsoft.VisualStudio.Validation.14.1.111\lib\net45\Microsoft.VisualStudio.Validation.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="ObjectExplorer">
+      <HintPath>C:\Program Files (x86)\Microsoft SQL Server\140\Tools\Binn\ManagementStudio\ObjectExplorer.dll</HintPath>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="SqlPackageBase">
+      <HintPath>C:\Program Files (x86)\Microsoft SQL Server\140\Tools\Binn\ManagementStudio\SqlPackageBase.dll</HintPath>
+    </Reference>
+    <Reference Include="SqlWorkbench.Interfaces, Version=14.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91" />
     <Reference Include="stdole, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
@@ -170,7 +189,10 @@
     <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="VSPackage.resx">

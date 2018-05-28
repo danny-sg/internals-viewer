@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.Design;
 using System.Globalization;
+using InternalsViewer.SsmsAddin2017.ToolWindowPanes;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 
@@ -40,11 +41,11 @@ namespace InternalsViewer.SsmsAddin2017.Commands
 
             this.package = package;
 
-            OleMenuCommandService commandService = this.ServiceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            var commandService = ServiceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
             if (commandService != null)
             {
-                var menuCommandID = new CommandID(CommandSet, CommandId);
-                var menuItem = new MenuCommand(this.MenuItemCallback, menuCommandID);
+                var menuCommandId = new CommandID(CommandSet, CommandId);
+                var menuItem = new MenuCommand(MenuItemCallback, menuCommandId);
                 commandService.AddCommand(menuItem);
             }
         }
@@ -65,7 +66,7 @@ namespace InternalsViewer.SsmsAddin2017.Commands
         {
             get
             {
-                return this.package;
+                return package;
             }
         }
 
@@ -87,17 +88,14 @@ namespace InternalsViewer.SsmsAddin2017.Commands
         /// <param name="e">Event args.</param>
         private void MenuItemCallback(object sender, EventArgs e)
         {
-            string message = string.Format(CultureInfo.CurrentCulture, "Internals Viewer for SSMS 2017", this.GetType().FullName);
-            string title = "Internals Viewer";
+            var window = package.FindToolWindow(typeof(InternalsViewerToolWindow), 0, true);
 
-            // Show a message box to prove we were here
-            VsShellUtilities.ShowMessageBox(
-                this.ServiceProvider,
-                message,
-                title,
-                OLEMSGICON.OLEMSGICON_INFO,
-                OLEMSGBUTTON.OLEMSGBUTTON_OK,
-                OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
+            if ((null == window) || (null == window.Frame))
+            {
+                throw new NotSupportedException("Cannot create Internals Viewer");
+            }
+            var windowFrame = (IVsWindowFrame)window.Frame;
+            Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(windowFrame.Show());
         }
     }
 }

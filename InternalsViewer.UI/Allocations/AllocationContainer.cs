@@ -12,11 +12,7 @@ namespace InternalsViewer.UI.Allocations
     /// </summary>
     public partial class AllocationContainer : UserControl
     {
-        private readonly List<AllocationLayer> allocationLayers = new List<AllocationLayer>();
-        private readonly Dictionary<int, AllocationMap> allocationMaps = new Dictionary<int, AllocationMap>();
         private Size extentSize = new Size(64, 8);
-        private bool includeIam;
-        private LayoutStyle layoutStyle;
         private MapMode mode;
         private bool showFileInformation;
 
@@ -48,22 +44,22 @@ namespace InternalsViewer.UI.Allocations
             
             this.tableLayoutPanel.SuspendLayout();
             this.tableLayoutPanel.Controls.Clear();
-            this.allocationMaps.Clear();
+            this.AllocationMaps.Clear();
 
             this.tableLayoutPanel.RowCount = 2;
             this.tableLayoutPanel.RowStyles.Clear();
 
             this.tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 1.0F));
 
-            int fileIndex = 0;
+            var fileIndex = 0;
 
-            foreach (DatabaseFile file in files)
+            foreach (var file in files)
             {
-                AllocationMap allocationMap = this.CreateAllocationMap(file);
+                var allocationMap = this.CreateAllocationMap(file);
                 allocationMap.ExtentSize = this.ExtentSize;
                 allocationMap.Mode = this.Mode;
 
-                Panel filePanel = new Panel();
+                var filePanel = new Panel();
                 filePanel.Margin = new Padding(0);
                 filePanel.Controls.Add(allocationMap);
 
@@ -123,9 +119,9 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="layer">The layer.</param>
         public void AddMapLayer(AllocationLayer layer)
         {
-            this.allocationLayers.Add(layer);
+            this.AllocationLayers.Add(layer);
 
-            foreach (AllocationMap allocationMap in this.allocationMaps.Values)
+            foreach (var allocationMap in this.AllocationMaps.Values)
             {
                 allocationMap.Invalidate();
             }
@@ -136,9 +132,9 @@ namespace InternalsViewer.UI.Allocations
         /// </summary>
         public void ClearMapLayers()
         {
-            this.allocationLayers.Clear();
+            this.AllocationLayers.Clear();
 
-            foreach (AllocationMap allocationMap in this.allocationMaps.Values)
+            foreach (var allocationMap in this.AllocationMaps.Values)
             {
                 allocationMap.Invalidate();
             }
@@ -151,13 +147,13 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         public bool RemoveLayer(string name)
         {
-            AllocationLayer existing = this.allocationLayers.Find(delegate(AllocationLayer layer) { return (layer.Name == name); });
+            var existing = this.AllocationLayers.Find(delegate(AllocationLayer layer) { return (layer.Name == name); });
 
             if (existing != null)
             {
-                this.allocationLayers.Remove(existing);
+                this.AllocationLayers.Remove(existing);
 
-                foreach (AllocationMap allocationMap in this.allocationMaps.Values)
+                foreach (var allocationMap in this.AllocationMaps.Values)
                 {
                     allocationMap.Invalidate();
                 }
@@ -178,7 +174,7 @@ namespace InternalsViewer.UI.Allocations
         {
             double maxExtentCount = 0;
 
-            foreach (AllocationMap map in this.allocationMaps.Values)
+            foreach (var map in this.AllocationMaps.Values)
             {
                 if (map.ExtentCount > maxExtentCount)
                 {
@@ -189,9 +185,9 @@ namespace InternalsViewer.UI.Allocations
             double width = this.Width;
             double height = this.Height / 8;
 
-            double extentsPerRow = Math.Sqrt(maxExtentCount / 8);
+            var extentsPerRow = Math.Sqrt(maxExtentCount / 8);
 
-            Size returnSize = new Size((int)(width / extentsPerRow), (int)(height / extentsPerRow));
+            var returnSize = new Size((int)(width / extentsPerRow), (int)(height / extentsPerRow));
 
             if (returnSize.Height < 1 || returnSize.Width < 1)
             {
@@ -203,7 +199,7 @@ namespace InternalsViewer.UI.Allocations
 
         internal void ShowFittedMap()
         {
-            foreach (AllocationMap allocationMap in this.allocationMaps.Values)
+            foreach (var allocationMap in this.AllocationMaps.Values)
             {
                 allocationMap.ShowFullMap();
             }
@@ -216,7 +212,7 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
         protected void AllocationContainer_Paint(object sender, PaintEventArgs e)
         {
-            if (this.allocationMaps.Count == 0)
+            if (this.AllocationMaps.Count == 0)
             {
                 ControlPaint.DrawBorder(e.Graphics,
                                         new Rectangle(0, 0, Width, Height),
@@ -232,7 +228,7 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         private AllocationMap CreateAllocationMap(DatabaseFile file)
         {
-            AllocationMap allocationMap = new AllocationMap();
+            var allocationMap = new AllocationMap();
 
             allocationMap.FileId = file.FileId;
             allocationMap.File = file;
@@ -244,7 +240,7 @@ namespace InternalsViewer.UI.Allocations
             allocationMap.PageOver += this.AllocationMap_PageOver;
             allocationMap.RangeSelected += this.AllocationMap_RangeSelected;
             
-            this.allocationMaps.Add(file.FileId, allocationMap);
+            this.AllocationMaps.Add(file.FileId, allocationMap);
 
             return allocationMap;
         }
@@ -256,7 +252,7 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void AllocationMap_RangeSelected(object sender, EventArgs e)
         {
-            EventHandler temp = this.RangeSelected;
+            var temp = this.RangeSelected;
 
             if (temp != null)
             {
@@ -271,7 +267,7 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="SqlInternals.AllocationInfo.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         private void AllocationMap_PageOver(object sender, PageEventArgs e)
         {
-            EventHandler<PageEventArgs> temp = this.PageOver;
+            var temp = this.PageOver;
 
             if (temp != null)
             {
@@ -286,7 +282,7 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="SqlInternals.AllocationInfo.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         private void AllocationMap_PageClicked(object sender, PageEventArgs e)
         {
-            EventHandler<PageEventArgs> temp = this.PageClicked;
+            var temp = this.PageClicked;
 
             if (temp != null)
             {
@@ -332,7 +328,7 @@ namespace InternalsViewer.UI.Allocations
             {
                 this.mode = value;
 
-                foreach (AllocationMap allocationMap in this.allocationMaps.Values)
+                foreach (var allocationMap in this.AllocationMaps.Values)
                 {
                     allocationMap.Mode = this.mode;
                 }
@@ -343,7 +339,7 @@ namespace InternalsViewer.UI.Allocations
         {
             set
             {
-                foreach (AllocationMap allocationMap in allocationMaps.Values)
+                foreach (var allocationMap in AllocationMaps.Values)
                 {
                     allocationMap.Pfs = value[allocationMap.FileId];
                 }
@@ -352,17 +348,14 @@ namespace InternalsViewer.UI.Allocations
 
         internal PfsByte PagePfsByte(PageAddress pageAddress)
         {
-            return allocationMaps[pageAddress.FileId].Pfs.PagePfsByte(pageAddress.PageId);
+            return AllocationMaps[pageAddress.FileId].Pfs.PagePfsByte(pageAddress.PageId);
         }
 
         /// <summary>
         /// Gets the map layers collection
         /// </summary>
         /// <value>The map layers.</value>
-        public List<AllocationLayer> AllocationLayers
-        {
-            get { return this.allocationLayers; }
-        }
+        public List<AllocationLayer> AllocationLayers { get; } = new List<AllocationLayer>();
 
         /// <summary>
         /// Gets or sets the size of the extent.
@@ -379,7 +372,7 @@ namespace InternalsViewer.UI.Allocations
             {
                 this.extentSize = value;
 
-                foreach (AllocationMap allocationMap in this.allocationMaps.Values)
+                foreach (var allocationMap in this.AllocationMaps.Values)
                 {
                     allocationMap.ExtentSize = this.extentSize;
                 }
@@ -390,41 +383,27 @@ namespace InternalsViewer.UI.Allocations
         /// Gets or sets the layout style.
         /// </summary>
         /// <value>The layout style.</value>
-        public LayoutStyle LayoutStyle
-        {
-            get { return this.layoutStyle; }
-            set { this.layoutStyle = value; }
-        }
+        public LayoutStyle LayoutStyle { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the IAM is included
         /// </summary>
         /// <value><c>true</c> if [include iam]; otherwise, <c>false</c>.</value>
-        public bool IncludeIam
-        {
-            get { return this.includeIam; }
-            set { this.includeIam = value; }
-        }
+        public bool IncludeIam { get; set; }
 
         /// <summary>
         /// Gets the allocation map Dictionary collection
         /// </summary>
         /// <value>The allocation maps.</value>
-        public Dictionary<int, AllocationMap> AllocationMaps
-        {
-            get
-            {
-                return this.allocationMaps;
-            }
-        }
+        public Dictionary<int, AllocationMap> AllocationMaps { get; } = new Dictionary<int, AllocationMap>();
 
         public bool DrawBorder
         {
             get
             {
-                if (this.allocationMaps.Count > 1)
+                if (this.AllocationMaps.Count > 1)
                 {
-                    return this.allocationMaps[0].DrawBorder;
+                    return this.AllocationMaps[0].DrawBorder;
                 }
                 else
                 {
@@ -434,7 +413,7 @@ namespace InternalsViewer.UI.Allocations
 
             set
             {
-                foreach (AllocationMap allocationMap in this.allocationMaps.Values)
+                foreach (var allocationMap in this.AllocationMaps.Values)
                 {
                     allocationMap.DrawBorder = value;
                 }
@@ -445,9 +424,9 @@ namespace InternalsViewer.UI.Allocations
         {
             get
             {
-                if (this.allocationMaps.Count > 1)
+                if (this.AllocationMaps.Count > 1)
                 {
-                    return this.allocationMaps[InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files[0].FileId].Holding;
+                    return this.AllocationMaps[InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files[0].FileId].Holding;
                 }
                 else
                 {
@@ -457,7 +436,7 @@ namespace InternalsViewer.UI.Allocations
 
             set
             {
-                foreach (AllocationMap allocationMap in this.allocationMaps.Values)
+                foreach (var allocationMap in this.AllocationMaps.Values)
                 {
                     allocationMap.Holding = value;
                 }
@@ -468,9 +447,9 @@ namespace InternalsViewer.UI.Allocations
         {
             get
             {
-                if (this.allocationMaps.Count > 1)
+                if (this.AllocationMaps.Count > 1)
                 {
-                    return this.allocationMaps[0].HoldingMessage;
+                    return this.AllocationMaps[0].HoldingMessage;
                 }
                 else
                 {
@@ -480,7 +459,7 @@ namespace InternalsViewer.UI.Allocations
 
             set
             {
-                foreach (AllocationMap allocationMap in this.allocationMaps.Values)
+                foreach (var allocationMap in this.AllocationMaps.Values)
                 {
                     allocationMap.HoldingMessage = value;
                 }

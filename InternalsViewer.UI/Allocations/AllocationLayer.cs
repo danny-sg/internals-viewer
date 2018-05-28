@@ -92,9 +92,9 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         public static List<string> FindPage(PageAddress page, List<AllocationLayer> layers)
         {
-            List<string> layerNames = new List<string>();
+            var layerNames = new List<string>();
 
-            foreach (AllocationLayer layer in layers)
+            foreach (var layer in layers)
             {
                 if (layer.FindPage(page, layer.Invert) != null)
                 {
@@ -111,9 +111,9 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="layers">The layers.</param>
         public static void RefreshLayers(List<AllocationLayer> layers)
         {
-            foreach (AllocationLayer layer in layers)
+            foreach (var layer in layers)
             {
-                foreach (Allocation page in layer.Allocations)
+                foreach (var page in layer.Allocations)
                 {
                     page.Refresh();
                 }
@@ -129,7 +129,7 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         public AllocationLayer FindExtent(int extent, int fileId, bool findInverted)
         {
-            foreach (Allocation alloc in this.allocations)
+            foreach (var alloc in this.allocations)
             {
                 if (Allocation.CheckAllocationStatus(extent, fileId, findInverted, alloc))
                 {
@@ -152,7 +152,7 @@ namespace InternalsViewer.UI.Allocations
 
             extentAddress = pageAddress.PageId / 8;
 
-            foreach (Allocation alloc in this.allocations)
+            foreach (var alloc in this.allocations)
             {
                 // Check if it's the actual IAM
                 if (alloc.Pages.Exists(delegate(AllocationPage p) { return p.PageAddress == pageAddress; }))

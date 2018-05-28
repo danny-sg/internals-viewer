@@ -39,7 +39,7 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         private static List<Color> CreateIamColours()
         {
-            List<Color> colours = new List<Color>(9);
+            var colours = new List<Color>(9);
 
             colours.Add(Color.LightGreen);
             colours.Add(Color.Lavender);
@@ -103,7 +103,7 @@ namespace InternalsViewer.UI
         {
             this.topPanel.Visible = showHeader;
 
-            AllocationPage allocationPage = new AllocationPage(connectionString, databaseName, pageAddress);
+            var allocationPage = new AllocationPage(connectionString, databaseName, pageAddress);
 
             allocationMap.Mode = MapMode.Standard;
             allocationMap.ExtentCount = 63903;
@@ -112,7 +112,7 @@ namespace InternalsViewer.UI
             allocationMap.StartPage = allocationPage.StartPage;
             allocationMap.FileId = allocationPage.StartPage.FileId;
 
-            AllocationLayer layer = new AllocationLayer(allocationPage.PageAddress.ToString(),
+            var layer = new AllocationLayer(allocationPage.PageAddress.ToString(),
                                                         allocationPage,
                                                         Color.Brown);
 
@@ -128,7 +128,7 @@ namespace InternalsViewer.UI
                 this.SetIamInformation(allocationPage);
             }
 
-            List<Marker> markers = MarkerBuilder.BuildMarkers(allocationPage, string.Empty);
+            var markers = MarkerBuilder.BuildMarkers(allocationPage, string.Empty);
 
             return markers;
         }
@@ -143,7 +143,7 @@ namespace InternalsViewer.UI
         {
             this.topPanel.Visible = false;
 
-            PfsPage pfsPage = new PfsPage(connectionString, databaseName, pageAddress);
+            var pfsPage = new PfsPage(connectionString, databaseName, pageAddress);
 
             allocationMap.Mode = MapMode.Pfs;
 
@@ -196,7 +196,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void PageAddressTextBox_Click(object sender, EventArgs e)
         {
-            PageAddress pageAddress = PageAddress.Parse((sender as TextBox).Text);
+            var pageAddress = PageAddress.Parse((sender as TextBox).Text);
 
             this.OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, 0), false));
         }

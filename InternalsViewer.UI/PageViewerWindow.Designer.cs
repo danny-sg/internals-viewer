@@ -36,6 +36,24 @@ namespace InternalsViewer.UI
             this.rowLogContents3ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.rowLogContents4ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.leftPanel = new System.Windows.Forms.Panel();
+            this.pageBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.topLeftPanel = new System.Windows.Forms.Panel();
+            this.compressionInfoPanel = new System.Windows.Forms.Panel();
+            this.statusStrip = new System.Windows.Forms.StatusStrip();
+            this.pageAddressToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.errorImageToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.errorToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.serverToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.dataaseToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.markerDescriptionToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.offsetToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.hexViewer = new InternalsViewer.UI.HexViewer();
+            this.offsetTable = new InternalsViewer.UI.OffsetTable();
+            this.compressionInfoTable = new InternalsViewer.UI.Controls.CompressionInfoTable();
+            this.allocationViewer = new InternalsViewer.UI.AllocationViewer();
+            this.markerKeyTable = new InternalsViewer.UI.Controls.MarkerKeyTable();
             this.headerBorderPanel = new InternalsViewer.UI.Controls.BorderPanel();
             this.pfsTextBox = new System.Windows.Forms.TextBox();
             this.bcmTextBox = new System.Windows.Forms.TextBox();
@@ -54,7 +72,6 @@ namespace InternalsViewer.UI
             this.pfsPanel = new System.Windows.Forms.Panel();
             this.label6 = new System.Windows.Forms.Label();
             this.textBox15 = new System.Windows.Forms.TextBox();
-            this.pageBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.label5 = new System.Windows.Forms.Label();
             this.textBox4 = new System.Windows.Forms.TextBox();
             this.label4 = new System.Windows.Forms.Label();
@@ -88,23 +105,6 @@ namespace InternalsViewer.UI
             this.label7 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
-            this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.hexViewer = new InternalsViewer.UI.HexViewer();
-            this.topLeftPanel = new System.Windows.Forms.Panel();
-            this.offsetTable = new InternalsViewer.UI.OffsetTable();
-            this.compressionInfoPanel = new System.Windows.Forms.Panel();
-            this.compressionInfoTable = new InternalsViewer.UI.Controls.CompressionInfoTable();
-            this.allocationViewer = new InternalsViewer.UI.AllocationViewer();
-            this.markerKeyTable = new InternalsViewer.UI.Controls.MarkerKeyTable();
-            this.statusStrip = new System.Windows.Forms.StatusStrip();
-            this.pageAddressToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.errorImageToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.errorToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.serverToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.dataaseToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.markerDescriptionToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.offsetToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.flatMenuStrip1 = new InternalsViewer.UI.Controls.FlatMenuStrip();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
             this.pageToolStripTextBox = new InternalsViewer.UI.Controls.PageAddressTextBox();
@@ -119,18 +119,19 @@ namespace InternalsViewer.UI
             this.logToolStripLabel = new System.Windows.Forms.ToolStripLabel();
             this.logToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
             this.leftPanel.SuspendLayout();
-            this.headerBorderPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.dcmPictureBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.sGamPictureBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.topLeftPanel.SuspendLayout();
             this.compressionInfoPanel.SuspendLayout();
             this.statusStrip.SuspendLayout();
+            this.headerBorderPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.dcmPictureBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.sGamPictureBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).BeginInit();
             this.flatMenuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -172,12 +173,198 @@ namespace InternalsViewer.UI
             this.leftPanel.Location = new System.Drawing.Point(0, 28);
             this.leftPanel.Name = "leftPanel";
             this.leftPanel.Padding = new System.Windows.Forms.Padding(0, 0, 3, 0);
-            this.leftPanel.Size = new System.Drawing.Size(176, 573);
+            this.leftPanel.Size = new System.Drawing.Size(300, 573);
             this.leftPanel.TabIndex = 246;
+            // 
+            // pageBindingSource
+            // 
+            this.pageBindingSource.DataSource = typeof(InternalsViewer.Internals.Pages.Header);
+            // 
+            // splitContainer1
+            // 
+            this.splitContainer1.BackColor = System.Drawing.Color.Transparent;
+            this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.splitContainer1.Location = new System.Drawing.Point(300, 28);
+            this.splitContainer1.Name = "splitContainer1";
+            this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            // 
+            // splitContainer1.Panel1
+            // 
+            this.splitContainer1.Panel1.BackColor = System.Drawing.Color.Transparent;
+            this.splitContainer1.Panel1.Controls.Add(this.hexViewer);
+            this.splitContainer1.Panel1.Controls.Add(this.topLeftPanel);
+            // 
+            // splitContainer1.Panel2
+            // 
+            this.splitContainer1.Panel2.BackColor = System.Drawing.Color.White;
+            this.splitContainer1.Panel2.Controls.Add(this.allocationViewer);
+            this.splitContainer1.Panel2.Controls.Add(this.markerKeyTable);
+            this.splitContainer1.Size = new System.Drawing.Size(574, 573);
+            this.splitContainer1.SplitterDistance = 289;
+            this.splitContainer1.TabIndex = 247;
+            // 
+            // topLeftPanel
+            // 
+            this.topLeftPanel.BackColor = System.Drawing.Color.Transparent;
+            this.topLeftPanel.Controls.Add(this.offsetTable);
+            this.topLeftPanel.Controls.Add(this.compressionInfoPanel);
+            this.topLeftPanel.Dock = System.Windows.Forms.DockStyle.Right;
+            this.topLeftPanel.Location = new System.Drawing.Point(394, 0);
+            this.topLeftPanel.Name = "topLeftPanel";
+            this.topLeftPanel.Padding = new System.Windows.Forms.Padding(3, 0, 0, 0);
+            this.topLeftPanel.Size = new System.Drawing.Size(180, 289);
+            this.topLeftPanel.TabIndex = 1;
+            // 
+            // compressionInfoPanel
+            // 
+            this.compressionInfoPanel.Controls.Add(this.compressionInfoTable);
+            this.compressionInfoPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.compressionInfoPanel.Location = new System.Drawing.Point(3, 183);
+            this.compressionInfoPanel.Name = "compressionInfoPanel";
+            this.compressionInfoPanel.Padding = new System.Windows.Forms.Padding(0, 4, 0, 0);
+            this.compressionInfoPanel.Size = new System.Drawing.Size(177, 106);
+            this.compressionInfoPanel.TabIndex = 2;
+            // 
+            // statusStrip
+            // 
+            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.pageAddressToolStripStatusLabel,
+            this.errorImageToolStripStatusLabel,
+            this.errorToolStripStatusLabel,
+            this.serverToolStripStatusLabel,
+            this.dataaseToolStripStatusLabel,
+            this.toolStripStatusLabel3,
+            this.markerDescriptionToolStripStatusLabel,
+            this.offsetToolStripStatusLabel});
+            this.statusStrip.Location = new System.Drawing.Point(0, 601);
+            this.statusStrip.Name = "statusStrip";
+            this.statusStrip.Size = new System.Drawing.Size(874, 22);
+            this.statusStrip.SizingGrip = false;
+            this.statusStrip.TabIndex = 201;
+            this.statusStrip.Text = "statusStrip";
+            // 
+            // pageAddressToolStripStatusLabel
+            // 
+            this.pageAddressToolStripStatusLabel.Name = "pageAddressToolStripStatusLabel";
+            this.pageAddressToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // errorImageToolStripStatusLabel
+            // 
+            this.errorImageToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.errorImageToolStripStatusLabel.Name = "errorImageToolStripStatusLabel";
+            this.errorImageToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            this.errorImageToolStripStatusLabel.Text = "Error Image";
+            // 
+            // errorToolStripStatusLabel
+            // 
+            this.errorToolStripStatusLabel.Name = "errorToolStripStatusLabel";
+            this.errorToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // serverToolStripStatusLabel
+            // 
+            this.serverToolStripStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.serverToolStripStatusLabel.Name = "serverToolStripStatusLabel";
+            this.serverToolStripStatusLabel.Size = new System.Drawing.Size(47, 17);
+            this.serverToolStripStatusLabel.Text = "[Server]";
+            // 
+            // dataaseToolStripStatusLabel
+            // 
+            this.dataaseToolStripStatusLabel.ForeColor = System.Drawing.Color.Gray;
+            this.dataaseToolStripStatusLabel.Name = "dataaseToolStripStatusLabel";
+            this.dataaseToolStripStatusLabel.Size = new System.Drawing.Size(63, 17);
+            this.dataaseToolStripStatusLabel.Text = "[Database]";
+            // 
+            // toolStripStatusLabel3
+            // 
+            this.toolStripStatusLabel3.Name = "toolStripStatusLabel3";
+            this.toolStripStatusLabel3.Size = new System.Drawing.Size(749, 17);
+            this.toolStripStatusLabel3.Spring = true;
+            // 
+            // markerDescriptionToolStripStatusLabel
+            // 
+            this.markerDescriptionToolStripStatusLabel.AutoToolTip = true;
+            this.markerDescriptionToolStripStatusLabel.BackColor = System.Drawing.Color.Red;
+            this.markerDescriptionToolStripStatusLabel.ImageTransparentColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.markerDescriptionToolStripStatusLabel.Name = "markerDescriptionToolStripStatusLabel";
+            this.markerDescriptionToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // offsetToolStripStatusLabel
+            // 
+            this.offsetToolStripStatusLabel.Name = "offsetToolStripStatusLabel";
+            this.offsetToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
+            // 
+            // hexViewer
+            // 
+            this.hexViewer.AddressHex = false;
+            this.hexViewer.BackColor = System.Drawing.Color.White;
+            this.hexViewer.ColourAndOffsetDictionary = null;
+            this.hexViewer.Colourise = true;
+            this.hexViewer.DataRtf = null;
+            this.hexViewer.DataText = null;
+            this.hexViewer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.hexViewer.Font = new System.Drawing.Font("Courier New", 8.25F);
+            this.hexViewer.Location = new System.Drawing.Point(0, 0);
+            this.hexViewer.Margin = new System.Windows.Forms.Padding(1, 0, 0, 0);
+            this.hexViewer.Name = "hexViewer";
+            this.hexViewer.Padding = new System.Windows.Forms.Padding(1, 0, 1, 1);
+            this.hexViewer.Page = null;
+            this.hexViewer.SelectedOffset = -1;
+            this.hexViewer.SelectedRecord = -1;
+            this.hexViewer.Size = new System.Drawing.Size(394, 289);
+            this.hexViewer.TabIndex = 0;
+            this.hexViewer.OffsetOver += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_OffsetOver);
+            this.hexViewer.OffsetSet += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_OffsetSet);
+            this.hexViewer.RecordFind += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_RecordFind);
+            // 
+            // offsetTable
+            // 
+            this.offsetTable.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.offsetTable.Location = new System.Drawing.Point(3, 0);
+            this.offsetTable.Name = "offsetTable";
+            this.offsetTable.Padding = new System.Windows.Forms.Padding(1);
+            this.offsetTable.Page = null;
+            this.offsetTable.SelectedSlot = -1;
+            this.offsetTable.Size = new System.Drawing.Size(177, 183);
+            this.offsetTable.TabIndex = 0;
+            this.offsetTable.SlotChanged += new System.EventHandler(this.OffsetTable_SlotChanged);
+            // 
+            // compressionInfoTable
+            // 
+            this.compressionInfoTable.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.compressionInfoTable.Location = new System.Drawing.Point(0, 4);
+            this.compressionInfoTable.Name = "compressionInfoTable";
+            this.compressionInfoTable.Padding = new System.Windows.Forms.Padding(1);
+            this.compressionInfoTable.SelectedStructure = InternalsViewer.Internals.Compression.CompressionInformation.CompressionInfoStructure.Header;
+            this.compressionInfoTable.Size = new System.Drawing.Size(177, 102);
+            this.compressionInfoTable.TabIndex = 0;
+            this.compressionInfoTable.PropertyChanged += new System.ComponentModel.PropertyChangedEventHandler(this.CompressionInfoTable_PropertyChanged);
+            // 
+            // allocationViewer
+            // 
+            this.allocationViewer.Location = new System.Drawing.Point(0, 0);
+            this.allocationViewer.Name = "allocationViewer";
+            this.allocationViewer.Size = new System.Drawing.Size(574, 280);
+            this.allocationViewer.TabIndex = 1;
+            this.allocationViewer.Visible = false;
+            this.allocationViewer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationViewer_PageOver);
+            this.allocationViewer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationViewer_PageClicked);
+            // 
+            // markerKeyTable
+            // 
+            this.markerKeyTable.BackColor = System.Drawing.Color.White;
+            this.markerKeyTable.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.markerKeyTable.Location = new System.Drawing.Point(0, 0);
+            this.markerKeyTable.Name = "markerKeyTable";
+            this.markerKeyTable.Padding = new System.Windows.Forms.Padding(1);
+            this.markerKeyTable.Size = new System.Drawing.Size(574, 280);
+            this.markerKeyTable.TabIndex = 0;
+            this.markerKeyTable.SelectionChanged += new System.EventHandler(this.MarkerKeyTable_SelectionChanged);
+            this.markerKeyTable.SelectionClicked += new System.EventHandler(this.MarkerKeyTable_SelectionClicked);
+            this.markerKeyTable.PageNavigated += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.MarkerKeyTable_PageNavigated);
             // 
             // headerBorderPanel
             // 
-            this.headerBorderPanel.BackColor = System.Drawing.Color.White;
+            this.headerBorderPanel.BackColor = System.Drawing.Color.Transparent;
             this.headerBorderPanel.Controls.Add(this.pfsTextBox);
             this.headerBorderPanel.Controls.Add(this.bcmTextBox);
             this.headerBorderPanel.Controls.Add(this.dcmTextBox);
@@ -231,7 +418,7 @@ namespace InternalsViewer.UI
             this.headerBorderPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.headerBorderPanel.Location = new System.Drawing.Point(0, 0);
             this.headerBorderPanel.Name = "headerBorderPanel";
-            this.headerBorderPanel.Size = new System.Drawing.Size(173, 573);
+            this.headerBorderPanel.Size = new System.Drawing.Size(297, 573);
             this.headerBorderPanel.TabIndex = 0;
             // 
             // pfsTextBox
@@ -241,7 +428,7 @@ namespace InternalsViewer.UI
             this.pfsTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.pfsTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.pfsTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.pfsTextBox.Location = new System.Drawing.Point(90, 498);
+            this.pfsTextBox.Location = new System.Drawing.Point(90, 503);
             this.pfsTextBox.Name = "pfsTextBox";
             this.pfsTextBox.ReadOnly = true;
             this.pfsTextBox.Size = new System.Drawing.Size(75, 13);
@@ -255,7 +442,7 @@ namespace InternalsViewer.UI
             this.bcmTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.bcmTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.bcmTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.bcmTextBox.Location = new System.Drawing.Point(90, 478);
+            this.bcmTextBox.Location = new System.Drawing.Point(90, 483);
             this.bcmTextBox.Name = "bcmTextBox";
             this.bcmTextBox.ReadOnly = true;
             this.bcmTextBox.Size = new System.Drawing.Size(75, 13);
@@ -269,7 +456,7 @@ namespace InternalsViewer.UI
             this.dcmTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.dcmTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.dcmTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.dcmTextBox.Location = new System.Drawing.Point(90, 458);
+            this.dcmTextBox.Location = new System.Drawing.Point(90, 463);
             this.dcmTextBox.Name = "dcmTextBox";
             this.dcmTextBox.ReadOnly = true;
             this.dcmTextBox.Size = new System.Drawing.Size(75, 13);
@@ -283,7 +470,7 @@ namespace InternalsViewer.UI
             this.sgamTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.sgamTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.sgamTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.sgamTextBox.Location = new System.Drawing.Point(90, 439);
+            this.sgamTextBox.Location = new System.Drawing.Point(90, 444);
             this.sgamTextBox.Name = "sgamTextBox";
             this.sgamTextBox.ReadOnly = true;
             this.sgamTextBox.Size = new System.Drawing.Size(75, 13);
@@ -297,7 +484,7 @@ namespace InternalsViewer.UI
             this.gamTextBox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.gamTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.gamTextBox.ForeColor = System.Drawing.Color.Blue;
-            this.gamTextBox.Location = new System.Drawing.Point(90, 420);
+            this.gamTextBox.Location = new System.Drawing.Point(90, 425);
             this.gamTextBox.Name = "gamTextBox";
             this.gamTextBox.ReadOnly = true;
             this.gamTextBox.Size = new System.Drawing.Size(75, 13);
@@ -306,7 +493,7 @@ namespace InternalsViewer.UI
             // 
             // bcmPictureBox
             // 
-            this.bcmPictureBox.Location = new System.Drawing.Point(48, 476);
+            this.bcmPictureBox.Location = new System.Drawing.Point(48, 481);
             this.bcmPictureBox.Name = "bcmPictureBox";
             this.bcmPictureBox.Size = new System.Drawing.Size(16, 16);
             this.bcmPictureBox.TabIndex = 262;
@@ -314,7 +501,7 @@ namespace InternalsViewer.UI
             // 
             // dcmPictureBox
             // 
-            this.dcmPictureBox.Location = new System.Drawing.Point(48, 457);
+            this.dcmPictureBox.Location = new System.Drawing.Point(48, 462);
             this.dcmPictureBox.Name = "dcmPictureBox";
             this.dcmPictureBox.Size = new System.Drawing.Size(16, 16);
             this.dcmPictureBox.TabIndex = 261;
@@ -322,7 +509,7 @@ namespace InternalsViewer.UI
             // 
             // sGamPictureBox
             // 
-            this.sGamPictureBox.Location = new System.Drawing.Point(48, 438);
+            this.sGamPictureBox.Location = new System.Drawing.Point(48, 443);
             this.sGamPictureBox.Name = "sGamPictureBox";
             this.sGamPictureBox.Size = new System.Drawing.Size(16, 16);
             this.sGamPictureBox.TabIndex = 260;
@@ -330,7 +517,7 @@ namespace InternalsViewer.UI
             // 
             // gamPictureBox
             // 
-            this.gamPictureBox.Location = new System.Drawing.Point(48, 419);
+            this.gamPictureBox.Location = new System.Drawing.Point(48, 424);
             this.gamPictureBox.Name = "gamPictureBox";
             this.gamPictureBox.Size = new System.Drawing.Size(16, 16);
             this.gamPictureBox.TabIndex = 259;
@@ -342,7 +529,7 @@ namespace InternalsViewer.UI
             this.label1.BackColor = System.Drawing.Color.Transparent;
             this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label1.ForeColor = System.Drawing.Color.Gray;
-            this.label1.Location = new System.Drawing.Point(5, 440);
+            this.label1.Location = new System.Drawing.Point(5, 445);
             this.label1.Margin = new System.Windows.Forms.Padding(4);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(38, 13);
@@ -355,7 +542,7 @@ namespace InternalsViewer.UI
             this.label19.BackColor = System.Drawing.Color.Transparent;
             this.label19.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label19.ForeColor = System.Drawing.Color.Gray;
-            this.label19.Location = new System.Drawing.Point(5, 478);
+            this.label19.Location = new System.Drawing.Point(5, 483);
             this.label19.Margin = new System.Windows.Forms.Padding(4);
             this.label19.Name = "label19";
             this.label19.Size = new System.Drawing.Size(30, 13);
@@ -368,7 +555,7 @@ namespace InternalsViewer.UI
             this.label20.BackColor = System.Drawing.Color.Transparent;
             this.label20.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label20.ForeColor = System.Drawing.Color.Gray;
-            this.label20.Location = new System.Drawing.Point(5, 421);
+            this.label20.Location = new System.Drawing.Point(5, 426);
             this.label20.Margin = new System.Windows.Forms.Padding(4);
             this.label20.Name = "label20";
             this.label20.Size = new System.Drawing.Size(31, 13);
@@ -381,7 +568,7 @@ namespace InternalsViewer.UI
             this.label21.BackColor = System.Drawing.Color.Transparent;
             this.label21.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label21.ForeColor = System.Drawing.Color.Gray;
-            this.label21.Location = new System.Drawing.Point(5, 459);
+            this.label21.Location = new System.Drawing.Point(5, 464);
             this.label21.Margin = new System.Windows.Forms.Padding(4);
             this.label21.Name = "label21";
             this.label21.Size = new System.Drawing.Size(31, 13);
@@ -394,7 +581,7 @@ namespace InternalsViewer.UI
             this.label15.BackColor = System.Drawing.Color.Transparent;
             this.label15.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label15.ForeColor = System.Drawing.Color.Gray;
-            this.label15.Location = new System.Drawing.Point(5, 499);
+            this.label15.Location = new System.Drawing.Point(5, 503);
             this.label15.Margin = new System.Windows.Forms.Padding(4);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(27, 13);
@@ -407,7 +594,7 @@ namespace InternalsViewer.UI
             this.pfsPanel.BackColor = System.Drawing.Color.Transparent;
             this.pfsPanel.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             this.pfsPanel.Font = new System.Drawing.Font("Microsoft Sans Serif", 6F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.pfsPanel.Location = new System.Drawing.Point(48, 498);
+            this.pfsPanel.Location = new System.Drawing.Point(48, 503);
             this.pfsPanel.Name = "pfsPanel";
             this.pfsPanel.Size = new System.Drawing.Size(33, 33);
             this.pfsPanel.TabIndex = 253;
@@ -419,7 +606,7 @@ namespace InternalsViewer.UI
             this.label6.BackColor = System.Drawing.Color.Transparent;
             this.label6.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label6.ForeColor = System.Drawing.Color.Gray;
-            this.label6.Location = new System.Drawing.Point(5, 357);
+            this.label6.Location = new System.Drawing.Point(5, 349);
             this.label6.Margin = new System.Windows.Forms.Padding(4);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(78, 13);
@@ -431,15 +618,11 @@ namespace InternalsViewer.UI
             this.textBox15.BackColor = System.Drawing.Color.White;
             this.textBox15.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox15.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "FreeCount", true));
-            this.textBox15.Location = new System.Drawing.Point(90, 319);
+            this.textBox15.Location = new System.Drawing.Point(90, 311);
             this.textBox15.Name = "textBox15";
             this.textBox15.ReadOnly = true;
             this.textBox15.Size = new System.Drawing.Size(77, 13);
             this.textBox15.TabIndex = 251;
-            // 
-            // pageBindingSource
-            // 
-            this.pageBindingSource.DataSource = typeof(InternalsViewer.Internals.Pages.Header);
             // 
             // label5
             // 
@@ -447,7 +630,7 @@ namespace InternalsViewer.UI
             this.label5.BackColor = System.Drawing.Color.Transparent;
             this.label5.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label5.ForeColor = System.Drawing.Color.Gray;
-            this.label5.Location = new System.Drawing.Point(5, 319);
+            this.label5.Location = new System.Drawing.Point(5, 311);
             this.label5.Margin = new System.Windows.Forms.Padding(4);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(57, 13);
@@ -459,7 +642,7 @@ namespace InternalsViewer.UI
             this.textBox4.BackColor = System.Drawing.Color.White;
             this.textBox4.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox4.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "Lsn", true));
-            this.textBox4.Location = new System.Drawing.Point(90, 204);
+            this.textBox4.Location = new System.Drawing.Point(90, 196);
             this.textBox4.Name = "textBox4";
             this.textBox4.ReadOnly = true;
             this.textBox4.Size = new System.Drawing.Size(77, 13);
@@ -471,7 +654,7 @@ namespace InternalsViewer.UI
             this.label4.BackColor = System.Drawing.Color.Transparent;
             this.label4.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label4.ForeColor = System.Drawing.Color.Gray;
-            this.label4.Location = new System.Drawing.Point(5, 204);
+            this.label4.Location = new System.Drawing.Point(5, 196);
             this.label4.Margin = new System.Windows.Forms.Padding(4);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(28, 13);
@@ -486,7 +669,7 @@ namespace InternalsViewer.UI
             this.textBox3.Location = new System.Drawing.Point(8, 100);
             this.textBox3.Name = "textBox3";
             this.textBox3.ReadOnly = true;
-            this.textBox3.Size = new System.Drawing.Size(157, 13);
+            this.textBox3.Size = new System.Drawing.Size(280, 13);
             this.textBox3.TabIndex = 247;
             // 
             // textBox2
@@ -497,7 +680,7 @@ namespace InternalsViewer.UI
             this.textBox2.Location = new System.Drawing.Point(8, 24);
             this.textBox2.Name = "textBox2";
             this.textBox2.ReadOnly = true;
-            this.textBox2.Size = new System.Drawing.Size(157, 13);
+            this.textBox2.Size = new System.Drawing.Size(280, 13);
             this.textBox2.TabIndex = 246;
             // 
             // textBox14
@@ -505,7 +688,7 @@ namespace InternalsViewer.UI
             this.textBox14.BackColor = System.Drawing.Color.White;
             this.textBox14.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox14.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "FlagBits", true));
-            this.textBox14.Location = new System.Drawing.Point(90, 395);
+            this.textBox14.Location = new System.Drawing.Point(90, 387);
             this.textBox14.Name = "textBox14";
             this.textBox14.ReadOnly = true;
             this.textBox14.Size = new System.Drawing.Size(77, 13);
@@ -516,7 +699,7 @@ namespace InternalsViewer.UI
             this.textBox13.BackColor = System.Drawing.Color.White;
             this.textBox13.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox13.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "ReservedCount", true));
-            this.textBox13.Location = new System.Drawing.Point(90, 338);
+            this.textBox13.Location = new System.Drawing.Point(90, 330);
             this.textBox13.Name = "textBox13";
             this.textBox13.ReadOnly = true;
             this.textBox13.Size = new System.Drawing.Size(77, 13);
@@ -527,7 +710,7 @@ namespace InternalsViewer.UI
             this.textBox12.BackColor = System.Drawing.Color.White;
             this.textBox12.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox12.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "XactReservedCount", true));
-            this.textBox12.Location = new System.Drawing.Point(90, 357);
+            this.textBox12.Location = new System.Drawing.Point(90, 349);
             this.textBox12.Name = "textBox12";
             this.textBox12.ReadOnly = true;
             this.textBox12.Size = new System.Drawing.Size(77, 13);
@@ -538,7 +721,7 @@ namespace InternalsViewer.UI
             this.textBox11.BackColor = System.Drawing.Color.White;
             this.textBox11.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox11.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "IndexId", true));
-            this.textBox11.Location = new System.Drawing.Point(90, 262);
+            this.textBox11.Location = new System.Drawing.Point(90, 254);
             this.textBox11.Name = "textBox11";
             this.textBox11.ReadOnly = true;
             this.textBox11.Size = new System.Drawing.Size(77, 13);
@@ -549,7 +732,7 @@ namespace InternalsViewer.UI
             this.textBox10.BackColor = System.Drawing.Color.White;
             this.textBox10.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox10.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "Level", true));
-            this.textBox10.Location = new System.Drawing.Point(90, 243);
+            this.textBox10.Location = new System.Drawing.Point(90, 235);
             this.textBox10.Name = "textBox10";
             this.textBox10.ReadOnly = true;
             this.textBox10.Size = new System.Drawing.Size(77, 13);
@@ -560,7 +743,7 @@ namespace InternalsViewer.UI
             this.textBox9.BackColor = System.Drawing.Color.White;
             this.textBox9.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox9.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "SlotCount", true));
-            this.textBox9.Location = new System.Drawing.Point(90, 224);
+            this.textBox9.Location = new System.Drawing.Point(90, 216);
             this.textBox9.Name = "textBox9";
             this.textBox9.ReadOnly = true;
             this.textBox9.Size = new System.Drawing.Size(77, 13);
@@ -571,7 +754,7 @@ namespace InternalsViewer.UI
             this.textBox8.BackColor = System.Drawing.Color.White;
             this.textBox8.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox8.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "TornBits", true));
-            this.textBox8.Location = new System.Drawing.Point(90, 376);
+            this.textBox8.Location = new System.Drawing.Point(90, 368);
             this.textBox8.Name = "textBox8";
             this.textBox8.ReadOnly = true;
             this.textBox8.Size = new System.Drawing.Size(77, 13);
@@ -581,7 +764,7 @@ namespace InternalsViewer.UI
             // 
             this.textBox7.BackColor = System.Drawing.Color.White;
             this.textBox7.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.textBox7.Location = new System.Drawing.Point(90, 300);
+            this.textBox7.Location = new System.Drawing.Point(90, 292);
             this.textBox7.Name = "textBox7";
             this.textBox7.ReadOnly = true;
             this.textBox7.Size = new System.Drawing.Size(77, 13);
@@ -592,7 +775,7 @@ namespace InternalsViewer.UI
             this.textBox6.BackColor = System.Drawing.Color.White;
             this.textBox6.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox6.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "FreeData", true));
-            this.textBox6.Location = new System.Drawing.Point(90, 281);
+            this.textBox6.Location = new System.Drawing.Point(90, 273);
             this.textBox6.Name = "textBox6";
             this.textBox6.ReadOnly = true;
             this.textBox6.Size = new System.Drawing.Size(77, 13);
@@ -603,10 +786,10 @@ namespace InternalsViewer.UI
             this.textBox17.BackColor = System.Drawing.Color.White;
             this.textBox17.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox17.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "AllocationUnitId", true));
-            this.textBox17.Location = new System.Drawing.Point(8, 184);
+            this.textBox17.Location = new System.Drawing.Point(8, 176);
             this.textBox17.Name = "textBox17";
             this.textBox17.ReadOnly = true;
-            this.textBox17.Size = new System.Drawing.Size(159, 13);
+            this.textBox17.Size = new System.Drawing.Size(280, 13);
             this.textBox17.TabIndex = 236;
             // 
             // textBox16
@@ -614,10 +797,10 @@ namespace InternalsViewer.UI
             this.textBox16.BackColor = System.Drawing.Color.White;
             this.textBox16.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox16.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pageBindingSource, "PartitionId", true));
-            this.textBox16.Location = new System.Drawing.Point(8, 144);
+            this.textBox16.Location = new System.Drawing.Point(8, 136);
             this.textBox16.Name = "textBox16";
             this.textBox16.ReadOnly = true;
-            this.textBox16.Size = new System.Drawing.Size(159, 13);
+            this.textBox16.Size = new System.Drawing.Size(280, 13);
             this.textBox16.TabIndex = 235;
             // 
             // textBox5
@@ -667,7 +850,7 @@ namespace InternalsViewer.UI
             this.label18.BackColor = System.Drawing.Color.Transparent;
             this.label18.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label18.ForeColor = System.Drawing.Color.Gray;
-            this.label18.Location = new System.Drawing.Point(5, 395);
+            this.label18.Location = new System.Drawing.Point(5, 387);
             this.label18.Margin = new System.Windows.Forms.Padding(4);
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(47, 13);
@@ -680,7 +863,7 @@ namespace InternalsViewer.UI
             this.label16.BackColor = System.Drawing.Color.Transparent;
             this.label16.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label16.ForeColor = System.Drawing.Color.Gray;
-            this.label16.Location = new System.Drawing.Point(5, 338);
+            this.label16.Location = new System.Drawing.Point(5, 330);
             this.label16.Margin = new System.Windows.Forms.Padding(4);
             this.label16.Name = "label16";
             this.label16.Size = new System.Drawing.Size(82, 13);
@@ -693,7 +876,7 @@ namespace InternalsViewer.UI
             this.label14.BackColor = System.Drawing.Color.Transparent;
             this.label14.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label14.ForeColor = System.Drawing.Color.Gray;
-            this.label14.Location = new System.Drawing.Point(5, 300);
+            this.label14.Location = new System.Drawing.Point(5, 292);
             this.label14.Margin = new System.Windows.Forms.Padding(4);
             this.label14.Name = "label14";
             this.label14.Size = new System.Drawing.Size(68, 13);
@@ -706,7 +889,7 @@ namespace InternalsViewer.UI
             this.label12.BackColor = System.Drawing.Color.Transparent;
             this.label12.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label12.ForeColor = System.Drawing.Color.Gray;
-            this.label12.Location = new System.Drawing.Point(5, 262);
+            this.label12.Location = new System.Drawing.Point(5, 254);
             this.label12.Margin = new System.Windows.Forms.Padding(4);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(45, 13);
@@ -719,7 +902,7 @@ namespace InternalsViewer.UI
             this.label11.BackColor = System.Drawing.Color.Transparent;
             this.label11.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label11.ForeColor = System.Drawing.Color.Gray;
-            this.label11.Location = new System.Drawing.Point(5, 243);
+            this.label11.Location = new System.Drawing.Point(5, 235);
             this.label11.Margin = new System.Windows.Forms.Padding(4);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(33, 13);
@@ -732,7 +915,7 @@ namespace InternalsViewer.UI
             this.label10.BackColor = System.Drawing.Color.Transparent;
             this.label10.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label10.ForeColor = System.Drawing.Color.Gray;
-            this.label10.Location = new System.Drawing.Point(5, 224);
+            this.label10.Location = new System.Drawing.Point(5, 216);
             this.label10.Margin = new System.Windows.Forms.Padding(4);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(56, 13);
@@ -758,7 +941,7 @@ namespace InternalsViewer.UI
             this.label17.BackColor = System.Drawing.Color.Transparent;
             this.label17.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label17.ForeColor = System.Drawing.Color.Gray;
-            this.label17.Location = new System.Drawing.Point(5, 376);
+            this.label17.Location = new System.Drawing.Point(5, 368);
             this.label17.Margin = new System.Windows.Forms.Padding(4);
             this.label17.Name = "label17";
             this.label17.Size = new System.Drawing.Size(49, 13);
@@ -771,7 +954,7 @@ namespace InternalsViewer.UI
             this.label13.BackColor = System.Drawing.Color.Transparent;
             this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label13.ForeColor = System.Drawing.Color.Gray;
-            this.label13.Location = new System.Drawing.Point(5, 281);
+            this.label13.Location = new System.Drawing.Point(5, 273);
             this.label13.Margin = new System.Windows.Forms.Padding(4);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(54, 13);
@@ -784,7 +967,7 @@ namespace InternalsViewer.UI
             this.label9.BackColor = System.Drawing.Color.Transparent;
             this.label9.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label9.ForeColor = System.Drawing.Color.Gray;
-            this.label9.Location = new System.Drawing.Point(5, 164);
+            this.label9.Location = new System.Drawing.Point(5, 156);
             this.label9.Margin = new System.Windows.Forms.Padding(4);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(67, 13);
@@ -797,7 +980,7 @@ namespace InternalsViewer.UI
             this.label8.BackColor = System.Drawing.Color.Transparent;
             this.label8.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label8.ForeColor = System.Drawing.Color.Gray;
-            this.label8.Location = new System.Drawing.Point(5, 122);
+            this.label8.Location = new System.Drawing.Point(5, 118);
             this.label8.Margin = new System.Windows.Forms.Padding(4);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(57, 13);
@@ -843,189 +1026,6 @@ namespace InternalsViewer.UI
             this.label2.TabIndex = 218;
             this.label2.Text = "Next Page";
             // 
-            // splitContainer1
-            // 
-            this.splitContainer1.BackColor = System.Drawing.Color.Transparent;
-            this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Location = new System.Drawing.Point(176, 28);
-            this.splitContainer1.Name = "splitContainer1";
-            this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
-            // 
-            // splitContainer1.Panel1
-            // 
-            this.splitContainer1.Panel1.BackColor = System.Drawing.Color.Transparent;
-            this.splitContainer1.Panel1.Controls.Add(this.hexViewer);
-            this.splitContainer1.Panel1.Controls.Add(this.topLeftPanel);
-            // 
-            // splitContainer1.Panel2
-            // 
-            this.splitContainer1.Panel2.BackColor = System.Drawing.Color.White;
-            this.splitContainer1.Panel2.Controls.Add(this.allocationViewer);
-            this.splitContainer1.Panel2.Controls.Add(this.markerKeyTable);
-            this.splitContainer1.Size = new System.Drawing.Size(698, 573);
-            this.splitContainer1.SplitterDistance = 289;
-            this.splitContainer1.TabIndex = 247;
-            // 
-            // hexViewer
-            // 
-            this.hexViewer.AddressHex = false;
-            this.hexViewer.BackColor = System.Drawing.Color.White;
-            this.hexViewer.ColourAndOffsetDictionary = null;
-            this.hexViewer.Colourise = true;
-            this.hexViewer.DataRtf = null;
-            this.hexViewer.DataText = null;
-            this.hexViewer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.hexViewer.Font = new System.Drawing.Font("Courier New", 8.25F);
-            this.hexViewer.Location = new System.Drawing.Point(0, 0);
-            this.hexViewer.Margin = new System.Windows.Forms.Padding(1, 0, 0, 0);
-            this.hexViewer.Name = "hexViewer";
-            this.hexViewer.Padding = new System.Windows.Forms.Padding(1, 0, 1, 1);
-            this.hexViewer.Page = null;
-            this.hexViewer.SelectedOffset = -1;
-            this.hexViewer.SelectedRecord = -1;
-            this.hexViewer.Size = new System.Drawing.Size(518, 289);
-            this.hexViewer.TabIndex = 0;
-            this.hexViewer.RecordFind += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_RecordFind);
-            this.hexViewer.OffsetSet += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_OffsetSet);
-            this.hexViewer.OffsetOver += new System.EventHandler<InternalsViewer.UI.OffsetEventArgs>(this.HexViewer_OffsetOver);
-            // 
-            // topLeftPanel
-            // 
-            this.topLeftPanel.BackColor = System.Drawing.Color.Transparent;
-            this.topLeftPanel.Controls.Add(this.offsetTable);
-            this.topLeftPanel.Controls.Add(this.compressionInfoPanel);
-            this.topLeftPanel.Dock = System.Windows.Forms.DockStyle.Right;
-            this.topLeftPanel.Location = new System.Drawing.Point(518, 0);
-            this.topLeftPanel.Name = "topLeftPanel";
-            this.topLeftPanel.Padding = new System.Windows.Forms.Padding(3, 0, 0, 0);
-            this.topLeftPanel.Size = new System.Drawing.Size(180, 289);
-            this.topLeftPanel.TabIndex = 1;
-            // 
-            // offsetTable
-            // 
-            this.offsetTable.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.offsetTable.Location = new System.Drawing.Point(3, 0);
-            this.offsetTable.Name = "offsetTable";
-            this.offsetTable.Padding = new System.Windows.Forms.Padding(1);
-            this.offsetTable.Page = null;
-            this.offsetTable.SelectedSlot = -1;
-            this.offsetTable.Size = new System.Drawing.Size(177, 183);
-            this.offsetTable.TabIndex = 0;
-            this.offsetTable.SlotChanged += new System.EventHandler(this.OffsetTable_SlotChanged);
-            // 
-            // compressionInfoPanel
-            // 
-            this.compressionInfoPanel.Controls.Add(this.compressionInfoTable);
-            this.compressionInfoPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.compressionInfoPanel.Location = new System.Drawing.Point(3, 183);
-            this.compressionInfoPanel.Name = "compressionInfoPanel";
-            this.compressionInfoPanel.Padding = new System.Windows.Forms.Padding(0, 4, 0, 0);
-            this.compressionInfoPanel.Size = new System.Drawing.Size(177, 106);
-            this.compressionInfoPanel.TabIndex = 2;
-            // 
-            // compressionInfoTable
-            // 
-            this.compressionInfoTable.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.compressionInfoTable.Location = new System.Drawing.Point(0, 4);
-            this.compressionInfoTable.Name = "compressionInfoTable";
-            this.compressionInfoTable.Padding = new System.Windows.Forms.Padding(1);
-            this.compressionInfoTable.SelectedStructure = InternalsViewer.Internals.Compression.CompressionInformation.CompressionInfoStructure.Header;
-            this.compressionInfoTable.Size = new System.Drawing.Size(177, 102);
-            this.compressionInfoTable.TabIndex = 0;
-            this.compressionInfoTable.PropertyChanged += new System.ComponentModel.PropertyChangedEventHandler(this.CompressionInfoTable_PropertyChanged);
-            // 
-            // allocationViewer
-            // 
-            this.allocationViewer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.allocationViewer.Location = new System.Drawing.Point(0, 0);
-            this.allocationViewer.Name = "allocationViewer";
-            this.allocationViewer.Size = new System.Drawing.Size(698, 280);
-            this.allocationViewer.TabIndex = 1;
-            this.allocationViewer.Visible = false;
-            this.allocationViewer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationViewer_PageOver);
-            this.allocationViewer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationViewer_PageClicked);
-            // 
-            // markerKeyTable
-            // 
-            this.markerKeyTable.BackColor = System.Drawing.Color.White;
-            this.markerKeyTable.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.markerKeyTable.Location = new System.Drawing.Point(0, 0);
-            this.markerKeyTable.Name = "markerKeyTable";
-            this.markerKeyTable.Padding = new System.Windows.Forms.Padding(1);
-            this.markerKeyTable.Size = new System.Drawing.Size(698, 280);
-            this.markerKeyTable.TabIndex = 0;
-            this.markerKeyTable.SelectionClicked += new System.EventHandler(this.MarkerKeyTable_SelectionClicked);
-            this.markerKeyTable.SelectionChanged += new System.EventHandler(this.MarkerKeyTable_SelectionChanged);
-            this.markerKeyTable.PageNavigated += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.MarkerKeyTable_PageNavigated);
-            // 
-            // statusStrip
-            // 
-            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.pageAddressToolStripStatusLabel,
-            this.errorImageToolStripStatusLabel,
-            this.errorToolStripStatusLabel,
-            this.serverToolStripStatusLabel,
-            this.dataaseToolStripStatusLabel,
-            this.toolStripStatusLabel3,
-            this.markerDescriptionToolStripStatusLabel,
-            this.offsetToolStripStatusLabel});
-            this.statusStrip.Location = new System.Drawing.Point(0, 601);
-            this.statusStrip.Name = "statusStrip";
-            this.statusStrip.Size = new System.Drawing.Size(874, 22);
-            this.statusStrip.SizingGrip = false;
-            this.statusStrip.TabIndex = 201;
-            this.statusStrip.Text = "statusStrip";
-            // 
-            // pageAddressToolStripStatusLabel
-            // 
-            this.pageAddressToolStripStatusLabel.Name = "pageAddressToolStripStatusLabel";
-            this.pageAddressToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            // 
-            // errorImageToolStripStatusLabel
-            // 
-            this.errorImageToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.errorImageToolStripStatusLabel.Name = "errorImageToolStripStatusLabel";
-            this.errorImageToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            this.errorImageToolStripStatusLabel.Text = "Error Image";
-            // 
-            // errorToolStripStatusLabel
-            // 
-            this.errorToolStripStatusLabel.Name = "errorToolStripStatusLabel";
-            this.errorToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            // 
-            // serverToolStripStatusLabel
-            // 
-            this.serverToolStripStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.serverToolStripStatusLabel.Name = "serverToolStripStatusLabel";
-            this.serverToolStripStatusLabel.Size = new System.Drawing.Size(47, 17);
-            this.serverToolStripStatusLabel.Text = "[Server]";
-            // 
-            // dataaseToolStripStatusLabel
-            // 
-            this.dataaseToolStripStatusLabel.ForeColor = System.Drawing.Color.Gray;
-            this.dataaseToolStripStatusLabel.Name = "dataaseToolStripStatusLabel";
-            this.dataaseToolStripStatusLabel.Size = new System.Drawing.Size(61, 17);
-            this.dataaseToolStripStatusLabel.Text = "[Database]";
-            // 
-            // toolStripStatusLabel3
-            // 
-            this.toolStripStatusLabel3.Name = "toolStripStatusLabel3";
-            this.toolStripStatusLabel3.Size = new System.Drawing.Size(751, 17);
-            this.toolStripStatusLabel3.Spring = true;
-            // 
-            // markerDescriptionToolStripStatusLabel
-            // 
-            this.markerDescriptionToolStripStatusLabel.AutoToolTip = true;
-            this.markerDescriptionToolStripStatusLabel.BackColor = System.Drawing.Color.Red;
-            this.markerDescriptionToolStripStatusLabel.ImageTransparentColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
-            this.markerDescriptionToolStripStatusLabel.Name = "markerDescriptionToolStripStatusLabel";
-            this.markerDescriptionToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            // 
-            // offsetToolStripStatusLabel
-            // 
-            this.offsetToolStripStatusLabel.Name = "offsetToolStripStatusLabel";
-            this.offsetToolStripStatusLabel.Size = new System.Drawing.Size(0, 17);
-            // 
             // flatMenuStrip1
             // 
             this.flatMenuStrip1.AutoSize = false;
@@ -1052,7 +1052,7 @@ namespace InternalsViewer.UI
             // toolStripLabel1
             // 
             this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(35, 25);
+            this.toolStripLabel1.Size = new System.Drawing.Size(36, 25);
             this.toolStripLabel1.Text = "Page:";
             // 
             // pageToolStripTextBox
@@ -1068,23 +1068,23 @@ namespace InternalsViewer.UI
             // 
             // previousToolStripButton
             // 
-            this.previousToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.RightToLeftDoucmentHS;
+            this.previousToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.Backward_16xMD;
             this.previousToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.previousToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.previousToolStripButton.Name = "previousToolStripButton";
-            this.previousToolStripButton.Size = new System.Drawing.Size(49, 25);
-            this.previousToolStripButton.Text = "Back";
+            this.previousToolStripButton.Size = new System.Drawing.Size(101, 25);
+            this.previousToolStripButton.Text = "Previous Page";
             this.previousToolStripButton.ToolTipText = "Page ID - 1";
             this.previousToolStripButton.Click += new System.EventHandler(this.PreviousToolStripButton_Click);
             // 
             // nextToolStripButton
             // 
-            this.nextToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.LeftToRightDoucmentHS1;
+            this.nextToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.Forward_grey_16xMD;
             this.nextToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.nextToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.nextToolStripButton.Name = "nextToolStripButton";
-            this.nextToolStripButton.Size = new System.Drawing.Size(72, 25);
-            this.nextToolStripButton.Text = "Forwards";
+            this.nextToolStripButton.Size = new System.Drawing.Size(80, 25);
+            this.nextToolStripButton.Text = "Next Page";
             this.nextToolStripButton.ToolTipText = "Page ID +1";
             this.nextToolStripButton.Click += new System.EventHandler(this.NextToolStripButton_Click);
             // 
@@ -1115,10 +1115,10 @@ namespace InternalsViewer.UI
             // 
             // encodeAndFindToolStripButton
             // 
-            this.encodeAndFindToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.FindHS;
+            this.encodeAndFindToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.Search_16x;
             this.encodeAndFindToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.encodeAndFindToolStripButton.Name = "encodeAndFindToolStripButton";
-            this.encodeAndFindToolStripButton.Size = new System.Drawing.Size(95, 25);
+            this.encodeAndFindToolStripButton.Size = new System.Drawing.Size(105, 25);
             this.encodeAndFindToolStripButton.Text = "Encode && Find";
             this.encodeAndFindToolStripButton.ToolTipText = "Encode & Find";
             this.encodeAndFindToolStripButton.Click += new System.EventHandler(this.EncodeAndFindToolStripButton_Click);
@@ -1131,7 +1131,7 @@ namespace InternalsViewer.UI
             // logToolStripLabel
             // 
             this.logToolStripLabel.Name = "logToolStripLabel";
-            this.logToolStripLabel.Size = new System.Drawing.Size(87, 25);
+            this.logToolStripLabel.Size = new System.Drawing.Size(94, 25);
             this.logToolStripLabel.Text = "Transaction Log:";
             this.logToolStripLabel.Visible = false;
             // 
@@ -1159,20 +1159,21 @@ namespace InternalsViewer.UI
             this.Name = "PageViewerWindow";
             this.Size = new System.Drawing.Size(874, 623);
             this.leftPanel.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).EndInit();
+            this.splitContainer1.Panel1.ResumeLayout(false);
+            this.splitContainer1.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
+            this.splitContainer1.ResumeLayout(false);
+            this.topLeftPanel.ResumeLayout(false);
+            this.compressionInfoPanel.ResumeLayout(false);
+            this.statusStrip.ResumeLayout(false);
+            this.statusStrip.PerformLayout();
             this.headerBorderPanel.ResumeLayout(false);
             this.headerBorderPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bcmPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.dcmPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.sGamPictureBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.gamPictureBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pageBindingSource)).EndInit();
-            this.splitContainer1.Panel1.ResumeLayout(false);
-            this.splitContainer1.Panel2.ResumeLayout(false);
-            this.splitContainer1.ResumeLayout(false);
-            this.topLeftPanel.ResumeLayout(false);
-            this.compressionInfoPanel.ResumeLayout(false);
-            this.statusStrip.ResumeLayout(false);
-            this.statusStrip.PerformLayout();
             this.flatMenuStrip1.ResumeLayout(false);
             this.flatMenuStrip1.PerformLayout();
             this.ResumeLayout(false);

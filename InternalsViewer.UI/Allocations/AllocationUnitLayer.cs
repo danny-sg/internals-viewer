@@ -10,9 +10,9 @@ namespace InternalsViewer.UI.Allocations
 {
     public class AllocationUnitsLayer
     {
-        private static readonly int colourCount = 360;
-        private static readonly int userSaturation = 150;
-        private static readonly int userValue = 220;
+        private static readonly int ColourCount = 360;
+        private static readonly int UserSaturation = 150;
+        private static readonly int UserValue = 220;
 
         /// <summary>
         /// Generates map layers by loading object's allocation structures
@@ -22,14 +22,14 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         public static List<AllocationLayer> GenerateLayers(Database database, BackgroundWorker worker, bool separateIndexes, bool separateSystemObjects)
         {
-            List<AllocationLayer> layers = new List<AllocationLayer>();
+            var layers = new List<AllocationLayer>();
             AllocationLayer layer = null;
-            int colourIndex = 0;
-            int count = 0;
-            int systemColourIndex = 0;
-            string previousObjectName = string.Empty;
+            var colourIndex = 0;
+            var count = 0;
+            var systemColourIndex = 0;
+            var previousObjectName = string.Empty;
 
-            DataTable allocationUnits = database.AllocationUnits();
+            var allocationUnits = database.AllocationUnits();
 
             string filter;
 
@@ -42,9 +42,9 @@ namespace InternalsViewer.UI.Allocations
                 filter = string.Empty;
             }
 
-            int userObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", filter + " AND system=0");// "allocation_unit_type=1 AND system=0 AND index_id < 2");
+            var userObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", filter + " AND system=0");// "allocation_unit_type=1 AND system=0 AND index_id < 2");
 
-            int systemObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", filter + " AND system=1"); //, "allocation_unit_type=1 AND system=1 AND index_id < 2");
+            var systemObjectCount = (int)allocationUnits.Compute("COUNT(table_name)", filter + " AND system=1"); //, "allocation_unit_type=1 AND system=1 AND index_id < 2");
 
             foreach (DataRow row in allocationUnits.Rows)
             {
@@ -95,9 +95,9 @@ namespace InternalsViewer.UI.Allocations
                     {
                         if (layer.Name != previousObjectName)
                         {
-                            systemColourIndex += (int)Math.Floor(colourCount / (double)systemObjectCount);
+                            systemColourIndex += (int)Math.Floor(ColourCount / (double)systemObjectCount);
 
-                            if (colourIndex >= colourCount)
+                            if (colourIndex >= ColourCount)
                             {
                                 colourIndex = 1;
                             }
@@ -109,23 +109,23 @@ namespace InternalsViewer.UI.Allocations
                     {
                         if (layer.Name != previousObjectName)
                         {
-                            if (userObjectCount > colourCount)
+                            if (userObjectCount > ColourCount)
                             {
                                 colourIndex += 1;
                             }
                             else
                             {
-                                colourIndex += (int)Math.Floor(colourCount / (double)userObjectCount);
+                                colourIndex += (int)Math.Floor(ColourCount / (double)userObjectCount);
                             }
                         }
 
-                        layer.Colour = HsvColour.HsvToColor(colourIndex, userSaturation, userValue);
+                        layer.Colour = HsvColour.HsvToColor(colourIndex, UserSaturation, UserValue);
                     }
 
                     layers.Add(layer);
                 }
 
-                PageAddress address = new PageAddress((byte[])row["first_iam_page"]);
+                var address = new PageAddress((byte[])row["first_iam_page"]);
 
                 if (address.PageId > 0)
                 {

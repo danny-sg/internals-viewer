@@ -17,7 +17,7 @@ namespace InternalsViewer.UI.Controls
 
             this.AutoSize = false;
 
-            this.SetRenderer();
+           // this.SetRenderer();
         }
 
         /// <summary>
@@ -28,7 +28,7 @@ namespace InternalsViewer.UI.Controls
         {
             base.OnRendererChanged(e);
 
-            this.SetRenderer();
+           // this.SetRenderer();
         }
 
         /// <summary>

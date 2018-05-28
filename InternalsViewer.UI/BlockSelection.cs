@@ -4,48 +4,32 @@ namespace InternalsViewer.UI
 {
     public class BlockSelection
     {
-        private Color colour;
-        private int endPos;
-        private int startPos;
-
         public BlockSelection()
         {
         }
 
         public BlockSelection(int startPos, int endPos)
         {
-            this.startPos = startPos;
-            this.endPos = endPos;
+            this.StartPos = startPos;
+            this.EndPos = endPos;
         }
 
         public BlockSelection(int startPos, int endPos, Color colour)
         {
-            this.startPos = startPos;
-            this.endPos = endPos;
-            this.colour = colour;
+            this.StartPos = startPos;
+            this.EndPos = endPos;
+            this.Colour = colour;
         }
 
-        public int StartPos
-        {
-            get { return startPos; }
-            set { startPos = value; }
-        }
+        public int StartPos { get; set; }
 
-        public int EndPos
-        {
-            get { return endPos; }
-            set { endPos = value; }
-        }
+        public int EndPos { get; set; }
 
-        public Color Colour
-        {
-            get { return colour; }
-            set { colour = value; }
-        }
+        public Color Colour { get; set; }
 
         public bool HasColour
         {
-            get { return colour != null; }
+            get { return Colour != null; }
         }
     }
 }

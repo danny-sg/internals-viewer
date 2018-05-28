@@ -8,18 +8,18 @@ namespace InternalsViewer.UI.Renderers
 {
     internal class PfsRenderer : IDisposable
     {
-        private static readonly Color allocatedColour = Color.Silver;
-        private static readonly Color ghostColour = Color.Salmon;
-        private static readonly Color iamColour = Color.SlateBlue;
-        private static readonly Color mixedColor = Color.FromArgb(168, 204, 162);
-        private static readonly Color spaceColour = Color.LightGreen;
+        private static readonly Color AllocatedColour = Color.Silver;
+        private static readonly Color GhostColour = Color.Salmon;
+        private static readonly Color IamColour = Color.SlateBlue;
+        private static readonly Color MixedColor = Color.FromArgb(168, 204, 162);
+        private static readonly Color SpaceColour = Color.LightGreen;
 
         private readonly Color backColour;
         private readonly Color borderColour = Color.DarkGray;
         private Pen borderPen;
         private bool displayAllocationText;
         private Pen pageBorderPen;
-        private Rectangle pageRectangle;
+        private readonly Rectangle pageRectangle;
         private LinearGradientBrush pfsAllocatedBrush;
         private Font pfsFont;
         private Brush pfsGhostBrush;
@@ -44,19 +44,19 @@ namespace InternalsViewer.UI.Renderers
 
         public void CreateBrushesAndPens()
         {
-            pfsIamBrush = new SolidBrush(iamColour);
-            pfsGhostBrush = new SolidBrush(ghostColour);
-            pfsMixedBrush = new SolidBrush(mixedColor);
+            pfsIamBrush = new SolidBrush(IamColour);
+            pfsGhostBrush = new SolidBrush(GhostColour);
+            pfsMixedBrush = new SolidBrush(MixedColor);
 
             pfsAllocatedBrush = new LinearGradientBrush(pageRectangle,
-                                                        allocatedColour,
+                                                        AllocatedColour,
                                                         backColour,
                                                         LinearGradientMode.ForwardDiagonal);
             pfsAllocatedBrush.WrapMode = WrapMode.TileFlipX;
 
             pfsSpaceBrush = new LinearGradientBrush(pageRectangle,
-                                                    ExtentColour.LightBackgroundColour(spaceColour),
-                                                    spaceColour,
+                                                    ExtentColour.LightBackgroundColour(SpaceColour),
+                                                    SpaceColour,
                                                     LinearGradientMode.Vertical);
 
             pageBorderPen = new Pen(borderColour);
@@ -69,16 +69,16 @@ namespace InternalsViewer.UI.Renderers
 
         public void DrawPfsPage(Graphics g, Rectangle rect, PfsByte pfsByte)
         {
-            string spaceFree = string.Empty;
-            int spaceUsedWidth = 0;
+            var spaceFree = string.Empty;
+            var spaceUsedWidth = 0;
 
-            int indLen = (rect.Height / 3);
+            var indLen = (rect.Height / 3);
 
-            Rectangle pfsRect = new Rectangle(rect.X, rect.Y, rect.Width, indLen);
-            Rectangle iamRect = new Rectangle(rect.X + 1, rect.Y + pfsRect.Height, indLen, indLen);
-            Rectangle mixedRect = new Rectangle(rect.X + 1 + iamRect.Width, rect.Y + pfsRect.Height, indLen, indLen);
-            Rectangle ghostRect = new Rectangle(rect.X + 1 + iamRect.Width * 2, rect.Y + pfsRect.Height, indLen, indLen);
-            Rectangle spaceRect = new Rectangle(rect.X, mixedRect.Y + mixedRect.Height + 1, rect.Width, indLen + 1);
+            var pfsRect = new Rectangle(rect.X, rect.Y, rect.Width, indLen);
+            var iamRect = new Rectangle(rect.X + 1, rect.Y + pfsRect.Height, indLen, indLen);
+            var mixedRect = new Rectangle(rect.X + 1 + iamRect.Width, rect.Y + pfsRect.Height, indLen, indLen);
+            var ghostRect = new Rectangle(rect.X + 1 + iamRect.Width * 2, rect.Y + pfsRect.Height, indLen, indLen);
+            var spaceRect = new Rectangle(rect.X, mixedRect.Y + mixedRect.Height + 1, rect.Width, indLen + 1);
 
             if (pfsByte.Allocated)
             {
@@ -152,9 +152,9 @@ namespace InternalsViewer.UI.Renderers
 
         public Bitmap PfsBitmap(PfsByte pfsByte)
         {
-            Bitmap pfsBitmap = new Bitmap(36, 36);
+            var pfsBitmap = new Bitmap(36, 36);
             pfsBitmap.SetResolution(100, 100);
-            Graphics g = Graphics.FromImage(pfsBitmap);
+            var g = Graphics.FromImage(pfsBitmap);
 
             DrawPfsPage(g, pageRectangle, pfsByte);
 
@@ -163,11 +163,11 @@ namespace InternalsViewer.UI.Renderers
 
         internal static Bitmap KeyImage(Color color)
         {
-            Bitmap key = new Bitmap(16, 16);
-            Rectangle keyRectange = new Rectangle(0, 0, key.Width - 1, key.Height - 1);
-            Graphics g = Graphics.FromImage(key);
+            var key = new Bitmap(16, 16);
+            var keyRectange = new Rectangle(0, 0, key.Width - 1, key.Height - 1);
+            var g = Graphics.FromImage(key);
 
-            LinearGradientBrush brush = new LinearGradientBrush(keyRectange,
+            var brush = new LinearGradientBrush(keyRectange,
                                                                 color,
                                                                 ExtentColour.BackgroundColour(color),
                                                                 LinearGradientMode.Horizontal);
@@ -180,8 +180,8 @@ namespace InternalsViewer.UI.Renderers
 
         internal void ResizePage(int width, int height)
         {
-            float sx = pfsAllocatedBrush.Rectangle.Height / height;
-            float sy = pfsAllocatedBrush.Rectangle.Width / width;
+            var sx = pfsAllocatedBrush.Rectangle.Height / height;
+            var sy = pfsAllocatedBrush.Rectangle.Width / width;
 
             pfsAllocatedBrush.ResetTransform();
             pfsAllocatedBrush.ScaleTransform(sx, sy);

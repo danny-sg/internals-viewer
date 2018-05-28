@@ -17,17 +17,12 @@ namespace InternalsViewer.UI.Controls
             {
                 this.Structure = structure;
             }
-            private CompressionInformation.CompressionInfoStructure structure;
 
-            public CompressionInformation.CompressionInfoStructure Structure
-            {
-                get { return structure; }
-                set { structure = value; }
-            }
+            public CompressionInformation.CompressionInfoStructure Structure { get; set; }
 
             public string Description
             {
-                get { return Enum.GetName(typeof(CompressionInformation.CompressionInfoStructure), structure); }
+                get { return Enum.GetName(typeof(CompressionInformation.CompressionInfoStructure), Structure); }
             }
         }
 
@@ -42,7 +37,7 @@ namespace InternalsViewer.UI.Controls
 
         public void RefreshElements(bool hasAnchor, bool hasDictionary)
         {
-            List<CompressionStructure> elements = new List<CompressionStructure>();
+            var elements = new List<CompressionStructure>();
 
             elements.Add(new CompressionStructure(CompressionInformation.CompressionInfoStructure.Header));
 
@@ -62,7 +57,7 @@ namespace InternalsViewer.UI.Controls
 
         private List<CompressionStructure> GenerateCompressionElements()
         {
-            List<CompressionStructure> elements = new List<CompressionStructure>();
+            var elements = new List<CompressionStructure>();
 
             foreach (CompressionInformation.CompressionInfoStructure s in Enum.GetValues(typeof(CompressionInformation.CompressionInfoStructure)))
             {
@@ -107,13 +102,13 @@ namespace InternalsViewer.UI.Controls
 
         public event PropertyChangedEventHandler PropertyChanged
         {
-            add { _changed += value; }
-            remove { _changed -= value; }
+            add { Changed += value; }
+            remove { Changed -= value; }
         }
 
         #endregion
 
-        private event PropertyChangedEventHandler _changed;
+        private event PropertyChangedEventHandler Changed;
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -126,9 +121,9 @@ namespace InternalsViewer.UI.Controls
 
         protected void OnPropertyChanged(string prop)
         {
-            if (null != _changed)
+            if (null != Changed)
             {
-                _changed(this, new PropertyChangedEventArgs(prop));
+                Changed(this, new PropertyChangedEventArgs(prop));
             }
         }
 

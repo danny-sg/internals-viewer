@@ -107,7 +107,7 @@ namespace InternalsViewer.Internals
                                            (byte)r["compatibility_level"]));
             }
 
-            currentDatabase = Databases.Find(delegate(Database d) { return d.Name == databaseName; });
+            currentDatabase = Databases.Find(d => d.Name == databaseName);
         }
 
         private static void CheckSysAdmin(SqlConnection conn)
@@ -140,7 +140,7 @@ namespace InternalsViewer.Internals
 
             if (Version < 9)
             {
-                throw new NotSupportedException("This application currently only supports SQL Server 2005 and 2008.");
+                throw new NotSupportedException("This application currently only supports SQL Server 2005+");
             }
         }
 

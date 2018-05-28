@@ -93,9 +93,9 @@ namespace InternalsViewer.UI.Controls
             this.markersDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.markersDataGridView.Size = new System.Drawing.Size(248, 148);
             this.markersDataGridView.TabIndex = 0;
-            this.markersDataGridView.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.MarkersDataGridView_CellFormatting);
             this.markersDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.MarkersDataGridView_CellClick);
             this.markersDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.MarkersDataGridView_CellContentClick);
+            this.markersDataGridView.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.MarkersDataGridView_CellFormatting);
             // 
             // markerBindingSource
             // 
@@ -110,29 +110,29 @@ namespace InternalsViewer.UI.Controls
             this.toolStripSeparator1,
             this.toolStripMenuItem1});
             this.contextMenuStrip1.Name = "contextMenuStrip1";
-            this.contextMenuStrip1.Size = new System.Drawing.Size(204, 76);
+            this.contextMenuStrip1.Size = new System.Drawing.Size(219, 76);
             // 
             // navigateToToolStripMenuItem
             // 
             this.navigateToToolStripMenuItem.Name = "navigateToToolStripMenuItem";
-            this.navigateToToolStripMenuItem.Size = new System.Drawing.Size(203, 22);
+            this.navigateToToolStripMenuItem.Size = new System.Drawing.Size(218, 22);
             this.navigateToToolStripMenuItem.Text = "Navigate to";
             // 
             // navigateToInNewWindowToolStripMenuItem
             // 
             this.navigateToInNewWindowToolStripMenuItem.Name = "navigateToInNewWindowToolStripMenuItem";
-            this.navigateToInNewWindowToolStripMenuItem.Size = new System.Drawing.Size(203, 22);
+            this.navigateToInNewWindowToolStripMenuItem.Size = new System.Drawing.Size(218, 22);
             this.navigateToInNewWindowToolStripMenuItem.Text = "Navigate to in new window";
             // 
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(200, 6);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(215, 6);
             // 
             // toolStripMenuItem1
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(203, 22);
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(218, 22);
             this.toolStripMenuItem1.Text = "toolStripMenuItem1";
             // 
             // pageContextMenuStrip
@@ -141,18 +141,18 @@ namespace InternalsViewer.UI.Controls
             this.navigateToolStripMenuItem,
             this.navigateToInNewWindowToolStripMenuItem1});
             this.pageContextMenuStrip.Name = "pageContextMenuStrip";
-            this.pageContextMenuStrip.Size = new System.Drawing.Size(216, 48);
+            this.pageContextMenuStrip.Size = new System.Drawing.Size(228, 48);
             // 
             // navigateToolStripMenuItem
             // 
             this.navigateToolStripMenuItem.Name = "navigateToolStripMenuItem";
-            this.navigateToolStripMenuItem.Size = new System.Drawing.Size(215, 22);
+            this.navigateToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
             this.navigateToolStripMenuItem.Text = "Navigate to...";
             // 
             // navigateToInNewWindowToolStripMenuItem1
             // 
             this.navigateToInNewWindowToolStripMenuItem1.Name = "navigateToInNewWindowToolStripMenuItem1";
-            this.navigateToInNewWindowToolStripMenuItem1.Size = new System.Drawing.Size(215, 22);
+            this.navigateToInNewWindowToolStripMenuItem1.Size = new System.Drawing.Size(227, 22);
             this.navigateToInNewWindowToolStripMenuItem1.Text = "Navigate to in new window...";
             // 
             // KeyColumn
@@ -221,24 +221,25 @@ namespace InternalsViewer.UI.Controls
             dataGridViewCellStyle3.SelectionBackColor = System.Drawing.Color.Gainsboro;
             dataGridViewCellStyle3.SelectionForeColor = System.Drawing.Color.Black;
             this.nameDataGridViewTextBoxColumn.DefaultCellStyle = dataGridViewCellStyle3;
-            this.nameDataGridViewTextBoxColumn.HeaderText = "";
+            this.nameDataGridViewTextBoxColumn.HeaderText = "Name";
             this.nameDataGridViewTextBoxColumn.Name = "nameDataGridViewTextBoxColumn";
             this.nameDataGridViewTextBoxColumn.ReadOnly = true;
             this.nameDataGridViewTextBoxColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             this.nameDataGridViewTextBoxColumn.ToolTipText = "Item";
-            this.nameDataGridViewTextBoxColumn.Width = 5;
+            this.nameDataGridViewTextBoxColumn.Width = 41;
             // 
             // valueDataGridViewTextBoxColumn
             // 
             this.valueDataGridViewTextBoxColumn.ActiveLinkColor = System.Drawing.Color.Black;
             this.valueDataGridViewTextBoxColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
             this.valueDataGridViewTextBoxColumn.DataPropertyName = "Value";
-            this.valueDataGridViewTextBoxColumn.HeaderText = "";
+            this.valueDataGridViewTextBoxColumn.HeaderText = "Value";
             this.valueDataGridViewTextBoxColumn.LinkBehavior = System.Windows.Forms.LinkBehavior.NeverUnderline;
             this.valueDataGridViewTextBoxColumn.LinkColor = System.Drawing.Color.Black;
             this.valueDataGridViewTextBoxColumn.Name = "valueDataGridViewTextBoxColumn";
             this.valueDataGridViewTextBoxColumn.ReadOnly = true;
             this.valueDataGridViewTextBoxColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.valueDataGridViewTextBoxColumn.Text = "";
             this.valueDataGridViewTextBoxColumn.ToolTipText = "Value";
             this.valueDataGridViewTextBoxColumn.TrackVisitedState = false;
             this.valueDataGridViewTextBoxColumn.VisitedLinkColor = System.Drawing.Color.Black;
@@ -252,7 +253,7 @@ namespace InternalsViewer.UI.Controls
             this.startPositionDataGridViewTextBoxColumn.ReadOnly = true;
             this.startPositionDataGridViewTextBoxColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             this.startPositionDataGridViewTextBoxColumn.ToolTipText = "Start Offset";
-            this.startPositionDataGridViewTextBoxColumn.Width = 33;
+            this.startPositionDataGridViewTextBoxColumn.Width = 35;
             // 
             // endPositionDataGridViewTextBoxColumn
             // 
@@ -263,7 +264,7 @@ namespace InternalsViewer.UI.Controls
             this.endPositionDataGridViewTextBoxColumn.ReadOnly = true;
             this.endPositionDataGridViewTextBoxColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             this.endPositionDataGridViewTextBoxColumn.ToolTipText = "End Offset";
-            this.endPositionDataGridViewTextBoxColumn.Width = 30;
+            this.endPositionDataGridViewTextBoxColumn.Width = 32;
             // 
             // MarkerKeyTable
             // 

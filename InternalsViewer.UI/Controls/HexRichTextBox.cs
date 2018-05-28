@@ -9,8 +9,6 @@ namespace InternalsViewer.UI.Controls
     internal class HexRichTextBox : RichTextBox
     {
         private readonly List<BlockSelection> blocks = new List<BlockSelection>();
-        private Size textLineSize;
-        private Size textSize;
 
         public HexRichTextBox()
         {
@@ -23,7 +21,7 @@ namespace InternalsViewer.UI.Controls
             if (m.Msg == 0xF)
             {
                 base.WndProc(ref m);
-                Graphics graphic = CreateGraphics();
+                var graphic = CreateGraphics();
 
                 this.OnPaint(new PaintEventArgs(graphic, ClientRectangle));
 
@@ -37,7 +35,7 @@ namespace InternalsViewer.UI.Controls
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            foreach (BlockSelection block in blocks)
+            foreach (var block in blocks)
             {
                 this.DrawBlock(e.Graphics, block);
             }
@@ -45,20 +43,20 @@ namespace InternalsViewer.UI.Controls
 
         private void DrawBlock(Graphics graphics, BlockSelection block)
         {
-            int startCharIndex = block.StartPos * 3;
-            int endCharIndex = (block.EndPos * 3) - 2;
+            var startCharIndex = block.StartPos * 3;
+            var endCharIndex = (block.EndPos * 3) - 2;
 
-            Point topPos = GetPositionFromCharIndex(0);
-            Point startPos = GetPositionFromCharIndex(startCharIndex);
-            Point endPos = GetPositionFromCharIndex(endCharIndex);
+            var topPos = GetPositionFromCharIndex(0);
+            var startPos = GetPositionFromCharIndex(startCharIndex);
+            var endPos = GetPositionFromCharIndex(endCharIndex);
 
-            Pen blockPen = new Pen(block.Colour);
+            var blockPen = new Pen(block.Colour);
 
             int lines;
 
             if (startPos.Y != endPos.Y)
             {
-                lines = ((endPos.Y - startPos.Y) / textSize.Height);
+                lines = ((endPos.Y - startPos.Y) / TextSize.Height);
 
                 Rectangle top;
                 Rectangle middle;
@@ -66,27 +64,27 @@ namespace InternalsViewer.UI.Controls
 
                 if (startPos.Y == endPos.Y)
                 {
-                    top = new Rectangle(startPos.X - 2, startPos.Y, endPos.X, textSize.Height);
+                    top = new Rectangle(startPos.X - 2, startPos.Y, endPos.X, TextSize.Height);
                 }
                 else
                 {
                     top = new Rectangle(startPos.X - 2,
                                         startPos.Y,
-                                        3 + textLineSize.Width - startPos.X,
-                                        textSize.Height);
+                                        3 + TextLineSize.Width - startPos.X,
+                                        TextSize.Height);
                 }
 
                 middle = new Rectangle(topPos.X - 2,
-                                       startPos.Y + textSize.Height,
-                                       3 + textLineSize.Width - topPos.X,
-                                       textSize.Height * (lines - 1));
+                                       startPos.Y + TextSize.Height,
+                                       3 + TextLineSize.Width - topPos.X,
+                                       TextSize.Height * (lines - 1));
 
                 bottom = new Rectangle(topPos.X - 2,
                                        endPos.Y,
                                        endPos.X,
-                                       textSize.Height);
+                                       TextSize.Height);
 
-                GraphicsPath path = new GraphicsPath();
+                var path = new GraphicsPath();
 
                 path.AddRectangle(top);
 
@@ -104,15 +102,15 @@ namespace InternalsViewer.UI.Controls
                     //Blank out top-bottom line
                     graphics.DrawLine(Pens.White,
                                       top.X + 1,
-                                      startPos.Y + textLineSize.Height,
-                                      textLineSize.Width - 3,
-                                      startPos.Y + textLineSize.Height);
+                                      startPos.Y + TextLineSize.Height,
+                                      TextLineSize.Width - 3,
+                                      startPos.Y + TextLineSize.Height);
 
                     //Blank out middle-bottom line
                     graphics.DrawLine(Pens.White,
                                       1,
                                       endPos.Y,
-                                      endPos.X + textSize.Width - 4,
+                                      endPos.X + TextSize.Width - 4,
                                       endPos.Y);
                 }
                 else
@@ -122,18 +120,18 @@ namespace InternalsViewer.UI.Controls
                         //Blank out start<end line
                         graphics.DrawLine(Pens.White,
                                           startPos.X - 1,
-                                          startPos.Y + textLineSize.Height,
-                                          endPos.X + textSize.Width - 4,
-                                          startPos.Y + textLineSize.Height);
+                                          startPos.Y + TextLineSize.Height,
+                                          endPos.X + TextSize.Width - 4,
+                                          startPos.Y + TextLineSize.Height);
                     }
-                    else if (endPos.X + textSize.Width != startPos.X)
+                    else if (endPos.X + TextSize.Width != startPos.X)
                     {
                         //Blank out start>end line
                         graphics.DrawLine(Pens.White,
                                           startPos.X - 4,
-                                          startPos.Y + textLineSize.Height,
-                                          endPos.X + textSize.Width - 1,
-                                          startPos.Y + textLineSize.Height);
+                                          startPos.Y + TextLineSize.Height,
+                                          endPos.X + TextSize.Width - 1,
+                                          startPos.Y + TextLineSize.Height);
                     }
                 }
             }
@@ -141,10 +139,10 @@ namespace InternalsViewer.UI.Controls
             {
                 lines = 1;
 
-                Rectangle textRectange = new Rectangle(startPos.X < 3 ? 0 : startPos.X - 2,
+                var textRectange = new Rectangle(startPos.X < 3 ? 0 : startPos.X - 2,
                                                        startPos.Y,
-                                                       (endPos.X - startPos.X + textSize.Width - 2) % textLineSize.Width,
-                                                       lines * textSize.Height);
+                                                       (endPos.X - startPos.X + TextSize.Width - 2) % TextLineSize.Width,
+                                                       lines * TextSize.Height);
 
                 graphics.DrawRectangle(blockPen, textRectange);
             }
@@ -167,17 +165,8 @@ namespace InternalsViewer.UI.Controls
             blocks.Clear();
         }
 
-        public Size TextSize
-        {
-            get { return this.textSize; }
-            set { this.textSize = value; }
-        }
+        public Size TextSize { get; set; }
 
-        public Size TextLineSize
-        {
-            get { return this.textLineSize; }
-            set { this.textLineSize = value; }
-        }
-
+        public Size TextLineSize { get; set; }
     }
 }

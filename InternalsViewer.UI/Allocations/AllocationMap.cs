@@ -21,38 +21,26 @@ namespace InternalsViewer.UI.Allocations
 
         private readonly Color defaultPageBorderColour = Color.White;
         private Color borderColour = Color.Gainsboro;
-        private int extentCount;
         private int extentsHorizontal;
         private int extentsRemaining;
         private int extentsVertical;
-        private int visibleExtents;
         private int windowPosition;
-        private Pfs pfs;
-        private DatabaseFile file;
-        private int fileId;
-        private bool includeIam;
-        private List<AllocationLayer> mapLayers;
         private Size extentSize;
         private MapMode mode;
         private readonly VScrollBar scrollBar;
         private int selectedPage = -1;
-        private PageAddress startPage = new PageAddress(1, 0);
         public event EventHandler<PageEventArgs> PageClicked;
         public event EventHandler RangeSelected;
         public event EventHandler<PageEventArgs> PageOver;
         public event EventHandler WindowPositionChanged;
         private readonly PageExtentRenderer pageExtentRenderer;
         private readonly PfsRenderer pfsRenderer;
-        private bool holding;
-        private string holdingMessage;
 
-        private int selectionStartExtent = -1;
-        private int selectionEndExtent = -1;
         private int provisionalEndExtent;
-        private BackgroundWorker imageBufferBackgroundWorker = new BackgroundWorker();
+        private readonly BackgroundWorker imageBufferBackgroundWorker = new BackgroundWorker();
 
-        private Pen backgroundLine = new Pen(Color.FromArgb(242, 242, 242), 2);
-        private LinearGradientBrush backgroundBrush;
+        private readonly Pen backgroundLine = new Pen(Color.FromArgb(242, 242, 242), 2);
+        private readonly LinearGradientBrush backgroundBrush;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AllocationMap"/> class.
@@ -97,7 +85,7 @@ namespace InternalsViewer.UI.Allocations
             this.backgroundBrush = new LinearGradientBrush(this.ClientRectangle, SystemColors.Control, SystemColors.ControlLightLight, LinearGradientMode.Horizontal);
             this.backgroundBrush.WrapMode = WrapMode.TileFlipX;
 
-            this.mapLayers = new List<AllocationLayer>();
+            this.MapLayers = new List<AllocationLayer>();
         }
 
         void AllocationMap_Resize(object sender, EventArgs e)
@@ -137,7 +125,7 @@ namespace InternalsViewer.UI.Allocations
         {
             this.pageExtentRenderer.ResizePageBrush(this.ExtentSize);
 
-            foreach (AllocationLayer layer in this.mapLayers)
+            foreach (var layer in this.MapLayers)
             {
                 if (layer.Visible)
                 {
@@ -163,9 +151,9 @@ namespace InternalsViewer.UI.Allocations
                         this.pageExtentRenderer.PageBorderColour = this.defaultPageBorderColour;
                     }
 
-                    foreach (Allocation allocation in layer.Allocations)
+                    foreach (var allocation in layer.Allocations)
                     {
-                        foreach (PageAddress address in allocation.SinglePageSlots)
+                        foreach (var address in allocation.SinglePageSlots)
                         {
                             if (address.FileId == this.FileId && address.PageId != 0 && this.CheckPageVisible(address.PageId))
                             {
@@ -175,9 +163,9 @@ namespace InternalsViewer.UI.Allocations
                             }
                         }
 
-                        if (this.includeIam)
+                        if (this.IncludeIam)
                         {
-                            foreach (AllocationPage page in allocation.Pages)
+                            foreach (var page in allocation.Pages)
                             {
                                 if (this.CheckPageVisible(page.PageAddress.PageId))
                                 {
@@ -200,19 +188,19 @@ namespace InternalsViewer.UI.Allocations
         {
             this.pageExtentRenderer.ResizeExtentBrush(this.ExtentSize);
 
-            for (int extent = this.windowPosition;
-                 extent < this.extentCount && extent < (this.visibleExtents + this.windowPosition);
+            for (var extent = this.windowPosition;
+                 extent < this.ExtentCount && extent < (this.VisibleExtents + this.windowPosition);
                  extent++)
             {
-                foreach (AllocationLayer layer in this.mapLayers)
+                foreach (var layer in this.MapLayers)
                 {
                     if (layer.Visible && !layer.SingleSlotsOnly)
                     {
-                        foreach (Allocation chain in layer.Allocations)
+                        foreach (var chain in layer.Allocations)
                         {
-                            int targetExtent = extent + (this.startPage.PageId / 8);
+                            var targetExtent = extent + (this.StartPage.PageId / 8);
 
-                            if (Allocation.CheckAllocationStatus(targetExtent, this.fileId, layer.Invert, chain))
+                            if (Allocation.CheckAllocationStatus(targetExtent, this.FileId, layer.Invert, chain))
                             {
                                 this.pageExtentRenderer.SetExtentBrushColour(layer.Colour,
                                                                              ExtentColour.BackgroundColour(layer.Colour));
@@ -232,7 +220,7 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         private bool CheckPageVisible(int pageId)
         {
-            return pageId >= (this.windowPosition * 8) && pageId <= ((this.visibleExtents + this.windowPosition) * 8);
+            return pageId >= (this.windowPosition * 8) && pageId <= ((this.VisibleExtents + this.windowPosition) * 8);
         }
 
         /// <summary>
@@ -262,7 +250,7 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         private Rectangle PagePosition(int page)
         {
-            int pageWidth = this.extentSize.Width / 8;
+            var pageWidth = this.extentSize.Width / 8;
 
             if (page != 0)
             {
@@ -305,12 +293,12 @@ namespace InternalsViewer.UI.Allocations
             this.extentsHorizontal = (int)Math.Floor((decimal)(Width - this.scrollBar.Width) / this.extentSize.Width);
             this.extentsVertical = (int)Math.Ceiling((decimal)Height / this.extentSize.Height);
 
-            if (this.extentsHorizontal == 0 | this.extentsVertical == 0 | this.extentCount == 0)
+            if (this.extentsHorizontal == 0 | this.extentsVertical == 0 | this.ExtentCount == 0)
             {
                 return;
             }
 
-            this.extentsRemaining = this.extentCount - (this.extentsHorizontal * this.extentsVertical);
+            this.extentsRemaining = this.ExtentCount - (this.extentsHorizontal * this.extentsVertical);
 
             this.scrollBar.SmallChange = this.extentsHorizontal;
             this.scrollBar.LargeChange = (this.extentsVertical - 1) * this.extentsHorizontal;
@@ -320,9 +308,9 @@ namespace InternalsViewer.UI.Allocations
                 this.extentsHorizontal = 1;
             }
 
-            if (this.extentsHorizontal * this.extentsVertical > this.extentCount)
+            if (this.extentsHorizontal * this.extentsVertical > this.ExtentCount)
             {
-                this.VisibleExtents = this.extentCount;
+                this.VisibleExtents = this.ExtentCount;
                 this.scrollBar.Enabled = false;
             }
             else
@@ -331,19 +319,19 @@ namespace InternalsViewer.UI.Allocations
                 this.VisibleExtents = this.extentsHorizontal * this.extentsVertical;
             }
 
-            this.scrollBar.Maximum = this.extentCount + this.extentsHorizontal;
+            this.scrollBar.Maximum = this.ExtentCount + this.extentsHorizontal;
 
-            if (this.extentsHorizontal > this.extentCount)
+            if (this.extentsHorizontal > this.ExtentCount)
             {
-                this.extentsHorizontal = this.extentCount;
+                this.extentsHorizontal = this.ExtentCount;
             }
 
-            if (this.extentsVertical > (this.extentCount / this.extentsHorizontal))
+            if (this.extentsVertical > (this.ExtentCount / this.extentsHorizontal))
             {
-                this.extentsVertical = (this.extentCount / this.extentsHorizontal);
+                this.extentsVertical = (this.ExtentCount / this.extentsHorizontal);
             }
 
-            this.extentsRemaining = this.extentCount - (this.extentsHorizontal * this.extentsVertical);
+            this.extentsRemaining = this.ExtentCount - (this.extentsHorizontal * this.extentsVertical);
         }
 
         /// <summary>
@@ -352,9 +340,9 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
         private void DrawSelectedRange(PaintEventArgs e)
         {
-            if (this.selectionStartExtent > 0)
+            if (this.SelectionStartExtent > 0)
             {
-                for (int extent = this.selectionStartExtent; extent < (this.selectionEndExtent < 0 ? this.provisionalEndExtent : this.selectionEndExtent); extent++)
+                for (var extent = this.SelectionStartExtent; extent < (this.SelectionEndExtent < 0 ? this.provisionalEndExtent : this.SelectionEndExtent); extent++)
                 {
                     this.pageExtentRenderer.DrawSelection(e.Graphics, this.ExtentPosition(extent));
                 }
@@ -423,7 +411,7 @@ namespace InternalsViewer.UI.Allocations
             }
             else
             {
-                if (!e.ClipRectangle.IsEmpty && this.extentCount > 0 && Visible)
+                if (!e.ClipRectangle.IsEmpty && this.ExtentCount > 0 && Visible)
                 {
                     if (this.Mode != MapMode.Full)
                     {
@@ -451,14 +439,14 @@ namespace InternalsViewer.UI.Allocations
                     {
                         case MapMode.Standard:
 
-                            if (this.extentCount > 0)
+                            if (this.ExtentCount > 0)
                             {
                                 this.DrawExtents(e);
                             }
 
                             this.DrawSinglePages(e);
 
-                            int mapWidth = this.extentsHorizontal * this.extentSize.Width;
+                            var mapWidth = this.extentsHorizontal * this.extentSize.Width;
 
                             e.Graphics.FillRectangle(backgroundBrush, mapWidth, 0, this.Width - mapWidth, this.Height);
 
@@ -520,27 +508,27 @@ namespace InternalsViewer.UI.Allocations
         {
             if (e.Button == MouseButtons.Left)
             {
-                int newSelectedBlock = this.ExtentPosition(e.X, e.Y);
+                var newSelectedBlock = this.ExtentPosition(e.X, e.Y);
 
                 if (newSelectedBlock != this.SelectedPage)
                 {
-                    int page = this.PagePosition(e.X, e.Y) + (this.WindowPosition * 8);
+                    var page = this.PagePosition(e.X, e.Y) + (this.WindowPosition * 8);
 
-                    if (page <= (this.extentCount * 8))
+                    if (page <= (this.ExtentCount * 8))
                     {
                         this.SelectedPage = this.PagePosition(e.X, e.Y) + (this.WindowPosition * 8);
 
                         if (this.Mode == MapMode.RangeSelection)
                         {
-                            if (this.selectionStartExtent <= 0)
+                            if (this.SelectionStartExtent <= 0)
                             {
-                                this.selectionStartExtent = newSelectedBlock;
+                                this.SelectionStartExtent = newSelectedBlock;
                             }
                             else
                             {
-                                this.selectionEndExtent = newSelectedBlock;
+                                this.SelectionEndExtent = newSelectedBlock;
 
-                                EventHandler temp = this.RangeSelected;
+                                var temp = this.RangeSelected;
                                 if (temp != null)
                                 {
                                     temp(this, EventArgs.Empty);
@@ -549,13 +537,13 @@ namespace InternalsViewer.UI.Allocations
                         }
                         else
                         {
-                            EventHandler<PageEventArgs> temp = this.PageClicked;
+                            var temp = this.PageClicked;
 
                             if (temp != null)
                             {
-                                bool openInNewWindow = Control.ModifierKeys == Keys.Shift;
+                                var openInNewWindow = Control.ModifierKeys == Keys.Shift;
 
-                                temp(this, new PageEventArgs(new RowIdentifier(this.FileId, page + this.startPage.PageId, 0), openInNewWindow));
+                                temp(this, new PageEventArgs(new RowIdentifier(this.FileId, page + this.StartPage.PageId, 0), openInNewWindow));
                             }
                         }
                     }
@@ -572,19 +560,19 @@ namespace InternalsViewer.UI.Allocations
         {
             if (this.Mode != MapMode.Full)
             {
-                int newSelectedBlock = this.ExtentPosition(e.X, e.Y);
+                var newSelectedBlock = this.ExtentPosition(e.X, e.Y);
 
                 if (newSelectedBlock != this.SelectedPage)
                 {
-                    int page = this.PagePosition(e.X, e.Y) + (this.WindowPosition * 8);
+                    var page = this.PagePosition(e.X, e.Y) + (this.WindowPosition * 8);
 
-                    if (page <= (this.extentCount * 8))
+                    if (page <= (this.ExtentCount * 8))
                     {
-                        EventHandler<PageEventArgs> temp = this.PageOver;
+                        var temp = this.PageOver;
 
                         if (temp != null)
                         {
-                            temp(this, new PageEventArgs(new RowIdentifier(this.FileId, page + this.startPage.PageId, 0), false));
+                            temp(this, new PageEventArgs(new RowIdentifier(this.FileId, page + this.StartPage.PageId, 0), false));
                         }
 
                         if (this.Mode == MapMode.RangeSelection)
@@ -602,11 +590,11 @@ namespace InternalsViewer.UI.Allocations
 
         private void DrawPfsPages(PaintEventArgs e)
         {
-            if (pfs != null)
+            if (Pfs != null)
             {
-                for (int i = 0; i < (visibleExtents * 8) && i + (WindowPosition * 8) < extentCount * 8; i++)
+                for (var i = 0; i < (VisibleExtents * 8) && i + (WindowPosition * 8) < ExtentCount * 8; i++)
                 {
-                    int pageId = i + (WindowPosition * 8);
+                    var pageId = i + (WindowPosition * 8);
 
                     pfsRenderer.DrawPfsPage(e.Graphics, PagePosition(i), Pfs.PagePfsByte(pageId));
                 }
@@ -631,31 +619,19 @@ namespace InternalsViewer.UI.Allocations
         /// Gets or sets the file id.
         /// </summary>
         /// <value>The file id.</value>
-        public int FileId
-        {
-            get { return this.fileId; }
-            set { this.fileId = value; }
-        }
+        public int FileId { get; set; }
 
         /// <summary>
         /// Gets or sets the map layers.
         /// </summary>
         /// <value>The map layers.</value>
-        public List<AllocationLayer> MapLayers
-        {
-            get { return this.mapLayers; }
-            set { this.mapLayers = value; }
-        }
+        public List<AllocationLayer> MapLayers { get; set; }
 
         /// <summary>
         /// Gets or sets the number of visible extents.
         /// </summary>
         /// <value>The number visible extents.</value>
-        public int VisibleExtents
-        {
-            get { return this.visibleExtents; }
-            set { this.visibleExtents = value; }
-        }
+        public int VisibleExtents { get; set; }
 
         /// <summary>
         /// Gets or sets the border colour.
@@ -673,7 +649,7 @@ namespace InternalsViewer.UI.Allocations
         /// <value>The selected page.</value>
         public int SelectedPage
         {
-            get { return this.selectedPage + this.startPage.PageId; }
+            get { return this.selectedPage + this.StartPage.PageId; }
             set { this.selectedPage = value; }
         }
 
@@ -701,11 +677,7 @@ namespace InternalsViewer.UI.Allocations
         /// Gets or sets the extent count.
         /// </summary>
         /// <value>The extent count.</value>
-        public int ExtentCount
-        {
-            get { return this.extentCount; }
-            set { this.extentCount = value; }
-        }
+        public int ExtentCount { get; set; }
 
         /// <summary>
         /// Gets or sets the window position.
@@ -731,11 +703,7 @@ namespace InternalsViewer.UI.Allocations
         /// Gets or sets a value indicating whether IAMs are included.
         /// </summary>
         /// <value><c>true</c> if [include iam]; otherwise, <c>false</c>.</value>
-        public bool IncludeIam
-        {
-            get { return this.includeIam; }
-            set { this.includeIam = value; }
-        }
+        public bool IncludeIam { get; set; }
 
         /// <summary>
         /// Gets or sets the allocation map mode.
@@ -759,48 +727,25 @@ namespace InternalsViewer.UI.Allocations
         /// Gets or sets the selection start extent.
         /// </summary>
         /// <value>The selection start extent.</value>
-        public int SelectionStartExtent
-        {
-            get { return this.selectionStartExtent; }
-            set { this.selectionStartExtent = value; }
-        }
+        public int SelectionStartExtent { get; set; } = -1;
 
         /// <summary>
         /// Gets or sets the selection end extent.
         /// </summary>
         /// <value>The selection end extent.</value>
-        public int SelectionEndExtent
-        {
-            get { return this.selectionEndExtent; }
-            set { this.selectionEndExtent = value; }
-        }
+        public int SelectionEndExtent { get; set; } = -1;
 
         /// <summary>
         /// Gets or sets the start page.
         /// </summary>
         /// <value>The start page.</value>
-        public PageAddress StartPage
-        {
-            get
-            {
-                return this.startPage;
-            }
-
-            set
-            {
-                this.startPage = value;
-            }
-        }
+        public PageAddress StartPage { get; set; } = new PageAddress(1, 0);
 
         /// <summary>
         /// Gets or sets the file.
         /// </summary>
         /// <value>The file.</value>
-        public DatabaseFile File
-        {
-            get { return this.file; }
-            set { this.file = value; }
-        }
+        public DatabaseFile File { get; set; }
 
         /// <summary>
         /// Gets or sets if a border is drawn round the map
@@ -814,26 +759,14 @@ namespace InternalsViewer.UI.Allocations
         /// <summary>
         /// Gets or sets if the map is in a holding state
         /// </summary>
-        public bool Holding
-        {
-            get { return this.holding; }
-            set { this.holding = value; }
-        }
+        public bool Holding { get; set; }
 
         /// <summary>
         /// Gets or sets the holding status message
         /// </summary>
-        public string HoldingMessage
-        {
-            get { return this.holdingMessage; }
-            set { this.holdingMessage = value; }
-        }
+        public string HoldingMessage { get; set; }
 
-        public Pfs Pfs
-        {
-            get { return pfs; }
-            set { pfs = value; }
-        }
+        public Pfs Pfs { get; set; }
 
         #endregion
 

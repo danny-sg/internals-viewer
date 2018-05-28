@@ -23,29 +23,29 @@ namespace InternalsViewer.UI
         /// </summary>
         /// <param name="offsetTable">The offset table.</param>
         /// <returns></returns>
-        public static DataTable ConstructOffsetTable(List<UInt16> offsetTable)
+        public static DataTable ConstructOffsetTable(List<ushort> offsetTable)
         {
-            DataTable offsetDataTable = new DataTable();
+            var offsetDataTable = new DataTable();
 
-            DataColumn slotColumn = new DataColumn("Slot", typeof(UInt16));
-            DataColumn offsetColumn = new DataColumn("Offset", typeof(UInt16));
-            DataColumn offsetHexColumn = new DataColumn("Hex", typeof(string));
+            var slotColumn = new DataColumn("Slot", typeof(ushort));
+            var offsetColumn = new DataColumn("Offset", typeof(ushort));
+            var offsetHexColumn = new DataColumn("Hex", typeof(string));
 
             offsetDataTable.Columns.Add(slotColumn);
             offsetDataTable.Columns.Add(offsetColumn);
             offsetDataTable.Columns.Add(offsetHexColumn);
 
-            int slotPosition = 0;
+            var slotPosition = 0;
 
             if (offsetTable != null)
             {
                 foreach (int i in offsetTable)
                 {
-                    DataRow offsetRow = offsetDataTable.NewRow();
+                    var offsetRow = offsetDataTable.NewRow();
 
                     offsetRow["Slot"] = slotPosition;
                     offsetRow["Offset"] = i;
-                    offsetRow["Hex"] = string.Concat("0x", DataConverter.ToHexString(BitConverter.GetBytes((Int16)i)));
+                    offsetRow["Hex"] = string.Concat("0x", DataConverter.ToHexString(BitConverter.GetBytes((short)i)));
 
                     offsetDataTable.Rows.Add(offsetRow);
 
@@ -98,13 +98,13 @@ namespace InternalsViewer.UI
         /// Gets the selected offset.
         /// </summary>
         /// <value>The selected offset.</value>
-        public UInt16 SelectedOffset
+        public ushort SelectedOffset
         {
             get
             {
                 if (this.offsetDataGridView.SelectedRows.Count > 0)
                 {
-                    return UInt16.Parse(this.offsetDataGridView.SelectedRows[0].Cells[1].Value.ToString());
+                    return ushort.Parse(this.offsetDataGridView.SelectedRows[0].Cells[1].Value.ToString());
                 }
                 else
                 {

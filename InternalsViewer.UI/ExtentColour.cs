@@ -49,11 +49,11 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         public static Bitmap KeyImage(Color color)
         {
-            Bitmap key = new Bitmap(16, 16);
-            Rectangle keyRectange = new Rectangle(0, 0, key.Width - 1, key.Height - 1);
-            Graphics g = Graphics.FromImage(key);
+            var key = new Bitmap(16, 16);
+            var keyRectange = new Rectangle(0, 0, key.Width - 1, key.Height - 1);
+            var g = Graphics.FromImage(key);
 
-            using (LinearGradientBrush brush = new LinearGradientBrush(keyRectange,
+            using (var brush = new LinearGradientBrush(keyRectange,
                                                                        color,
                                                                        BackgroundColour(color),
                                                                        LinearGradientMode.Horizontal))

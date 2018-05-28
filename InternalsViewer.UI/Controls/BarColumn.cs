@@ -9,8 +9,6 @@ namespace InternalsViewer.UI.Controls
 {
     public class BarColumn : DataGridViewImageColumn
     {
-        private List<ColourRange> colourRanges;
-
         public BarColumn()
         {
             CellTemplate = new BarCell();
@@ -18,11 +16,7 @@ namespace InternalsViewer.UI.Controls
             ValueType = typeof(decimal);
         }
 
-        internal List<ColourRange> ColourRanges
-        {
-            get { return this.colourRanges; }
-            set { this.colourRanges = value; }
-        }
+        internal List<ColourRange> ColourRanges { get; set; }
     }
 
     public class BarCell : DataGridViewImageCell
@@ -73,13 +67,13 @@ namespace InternalsViewer.UI.Controls
 
             string cellText;
 
-            Font font = new Font(this.DataGridView.DefaultCellStyle.Font, FontStyle.Regular);
+            var font = new Font(this.DataGridView.DefaultCellStyle.Font, FontStyle.Regular);
 
             if (value != null)
             {
                 Color gradientColour;
 
-                ColourRange r = (this.OwningColumn as BarColumn).ColourRanges.Find(delegate(ColourRange range)
+                var r = (this.OwningColumn as BarColumn).ColourRanges.Find(delegate(ColourRange range)
                 {
                     return range.From <= Convert.ToInt32(value ?? 0)
                            && range.To >= Convert.ToInt32(value ?? 0);
@@ -94,7 +88,7 @@ namespace InternalsViewer.UI.Controls
                     gradientColour = Color.DarkGray;
                 }
 
-                using (LinearGradientBrush brush = new LinearGradientBrush(cellBounds,
+                using (var brush = new LinearGradientBrush(cellBounds,
                                                                            gradientColour,
                                                                            ExtentColour.LightBackgroundColour(gradientColour),
                                                                            90F,
@@ -117,7 +111,7 @@ namespace InternalsViewer.UI.Controls
             }
 
             // Centre the text in the middle of the bar
-            Point textPoint = new Point(cellBounds.X + cellBounds.Width / 2 - (TextRenderer.MeasureText(cellText, font).Width / 2),
+            var textPoint = new Point(cellBounds.X + cellBounds.Width / 2 - (TextRenderer.MeasureText(cellText, font).Width / 2),
                                         cellBounds.Y + 4);
 
             TextRenderer.DrawText(graphics, cellText, font, textPoint, Color.Black);

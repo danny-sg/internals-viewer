@@ -23,11 +23,11 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         public static string CreateRtfHeader(List<Color> rtfColours)
         {
-            StringBuilder sb = new StringBuilder(Resources.Rtf_HeaderStart);
+            var sb = new StringBuilder(Resources.Rtf_HeaderStart);
 
             if (rtfColours != null)
             {
-                foreach (Color c in rtfColours)
+                foreach (var c in rtfColours)
                 {
                     sb.AppendFormat(Resources.Rtf_ColourTable, c.R, c.G, c.B);
                 }
@@ -65,9 +65,9 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         public static List<Color> CreateColourTable()
         {
-            List<Color> rtfColours = new List<Color>();
+            var rtfColours = new List<Color>();
 
-            foreach (string name in Enum.GetNames(typeof(KnownColor)))
+            foreach (var name in Enum.GetNames(typeof(KnownColor)))
             {
                 rtfColours.Add(Color.FromName(name));
             }

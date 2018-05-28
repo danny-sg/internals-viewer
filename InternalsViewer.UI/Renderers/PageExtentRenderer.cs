@@ -13,10 +13,8 @@ namespace InternalsViewer.UI
     {
         private readonly Color backgroundColour;
         private readonly Color unusedColour;
-        private Color pageBorderColour = Color.White;
         private Pen borderPen;
         private LinearGradientBrush extentPageBrush;
-        private bool drawBorder = true;
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
@@ -47,12 +45,12 @@ namespace InternalsViewer.UI
         /// <param name="minLsn">The min LSN.</param>
         internal static void DrawLsnMapPage(Graphics g, Rectangle rect, decimal lsn, decimal maxLsn, decimal minLsn)
         {
-            int h = 140;
-            float step = 230F / ((float)(maxLsn - minLsn));
+            var h = 140;
+            var step = 230F / ((float)(maxLsn - minLsn));
 
-            int value = (int)(step / 1.175F * (float)lsn);
+            var value = (int)(step / 1.175F * (float)lsn);
 
-            Color pageColour = HsvColour.HsvToColor(h, (255 - value) % 255, value);
+            var pageColour = HsvColour.HsvToColor(h, (255 - value) % 255, value);
 
             g.FillRectangle(new SolidBrush(pageColour), rect);
             g.DrawRectangle(Pens.White, rect);
@@ -64,14 +62,14 @@ namespace InternalsViewer.UI
         /// <param name="extentSize">Size of the extent.</param>
         internal void CreateBrushesAndPens(Size extentSize)
         {
-            Rectangle gradientRect = new Rectangle(0, 0, extentSize.Width, extentSize.Height);
+            var gradientRect = new Rectangle(0, 0, extentSize.Width, extentSize.Height);
 
             this.extentPageBrush = new LinearGradientBrush(gradientRect,
                                                            this.backgroundColour,
                                                            this.unusedColour,
                                                            LinearGradientMode.Horizontal);
 
-            this.borderPen = new Pen(this.pageBorderColour);
+            this.borderPen = new Pen(this.PageBorderColour);
         }
 
         /// <summary>
@@ -87,7 +85,7 @@ namespace InternalsViewer.UI
             {
                 g.DrawRectangle(this.borderPen, rect);
 
-                for (int j = 1; j < 9; j++)
+                for (var j = 1; j < 9; j++)
                 {
                     g.DrawLine(this.borderPen,
                                rect.X + (j * rect.Width / 8),
@@ -115,7 +113,7 @@ namespace InternalsViewer.UI
 
                 case AllocationLayerType.TopLeftCorner:
 
-                    GraphicsPath path = new GraphicsPath();
+                    var path = new GraphicsPath();
 
                     path.AddLine(rect.X, rect.Y, rect.X + rect.Width / 1.6F, rect.Y);
                     path.AddLine(rect.X + (rect.Width / 1.6F), rect.Y, rect.X, rect.Y + (rect.Height / 1.6F));
@@ -152,7 +150,7 @@ namespace InternalsViewer.UI
 
             this.SetExtentBrushColour(this.backgroundColour, this.unusedColour);
 
-            for (int i = 0; i < extentsHorizontal; i++)
+            for (var i = 0; i < extentsHorizontal; i++)
             {
                 Rectangle rect;
 
@@ -173,7 +171,7 @@ namespace InternalsViewer.UI
 
                 e.Graphics.FillRectangle(this.extentPageBrush, rect);
 
-                for (int j = 0; j <= 8; j++)
+                for (var j = 0; j <= 8; j++)
                 {
                     if (i < extentsRemaining)
                     {
@@ -193,7 +191,7 @@ namespace InternalsViewer.UI
                     }
                 }
 
-                for (int k = 0; k < extentsVertical + 1; k++)
+                for (var k = 0; k < extentsVertical + 1; k++)
                 {
                     e.Graphics.DrawLine(this.borderPen,
                                         0,
@@ -217,7 +215,7 @@ namespace InternalsViewer.UI
             {
                 g.DrawRectangle(this.borderPen, rect);
 
-                for (int j = 1; j < 9; j++)
+                for (var j = 1; j < 9; j++)
                 {
                     g.DrawLine(this.borderPen,
                                rect.X + (j * rect.Width / 8),
@@ -269,20 +267,12 @@ namespace InternalsViewer.UI
         /// Gets or sets the page border colour.
         /// </summary>
         /// <value>The page border colour.</value>
-        public Color PageBorderColour
-        {
-            get { return this.pageBorderColour; }
-            set { this.pageBorderColour = value; }
-        }
+        public Color PageBorderColour { get; set; } = Color.White;
 
         /// <summary>
         /// Gets or sets a value indicating whether to draw borders around the extents and pages.
         /// </summary>
         /// <value><c>true</c> if [draw border]; otherwise, <c>false</c>.</value>
-        public bool DrawBorder
-        {
-            get { return this.drawBorder; }
-            set { this.drawBorder = value; }
-        }
+        public bool DrawBorder { get; set; } = true;
     }
 }

@@ -25,31 +25,31 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         public static Bitmap RenderMapLayers(BackgroundWorker worker, List<AllocationLayer> mapLayers, Rectangle rect, int fileId, int fileSize)
         {
-            Stopwatch stopWatch = new Stopwatch();
+            var stopWatch = new Stopwatch();
 
             stopWatch.Start();
 
             fileSize = fileSize / 8;
 
-            Rectangle fileRectange = GetFileRectange(rect, fileSize);
+            var fileRectange = GetFileRectange(rect, fileSize);
 
-            Bitmap bitmap = new Bitmap(fileRectange.Width, fileRectange.Height, PixelFormat.Format24bppRgb);
+            var bitmap = new Bitmap(fileRectange.Width, fileRectange.Height, PixelFormat.Format24bppRgb);
 
-            Bitmap returnBitmap = new Bitmap(rect.Width, rect.Height);
+            var returnBitmap = new Bitmap(rect.Width, rect.Height);
 
-            using (Graphics g = Graphics.FromImage(returnBitmap))
+            using (var g = Graphics.FromImage(returnBitmap))
             {
-                using (LinearGradientBrush brush = new LinearGradientBrush(rect, Color.White, Color.Gainsboro, 1.25F))
+                using (var brush = new LinearGradientBrush(rect, Color.White, Color.Gainsboro, 1.25F))
                 {
                     // Draw the background gradient
                     g.FillRectangle(brush, rect);
                 }
 
-                foreach (AllocationLayer layer in mapLayers)
+                foreach (var layer in mapLayers)
                 {
-                    foreach (Allocation allocation in layer.Allocations)
+                    foreach (var allocation in layer.Allocations)
                     {
-                        foreach (AllocationPage page in allocation.Pages)
+                        foreach (var page in allocation.Pages)
                         {
                             if (page.StartPage.FileId == fileId)
                             {
@@ -62,7 +62,7 @@ namespace InternalsViewer.UI
 
                 stopWatch.Stop();
 
-                System.Diagnostics.Debug.Print("Render time: {0}", stopWatch.Elapsed.TotalSeconds);
+                Debug.Print("Render time: {0}", stopWatch.Elapsed.TotalSeconds);
 
                 bitmap.MakeTransparent(Color.Black);
 
@@ -85,10 +85,10 @@ namespace InternalsViewer.UI
         private static Rectangle GetFileRectange(Rectangle rect, int fileSize)
         {
             // The image is later stretched as extents are 8 pages wide
-            double widthHeightRatio = rect.Width / (rect.Height * 6D);
+            var widthHeightRatio = rect.Width / (rect.Height * 6D);
 
-            int height = (int)(Math.Ceiling(Math.Sqrt((double)fileSize) / widthHeightRatio));
-            int width = (int)(Math.Ceiling(Math.Sqrt((double)fileSize) * widthHeightRatio));
+            var height = (int)(Math.Ceiling(Math.Sqrt((double)fileSize) / widthHeightRatio));
+            var width = (int)(Math.Ceiling(Math.Sqrt((double)fileSize) * widthHeightRatio));
 
             // Adjust so the stride won't have any padding bytes
             width = (width + 4) - (width % 4);
@@ -106,24 +106,24 @@ namespace InternalsViewer.UI
         /// <param name="colour">The layer colour.</param>
         private static void AddAllocationToBitmap(Bitmap bitmap, bool[] allocation, PageAddress startPage, int fileSize, Color colour)
         {
-            int startExtent = startPage.PageId / 8;
+            var startExtent = startPage.PageId / 8;
 
-            int bytesPerExtent = 3; // R, G, B bytes
+            var bytesPerExtent = 3; // R, G, B bytes
 
-            BitmapData bitmapData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+            var bitmapData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),
                                                     ImageLockMode.ReadWrite,
                                                     bitmap.PixelFormat);
 
-            IntPtr ptr = bitmapData.Scan0;
+            var ptr = bitmapData.Scan0;
 
-            byte[] values = new byte[fileSize * bytesPerExtent];
+            var values = new byte[fileSize * bytesPerExtent];
 
             // Copy the bitmap data into a managed array
             Marshal.Copy(ptr, values, 0, fileSize * bytesPerExtent);
 
-            int extent = startExtent;
+            var extent = startExtent;
 
-            for (int i = startExtent * bytesPerExtent;
+            for (var i = startExtent * bytesPerExtent;
                  i < Math.Min(values.Length, (startExtent + allocation.Length) * bytesPerExtent);
                  i += bytesPerExtent)
             {

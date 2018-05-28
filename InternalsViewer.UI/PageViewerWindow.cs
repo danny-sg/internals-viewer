@@ -123,7 +123,7 @@ namespace InternalsViewer.UI
 
             if (pageAddress.FileId > 0)
             {
-                SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
+                var builder = new SqlConnectionStringBuilder(connectionString);
 
                 this.ConnectionString = connectionString;
 
@@ -237,7 +237,7 @@ namespace InternalsViewer.UI
 
             if (record != null)
             {
-                List<Marker> markers = MarkerBuilder.BuildMarkers((Markable)record);
+                var markers = MarkerBuilder.BuildMarkers((Markable)record);
 
                 this.hexViewer.AddMarkers(markers);
 
@@ -260,7 +260,7 @@ namespace InternalsViewer.UI
 
         private void FindRecord(int offset)
         {
-            List<ushort> sortedOffsetTable = new List<ushort>(this.Page.OffsetTable.ToArray());
+            var sortedOffsetTable = new List<ushort>(this.Page.OffsetTable.ToArray());
 
             sortedOffsetTable.Sort();
 
@@ -289,7 +289,7 @@ namespace InternalsViewer.UI
             int startPos;
             int endPos;
 
-            string hexString = this.hexViewer.Text.Replace(" ", string.Empty).Replace("\n", string.Empty);
+            var hexString = this.hexViewer.Text.Replace(" ", string.Empty).Replace("\n", string.Empty);
 
             startPos = hexString.IndexOf(findHex, searchPos + 1);
 
@@ -401,8 +401,8 @@ namespace InternalsViewer.UI
 
                     if (e.Offset >= AllocationPage.AllocationArrayOffset)
                     {
-                        int startExtent = (e.Offset - AllocationPage.AllocationArrayOffset) * 8;
-                        int endExtent = startExtent + 7;
+                        var startExtent = (e.Offset - AllocationPage.AllocationArrayOffset) * 8;
+                        var endExtent = startExtent + 7;
 
                         markerDescriptionToolStripStatusLabel.Text = string.Format("Extents {0} - {1} | Pages {2} - {3}",
                                                                                    startExtent,
@@ -431,7 +431,7 @@ namespace InternalsViewer.UI
 
         private void DisplayCompressionInfoStructure(CompressionInformation.CompressionInfoStructure compressionInfoStructure)
         {
-            List<Marker> markers = new List<Marker>();
+            var markers = new List<Marker>();
 
             switch (compressionInfoStructure)
             {
@@ -455,7 +455,7 @@ namespace InternalsViewer.UI
 
                 case CompressionInformation.CompressionInfoStructure.Header:
 
-                    markers = MarkerBuilder.BuildMarkers(this.Page.CompressionInformation);
+                    markers = MarkerBuilder.BuildMarkers(this.Page?.CompressionInformation);
                     break;
             }
 
@@ -553,7 +553,7 @@ namespace InternalsViewer.UI
         {
             base.OnPaint(e);
 
-            using (LinearGradientBrush brush = new LinearGradientBrush(ClientRectangle,
+            using (var brush = new LinearGradientBrush(ClientRectangle,
                                                                        this.colourTable.ToolStripGradientBegin,
                                                                        this.colourTable.ToolStripGradientEnd,
                                                                        LinearGradientMode.Horizontal))
@@ -638,7 +638,7 @@ namespace InternalsViewer.UI
         {
             int startPos;
             int endPos;
-            Color colour = Color.Black;
+            var colour = Color.Black;
             LogData logData = null;
 
             switch (logToolStripComboBox.SelectedItem.ToString())

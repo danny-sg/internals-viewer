@@ -25,7 +25,7 @@ namespace InternalsViewer.UI
 
         private void SpaceUsedPanel_Paint(object sender, PaintEventArgs e)
         {
-            LinearGradientBrush pfsSpaceBrush = new LinearGradientBrush(spaceUsedPanel.ClientRectangle,
+            var pfsSpaceBrush = new LinearGradientBrush(spaceUsedPanel.ClientRectangle,
                                                                         ExtentColour.LightBackgroundColour(spaceColour),
                                                                         spaceColour,
                                                                         LinearGradientMode.Vertical);

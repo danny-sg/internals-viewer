@@ -50,12 +50,12 @@ namespace InternalsViewer.UI
             this.dcmToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pFSToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.bufferPoolToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.showKeyToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.fileDetailsToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.extentSizeToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
             this.pageToolStripTextBox = new InternalsViewer.UI.Controls.PageAddressTextBox();
             this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
-            this.showKeyToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.fileDetailsToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.keysDataGridView = new System.Windows.Forms.DataGridView();
             this.KeyColumn = new InternalsViewer.UI.Controls.KeyImageColumn();
             this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -76,6 +76,7 @@ namespace InternalsViewer.UI
             this.iconToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.allocUnitBackgroundWorker = new System.ComponentModel.BackgroundWorker();
             this.keyImageColumn1 = new InternalsViewer.UI.Controls.KeyImageColumn();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).BeginInit();
             this.splitContainer.Panel1.SuspendLayout();
             this.splitContainer.Panel2.SuspendLayout();
             this.splitContainer.SuspendLayout();
@@ -100,8 +101,8 @@ namespace InternalsViewer.UI
             this.allocationContainer.ShowFileInformation = false;
             this.allocationContainer.Size = new System.Drawing.Size(945, 404);
             this.allocationContainer.TabIndex = 2;
-            this.allocationContainer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageOver);
             this.allocationContainer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageClicked);
+            this.allocationContainer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageOver);
             // 
             // splitContainer
             // 
@@ -125,6 +126,7 @@ namespace InternalsViewer.UI
             // flatMenuStrip
             // 
             this.flatMenuStrip.AutoSize = false;
+            this.flatMenuStrip.BackColor = System.Drawing.SystemColors.Control;
             this.flatMenuStrip.GripStyle = System.Windows.Forms.ToolStripGripStyle.Hidden;
             this.flatMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripLabel1,
@@ -149,7 +151,7 @@ namespace InternalsViewer.UI
             // toolStripLabel1
             // 
             this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(53, 27);
+            this.toolStripLabel1.Size = new System.Drawing.Size(55, 27);
             this.toolStripLabel1.Text = "Database";
             // 
             // databaseToolStripComboBox
@@ -163,7 +165,7 @@ namespace InternalsViewer.UI
             // connectToolStripButton
             // 
             this.connectToolStripButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.connectToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.connect;
+            this.connectToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.connect1;
             this.connectToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.connectToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.connectToolStripButton.Name = "connectToolStripButton";
@@ -195,7 +197,7 @@ namespace InternalsViewer.UI
             this.allocationUnitsToolStripMenuItem.Image = global::InternalsViewer.UI.Properties.Resources.allocationMapIcon;
             this.allocationUnitsToolStripMenuItem.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.allocationUnitsToolStripMenuItem.Name = "allocationUnitsToolStripMenuItem";
-            this.allocationUnitsToolStripMenuItem.Size = new System.Drawing.Size(184, 22);
+            this.allocationUnitsToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
             this.allocationUnitsToolStripMenuItem.Text = "Allocation Units";
             this.allocationUnitsToolStripMenuItem.Click += new System.EventHandler(this.AllocationUnitsToolStripMenuItem_Click);
             // 
@@ -208,7 +210,7 @@ namespace InternalsViewer.UI
             this.dcmToolStripMenuItem});
             this.allocationMapsToolStripMenuItem.Image = global::InternalsViewer.UI.Properties.Resources.GAMallocationMapIcon;
             this.allocationMapsToolStripMenuItem.Name = "allocationMapsToolStripMenuItem";
-            this.allocationMapsToolStripMenuItem.Size = new System.Drawing.Size(184, 22);
+            this.allocationMapsToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
             this.allocationMapsToolStripMenuItem.Text = "Allocation Maps";
             this.allocationMapsToolStripMenuItem.Click += new System.EventHandler(this.AllocationMapsToolStripMenuItem_Click);
             // 
@@ -218,7 +220,7 @@ namespace InternalsViewer.UI
             this.gamToolStripMenuItem.CheckOnClick = true;
             this.gamToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.gamToolStripMenuItem.Name = "gamToolStripMenuItem";
-            this.gamToolStripMenuItem.Size = new System.Drawing.Size(102, 22);
+            this.gamToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
             this.gamToolStripMenuItem.Text = "GAM";
             // 
             // sgamToolStripMenuItem
@@ -227,28 +229,28 @@ namespace InternalsViewer.UI
             this.sgamToolStripMenuItem.CheckOnClick = true;
             this.sgamToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.sgamToolStripMenuItem.Name = "sgamToolStripMenuItem";
-            this.sgamToolStripMenuItem.Size = new System.Drawing.Size(102, 22);
+            this.sgamToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
             this.sgamToolStripMenuItem.Text = "SGAM";
             // 
             // bcmToolStripMenuItem
             // 
             this.bcmToolStripMenuItem.CheckOnClick = true;
             this.bcmToolStripMenuItem.Name = "bcmToolStripMenuItem";
-            this.bcmToolStripMenuItem.Size = new System.Drawing.Size(102, 22);
+            this.bcmToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
             this.bcmToolStripMenuItem.Text = "BCM";
             // 
             // dcmToolStripMenuItem
             // 
             this.dcmToolStripMenuItem.CheckOnClick = true;
             this.dcmToolStripMenuItem.Name = "dcmToolStripMenuItem";
-            this.dcmToolStripMenuItem.Size = new System.Drawing.Size(102, 22);
+            this.dcmToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
             this.dcmToolStripMenuItem.Text = "DCM";
             // 
             // pFSToolStripMenuItem
             // 
             this.pFSToolStripMenuItem.Image = global::InternalsViewer.UI.Properties.Resources.pfs;
             this.pFSToolStripMenuItem.Name = "pFSToolStripMenuItem";
-            this.pFSToolStripMenuItem.Size = new System.Drawing.Size(184, 22);
+            this.pFSToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
             this.pFSToolStripMenuItem.Text = "PFS (Page Free Space)";
             this.pFSToolStripMenuItem.Click += new System.EventHandler(this.pFSToolStripMenuItem_Click);
             // 
@@ -259,9 +261,37 @@ namespace InternalsViewer.UI
             this.bufferPoolToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.bufferpool;
             this.bufferPoolToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.bufferPoolToolStripButton.Name = "bufferPoolToolStripButton";
-            this.bufferPoolToolStripButton.Size = new System.Drawing.Size(80, 27);
+            this.bufferPoolToolStripButton.Size = new System.Drawing.Size(86, 27);
             this.bufferPoolToolStripButton.Text = "Buffer Pool";
             this.bufferPoolToolStripButton.Click += new System.EventHandler(this.BufferPoolToolStripButton_Click);
+            // 
+            // showKeyToolStripButton
+            // 
+            this.showKeyToolStripButton.Checked = true;
+            this.showKeyToolStripButton.CheckOnClick = true;
+            this.showKeyToolStripButton.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.showKeyToolStripButton.Enabled = false;
+            this.showKeyToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.WindowSplit;
+            this.showKeyToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
+            this.showKeyToolStripButton.Margin = new System.Windows.Forms.Padding(0, 2, 0, 2);
+            this.showKeyToolStripButton.Name = "showKeyToolStripButton";
+            this.showKeyToolStripButton.Padding = new System.Windows.Forms.Padding(0, 2, 0, 2);
+            this.showKeyToolStripButton.Size = new System.Drawing.Size(46, 26);
+            this.showKeyToolStripButton.Text = "Key";
+            this.showKeyToolStripButton.Click += new System.EventHandler(this.ShowKeyToolStripButton_Click);
+            // 
+            // fileDetailsToolStripButton
+            // 
+            this.fileDetailsToolStripButton.CheckOnClick = true;
+            this.fileDetailsToolStripButton.Enabled = false;
+            this.fileDetailsToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.fileinfo1;
+            this.fileDetailsToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
+            this.fileDetailsToolStripButton.Margin = new System.Windows.Forms.Padding(4, 2, 0, 2);
+            this.fileDetailsToolStripButton.Name = "fileDetailsToolStripButton";
+            this.fileDetailsToolStripButton.Padding = new System.Windows.Forms.Padding(4, 2, 0, 2);
+            this.fileDetailsToolStripButton.Size = new System.Drawing.Size(87, 26);
+            this.fileDetailsToolStripButton.Text = "File Details";
+            this.fileDetailsToolStripButton.CheckedChanged += new System.EventHandler(this.FileDetailsToolStripButton_CheckedChanged);
             // 
             // toolStripSeparator2
             // 
@@ -298,36 +328,8 @@ namespace InternalsViewer.UI
             // 
             this.toolStripLabel2.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
             this.toolStripLabel2.Name = "toolStripLabel2";
-            this.toolStripLabel2.Size = new System.Drawing.Size(35, 27);
+            this.toolStripLabel2.Size = new System.Drawing.Size(36, 27);
             this.toolStripLabel2.Text = "Page:";
-            // 
-            // showKeyToolStripButton
-            // 
-            this.showKeyToolStripButton.Checked = true;
-            this.showKeyToolStripButton.CheckOnClick = true;
-            this.showKeyToolStripButton.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.showKeyToolStripButton.Enabled = false;
-            this.showKeyToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.WindowSplit;
-            this.showKeyToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
-            this.showKeyToolStripButton.Margin = new System.Windows.Forms.Padding(0, 2, 0, 2);
-            this.showKeyToolStripButton.Name = "showKeyToolStripButton";
-            this.showKeyToolStripButton.Padding = new System.Windows.Forms.Padding(0, 2, 0, 2);
-            this.showKeyToolStripButton.Size = new System.Drawing.Size(45, 26);
-            this.showKeyToolStripButton.Text = "Key";
-            this.showKeyToolStripButton.Click += new System.EventHandler(this.ShowKeyToolStripButton_Click);
-            // 
-            // fileDetailsToolStripButton
-            // 
-            this.fileDetailsToolStripButton.CheckOnClick = true;
-            this.fileDetailsToolStripButton.Enabled = false;
-            this.fileDetailsToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.fileinfo1;
-            this.fileDetailsToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
-            this.fileDetailsToolStripButton.Margin = new System.Windows.Forms.Padding(4, 2, 0, 2);
-            this.fileDetailsToolStripButton.Name = "fileDetailsToolStripButton";
-            this.fileDetailsToolStripButton.Padding = new System.Windows.Forms.Padding(4, 2, 0, 2);
-            this.fileDetailsToolStripButton.Size = new System.Drawing.Size(82, 26);
-            this.fileDetailsToolStripButton.Text = "File Details";
-            this.fileDetailsToolStripButton.CheckedChanged += new System.EventHandler(this.FileDetailsToolStripButton_CheckedChanged);
             // 
             // keysDataGridView
             // 
@@ -338,7 +340,7 @@ namespace InternalsViewer.UI
             this.keysDataGridView.AllowUserToResizeRows = false;
             this.keysDataGridView.AutoGenerateColumns = false;
             this.keysDataGridView.BackgroundColor = System.Drawing.Color.White;
-            this.keysDataGridView.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.keysDataGridView.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.keysDataGridView.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
             dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
@@ -514,8 +516,8 @@ namespace InternalsViewer.UI
             this.allocUnitBackgroundWorker.WorkerReportsProgress = true;
             this.allocUnitBackgroundWorker.WorkerSupportsCancellation = true;
             this.allocUnitBackgroundWorker.DoWork += new System.ComponentModel.DoWorkEventHandler(this.AllocUnitBackgroundWorker_DoWork);
-            this.allocUnitBackgroundWorker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.AllocUnitBackgroundWorker_RunWorkerCompleted);
             this.allocUnitBackgroundWorker.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.AllocUnitBackgroundWorker_ProgressChanged);
+            this.allocUnitBackgroundWorker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.AllocUnitBackgroundWorker_RunWorkerCompleted);
             // 
             // keyImageColumn1
             // 
@@ -534,6 +536,7 @@ namespace InternalsViewer.UI
             this.Size = new System.Drawing.Size(945, 579);
             this.splitContainer.Panel1.ResumeLayout(false);
             this.splitContainer.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).EndInit();
             this.splitContainer.ResumeLayout(false);
             this.flatMenuStrip.ResumeLayout(false);
             this.flatMenuStrip.PerformLayout();

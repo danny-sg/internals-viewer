@@ -17,16 +17,13 @@ namespace InternalsViewer.UI
     /// </summary>
     public partial class HexViewer : UserControl
     {
-        private bool hexMode = false;
-        private static readonly string rtfLineBreak = @"\par ";
-        private bool addressHex;
-        private Dictionary<int, Color> colourAndOffsetDictionary;
-        private bool colourise;
-        private UInt16 currentOffset;
+        private readonly bool hexMode = false;
+        private static readonly string RtfLineBreak = @"\par ";
+        private ushort currentOffset;
         private string dataRtf;
         private string dataText;
-        private Color headerColour = Color.FromArgb(245, 245, 250);
-        private Color offsetColour = Color.FromArgb(245, 250, 245);
+        private readonly Color headerColour = Color.FromArgb(245, 245, 250);
+        private readonly Color offsetColour = Color.FromArgb(245, 250, 245);
         private readonly List<Marker> markers = new List<Marker>();
         private Page page;
         private readonly VisualStyleRenderer renderer;
@@ -71,20 +68,24 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         private string FormatPageDetails(Page targetPage)
         {
-            bool alternate = false;
+            if (targetPage==null)
+            {
+                return string.Empty;
+            }
+            var alternate = false;
 
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
             sb.Append(this.rtfHeader);
 
             // Start header
             sb.Append(RtfColour.RtfTag(this.rtfColours, Color.Blue.Name, this.headerColour.Name));
 
-            int currentPos = 0;
+            var currentPos = 0;
 
-            for (int rows = 0; rows < targetPage.PageData.Length / 16; rows++)
+            for (var rows = 0; rows < targetPage.PageData.Length / 16; rows++)
             {
-                for (int cols = 0; cols < 16; cols++)
+                for (var cols = 0; cols < 16; cols++)
                 {
                     if (currentPos == 96)
                     {
@@ -104,7 +105,7 @@ namespace InternalsViewer.UI
                     }
 
                     // Start marker/colour tag
-                    if (this.colourise)
+                    if (this.Colourise)
                     {
                         alternate = this.FindStartMarkers(currentPos, sb, alternate);
                     }
@@ -113,7 +114,7 @@ namespace InternalsViewer.UI
                     sb.Append(DataConverter.ToHexString(targetPage.PageData[currentPos]));
 
                     // End marker/close colour tag
-                    if (this.colourise)
+                    if (this.Colourise)
                     {
                         this.FindEndMarkers(currentPos, sb);
                     }
@@ -131,7 +132,7 @@ namespace InternalsViewer.UI
                     currentPos++;
                 }
 
-                sb.Append(rtfLineBreak);
+                sb.Append(RtfLineBreak);
             }
 
             sb.Append("}");
@@ -186,9 +187,9 @@ namespace InternalsViewer.UI
         /// <param name="sb">The StringBuilder.</param>
         private bool FindStartMarkers(int position, StringBuilder sb, bool alternate)
         {
-            List<Marker> startMarkers = this.markers.FindAll(delegate(Marker marker) { return marker.StartPosition == position; });
+            var startMarkers = this.markers.FindAll(delegate(Marker marker) { return marker.StartPosition == position; });
 
-            foreach (Marker startMarker in startMarkers)
+            foreach (var startMarker in startMarkers)
             {
                 sb.Append(RtfColour.RtfTag(this.rtfColours,
                                             startMarker.ForeColour.Name,
@@ -212,9 +213,9 @@ namespace InternalsViewer.UI
                 return;
             }
 
-            List<Marker> endMarkers = this.markers.FindAll(delegate(Marker marker) { return marker.EndPosition == position; });
+            var endMarkers = this.markers.FindAll(delegate(Marker marker) { return marker.EndPosition == position; });
 
-            for (int i = 0; i < endMarkers.Count; i++)
+            for (var i = 0; i < endMarkers.Count; i++)
             {
                 sb.Append("}");
             }
@@ -225,7 +226,7 @@ namespace InternalsViewer.UI
         /// </summary>
         /// <param name="offset">The offset.</param>
         /// <returns></returns>
-        private Marker GetMarkerAtPosition(UInt16 offset)
+        private Marker GetMarkerAtPosition(ushort offset)
         {
             return this.markers.Find(delegate(Marker marker)
                 {
@@ -243,20 +244,20 @@ namespace InternalsViewer.UI
                 return;
             }
 
-            StringBuilder addressText = new StringBuilder();
+            var addressText = new StringBuilder();
 
-            Point topPos = new Point(0, 0);
+            var topPos = new Point(0, 0);
 
-            int firstIndex = dataRichTextBox.GetCharIndexFromPosition(topPos);
-            int firstLine = dataRichTextBox.GetLineFromCharIndex(firstIndex);
+            var firstIndex = dataRichTextBox.GetCharIndexFromPosition(topPos);
+            var firstLine = dataRichTextBox.GetLineFromCharIndex(firstIndex);
 
             topPos.X = ClientRectangle.Width;
             topPos.Y = ClientRectangle.Height;
 
-            int lastIndex = dataRichTextBox.GetCharIndexFromPosition(topPos);
-            int lastLine = dataRichTextBox.GetLineFromCharIndex(lastIndex);
+            var lastIndex = dataRichTextBox.GetCharIndexFromPosition(topPos);
+            var lastLine = dataRichTextBox.GetLineFromCharIndex(lastIndex);
 
-            for (int i = firstLine; i <= lastLine + 1; i++)
+            for (var i = firstLine; i <= lastLine + 1; i++)
             {
                 if ((i * 16) < 8192)
                 {
@@ -301,14 +302,14 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         private string CreateDataString()
         {
-            string dataString = dataRichTextBox.SelectedText.Replace(" ", string.Empty).Replace("\n", string.Empty);
+            var dataString = dataRichTextBox.SelectedText.Replace(" ", string.Empty).Replace("\n", string.Empty);
 
             if (dataString.Length % 2 == 0)
             {
-                int startPos = dataRichTextBox.SelectionStart;
-                int endPos = dataRichTextBox.SelectionStart + dataRichTextBox.SelectionLength;
-                int startOffset = startPos / 3;
-                int endOffset = endPos / 3;
+                var startPos = dataRichTextBox.SelectionStart;
+                var endPos = dataRichTextBox.SelectionStart + dataRichTextBox.SelectionLength;
+                var startOffset = startPos / 3;
+                var endOffset = endPos / 3;
 
                 dataToolTip.ToolTipTitle = string.Format(CultureInfo.InvariantCulture,
                                                          "Offset {0} - {1} (0x{2} - 0x{3})",
@@ -317,10 +318,10 @@ namespace InternalsViewer.UI
                                                          DataConverter.ToHexString((byte)startOffset),
                                                          DataConverter.ToHexString((byte)endOffset));
 
-                List<string> decodedData = DataConverter.DecodeDataString(dataString);
-                StringBuilder decodedDataStringBuilder = new StringBuilder();
+                var decodedData = DataConverter.DecodeDataString(dataString);
+                var decodedDataStringBuilder = new StringBuilder();
 
-                foreach (string s in decodedData)
+                foreach (var s in decodedData)
                 {
                     decodedDataStringBuilder.AppendLine(s);
                 }
@@ -380,12 +381,12 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
         private void HeaderPanel_Paint(object sender, PaintEventArgs e)
         {
-            Rectangle addressRectangle = new Rectangle(headerPanel.Bounds.X,
+            var addressRectangle = new Rectangle(headerPanel.Bounds.X,
                                                        headerPanel.Bounds.Y,
                                                        addressLabel.Width,
                                                        headerPanel.Height + 1);
 
-            Rectangle dataRectangle = new Rectangle(headerPanel.Bounds.X + addressLabel.Width,
+            var dataRectangle = new Rectangle(headerPanel.Bounds.X + addressLabel.Width,
                                                     headerPanel.Bounds.Y,
                                                     headerPanel.Width - addressLabel.Width,
                                                     headerPanel.Height + 1);
@@ -423,7 +424,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
         private void LeftPanel_Paint(object sender, PaintEventArgs e)
         {
-            using (LinearGradientBrush gradientBrush = new LinearGradientBrush(leftPanel.Bounds,
+            using (var gradientBrush = new LinearGradientBrush(leftPanel.Bounds,
                                                                                Color.White,
                                                                                Color.WhiteSmoke,
                                                                                LinearGradientMode.Horizontal))
@@ -441,7 +442,7 @@ namespace InternalsViewer.UI
         {
             this.UpdateAddressTextBox();
 
-            int position = dataRichTextBox.GetPositionFromCharIndex(0).Y % (addressLabel.Font.Height + 1);
+            var position = dataRichTextBox.GetPositionFromCharIndex(0).Y % (addressLabel.Font.Height + 1);
             addressLabel.Location = new Point(1, position);
         }
 
@@ -484,15 +485,15 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
         private void DataRichTextBox_MouseMove(object sender, MouseEventArgs e)
         {
-            UInt16 offset = (UInt16)(dataRichTextBox.GetCharIndexFromPosition(e.Location) / 3);
+            var offset = (ushort)(dataRichTextBox.GetCharIndexFromPosition(e.Location) / 3);
 
             setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
             this.currentOffset = offset;
-            string markerDescription = string.Empty;
+            var markerDescription = string.Empty;
 
-            Marker hoverMarker = this.GetMarkerAtPosition(offset);
-            Color foreColour = Color.Black;
-            Color backColour = Color.Transparent;
+            var hoverMarker = this.GetMarkerAtPosition(offset);
+            var foreColour = Color.Black;
+            var backColour = Color.Transparent;
 
             if (hoverMarker != null)
             {
@@ -503,7 +504,7 @@ namespace InternalsViewer.UI
             
             this.setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
 
-            EventHandler<OffsetEventArgs> temp = this.OffsetOver;
+            var temp = this.OffsetOver;
 
             if (temp != null)
             {
@@ -530,8 +531,8 @@ namespace InternalsViewer.UI
         {
             if (!string.IsNullOrEmpty(dataRichTextBox.SelectedText) & !this.suppressTooltip)
             {
-                int charIndex = dataRichTextBox.SelectionStart + dataRichTextBox.SelectionLength + 47;
-                Point dataToolTipPoint = dataRichTextBox.GetPositionFromCharIndex(charIndex);
+                var charIndex = dataRichTextBox.SelectionStart + dataRichTextBox.SelectionLength + 47;
+                var dataToolTipPoint = dataRichTextBox.GetPositionFromCharIndex(charIndex);
 
                 dataToolTipPoint.Y += 22;
 
@@ -552,11 +553,7 @@ namespace InternalsViewer.UI
         /// Gets or sets the colour and offset dictionary.
         /// </summary>
         /// <value>The colour and offset dictionary.</value>
-        public Dictionary<int, Color> ColourAndOffsetDictionary
-        {
-            get { return this.colourAndOffsetDictionary; }
-            set { this.colourAndOffsetDictionary = value; }
-        }
+        public Dictionary<int, Color> ColourAndOffsetDictionary { get; set; }
 
         /// <summary>
         /// Gets or sets the data text.
@@ -622,11 +619,7 @@ namespace InternalsViewer.UI
         /// Gets or sets a value indicating whether to use hex or integer numbers for the address
         /// </summary>
         /// <value><c>true</c> if [address hex]; otherwise, <c>false</c>.</value>
-        public bool AddressHex
-        {
-            get { return this.addressHex; }
-            set { this.addressHex = value; }
-        }
+        public bool AddressHex { get; set; }
 
         /// <summary>
         /// Gets or sets the selected record.
@@ -690,11 +683,7 @@ namespace InternalsViewer.UI
         /// Gets or sets a value indicating whether the hex viewer is colourised by markers
         /// </summary>
         /// <value><c>true</c> if colourise; otherwise, <c>false</c>.</value>
-        public bool Colourise
-        {
-            get { return this.colourise; }
-            set { this.colourise = value; }
-        }
+        public bool Colourise { get; set; }
 
         /// <summary>
         /// </summary>
@@ -709,7 +698,7 @@ namespace InternalsViewer.UI
 
         private void SetOffsetToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            EventHandler<OffsetEventArgs> temp = OffsetSet;
+            var temp = OffsetSet;
 
             if (temp != null)
             {
@@ -719,7 +708,7 @@ namespace InternalsViewer.UI
 
         private void FindRecordToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            EventHandler<OffsetEventArgs> temp = RecordFind;
+            var temp = RecordFind;
 
             if (temp != null)
             {

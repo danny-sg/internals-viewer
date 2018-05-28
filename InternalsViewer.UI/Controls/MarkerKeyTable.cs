@@ -109,11 +109,11 @@ namespace InternalsViewer.UI.Controls
                 if ((MarkerType)markersDataGridView.Rows[e.RowIndex].Cells["DataTypeColumn"].Value ==
                     MarkerType.PageAddress)
                 {
-                    EventHandler<PageEventArgs> temp = PageNavigated;
+                    var temp = PageNavigated;
 
                     if (temp != null)
                     {
-                        PageEventArgs pageEvent =
+                        var pageEvent =
                             new PageEventArgs(
                                 RowIdentifier.Parse(
                                     markersDataGridView.Rows[e.RowIndex].Cells["valueDataGridViewTextBoxColumn"].Value.

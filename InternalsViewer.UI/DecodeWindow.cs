@@ -108,9 +108,9 @@ namespace InternalsViewer.UI
 
         private void EncodeDecimal(string text)
         {
-            Decimal value;
+            decimal value;
 
-            if (Decimal.TryParse(text, out value))
+            if (decimal.TryParse(text, out value))
             {
                 this.hexTextBox.ForeColor = Color.Black;
                 this.hexTextBox.Text = DataConverter.EncodeDecimal(value);
@@ -124,9 +124,9 @@ namespace InternalsViewer.UI
 
         private void EncodeReal(string text)
         {
-            Single value;
+            float value;
 
-            if (Single.TryParse(text, out value))
+            if (float.TryParse(text, out value))
             {
                 this.hexTextBox.Text = DataConverter.EncodeReal(value);
             }
@@ -176,7 +176,7 @@ namespace InternalsViewer.UI
 
         private void CheckHex(string text)
         {
-            Regex hexRegex = new Regex("^([0-9a-fA-F])*$");
+            var hexRegex = new Regex("^([0-9a-fA-F])*$");
 
             if (hexRegex.IsMatch(text))
             {
@@ -191,9 +191,9 @@ namespace InternalsViewer.UI
 
         private void EncodeInt64(string text)
         {
-            Int64 value;
+            long value;
 
-            if (Int64.TryParse(text, out value))
+            if (long.TryParse(text, out value))
             {
                 this.hexTextBox.Text = DataConverter.EncodeInt64(value);
             }
@@ -210,7 +210,7 @@ namespace InternalsViewer.UI
 
             if (DateTime.TryParse(text, out value))
             {
-                StringBuilder sb = new StringBuilder(this.rtfHeader);
+                var sb = new StringBuilder(this.rtfHeader);
 
                 string[] dateValue;
 
@@ -266,7 +266,7 @@ namespace InternalsViewer.UI
         {
             if (text.Length == 1)
             {
-                this.hexTextBox.Text = ((Byte)text.ToCharArray()[0]).ToString();
+                this.hexTextBox.Text = ((byte)text.ToCharArray()[0]).ToString();
             }
             else
             {
@@ -277,9 +277,9 @@ namespace InternalsViewer.UI
 
         private void EncodeInt16(string text)
         {
-            Int16 value;
+            short value;
 
-            if (Int16.TryParse(text, out value))
+            if (short.TryParse(text, out value))
             {
                 this.hexTextBox.Text = DataConverter.EncodeInt16(value);
             }

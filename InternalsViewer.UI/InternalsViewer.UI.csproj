@@ -57,6 +57,12 @@
     <OutputPath>bin\Debug %28v2008%29\</OutputPath>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>InternalsViewer.UI.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -228,6 +234,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="InternalsViewer.UI.snk" />
     <None Include="Resources\connect.png" />
   </ItemGroup>
   <ItemGroup>
@@ -282,6 +289,21 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Backward_16x.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Forward_grey_16xMD.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Backward_16xMD.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Search_16x.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\connect1.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

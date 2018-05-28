@@ -23,21 +23,26 @@ namespace InternalsViewer.UI.Markers
         /// <returns></returns>
         public static List<Marker> BuildMarkers(Markable markedObject, string prefix)
         {
-            List<Marker> markers = new List<Marker>();
-
-            foreach (MarkItem item in markedObject.MarkItems)
+            if (markedObject == null)
             {
-                Marker marker = new Marker();
+                return new List<Marker>();
+            }
+
+            var markers = new List<Marker>();
+
+            foreach (var item in markedObject.MarkItems)
+            {
+                var marker = new Marker();
 
                 SetMarkerPosition(item, marker);
 
-                PropertyInfo property = markedObject.GetType().GetProperty(item.PropertyName);
+                var property = markedObject.GetType().GetProperty(item.PropertyName);
 
-                object[] description = property.GetCustomAttributes(typeof(MarkAttribute), false);
+                var description = property.GetCustomAttributes(typeof(MarkAttribute), false);
 
                 if (description != null && description.Length > 0)
                 {
-                    MarkAttribute attribute = (description[0] as MarkAttribute);
+                    var attribute = (description[0] as MarkAttribute);
 
                     if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(attribute.Description))
                     {
@@ -63,13 +68,13 @@ namespace InternalsViewer.UI.Markers
                 // Check if there is an index, if there is it indicates the property is an array
                 if (item.Index < 0)
                 {
-                    object value = property.GetValue(markedObject, null);
+                    var value = property.GetValue(markedObject, null);
 
                     SetValue(markers, marker, value, prefix + item.Prefix);
                 }
                 else
                 {
-                    object[] array = (object[])property.GetValue(markedObject, null);
+                    var array = (object[])property.GetValue(markedObject, null);
 
                     SetValue(markers, marker, array[item.Index], prefix + item.Prefix);
                 }
