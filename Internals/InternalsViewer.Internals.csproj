@@ -71,7 +71,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Allocation.cs" />
-    <Compile Include="BlobPointers\BlobChildLinks.cs" />
+    <Compile Include="BlobPointers\BlobChildLink.cs" />
     <Compile Include="BlobPointers\BlobField.cs" />
     <Compile Include="BlobPointers\BlobFieldType.cs" />
     <Compile Include="BlobPointers\Field.cs" />
@@ -132,7 +132,7 @@
     <Compile Include="RecordLoaders\RecordLoader.cs" />
     <Compile Include="MarkItem.cs" />
     <Compile Include="Records\RecordType.cs" />
-    <Compile Include="Records\SpareVector.cs" />
+    <Compile Include="Records\SparseVector.cs" />
     <Compile Include="Structures\Column.cs" />
     <Compile Include="Structures\HobtEntryPoint.cs" />
     <Compile Include="Structures\Hobt.cs" />

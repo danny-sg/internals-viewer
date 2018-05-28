@@ -78,10 +78,12 @@
       <DependentUpon>AllocationContainer.cs</DependentUpon>
     </Compile>
     <Compile Include="Allocations\AllocationLayer.cs" />
+    <Compile Include="Allocations\AllocationLayerType.cs" />
     <Compile Include="Allocations\AllocationMap.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Allocations\AllocationUnitLayer.cs" />
+    <Compile Include="Allocations\AllocationUnitsLayer.cs" />
+    <Compile Include="Allocations\LayoutStyle.cs" />
     <Compile Include="AllocationWindow.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -90,6 +92,7 @@
     </Compile>
     <Compile Include="BlockSelection.cs" />
     <Compile Include="ColourRange.cs" />
+    <Compile Include="Controls\BarCell.cs" />
     <Compile Include="Controls\BarColumn.cs" />
     <Compile Include="Controls\BorderPanel.cs">
       <SubType>Component</SubType>
@@ -109,6 +112,7 @@
     <Compile Include="AllocationViewer.Designer.cs">
       <DependentUpon>AllocationViewer.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\KeyImageCell.cs" />
     <Compile Include="Controls\KeyImageColumn.cs" />
     <Compile Include="Controls\MarkerKeyTable.cs">
       <SubType>UserControl</SubType>
