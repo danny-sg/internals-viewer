@@ -12,13 +12,13 @@ namespace InternalsViewer.Internals
         {
             pfsPages = new List<PfsPage>();
 
-            int pfsCount = (int)Math.Ceiling(database.FileSize(fileId) / (decimal)Database.PfsInterval);
+            var pfsCount = (int)Math.Ceiling(database.FileSize(fileId) / (decimal)Database.PfsInterval);
 
             pfsPages.Add(new PfsPage(database, new PageAddress(fileId, 1)));
 
             if (pfsCount > 1)
             {
-                for (int i = 1; i < pfsCount; i++)
+                for (var i = 1; i < pfsCount; i++)
                 {
                     pfsPages.Add(new PfsPage(database, new PageAddress(fileId, i * Database.PfsInterval)));
                 }

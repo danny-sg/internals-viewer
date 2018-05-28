@@ -7,13 +7,10 @@ namespace InternalsViewer.Internals.Compression
 {
     public class CdArrayItem : Markable
     {
-        private int index;
-        private byte value;
-
         public CdArrayItem(int index, byte value)
         {
-            this.Index = index;
-            this.Value = value;
+            Index = index;
+            Value = value;
         }
 
         private static string GetCdDescription(byte cdItem)
@@ -39,17 +36,9 @@ namespace InternalsViewer.Internals.Compression
             }
         }
 
-        public int Index
-        {
-            get { return index; }
-            set { index = value; }
-        }
+        public int Index { get; set; }
 
-        public byte Value
-        {
-            get { return this.value; }
-            set { this.value = value; }
-        }
+        public byte Value { get; set; }
 
         [MarkAttribute("", "White", "Orange", true)]
         public string Description
@@ -57,10 +46,10 @@ namespace InternalsViewer.Internals.Compression
             get
             {
                 return string.Format("Column {0}: {1}, Column {2}: {3}",
-                                     (this.Index * 2),
-                                     GetCdDescription(this.Values[0]),
-                                     (this.Index * 2) + 1,
-                                     GetCdDescription(this.Values[1]));
+                                     (Index * 2),
+                                     GetCdDescription(Values[0]),
+                                     (Index * 2) + 1,
+                                     GetCdDescription(Values[1]));
             }
         }
 
@@ -68,7 +57,7 @@ namespace InternalsViewer.Internals.Compression
         {
             get
             {
-                return new byte[] { (byte)(value & 15), (byte)(value >> 4) };
+                return new byte[] { (byte)(Value & 15), (byte)(Value >> 4) };
             }
         }
     }

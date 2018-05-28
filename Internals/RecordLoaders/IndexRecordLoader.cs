@@ -12,7 +12,7 @@ namespace InternalsViewer.Internals.RecordLoaders
     {
         internal static void Load(IndexRecord record)
         {
-            int varColStartIndex = 0;
+            var varColStartIndex = 0;
 
             IndexRecordLoader.LoadIndexType(record);
 
@@ -48,9 +48,9 @@ namespace InternalsViewer.Internals.RecordLoaders
         private static void LoadDownPagePointer(IndexRecord record)
         {
             //Last 6 bytes of the fixed slot
-            byte[] address = new byte[PageAddress.Size];
+            var address = new byte[PageAddress.Size];
 
-            int downPagePointerOffset = record.SlotOffset + record.Page.Header.MinLen - PageAddress.Size;
+            var downPagePointerOffset = record.SlotOffset + record.Page.Header.MinLen - PageAddress.Size;
 
             Array.Copy(record.Page.PageData, downPagePointerOffset, address, 0, PageAddress.Size);
 
@@ -62,7 +62,7 @@ namespace InternalsViewer.Internals.RecordLoaders
         private static void LoadRid(IndexRecord record)
         {
             int ridOffset;
-            byte[] ridAddress = new byte[8];
+            var ridAddress = new byte[8];
 
             if (record.IsIndexType(IndexTypes.Leaf))
             {
@@ -82,7 +82,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
         private static void LoadColumnOffsetArray(IndexRecord record, int varColStartIndex)
         {
-            int varColCountOffset = record.SlotOffset + record.Page.Header.MinLen + varColStartIndex;
+            var varColCountOffset = record.SlotOffset + record.Page.Header.MinLen + varColStartIndex;
 
             record.VariableLengthColumnCount = BitConverter.ToUInt16(record.Page.PageData, varColCountOffset);
 
@@ -100,23 +100,23 @@ namespace InternalsViewer.Internals.RecordLoaders
         {
             RecordField field;
 
-            List<RecordField> columnValues = new List<RecordField>();
+            var columnValues = new List<RecordField>();
 
-            int index = 0;
+            var index = 0;
 
             foreach (IndexColumn indexCol in (record.Structure as IndexStructure).Columns)
             {
-                bool processKeyColumn = !indexCol.Key || (record.IncludeKey && indexCol.Key);
-                bool processIncludesColumn = !indexCol.IncludedColumn || (indexCol.IncludedColumn && record.IsIndexType(IndexTypes.Leaf));
+                var processKeyColumn = !indexCol.Key || (record.IncludeKey && indexCol.Key);
+                var processIncludesColumn = !indexCol.IncludedColumn || (indexCol.IncludedColumn && record.IsIndexType(IndexTypes.Leaf));
 
                 if (processKeyColumn & processIncludesColumn)
                 {
                     field = new RecordField(indexCol);
 
-                    int length = 0;
-                    int offset = 0;
+                    var length = 0;
+                    var offset = 0;
                     byte[] data = null;
-                    int variableIndex = 0;
+                    var variableIndex = 0;
 
                     if (indexCol.LeafOffset >= 0)
                     {
@@ -178,15 +178,15 @@ namespace InternalsViewer.Internals.RecordLoaders
         {
             record.NullBitmapSize = (Int16)((record.Structure.Columns.Count - 1) / 8 + 1);
 
-            int columnCountPosition = record.SlotOffset + record.Page.Header.MinLen;
+            var columnCountPosition = record.SlotOffset + record.Page.Header.MinLen;
 
             record.ColumnCount = BitConverter.ToInt16(record.Page.PageData, columnCountPosition);
 
             record.Mark("ColumnCount", columnCountPosition, sizeof(Int16));
 
-            byte[] nullBitmapBytes = new byte[record.NullBitmapSize];
+            var nullBitmapBytes = new byte[record.NullBitmapSize];
 
-            int nullBitmapPosition = record.SlotOffset + record.Page.Header.MinLen + sizeof(Int16);
+            var nullBitmapPosition = record.SlotOffset + record.Page.Header.MinLen + sizeof(Int16);
 
             Array.Copy(record.Page.PageData,
                        nullBitmapPosition,
@@ -201,7 +201,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
         private static void LoadStatusBits(IndexRecord record)
         {
-            byte statusA = record.Page.PageData[record.SlotOffset];
+            var statusA = record.Page.PageData[record.SlotOffset];
 
             record.StatusBitsA = new BitArray(new byte[] { statusA });
 

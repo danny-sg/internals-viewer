@@ -9,8 +9,6 @@ namespace InternalsViewer.Internals.Pages
     /// </summary>
     public struct RowIdentifier
     {
-        private PageAddress pageAddress;
-        private int slotId;
         public const int Size = sizeof(Int16) + sizeof(Int16) + sizeof(Int32);
 
         /// <summary>
@@ -19,8 +17,8 @@ namespace InternalsViewer.Internals.Pages
         /// <param name="address">The address.</param>
         public RowIdentifier(byte[] address)
         {
-            this.pageAddress = new PageAddress(BitConverter.ToInt16(address, 4), BitConverter.ToInt32(address, 0));
-            this.slotId = BitConverter.ToInt16(address, 6);
+            PageAddress = new PageAddress(BitConverter.ToInt16(address, 4), BitConverter.ToInt32(address, 0));
+            SlotId = BitConverter.ToInt16(address, 6);
         }
 
         /// <summary>
@@ -30,8 +28,8 @@ namespace InternalsViewer.Internals.Pages
         /// <param name="slot">The slot.</param>
         public RowIdentifier(PageAddress page, int slot)
         {
-            this.pageAddress = page;
-            this.slotId = slot;
+            PageAddress = page;
+            SlotId = slot;
         }
 
         /// <summary>
@@ -42,8 +40,8 @@ namespace InternalsViewer.Internals.Pages
         /// <param name="slot">The slot.</param>
         public RowIdentifier(int fileId, int pageId, int slot)
         {
-            this.pageAddress = new PageAddress(fileId, pageId);
-            this.slotId = slot;
+            PageAddress = new PageAddress(fileId, pageId);
+            SlotId = slot;
         }
 
         /// <summary>
@@ -59,12 +57,12 @@ namespace InternalsViewer.Internals.Pages
 
             bool parsed;
 
-            StringBuilder sb = new StringBuilder(address);
+            var sb = new StringBuilder(address);
             sb.Replace("(", string.Empty);
             sb.Replace(")", string.Empty);
             sb.Replace(",", ":");
 
-            string[] splitAddress = sb.ToString().Split(@":".ToCharArray());
+            var splitAddress = sb.ToString().Split(@":".ToCharArray());
 
             if (splitAddress.Length < 2)
             {
@@ -98,30 +96,21 @@ namespace InternalsViewer.Internals.Pages
         public override string ToString()
         {
             return string.Format(CultureInfo.CurrentCulture, "({0}:{1}:{2})",
-                                 this.pageAddress.FileId,
-                                 this.pageAddress.PageId,
-                                 this.slotId);
+                                 PageAddress.FileId,
+                                 PageAddress.PageId,
+                                 SlotId);
         }
 
         /// <summary>
         /// Gets or sets the page address.
         /// </summary>
         /// <value>The page address.</value>
-        public PageAddress PageAddress
-        {
-            get { return this.pageAddress; }
-            set { this.pageAddress = value; }
-        }
+        public PageAddress PageAddress { get; set; }
 
         /// <summary>
         /// Gets or sets the slot id.
         /// </summary>
         /// <value>The slot id.</value>
-        public int SlotId
-        {
-            get { return this.slotId; }
-            set { this.slotId = value; }
-        }
-
+        public int SlotId { get; set; }
     }
 }

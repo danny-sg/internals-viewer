@@ -21,16 +21,6 @@ namespace InternalsViewer.Internals.Records
         public const short SmallSizeOffset = 14;
         public const short TypeOffset = 12;
 
-        private List<BlobChildLink> blobChildren;
-        private long blobId;
-        private BlobType blobType;
-        private int curLinks;
-        private byte[] data;
-        private int length;
-        private short level;
-        private int maxLinks;
-        private short size;
-
         public BlobRecord(Page page, UInt16 slot)
             : base(page, slot, null)
         {
@@ -50,76 +40,40 @@ namespace InternalsViewer.Internals.Records
         }
 
         [MarkAttribute("ID", "Navy", "AliceBlue", true)]
-        public long BlobId
-        {
-            get { return this.blobId; }
-            set { this.blobId = value; }
-        }
+        public long BlobId { get; set; }
 
         [MarkAttribute("Length", "Blue", "Gainsboro", true)]
-        public int Length
-        {
-            get { return this.length; }
-            set { this.length = value; }
-        }
+        public int Length { get; set; }
 
-        public BlobType BlobType
-        {
-            get { return this.blobType; }
-            set { this.blobType = value; }
-        }
+        public BlobType BlobType { get; set; }
 
         [MarkAttribute("Type", "DarkGreen", "Gainsboro", true)]
         public string BlobTypeDescription
         {
-            get { return this.blobType.ToString(); }
+            get { return BlobType.ToString(); }
         }
 
         [MarkAttribute("MaxLinks", "FireBrick", "Gainsboro", true)]
-        public int MaxLinks
-        {
-            get { return this.maxLinks; }
-            set { this.maxLinks = value; }
-        }
+        public int MaxLinks { get; set; }
 
         [MarkAttribute("Current Links", "FireBrick", "Gainsboro", true)]
-        public int CurLinks
-        {
-            get { return this.curLinks; }
-            set { this.curLinks = value; }
-        }
+        public int CurLinks { get; set; }
 
         [MarkAttribute("Level", "SlateGray", "Gainsboro", true)]
-        public short Level
-        {
-            get { return this.level; }
-            set { this.level = value; }
-        }
+        public short Level { get; set; }
 
         [MarkAttribute("Size", "Purple", "Gainsboro", true)]
-        public short Size
-        {
-            get { return this.size; }
-            set { this.size = value; }
-        }
+        public short Size { get; set; }
 
         [MarkAttribute("Data", "Gray", "PaleGoldenrod", true)]
-        public byte[] Data
-        {
-            get { return this.data; }
-            set { this.data = value; }
-        }
+        public byte[] Data { get; set; }
 
-        public List<BlobChildLink> BlobChildren
-        {
-            get { return this.blobChildren; }
-            set { this.blobChildren = value; }
-        }
+        public List<BlobChildLink> BlobChildren { get; set; }
 
         [MarkAttribute("Data", "White", "White", false)]
         public BlobChildLink[] BlobChildrenArray
         {
-            get { return this.BlobChildren.ToArray(); }
+            get { return BlobChildren.ToArray(); }
         }
         
         internal static string GetRecordType(RecordType recordType)

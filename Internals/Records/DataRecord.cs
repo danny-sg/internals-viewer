@@ -8,39 +8,32 @@ namespace InternalsViewer.Internals.Records
 {
     public class DataRecord : Record
     {
-        private SparseVector sparseVector;
-        private RowIdentifier forwardingRecord;
-        
         public DataRecord(Page page, UInt16 slotOffset, Structure structure)
             : base(page, slotOffset, structure)
         {
             DataRecordLoader.Load(this);
         }
 
-        public SparseVector SparseVector
-        {
-            get { return sparseVector; }
-            set { sparseVector = value; }
-        }
+        public SparseVector SparseVector { get; set; }
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
             sb.AppendFormat("DataRecord | Page: {0} | Slot Offset: {1} | Allocation Unit: {2}\n",
-                            this.Page.Header.PageAddress,
-                            this.SlotOffset,
-                            this.Page.Header.AllocationUnit);
+                            Page.Header.PageAddress,
+                            SlotOffset,
+                            Page.Header.AllocationUnit);
 
             sb.Append("-----------------------------------------------------------------------------------------\n");
             sb.AppendFormat("Status Bits A:                {0}\n", GetStatusBitsDescription(this));
-            sb.AppendFormat("Column count offset:          {0}\n", this.ColumnCountOffset);
-            sb.AppendFormat("Number of columns:            {0}\n", this.ColumnCount);
-            sb.AppendFormat("Null bitmap:                  {0}\n", this.HasNullBitmap ? GetNullBitmapString(this.NullBitmap) : "(No null bitmap)");
-            sb.AppendFormat("Variable length column count: {0}\n", this.VariableLengthColumnCount);
-            sb.AppendFormat("Column offset array:          {0}\n", this.HasVariableLengthColumns ? GetArrayString(this.ColOffsetArray) : "(no variable length columns)");
+            sb.AppendFormat("Column count offset:          {0}\n", ColumnCountOffset);
+            sb.AppendFormat("Number of columns:            {0}\n", ColumnCount);
+            sb.AppendFormat("Null bitmap:                  {0}\n", HasNullBitmap ? GetNullBitmapString(NullBitmap) : "(No null bitmap)");
+            sb.AppendFormat("Variable length column count: {0}\n", VariableLengthColumnCount);
+            sb.AppendFormat("Column offset array:          {0}\n", HasVariableLengthColumns ? GetArrayString(ColOffsetArray) : "(no variable length columns)");
 
-            foreach (RecordField field in this.Fields)
+            foreach (var field in Fields)
             {
                 sb.AppendLine(field.ToString());
             }
@@ -54,11 +47,6 @@ namespace InternalsViewer.Internals.Records
         }
 
         [MarkAttribute("Forwarding Record", "DarkBlue", "Gainsboro", true)]
-        public RowIdentifier ForwardingRecord
-        {
-            get { return this.forwardingRecord; }
-            set { this.forwardingRecord = value; }
-        }
-
+        public RowIdentifier ForwardingRecord { get; set; }
     }
 }

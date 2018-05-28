@@ -14,7 +14,7 @@ namespace InternalsViewer.Internals
 
             try
             {
-                bool unsigned = (data[0] & 0x80) == 0x80;
+                var unsigned = (data[0] & 0x80) == 0x80;
 
                 switch (sqlType)
                 {
@@ -105,7 +105,7 @@ namespace InternalsViewer.Internals
         private static string DecodeBigInt(byte[] data, bool unsigned)
         {
 
-            byte[] returnData = DecodeInt(data, unsigned, 8);
+            var returnData = DecodeInt(data, unsigned, 8);
 
             if (unsigned)
             {
@@ -119,7 +119,7 @@ namespace InternalsViewer.Internals
 
         private static string DecodeSmallInt(byte[] data, bool unsigned)
         {
-            byte[] returnData = DecodeInt(data, unsigned, 2);
+            var returnData = DecodeInt(data, unsigned, 2);
 
             if (unsigned)
             {
@@ -149,7 +149,7 @@ namespace InternalsViewer.Internals
         {
             if (data.Length == 2)
             {
-                byte[] expandedDate = new byte[4];
+                var expandedDate = new byte[4];
 
                 Array.Copy(data, 0, expandedDate, 2, 2);
 
@@ -163,7 +163,7 @@ namespace InternalsViewer.Internals
 
         private static string DecodeDateTime(byte[] data, bool unsigned)
         {
-            byte[] expandedDateTime = new byte[8];
+            var expandedDateTime = new byte[8];
 
             if (data.Length < 5)
             {
@@ -174,8 +174,8 @@ namespace InternalsViewer.Internals
             {
                 //time is always the last 4 bytes
 
-                byte[] timePart = new byte[4];
-                byte[] datePart = new byte[data.Length - 4];
+                var timePart = new byte[4];
+                var datePart = new byte[data.Length - 4];
 
                 Array.Copy(data, data.Length - 4, timePart, 0, 4);
                 Array.Copy(data, datePart, data.Length - 4);
@@ -195,11 +195,11 @@ namespace InternalsViewer.Internals
 
         private static byte[] DecodeInt(byte[] data, bool unsigned, int size)
         {
-            byte[] returnData = new byte[size];
+            var returnData = new byte[size];
 
             if (!unsigned)
             {
-                for (int i = 0; i < returnData.Length; i++)
+                for (var i = 0; i < returnData.Length; i++)
                 {
                     returnData[i] = 0xFF;
                 }
@@ -220,7 +220,7 @@ namespace InternalsViewer.Internals
         {
             if ((data[startPos] & 0x80) == 0x80)
             {
-                byte[] numberOfColumnsData = new byte[2];
+                var numberOfColumnsData = new byte[2];
 
                 Array.Copy(data, startPos, numberOfColumnsData, 0, 2);
                 

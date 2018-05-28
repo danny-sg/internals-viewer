@@ -12,7 +12,7 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <param name="sparseVector">The sparse vector.</param>
         internal static void Load(SparseVector sparseVector)
         {
-            int vectorOffset = sparseVector.ParentRecord.SlotOffset + sparseVector.RecordOffset;
+            var vectorOffset = sparseVector.ParentRecord.SlotOffset + sparseVector.RecordOffset;
 
             sparseVector.ComplexHeader = BitConverter.ToInt16(sparseVector.Data, 0);
 
@@ -32,21 +32,21 @@ namespace InternalsViewer.Internals.RecordLoaders
                               vectorOffset + SparseVector.ColumnsOffset + sparseVector.ColCount * sizeof(Int16),
                               sparseVector.ColCount * sizeof(Int16));
 
-            int previousOffset = 4 + (sparseVector.ColCount * 4);
+            var previousOffset = 4 + (sparseVector.ColCount * 4);
 
-            for (int i = 0; i < sparseVector.ColCount; i++)
+            for (var i = 0; i < sparseVector.ColCount; i++)
             {
                 sparseVector.Columns[i] = BitConverter.ToUInt16(sparseVector.Data, 4 + (i * 2));
 
                 sparseVector.Offset[i] = BitConverter.ToUInt16(sparseVector.Data, (4 + sparseVector.ColCount * 2) + (i * 2));
 
-                byte[] columnData = new byte[sparseVector.Offset[i] - previousOffset];
+                var columnData = new byte[sparseVector.Offset[i] - previousOffset];
 
                 Array.Copy(sparseVector.Data, previousOffset, columnData, 0, sparseVector.Offset[i] - previousOffset);
 
-                Column column = sparseVector.Structure.Columns.Find(delegate(Column col) { return col.ColumnId == sparseVector.Columns[i]; });
+                var column = sparseVector.Structure.Columns.Find(delegate(Column col) { return col.ColumnId == sparseVector.Columns[i]; });
 
-                RecordField field = new RecordField(column);
+                var field = new RecordField(column);
 
                 field.Data = columnData;
                 field.Sparse = true;

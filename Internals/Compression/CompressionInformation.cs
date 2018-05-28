@@ -12,24 +12,13 @@ namespace InternalsViewer.Internals.Compression
 {
     public class CompressionInformation: Markable
     {
-        private short pageModCount;
-        private short size;
-        private BitArray statusBits;
-        private bool hasAnchorRecord;
-        private bool hasDictionary;
-        private Page page;
-        private int slotOffset;
-        private CompressedDataRecord anchorRecord;
-        private Dictionary compressionDictionary;
-        private short length;
-
         public static byte CiSize = 7;
         public static short Offset = 96;
 
         public CompressionInformation(Page page, int slot)
         {
-            this.Page = page;
-            this.SlotOffset = slot;
+            Page = page;
+            SlotOffset = slot;
 
             try
             {
@@ -47,8 +36,8 @@ namespace InternalsViewer.Internals.Compression
 
             ci.Mark("StatusDescription", ci.SlotOffset, 1);
 
-            ci.hasAnchorRecord = ci.StatusBits[1];
-            ci.hasDictionary = ci.StatusBits[2];
+            ci.HasAnchorRecord = ci.StatusBits[1];
+            ci.HasDictionary = ci.StatusBits[2];
 
             ci.PageModCount = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 1);
             
@@ -69,7 +58,7 @@ namespace InternalsViewer.Internals.Compression
             {
                 CompressionInformation.LoadAnchor(ci.HasDictionary, ci);
             }
-            if (ci.hasDictionary)
+            if (ci.HasDictionary)
             {
                 CompressionInformation.LoadDictionary(ci);
             }
@@ -82,24 +71,24 @@ namespace InternalsViewer.Internals.Compression
 
         private static void LoadAnchor(bool hasDictionary, CompressionInformation ci)
         {
-            int startOffset = (ci.HasDictionary ? 7 : 5) + ci.SlotOffset;
+            var startOffset = (ci.HasDictionary ? 7 : 5) + ci.SlotOffset;
 
             int records = ci.Page.PageData[startOffset + 1];
 
-            TableStructure structure = CreateTableStructure(records, ci);
+            var structure = CreateTableStructure(records, ci);
 
             ci.AnchorRecord = new CompressedDataRecord(ci.Page, (UInt16)startOffset, structure);
         }
 
         private static TableStructure CreateTableStructure(int records, CompressionInformation ci)
         {
-            TableStructure structure = new TableStructure(ci.Page.Header.AllocationUnitId, ci.Page.Database);
+            var structure = new TableStructure(ci.Page.Header.AllocationUnitId, ci.Page.Database);
 
-            List<RecordField> fields = new List<RecordField>();
+            var fields = new List<RecordField>();
 
             for (short i = 0; i < records; i++)
             {
-                Column column = new Column();
+                var column = new Column();
 
                 column.ColumnName = string.Format("Column {0}", i);
                 column.ColumnId = i;
@@ -114,43 +103,23 @@ namespace InternalsViewer.Internals.Compression
         }
 
         [MarkAttribute("Page Mod Count", "DarkGreen", "Gainsboro", true)]
-        public short PageModCount
-        {
-            get { return pageModCount; }
-            set { pageModCount = value; }
-        }
+        public short PageModCount { get; set; }
 
         [MarkAttribute("Size", "Purple", "Gainsboro", true)]
-        public short Size
-        {
-            get { return size; }
-            set { size = value; }
-        }
+        public short Size { get; set; }
 
-        public BitArray StatusBits
-        {
-            get { return statusBits; }
-            set { statusBits = value; }
-        }
+        public BitArray StatusBits { get; set; }
 
-        public int SlotOffset
-        {
-            get { return slotOffset; }
-            set { slotOffset = value; }
-        }
+        public int SlotOffset { get; set; }
 
-        public Page Page
-        {
-            get { return page; }
-            set { page = value; }
-        }
+        public Page Page { get; set; }
 
         [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
         public string StatusDescription
         {
             get
             {
-                StringBuilder sb = new StringBuilder();
+                var sb = new StringBuilder();
 
                 if (HasAnchorRecord)
                 {
@@ -170,36 +139,16 @@ namespace InternalsViewer.Internals.Compression
                 return sb.ToString();
             }
         }
-        public CompressedDataRecord AnchorRecord
-        {
-            get { return anchorRecord; }
-            set { anchorRecord = value; }
-        }
+        public CompressedDataRecord AnchorRecord { get; set; }
 
-        public Dictionary CompressionDictionary
-        {
-            get { return compressionDictionary; }
-            set { compressionDictionary = value; }
-        }
+        public Dictionary CompressionDictionary { get; set; }
 
-        public bool HasAnchorRecord
-        {
-            get { return hasAnchorRecord; }
-            set { hasAnchorRecord = value; }
-        }
+        public bool HasAnchorRecord { get; set; }
 
-        public bool HasDictionary
-        {
-            get { return hasDictionary; }
-            set { hasDictionary = value; }
-        }
+        public bool HasDictionary { get; set; }
 
         [MarkAttribute("Length", "Blue", "Gainsboro", true)]
-        public short Length
-        {
-            get { return length; }
-            set { length = value; }
-        }
+        public short Length { get; set; }
 
         public enum CompressionInfoStructure
         {

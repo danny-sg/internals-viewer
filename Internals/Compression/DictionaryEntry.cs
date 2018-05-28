@@ -7,18 +7,12 @@ namespace InternalsViewer.Internals.Compression
 {
     public class DictionaryEntry: Markable
     {
-        private byte[] data;
-
         public DictionaryEntry(byte[] data)
         {
-            this.Data = data;
+            Data = data;
         }
 
         [MarkAttribute("", "Gray", "LemonChiffon", "PaleGoldenrod", true)]
-        public byte[] Data
-        {
-            get { return data; }
-            set { data = value; }
-        }
+        public byte[] Data { get; set; }
     }
 }

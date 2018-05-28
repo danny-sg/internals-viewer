@@ -18,9 +18,9 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <returns>An array of 2-byte integers</returns>
         public static UInt16[] GetOffsetArray(byte[] record, int size, int offset)
         {
-            UInt16[] offsetArray = new UInt16[size];
+            var offsetArray = new UInt16[size];
 
-            for (int i = 0; i < size; i++)
+            for (var i = 0; i < size; i++)
             {
                 offsetArray[i] = BitConverter.ToUInt16(record, offset);
 

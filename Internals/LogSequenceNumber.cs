@@ -18,11 +18,11 @@ namespace InternalsViewer.Internals
 
         public LogSequenceNumber(string value)
         {
-            StringBuilder sb = new StringBuilder(value);
+            var sb = new StringBuilder(value);
             sb.Replace("(", string.Empty);
             sb.Replace(")", string.Empty);
 
-            string[] splitAddress = sb.ToString().Split(@":".ToCharArray());
+            var splitAddress = sb.ToString().Split(@":".ToCharArray());
 
             if (splitAddress.Length != 3)
             {
@@ -59,9 +59,9 @@ namespace InternalsViewer.Internals
 
         int IComparable<LogSequenceNumber>.CompareTo(LogSequenceNumber other)
         {
-            return this.fileOffset.CompareTo(other.virtualLogFile)
-                   + this.recordSequence.CompareTo(other.fileOffset)
-                   + this.recordSequence.CompareTo(other.recordSequence);
+            return fileOffset.CompareTo(other.virtualLogFile)
+                   + recordSequence.CompareTo(other.fileOffset)
+                   + recordSequence.CompareTo(other.recordSequence);
 
         }
     }

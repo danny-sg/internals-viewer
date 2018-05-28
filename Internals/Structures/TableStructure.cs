@@ -6,12 +6,10 @@ namespace InternalsViewer.Internals.Structures
 {
     public class TableStructure : Structure
     {
-        private int columnCount;
-
         public TableStructure(long allocationUnitId, Database database)
             : base(allocationUnitId, database)
         {
-            this.AddColumns(this.StructureDataTable);
+            AddColumns(StructureDataTable);
         }
 
         internal override void AddColumns(DataTable structure)
@@ -22,7 +20,7 @@ namespace InternalsViewer.Internals.Structures
             {
                 foreach (DataRow tableColumn in structure.Rows)
                 {
-                    columnCount++;
+                    ColumnCount++;
 
                     currentColumn = new Column();
 
@@ -38,11 +36,11 @@ namespace InternalsViewer.Internals.Structures
                     currentColumn.Sparse = Convert.ToBoolean(tableColumn["is_sparse"] ?? false);
                     currentColumn.NullBit = Convert.ToInt16(tableColumn["leaf_null_bit"]);
 
-                    this.Columns.Add(currentColumn);
+                    Columns.Add(currentColumn);
 
                     if (currentColumn.Sparse)
                     {
-                        this.HasSparseColumns = true;
+                        HasSparseColumns = true;
                     }
                 }
             }
@@ -50,9 +48,9 @@ namespace InternalsViewer.Internals.Structures
 
         public override DataTable GetStructure(long allocationUnitId, Database database)
         {
-            DataTable returnDataTable = new DataTable();
+            var returnDataTable = new DataTable();
 
-            using (SqlConnection conn = new SqlConnection(database.ConnectionString))
+            using (var conn = new SqlConnection(database.ConnectionString))
             {
                 string commandText;
 
@@ -65,13 +63,13 @@ namespace InternalsViewer.Internals.Structures
                     commandText = Properties.Resources.SQL_Table_Columns_2005;
                 }
 
-                SqlCommand cmd = new SqlCommand(commandText, conn);
+                var cmd = new SqlCommand(commandText, conn);
                 cmd.CommandType = CommandType.Text;
 
                 cmd.Parameters.AddWithValue("@allocation_unit_id", allocationUnitId);
                 cmd.CommandType = CommandType.Text;
 
-                SqlDataAdapter da = new SqlDataAdapter(cmd);
+                var da = new SqlDataAdapter(cmd);
                 conn.Open();
 
                 if (conn.Database != database.Name)
@@ -87,10 +85,6 @@ namespace InternalsViewer.Internals.Structures
             return returnDataTable;
         }
 
-        public int ColumnCount
-        {
-            get { return columnCount; }
-            set { columnCount = value; }
-        }
+        public int ColumnCount { get; set; }
     }
 }

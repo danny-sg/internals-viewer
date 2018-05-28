@@ -21,13 +21,13 @@ namespace InternalsViewer.Internals
         {
             object returnObject;
 
-            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (var conn = new SqlConnection(connectionString))
             {
-                SqlCommand cmd = new SqlCommand(command, conn);
+                var cmd = new SqlCommand(command, conn);
 
                 cmd.CommandType = commandType;
 
-                foreach (SqlParameter parameter in parameters)
+                foreach (var parameter in parameters)
                 {
                     cmd.Parameters.Add(parameter);
                 }
@@ -57,20 +57,20 @@ namespace InternalsViewer.Internals
 
         public static DataTable GetDataTable(string connectionString, string command, string database, string tableName, CommandType commandType, SqlParameter[] parameters)
         {
-            DataTable returnDataTable = new DataTable();
+            var returnDataTable = new DataTable();
             returnDataTable.Locale = CultureInfo.InvariantCulture;
 
-            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (var conn = new SqlConnection(connectionString))
             {
-                SqlCommand cmd = new SqlCommand(command, conn);
+                var cmd = new SqlCommand(command, conn);
                 cmd.CommandType = commandType;
 
-                foreach (SqlParameter parameter in parameters)
+                foreach (var parameter in parameters)
                 {
                     cmd.Parameters.Add(parameter);
                 }
 
-                SqlDataAdapter da = new SqlDataAdapter(cmd);
+                var da = new SqlDataAdapter(cmd);
 
                 conn.Open();
 
@@ -94,15 +94,15 @@ namespace InternalsViewer.Internals
 
         public static int ExecuteNonQuery(string connectionString, string command, string database, CommandType commandType, SqlParameter[] parameters)
         {
-            SqlParameter returnParam = new SqlParameter("@RETURN_VALUE", SqlDbType.Int);
+            var returnParam = new SqlParameter("@RETURN_VALUE", SqlDbType.Int);
             returnParam.Direction = ParameterDirection.ReturnValue;
 
-            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (var conn = new SqlConnection(connectionString))
             {
-                SqlCommand cmd = new SqlCommand(command, conn);
+                var cmd = new SqlCommand(command, conn);
                 cmd.CommandType = commandType;
 
-                foreach (SqlParameter parameter in parameters)
+                foreach (var parameter in parameters)
                 {
                     cmd.Parameters.Add(parameter);
                 }

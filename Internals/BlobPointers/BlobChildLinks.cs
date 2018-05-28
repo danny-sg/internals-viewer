@@ -6,9 +6,6 @@ namespace InternalsViewer.Internals.BlobPointers
 {
     public class BlobChildLink: Markable
     {
-        private int length;
-        private int offset;
-        private RowIdentifier rowIdentifier;
         private List<MarkItem> markItems = new List<MarkItem>();
 
         public BlobChildLink()
@@ -17,35 +14,23 @@ namespace InternalsViewer.Internals.BlobPointers
 
         public BlobChildLink(RowIdentifier rowIdentifier, int offset, int length)
         {
-            this.RowIdentifier = rowIdentifier;
-            this.Offset = offset;
-            this.Length = length;
+            RowIdentifier = rowIdentifier;
+            Offset = offset;
+            Length = length;
         }
 
         [MarkAttribute("Row Identifier", "DarkMagenta", "Thistle", true)]
-        public RowIdentifier RowIdentifier
-        {
-            get { return this.rowIdentifier; }
-            set { this.rowIdentifier = value; }
-        }
+        public RowIdentifier RowIdentifier { get; set; }
 
         [MarkAttribute("Offset", "Blue", "Thistle", true)]
-        public int Offset
-        {
-            get { return this.offset; }
-            set { this.offset = value; }
-        }
+        public int Offset { get; set; }
 
         [MarkAttribute("Length", "Red", "Thistle", true)]
-        public int Length
-        {
-            get { return this.length; }
-            set { this.length = value; }
-        }
+        public int Length { get; set; }
 
         public override string ToString()
         {
-            return string.Format("Page: {0} Offset: {1} Length: {2}", this.RowIdentifier, this.Offset, this.Length);
+            return string.Format("Page: {0} Offset: {1} Length: {2}", RowIdentifier, Offset, Length);
         }
     }
 }

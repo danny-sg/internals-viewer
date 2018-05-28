@@ -10,14 +10,14 @@ namespace InternalsViewer.Internals.TransactionLog
         {
             Checkpoint(connectionString, database);
 
-            BootPage bootPage = new BootPage(connectionString, database);
+            var bootPage = new BootPage(connectionString, database);
 
             return bootPage.CheckpointLsn;
         }
 
         public static DataTable StopMonitoring(string database, LogSequenceNumber startLsn, string connectionString)
         {
-            DataTable logTable = DataAccess.GetDataTable(connectionString,
+            var logTable = DataAccess.GetDataTable(connectionString,
                                                          Properties.Resources.SQL_TransactionLog,
                                                          database,
                                                          "Transaction Log",
@@ -28,11 +28,11 @@ namespace InternalsViewer.Internals.TransactionLog
 
             foreach (DataRow row in logTable.Rows)
             {
-                string pageAddress = row["PageId"].ToString();
+                var pageAddress = row["PageId"].ToString();
 
                 if (!string.IsNullOrEmpty(pageAddress))
                 {
-                    PageAddress page = PageAddress.Parse(row["PageId"].ToString());
+                    var page = PageAddress.Parse(row["PageId"].ToString());
 
                     row["PageAddress"] = page;
                 }

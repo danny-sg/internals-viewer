@@ -11,25 +11,19 @@ namespace InternalsViewer.Internals.BlobPointers
     /// </summary>
     public abstract class BlobField : Field
     {
-        private byte[] data;
-        private List<BlobChildLink> links;
-        private BlobFieldType pointerType;
-        private int timestamp;
-        private int offset;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="BlobField"/> class.
         /// </summary>
         /// <param name="data">The data.</param>
         public BlobField(byte[] data, int offset)
         {
-            this.data = data;
-            this.pointerType = (BlobFieldType)data[0];
-            this.Offset = offset;
+            Data = data;
+            PointerType = (BlobFieldType)data[0];
+            Offset = offset;
 
-            this.Mark("PointerType", offset, sizeof(byte));
-            
-            this.LoadLinks();
+            Mark("PointerType", offset, sizeof(byte));
+
+            LoadLinks();
         }
 
         /// <summary>
@@ -37,58 +31,38 @@ namespace InternalsViewer.Internals.BlobPointers
         /// </summary>
         /// <value>The timestamp.</value>
         [MarkAttribute("Timestamp", "DarkGreen", "PeachPuff", true)]
-        public int Timestamp
-        {
-            get { return this.timestamp; }
-            set { this.timestamp = value; }
-        }
+        public int Timestamp { get; set; }
 
         /// <summary>
         /// Gets or sets the links.
         /// </summary>
         /// <value>The links.</value>
-        public List<BlobChildLink> Links
-        {
-            get { return this.links; }
-            set { this.links = value; }
-        }
+        public List<BlobChildLink> Links { get; set; }
 
         [MarkAttribute("Row Id", "Blue", "PeachPuff", true)]
         public BlobChildLink[] LinksArray
         {
-            get { return this.Links.ToArray(); }
+            get { return Links.ToArray(); }
         }
 
         /// <summary>
         /// Gets or sets the data.
         /// </summary>
         /// <value>The data.</value>
-        public byte[] Data
-        {
-            get { return this.data; }
-            set { this.data = value; }
-        }
+        public byte[] Data { get; set; }
 
         /// <summary>
         /// Gets or sets the type of the blob pointer.
         /// </summary>
         /// <value>The type of the blob pointer.</value>
         [MarkAttribute("Type", "DarkGreen", "PeachPuff", true)]
-        public BlobFieldType PointerType
-        {
-            get { return this.pointerType; }
-            set { this.pointerType = value; }
-        }
+        public BlobFieldType PointerType { get; set; }
 
         /// <summary>
         /// Gets or sets the offset in the page for this blob field
         /// </summary>
         /// <value>The offset.</value>
-        public int Offset
-        {
-            get { return offset; }
-            set { offset = value; }
-        }
+        public int Offset { get; set; }
 
         /// <summary>
         /// Returns a <see cref="T:System.String"/> that represents the current <see cref="T:System.Object"/>.
@@ -98,11 +72,11 @@ namespace InternalsViewer.Internals.BlobPointers
         /// </returns>
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
-            sb.AppendLine(this.Timestamp.ToString());
+            sb.AppendLine(Timestamp.ToString());
 
-            foreach (BlobChildLink b in this.Links)
+            foreach (var b in Links)
             {
                 sb.AppendLine(b.ToString());
             }

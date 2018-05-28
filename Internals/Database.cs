@@ -10,25 +10,19 @@ namespace InternalsViewer.Internals
         public const int AllocationInterval = 511232;
         public const int PfsInterval = 8088;
         private readonly Dictionary<int, Allocation> bcm = new Dictionary<int, Allocation>();
-        private byte compatibilityLevel;
-        private readonly bool compatible;
-        private readonly int databaseId;
-        private readonly string name;
         private readonly Dictionary<int, Allocation> dcm = new Dictionary<int, Allocation>();
         private readonly Dictionary<int, Allocation> gam = new Dictionary<int, Allocation>();
         private readonly Dictionary<int, Pfs> pfs = new Dictionary<int, Pfs>();
         private readonly Dictionary<int, Allocation> sGam = new Dictionary<int, Allocation>();
-        private List<DatabaseFile> files = new List<DatabaseFile>();
-        private string connectionString;
 
         public Database(string connectionString, int databaseId, string name, int state, byte compatibilityLevel)
         {
-            this.ConnectionString = connectionString;
-            this.databaseId = databaseId;
-            this.name = name;
-            this.compatibilityLevel = compatibilityLevel;
+            ConnectionString = connectionString;
+            DatabaseId = databaseId;
+            Name = name;
+            CompatibilityLevel = compatibilityLevel;
 
-            compatible = (compatibilityLevel >= 90 && state == 0);
+            Compatible = (compatibilityLevel >= 90 && state == 0);
 
             LoadFiles();
         }
@@ -40,12 +34,12 @@ namespace InternalsViewer.Internals
 
         public int FileSize(int fileId)
         {
-            return files.Find(delegate(DatabaseFile file) { return file.FileId == fileId; }).Size;
+            return Files.Find(delegate(DatabaseFile file) { return file.FileId == fileId; }).Size;
         }
 
         private void LoadAllocations()
         {
-            foreach (DatabaseFile file in files)
+            foreach (var file in Files)
             {
                 gam.Add(file.FileId, new Allocation(this, new PageAddress(file.FileId, 2)));
                 sGam.Add(file.FileId, new Allocation(this, new PageAddress(file.FileId, 3)));
@@ -56,7 +50,7 @@ namespace InternalsViewer.Internals
 
         private void LoadPfs()
         {
-            foreach (DatabaseFile file in files)
+            foreach (var file in Files)
             {
                 pfs.Add(file.FileId, new Pfs(this, file.FileId));
             }
@@ -69,13 +63,13 @@ namespace InternalsViewer.Internals
 
         private void LoadFiles()
         {
-            string sqlCommand = Properties.Resources.SQL_Files;
+            var sqlCommand = Properties.Resources.SQL_Files;
 
-            DataTable filesDataTable = DataAccess.GetDataTable(this.ConnectionString, sqlCommand, this.Name, "Files", CommandType.Text);
+            var filesDataTable = DataAccess.GetDataTable(ConnectionString, sqlCommand, Name, "Files", CommandType.Text);
 
             foreach (DataRow r in filesDataTable.Rows)
             {
-                DatabaseFile file = new DatabaseFile((int)r["file_id"], this);
+                var file = new DatabaseFile((int)r["file_id"], this);
 
                 file.FileGroup = r["filegroup_name"].ToString();
                 file.Name = r["name"].ToString();
@@ -84,27 +78,27 @@ namespace InternalsViewer.Internals
                 file.TotalExtents = (int)r["total_extents"];
                 file.UsedExtents = (int)r["used_extents"];
 
-                files.Add(file);
+                Files.Add(file);
             }
         }
 
         public DataTable Tables()
         {
-            string sqlCommand = Properties.Resources.SQL_Database_Tables;
+            var sqlCommand = Properties.Resources.SQL_Database_Tables;
 
-            return DataAccess.GetDataTable(this.ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
+            return DataAccess.GetDataTable(ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
         }
 
         public DataTable AllocationUnits()
         {
-            string sqlCommand = Properties.Resources.SQL_Allocation_Units;
+            var sqlCommand = Properties.Resources.SQL_Allocation_Units;
 
-            return DataAccess.GetDataTable(this.ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
+            return DataAccess.GetDataTable(ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
         }
 
         public DataTable TableInfo(int objectId)
         {
-            return DataAccess.GetDataTable(this.ConnectionString,
+            return DataAccess.GetDataTable(ConnectionString,
                                            Properties.Resources.SQL_Table_Info,
                                            Name,
                                            "Tables",
@@ -119,8 +113,8 @@ namespace InternalsViewer.Internals
 
         internal int GetSize(DatabaseFile databaseFile)
         {
-            return (int)DataAccess.GetScalar(this.ConnectionString,
-                                             this.Name,
+            return (int)DataAccess.GetScalar(ConnectionString,
+                                             Name,
                                              Properties.Resources.SQL_File_Size,
                                              CommandType.Text,
                                              new SqlParameter[1] { new SqlParameter("file_id", databaseFile.FileId) });
@@ -143,15 +137,9 @@ namespace InternalsViewer.Internals
 
         #region Properties
 
-        public int DatabaseId
-        {
-            get { return databaseId; }
-        }
+        public int DatabaseId { get; }
 
-        public string Name
-        {
-            get { return name; }
-        }
+        public string Name { get; }
 
         public Dictionary<int, Allocation> Gam
         {
@@ -213,28 +201,13 @@ namespace InternalsViewer.Internals
             }
         }
 
-        public List<DatabaseFile> Files
-        {
-            get { return files; }
-            set { files = value; }
-        }
+        public List<DatabaseFile> Files { get; set; } = new List<DatabaseFile>();
 
-        public bool Compatible
-        {
-            get { return compatible; }
-        }
+        public bool Compatible { get; }
 
-        public byte CompatibilityLevel
-        {
-            get { return this.compatibilityLevel; }
-            set { this.compatibilityLevel = value; }
-        }
+        public byte CompatibilityLevel { get; set; }
 
-        public string ConnectionString
-        {
-            get { return connectionString; }
-            set { connectionString = value; }
-        }
+        public string ConnectionString { get; set; }
 
         #endregion
 

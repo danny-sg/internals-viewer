@@ -8,7 +8,6 @@ namespace InternalsViewer.Internals.Pages
     public class BootPage : Page
     {
         private const int CheckpointLsnOffset = 444;
-        private LogSequenceNumber checkpointLsn;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BootPage"/> class.
@@ -17,34 +16,30 @@ namespace InternalsViewer.Internals.Pages
         public BootPage(Database database)
             : base(database, new PageAddress(1, 9))
         {
-            this.LoadCheckpointLsn();
+            LoadCheckpointLsn();
         }
 
         public BootPage(string connectionString, string databaseName)
             :base(connectionString, databaseName, new PageAddress(1, 9))
         {
-            this.LoadCheckpointLsn();
+            LoadCheckpointLsn();
         }
 
         /// <summary>
         /// Gets or sets the last checkpoint LSN.
         /// </summary>
         /// <value>The checkpoint LSN.</value>
-        public LogSequenceNumber CheckpointLsn
-        {
-            get { return checkpointLsn; }
-            set { checkpointLsn = value; }
-        }
+        public LogSequenceNumber CheckpointLsn { get; set; }
 
         /// <summary>
         /// Loads the checkpoint LSN directly from the page data.
         /// </summary>
         private void LoadCheckpointLsn()
         {
-            byte[] checkpointLsnValue = new byte[10];
+            var checkpointLsnValue = new byte[10];
 
-            Array.Copy(this.PageData, CheckpointLsnOffset, checkpointLsnValue, 0, 10);
-            this.CheckpointLsn = new LogSequenceNumber(checkpointLsnValue);
+            Array.Copy(PageData, CheckpointLsnOffset, checkpointLsnValue, 0, 10);
+            CheckpointLsn = new LogSequenceNumber(checkpointLsnValue);
         }
 
         /// <summary>

@@ -24,14 +24,14 @@ namespace InternalsViewer.Internals.Pages
         {
             try
             {
-                PageAddress pageAddress = Parse(address);
-                this.fileId = pageAddress.fileId;
-                this.pageId = pageAddress.pageId;
+                var pageAddress = Parse(address);
+                fileId = pageAddress.fileId;
+                pageId = pageAddress.pageId;
             }
             catch
             {
-                this.fileId = 0;
-                this.pageId = 0;
+                fileId = 0;
+                pageId = 0;
             }
         }
 
@@ -52,8 +52,8 @@ namespace InternalsViewer.Internals.Pages
         /// <param name="address">The page address in internal 6 byte form.</param>
         public PageAddress(byte[] address)
         {
-            this.pageId = BitConverter.ToInt32(address, 0);
-            this.fileId = BitConverter.ToInt16(address, 4);
+            pageId = BitConverter.ToInt32(address, 0);
+            fileId = BitConverter.ToInt16(address, 4);
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace InternalsViewer.Internals.Pages
         /// <returns></returns>
         public static PageAddress Parse(string address)
         {
-            Regex bytePattern = new Regex(@"[0-9a-fA-F]{4}[\x3A][0-9a-fA-F]{8}$");
+            var bytePattern = new Regex(@"[0-9a-fA-F]{4}[\x3A][0-9a-fA-F]{8}$");
 
             if (bytePattern.IsMatch(address))
             {
@@ -75,12 +75,12 @@ namespace InternalsViewer.Internals.Pages
 
             bool parsed;
 
-            StringBuilder sb = new StringBuilder(address);
+            var sb = new StringBuilder(address);
             sb.Replace("(", string.Empty);
             sb.Replace(")", string.Empty);
             sb.Replace(",", ":");
 
-            string[] splitAddress = sb.ToString().Split(@":".ToCharArray());
+            var splitAddress = sb.ToString().Split(@":".ToCharArray());
 
             if (splitAddress.Length != 2)
             {
@@ -110,7 +110,7 @@ namespace InternalsViewer.Internals.Pages
             int fileId;
             int pageId;
 
-            string[] bytes = address.Split(new char[] { ':' });
+            var bytes = address.Split(new char[] { ':' });
 
             int.TryParse(bytes[0], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out fileId);
             int.TryParse(bytes[1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out pageId);
@@ -126,7 +126,7 @@ namespace InternalsViewer.Internals.Pages
         /// </returns>
         public override string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "({0}:{1})", this.fileId, this.pageId);
+            return string.Format(CultureInfo.CurrentCulture, "({0}:{1})", fileId, pageId);
         }
 
         /// <summary>
@@ -170,7 +170,7 @@ namespace InternalsViewer.Internals.Pages
         /// <returns></returns>
         public bool Equals(PageAddress pageAddress)
         {
-            return this.fileId == pageAddress.fileId && this.pageId == pageAddress.pageId;
+            return fileId == pageAddress.fileId && pageId == pageAddress.pageId;
         }
 
         /// <summary>
@@ -181,7 +181,7 @@ namespace InternalsViewer.Internals.Pages
         /// </returns>
         public override int GetHashCode()
         {
-            return this.fileId + 29 * this.pageId;
+            return fileId + 29 * pageId;
         }
 
         /// <summary>
@@ -196,7 +196,7 @@ namespace InternalsViewer.Internals.Pages
         /// </returns>
         public int CompareTo(PageAddress other)
         {
-            return (this.FileId.CompareTo(other.FileId) * 9999999) + this.PageId.CompareTo(other.PageId);
+            return (FileId.CompareTo(other.FileId) * 9999999) + PageId.CompareTo(other.PageId);
         }
 
         /// <summary>
@@ -205,8 +205,8 @@ namespace InternalsViewer.Internals.Pages
         /// <value>The file id.</value>
         public int FileId
         {
-            get { return this.fileId; }
-            set { this.fileId = value; }
+            get { return fileId; }
+            set { fileId = value; }
         }
 
         /// <summary>
@@ -215,8 +215,8 @@ namespace InternalsViewer.Internals.Pages
         /// <value>The page id.</value>
         public int PageId
         {
-            get { return this.pageId; }
-            set { this.pageId = value; }
+            get { return pageId; }
+            set { pageId = value; }
         }
     }
 }

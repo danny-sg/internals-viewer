@@ -54,9 +54,9 @@ namespace InternalsViewer.Internals.Structures
         /// <returns></returns>
         public static List<HobtEntryPoint> EntryPoints(string connectionString, string database, string objectName, string indexName)
         {
-            List<HobtEntryPoint> entryPoints = new List<HobtEntryPoint>();
+            var entryPoints = new List<HobtEntryPoint>();
 
-            DataTable entryPointDataTable = DataAccess.GetDataTable(connectionString, 
+            var entryPointDataTable = DataAccess.GetDataTable(connectionString, 
                                                                     Properties.Resources.SQL_EntryPoints,
                                                                     database,
                                                                     string.Empty,
@@ -66,10 +66,10 @@ namespace InternalsViewer.Internals.Structures
 
             foreach (DataRow row in entryPointDataTable.Rows)
             {
-                PageAddress firstIam = new PageAddress((byte[])row["first_iam_page"]);
-                PageAddress rootPage = new PageAddress((byte[])row["root_page"]);
-                PageAddress firstPage = new PageAddress((byte[])row["first_page"]);
-                int partitionNumber = Convert.ToInt32(row["partition_number"]);
+                var firstIam = new PageAddress((byte[])row["first_iam_page"]);
+                var rootPage = new PageAddress((byte[])row["root_page"]);
+                var firstPage = new PageAddress((byte[])row["first_page"]);
+                var partitionNumber = Convert.ToInt32(row["partition_number"]);
 
                 entryPoints.Add(new HobtEntryPoint(firstIam, rootPage, firstPage, partitionNumber));
             }

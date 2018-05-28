@@ -18,7 +18,7 @@ namespace InternalsViewer.Internals
         public IamAllocation(Database database, PageAddress pageAddress)
             : base(database, pageAddress)
         {
-            this.MultiFile = true;
+            MultiFile = true;
         }
 
         /// <summary>
@@ -28,7 +28,7 @@ namespace InternalsViewer.Internals
         public IamAllocation(AllocationPage page)
             : base(page)
         {
-            this.MultiFile = true;
+            MultiFile = true;
         }
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace InternalsViewer.Internals
         /// <returns></returns>
         public override bool Allocated(int extent, int fileId)
         {
-            AllocationPage page = Pages.Find(delegate(AllocationPage p)
+            var page = Pages.Find(delegate(AllocationPage p)
             {
                 return p.StartPage.FileId == fileId &&
                        extent >= (p.StartPage.PageId / 8) &&
@@ -61,13 +61,13 @@ namespace InternalsViewer.Internals
         /// <param name="pageAddress"></param>
         protected override void BuildChain(Database database, PageAddress pageAddress)
         {
-            AllocationPage page = new AllocationPage(database, pageAddress);
+            var page = new AllocationPage(database, pageAddress);
             Pages.Add(page);
             SinglePageSlots.AddRange(page.SinglePageSlots);
 
             if (page.Header.NextPage != PageAddress.Empty)
             {
-                this.BuildChain(database, page.Header.NextPage);
+                BuildChain(database, page.Header.NextPage);
             }
         }
     }

@@ -5,65 +5,38 @@ namespace InternalsViewer.Internals
 
     public class PfsByte
     {
-        private bool allocated;
-
-        private bool ghostRecords;
-        private bool iam;
-        private bool mixed;
-        private SpaceFree pageSpaceFree;
-
         public PfsByte(byte pageByte)
         {
-            BitArray bitArray = new BitArray(new byte[] { pageByte });
+            var bitArray = new BitArray(new byte[] { pageByte });
 
-            ghostRecords = bitArray[3];
-            iam = bitArray[4];
-            mixed = bitArray[5];
-            allocated = bitArray[6];
+            GhostRecords = bitArray[3];
+            Iam = bitArray[4];
+            Mixed = bitArray[5];
+            Allocated = bitArray[6];
 
-            pageSpaceFree = (SpaceFree)(pageByte & 7);
+            PageSpaceFree = (SpaceFree)(pageByte & 7);
         }
 
-        public SpaceFree PageSpaceFree
-        {
-            get { return pageSpaceFree; }
-            set { pageSpaceFree = value; }
-        }
+        public SpaceFree PageSpaceFree { get; set; }
 
-        public bool GhostRecords
-        {
-            get { return ghostRecords; }
-            set { ghostRecords = value; }
-        }
+        public bool GhostRecords { get; set; }
 
-        public bool Iam
-        {
-            get { return iam; }
-            set { iam = value; }
-        }
+        public bool Iam { get; set; }
 
-        public bool Mixed
-        {
-            get { return mixed; }
-            set { mixed = value; }
-        }
+        public bool Mixed { get; set; }
 
-        public bool Allocated
-        {
-            get { return allocated; }
-            set { allocated = value; }
-        }
+        public bool Allocated { get; set; }
 
         public override string ToString()
         {
             return
                 string.Format(
                     "PFS Status: {0:Allocated ; ;Not Allocated }| {1} Full{2: | IAM Page ; ; }{3:| Mixed Extent ; ; }{4:| Has Ghost ; ; }",
-                    allocated ? 1 : 0,
-                    SpaceFreeDescription(pageSpaceFree),
-                    iam ? 1 : 0,
-                    mixed ? 1 : 0,
-                    ghostRecords ? 1 : 0);
+                    Allocated ? 1 : 0,
+                    SpaceFreeDescription(PageSpaceFree),
+                    Iam ? 1 : 0,
+                    Mixed ? 1 : 0,
+                    GhostRecords ? 1 : 0);
         }
 
         public static string SpaceFreeDescription(SpaceFree spaceFree)

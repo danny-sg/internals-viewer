@@ -7,11 +7,6 @@ namespace InternalsViewer.Internals.Structures
     /// </summary>
     public struct HobtEntryPoint
     {
-        private PageAddress firstIam;
-        private PageAddress rootPage;
-        private PageAddress firstPage;
-        private int partitionNumber;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="HobtEntryPoint"/> struct.
         /// </summary>
@@ -21,10 +16,10 @@ namespace InternalsViewer.Internals.Structures
         /// <param name="partitionNumber">The partition number.</param>
         public HobtEntryPoint(PageAddress firstIam, PageAddress rootPage, PageAddress firstPage, int partitionNumber)
         {
-            this.firstIam = firstIam;
-            this.rootPage = rootPage;
-            this.firstPage = firstPage;
-            this.partitionNumber = partitionNumber;
+            FirstIam = firstIam;
+            RootPage = rootPage;
+            FirstPage = firstPage;
+            PartitionNumber = partitionNumber;
         }
 
         /// <summary>
@@ -34,11 +29,7 @@ namespace InternalsViewer.Internals.Structures
         /// <remarks>
         /// The first page in the HOBTs allocation IAM chain
         /// </remarks>
-        public PageAddress FirstIam
-        {
-            get { return firstIam; }
-            set { firstIam = value; }
-        }
+        public PageAddress FirstIam { get; set; }
 
         /// <summary>
         /// Gets or sets the root page address.
@@ -47,11 +38,7 @@ namespace InternalsViewer.Internals.Structures
         /// <remarks>
         /// The root page of the b-tree (index)
         /// </remarks>
-        public PageAddress RootPage
-        {
-            get { return rootPage; }
-            set { rootPage = value; }
-        }
+        public PageAddress RootPage { get; set; }
 
         /// <summary>
         /// Gets or sets the first page address;
@@ -60,20 +47,12 @@ namespace InternalsViewer.Internals.Structures
         /// <remarks>
         /// The first page at the leaf/heap level
         /// </remarks>
-        public PageAddress FirstPage
-        {
-            get { return firstPage; }
-            set { firstPage = value; }
-        }
+        public PageAddress FirstPage { get; set; }
 
         /// <summary>
         /// Gets or sets the partition number.
         /// </summary>
         /// <value>The partition number.</value>
-        public int PartitionNumber
-        {
-            get { return partitionNumber; }
-            set { partitionNumber = value; }
-        }
+        public int PartitionNumber { get; set; }
     }
 }

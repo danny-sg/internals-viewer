@@ -21,10 +21,10 @@ namespace InternalsViewer.Internals.TransactionLog
         public override string ToString()
         {
             return string.Format("LSN: {0} Slot: {1} Offset: {2} Data: {3}",
-                                 this.LogSequenceNumber,
-                                 this.Slot,
-                                 this.Offset,
-                                 DataConverter.ToHexString(this.Data));
+                                 LogSequenceNumber,
+                                 Slot,
+                                 Offset,
+                                 DataConverter.ToHexString(Data));
         }
 
         /// <summary>
@@ -33,13 +33,13 @@ namespace InternalsViewer.Internals.TransactionLog
         /// <param name="page">The target page.</param>
         public Page MergeData(Page page)
         {
-            int dataOffset = page.OffsetTable[this.Slot] + this.Offset;
+            var dataOffset = page.OffsetTable[Slot] + Offset;
 
-            byte[] pageData = new byte[Page.Size];
+            var pageData = new byte[Page.Size];
 
             Array.Copy(page.PageData, pageData, Page.Size);
 
-            Array.Copy(this.Data, 0, pageData, dataOffset, this.Data.Length);
+            Array.Copy(Data, 0, pageData, dataOffset, Data.Length);
 
             page.PageData = pageData;
 

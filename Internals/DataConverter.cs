@@ -27,9 +27,9 @@ namespace InternalsViewer.Internals
             if (bytes == null)
                 return string.Empty;
 
-            char[] chars = new char[bytes.Length * 2];
+            var chars = new char[bytes.Length * 2];
 
-            for (int i = 0; i < bytes.Length; i++)
+            for (var i = 0; i < bytes.Length; i++)
             {
                 int b = bytes[i];
 
@@ -214,23 +214,23 @@ namespace InternalsViewer.Internals
         /// </returns>
         private static string DecodeDateTimeOffset(byte[] data, byte scale)
         {
-            byte[] dateData = new byte[4];
-            byte[] timeData = new byte[8];
+            var dateData = new byte[4];
+            var timeData = new byte[8];
 
-            float scaleFactor = 1000F / (float)Math.Pow(10, scale);
+            var scaleFactor = 1000F / (float)Math.Pow(10, scale);
 
             Array.Copy(data, timeData, data.Length - 5);
             Array.Copy(data, data.Length - 5, dateData, 0, 3);
 
-            int datePart = BitConverter.ToInt32(dateData, 0);
-            long timePart = BitConverter.ToInt64(timeData, 0);
-            Int16 time = BitConverter.ToInt16(data, data.Length - 2);
+            var datePart = BitConverter.ToInt32(dateData, 0);
+            var timePart = BitConverter.ToInt64(timeData, 0);
+            var time = BitConverter.ToInt16(data, data.Length - 2);
 
-            DateTime returnDate = new DateTime(0001, 01, 01);
+            var returnDate = new DateTime(0001, 01, 01);
             returnDate = returnDate.AddDays(datePart);
             returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
 
-            DateTime offsetTime = new DateTime().AddMinutes(Math.Abs(time));
+            var offsetTime = new DateTime().AddMinutes(Math.Abs(time));
 
             string sign;
 
@@ -255,8 +255,8 @@ namespace InternalsViewer.Internals
         {
             byte[] variantData;
 
-            byte variantType = data[0];
-            int offset = 2;
+            var variantType = data[0];
+            var offset = 2;
             byte precision = 0;
             byte scale = 0;
 
@@ -299,7 +299,7 @@ namespace InternalsViewer.Internals
         /// <returns></returns>
         public static string DecodeSmallDateTime(byte[] data)
         {
-            DateTime returnDate = new DateTime(1900, 1, 1);
+            var returnDate = new DateTime(1900, 1, 1);
 
             int datePart;
             int timePart;
@@ -319,8 +319,8 @@ namespace InternalsViewer.Internals
         /// <returns></returns>
         public static string DecodeDateTime(byte[] data)
         {
-            int timePart = BitConverter.ToInt32(data, 0);
-            int datePart = BitConverter.ToInt32(data, 4);
+            var timePart = BitConverter.ToInt32(data, 0);
+            var datePart = BitConverter.ToInt32(data, 4);
 
             return DecodeDateTime(timePart, datePart);
         }
@@ -333,7 +333,7 @@ namespace InternalsViewer.Internals
         /// <returns></returns>
         public static string DecodeDateTime(int timePart, int datePart)
         {
-            DateTime returnDate = new DateTime(1900, 1, 1);
+            var returnDate = new DateTime(1900, 1, 1);
 
             returnDate = returnDate.AddDays(datePart).AddMilliseconds(3.333333 * timePart);
 
@@ -348,18 +348,18 @@ namespace InternalsViewer.Internals
         /// <returns></returns>
         private static string DecodeDateTime2(byte[] data, int scale)
         {
-            byte[] dateData = new byte[4];
-            byte[] timeData = new byte[8];
+            var dateData = new byte[4];
+            var timeData = new byte[8];
 
-            float scaleFactor = 1000F / (float)Math.Pow(10, scale);
+            var scaleFactor = 1000F / (float)Math.Pow(10, scale);
 
             Array.Copy(data, timeData, data.Length - 3);
             Array.Copy(data, data.Length - 3, dateData, 0, 3);
 
-            int datePart = BitConverter.ToInt32(dateData, 0);
-            long timePart = BitConverter.ToInt64(timeData, 0);
+            var datePart = BitConverter.ToInt32(dateData, 0);
+            var timePart = BitConverter.ToInt64(timeData, 0);
 
-            DateTime returnDate = new DateTime(0001, 01, 01);
+            var returnDate = new DateTime(0001, 01, 01);
             returnDate = returnDate.AddDays(datePart);
             returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
 
@@ -373,13 +373,13 @@ namespace InternalsViewer.Internals
         /// <returns></returns>
         private static string DecodeDate(byte[] data)
         {
-            byte[] dateData = new byte[4];
+            var dateData = new byte[4];
 
             Array.Copy(data, dateData, 3);
 
-            int date = BitConverter.ToInt32(dateData, 0);
+            var date = BitConverter.ToInt32(dateData, 0);
 
-            DateTime returnDate = new DateTime(0001, 01, 01);
+            var returnDate = new DateTime(0001, 01, 01);
             returnDate = returnDate.AddDays(date);
 
             return returnDate.ToShortDateString();
@@ -393,15 +393,15 @@ namespace InternalsViewer.Internals
         /// <returns></returns>
         private static string DecodeTime(byte[] data, int scale)
         {
-            byte[] timeData = new byte[8];
+            var timeData = new byte[8];
 
-            float scaleFactor = 1000F / (float)Math.Pow(10, scale);
+            var scaleFactor = 1000F / (float)Math.Pow(10, scale);
 
             Array.Copy(data, timeData, data.Length);
 
-            long time = BitConverter.ToInt64(timeData, 0);
+            var time = BitConverter.ToInt64(timeData, 0);
 
-            DateTime returnDate = new DateTime();
+            var returnDate = new DateTime();
             returnDate = returnDate.AddMilliseconds(scaleFactor * time);
 
             return returnDate.ToString("HH:mm:ss.fffffff");
@@ -417,11 +417,11 @@ namespace InternalsViewer.Internals
         private static SqlDecimal DecodeDecimal(byte[] data, byte precision, byte scale)
         {
             int index;
-            bool positive = (1 == data[0]);
+            var positive = (1 == data[0]);
 
-            int[] bits = new int[4];
+            var bits = new int[4];
 
-            int length = data.Length >> 2;
+            var length = data.Length >> 2;
 
             for (index = 0; index < length; index++)
             {
@@ -433,11 +433,11 @@ namespace InternalsViewer.Internals
 
         public static List<string> DecodeDataString(string data)
         {
-            List<string> decodedData = new List<string>();
+            var decodedData = new List<string>();
 
-            byte[] binaryData = new byte[data.Length / 2];
+            var binaryData = new byte[data.Length / 2];
 
-            for (int i = 0; i < binaryData.Length; i++)
+            for (var i = 0; i < binaryData.Length; i++)
             {
                 binaryData[i] = byte.Parse(data.Substring(i * 2, 2),
                                            NumberStyles.AllowHexSpecifier,
@@ -464,11 +464,11 @@ namespace InternalsViewer.Internals
 
             if (binaryData.Length == 1)
             {
-                BitArray bitArray = new BitArray(binaryData);
+                var bitArray = new BitArray(binaryData);
 
-                StringBuilder stringBuilder = new StringBuilder();
+                var stringBuilder = new StringBuilder();
 
-                for (int i = 0; i < 8; i++)
+                for (var i = 0; i < 8; i++)
                 {
                     stringBuilder.Insert(0, bitArray[i] ? "1" : "0");
                 }
@@ -478,7 +478,7 @@ namespace InternalsViewer.Internals
                 decodedData.Add(stringBuilder.ToString());
             }
 
-            string varcharData = DataString(binaryData, SqlDbType.VarChar);
+            var varcharData = DataString(binaryData, SqlDbType.VarChar);
 
             if (!string.IsNullOrEmpty(varcharData))
             {
@@ -490,7 +490,7 @@ namespace InternalsViewer.Internals
 
         private static string DataString(byte[] data, SqlDbType sqlType)
         {
-            StringBuilder stringBuilder = new StringBuilder(sqlType.ToString().ToLower(CultureInfo.CurrentCulture));
+            var stringBuilder = new StringBuilder(sqlType.ToString().ToLower(CultureInfo.CurrentCulture));
 
             stringBuilder.Append(": ");
             try
@@ -594,8 +594,8 @@ namespace InternalsViewer.Internals
 
         public static string[] EncodeDateTime(DateTime value)
         {
-            int timePart = (int)((value - value.Date).TotalMilliseconds / 3.333333);
-            int datePart = (value - new DateTime(1900, 1, 1)).Days;
+            var timePart = (int)((value - value.Date).TotalMilliseconds / 3.333333);
+            var datePart = (value - new DateTime(1900, 1, 1)).Days;
 
             return new string[] { EncodeInt32(timePart), EncodeInt32(datePart) };
         }
@@ -603,8 +603,8 @@ namespace InternalsViewer.Internals
         public static string[] EncodeSmallDateTime(DateTime value)
         {
 
-            UInt16 timePart = (UInt16)((value - value.Date).TotalMinutes);
-            UInt16 datePart = (UInt16)(value - new DateTime(1900, 1, 1)).Days;
+            var timePart = (UInt16)((value - value.Date).TotalMinutes);
+            var datePart = (UInt16)(value - new DateTime(1900, 1, 1)).Days;
 
             return new string[] { EncodeUInt16(timePart), EncodeUInt16(datePart) };
         }
@@ -636,7 +636,7 @@ namespace InternalsViewer.Internals
 
         public static string EncodeDecimal(decimal value)
         {
-            SqlDecimal sqlValue = new SqlDecimal(value);
+            var sqlValue = new SqlDecimal(value);
             //sqlValue.Precision = precision;
             //sqlValue.Scale = scale;
 

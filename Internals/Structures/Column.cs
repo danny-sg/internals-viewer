@@ -8,18 +8,6 @@ namespace InternalsViewer.Internals.Structures
     /// </summary>
     public class Column
     {
-        private int columnId;
-        private string columnName;
-        private Int16 dataLength = 0;
-        private SqlDbType dataType;
-        private bool dropped;
-        private Int16 leafOffset;
-        private byte precision;
-        private byte scale;
-        private bool uniqueifer;
-        private bool sparse;
-        private Int16 nullBit;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="Column"/> class.
         /// </summary>
@@ -51,111 +39,67 @@ namespace InternalsViewer.Internals.Structures
         /// Gets or sets a value indicating whether this <see cref="Column"/> is a uniqueifer.
         /// </summary>
         /// <value><c>true</c> if a uniqueifer; otherwise, <c>false</c>.</value>
-        public bool Uniqueifer
-        {
-            get { return uniqueifer; }
-            set { uniqueifer = value; }
-        }
+        public bool Uniqueifer { get; set; }
 
         /// <summary>
         /// Gets or sets the name of the column.
         /// </summary>
         /// <value>The name of the column.</value>
-        public string ColumnName
-        {
-            get { return columnName; }
-            set { columnName = value; }
-        }
+        public string ColumnName { get; set; }
 
         /// <summary>
         /// Gets or sets the column id.
         /// </summary>
         /// <value>The column id.</value>
-        public int ColumnId
-        {
-            get { return columnId; }
-            set { columnId = value; }
-        }
+        public int ColumnId { get; set; }
 
         /// <summary>
         /// Gets or sets the data type
         /// </summary>
         /// <value>The data type.</value>
-        public SqlDbType DataType
-        {
-            get { return dataType; }
-            set { dataType = value; }
-        }
+        public SqlDbType DataType { get; set; }
 
         /// <summary>
         /// Gets or sets the data length
         /// </summary>
         /// <value>The length of the data.</value>
-        public Int16 DataLength
-        {
-            get { return dataLength; }
-            set { dataLength = value; }
-        }
+        public Int16 DataLength { get; set; } = 0;
 
         /// <summary>
         /// Gets or sets the leaf offset.
         /// </summary>
         /// <value>The leaf offset.</value>
-        public Int16 LeafOffset
-        {
-            get { return leafOffset; }
-            set { leafOffset = value; }
-        }
+        public Int16 LeafOffset { get; set; }
 
         /// <summary>
         /// Gets or sets the precision.
         /// </summary>
         /// <value>The precision.</value>
-        public byte Precision
-        {
-            get { return precision; }
-            set { precision = value; }
-        }
+        public byte Precision { get; set; }
 
         /// <summary>
         /// Gets or sets the scale.
         /// </summary>
         /// <value>The scale.</value>
-        public byte Scale
-        {
-            get { return scale; }
-            set { scale = value; }
-        }
+        public byte Scale { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this <see cref="Column"/> is dropped.
         /// </summary>
         /// <value><c>true</c> if dropped; otherwise, <c>false</c>.</value>
-        public bool Dropped
-        {
-            get { return dropped; }
-            set { dropped = value; }
-        }
+        public bool Dropped { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this <see cref="Column"/> is sparse.
         /// </summary>
         /// <value><c>true</c> if sparse; otherwise, <c>false</c>.</value>
-        public bool Sparse
-        {
-            get { return sparse; }
-            set { sparse = value; }
-        }
+        public bool Sparse { get; set; }
 
         /// <summary>
         /// Gets or sets the index of null bit.
         /// </summary>
         /// <value>The index of null bit.</value>
-        public Int16 NullBit
-        {
-            get { return nullBit; }
-            set { nullBit = value; }
-        }
+        public Int16 NullBit { get; set; }
 
         #endregion
     }

@@ -6,25 +6,15 @@ namespace InternalsViewer.Internals.Records
 {
     public class SparseVector: Markable
     {
-        private byte[] data;
-        private TableStructure structure;
-
-        private UInt16[] columns;
-        private UInt16[] offset;
-        private Int16 colCount;
-        private DataRecord parentRecord;
-        private Int16 complexHeader;
-        private Int16 recordOffset;
-
         public const int ColCountOffset = 2;
         public const int ColumnsOffset = 4;
 
         internal SparseVector(byte[] sparseRecord, TableStructure structure, DataRecord parentRecord, Int16 recordOffset)
         {
-            this.data = sparseRecord;
-            this.structure = structure;
-            this.parentRecord = parentRecord;
-            this.recordOffset = recordOffset;
+            Data = sparseRecord;
+            Structure = structure;
+            ParentRecord = parentRecord;
+            RecordOffset = recordOffset;
 
             SparseVectorLoader.Load(this);
         }
@@ -40,71 +30,39 @@ namespace InternalsViewer.Internals.Records
             }
         }
 
-        internal TableStructure Structure
-        {
-            get { return structure; }
-            set { structure = value; }
-        }
+        internal TableStructure Structure { get; set; }
 
-        public byte[] Data
-        {
-            get { return data; }
-            set { data = value; }
-        }
+        public byte[] Data { get; set; }
 
-        internal DataRecord ParentRecord
-        {
-            get { return this.parentRecord; }
-            set { this.parentRecord = value; }
-        }
+        internal DataRecord ParentRecord { get; set; }
 
-        public UInt16[] Columns
-        {
-            get { return this.columns; }
-            set { this.columns = value; }
-        }
+        public UInt16[] Columns { get; set; }
 
         [MarkAttribute("Sparse Columns", "Black", "Olive", true)]
         public string ColumnsDescription
         {
-            get { return Record.GetArrayString(this.Columns); }
+            get { return Record.GetArrayString(Columns); }
         }
 
         [MarkAttribute("Sparse Column Offsets", "Black", "DarkKhaki", true)]
         public string OffsetsDescription
         {
-            get { return Record.GetArrayString(this.Offset); }
+            get { return Record.GetArrayString(Offset); }
         }
 
-        public UInt16[] Offset
-        {
-            get { return this.offset; }
-            set { this.offset = value; }
-        }
+        public UInt16[] Offset { get; set; }
 
         [MarkAttribute("Sparse Column Count", "Black", "SeaGreen", true)]
-        public Int16 ColCount
-        {
-            get { return this.colCount; }
-            set { this.colCount = value; }
-        }
+        public Int16 ColCount { get; set; }
 
-        public Int16 RecordOffset
-        {
-            get { return this.recordOffset; }
-            set { this.recordOffset = value; }
-        }
+        public Int16 RecordOffset { get; set; }
 
-        public Int16 ComplexHeader
-        {
-            get { return this.complexHeader; }
-            set { this.complexHeader = value; }
-        }
+        public Int16 ComplexHeader { get; set; }
 
         [MarkAttribute("Complex Header", "Green", "Gainsboro", true)]
         public string ComplexHeaderDescription
         {
-            get { return GetComplexHeaderDescription(this.ComplexHeader); }
+            get { return GetComplexHeaderDescription(ComplexHeader); }
         }
 
 

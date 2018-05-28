@@ -8,15 +8,12 @@ namespace InternalsViewer.Internals.Structures
 {
     public class IndexStructure : Structure
     {
-        private bool heap;
-
         private byte indexType;
-        private bool unique;
 
         public IndexStructure(long allocationUnitId, Database database)
             : base(allocationUnitId, database)
         {
-            this.AddColumns(this.StructureDataTable);
+            AddColumns(StructureDataTable);
         }
 
         internal override void AddColumns(DataTable structure)
@@ -53,30 +50,30 @@ namespace InternalsViewer.Internals.Structures
 
                     Columns.Add(currentColumn);
 
-                    unique = Convert.ToBoolean(indexColumn["is_unique"]);
+                    Unique = Convert.ToBoolean(indexColumn["is_unique"]);
                     indexType = Convert.ToByte(indexColumn["type"]);
-                    heap = Convert.ToInt32(indexColumn["hasClusteredIndex"]) != 1;
+                    Heap = Convert.ToInt32(indexColumn["hasClusteredIndex"]) != 1;
                 }
             }
         }
 
         public override DataTable GetStructure(long allocationUnitId, Database database)
         {
-            DataTable returnDataTable = new DataTable();
+            var returnDataTable = new DataTable();
 
-            using (SqlConnection conn = new SqlConnection(database.ConnectionString))
+            using (var conn = new SqlConnection(database.ConnectionString))
             {
                 string commandText;
 
                 commandText = Properties.Resources.SQL_Index_Columns;
 
-                SqlCommand cmd = new SqlCommand(commandText, conn);
+                var cmd = new SqlCommand(commandText, conn);
                 cmd.CommandType = CommandType.Text;
 
                 cmd.Parameters.AddWithValue("@allocation_unit_id", allocationUnitId);
                 cmd.CommandType = CommandType.Text;
 
-                SqlDataAdapter da = new SqlDataAdapter(cmd);
+                var da = new SqlDataAdapter(cmd);
                 conn.Open();
 
                 if (conn.Database != database.Name)
@@ -92,16 +89,8 @@ namespace InternalsViewer.Internals.Structures
             return returnDataTable;
         }
 
-        public bool Heap
-        {
-            get { return heap; }
-            set { heap = value; }
-        }
+        public bool Heap { get; set; }
 
-        public bool Unique
-        {
-            get { return unique; }
-            set { unique = value; }
-        }
+        public bool Unique { get; set; }
     }
 }

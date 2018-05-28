@@ -11,13 +11,11 @@ namespace InternalsViewer.Internals.Records
     public class CompressedDataRecord : Record
     {
         private byte[] cdArray;
-        private List<CdArrayItem> cdArrayItems;
-        private short compressedSize;
 
         public CompressedDataRecord(Page page, UInt16 slotOffset, Structure structure)
             : base(page, slotOffset, structure)
         {
-            this.cdArrayItems = new List<CdArrayItem>();
+            CdItems = new List<CdArrayItem>();
 
             CompressedDataRecordLoader.Load(this);
         }
@@ -28,31 +26,21 @@ namespace InternalsViewer.Internals.Records
         //    set { cdArray = value; }
         //}
 
-        public List<CdArrayItem> CdItems
-        {
-            get
-            {
-                return this.cdArrayItems;
-            }
-        }
+        public List<CdArrayItem> CdItems { get; }
 
         public CdArrayItem[] CdItemsArray
         {
             get
             {
-                return this.cdArrayItems.ToArray();
+                return CdItems.ToArray();
             }
         }
 
         public byte GetCdByte(int columnId)
         {
-            return this.CdItems[columnId / 2].Values[columnId % 2];
+            return CdItems[columnId / 2].Values[columnId % 2];
         }
 
-        public short CompressedSize
-        {
-            get { return compressedSize; }
-            set { compressedSize = value; }
-        }
+        public short CompressedSize { get; set; }
     }
 }

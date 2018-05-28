@@ -12,27 +12,27 @@ namespace InternalsViewer.Internals.BlobPointers
         public PointerField(byte[] data, int offset)
             : base(data, offset)
         {
-            this.Mark("Timestamp", this.Offset + sizeof(byte), sizeof(Int32));
+            Mark("Timestamp", Offset + sizeof(byte), sizeof(Int32));
 
-            this.Timestamp = BitConverter.ToInt32(data, 0);
+            Timestamp = BitConverter.ToInt32(data, 0);
         }
 
         protected override void LoadLinks()
         {
-            this.Links = new List<BlobChildLink>();
+            Links = new List<BlobChildLink>();
 
-            byte[] rowIdData = new byte[8];
+            var rowIdData = new byte[8];
             Array.Copy(Data, RowIdOffset, rowIdData, 0, 8);
 
-            this.Mark("LinksArray", string.Empty, 0);
+            Mark("LinksArray", string.Empty, 0);
 
-            RowIdentifier rowId = new RowIdentifier(rowIdData);
+            var rowId = new RowIdentifier(rowIdData);
 
-            BlobChildLink link = new BlobChildLink(rowId, 0, 0);
+            var link = new BlobChildLink(rowId, 0, 0);
 
-            link.Mark("RowIdentifier", this.Offset + RowIdOffset, 8);
+            link.Mark("RowIdentifier", Offset + RowIdOffset, 8);
 
-            this.Links.Add(link);
+            Links.Add(link);
         }
     }
 }

@@ -9,11 +9,6 @@ namespace InternalsViewer.Internals.Records
 {
     public class IndexRecord : Record
     {
-        private IndexTypes indexType;
-        private RowIdentifier rid;
-        private PageAddress downPagePointer;
-        private bool includeKey;
-
         public IndexRecord(Page page, UInt16 slotOffset, Structure structure)
             : base(page, slotOffset, structure)
         {
@@ -22,7 +17,7 @@ namespace InternalsViewer.Internals.Records
 
         public bool IsIndexType(IndexTypes index)
         {
-            return (this.IndexType & index) == index;
+            return (IndexType & index) == index;
         }
 
         /// <summary>
@@ -30,34 +25,17 @@ namespace InternalsViewer.Internals.Records
         /// </summary>
         /// <value>Down page pointer.</value>
         [MarkAttribute("Down Page Pointer", "Navy", "Gainsboro", true)]
-        public PageAddress DownPagePointer
-        {
-            get { return this.downPagePointer; }
-            set { this.downPagePointer = value; }
-        }
+        public PageAddress DownPagePointer { get; set; }
 
         /// <summary>
         /// Gets or sets the RID (Row Identifier) the index is pointing to
         /// </summary>
         /// <value>The rid.</value>
         [MarkAttribute("Down Page Pointer", "Teal", "Gainsboro", true)]
-        public RowIdentifier Rid
-        {
-            get { return this.rid; }
-            set { this.rid = value; }
-        }
+        public RowIdentifier Rid { get; set; }
 
-        public IndexTypes IndexType
-        {
-            get { return indexType; }
-            set { indexType = value; }
-        }
+        public IndexTypes IndexType { get; set; }
 
-        public bool IncludeKey
-        {
-            get { return includeKey; }
-            set { includeKey = value; }
-        }
-
+        public bool IncludeKey { get; set; }
     }
 }

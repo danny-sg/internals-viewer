@@ -11,7 +11,6 @@ namespace InternalsViewer.Internals.Pages
     {
         private const int PfsOffset = 100;
         private const int PfsSize = 8088;
-        private List<PfsByte> pfsBytes;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PfsPage"/> class.
@@ -31,9 +30,9 @@ namespace InternalsViewer.Internals.Pages
                 throw new InvalidOperationException("Page type is not PFS");
             }
 
-            this.pfsBytes = new List<PfsByte>();
+            PfsBytes = new List<PfsByte>();
 
-            this.LoadPfsBytes();
+            LoadPfsBytes();
         }
 
         /// <summary>
@@ -56,11 +55,11 @@ namespace InternalsViewer.Internals.Pages
         /// </returns>
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
-            for (int i = 0; i <= this.pfsBytes.Count - 1; i++)
+            for (var i = 0; i <= PfsBytes.Count - 1; i++)
             {
-                sb.AppendFormat("{0,-14}{1}", new PageAddress(1, i), this.pfsBytes[i]);
+                sb.AppendFormat("{0,-14}{1}", new PageAddress(1, i), PfsBytes[i]);
                 sb.Append(Environment.NewLine);
             }
 
@@ -71,24 +70,20 @@ namespace InternalsViewer.Internals.Pages
         /// Gets or sets the PFS bytes collection.
         /// </summary>
         /// <value>The PFS bytes collection.</value>
-        public List<PfsByte> PfsBytes
-        {
-            get { return this.pfsBytes; }
-            set { this.pfsBytes = value; }
-        }
+        public List<PfsByte> PfsBytes { get; set; }
 
         /// <summary>
         /// Loads the PFS bytes collection
         /// </summary>
         private void LoadPfsBytes()
         {
-            byte[] pfsData = new byte[PfsSize];
+            var pfsData = new byte[PfsSize];
 
-            Array.Copy(this.PageData, PfsOffset, pfsData, 0, PfsSize);
+            Array.Copy(PageData, PfsOffset, pfsData, 0, PfsSize);
 
-            foreach (byte pfsByte in pfsData)
+            foreach (var pfsByte in pfsData)
             {
-                this.pfsBytes.Add(new PfsByte(pfsByte));
+                PfsBytes.Add(new PfsByte(pfsByte));
             }
         }
     }

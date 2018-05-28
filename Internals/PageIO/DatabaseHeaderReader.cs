@@ -18,7 +18,7 @@ namespace InternalsViewer.Internals.PageIO
         /// <returns></returns>
         public static Header LoadHeader(PageAddress pageAddress)
         {
-            Header header = new Header();
+            var header = new Header();
 
             LoadHeader(LoadPageHeaderOnly(pageAddress), header);
 
@@ -33,7 +33,7 @@ namespace InternalsViewer.Internals.PageIO
         /// <returns></returns>
         public static bool LoadHeader(IDictionary<string, string> headerData, Header header)
         {
-            bool parsed = true;
+            var parsed = true;
 
             int slotCount;
             int freeCount;
@@ -94,23 +94,23 @@ namespace InternalsViewer.Internals.PageIO
         /// <returns></returns>
         private static Dictionary<string, string> LoadPageHeaderOnly(PageAddress pageAddress)
         {
-            Dictionary<string, string> headerData = new Dictionary<string, string>();
+            var headerData = new Dictionary<string, string>();
 
-            string pageCommand = string.Format(Properties.Resources.SQL_Page,
+            var pageCommand = string.Format(Properties.Resources.SQL_Page,
                                                InternalsViewerConnection.CurrentConnection().CurrentDatabase.DatabaseId,
                                                pageAddress.FileId,
                                                pageAddress.PageId,
                                                0);
 
-            using (SqlConnection conn = new SqlConnection(InternalsViewerConnection.CurrentConnection().ConnectionString))
+            using (var conn = new SqlConnection(InternalsViewerConnection.CurrentConnection().ConnectionString))
             {
-                SqlCommand cmd = new SqlCommand(pageCommand, conn);
+                var cmd = new SqlCommand(pageCommand, conn);
                 cmd.CommandType = CommandType.Text;
 
                 try
                 {
                     conn.Open();
-                    SqlDataReader reader = cmd.ExecuteReader();
+                    var reader = cmd.ExecuteReader();
 
                     if (reader.HasRows)
                     {

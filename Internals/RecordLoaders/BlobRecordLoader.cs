@@ -16,7 +16,7 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <param name="record">The record.</param>
         internal static void Load(BlobRecord record)
         {
-            byte statusByte = record.Page.PageData[record.SlotOffset];
+            var statusByte = record.Page.PageData[record.SlotOffset];
 
             record.Mark("StatusBitsADescription", record.SlotOffset, sizeof(byte));
 
@@ -75,7 +75,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
             record.Level = BitConverter.ToInt16(record.Page.PageData, record.SlotOffset + BlobRecord.RootLevelOffset);
 
-            for (int i = 0; i < record.CurLinks; i++)
+            for (var i = 0; i < record.CurLinks; i++)
             {
                 record.Mark("BlobChildrenArray", "Child " + i.ToString() + " ", i);
 
@@ -124,10 +124,10 @@ namespace InternalsViewer.Internals.RecordLoaders
 
         private static BlobChildLink LoadInternalBlobChild(BlobRecord blobRecord, int index)
         {
-            int offset = BitConverter.ToInt32(blobRecord.Page.PageData,
+            var offset = BitConverter.ToInt32(blobRecord.Page.PageData,
                                               blobRecord.SlotOffset + BlobRecord.InternalChildOffset + (index * 16));
 
-            byte[] rowData = new byte[8];
+            var rowData = new byte[8];
 
             Array.Copy(blobRecord.Page.PageData,
                        blobRecord.SlotOffset + BlobRecord.InternalChildOffset + (index * 16) + 8,
@@ -135,30 +135,30 @@ namespace InternalsViewer.Internals.RecordLoaders
                        0,
                        8);
 
-            RowIdentifier rowId = new RowIdentifier(rowData);
+            var rowId = new RowIdentifier(rowData);
 
             return new BlobChildLink(rowId, offset, offset);
         }
 
         private static BlobChildLink LoadRootBlobChild(BlobRecord record, int index)
         {
-            BlobChildLink blobChildLink = new BlobChildLink();
+            var blobChildLink = new BlobChildLink();
 
-            int offsetPosition =  record.SlotOffset + BlobRecord.RootChildOffset + (index * 12);
+            var offsetPosition =  record.SlotOffset + BlobRecord.RootChildOffset + (index * 12);
 
             blobChildLink.Mark("Offset", offsetPosition, sizeof(Int32));
 
-            int offset = BitConverter.ToInt32(record.Page.PageData, offsetPosition);
+            var offset = BitConverter.ToInt32(record.Page.PageData, offsetPosition);
 
-            byte[] rowData = new byte[8];
+            var rowData = new byte[8];
 
-            int rowIdPosition = record.SlotOffset + BlobRecord.RootChildOffset + (index * 12) + 4;
+            var rowIdPosition = record.SlotOffset + BlobRecord.RootChildOffset + (index * 12) + 4;
 
             blobChildLink.Mark("RowIdentifier", rowIdPosition, 8);
 
             Array.Copy(record.Page.PageData, rowIdPosition, rowData, 0, 8);
 
-            RowIdentifier rowId = new RowIdentifier(rowData);
+            var rowId = new RowIdentifier(rowData);
 
             blobChildLink.RowIdentifier = rowId;
             blobChildLink.Offset = offset;

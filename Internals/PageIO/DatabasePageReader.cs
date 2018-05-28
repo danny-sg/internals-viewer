@@ -13,12 +13,11 @@ namespace InternalsViewer.Internals.PageIO
     public class DatabasePageReader : PageReader
     {
         private readonly Dictionary<string, string> headerData = new Dictionary<string, string>();
-        private string connectionString;
 
         public DatabasePageReader(string connectionString, PageAddress pageAddress, int databaseId)
             : base(pageAddress, databaseId)
         {
-            this.ConnectionString = connectionString;
+            ConnectionString = connectionString;
         }
 
         /// <summary>
@@ -26,9 +25,9 @@ namespace InternalsViewer.Internals.PageIO
         /// </summary>
         public override void Load()
         {
-            this.headerData.Clear();
-            this.Data = this.LoadDatabasePage();
-            this.LoadHeader();
+            headerData.Clear();
+            Data = LoadDatabasePage();
+            LoadHeader();
         }
 
         /// <summary>
@@ -39,25 +38,25 @@ namespace InternalsViewer.Internals.PageIO
         /// </returns>
         private byte[] LoadDatabasePage()
         {
-            string pageCommand = string.Format(Properties.Resources.SQL_Page,
+            var pageCommand = string.Format(Properties.Resources.SQL_Page,
                                                DatabaseId,
                                                PageAddress.FileId,
                                                PageAddress.PageId,
                                                2);
             string currentData;
             string currentRow;
-            int offset = 0;
-            byte[] data = new byte[8192];
+            var offset = 0;
+            var data = new byte[8192];
 
-            using (SqlConnection conn = new SqlConnection(this.ConnectionString))
+            using (var conn = new SqlConnection(ConnectionString))
             {
-                SqlCommand cmd = new SqlCommand(pageCommand, conn);
+                var cmd = new SqlCommand(pageCommand, conn);
                 cmd.CommandType = CommandType.Text;
 
                 try
                 {
                     conn.Open();
-                    SqlDataReader reader = cmd.ExecuteReader();
+                    var reader = cmd.ExecuteReader();
 
                     if (reader.HasRows)
                     {
@@ -68,9 +67,9 @@ namespace InternalsViewer.Internals.PageIO
                                 currentRow = reader[3].ToString();
                                 currentData = currentRow.Replace(" ", "").Substring(currentRow.IndexOf(":") + 1, 40);
 
-                                for (int i = 0; i < 40; i += 2)
+                                for (var i = 0; i < 40; i += 2)
                                 {
-                                    string byteString = currentData.Substring(i, 2);
+                                    var byteString = currentData.Substring(i, 2);
 
                                     if (!byteString.Contains("†") && !byteString.Contains(".") && offset < 8192)
                                     {
@@ -85,7 +84,7 @@ namespace InternalsViewer.Internals.PageIO
                             }
                             else if (reader[0].ToString() == "PAGE HEADER:")
                             {
-                                this.headerData.Add(reader[2].ToString(), reader[3].ToString());
+                                headerData.Add(reader[2].ToString(), reader[3].ToString());
                             }
                         }
 
@@ -109,21 +108,17 @@ namespace InternalsViewer.Internals.PageIO
         /// <returns></returns>
         public override bool LoadHeader()
         {
-            bool parsed = true;
+            var parsed = true;
 
-            Header header = new Header();
+            var header = new Header();
 
-            parsed = DatabaseHeaderReader.LoadHeader(this.headerData, header);
+            parsed = DatabaseHeaderReader.LoadHeader(headerData, header);
 
             Header = header;
 
             return parsed;
         }
 
-        public string ConnectionString
-        {
-            get { return connectionString; }
-            set { connectionString = value; }
-        }
+        public string ConnectionString { get; set; }
     }
 }

@@ -7,86 +7,64 @@ namespace InternalsViewer.Internals.Compression
 {
     public class Dictionary : Markable
     {
-        private ushort[] entryOffset;
-        private int entryCount;
-        private int offset;
-
-        private List<DictionaryEntry> entries = new List<DictionaryEntry>();
-
         public Dictionary(byte[] data, int offset)
         {
-            this.Offset = offset;
-            this.LoadDictionary(data, offset);
+            Offset = offset;
+            LoadDictionary(data, offset);
         }
 
         private void LoadDictionary(byte[] data, int offset)
         {
-            this.EntryCount = BitConverter.ToInt16(data, offset);
+            EntryCount = BitConverter.ToInt16(data, offset);
 
-            this.Mark("EntryCount", offset, sizeof(Int16));
+            Mark("EntryCount", offset, sizeof(Int16));
 
-            this.EntryOffset = new ushort[this.EntryCount];
+            EntryOffset = new ushort[EntryCount];
 
-            int dataOffset = sizeof(Int16) + (sizeof(Int16) * this.EntryCount);
+            var dataOffset = sizeof(Int16) + (sizeof(Int16) * EntryCount);
 
-            this.Mark("EntryOffsetArrayDescription", offset + sizeof(Int16), this.EntryCount * sizeof(Int16));
+            Mark("EntryOffsetArrayDescription", offset + sizeof(Int16), EntryCount * sizeof(Int16));
 
-            for (int i = 0; i < this.EntryCount; i++)
+            for (var i = 0; i < EntryCount; i++)
             {
-                this.entryOffset[i] = BitConverter.ToUInt16(data, offset + sizeof(Int16) + (sizeof(Int16) * i));
+                EntryOffset[i] = BitConverter.ToUInt16(data, offset + sizeof(Int16) + (sizeof(Int16) * i));
 
-                int length = this.entryOffset[i] - dataOffset;
+                var length = EntryOffset[i] - dataOffset;
 
-                byte[] dictionaryData = new byte[length];
+                var dictionaryData = new byte[length];
 
                 Array.Copy(data, offset + dataOffset, dictionaryData, 0, length);
 
-                this.Mark("DictionaryEntriesArray", "Dictionary Entry " + i, i);
+                Mark("DictionaryEntriesArray", "Dictionary Entry " + i, i);
 
-                DictionaryEntry entry = new DictionaryEntry(dictionaryData);
+                var entry = new DictionaryEntry(dictionaryData);
 
                 entry.Mark("Data", offset + dataOffset, length);
 
-                this.entries.Add(entry);
+                DictionaryEntries.Add(entry);
 
-                dataOffset = this.entryOffset[i];
+                dataOffset = EntryOffset[i];
             }
         }
 
-        public int Offset
-        {
-            get { return this.offset; }
-            set { this.offset = value; }
-        }
+        public int Offset { get; set; }
 
-        public List<DictionaryEntry> DictionaryEntries
-        {
-            get { return this.entries; }
-            set { this.entries = value; }
-        }
+        public List<DictionaryEntry> DictionaryEntries { get; set; } = new List<DictionaryEntry>();
 
         public DictionaryEntry[] DictionaryEntriesArray
         {
-            get { return this.entries.ToArray(); }
+            get { return DictionaryEntries.ToArray(); }
         }
 
         [MarkAttribute("Entry Count", "AliceBlue", "Gainsboro", true)]
-        public int EntryCount
-        {
-            get { return this.entryCount; }
-            set { this.entryCount = value; }
-        }
+        public int EntryCount { get; set; }
 
-        public ushort[] EntryOffset
-        {
-            get { return this.entryOffset; }
-            set { this.entryOffset = value; }
-        }
+        public ushort[] EntryOffset { get; set; }
 
         [MarkAttribute("Column Offset Array", "Blue", "AliceBlue", true)]
         public string EntryOffsetArrayDescription
         {
-            get { return Record.GetArrayString(this.entryOffset); }
+            get { return Record.GetArrayString(EntryOffset); }
         }
     }
 }

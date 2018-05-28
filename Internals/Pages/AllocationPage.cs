@@ -13,23 +13,19 @@ namespace InternalsViewer.Internals.Pages
         public const int SinglePageSlotOffset = 142;
         public const int StartPageOffset = 136;
 
-        private readonly bool[] allocationMap = new bool[64000];
-        private readonly List<PageAddress> singlePageSlots = new List<PageAddress>();
-        private PageAddress startPage;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="AllocationPage"/> class.
         /// </summary>
         /// <param name="page">The page.</param>
         public AllocationPage(Page page)
         {
-            this.Header = page.Header;
-            this.PageData = page.PageData;
-            this.PageAddress = page.PageAddress;
-            this.DatabaseId = page.DatabaseId;
+            Header = page.Header;
+            PageData = page.PageData;
+            PageAddress = page.PageAddress;
+            DatabaseId = page.DatabaseId;
 
             LoadPage(true);
-            this.LoadAllocationMap();
+            LoadAllocationMap();
         }
 
         /// <summary>
@@ -42,7 +38,7 @@ namespace InternalsViewer.Internals.Pages
         {
             PageAddress = address;
 
-            switch (this.Header.PageType)
+            switch (Header.PageType)
             {
                 case PageType.Bcm:
                 case PageType.Dcm:
@@ -51,10 +47,10 @@ namespace InternalsViewer.Internals.Pages
                 case PageType.Gam:
 
 
-                    this.LoadAllocationMap();
+                    LoadAllocationMap();
                     break;
                 default:
-                    throw new InvalidOperationException(this.Header.PageType + " is not an allocation page");
+                    throw new InvalidOperationException(Header.PageType + " is not an allocation page");
             }
 
         }
@@ -62,7 +58,7 @@ namespace InternalsViewer.Internals.Pages
         public AllocationPage(string connectionString, string database, PageAddress pageAddress)
             : base(connectionString, database, pageAddress)
         {
-            this.LoadAllocationMap();
+            LoadAllocationMap();
         }
 
         /// <summary>
@@ -80,7 +76,7 @@ namespace InternalsViewer.Internals.Pages
         public override void Refresh()
         {
             base.Refresh();
-            this.LoadAllocationMap();
+            LoadAllocationMap();
         }
 
         /// <summary>
@@ -88,7 +84,7 @@ namespace InternalsViewer.Internals.Pages
         /// </summary>
         private void LoadAllocationMap()
         {
-            byte[] allocationData = new byte[8000];
+            var allocationData = new byte[8000];
             int allocationArrayOffset;
 
             switch (Header.PageType)
@@ -98,7 +94,7 @@ namespace InternalsViewer.Internals.Pages
                 case PageType.Dcm:
                 case PageType.Bcm:
 
-                    this.StartPage = new PageAddress(Header.PageAddress.FileId, 0);
+                    StartPage = new PageAddress(Header.PageAddress.FileId, 0);
                     allocationArrayOffset = AllocationArrayOffset;
                     break;
 
@@ -106,8 +102,8 @@ namespace InternalsViewer.Internals.Pages
 
                     allocationArrayOffset = AllocationArrayOffset;
 
-                    this.LoadIamHeader();
-                    this.LoadSinglePageSlots();
+                    LoadIamHeader();
+                    LoadSinglePageSlots();
 
                     break;
 
@@ -121,9 +117,9 @@ namespace InternalsViewer.Internals.Pages
                        0,
                        allocationData.Length - (Header.SlotCount * 2));
 
-            BitArray bitArray = new BitArray(allocationData);
+            var bitArray = new BitArray(allocationData);
 
-            bitArray.CopyTo(this.allocationMap, 0);
+            bitArray.CopyTo(AllocationMap, 0);
         }
 
         /// <summary>
@@ -131,11 +127,11 @@ namespace InternalsViewer.Internals.Pages
         /// </summary>
         private void LoadIamHeader()
         {
-            byte[] pageAddress = new byte[6];
+            var pageAddress = new byte[6];
 
             Array.Copy(PageData, StartPageOffset, pageAddress, 0, 6);
 
-            this.startPage = new PageAddress(pageAddress);
+            StartPage = new PageAddress(pageAddress);
         }
 
         /// <summary>
@@ -143,15 +139,15 @@ namespace InternalsViewer.Internals.Pages
         /// </summary>
         private void LoadSinglePageSlots()
         {
-            int slotOffset = SinglePageSlotOffset;
+            var slotOffset = SinglePageSlotOffset;
 
-            for (int i = 0; i < 8; i++)
+            for (var i = 0; i < 8; i++)
             {
-                byte[] pageAddress = new byte[6];
+                var pageAddress = new byte[6];
 
                 Array.Copy(PageData, slotOffset, pageAddress, 0, 6);
 
-                this.singlePageSlots.Add(new PageAddress(pageAddress));
+                SinglePageSlots.Add(new PageAddress(pageAddress));
 
                 slotOffset += 6;
             }
@@ -163,29 +159,19 @@ namespace InternalsViewer.Internals.Pages
         /// Gets the allocation map.
         /// </summary>
         /// <value>The allocation map.</value>
-        public bool[] AllocationMap
-        {
-            get { return this.allocationMap; }
-        }
+        public bool[] AllocationMap { get; } = new bool[64000];
 
         /// <summary>
         /// Gets the single page slots collection.
         /// </summary>
         /// <value>The single page slots collection.</value>
-        public List<PageAddress> SinglePageSlots
-        {
-            get { return this.singlePageSlots; }
-        }
+        public List<PageAddress> SinglePageSlots { get; } = new List<PageAddress>();
 
         /// <summary>
         /// Gets or sets the start page.
         /// </summary>
         /// <value>The start page.</value>
-        public PageAddress StartPage
-        {
-            get { return this.startPage; }
-            set { this.startPage = value; }
-        }
+        public PageAddress StartPage { get; set; }
 
         #endregion
     }

@@ -9,11 +9,7 @@ namespace InternalsViewer.Internals
     /// </summary>
     public class Allocation
     {
-        private readonly List<AllocationPage> pages = new List<AllocationPage>();
-        private int fileId;
         private int interval;
-        private bool multiFile;
-        private List<PageAddress> singlePageSlots = new List<PageAddress>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Allocation"/> class.
@@ -22,9 +18,9 @@ namespace InternalsViewer.Internals
         /// <param name="pageAddress">The page address.</param>
         public Allocation(Database database, PageAddress pageAddress)
         {
-            this.FileId = pageAddress.FileId;
-            this.MultiFile = false;
-            this.BuildChain(database, pageAddress);
+            FileId = pageAddress.FileId;
+            MultiFile = false;
+            BuildChain(database, pageAddress);
         }
 
         /// <summary>
@@ -33,11 +29,11 @@ namespace InternalsViewer.Internals
         /// <param name="page">The page.</param>
         public Allocation(AllocationPage page)
         {
-            this.FileId = page.PageAddress.FileId;
-            this.MultiFile = false;
-            this.pages.Add(page);
-            this.interval = Database.AllocationInterval;
-            this.singlePageSlots.AddRange(page.SinglePageSlots);
+            FileId = page.PageAddress.FileId;
+            MultiFile = false;
+            Pages.Add(page);
+            interval = Database.AllocationInterval;
+            SinglePageSlots.AddRange(page.SinglePageSlots);
         }
 
         /// <summary>
@@ -48,7 +44,7 @@ namespace InternalsViewer.Internals
         /// <returns></returns>
         public virtual bool Allocated(int extent, int allocationFileId)
         {
-            return this.pages[(extent * 8) / this.interval].AllocationMap[extent % ((this.interval / 8) + 1)];
+            return Pages[(extent * 8) / interval].AllocationMap[extent % ((interval / 8) + 1)];
         }
 
         /// <summary>
@@ -79,27 +75,27 @@ namespace InternalsViewer.Internals
         /// <param name="pageAddress">The page address.</param>
         protected virtual void BuildChain(Database database, PageAddress pageAddress)
         {
-            AllocationPage page = new AllocationPage(database, pageAddress);
+            var page = new AllocationPage(database, pageAddress);
 
             if (page.Header.PageType == PageType.Iam)
             {
                 throw new ArgumentException();
             }
 
-            this.pages.Add(page);
-            this.singlePageSlots.AddRange(page.SinglePageSlots);
+            Pages.Add(page);
+            SinglePageSlots.AddRange(page.SinglePageSlots);
 
-            this.interval = Database.AllocationInterval;
+            interval = Database.AllocationInterval;
 
-            int pageCount = (int)Math.Ceiling(database.FileSize(pageAddress.FileId) / (decimal)this.interval);
+            var pageCount = (int)Math.Ceiling(database.FileSize(pageAddress.FileId) / (decimal)interval);
 
             if (pageCount > 1)
             {
-                for (int i = 1; i < pageCount; i++)
+                for (var i = 1; i < pageCount; i++)
                 {
-                    this.pages.Add(new AllocationPage(database,
+                    Pages.Add(new AllocationPage(database,
                                                  new PageAddress(pageAddress.FileId,
-                                                                 pageAddress.PageId + (i * this.interval))));
+                                                                 pageAddress.PageId + (i * interval))));
                 }
             }
         }
@@ -109,12 +105,12 @@ namespace InternalsViewer.Internals
         /// </summary>
         public void Refresh()
         {
-            this.singlePageSlots.Clear();
+            SinglePageSlots.Clear();
 
-            foreach (AllocationPage page in this.Pages)
+            foreach (var page in Pages)
             {
                 page.Refresh();
-                this.singlePageSlots.AddRange(page.SinglePageSlots);
+                SinglePageSlots.AddRange(page.SinglePageSlots);
             }
         }
 
@@ -200,39 +196,25 @@ namespace InternalsViewer.Internals
         /// Gets the pages.
         /// </summary>
         /// <value>The pages.</value>
-        public List<AllocationPage> Pages
-        {
-            get { return this.pages; }
-        }
+        public List<AllocationPage> Pages { get; } = new List<AllocationPage>();
 
         /// <summary>
         /// Gets or sets the single page slots.
         /// </summary>
         /// <value>The single page slots.</value>
-        public List<PageAddress> SinglePageSlots
-        {
-            get { return this.singlePageSlots; }
-            set { this.singlePageSlots = value; }
-        }
+        public List<PageAddress> SinglePageSlots { get; set; } = new List<PageAddress>();
 
         /// <summary>
         /// Gets or sets the file id.
         /// </summary>
         /// <value>The file id.</value>
-        public int FileId
-        {
-            get { return this.fileId; }
-            set { this.fileId = value; }
-        }
+        public int FileId { get; set; }
 
         /// <summary>
         /// Determines if the Allocation spans multiple files
         /// </summary>
-        public bool MultiFile
-        {
-            get { return this.multiFile; }
-            set { this.multiFile = value; }
-        }
+        public bool MultiFile { get; set; }
+
         #endregion
     }
 }

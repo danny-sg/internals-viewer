@@ -12,32 +12,6 @@ namespace InternalsViewer.Internals.Records
     /// </summary>
     public abstract class Record: Markable
     {
-        private Page page;
-        private RecordType recordType;
-        private UInt16 slotOffset;
-
-        private UInt16[] colOffsetArray;
-
-        private BitArray statusBitsA;
-        private BitArray statusBitsB;
-
-        private Int16 columnCountBytes;
-        private Int16 columnCount;
-        private Int16 columnCountOffset;
-        private bool hasVariableLengthColumns;
-        private UInt16 variableLengthDataOffset;
-        private UInt16 variableLengthColumnCount;
-
-        private bool hasNullBitmap;
-        private Int16 nullBitmapSize;
-        private BitArray nullBitmap;
-
-        private bool hasUniqueifier;
-        private bool compressed;
-
-        private List<RecordField> fields;
-        private Structure structure;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="Record"/> class.
         /// </summary>
@@ -45,10 +19,10 @@ namespace InternalsViewer.Internals.Records
         /// <param name="offset">The offset.</param>
         public Record(Page page, UInt16 slotOffset, Structure structure)
         {
-            this.Page = page;
-            this.SlotOffset = slotOffset;
-            this.Structure = structure;
-            this.Fields = new List<RecordField>();
+            Page = page;
+            SlotOffset = slotOffset;
+            Structure = structure;
+            Fields = new List<RecordField>();
         }
 
         /// <summary>
@@ -78,9 +52,9 @@ namespace InternalsViewer.Internals.Records
         /// <returns></returns>
         protected static string GetNullBitmapString(BitArray nullBitmap)
         {
-            StringBuilder stringBuilder = new StringBuilder();
+            var stringBuilder = new StringBuilder();
 
-            for (int i = 0; i < nullBitmap.Length; i++)
+            for (var i = 0; i < nullBitmap.Length; i++)
             {
                 stringBuilder.Insert(0, nullBitmap[i] ? "1" : "0");
             }
@@ -90,9 +64,9 @@ namespace InternalsViewer.Internals.Records
 
         public static string GetArrayString(UInt16[] array)
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
-            foreach (UInt16 offset in array)
+            foreach (var offset in array)
             {
                 if (sb.Length > 0)
                 {
@@ -118,7 +92,7 @@ namespace InternalsViewer.Internals.Records
             }
             else
             {
-                return this.NullBitmap.Get(index - (this.HasUniqueifier ? 0 : 1));
+                return NullBitmap.Get(index - (HasUniqueifier ? 0 : 1));
             }
         }
 
@@ -130,13 +104,13 @@ namespace InternalsViewer.Internals.Records
             }
             else
             {
-                return this.NullBitmap.Get(column.NullBit - 1);
+                return NullBitmap.Get(column.NullBit - 1);
             }
         }
 
         internal static string GetStatusBitsDescription(Record record)
         {
-            string statusDescription = string.Empty;
+            var statusDescription = string.Empty;
 
             if (record.HasVariableLengthColumns)
             {
@@ -159,107 +133,71 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the record's underlying Page
         /// </summary>
         /// <value>The Page.</value>
-        public Page Page
-        {
-            get { return this.page; }
-            set { this.page = value; }
-        }
+        public Page Page { get; set; }
 
         /// <summary>
         /// Gets or sets the record type
         /// </summary>
         /// <value>The type of the record.</value>
-        public RecordType RecordType
-        {
-            get { return this.recordType; }
-            set { this.recordType = value; }
-        }
+        public RecordType RecordType { get; set; }
 
         /// <summary>
         /// Gets or sets the slot offset in the page
         /// </summary>
         /// <value>The slot offset.</value>
         [MarkAttribute("Slot Offset")]
-        public UInt16 SlotOffset
-        {
-            get { return this.slotOffset; }
-            set { this.slotOffset = value; }
-        }
+        public UInt16 SlotOffset { get; set; }
 
         /// <summary>
         /// Gets or sets the Column Offset Array
         /// </summary>
         /// <value>The col offset array.</value>
-        public UInt16[] ColOffsetArray
-        {
-            get { return this.colOffsetArray; }
-            set { this.colOffsetArray = value; }
-        }
+        public UInt16[] ColOffsetArray { get; set; }
 
         [MarkAttribute("Column Offset Array", "Blue", "AliceBlue", true)]
         public string ColOffsetArrayDescription
         {
-            get { return GetArrayString(this.ColOffsetArray); }
+            get { return GetArrayString(ColOffsetArray); }
         }
 
         /// <summary>
         /// Gets or sets the status bits A value
         /// </summary>
         /// <value>The status bits A (bitmap of row properties) value </value>
-        public BitArray StatusBitsA
-        {
-            get { return this.statusBitsA; }
-            set { this.statusBitsA = value; }
-        }
+        public BitArray StatusBitsA { get; set; }
 
         [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
         public string StatusBitsADescription
         {
-            get { return GetRecordTypeDescription(this.RecordType) + GetStatusBitsDescription(this); }
+            get { return GetRecordTypeDescription(RecordType) + GetStatusBitsDescription(this); }
         }
 
         /// <summary>
         /// Gets or sets the status bits B value
         /// </summary>
         /// <value>The status bits B (bitmap of row properties) value</value>
-        public BitArray StatusBitsB
-        {
-            get { return this.statusBitsB; }
-            set { this.statusBitsB = value; }
-        }
+        public BitArray StatusBitsB { get; set; }
 
         /// <summary>
         /// Gets or sets the column count bytes value
         /// </summary>
         /// <value>The number of bytes used for the column count.</value>
         /// <remarks>Used for SQL Server 2008 page compression</remarks>
-        public Int16 ColumnCountBytes
-        {
-            get { return this.columnCountBytes; }
-            set { this.columnCountBytes = value; }
-        }
+        public Int16 ColumnCountBytes { get; set; }
 
         /// <summary>
         /// Gets or sets the number of columns.
         /// </summary>
         /// <value>The number of columns in the record</value>
         [MarkAttribute("Column Count", "DarkGreen", "Gainsboro", true)]
-        public Int16 ColumnCount
-        {
-            get { return this.columnCount; }
-            set { this.columnCount = value; }
-        }
+        public Int16 ColumnCount { get; set; }
 
         /// <summary>
         /// Gets or sets the fixed column offset.
         /// </summary>
         /// <value>The offset location of the start of the fixed column fields</value>
         [MarkAttribute("Column Count Offset", "Blue", "Gainsboro", true)]
-        public Int16 ColumnCountOffset
-        {
-            get { return this.columnCountOffset; }
-            set { this.columnCountOffset = value; }
-        }
+        public Int16 ColumnCountOffset { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this instance has variable length columns.
@@ -267,32 +205,20 @@ namespace InternalsViewer.Internals.Records
         /// <value>
         /// 	<c>true</c> if this instance has variable length columns; otherwise, <c>false</c>.
         /// </value>
-        public bool HasVariableLengthColumns
-        {
-            get { return this.hasVariableLengthColumns; }
-            set { this.hasVariableLengthColumns = value; }
-        }
+        public bool HasVariableLengthColumns { get; set; }
 
         /// <summary>
         /// Gets or sets the variable length data offset.
         /// </summary>
         /// <value>The variable length data offset.</value>
-        public UInt16 VariableLengthDataOffset
-        {
-            get { return this.variableLengthDataOffset; }
-            set { this.variableLengthDataOffset = value; }
-        }
+        public UInt16 VariableLengthDataOffset { get; set; }
 
         /// <summary>
         /// Gets or sets the variable length column count.
         /// </summary>
         /// <value>The variable length column count.</value>
         [MarkAttribute("Variable Length Column Count", "Black", "AliceBlue", true)]
-        public UInt16 VariableLengthColumnCount
-        {
-            get { return this.variableLengthColumnCount; }
-            set { this.variableLengthColumnCount = value; }
-        }
+        public UInt16 VariableLengthColumnCount { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this instance has a null bitmap.
@@ -300,36 +226,24 @@ namespace InternalsViewer.Internals.Records
         /// <value>
         /// 	<c>true</c> if this instance has null bitmap; otherwise, <c>false</c>.
         /// </value>
-        public bool HasNullBitmap
-        {
-            get { return this.hasNullBitmap; }
-            set { this.hasNullBitmap = value; }
-        }
+        public bool HasNullBitmap { get; set; }
 
         /// <summary>
         /// Gets or sets the size of the null bitmap in bytes
         /// </summary>
         /// <value>The size of the null bitmap in bytes</value>
-        public Int16 NullBitmapSize
-        {
-            get { return this.nullBitmapSize; }
-            set { this.nullBitmapSize = value; }
-        }
+        public Int16 NullBitmapSize { get; set; }
 
         /// <summary>
         /// Gets or sets the null bitmap.
         /// </summary>
         /// <value>The null bitmap.</value>
-        public BitArray NullBitmap
-        {
-            get { return this.nullBitmap; }
-            set { this.nullBitmap = value; }
-        }
+        public BitArray NullBitmap { get; set; }
 
         [MarkAttribute("Null Bitmap", "Purple", "Gainsboro", true)]
         public string NullBitmapDescription
         {
-            get { return this.HasNullBitmap ? GetNullBitmapString(this.NullBitmap) : string.Empty; }
+            get { return HasNullBitmap ? GetNullBitmapString(NullBitmap) : string.Empty; }
         }
 
         /// <summary>
@@ -338,35 +252,23 @@ namespace InternalsViewer.Internals.Records
         /// <value>
         /// 	<c>true</c> if this instance has a uniqueifier; otherwise, <c>false</c>.
         /// </value>
-        public bool HasUniqueifier
-        {
-            get { return this.hasUniqueifier; }
-            set { this.hasUniqueifier = value; }
-        }
+        public bool HasUniqueifier { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this <see cref="Record"/> is compressed.
         /// </summary>
         /// <value><c>true</c> if compressed; otherwise, <c>false</c>.</value>
-        public bool Compressed
-        {
-            get { return this.compressed; }
-            set { this.compressed = value; }
-        }
+        public bool Compressed { get; set; }
 
         /// <summary>
         /// Gets or sets the record fields.
         /// </summary>
         /// <value>The record fields.</value>
-        public List<RecordField> Fields
-        {
-            get { return this.fields; }
-            set { this.fields = value; }
-        }
+        public List<RecordField> Fields { get; set; }
 
         public RecordField[] FieldsArray
         {
-            get { return this.Fields.ToArray(); }
+            get { return Fields.ToArray(); }
         }
 
 
@@ -374,10 +276,6 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the record structure.
         /// </summary>
         /// <value>The record structure.</value>
-        public Structure Structure
-        {
-            get { return structure; }
-            set { structure = value; }
-        }
+        public Structure Structure { get; set; }
     }
 }

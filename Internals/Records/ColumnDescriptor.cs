@@ -16,9 +16,9 @@ namespace InternalsViewer.Internals.Records
         /// <returns></returns>
         protected static byte[] LoadCdArray(Int16 offset, byte[] pageData,  Int16 noOfColumns)
         {
-            byte[] cdArray = new byte[noOfColumns];
+            var cdArray = new byte[noOfColumns];
 
-            for (int i = 0; i < noOfColumns; i += 1)
+            for (var i = 0; i < noOfColumns; i += 1)
             {
                 if (i % 2 == 0)
                 {

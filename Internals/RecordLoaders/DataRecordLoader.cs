@@ -36,14 +36,14 @@ namespace InternalsViewer.Internals.RecordLoaders
             }
 
             // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
-            int columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);
+            var columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);
 
             dataRecord.ColumnCountOffset = BitConverter.ToInt16(dataRecord.Page.PageData, columnCountOffsetPosition);
 
             dataRecord.Mark("ColumnCountOffset", columnCountOffsetPosition, sizeof(Int16));
 
             // Column count 2-byte int located at the column count offset
-            int columnCountPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset;
+            var columnCountPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset;
 
             dataRecord.ColumnCount = BitConverter.ToInt16(dataRecord.Page.PageData, columnCountPosition);
 
@@ -68,7 +68,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                 else
                 {
                     // Number of variable length columns (2-byte int) located after null bitmap
-                    int varColCountOffset = dataRecord.ColumnCountOffset + sizeof(Int16) + dataRecord.NullBitmapSize;
+                    var varColCountOffset = dataRecord.ColumnCountOffset + sizeof(Int16) + dataRecord.NullBitmapSize;
 
                     dataRecord.VariableLengthColumnCount = BitConverter.ToUInt16(dataRecord.Page.PageData, dataRecord.SlotOffset + varColCountOffset);
 
@@ -109,10 +109,10 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <param name="dataRecord">The data record.</param>
         private static void LoadNullBitmap(DataRecord dataRecord)
         {
-            byte[] nullBitmapBytes = new byte[dataRecord.NullBitmapSize];
+            var nullBitmapBytes = new byte[dataRecord.NullBitmapSize];
 
             // Null bitmap located after column count offset + column count 2-byte int
-            int nullBitmapPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset + sizeof(Int16);
+            var nullBitmapPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset + sizeof(Int16);
 
             Array.Copy(dataRecord.Page.PageData,
                        nullBitmapPosition,
@@ -145,7 +145,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
             endOffset = RecordLoader.DecodeOffset(dataRecord.ColOffsetArray[dataRecord.ColOffsetArray.Length - 1]);
 
-            byte[] sparseRecord = new byte[endOffset - startOffset];
+            var sparseRecord = new byte[endOffset - startOffset];
 
             Array.Copy(dataRecord.Page.PageData, dataRecord.SlotOffset + startOffset, sparseRecord, 0, endOffset - startOffset);
 
@@ -163,11 +163,11 @@ namespace InternalsViewer.Internals.RecordLoaders
         {
             RecordField field;
 
-            List<RecordField> columnValues = new List<RecordField>();
+            var columnValues = new List<RecordField>();
 
-            int index = 0;
+            var index = 0;
 
-            foreach (Column column in dataRecord.Structure.Columns)
+            foreach (var column in dataRecord.Structure.Columns)
             {
                 if (!column.Sparse)
                 {
@@ -175,7 +175,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
                     Int16 length = 0;
                     UInt16 offset = 0;
-                    bool isLob = false;
+                    var isLob = false;
                     byte[] data = null;
                     UInt16 variableIndex = 0;
 
@@ -264,7 +264,7 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <returns>The Record Type property in Status Bits A</returns>
         private static RecordType LoadStatusBits(DataRecord record)
         {
-            byte statusA = record.Page.PageData[record.SlotOffset];
+            var statusA = record.Page.PageData[record.SlotOffset];
 
             // bytes 0 and 1 are Status Bits A and B
             record.StatusBitsA = new BitArray(new byte[] { statusA });
@@ -293,7 +293,7 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <param name="dataRecord">The data record.</param>
         private static void LoadForwardingRecord(DataRecord dataRecord)
         {
-            byte[] forwardingRecord = new byte[8];
+            var forwardingRecord = new byte[8];
 
             Array.Copy(dataRecord.Page.PageData, dataRecord.SlotOffset + sizeof(byte), forwardingRecord, 0, 6);
 
