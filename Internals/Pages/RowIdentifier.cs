@@ -9,7 +9,7 @@ namespace InternalsViewer.Internals.Pages
     /// </summary>
     public struct RowIdentifier
     {
-        public const int Size = sizeof(Int16) + sizeof(Int16) + sizeof(Int32);
+        public const int Size = sizeof(short) + sizeof(short) + sizeof(int);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RowIdentifier"/> struct.
@@ -53,7 +53,7 @@ namespace InternalsViewer.Internals.Pages
         {
             int fileId;
             int pageId;
-            Int16 slot = 0;
+            short slot = 0;
 
             bool parsed;
 

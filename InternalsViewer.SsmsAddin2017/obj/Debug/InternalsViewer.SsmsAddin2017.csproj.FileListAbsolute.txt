@@ -63,3 +63,16 @@ D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\obj\Debug\Inter
 D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\obj\Debug\InternalsViewer.SsmsAddin2017.pkgdef
 D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\obj\Debug\InternalsViewer.SsmsAddin2017.latest.pkgdef
 D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\obj\Debug\extension.vsixmanifest
+D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\obj\Debug\InternalsViewerPackage.cto
+D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\obj\Debug\VSCT.read.1.tlog
+D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\obj\Debug\VSCT.write.1.tlog
+D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\obj\Debug\CtoResourceMerger.cache
+D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\obj\Debug\VSPackage.resources.original
+D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\bin\Debug\InternalsViewer.Internals.dll
+D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\bin\Debug\InternalsViewer.UI.dll
+D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\bin\Debug\InternalsViewer.UI.pdb
+D:\Source\dannysg\internals-viewer\InternalsViewer.SsmsAddin2017\bin\Debug\InternalsViewer.Internals.pdb
+C:\Program Files (x86)\Microsoft SQL Server\140\Tools\Binn\ManagementStudio\Extensions\InternalsViewer\InternalsViewer.SsmsAddin2017.dll
+C:\Program Files (x86)\Microsoft SQL Server\140\Tools\Binn\ManagementStudio\Extensions\InternalsViewer\InternalsViewer.SsmsAddin2017.pkgdef
+C:\Program Files (x86)\Microsoft SQL Server\140\Tools\Binn\ManagementStudio\Extensions\InternalsViewer\InternalsViewer.SsmsAddin2017.vsix
+C:\Program Files (x86)\Microsoft SQL Server\140\Tools\Binn\ManagementStudio\Extensions\InternalsViewer\extension.vsixmanifest

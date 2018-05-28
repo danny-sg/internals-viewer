@@ -10,11 +10,13 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using InternalsViewer.SsmsAddin2017.Commands;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.Win32;
+using InternalsViewer.Internals;
 
 namespace InternalsViewer.SsmsAddin2017
 {
@@ -39,6 +41,7 @@ namespace InternalsViewer.SsmsAddin2017
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [Guid(InternalsViewerPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
+    [ProvideMenuResource("Menus.ctmenu", 1)]
     public sealed class InternalsViewerPackage : Package
     {
         /// <summary>
@@ -66,6 +69,13 @@ namespace InternalsViewer.SsmsAddin2017
         protected override void Initialize()
         {
             base.Initialize();
+            ViewCommand.Initialize(this);
+        }
+
+        protected override int QueryClose(out bool canClose)
+        {
+            UserRegistryRoot.CreateSubKey(@"Packages\{" + PackageGuidString + "}").SetValue("SkipLoading", 1);
+            return base.QueryClose(out canClose);
         }
 
         #endregion

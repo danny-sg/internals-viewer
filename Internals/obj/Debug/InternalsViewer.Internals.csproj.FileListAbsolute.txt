@@ -1,6 +1,5 @@
 D:\Source\dannysg\internals-viewer\Internals\bin\Debug\InternalsViewer.Internals.dll
 D:\Source\dannysg\internals-viewer\Internals\bin\Debug\InternalsViewer.Internals.pdb
-D:\Source\dannysg\internals-viewer\Internals\obj\Debug\InternalsViewer.Internals.csprojResolveAssemblyReference.cache
 D:\Source\dannysg\internals-viewer\Internals\obj\Debug\InternalsViewer.Internals.Properties.Resources.resources
 D:\Source\dannysg\internals-viewer\Internals\obj\Debug\InternalsViewer.Internals.csproj.GenerateResource.Cache
 D:\Source\dannysg\internals-viewer\Internals\obj\Debug\InternalsViewer.Internals.dll

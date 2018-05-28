@@ -2,3 +2,7 @@ C:\Users\danny\AppData\Local\Microsoft\VisualStudio\14.0Exp\Extensions\Danny Gou
 C:\Users\danny\AppData\Local\Microsoft\VisualStudio\14.0Exp\Extensions\Danny Gould\InternalsViewer.SsmsAddin2017\1.0\\InternalsViewer.SsmsAddin2017.pdb
 C:\Users\danny\AppData\Local\Microsoft\VisualStudio\14.0Exp\Extensions\Danny Gould\InternalsViewer.SsmsAddin2017\1.0\\InternalsViewer.SsmsAddin2017.pkgdef
 C:\Users\danny\AppData\Local\Microsoft\VisualStudio\14.0Exp\Extensions\Danny Gould\InternalsViewer.SsmsAddin2017\1.0\\extension.vsixmanifest
+C:\Users\danny\AppData\Local\Microsoft\VisualStudio\14.0Exp\Extensions\Danny Gould\InternalsViewer.SsmsAddin2017\1.0\\InternalsViewer.UI.dll
+C:\Users\danny\AppData\Local\Microsoft\VisualStudio\14.0Exp\Extensions\Danny Gould\InternalsViewer.SsmsAddin2017\1.0\\InternalsViewer.Internals.dll
+C:\Users\danny\AppData\Local\Microsoft\VisualStudio\14.0Exp\Extensions\Danny Gould\InternalsViewer.SsmsAddin2017\1.0\\InternalsViewer.UI.pdb
+C:\Users\danny\AppData\Local\Microsoft\VisualStudio\14.0Exp\Extensions\Danny Gould\InternalsViewer.SsmsAddin2017\1.0\\InternalsViewer.Internals.pdb
