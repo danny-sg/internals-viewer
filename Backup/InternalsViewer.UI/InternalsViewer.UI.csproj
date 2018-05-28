@@ -1,0 +1,263 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{F9CE00A7-4C8D-4C8B-85F1-CD1AA3D1386D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>InternalsViewer.UI</RootNamespace>
+    <AssemblyName>InternalsViewer.UI</AssemblyName>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug %28v2008%29|AnyCPU' ">
+    <OutputPath>bin\Debug %28v2008%29\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Allocations\AllocationContainer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Allocations\AllocationContainer.designer.cs">
+      <DependentUpon>AllocationContainer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Allocations\AllocationLayer.cs" />
+    <Compile Include="Allocations\AllocationMap.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Allocations\AllocationUnitLayer.cs" />
+    <Compile Include="AllocationWindow.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="AllocationWindow.Designer.cs">
+      <DependentUpon>AllocationWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="BlockSelection.cs" />
+    <Compile Include="ColourRange.cs" />
+    <Compile Include="Controls\BarColumn.cs" />
+    <Compile Include="Controls\BorderPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\CompressionInfoTable.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\CompressionInfoTable.Designer.cs">
+      <DependentUpon>CompressionInfoTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\HexRichTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="AllocationViewer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="AllocationViewer.Designer.cs">
+      <DependentUpon>AllocationViewer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\KeyImageColumn.cs" />
+    <Compile Include="Controls\MarkerKeyTable.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\MarkerKeyTable.designer.cs">
+      <DependentUpon>MarkerKeyTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\PageAddressTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="DecodeWindow.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="DecodeWindow.Designer.cs">
+      <DependentUpon>DecodeWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ExtentColour.cs" />
+    <Compile Include="FileInformationControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="FileInformationControl.Designer.cs">
+      <DependentUpon>FileInformationControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\FlatMenuStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Markers\Marker.cs" />
+    <Compile Include="Markers\MarkerBuilder.cs" />
+    <Compile Include="Markers\MarkerType.cs" />
+    <Compile Include="OffsetEventArgs.cs" />
+    <Compile Include="OffsetTable.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="OffsetTable.Designer.cs">
+      <DependentUpon>OffsetTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RtfColour.cs" />
+    <Compile Include="HexViewer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="HexViewer.Designer.cs">
+      <DependentUpon>HexViewer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="HsvColour.cs" />
+    <Compile Include="Allocations\MapMode.cs" />
+    <Compile Include="PageViewerWindow.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="PageViewerWindow.Designer.cs">
+      <DependentUpon>PageViewerWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Renderers\FullMapRenderer.cs" />
+    <Compile Include="Renderers\PageExtentRenderer.cs" />
+    <Compile Include="Renderers\PfsRenderer.cs" />
+    <Compile Include="TransactionLogTabPage.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Allocations\AllocationContainer.resx">
+      <DependentUpon>AllocationContainer.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Allocations\AllocationMap.resx">
+      <DependentUpon>AllocationMap.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AllocationWindow.resx">
+      <DependentUpon>AllocationWindow.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AllocationViewer.resx">
+      <DependentUpon>AllocationViewer.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\CompressionInfoTable.resx">
+      <DependentUpon>CompressionInfoTable.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\MarkerKeyTable.resx">
+      <DependentUpon>MarkerKeyTable.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DecodeWindow.resx">
+      <DependentUpon>DecodeWindow.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FileInformationControl.resx">
+      <DependentUpon>FileInformationControl.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="HexViewer.resx">
+      <DependentUpon>HexViewer.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="OffsetTable.resx">
+      <DependentUpon>OffsetTable.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PageViewerWindow.resx">
+      <DependentUpon>PageViewerWindow.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TransactionLogTabPage.resx">
+      <DependentUpon>TransactionLogTabPage.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Internals\InternalsViewer.Internals.csproj">
+      <Project>{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}</Project>
+      <Name>InternalsViewer.Internals</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\connect.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Refresh.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\pfs.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\bufferpool11.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\RightToLeftDoucmentHS.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\LeftToRightDoucmentHS1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\LeftToRightDoucmentHS.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Properties\DataSources\InternalsViewer.Internals.Pages.Header.datasource" />
+    <None Include="Resources\showhidedetailstoolbarbutton.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Collapse_large.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\allocationWindowSplit1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\WindowSplit.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\fileinfo1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\FindHS.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\TransactionLogIcon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\allocationMapIcon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\GAMallocationMapIcon.png" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -1,0 +1,8 @@
+D:\Source\dannysg\internals-viewer\AddIn\obj\Debug\InternalsViewer.SSMSAddIn.csprojResolveAssemblyReference.cache
+D:\Source\dannysg\internals-viewer\AddIn\obj\Debug\InternalsViewer.SSMSAddIn.csproj.ResolveComReference.cache
+D:\Source\dannysg\internals-viewer\AddIn\obj\Debug\InternalsViewer.SSMSAddIn.AllocationContainer.resources
+D:\Source\dannysg\internals-viewer\AddIn\obj\Debug\InternalsViewer.SSMSAddIn.CommandBar.resources
+D:\Source\dannysg\internals-viewer\AddIn\obj\Debug\InternalsViewer.SSMSAddIn.DecodeContainer.resources
+D:\Source\dannysg\internals-viewer\AddIn\obj\Debug\InternalsViewer.SSMSAddIn.PageViewerContainer.resources
+D:\Source\dannysg\internals-viewer\AddIn\obj\Debug\InternalsViewer.SSMSAddIn.Properties.Resources.resources
+D:\Source\dannysg\internals-viewer\AddIn\obj\Debug\InternalsViewer.SSMSAddIn.csproj.GenerateResource.Cache
