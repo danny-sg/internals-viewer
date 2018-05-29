@@ -40,13 +40,10 @@ namespace InternalsViewer.Internals.Records
             return sb.ToString();
         }
 
-        [MarkAttribute("Status Bits B", "Maroon", "Gainsboro", true)]
-        public string StatusBitsBDescription
-        {
-            get { return ""; }
-        }
+        [Mark("Status Bits B", "Maroon", "Gainsboro")]
+        public string StatusBitsBDescription => "";
 
-        [MarkAttribute("Forwarding Record", "DarkBlue", "Gainsboro", true)]
+        [Mark("Forwarding Record", "DarkBlue", "Gainsboro")]
         public RowIdentifier ForwardingRecord { get; set; }
     }
 }

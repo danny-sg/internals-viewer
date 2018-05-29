@@ -27,55 +27,43 @@ namespace InternalsViewer.Internals.Records
             BlobRecordLoader.Load(this);
         }
 
-        [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
-        public new string StatusBitsADescription
-        {
-            get { return "TODO"; }
-        }
+        [Mark("Status Bits A", "Red", "Gainsboro")]
+        public new string StatusBitsADescription => "TODO";
 
-        [MarkAttribute("Status Bits B", "Maroon", "Gainsboro", true)]
-        public string StatusBitsBDescription
-        {
-            get { return string.Empty; }
-        }
+        [Mark("Status Bits B", "Maroon", "Gainsboro")]
+        public string StatusBitsBDescription => string.Empty;
 
-        [MarkAttribute("ID", "Navy", "AliceBlue", true)]
+        [Mark("ID", "Navy", "AliceBlue")]
         public long BlobId { get; set; }
 
-        [MarkAttribute("Length", "Blue", "Gainsboro", true)]
+        [Mark("Length", "Blue", "Gainsboro")]
         public int Length { get; set; }
 
         public BlobType BlobType { get; set; }
 
-        [MarkAttribute("Type", "DarkGreen", "Gainsboro", true)]
-        public string BlobTypeDescription
-        {
-            get { return BlobType.ToString(); }
-        }
+        [Mark("Type", "DarkGreen", "Gainsboro")]
+        public string BlobTypeDescription => BlobType.ToString();
 
-        [MarkAttribute("MaxLinks", "FireBrick", "Gainsboro", true)]
+        [Mark("MaxLinks", "FireBrick", "Gainsboro")]
         public int MaxLinks { get; set; }
 
-        [MarkAttribute("Current Links", "FireBrick", "Gainsboro", true)]
+        [Mark("Current Links", "FireBrick", "Gainsboro")]
         public int CurLinks { get; set; }
 
-        [MarkAttribute("Level", "SlateGray", "Gainsboro", true)]
+        [Mark("Level", "SlateGray", "Gainsboro")]
         public short Level { get; set; }
 
-        [MarkAttribute("Size", "Purple", "Gainsboro", true)]
+        [Mark("Size", "Purple", "Gainsboro")]
         public short Size { get; set; }
 
-        [MarkAttribute("Data", "Gray", "PaleGoldenrod", true)]
+        [Mark("Data", "Gray", "PaleGoldenrod")]
         public byte[] Data { get; set; }
 
         public List<BlobChildLink> BlobChildren { get; set; }
 
-        [MarkAttribute("Data", "White", "White", false)]
-        public BlobChildLink[] BlobChildrenArray
-        {
-            get { return BlobChildren.ToArray(); }
-        }
-        
+        [Mark("Data", "White", "White")]
+        public BlobChildLink[] BlobChildrenArray => BlobChildren.ToArray();
+
         internal static string GetRecordType(RecordType recordType)
         {
             throw new NotImplementedException();

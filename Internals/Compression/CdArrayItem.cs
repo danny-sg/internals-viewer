@@ -5,6 +5,9 @@ using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Compression
 {
+    /// <summary>
+    /// CD (Column Description) Array Item
+    /// </summary>
     public class CdArrayItem : Markable
     {
         public CdArrayItem(int index, byte value)
@@ -40,25 +43,13 @@ namespace InternalsViewer.Internals.Compression
 
         public byte Value { get; set; }
 
-        [MarkAttribute("", "White", "Orange", true)]
-        public string Description
-        {
-            get
-            {
-                return string.Format("Column {0}: {1}, Column {2}: {3}",
-                                     (Index * 2),
-                                     GetCdDescription(Values[0]),
-                                     (Index * 2) + 1,
-                                     GetCdDescription(Values[1]));
-            }
-        }
+        [Mark("", "White", "Orange")]
+        public string Description => string.Format("Column {0}: {1}, Column {2}: {3}",
+            (Index * 2),
+            GetCdDescription(Values[0]),
+            (Index * 2) + 1,
+            GetCdDescription(Values[1]));
 
-        public byte[] Values
-        {
-            get
-            {
-                return new byte[] { (byte)(Value & 15), (byte)(Value >> 4) };
-            }
-        }
+        public byte[] Values => new byte[] { (byte)(Value & 15), (byte)(Value >> 4) };
     }
 }

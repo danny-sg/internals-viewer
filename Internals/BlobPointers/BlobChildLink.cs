@@ -16,13 +16,13 @@ namespace InternalsViewer.Internals.BlobPointers
             Length = length;
         }
 
-        [MarkAttribute("Row Identifier", "DarkMagenta", "Thistle", true)]
+        [Mark("Row Identifier", "DarkMagenta", "Thistle")]
         public RowIdentifier RowIdentifier { get; set; }
 
-        [MarkAttribute("Offset", "Blue", "Thistle", true)]
+        [Mark("Offset", "Blue", "Thistle")]
         public int Offset { get; set; }
 
-        [MarkAttribute("Length", "Red", "Thistle", true)]
+        [Mark("Length", "Red", "Thistle")]
         public int Length { get; set; }
 
         public override string ToString()

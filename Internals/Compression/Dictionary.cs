@@ -51,15 +51,12 @@ namespace InternalsViewer.Internals.Compression
 
         public List<DictionaryEntry> DictionaryEntries { get; set; } = new List<DictionaryEntry>();
 
-        [MarkAttribute("Entry Count", "AliceBlue", "Gainsboro", true)]
+        [Mark("Entry Count", "AliceBlue", "Gainsboro")]
         public int EntryCount { get; set; }
 
         public ushort[] EntryOffset { get; set; }
 
-        [MarkAttribute("Column Offset Array", "Blue", "AliceBlue", true)]
-        public string EntryOffsetArrayDescription
-        {
-            get { return Record.GetArrayString(EntryOffset); }
-        }
+        [Mark("Column Offset Array", "Blue", "AliceBlue")]
+        public string EntryOffsetArrayDescription => Record.GetArrayString(EntryOffset);
     }
 }

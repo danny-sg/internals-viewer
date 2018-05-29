@@ -9,7 +9,7 @@ namespace InternalsViewer.UI.Markers
     /// <summary>
     /// Builds Markers for use in the Hex Viewer
     /// </summary>
-    class MarkerBuilder
+    public class MarkerBuilder
     {
         public static List<Marker> BuildMarkers(Markable markedObject)
         {
@@ -19,8 +19,6 @@ namespace InternalsViewer.UI.Markers
         /// <summary>
         /// Builds the markers using an IMarkable collection and reflection to access the property values
         /// </summary>
-        /// <param name="markedObject">The marked object.</param>
-        /// <returns></returns>
         public static List<Marker> BuildMarkers(Markable markedObject, string prefix)
         {
             if (markedObject == null)
@@ -38,16 +36,16 @@ namespace InternalsViewer.UI.Markers
 
                 var property = markedObject.GetType().GetProperty(item.PropertyName);
 
-                var description = property.GetCustomAttributes(typeof(MarkAttribute), false);
+                var description = property?.GetCustomAttributes(typeof(MarkAttribute), false);
 
                 if (description != null && description.Length > 0)
                 {
                     var attribute = (description[0] as MarkAttribute);
 
-                    if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(attribute.Description))
+                    if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(attribute?.Description))
                     {
 
-                        marker.Name = prefix + attribute.Description;
+                        marker.Name = prefix + attribute?.Description;
                     }
                     else
                     {
@@ -85,7 +83,7 @@ namespace InternalsViewer.UI.Markers
                 }
             }
             // Sort the markers in order of their positions
-            markers.Sort(delegate(Marker marker1, Marker marker2) { return marker1.StartPosition.CompareTo(marker2.StartPosition); });
+            markers.Sort((marker1, marker2) => marker1.StartPosition.CompareTo(marker2.StartPosition));
 
             return markers;
         }
@@ -113,14 +111,13 @@ namespace InternalsViewer.UI.Markers
         /// <summary>
         /// Sets the value for a marker, including recursively adding markers on marked properties
         /// </summary>
-        /// <param name="markers">The markers.</param>
-        /// <param name="marker">The marker.</param>
-        /// <param name="value">The value.</param>
         private static void SetValue(List<Marker> markers, Marker marker, object value, string prefix)
         {
-            if (value is Markable)
+            var markable = value as Markable;
+
+            if (markable != null)
             {
-                markers.AddRange(BuildMarkers((Markable)value, prefix));
+                markers.AddRange(BuildMarkers(markable, prefix));
             }
             else if (value is byte[])
             {

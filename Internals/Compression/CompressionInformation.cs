@@ -102,10 +102,10 @@ namespace InternalsViewer.Internals.Compression
             return structure;
         }
 
-        [MarkAttribute("Page Mod Count", "DarkGreen", "Gainsboro", true)]
+        [Mark("Page Mod Count", "DarkGreen", "Gainsboro")]
         public short PageModCount { get; set; }
 
-        [MarkAttribute("Size", "Purple", "Gainsboro", true)]
+        [Mark("Size", "Purple", "Gainsboro")]
         public short Size { get; set; }
 
         public BitArray StatusBits { get; set; }
@@ -114,7 +114,7 @@ namespace InternalsViewer.Internals.Compression
 
         public Page Page { get; set; }
 
-        [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
+        [Mark("Status Bits A", "Red", "Gainsboro")]
         public string StatusDescription
         {
             get
@@ -147,7 +147,7 @@ namespace InternalsViewer.Internals.Compression
 
         public bool HasDictionary { get; set; }
 
-        [MarkAttribute("Length", "Blue", "Gainsboro", true)]
+        [Mark("Length", "Blue", "Gainsboro")]
         public short Length { get; set; }
 
         public enum CompressionInfoStructure

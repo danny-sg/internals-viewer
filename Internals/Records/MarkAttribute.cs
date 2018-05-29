@@ -24,8 +24,7 @@ namespace InternalsViewer.Internals.Records
         /// <param name="description">The description.</param>
         /// <param name="foreColour">The fore colour.</param>
         /// <param name="backColour">The back colour.</param>
-        /// <param name="visible">if set to <c>true</c> [visible].</param>
-        public MarkAttribute(string description, string foreColour, string backColour, bool visible)
+        public MarkAttribute(string description, string foreColour, string backColour)
         {
             Description = description;
             ForeColour = Color.FromName(foreColour);
@@ -40,8 +39,7 @@ namespace InternalsViewer.Internals.Records
         /// <param name="foreColour">The fore colour.</param>
         /// <param name="backColour">The back colour.</param>
         /// <param name="alternateBackColour">The alternate back colour.</param>
-        /// <param name="visible">if set to <c>true</c> [visible].</param>
-        public MarkAttribute(string description, string foreColour, string backColour, string alternateBackColour, bool visible)
+        public MarkAttribute(string description, string foreColour, string backColour, string alternateBackColour)
         {
             Description = description;
             ForeColour = Color.FromName(foreColour);

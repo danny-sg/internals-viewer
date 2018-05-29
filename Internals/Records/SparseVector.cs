@@ -38,33 +38,22 @@ namespace InternalsViewer.Internals.Records
 
         public ushort[] Columns { get; set; }
 
-        [MarkAttribute("Sparse Columns", "Black", "Olive", true)]
-        public string ColumnsDescription
-        {
-            get { return Record.GetArrayString(Columns); }
-        }
+        [Mark("Sparse Columns", "Black", "Olive")]
+        public string ColumnsDescription => Record.GetArrayString(Columns);
 
-        [MarkAttribute("Sparse Column Offsets", "Black", "DarkKhaki", true)]
-        public string OffsetsDescription
-        {
-            get { return Record.GetArrayString(Offset); }
-        }
+        [Mark("Sparse Column Offsets", "Black", "DarkKhaki")]
+        public string OffsetsDescription => Record.GetArrayString(Offset);
 
         public ushort[] Offset { get; set; }
 
-        [MarkAttribute("Sparse Column Count", "Black", "SeaGreen", true)]
+        [Mark("Sparse Column Count", "Black", "SeaGreen")]
         public short ColCount { get; set; }
 
         public short RecordOffset { get; set; }
 
         public short ComplexHeader { get; set; }
 
-        [MarkAttribute("Complex Header", "Green", "Gainsboro", true)]
-        public string ComplexHeaderDescription
-        {
-            get { return GetComplexHeaderDescription(ComplexHeader); }
-        }
-
-
+        [Mark("Complex Header", "Green", "Gainsboro")]
+        public string ComplexHeaderDescription => GetComplexHeaderDescription(ComplexHeader);
     }
 }
