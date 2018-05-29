@@ -27,41 +27,40 @@ namespace InternalsViewer.Internals.Records
             BlobRecordLoader.Load(this);
         }
 
-        [Mark("Status Bits A", "Red", "Gainsboro")]
+        [Mark(MarkType.StatusBitsA)]
         public new string StatusBitsADescription => "TODO";
 
-        [Mark("Status Bits B", "Maroon", "Gainsboro")]
+        [Mark(MarkType.StatusBitsB)]
         public string StatusBitsBDescription => string.Empty;
 
-        [Mark("ID", "Navy", "AliceBlue")]
+        [Mark(MarkType.BlobId)]
         public long BlobId { get; set; }
 
-        [Mark("Length", "Blue", "Gainsboro")]
+        [Mark(MarkType.BlobLength)]
         public int Length { get; set; }
 
         public BlobType BlobType { get; set; }
 
-        [Mark("Type", "DarkGreen", "Gainsboro")]
+        [Mark(MarkType.BlobType)]
         public string BlobTypeDescription => BlobType.ToString();
 
-        [Mark("MaxLinks", "FireBrick", "Gainsboro")]
+        [Mark(MarkType.MaxLinks)]
         public int MaxLinks { get; set; }
 
-        [Mark("Current Links", "FireBrick", "Gainsboro")]
+        [Mark(MarkType.CurrentLinks)]
         public int CurLinks { get; set; }
 
-        [Mark("Level", "SlateGray", "Gainsboro")]
+        [Mark(MarkType.Level)]
         public short Level { get; set; }
 
-        [Mark("Size", "Purple", "Gainsboro")]
+        [Mark(MarkType.BlobSize)]
         public short Size { get; set; }
 
-        [Mark("Data", "Gray", "PaleGoldenrod")]
+        [Mark(MarkType.BlobData)]
         public byte[] Data { get; set; }
 
         public List<BlobChildLink> BlobChildren { get; set; }
 
-        [Mark("Data", "White", "White")]
         public BlobChildLink[] BlobChildrenArray => BlobChildren.ToArray();
 
         internal static string GetRecordType(RecordType recordType)

@@ -3,6 +3,7 @@ using System.Reflection;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.UI.MarkStyles;
 
 namespace InternalsViewer.UI.Markers
 {
@@ -26,6 +27,8 @@ namespace InternalsViewer.UI.Markers
                 return new List<Marker>();
             }
 
+            var styleProvider = new MarkStyleProvider();
+
             var markers = new List<Marker>();
 
             foreach (var item in markedObject.MarkItems)
@@ -36,27 +39,30 @@ namespace InternalsViewer.UI.Markers
 
                 var property = markedObject.GetType().GetProperty(item.PropertyName);
 
-                var description = property?.GetCustomAttributes(typeof(MarkAttribute), false);
+                var markAttribute = property?.GetCustomAttributes(typeof(MarkAttribute), false);
 
-                if (description != null && description.Length > 0)
+                if (markAttribute != null && markAttribute.Length > 0)
                 {
-                    var attribute = (description[0] as MarkAttribute);
+                    var attribute = (markAttribute[0] as MarkAttribute);
+                    
+                    var style = styleProvider.GetMarkStyle(attribute.MarkType);
+                    
+                    marker.ForeColour = style.ForeColour;
+                    marker.BackColour = style.BackColour;
+                    marker.AlternateBackColour = style.AlternateBackColour;
+                    marker.Name = style.Description;
+
+                    marker.Visible = attribute.Visible;
 
                     if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(attribute?.Description))
                     {
 
-                        marker.Name = prefix + attribute?.Description;
+                        marker.Name = prefix + style.Description;
                     }
                     else
                     {
-                        marker.Name = prefix + " - " + attribute.Description;
+                        marker.Name = prefix + " - " + style.Description;
                     }
-
-                    marker.ForeColour = attribute.ForeColour;
-                    marker.BackColour = attribute.BackColour;
-                    marker.AlternateBackColour = attribute.AlternateBackColour;
-
-                    marker.Visible = attribute.Visible;
                 }
                 else
                 {

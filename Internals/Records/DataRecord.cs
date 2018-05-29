@@ -40,10 +40,10 @@ namespace InternalsViewer.Internals.Records
             return sb.ToString();
         }
 
-        [Mark("Status Bits B", "Maroon", "Gainsboro")]
+        [Mark(MarkType.StatusBitsB)]
         public string StatusBitsBDescription => "";
 
-        [Mark("Forwarding Record", "DarkBlue", "Gainsboro")]
+        [Mark(MarkType.ForwardingRecord)]
         public RowIdentifier ForwardingRecord { get; set; }
     }
 }

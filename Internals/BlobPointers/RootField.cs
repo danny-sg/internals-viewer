@@ -61,16 +61,16 @@ namespace InternalsViewer.Internals.BlobPointers
             }
         }
 
-        [Mark("Slot Count", "DarkGreen", "PeachPuff")]
+        [Mark(MarkType.SlotCount)]
         public int SlotCount { get; set; }
 
-        [Mark("Level", "Red", "PeachPuff")]
+        [Mark(MarkType.Level)]
         public byte Level { get; set; }
 
-        [Mark("Unused", "DarkGreen", "PeachPuff")]
+        [Mark(MarkType.Unused)]
         public byte Unused { get; set; }
 
-        [Mark("UpdateSeq", "DarkGreen", "PeachPuff")]
+        [Mark(MarkType.UpdateSeq)]
         public short UpdateSeq { get; set; }
     }
 }

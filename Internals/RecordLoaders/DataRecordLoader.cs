@@ -24,10 +24,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                 return;
             }
 
-            dataRecord.NullBitmapSize = (short)((dataRecord.Structure.Columns.FindAll(delegate(Column column)
-                                                 {
-                                                     return column.Sparse == false;
-                                                 }).Count - 1) / 8 + 1);
+            dataRecord.NullBitmapSize = (short)((dataRecord.Structure.Columns.FindAll(column => !column.Sparse).Count - 1) / 8 + 1);
 
             if (LoadStatusBits(dataRecord) == RecordType.Forwarding)
             {
@@ -39,6 +36,8 @@ namespace InternalsViewer.Internals.RecordLoaders
             var columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);
 
             dataRecord.ColumnCountOffset = BitConverter.ToInt16(dataRecord.Page.PageData, columnCountOffsetPosition);
+
+            dataRecord.Mark("ColumnCountOffset", columnCountOffsetPosition, sizeof(short));
 
             dataRecord.Mark("ColumnCountOffset", columnCountOffsetPosition, sizeof(short));
 
@@ -59,7 +58,7 @@ namespace InternalsViewer.Internals.RecordLoaders
             if (dataRecord.HasVariableLengthColumns && !dataRecord.Compressed)
             {
                 if (dataRecord.Structure.HasSparseColumns
-                    && dataRecord.Structure.Columns.FindAll(delegate(Column column) { return column.Sparse == false; }).Count == 0)
+                    && dataRecord.Structure.Columns.FindAll(column => !column.Sparse).Count == 0)
                 {
                     dataRecord.VariableLengthColumnCount = 1;
 
@@ -95,11 +94,11 @@ namespace InternalsViewer.Internals.RecordLoaders
             // Varible length data starts after the offset array length (2 byte ints * number of variable length columns)
             dataRecord.VariableLengthDataOffset = (ushort)(offsetStart + (sizeof(ushort) * dataRecord.VariableLengthColumnCount));
 
-            DataRecordLoader.LoadColumnValues(dataRecord);
+            LoadColumnValues(dataRecord);
 
             if (dataRecord.Structure.HasSparseColumns)
             {
-                DataRecordLoader.LoadSparseVector(dataRecord);
+                LoadSparseVector(dataRecord);
             }
         }
 
@@ -143,7 +142,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                 startOffset = dataRecord.ColOffsetArray[dataRecord.ColOffsetArray.Length - 2];
             }
 
-            endOffset = RecordLoader.DecodeOffset(dataRecord.ColOffsetArray[dataRecord.ColOffsetArray.Length - 1]);
+            endOffset = DecodeOffset(dataRecord.ColOffsetArray[dataRecord.ColOffsetArray.Length - 1]);
 
             var sparseRecord = new byte[endOffset - startOffset];
 
@@ -213,13 +212,13 @@ namespace InternalsViewer.Internals.RecordLoaders
                         else
                         {
                             // ...else use the end offset of the previous column as the start of this one
-                            offset = RecordLoader.DecodeOffset(dataRecord.ColOffsetArray[variableIndex - 1]);
+                            offset = DecodeOffset(dataRecord.ColOffsetArray[variableIndex - 1]);
                         }
 
                         if (variableIndex < dataRecord.ColOffsetArray.Length)
                         {
                             isLob = (dataRecord.ColOffsetArray[variableIndex] & 0x8000) == 0x8000;
-                            length = (short)(RecordLoader.DecodeOffset(dataRecord.ColOffsetArray[variableIndex]) - offset);
+                            length = (short)(DecodeOffset(dataRecord.ColOffsetArray[variableIndex]) - offset);
                         }
                         else
                         {

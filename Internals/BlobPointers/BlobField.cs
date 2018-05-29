@@ -29,7 +29,7 @@ namespace InternalsViewer.Internals.BlobPointers
         /// Gets or sets the timestamp used by DBCC CHECKTABLE
         /// </summary>
         /// <value>The timestamp.</value>
-        [Mark("Timestamp", "DarkGreen", "PeachPuff")]
+        [Mark(MarkType.Timestamp)]
         public int Timestamp { get; set; }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace InternalsViewer.Internals.BlobPointers
         /// <value>The links.</value>
         public List<BlobChildLink> Links { get; set; }
 
-        [Mark("Row Id", "Blue", "PeachPuff")]
+        [Mark(MarkType.Rid)]
         public BlobChildLink[] LinksArray => Links.ToArray();
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace InternalsViewer.Internals.BlobPointers
         /// Gets or sets the type of the blob pointer.
         /// </summary>
         /// <value>The type of the blob pointer.</value>
-        [Mark("Type", "DarkGreen", "PeachPuff")]
+        [Mark(MarkType.PointerType)]
         public BlobFieldType PointerType { get; set; }
 
         /// <summary>

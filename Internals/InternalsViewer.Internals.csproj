@@ -126,6 +126,7 @@
     <Compile Include="Records\DataRecord.cs" />
     <Compile Include="RecordLoaders\DataRecordLoader.cs" />
     <Compile Include="Records\IndexRecord.cs" />
+    <Compile Include="Records\MarkType.cs" />
     <Compile Include="Records\Record.cs" />
     <Compile Include="Records\MarkAttribute.cs" />
     <Compile Include="Records\RecordField.cs" />

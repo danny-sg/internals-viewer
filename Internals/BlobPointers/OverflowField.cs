@@ -63,24 +63,24 @@ namespace InternalsViewer.Internals.BlobPointers
         /// Gets or sets the B-Tree level.
         /// </summary>
         /// <value>The level.</value>
-        [Mark("Level", "Red", "PeachPuff")]
+        [Mark(MarkType.Level)]
         public byte Level { get; set; }
 
         /// <summary>
         /// Gets or sets the length.
         /// </summary>
         /// <value>The length.</value>
-        [Mark("Length", "Red", "PeachPuff")]
+        [Mark(MarkType.OverflowLength)]
         public int Length { get; set; }
 
-        [Mark("Unused", "DarkGreen", "PeachPuff")]
+        [Mark(MarkType.Unused)]
         public byte Unused { get; set; }
 
         /// <summary>
         /// Gets or sets the update seq (used by optomistic concurrency control for cursors)
         /// </summary>
         /// <value>The update seq.</value>
-        [Mark("UpdateSeq", "DarkGreen", "PeachPuff")]
+        [Mark(MarkType.UpdateSeq)]
         public short UpdateSeq { get; set; }
     }
 }

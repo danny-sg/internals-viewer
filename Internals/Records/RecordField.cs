@@ -37,7 +37,7 @@ namespace InternalsViewer.Internals.Records
 
         public string Name => Column.ColumnName;
 
-        [Mark("", "Gray", "LemonChiffon", "PaleGoldenrod")]
+        [Mark(MarkType.Value)]
         public string Value => DataConverter.BinaryToString(Data, Column.DataType, Column.Precision, Column.Scale);
 
         public override string ToString()

@@ -39,7 +39,7 @@ namespace InternalsViewer.Internals.Records
 
         public bool PageSymbol { get; set; }
 
-        [Mark("", "Black", "PaleGreen", "LightGreen")]
+        [Mark(MarkType.CompressedValue)]
         public new string Value
         {
             get

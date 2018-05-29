@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Records
     /// <summary>
     /// Database Record Stucture
     /// </summary>
-    public abstract class Record: Markable
+    public abstract class Record : Markable
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="Record"/> class.
@@ -150,7 +150,7 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the slot offset in the page
         /// </summary>
         /// <value>The slot offset.</value>
-        [Mark("Slot Offset")]
+        [Mark(MarkType.SlotOffset)]
         public ushort SlotOffset { get; set; }
 
         /// <summary>
@@ -159,7 +159,7 @@ namespace InternalsViewer.Internals.Records
         /// <value>The col offset array.</value>
         public ushort[] ColOffsetArray { get; set; }
 
-        [Mark("Column Offset Array", "Blue", "AliceBlue")]
+        [Mark(MarkType.ColumnOffsetArray)]
         public string ColOffsetArrayDescription => GetArrayString(ColOffsetArray);
 
         /// <summary>
@@ -168,7 +168,7 @@ namespace InternalsViewer.Internals.Records
         /// <value>The status bits A (bitmap of row properties) value </value>
         public BitArray StatusBitsA { get; set; }
 
-        [Mark("Status Bits A", "Red", "Gainsboro")]
+        [Mark(MarkType.StatusBitsA)]
         public string StatusBitsADescription => GetRecordTypeDescription(RecordType) + GetStatusBitsDescription(this);
 
         /// <summary>
@@ -188,14 +188,14 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the number of columns.
         /// </summary>
         /// <value>The number of columns in the record</value>
-        [Mark("Column Count", "DarkGreen", "Gainsboro")]
+        [Mark(MarkType.ColumnCount)]
         public short ColumnCount { get; set; }
 
         /// <summary>
         /// Gets or sets the fixed column offset.
         /// </summary>
         /// <value>The offset location of the start of the fixed column fields</value>
-        [Mark("Column Count Offset", "Blue", "Gainsboro")]
+        [Mark(MarkType.ColumnCountOffset)]
         public short ColumnCountOffset { get; set; }
 
         /// <summary>
@@ -216,7 +216,7 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the variable length column count.
         /// </summary>
         /// <value>The variable length column count.</value>
-        [Mark("Variable Length Column Count", "Black", "AliceBlue")]
+        [Mark(MarkType.VariableLengthColumnCount)]
         public ushort VariableLengthColumnCount { get; set; }
 
         /// <summary>
@@ -239,7 +239,7 @@ namespace InternalsViewer.Internals.Records
         /// <value>The null bitmap.</value>
         public BitArray NullBitmap { get; set; }
 
-        [Mark("Null Bitmap", "Purple", "Gainsboro")]
+        [Mark(MarkType.NullBitmap)]
         public string NullBitmapDescription => HasNullBitmap ? GetNullBitmapString(NullBitmap) : string.Empty;
 
         /// <summary>
@@ -263,7 +263,7 @@ namespace InternalsViewer.Internals.Records
         public List<RecordField> Fields { get; set; }
 
         public RecordField[] FieldsArray => Fields.ToArray();
-        
+
         /// <summary>
         /// Gets or sets the record structure.
         /// </summary>

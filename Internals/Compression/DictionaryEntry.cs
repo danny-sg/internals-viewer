@@ -12,7 +12,7 @@ namespace InternalsViewer.Internals.Compression
             Data = data;
         }
 
-        [Mark("", "Gray", "LemonChiffon", "PaleGoldenrod")]
+        [Mark(MarkType.Value)]
         public byte[] Data { get; set; }
     }
 }

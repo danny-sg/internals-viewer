@@ -24,14 +24,14 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets down page pointer to the next page in the index
         /// </summary>
         /// <value>Down page pointer.</value>
-        [Mark("Down Page Pointer", "Navy", "Gainsboro")]
+        [Mark(MarkType.DownPagePointer)]
         public PageAddress DownPagePointer { get; set; }
 
         /// <summary>
         /// Gets or sets the RID (Row Identifier) the index is pointing to
         /// </summary>
         /// <value>The rid.</value>
-        [Mark("Down Page Pointer", "Teal", "Gainsboro")]
+        [Mark(MarkType.Rid)]
         public RowIdentifier Rid { get; set; }
 
         public IndexTypes IndexType { get; set; }

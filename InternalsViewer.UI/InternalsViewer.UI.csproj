@@ -142,6 +142,8 @@
     <Compile Include="Markers\Marker.cs" />
     <Compile Include="Markers\MarkerBuilder.cs" />
     <Compile Include="Markers\MarkerType.cs" />
+    <Compile Include="MarkStyles\MarkStyle.cs" />
+    <Compile Include="MarkStyles\MarkStyleProvider.cs" />
     <Compile Include="OffsetEventArgs.cs" />
     <Compile Include="OffsetTable.cs">
       <SubType>UserControl</SubType>

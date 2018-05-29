@@ -43,7 +43,7 @@ namespace InternalsViewer.Internals.Compression
 
         public byte Value { get; set; }
 
-        [Mark("", "White", "Orange")]
+        [Mark(MarkType.CdArrayItem)]
         public string Description => string.Format("Column {0}: {1}, Column {2}: {3}",
             (Index * 2),
             GetCdDescription(Values[0]),
