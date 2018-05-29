@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Records
 {
     public class DataRecord : Record
     {
-        public DataRecord(Page page, UInt16 slotOffset, Structure structure)
+        public DataRecord(Page page, ushort slotOffset, Structure structure)
             : base(page, slotOffset, structure)
         {
             DataRecordLoader.Load(this);

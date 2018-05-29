@@ -12,9 +12,7 @@ namespace InternalsViewer.Internals.Pages
     public struct PageAddress : IEquatable<PageAddress>, IComparable<PageAddress>
     {
         public static readonly PageAddress Empty = new PageAddress();
-        public const int Size = sizeof(Int32) + sizeof(Int16);
-        private int fileId;
-        private int pageId;
+        public const int Size = sizeof(int) + sizeof(short);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PageAddress"/> struct.
@@ -25,13 +23,13 @@ namespace InternalsViewer.Internals.Pages
             try
             {
                 var pageAddress = Parse(address);
-                fileId = pageAddress.fileId;
-                pageId = pageAddress.pageId;
+                FileId = pageAddress.FileId;
+                PageId = pageAddress.PageId;
             }
             catch
             {
-                fileId = 0;
-                pageId = 0;
+                FileId = 0;
+                PageId = 0;
             }
         }
 
@@ -42,8 +40,8 @@ namespace InternalsViewer.Internals.Pages
         /// <param name="pageId">The page id.</param>
         public PageAddress(int fileId, int pageId)
         {
-            this.fileId = fileId;
-            this.pageId = pageId;
+            this.FileId = fileId;
+            this.PageId = pageId;
         }
 
         /// <summary>
@@ -52,8 +50,8 @@ namespace InternalsViewer.Internals.Pages
         /// <param name="address">The page address in internal 6 byte form.</param>
         public PageAddress(byte[] address)
         {
-            pageId = BitConverter.ToInt32(address, 0);
-            fileId = BitConverter.ToInt16(address, 4);
+            PageId = BitConverter.ToInt32(address, 0);
+            FileId = BitConverter.ToInt16(address, 4);
         }
 
         /// <summary>
@@ -110,7 +108,7 @@ namespace InternalsViewer.Internals.Pages
             int fileId;
             int pageId;
 
-            var bytes = address.Split(new char[] { ':' });
+            var bytes = address.Split(':');
 
             int.TryParse(bytes[0], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out fileId);
             int.TryParse(bytes[1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out pageId);
@@ -126,7 +124,7 @@ namespace InternalsViewer.Internals.Pages
         /// </returns>
         public override string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "({0}:{1})", fileId, pageId);
+            return string.Format(CultureInfo.CurrentCulture, "({0}:{1})", FileId, PageId);
         }
 
         /// <summary>
@@ -170,7 +168,7 @@ namespace InternalsViewer.Internals.Pages
         /// <returns></returns>
         public bool Equals(PageAddress pageAddress)
         {
-            return fileId == pageAddress.fileId && pageId == pageAddress.pageId;
+            return FileId == pageAddress.FileId && PageId == pageAddress.PageId;
         }
 
         /// <summary>
@@ -181,7 +179,7 @@ namespace InternalsViewer.Internals.Pages
         /// </returns>
         public override int GetHashCode()
         {
-            return fileId + 29 * pageId;
+            return FileId + 29 * PageId;
         }
 
         /// <summary>
@@ -203,20 +201,12 @@ namespace InternalsViewer.Internals.Pages
         /// Gets or sets the file id.
         /// </summary>
         /// <value>The file id.</value>
-        public int FileId
-        {
-            get { return fileId; }
-            set { fileId = value; }
-        }
+        public int FileId { get; }
 
         /// <summary>
         /// Gets or sets the page id.
         /// </summary>
         /// <value>The page id.</value>
-        public int PageId
-        {
-            get { return pageId; }
-            set { pageId = value; }
-        }
+        public int PageId { get; }
     }
 }

@@ -10,9 +10,9 @@ namespace InternalsViewer.Internals.TransactionLog
     /// </summary>
     public class LogData
     {
-        public UInt16 Offset { get; set; }
+        public ushort Offset { get; set; }
 
-        public UInt16 Slot { get; set; }
+        public ushort Slot { get; set; }
         
         public byte[] Data { get; set; }
         

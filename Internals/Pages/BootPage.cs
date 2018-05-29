@@ -2,22 +2,13 @@
 
 namespace InternalsViewer.Internals.Pages
 {
+    /// <inheritdoc />
     /// <summary>
     /// Boot Page
     /// </summary>
     public class BootPage : Page
     {
         private const int CheckpointLsnOffset = 444;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BootPage"/> class.
-        /// </summary>
-        /// <param name="database">The database.</param>
-        public BootPage(Database database)
-            : base(database, new PageAddress(1, 9))
-        {
-            LoadCheckpointLsn();
-        }
 
         public BootPage(string connectionString, string databaseName)
             :base(connectionString, databaseName, new PageAddress(1, 9))

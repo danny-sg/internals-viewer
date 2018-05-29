@@ -10,9 +10,7 @@ namespace InternalsViewer.Internals.Records
 {
     public class CompressedDataRecord : Record
     {
-        private byte[] cdArray;
-
-        public CompressedDataRecord(Page page, UInt16 slotOffset, Structure structure)
+        public CompressedDataRecord(Page page, ushort slotOffset, Structure structure)
             : base(page, slotOffset, structure)
         {
             CdItems = new List<CdArrayItem>();
@@ -28,13 +26,7 @@ namespace InternalsViewer.Internals.Records
 
         public List<CdArrayItem> CdItems { get; }
 
-        public CdArrayItem[] CdItemsArray
-        {
-            get
-            {
-                return CdItems.ToArray();
-            }
-        }
+        public CdArrayItem[] CdItemsArray => CdItems.ToArray();
 
         public byte GetCdByte(int columnId)
         {

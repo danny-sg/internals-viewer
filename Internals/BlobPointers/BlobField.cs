@@ -9,12 +9,11 @@ namespace InternalsViewer.Internals.BlobPointers
     /// <summary>
     /// BLOB internal field
     /// </summary>
-    public abstract class BlobField : Field
+    public class BlobField : Field
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="BlobField"/> class.
         /// </summary>
-        /// <param name="data">The data.</param>
         public BlobField(byte[] data, int offset)
         {
             Data = data;

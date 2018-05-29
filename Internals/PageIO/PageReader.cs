@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.PageIO
+namespace InternalsViewer.Internals.PageIo
 {
     /// <summary>
     /// Abstract class for reading pages
@@ -12,7 +12,7 @@ namespace InternalsViewer.Internals.PageIO
         /// </summary>
         /// <param name="pageAddress">The page address.</param>
         /// <param name="databaseId">The database id.</param>
-        public PageReader(PageAddress pageAddress, int databaseId)
+        protected PageReader(PageAddress pageAddress, int databaseId)
         {
             PageAddress = pageAddress;
             DatabaseId = databaseId;

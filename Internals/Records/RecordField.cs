@@ -21,10 +21,7 @@ namespace InternalsViewer.Internals.Records
 
         public Column Column { get; set; }
 
-        public int LeafOffset
-        {
-            get { return Column.LeafOffset; }
-        }
+        public int LeafOffset => Column.LeafOffset;
 
         public int Length { get; set; }
 
@@ -38,19 +35,10 @@ namespace InternalsViewer.Internals.Records
 
         public bool Sparse { get; set; }
 
-        public string Name
-        {
-            get { return Column.ColumnName; }
-        }
+        public string Name => Column.ColumnName;
 
         [MarkAttribute("", "Gray", "LemonChiffon", "PaleGoldenrod", true)]
-        public string Value
-        {
-            get
-            {
-                return DataConverter.BinaryToString(Data, Column.DataType, Column.Precision, Column.Scale);
-            }
-        }
+        public string Value => DataConverter.BinaryToString(Data, Column.DataType, Column.Precision, Column.Scale);
 
         public override string ToString()
         {

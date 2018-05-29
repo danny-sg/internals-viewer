@@ -16,7 +16,7 @@ namespace InternalsViewer.UI
         {
             InitializeComponent();
 
-            this.Height = DefaultHeight;
+            Height = DefaultHeight;
 
             base.Dock = DockStyle.Bottom;
             databaseFileBindingSource.DataSource = fileInfo;

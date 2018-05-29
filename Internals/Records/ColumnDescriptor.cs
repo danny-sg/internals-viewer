@@ -14,7 +14,7 @@ namespace InternalsViewer.Internals.Records
         /// <param name="pageData">The page data.</param>
         /// <param name="noOfColumns">The no of columns.</param>
         /// <returns></returns>
-        protected static byte[] LoadCdArray(Int16 offset, byte[] pageData,  Int16 noOfColumns)
+        protected static byte[] LoadCdArray(short offset, byte[] pageData,  short noOfColumns)
         {
             var cdArray = new byte[noOfColumns];
 

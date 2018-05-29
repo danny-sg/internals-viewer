@@ -54,13 +54,13 @@ namespace InternalsViewer.UI.Controls
 
             string cellText;
 
-            var font = new Font(this.DataGridView.DefaultCellStyle.Font, FontStyle.Regular);
+            var font = new Font(DataGridView.DefaultCellStyle.Font, FontStyle.Regular);
 
             if (value != null)
             {
                 Color gradientColour;
 
-                var r = (this.OwningColumn as BarColumn).ColourRanges.Find(delegate(ColourRange range)
+                var r = (OwningColumn as BarColumn).ColourRanges.Find(delegate(ColourRange range)
                 {
                     return range.From <= Convert.ToInt32(value ?? 0)
                            && range.To >= Convert.ToInt32(value ?? 0);

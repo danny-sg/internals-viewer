@@ -28,11 +28,11 @@ namespace InternalsViewer.Internals.BlobPointers
 
             Level = data[LevelOffset];
 
-            Mark("Timestamp", offset + OverflowField.LevelOffset, sizeof(Int32));
+            Mark("Timestamp", offset + OverflowField.LevelOffset, sizeof(int));
 
             Timestamp = BitConverter.ToInt32(data, TimestampOffset);
 
-            Mark("UpdateSeq", offset + OverflowField.UpdateSeqOffset, sizeof(Int16));
+            Mark("UpdateSeq", offset + OverflowField.UpdateSeqOffset, sizeof(short));
 
             UpdateSeq = BitConverter.ToInt16(data, UpdateSeqOffset);
         }

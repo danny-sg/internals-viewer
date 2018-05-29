@@ -55,8 +55,6 @@ namespace InternalsViewer.Internals.Pages
             int pageId;
             short slot = 0;
 
-            bool parsed;
-
             var sb = new StringBuilder(address);
             sb.Replace("(", string.Empty);
             sb.Replace(")", string.Empty);
@@ -69,7 +67,7 @@ namespace InternalsViewer.Internals.Pages
                 throw new ArgumentException("Invalid format");
             }
 
-            parsed = true & int.TryParse(splitAddress[0], out fileId);
+            var parsed = true & int.TryParse(splitAddress[0], out fileId);
             parsed = parsed & int.TryParse(splitAddress[1], out pageId);
 
             if (splitAddress.Length > 2)

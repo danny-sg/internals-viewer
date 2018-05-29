@@ -26,15 +26,15 @@ namespace InternalsViewer.Internals.RecordLoaders
 
             record.RecordType = (RecordType)((statusByte >> 1) & 7);
 
-            record.Mark("Length", record.SlotOffset + BlobRecord.LengthOffset, sizeof(Int16));
+            record.Mark("Length", record.SlotOffset + BlobRecord.LengthOffset, sizeof(short));
 
             record.Length = BitConverter.ToInt16(record.Page.PageData, record.SlotOffset + BlobRecord.LengthOffset);
 
-            record.Mark("BlobId", record.SlotOffset + BlobRecord.IdOffset, sizeof(Int64));
+            record.Mark("BlobId", record.SlotOffset + BlobRecord.IdOffset, sizeof(long));
 
             record.BlobId = BitConverter.ToInt64(record.Page.PageData, record.SlotOffset + BlobRecord.IdOffset);
 
-            record.Mark("BlobTypeDescription", record.SlotOffset + BlobRecord.TypeOffset, sizeof(Int16));
+            record.Mark("BlobTypeDescription", record.SlotOffset + BlobRecord.TypeOffset, sizeof(short));
 
             record.BlobType = (BlobType)record.Page.PageData[record.SlotOffset + BlobRecord.TypeOffset];
 
@@ -63,15 +63,15 @@ namespace InternalsViewer.Internals.RecordLoaders
             BlobChildLink link;
             record.BlobChildren = new List<BlobChildLink>();
 
-            record.Mark("MaxLinks", record.SlotOffset + BlobRecord.MaxLinksOffset, sizeof(Int16));
+            record.Mark("MaxLinks", record.SlotOffset + BlobRecord.MaxLinksOffset, sizeof(short));
 
             record.MaxLinks = BitConverter.ToInt16(record.Page.PageData, record.SlotOffset + BlobRecord.MaxLinksOffset);
 
-            record.Mark("CurLinks", record.SlotOffset + BlobRecord.CurLinksOffset, sizeof(Int16));
+            record.Mark("CurLinks", record.SlotOffset + BlobRecord.CurLinksOffset, sizeof(short));
 
             record.CurLinks = BitConverter.ToInt16(record.Page.PageData, record.SlotOffset + BlobRecord.CurLinksOffset);
 
-            record.Mark("Level", record.SlotOffset + BlobRecord.RootLevelOffset, sizeof(Int16));
+            record.Mark("Level", record.SlotOffset + BlobRecord.RootLevelOffset, sizeof(short));
 
             record.Level = BitConverter.ToInt16(record.Page.PageData, record.SlotOffset + BlobRecord.RootLevelOffset);
 
@@ -94,7 +94,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
         private static void LoadSmallRoot(BlobRecord record)
         {
-            record.Mark("Size", record.SlotOffset + BlobRecord.MaxLinksOffset, sizeof(Int16));
+            record.Mark("Size", record.SlotOffset + BlobRecord.MaxLinksOffset, sizeof(short));
 
             record.Size = BitConverter.ToInt16(record.Page.PageData, record.SlotOffset + BlobRecord.MaxLinksOffset);
 
@@ -146,7 +146,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
             var offsetPosition =  record.SlotOffset + BlobRecord.RootChildOffset + (index * 12);
 
-            blobChildLink.Mark("Offset", offsetPosition, sizeof(Int32));
+            blobChildLink.Mark("Offset", offsetPosition, sizeof(int));
 
             var offset = BitConverter.ToInt32(record.Page.PageData, offsetPosition);
 

@@ -243,7 +243,7 @@ namespace InternalsViewer.Internals
                 sign = "-";
             }
 
-            return string.Format("{0:yyyy-MM-dd HH:mm:ss.fffffff} {1}{2:HH:mm}", returnDate, sign, offsetTime);
+            return $"{returnDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
         }
 
         /// <summary>
@@ -582,7 +582,7 @@ namespace InternalsViewer.Internals
             return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
         }
 
-        public static string EncodeInt16(Int16 value)
+        public static string EncodeInt16(short value)
         {
             return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
         }
@@ -603,18 +603,18 @@ namespace InternalsViewer.Internals
         public static string[] EncodeSmallDateTime(DateTime value)
         {
 
-            var timePart = (UInt16)((value - value.Date).TotalMinutes);
-            var datePart = (UInt16)(value - new DateTime(1900, 1, 1)).Days;
+            var timePart = (ushort)((value - value.Date).TotalMinutes);
+            var datePart = (ushort)(value - new DateTime(1900, 1, 1)).Days;
 
             return new string[] { EncodeUInt16(timePart), EncodeUInt16(datePart) };
         }
 
-        public static string EncodeUInt16(UInt16 value)
+        public static string EncodeUInt16(ushort value)
         {
             return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
         }
 
-        public static string EncodeReal(Single value)
+        public static string EncodeReal(float value)
         {
             return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
         }

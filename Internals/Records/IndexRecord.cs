@@ -9,7 +9,7 @@ namespace InternalsViewer.Internals.Records
 {
     public class IndexRecord : Record
     {
-        public IndexRecord(Page page, UInt16 slotOffset, Structure structure)
+        public IndexRecord(Page page, ushort slotOffset, Structure structure)
             : base(page, slotOffset, structure)
         {
             IndexRecordLoader.Load(this);

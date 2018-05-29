@@ -20,17 +20,17 @@ namespace InternalsViewer.Internals.Compression
                 case 0: return "(null)";
                 case 10: return "Long";
                 case 12: return "Short - Page Symbol - 1 byte";
-                case 2: return string.Format("Short - {0} byte", cdItem - 1);
+                case 2: return $"Short - {cdItem - 1} byte";
 
                 default:
 
                     if (cdItem > 10)
                     {
-                        return string.Format("Short - Page Symbol - {0} bytes", cdItem - 11);
+                        return $"Short - Page Symbol - {cdItem - 11} bytes";
                     }
                     else
                     {
-                        return string.Format("Short - {0} bytes", cdItem - 1);
+                        return $"Short - {cdItem - 1} bytes";
                     }
 
             }

@@ -4,7 +4,7 @@ using System.Data;
 using System.Data.SqlClient;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.PageIO
+namespace InternalsViewer.Internals.PageIo
 {
     /// <summary>
     /// Readers header information from a database source
@@ -97,15 +97,17 @@ namespace InternalsViewer.Internals.PageIO
             var headerData = new Dictionary<string, string>();
 
             var pageCommand = string.Format(Properties.Resources.SQL_Page,
-                                               InternalsViewerConnection.CurrentConnection().CurrentDatabase.DatabaseId,
-                                               pageAddress.FileId,
-                                               pageAddress.PageId,
-                                               0);
+                                            InternalsViewerConnection.CurrentConnection().CurrentDatabase.DatabaseId,
+                                            pageAddress.FileId,
+                                            pageAddress.PageId,
+                                            0);
 
             using (var conn = new SqlConnection(InternalsViewerConnection.CurrentConnection().ConnectionString))
             {
-                var cmd = new SqlCommand(pageCommand, conn);
-                cmd.CommandType = CommandType.Text;
+                var cmd = new SqlCommand(pageCommand, conn)
+                {
+                    CommandType = CommandType.Text
+                };
 
                 try
                 {

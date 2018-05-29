@@ -14,6 +14,7 @@ namespace InternalsViewer.Internals.Structures
         /// <summary>
         /// Returns if a HOBT is a heap or b-tree
         /// </summary>
+        /// <param name="connectionString"></param>
         /// <param name="databaseName">Name of the database.</param>
         /// <param name="objectName">Name of the object.</param>
         /// <returns></returns>
@@ -22,8 +23,8 @@ namespace InternalsViewer.Internals.Structures
             if (Convert.ToBoolean(DataAccess.GetScalar(connectionString,
                                                        databaseName,
                                                        Properties.Resources.SQL_ObjectHasClusteredIndex,
-                                                       System.Data.CommandType.Text,
-                                                       new System.Data.SqlClient.SqlParameter[] { new SqlParameter("TableName", objectName) })))
+                                                       CommandType.Text,
+                                                       new[] { new SqlParameter("TableName", objectName) })))
             {
                 return StructureType.BTree;
             }
@@ -37,6 +38,7 @@ namespace InternalsViewer.Internals.Structures
         /// <summary>
         /// Returns entry points for a heap
         /// </summary>
+        /// <param name="connectionString"></param>
         /// <param name="database">The database.</param>
         /// <param name="objectName">Name of the object.</param>
         /// <returns></returns>
@@ -48,6 +50,7 @@ namespace InternalsViewer.Internals.Structures
         /// <summary>
         /// Returns the entry points for a HOBT
         /// </summary>
+        /// <param name="connectionString"></param>
         /// <param name="database">The database.</param>
         /// <param name="objectName">Name of the object.</param>
         /// <param name="indexName">Name of the index.</param>
@@ -61,8 +64,8 @@ namespace InternalsViewer.Internals.Structures
                                                                     database,
                                                                     string.Empty,
                                                                     CommandType.Text,
-                                                                    new SqlParameter[] { new SqlParameter("ObjectName", objectName), 
-                                                                                         new SqlParameter("IndexName", indexName) });
+                                                                    new[] { new SqlParameter("ObjectName", objectName), 
+                                                                            new SqlParameter("IndexName", indexName) });
 
             foreach (DataRow row in entryPointDataTable.Rows)
             {

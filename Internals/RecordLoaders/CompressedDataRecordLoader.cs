@@ -16,25 +16,25 @@ namespace InternalsViewer.Internals.RecordLoaders
     {
         public static void Load(CompressedDataRecord record)
         {
-            record.ColumnCount = CompressedDataRecordLoader.LoadNumberOfColumns(record);
+            record.ColumnCount = LoadNumberOfColumns(record);
 
             LoadStatus(record);
 
             if (record.RecordType == RecordType.Forwarding)
             {
-                CompressedDataRecordLoader.LoadForwardingRecord(record);
+                LoadForwardingRecord(record);
                 return;
             }
 
             var cdArraySize = (int)(record.ColumnCount / 2 + record.ColumnCount % 2);
 
-            CompressedDataRecordLoader.LoadCdArray(record);
+            LoadCdArray(record);
 
             record.CompressedSize = 0;
 
             for (var i = 0; i < record.ColumnCount; i++)
             {
-                record.CompressedSize += Convert.ToInt16(CompressedDataRecordLoader.GetCdArrayItemSize(record.GetCdByte(i)));
+                record.CompressedSize += Convert.ToInt16(GetCdArrayItemSize(record.GetCdByte(i)));
             }
 
             if (record.HasVariableLengthColumns)
@@ -45,25 +45,25 @@ namespace InternalsViewer.Internals.RecordLoaders
 
                 record.VariableLengthColumnCount = BitConverter.ToUInt16(record.Page.PageData, varLengthColumnCountOffset);
 
-                record.Mark("VariableLengthColumnCount", varLengthColumnCountOffset, sizeof(Int16));
+                record.Mark("VariableLengthColumnCount", varLengthColumnCountOffset, sizeof(short));
             }
 
-            CompressedDataRecordLoader.LoadShortFields(record);
+            LoadShortFields(record);
 
             if (record.VariableLengthColumnCount > 0 && record.HasVariableLengthColumns)
             {
                 var colArrayOffset = record.SlotOffset + (5 + cdArraySize) + record.CompressedSize;
 
-                record.ColOffsetArray = RecordLoader.GetOffsetArray(record.Page.PageData,
+                record.ColOffsetArray = GetOffsetArray(record.Page.PageData,
                                                                     record.VariableLengthColumnCount,
                                                                     colArrayOffset);
 
-                record.Mark("ColOffsetArrayDescription", colArrayOffset, record.VariableLengthColumnCount * sizeof(Int16));
+                record.Mark("ColOffsetArrayDescription", colArrayOffset, record.VariableLengthColumnCount * sizeof(short));
             }
 
             var longStartPos = record.SlotOffset + 4 + record.ColumnCountBytes + cdArraySize + record.CompressedSize + (2 * record.VariableLengthColumnCount);
 
-            CompressedDataRecordLoader.LoadLongFields(longStartPos, record);
+            LoadLongFields(longStartPos, record);
         }
 
         internal static void LoadStatus(CompressedDataRecord record)
@@ -83,9 +83,9 @@ namespace InternalsViewer.Internals.RecordLoaders
             throw new NotImplementedException();
         }
 
-        internal static Int16 LoadNumberOfColumns(CompressedDataRecord record)
+        internal static short LoadNumberOfColumns(CompressedDataRecord record)
         {
-            Int16 columns;
+            short columns;
 
             if ((record.Page.PageData[record.SlotOffset + 1] & 0x80) == 0x80)
             {
@@ -117,7 +117,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
         public static void LoadShortFields(CompressedDataRecord record)
         {
-            CompressedDataRecordLoader.LoadShortFields(record, false);
+            LoadShortFields(record, false);
         }
 
         public static void LoadShortFields(CompressedDataRecord record, bool hasDownPagePointer)
@@ -145,7 +145,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                     }
                     else
                     {
-                        var size = CompressedDataRecordLoader.GetCdArrayItemSize(record.GetCdByte(i));
+                        var size = GetCdArrayItemSize(record.GetCdByte(i));
 
                         field.IsNull = (record.GetCdByte(i) == 0);
                         field.Length = size;
@@ -194,7 +194,7 @@ namespace InternalsViewer.Internals.RecordLoaders
                 {
                     var field = new CompressedRecordField(record.Structure.Columns[i], record);
 
-                    field.Length = RecordLoader.DecodeOffset(record.ColOffsetArray[longColIndex]) - prevLength;
+                    field.Length = DecodeOffset(record.ColOffsetArray[longColIndex]) - prevLength;
                     field.Data = new byte[field.Length];
                     field.Offset = startPos + prevLength;
 
@@ -224,7 +224,7 @@ namespace InternalsViewer.Internals.RecordLoaders
 
                     record.Mark("FieldsArray", field.Name, record.Fields.Count - 1);
 
-                    prevLength = RecordLoader.DecodeOffset(record.ColOffsetArray[longColIndex]);
+                    prevLength = DecodeOffset(record.ColOffsetArray[longColIndex]);
 
                     longColIndex++;
                 }

@@ -41,26 +41,26 @@ namespace InternalsViewer.Internals.Compression
 
             ci.PageModCount = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 1);
             
-            ci.Mark("PageModCount", ci.SlotOffset + sizeof(byte), sizeof(Int16));
+            ci.Mark("PageModCount", ci.SlotOffset + sizeof(byte), sizeof(short));
 
             ci.Length = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 3);
 
-            ci.Mark("Length", ci.SlotOffset + sizeof(byte) + sizeof(Int16), sizeof(Int16));
+            ci.Mark("Length", ci.SlotOffset + sizeof(byte) + sizeof(short), sizeof(short));
 
             if (ci.HasDictionary)
             {
                 ci.Size = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 5);
 
-                ci.Mark("Size", ci.SlotOffset + sizeof(byte) + sizeof(Int16) + sizeof(Int16), sizeof(Int16));
+                ci.Mark("Size", ci.SlotOffset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
             }
 
             if (ci.HasAnchorRecord)
             {
-                CompressionInformation.LoadAnchor(ci.HasDictionary, ci);
+                LoadAnchor(ci);
             }
             if (ci.HasDictionary)
             {
-                CompressionInformation.LoadDictionary(ci);
+                LoadDictionary(ci);
             }
         }
 
@@ -69,7 +69,7 @@ namespace InternalsViewer.Internals.Compression
             ci.CompressionDictionary = new Dictionary(ci.Page.PageData, CompressionInformation.Offset + ci.Length);
         }
 
-        private static void LoadAnchor(bool hasDictionary, CompressionInformation ci)
+        private static void LoadAnchor(CompressionInformation ci)
         {
             var startOffset = (ci.HasDictionary ? 7 : 5) + ci.SlotOffset;
 
@@ -77,7 +77,7 @@ namespace InternalsViewer.Internals.Compression
 
             var structure = CreateTableStructure(records, ci);
 
-            ci.AnchorRecord = new CompressedDataRecord(ci.Page, (UInt16)startOffset, structure);
+            ci.AnchorRecord = new CompressedDataRecord(ci.Page, (ushort)startOffset, structure);
         }
 
         private static TableStructure CreateTableStructure(int records, CompressionInformation ci)
@@ -90,7 +90,7 @@ namespace InternalsViewer.Internals.Compression
             {
                 var column = new Column();
 
-                column.ColumnName = string.Format("Column {0}", i);
+                column.ColumnName = $"Column {i}";
                 column.ColumnId = i;
                 column.LeafOffset = i;
                 column.DataType = SqlDbType.VarBinary;

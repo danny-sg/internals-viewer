@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace InternalsViewer.Internals.Structures
+﻿namespace InternalsViewer.Internals.Structures
 {
     public class IndexColumn : Column
     {

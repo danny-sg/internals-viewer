@@ -4,6 +4,7 @@ using System.Text;
 
 namespace InternalsViewer.Internals.Pages
 {
+    /// <inheritdoc />
     /// <summary>
     /// PFS (Page Free Space) page
     /// </summary>

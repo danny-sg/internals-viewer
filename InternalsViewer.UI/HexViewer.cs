@@ -44,16 +44,16 @@ namespace InternalsViewer.UI
         {
             InitializeComponent();
 
-            this.rtfColours = RtfColour.CreateColourTable();
+            rtfColours = RtfColour.CreateColourTable();
 
-            this.rtfColours.Add(this.headerColour);
-            this.rtfColours.Add(this.offsetColour);
+            rtfColours.Add(headerColour);
+            rtfColours.Add(offsetColour);
 
-            this.rtfHeader = RtfColour.CreateRtfHeader(this.rtfColours);
+            rtfHeader = RtfColour.CreateRtfHeader(rtfColours);
 
             if (VisualStyleRenderer.IsSupported)
             {
-                this.renderer = new VisualStyleRenderer(VisualStyleElement.Header.Item.Normal);
+                renderer = new VisualStyleRenderer(VisualStyleElement.Header.Item.Normal);
             }
 
             dataRichTextBox.TextSize = TextRenderer.MeasureText("00", new Font("Courier New", 8.25F));
@@ -76,10 +76,10 @@ namespace InternalsViewer.UI
 
             var sb = new StringBuilder();
 
-            sb.Append(this.rtfHeader);
+            sb.Append(rtfHeader);
 
             // Start header
-            sb.Append(RtfColour.RtfTag(this.rtfColours, Color.Blue.Name, this.headerColour.Name));
+            sb.Append(RtfColour.RtfTag(rtfColours, Color.Blue.Name, headerColour.Name));
 
             var currentPos = 0;
 
@@ -93,33 +93,33 @@ namespace InternalsViewer.UI
                         sb.Append("}");
                     }
 
-                    if (currentPos == this.selectedOffset)
+                    if (currentPos == selectedOffset)
                     {
                         sb.Append(@"{\uldb ");
                     }
 
-                    if (currentPos == 8192 - targetPage.Header.SlotCount * 2)
+                    if (currentPos == Page.Size - targetPage.Header.SlotCount * 2)
                     {
                         // Start offset table
-                        sb.Append(RtfColour.RtfTag(this.rtfColours, Color.Green.Name, this.offsetColour.Name));
+                        sb.Append(RtfColour.RtfTag(rtfColours, Color.Green.Name, offsetColour.Name));
                     }
 
                     // Start marker/colour tag
-                    if (this.Colourise)
+                    if (Colourise)
                     {
-                        alternate = this.FindStartMarkers(currentPos, sb, alternate);
+                        alternate = FindStartMarkers(currentPos, sb, alternate);
                     }
 
                     // Add the byte
                     sb.Append(DataConverter.ToHexString(targetPage.PageData[currentPos]));
 
                     // End marker/close colour tag
-                    if (this.Colourise)
+                    if (Colourise)
                     {
-                        this.FindEndMarkers(currentPos, sb);
+                        FindEndMarkers(currentPos, sb);
                     }
 
-                    if (currentPos == this.selectedOffset)
+                    if (currentPos == selectedOffset)
                     {
                         sb.Append("}");
                     }
@@ -149,7 +149,7 @@ namespace InternalsViewer.UI
             this.markers.Clear();
             this.markers.AddRange(markers);
 
-            this.DataRtf = this.FormatPageDetails(this.page);
+            DataRtf = FormatPageDetails(page);
         }
 
         /// <summary>
@@ -157,7 +157,7 @@ namespace InternalsViewer.UI
         /// </summary>
         public void ClearMarkers()
         {
-            this.markers.Clear();
+            markers.Clear();
         }
 
         /// <summary>
@@ -171,13 +171,13 @@ namespace InternalsViewer.UI
                 return;
             }
 
-            this.suppressTooltip = true;
+            suppressTooltip = true;
 
             dataRichTextBox.SelectionStart = 3 * marker.StartPosition;
             dataRichTextBox.SelectionLength = 3 * (marker.EndPosition - marker.StartPosition + 1) - 1;
             dataRichTextBox.ScrollToCaret();
 
-            this.suppressTooltip = false;
+            suppressTooltip = false;
         }
 
         /// <summary>
@@ -187,11 +187,11 @@ namespace InternalsViewer.UI
         /// <param name="sb">The StringBuilder.</param>
         private bool FindStartMarkers(int position, StringBuilder sb, bool alternate)
         {
-            var startMarkers = this.markers.FindAll(delegate(Marker marker) { return marker.StartPosition == position; });
+            var startMarkers = markers.FindAll(delegate(Marker marker) { return marker.StartPosition == position; });
 
             foreach (var startMarker in startMarkers)
             {
-                sb.Append(RtfColour.RtfTag(this.rtfColours,
+                sb.Append(RtfColour.RtfTag(rtfColours,
                                             startMarker.ForeColour.Name,
                                             alternate ? startMarker.AlternateBackColour.Name : startMarker.BackColour.Name));
 
@@ -213,7 +213,7 @@ namespace InternalsViewer.UI
                 return;
             }
 
-            var endMarkers = this.markers.FindAll(delegate(Marker marker) { return marker.EndPosition == position; });
+            var endMarkers = markers.FindAll(delegate(Marker marker) { return marker.EndPosition == position; });
 
             for (var i = 0; i < endMarkers.Count; i++)
             {
@@ -228,7 +228,7 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         private Marker GetMarkerAtPosition(ushort offset)
         {
-            return this.markers.Find(delegate(Marker marker)
+            return markers.Find(delegate(Marker marker)
                 {
                     return offset >= marker.StartPosition && offset <= marker.EndPosition;
                 });
@@ -239,7 +239,7 @@ namespace InternalsViewer.UI
         /// </summary>
         private void UpdateAddressTextBox()
         {
-            if (this.page == null)
+            if (page == null)
             {
                 return;
             }
@@ -259,9 +259,9 @@ namespace InternalsViewer.UI
 
             for (var i = firstLine; i <= lastLine + 1; i++)
             {
-                if ((i * 16) < 8192)
+                if ((i * 16) < Page.Size)
                 {
-                    if (this.hexMode)
+                    if (hexMode)
                     {
                         addressText.AppendFormat("{0,8:X}\n", (i * 16)).Replace(" ", "0");
                     }
@@ -282,9 +282,9 @@ namespace InternalsViewer.UI
         {
             base.Refresh();
 
-            if (null != this.page)
+            if (null != page)
             {
-                this.DataRtf = this.FormatPageDetails(this.page);
+                DataRtf = FormatPageDetails(page);
             }
         }
 
@@ -293,7 +293,7 @@ namespace InternalsViewer.UI
         /// </summary>
         public void HideToolTip()
         {
-            this.dataToolTip.Hide(this);
+            dataToolTip.Hide(this);
         }
 
         /// <summary>
@@ -393,8 +393,8 @@ namespace InternalsViewer.UI
 
             if (VisualStyleRenderer.IsSupported)
             {
-                this.renderer.DrawBackground(e.Graphics, addressRectangle);
-                this.renderer.DrawBackground(e.Graphics, dataRectangle);
+                renderer.DrawBackground(e.Graphics, addressRectangle);
+                renderer.DrawBackground(e.Graphics, dataRectangle);
             }
             else
             {
@@ -404,13 +404,13 @@ namespace InternalsViewer.UI
 
             TextRenderer.DrawText(e.Graphics,
                                   "Address",
-                                  this.Font,
+                                  Font,
                                   new Point(addressRectangle.X + 2, addressRectangle.Y + 4),
                                   SystemColors.ControlText);
 
             TextRenderer.DrawText(e.Graphics,
                                   "Data",
-                                  this.Font,
+                                  Font,
                                   new Point(dataRectangle.X + 2, dataRectangle.Y + 4),
                                   SystemColors.ControlText);
 
@@ -440,7 +440,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void DataRichTextBox_VScroll(object sender, EventArgs e)
         {
-            this.UpdateAddressTextBox();
+            UpdateAddressTextBox();
 
             var position = dataRichTextBox.GetPositionFromCharIndex(0).Y % (addressLabel.Font.Height + 1);
             addressLabel.Location = new Point(1, position);
@@ -455,7 +455,7 @@ namespace InternalsViewer.UI
         {
             addressLabel.Height = dataRichTextBox.Height + 40;
 
-            this.DataRichTextBox_VScroll(null, null);
+            DataRichTextBox_VScroll(null, null);
         }
 
         /// <summary>
@@ -475,7 +475,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void CopyToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Clipboard.SetText(this.CreateDataString());
+            Clipboard.SetText(CreateDataString());
         }
 
         /// <summary>
@@ -488,10 +488,10 @@ namespace InternalsViewer.UI
             var offset = (ushort)(dataRichTextBox.GetCharIndexFromPosition(e.Location) / 3);
 
             setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
-            this.currentOffset = offset;
+            currentOffset = offset;
             var markerDescription = string.Empty;
 
-            var hoverMarker = this.GetMarkerAtPosition(offset);
+            var hoverMarker = GetMarkerAtPosition(offset);
             var foreColour = Color.Black;
             var backColour = Color.Transparent;
 
@@ -501,10 +501,10 @@ namespace InternalsViewer.UI
                 foreColour = hoverMarker.ForeColour;
                 backColour = hoverMarker.BackColour;
             }
-            
-            this.setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
 
-            var temp = this.OffsetOver;
+            setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
+
+            var temp = OffsetOver;
 
             if (temp != null)
             {
@@ -529,7 +529,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void DataRichTextBox_SelectionChanged(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(dataRichTextBox.SelectedText) & !this.suppressTooltip)
+            if (!string.IsNullOrEmpty(dataRichTextBox.SelectedText) & !suppressTooltip)
             {
                 var charIndex = dataRichTextBox.SelectionStart + dataRichTextBox.SelectionLength + 47;
                 var dataToolTipPoint = dataRichTextBox.GetPositionFromCharIndex(charIndex);
@@ -537,7 +537,7 @@ namespace InternalsViewer.UI
                 dataToolTipPoint.Y += 22;
 
                 dataToolTip.Active = true;
-                dataToolTip.Show(this.CreateDataString(), this, dataToolTipPoint);
+                dataToolTip.Show(CreateDataString(), this, dataToolTipPoint);
             }
             else
             {
@@ -563,13 +563,13 @@ namespace InternalsViewer.UI
         {
             get
             {
-                return this.dataText;
+                return dataText;
             }
 
             set
             {
-                this.dataText = value;
-                this.dataRichTextBox.Text = this.dataText;
+                dataText = value;
+                dataRichTextBox.Text = dataText;
             }
         }
 
@@ -581,14 +581,14 @@ namespace InternalsViewer.UI
         {
             get
             {
-                return this.dataRtf;
+                return dataRtf;
             }
 
             set
             {
-                this.dataRtf = value;
-                this.dataRichTextBox.Rtf = this.DataRtf;
-                this.UpdateAddressTextBox();
+                dataRtf = value;
+                dataRichTextBox.Rtf = DataRtf;
+                UpdateAddressTextBox();
             }
         }
 
@@ -600,17 +600,17 @@ namespace InternalsViewer.UI
         {
             get
             {
-                return this.page;
+                return page;
             }
 
             set
             {
-                this.page = value;
+                page = value;
 
-                if (null != this.page)
+                if (null != page)
                 {
-                    this.markers.Clear();
-                    this.Refresh();
+                    markers.Clear();
+                    Refresh();
                 }
             }
         }
@@ -629,16 +629,16 @@ namespace InternalsViewer.UI
         {
             get
             {
-                return this.selectedRecord;
+                return selectedRecord;
             }
 
             set
             {
-                this.selectedRecord = value;
+                selectedRecord = value;
 
-                if (null != this.page)
+                if (null != page)
                 {
-                    this.DataRtf = this.FormatPageDetails(this.page);
+                    DataRtf = FormatPageDetails(page);
                 }
             }
         }
@@ -651,13 +651,13 @@ namespace InternalsViewer.UI
         {
             get
             {
-                return this.selectedOffset;
+                return selectedOffset;
             }
 
             set
             {
-                this.selectedOffset = value;
-                this.Refresh();
+                selectedOffset = value;
+                Refresh();
             }
         }
 
@@ -667,7 +667,7 @@ namespace InternalsViewer.UI
         /// <value>The index of the selection char.</value>
         public int SelectionCharIndex
         {
-            get { return this.dataRichTextBox.SelectionStart / 3; }
+            get { return dataRichTextBox.SelectionStart / 3; }
         }
 
         /// <summary>
@@ -676,7 +676,7 @@ namespace InternalsViewer.UI
         /// <value>The length of the selection.</value>
         public int SelectionLength
         {
-            get { return this.dataRichTextBox.SelectionLength / 3; }
+            get { return dataRichTextBox.SelectionLength / 3; }
         }
 
         /// <summary>
@@ -691,7 +691,7 @@ namespace InternalsViewer.UI
         /// <returns>The text associated with this control.</returns>
         public override string Text
         {
-            get { return this.dataRichTextBox.Text; }
+            get { return dataRichTextBox.Text; }
         }
 
         #endregion
@@ -718,12 +718,12 @@ namespace InternalsViewer.UI
 
         internal void AddBlock(BlockSelection blockSelection)
         {
-            this.dataRichTextBox.AddBlock(blockSelection);
+            dataRichTextBox.AddBlock(blockSelection);
         }
 
         internal void ClearBlocks()
         {
-            this.dataRichTextBox.ClearBlocks();
+            dataRichTextBox.ClearBlocks();
         }
     }
 }

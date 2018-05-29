@@ -15,6 +15,78 @@ namespace InternalsViewer.Internals
         private readonly Dictionary<int, Pfs> pfs = new Dictionary<int, Pfs>();
         private readonly Dictionary<int, Allocation> sGam = new Dictionary<int, Allocation>();
 
+        public int DatabaseId { get; }
+
+        public string Name { get; }
+
+        public Dictionary<int, Allocation> Gam
+        {
+            get
+            {
+                if (gam.Count == 0)
+                {
+                    LoadAllocations();
+                }
+                return gam;
+            }
+        }
+
+        public Dictionary<int, Allocation> SGam
+        {
+            get
+            {
+                if (sGam.Count == 0)
+                {
+                    LoadAllocations();
+                }
+                return sGam;
+            }
+        }
+
+        public Dictionary<int, Allocation> Dcm
+        {
+            get
+            {
+                if (dcm.Count == 0)
+                {
+                    LoadAllocations();
+                }
+                return dcm;
+            }
+        }
+
+        public Dictionary<int, Allocation> Bcm
+        {
+            get
+            {
+                if (bcm.Count == 0)
+                {
+                    LoadAllocations();
+                }
+                return bcm;
+            }
+        }
+
+        public Dictionary<int, Pfs> Pfs
+        {
+            get
+            {
+                if (pfs.Count == 0)
+                {
+                    LoadPfs();
+                }
+                return pfs;
+            }
+        }
+
+        public List<DatabaseFile> Files { get; set; } = new List<DatabaseFile>();
+
+        public bool Compatible { get; }
+
+        public byte CompatibilityLevel { get; set; }
+
+        public string ConnectionString { get; set; }
+
         public Database(string connectionString, int databaseId, string name, int state, byte compatibilityLevel)
         {
             ConnectionString = connectionString;
@@ -34,7 +106,7 @@ namespace InternalsViewer.Internals
 
         public int FileSize(int fileId)
         {
-            return Files.Find(delegate(DatabaseFile file) { return file.FileId == fileId; }).Size;
+            return Files.Find(file => file.FileId == fileId).Size;
         }
 
         private void LoadAllocations()
@@ -134,82 +206,5 @@ namespace InternalsViewer.Internals
                                                                          });
             return compatabilityLevel;
         }
-
-        #region Properties
-
-        public int DatabaseId { get; }
-
-        public string Name { get; }
-
-        public Dictionary<int, Allocation> Gam
-        {
-            get
-            {
-                if (gam.Count == 0)
-                {
-                    LoadAllocations();
-                }
-                return gam;
-            }
-        }
-
-        public Dictionary<int, Allocation> SGam
-        {
-            get
-            {
-                if (sGam.Count == 0)
-                {
-                    LoadAllocations();
-                }
-                return sGam;
-            }
-        }
-
-        public Dictionary<int, Allocation> Dcm
-        {
-            get
-            {
-                if (dcm.Count == 0)
-                {
-                    LoadAllocations();
-                }
-                return dcm;
-            }
-        }
-
-        public Dictionary<int, Allocation> Bcm
-        {
-            get
-            {
-                if (bcm.Count == 0)
-                {
-                    LoadAllocations();
-                }
-                return bcm;
-            }
-        }
-
-        public Dictionary<int, Pfs> Pfs
-        {
-            get
-            {
-                if (pfs.Count == 0)
-                {
-                    LoadPfs();
-                }
-                return pfs;
-            }
-        }
-
-        public List<DatabaseFile> Files { get; set; } = new List<DatabaseFile>();
-
-        public bool Compatible { get; }
-
-        public byte CompatibilityLevel { get; set; }
-
-        public string ConnectionString { get; set; }
-
-        #endregion
-
     }
 }

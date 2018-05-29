@@ -17,17 +17,17 @@ namespace InternalsViewer.Internals.Compression
         {
             EntryCount = BitConverter.ToInt16(data, offset);
 
-            Mark("EntryCount", offset, sizeof(Int16));
+            Mark("EntryCount", offset, sizeof(short));
 
             EntryOffset = new ushort[EntryCount];
 
-            var dataOffset = sizeof(Int16) + (sizeof(Int16) * EntryCount);
+            var dataOffset = sizeof(short) + (sizeof(short) * EntryCount);
 
-            Mark("EntryOffsetArrayDescription", offset + sizeof(Int16), EntryCount * sizeof(Int16));
+            Mark("EntryOffsetArrayDescription", offset + sizeof(short), EntryCount * sizeof(short));
 
             for (var i = 0; i < EntryCount; i++)
             {
-                EntryOffset[i] = BitConverter.ToUInt16(data, offset + sizeof(Int16) + (sizeof(Int16) * i));
+                EntryOffset[i] = BitConverter.ToUInt16(data, offset + sizeof(short) + (sizeof(short) * i));
 
                 var length = EntryOffset[i] - dataOffset;
 
@@ -50,11 +50,6 @@ namespace InternalsViewer.Internals.Compression
         public int Offset { get; set; }
 
         public List<DictionaryEntry> DictionaryEntries { get; set; } = new List<DictionaryEntry>();
-
-        public DictionaryEntry[] DictionaryEntriesArray
-        {
-            get { return DictionaryEntries.ToArray(); }
-        }
 
         [MarkAttribute("Entry Count", "AliceBlue", "Gainsboro", true)]
         public int EntryCount { get; set; }

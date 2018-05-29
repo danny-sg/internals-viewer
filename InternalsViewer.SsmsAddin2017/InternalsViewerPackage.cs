@@ -15,6 +15,7 @@ namespace InternalsViewer.SsmsAddin2017
     [ProvideToolWindow(typeof(InternalsViewerToolWindow), Style = VsDockStyle.Tabbed, DocumentLikeTool = true)]
     [ProvideToolWindow(typeof(PageViewerToolWindow), Style = VsDockStyle.Tabbed, DocumentLikeTool = true, MultiInstances = true)]
     [ProvideAutoLoad("d114938f-591c-46cf-a785-500a82d97410")]
+    [ProvideToolWindow(typeof(DecodeToolWindow), Style = VsDockStyle.AlwaysFloat, Height = 186, Width = 400)]
     public sealed class InternalsViewerPackage : Package
     {
         public const string PackageGuidString = "8fb4f60d-ef16-409e-9423-54ff173cb31f";

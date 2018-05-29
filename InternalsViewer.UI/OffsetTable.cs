@@ -60,16 +60,16 @@ namespace InternalsViewer.UI
         {
             base.OnPaint(e);
             ControlPaint.DrawBorder(e.Graphics,
-                                    new Rectangle(0, 0, this.Width, this.Height),
+                                    new Rectangle(0, 0, Width, Height),
                                     SystemColors.ControlDark,
                                     ButtonBorderStyle.Solid);
         }
 
         internal virtual void OnSlotChanged(object sender, EventArgs e)
         {
-            if (this.SlotChanged != null)
+            if (SlotChanged != null)
             {
-                this.SlotChanged(sender, e);
+                SlotChanged(sender, e);
             }
         }
 
@@ -85,11 +85,11 @@ namespace InternalsViewer.UI
             }
             set
             {
-                this.page = value;
+                page = value;
 
-                if (this.Page != null)
+                if (Page != null)
                 {
-                    this.offsetDataGridView.DataSource = ConstructOffsetTable(this.Page.OffsetTable);
+                    offsetDataGridView.DataSource = ConstructOffsetTable(Page.OffsetTable);
                 }
             }
         }
@@ -102,9 +102,9 @@ namespace InternalsViewer.UI
         {
             get
             {
-                if (this.offsetDataGridView.SelectedRows.Count > 0)
+                if (offsetDataGridView.SelectedRows.Count > 0)
                 {
-                    return ushort.Parse(this.offsetDataGridView.SelectedRows[0].Cells[1].Value.ToString());
+                    return ushort.Parse(offsetDataGridView.SelectedRows[0].Cells[1].Value.ToString());
                 }
                 else
                 {
@@ -118,9 +118,9 @@ namespace InternalsViewer.UI
         {
             get
             {
-                if (this.offsetDataGridView.SelectedRows.Count > 0)
+                if (offsetDataGridView.SelectedRows.Count > 0)
                 {
-                    return this.offsetDataGridView.SelectedRows[0].Index;
+                    return offsetDataGridView.SelectedRows[0].Index;
                 }
                 else
                 {
@@ -129,14 +129,14 @@ namespace InternalsViewer.UI
             }
             set
             {
-                if (value >= 0 && this.offsetDataGridView.SelectedRows.Count > 0)
+                if (value >= 0 && offsetDataGridView.SelectedRows.Count > 0)
                 {
-                    this.offsetDataGridView.Rows[value].Selected = true;
-                    this.offsetDataGridView.FirstDisplayedScrollingRowIndex = this.offsetDataGridView.SelectedRows[0].Index;
+                    offsetDataGridView.Rows[value].Selected = true;
+                    offsetDataGridView.FirstDisplayedScrollingRowIndex = offsetDataGridView.SelectedRows[0].Index;
                 }
                 else if (value < 0)
                 {
-                    this.offsetDataGridView.ClearSelection();
+                    offsetDataGridView.ClearSelection();
                 }
             }
         }

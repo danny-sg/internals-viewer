@@ -25,9 +25,9 @@ namespace InternalsViewer.UI
         {
             InitializeComponent();
 
-            this.SetStyle(ControlStyles.UserPaint, true);
-            this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
-            this.SetStyle(ControlStyles.DoubleBuffer, true);
+            SetStyle(ControlStyles.UserPaint, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+            SetStyle(ControlStyles.DoubleBuffer, true);
 
             extentSizeToolStripComboBox.SelectedIndex = 0;
         }
@@ -38,12 +38,12 @@ namespace InternalsViewer.UI
         /// <param name="enabled">if set to <c>true</c> [enabled].</param>
         private void EnableToolbar(bool enabled)
         {
-            this.databaseToolStripComboBox.Enabled = enabled;
-            this.extentSizeToolStripComboBox.Enabled = enabled;
-            this.bufferPoolToolStripButton.Enabled = enabled;
-            this.fileDetailsToolStripButton.Enabled = enabled;
-            this.showKeyToolStripButton.Enabled = enabled;
-            this.mapToolStripButton.Enabled = enabled;
+            databaseToolStripComboBox.Enabled = enabled;
+            extentSizeToolStripComboBox.Enabled = enabled;
+            bufferPoolToolStripButton.Enabled = enabled;
+            fileDetailsToolStripButton.Enabled = enabled;
+            showKeyToolStripButton.Enabled = enabled;
+            mapToolStripButton.Enabled = enabled;
         }
 
         /// <summary>
@@ -51,15 +51,15 @@ namespace InternalsViewer.UI
         /// </summary>
         public void RefreshDatabases()
         {
-            this.databaseToolStripComboBox.ComboBox.DataSource = null;
+            databaseToolStripComboBox.ComboBox.DataSource = null;
 
-            this.databaseToolStripComboBox.ComboBox.Items.Clear();
+            databaseToolStripComboBox.ComboBox.Items.Clear();
 
-            this.EnableToolbar(InternalsViewerConnection.CurrentConnection().Databases.Count > 0);
+            EnableToolbar(InternalsViewerConnection.CurrentConnection().Databases.Count > 0);
 
-            this.databaseToolStripComboBox.ComboBox.DataSource = InternalsViewerConnection.CurrentConnection().Databases;
-            this.databaseToolStripComboBox.ComboBox.DisplayMember = "Name";
-            this.databaseToolStripComboBox.ComboBox.ValueMember = "DatabaseId";
+            databaseToolStripComboBox.ComboBox.DataSource = InternalsViewerConnection.CurrentConnection().Databases;
+            databaseToolStripComboBox.ComboBox.DisplayMember = "Name";
+            databaseToolStripComboBox.ComboBox.ValueMember = "DatabaseId";
         }
 
         /// <summary>
@@ -67,31 +67,31 @@ namespace InternalsViewer.UI
         /// </summary>
         private void LoadDatabase()
         {
-            if (this.allocationContainer.InvokeRequired)
+            if (allocationContainer.InvokeRequired)
             {
-                this.Invoke(new LoadDatabaseDelegate(this.LoadDatabase));
+                Invoke(new LoadDatabaseDelegate(LoadDatabase));
             }
             else
             {
-                if (this.databaseToolStripComboBox.ComboBox.SelectedItem != InternalsViewerConnection.CurrentConnection().CurrentDatabase)
+                if (databaseToolStripComboBox.ComboBox.SelectedItem != InternalsViewerConnection.CurrentConnection().CurrentDatabase)
                 {
-                    this.databaseToolStripComboBox.ComboBox.SelectedItem = InternalsViewerConnection.CurrentConnection().CurrentDatabase;
+                    databaseToolStripComboBox.ComboBox.SelectedItem = InternalsViewerConnection.CurrentConnection().CurrentDatabase;
                 }
 
                 if (InternalsViewerConnection.CurrentConnection().CurrentDatabase != null)
                 {
-                    this.allocationContainer.CreateAllocationMaps(InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files);
+                    allocationContainer.CreateAllocationMaps(InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files);
                 }
 
-                this.CancelWorkerAndWait(allocUnitBackgroundWorker);
+                CancelWorkerAndWait(allocUnitBackgroundWorker);
 
-                if (this.mapToolStripButton.Text == AllocationMapText)
+                if (mapToolStripButton.Text == AllocationMapText)
                 {
-                    this.DisplayAllocationMapLayers();
+                    DisplayAllocationMapLayers();
                 }
                 else
                 {
-                    this.DisplayAllocationUnitLayers();
+                    DisplayAllocationUnitLayers();
                 }
             }
         }
@@ -101,8 +101,8 @@ namespace InternalsViewer.UI
         /// </summary>
         private void DisplayAllocationUnitLayers()
         {
-            this.allocationContainer.IncludeIam = false;
-            this.allocationContainer.ClearMapLayers();
+            allocationContainer.IncludeIam = false;
+            allocationContainer.ClearMapLayers();
 
             var unallocated = new AllocationLayer();
 
@@ -110,11 +110,11 @@ namespace InternalsViewer.UI
             unallocated.Colour = Color.Gainsboro;
             unallocated.Visible = false;
 
-            this.allocationContainer.AddMapLayer(unallocated);
+            allocationContainer.AddMapLayer(unallocated);
 
-            this.CancelWorkerAndWait(allocUnitBackgroundWorker);
+            CancelWorkerAndWait(allocUnitBackgroundWorker);
 
-            this.allocUnitBackgroundWorker.RunWorkerAsync();
+            allocUnitBackgroundWorker.RunWorkerAsync();
         }
 
         /// <summary>
@@ -151,8 +151,8 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.ComponentModel.ProgressChangedEventArgs"/> instance containing the event data.</param>
         private void AllocUnitBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            this.allocUnitProgressBar.Value = e.ProgressPercentage;
-            this.allocUnitToolStripStatusLabel.Text = "Loading " + (string)e.UserState;
+            allocUnitProgressBar.Value = e.ProgressPercentage;
+            allocUnitToolStripStatusLabel.Text = "Loading " + (string)e.UserState;
         }
 
         /// <summary>
@@ -162,49 +162,49 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.ComponentModel.RunWorkerCompletedEventArgs"/> instance containing the event data.</param>
         private void AllocUnitBackgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            this.Cursor = Cursors.Arrow;
+            Cursor = Cursors.Arrow;
 
-            this.allocUnitProgressBar.Visible = false;
-            this.allocUnitToolStripStatusLabel.Text = string.Empty;
+            allocUnitProgressBar.Visible = false;
+            allocUnitToolStripStatusLabel.Text = string.Empty;
 
             if (e.Result == null)
             {
                 return;
             }
 
-            this.allocationContainer.Holding = false;
-            this.allocationContainer.HoldingMessage = string.Empty;
-            this.allocationContainer.IncludeIam = true;
+            allocationContainer.Holding = false;
+            allocationContainer.HoldingMessage = string.Empty;
+            allocationContainer.IncludeIam = true;
 
-            this.allocationContainer.ClearMapLayers();
+            allocationContainer.ClearMapLayers();
 
             var layers = (List<AllocationLayer>)e.Result;
 
             foreach (var layer in layers)
             {
-                this.allocationContainer.AddMapLayer(layer);
+                allocationContainer.AddMapLayer(layer);
             }
 
-            if (this.bufferPoolToolStripButton.Checked)
+            if (bufferPoolToolStripButton.Checked)
             {
-                this.ShowBufferPool(true);
+                ShowBufferPool(true);
             }
 
-            if (this.allocationContainer.Mode == MapMode.Full)
+            if (allocationContainer.Mode == MapMode.Full)
             {
-                this.allocationContainer.ShowFittedMap();
+                allocationContainer.ShowFittedMap();
             }
 
-            this.ShowExtendedColumns(true);
+            ShowExtendedColumns(true);
 
-            this.NameColumn.HeaderText = "Table";
-            this.IndexNameColumn.HeaderText = "Index";
+            NameColumn.HeaderText = "Table";
+            IndexNameColumn.HeaderText = "Index";
 
-            this.allocationBindingSource.DataSource = layers;
+            allocationBindingSource.DataSource = layers;
 
-            this.keysDataGridView.ClearSelection();
+            keysDataGridView.ClearSelection();
 
-            this.ShowPfs(false);
+            ShowPfs(false);
         }
 
         /// <summary>
@@ -215,22 +215,22 @@ namespace InternalsViewer.UI
         {
             if (show)
             {
-                this.allocationContainer.Pfs = InternalsViewerConnection.CurrentConnection().CurrentDatabase.Pfs;
-                this.allocationContainer.ExtentSize = AllocationMap.Large;
-                this.allocationContainer.Mode = MapMode.Pfs;
+                allocationContainer.Pfs = InternalsViewerConnection.CurrentConnection().CurrentDatabase.Pfs;
+                allocationContainer.ExtentSize = AllocationMap.Large;
+                allocationContainer.Mode = MapMode.Pfs;
             }
             else
             {
-                this.allocationContainer.Mode = MapMode.Standard;
-                this.allocationContainer.ExtentSize = AllocationMap.Small;
+                allocationContainer.Mode = MapMode.Standard;
+                allocationContainer.ExtentSize = AllocationMap.Small;
 
-                if (this.allocationContainer.AllocationLayers.Count == 0)
+                if (allocationContainer.AllocationLayers.Count == 0)
                 {
-                    this.DisplayAllocationUnitLayers();
+                    DisplayAllocationUnitLayers();
                 }
             }
 
-            this.allocationContainer.Refresh();
+            allocationContainer.Refresh();
         }
 
         /// <summary>
@@ -238,34 +238,34 @@ namespace InternalsViewer.UI
         /// </summary>
         private void ChangeExtentSize()
         {
-            switch (this.extentSizeToolStripComboBox.SelectedItem.ToString())
+            switch (extentSizeToolStripComboBox.SelectedItem.ToString())
             {
                 case "Small":
 
-                    this.allocationContainer.Mode = MapMode.Standard;
-                    this.allocationContainer.ExtentSize = AllocationMap.Small;
+                    allocationContainer.Mode = MapMode.Standard;
+                    allocationContainer.ExtentSize = AllocationMap.Small;
 
                     break;
 
                 case "Medium":
 
-                    this.allocationContainer.Mode = MapMode.Standard;
-                    this.allocationContainer.ExtentSize = AllocationMap.Medium;
+                    allocationContainer.Mode = MapMode.Standard;
+                    allocationContainer.ExtentSize = AllocationMap.Medium;
 
                     break;
 
                 case "Large":
 
-                    this.allocationContainer.Mode = MapMode.Standard;
-                    this.allocationContainer.ExtentSize = AllocationMap.Large;
+                    allocationContainer.Mode = MapMode.Standard;
+                    allocationContainer.ExtentSize = AllocationMap.Large;
 
                     break;
 
                 case "Fit":
 
-                    this.allocationContainer.Mode = MapMode.Full;
+                    allocationContainer.Mode = MapMode.Full;
 
-                    this.allocationContainer.ShowFittedMap();
+                    allocationContainer.ShowFittedMap();
 
                     break;
             }
@@ -276,11 +276,11 @@ namespace InternalsViewer.UI
         /// </summary>
         private void DisplayBufferPoolLayer()
         {
-            this.bufferPool.Refresh();
+            bufferPool.Refresh();
 
             var clean = new AllocationPage();
 
-            clean.SinglePageSlots.AddRange(this.bufferPool.CleanPages);
+            clean.SinglePageSlots.AddRange(bufferPool.CleanPages);
 
             var bufferPoolLayer = new AllocationLayer("Buffer Pool", clean, Color.Black)
                                                 {
@@ -294,7 +294,7 @@ namespace InternalsViewer.UI
 
             var dirty = new AllocationPage();
 
-            dirty.SinglePageSlots.AddRange(this.bufferPool.DirtyPages);
+            dirty.SinglePageSlots.AddRange(bufferPool.DirtyPages);
 
             var bufferPoolDirtyLayer = new AllocationLayer("Buffer Pool (Dirty)", dirty, Color.IndianRed)
                                                    {
@@ -318,14 +318,14 @@ namespace InternalsViewer.UI
         {
             if (show)
             {
-                this.DisplayBufferPoolLayer();
+                DisplayBufferPoolLayer();
             }
             else
             {
-                this.allocationContainer.RemoveLayer("Buffer Pool");
-                this.allocationContainer.RemoveLayer("Buffer Pool (Dirty)");
+                allocationContainer.RemoveLayer("Buffer Pool");
+                allocationContainer.RemoveLayer("Buffer Pool (Dirty)");
 
-                this.allocationContainer.Invalidate();
+                allocationContainer.Invalidate();
             }
         }
 
@@ -334,54 +334,54 @@ namespace InternalsViewer.UI
         /// </summary>
         private void DisplayAllocationMapLayers()
         {
-            this.allocationContainer.ClearMapLayers();
+            allocationContainer.ClearMapLayers();
 
-            if (this.gamToolStripMenuItem.Checked)
+            if (gamToolStripMenuItem.Checked)
             {
-                this.AddDatabaseAllocation("GAM (Inverted)",
+                AddDatabaseAllocation("GAM (Inverted)",
                                            "Unavailable - (Uniform extent/full mixed extent)",
                                            Color.FromArgb(172, 186, 214),
                                            true,
                                            InternalsViewerConnection.CurrentConnection().CurrentDatabase.Gam);
             }
 
-            if (this.sgamToolStripMenuItem.Checked)
+            if (sgamToolStripMenuItem.Checked)
             {
-                this.AddDatabaseAllocation("SGAM",
+                AddDatabaseAllocation("SGAM",
                                            "Partially Unavailable - (Mixed extent with free pages)",
                                            Color.FromArgb(168, 204, 162),
                                            false,
                                            InternalsViewerConnection.CurrentConnection().CurrentDatabase.SGam);
             }
 
-            if (this.dcmToolStripMenuItem.Checked)
+            if (dcmToolStripMenuItem.Checked)
             {
-                this.AddDatabaseAllocation("DCM",
+                AddDatabaseAllocation("DCM",
                                            "Differential Change Map",
                                            Color.FromArgb(120, 150, 150),
                                            false,
                                            InternalsViewerConnection.CurrentConnection().CurrentDatabase.Dcm);
             }
 
-            if (this.bcmToolStripMenuItem.Checked)
+            if (bcmToolStripMenuItem.Checked)
             {
-                this.AddDatabaseAllocation("BCM Allocated",
+                AddDatabaseAllocation("BCM Allocated",
                                            "Bulk Change Map",
                                            Color.FromArgb(150, 120, 150),
                                            false,
                                            InternalsViewerConnection.CurrentConnection().CurrentDatabase.Bcm);
             }
 
-            this.ShowExtendedColumns(false);
+            ShowExtendedColumns(false);
 
-            this.NameColumn.HeaderText = "Layer";
-            this.IndexNameColumn.HeaderText = "Description";
+            NameColumn.HeaderText = "Layer";
+            IndexNameColumn.HeaderText = "Description";
 
-            this.allocationBindingSource.DataSource = this.allocationContainer.AllocationLayers;
+            allocationBindingSource.DataSource = allocationContainer.AllocationLayers;
 
-            this.keysDataGridView.ClearSelection();
+            keysDataGridView.ClearSelection();
 
-            this.ShowPfs(false);
+            ShowPfs(false);
         }
 
         /// <summary>
@@ -390,9 +390,9 @@ namespace InternalsViewer.UI
         /// <param name="visible">if set to <c>true</c> [visible].</param>
         private void ShowExtendedColumns(bool visible)
         {
-            this.IndexTypeColumn.Visible = visible;
-            this.TotalPagesColumn.Visible = visible;
-            this.UsedPagesColumn.Visible = visible;
+            IndexTypeColumn.Visible = visible;
+            TotalPagesColumn.Visible = visible;
+            UsedPagesColumn.Visible = visible;
         }
 
         /// <summary>
@@ -429,9 +429,9 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         internal virtual void OnConnect(object sender, EventArgs e)
         {
-            if (this.Connect != null)
+            if (Connect != null)
             {
-                this.Connect(sender, e);
+                Connect(sender, e);
             }
         }
 
@@ -442,9 +442,9 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         internal virtual void OnViewPage(object sender, PageEventArgs e)
         {
-            if (this.ViewPage != null)
+            if (ViewPage != null)
             {
-                this.ViewPage(sender, e);
+                ViewPage(sender, e);
             }
         }
 
@@ -457,7 +457,7 @@ namespace InternalsViewer.UI
         {
             InternalsViewerConnection.CurrentConnection().CurrentDatabase = (Database)databaseToolStripComboBox.SelectedItem;
 
-            this.LoadDatabase();
+            LoadDatabase();
         }
 
         /// <summary>
@@ -467,7 +467,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void ExtentSizeToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            this.ChangeExtentSize();
+            ChangeExtentSize();
         }
 
         /// <summary>
@@ -487,7 +487,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void BufferPoolToolStripButton_Click(object sender, EventArgs e)
         {
-            this.ShowBufferPool(this.bufferPoolToolStripButton.Checked);
+            ShowBufferPool(bufferPoolToolStripButton.Checked);
         }
 
         /// <summary>
@@ -497,9 +497,9 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         private void AllocationContainer_PageOver(object sender, PageEventArgs e)
         {
-            this.AllocUnitLabel.Text = string.Empty;
+            AllocUnitLabel.Text = string.Empty;
 
-            this.pageAddressToolStripStatusLabel.Text = e.Address.ToString();
+            pageAddressToolStripStatusLabel.Text = e.Address.ToString();
 
             switch (allocationContainer.Mode)
             {
@@ -507,7 +507,7 @@ namespace InternalsViewer.UI
 
                     if (e.Address.PageId % Database.PfsInterval == 0 || e.Address.PageId == 1)
                     {
-                        this.AllocUnitLabel.Text = "PFS";
+                        AllocUnitLabel.Text = "PFS";
                     }
 
                     if (e.Address.PageId % Database.AllocationInterval < 8)
@@ -518,34 +518,34 @@ namespace InternalsViewer.UI
 
                                 if (e.Address.PageId == 0)
                                 {
-                                    this.AllocUnitLabel.Text = "File Header";
+                                    AllocUnitLabel.Text = "File Header";
                                 }
 
                                 break;
 
                             case 1:
 
-                                this.AllocUnitLabel.Text = "GAM";
+                                AllocUnitLabel.Text = "GAM";
                                 break;
 
                             case 2:
 
-                                this.AllocUnitLabel.Text = "SGAM";
+                                AllocUnitLabel.Text = "SGAM";
                                 break;
 
                             case 6:
 
-                                this.AllocUnitLabel.Text = "DCM";
+                                AllocUnitLabel.Text = "DCM";
                                 break;
 
                             case 7:
 
-                                this.AllocUnitLabel.Text = "BCM";
+                                AllocUnitLabel.Text = "BCM";
                                 break;
 
                             case 9:
 
-                                this.AllocUnitLabel.Text = "Boot Page";
+                                AllocUnitLabel.Text = "Boot Page";
                                 break;
                         }
                     }
@@ -554,19 +554,19 @@ namespace InternalsViewer.UI
 
                     foreach (var name in layers)
                     {
-                        if (this.AllocUnitLabel.Text != string.Empty)
+                        if (AllocUnitLabel.Text != string.Empty)
                         {
-                            this.AllocUnitLabel.Text += " | ";
+                            AllocUnitLabel.Text += " | ";
                         }
 
-                        this.AllocUnitLabel.Text += name;
+                        AllocUnitLabel.Text += name;
                     }
 
                     break;
 
                 case MapMode.Pfs:
 
-                    this.AllocUnitLabel.Text = this.allocationContainer.PagePfsByte(e.Address).ToString();
+                    AllocUnitLabel.Text = allocationContainer.PagePfsByte(e.Address).ToString();
                     break;
             }
         }
@@ -578,9 +578,9 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void FileDetailsToolStripButton_Click(object sender, EventArgs e)
         {
-            this.allocationContainer.CreateAllocationMaps(this.allocationContainer.AllocationMaps);
+            allocationContainer.CreateAllocationMaps(allocationContainer.AllocationMaps);
 
-            this.LoadDatabase();
+            LoadDatabase();
         }
 
         /// <summary>
@@ -590,7 +590,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void KeysDataGridView_SelectionChanged(object sender, EventArgs e)
         {
-            this.keyChanging = true;
+            keyChanging = true;
 
             if (keysDataGridView.SelectedRows.Count > 0)
             {
@@ -636,15 +636,15 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.Windows.Forms.DataGridViewCellEventArgs"/> instance containing the event data.</param>
         private void KeysDataGridView_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (!this.keyChanging)
+            if (!keyChanging)
             {
-                if (this.keysDataGridView.SelectedRows.Count > 0)
+                if (keysDataGridView.SelectedRows.Count > 0)
                 {
-                    this.keysDataGridView.ClearSelection();
+                    keysDataGridView.ClearSelection();
                 }
             }
 
-            this.keyChanging = false;
+            keyChanging = false;
         }
 
         /// <summary>
@@ -654,7 +654,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         private void AllocationContainer_PageClicked(object sender, PageEventArgs e)
         {
-            this.OnViewPage(sender, e);
+            OnViewPage(sender, e);
         }
 
         /// <summary>
@@ -668,7 +668,7 @@ namespace InternalsViewer.UI
             {
                 try
                 {
-                    this.OnViewPage(this, new PageEventArgs(new RowIdentifier(PageAddress.Parse(pageToolStripTextBox.Text), 0), e.Shift));
+                    OnViewPage(this, new PageEventArgs(new RowIdentifier(PageAddress.Parse(pageToolStripTextBox.Text), 0), e.Shift));
                 }
                 catch (Exception ex)
                 {
@@ -694,9 +694,9 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void FileDetailsToolStripButton_CheckedChanged(object sender, EventArgs e)
         {
-            if (this.fileDetailsToolStripButton.Enabled)
+            if (fileDetailsToolStripButton.Enabled)
             {
-                allocationContainer.ShowFileInformation = this.fileDetailsToolStripButton.Checked;
+                allocationContainer.ShowFileInformation = fileDetailsToolStripButton.Checked;
             }
         }
 
@@ -710,9 +710,9 @@ namespace InternalsViewer.UI
             mapToolStripButton.Image = (sender as ToolStripMenuItem).Image;
             mapToolStripButton.Text = AllocationUnitsText;
 
-            this.CancelWorkerAndWait(allocUnitBackgroundWorker);
+            CancelWorkerAndWait(allocUnitBackgroundWorker);
 
-            this.DisplayAllocationUnitLayers();
+            DisplayAllocationUnitLayers();
         }
 
         /// <summary>
@@ -722,14 +722,14 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void AllocationMapsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.CancelWorkerAndWait(allocUnitBackgroundWorker);
+            CancelWorkerAndWait(allocUnitBackgroundWorker);
 
             mapToolStripButton.Image = (sender as ToolStripMenuItem).Image;
             mapToolStripButton.Text = AllocationMapText;
 
             mapToolStripButton.HideDropDown();
 
-            this.DisplayAllocationMapLayers();
+            DisplayAllocationMapLayers();
         }
 
         private void pFSToolStripMenuItem_Click(object sender, EventArgs e)
@@ -737,7 +737,7 @@ namespace InternalsViewer.UI
             mapToolStripButton.Image = (sender as ToolStripMenuItem).Image;
             mapToolStripButton.Text = PageFreeSpaceText;
 
-            this.ShowPfs(true);
+            ShowPfs(true);
         }
     }
 }

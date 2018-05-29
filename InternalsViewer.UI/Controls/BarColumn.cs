@@ -8,7 +8,7 @@ namespace InternalsViewer.UI.Controls
         public BarColumn()
         {
             CellTemplate = new BarCell();
-            this.ColourRanges = new List<ColourRange>();
+            ColourRanges = new List<ColourRange>();
             ValueType = typeof(decimal);
         }
 

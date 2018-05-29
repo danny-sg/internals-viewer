@@ -12,8 +12,8 @@ namespace InternalsViewer.UI.Controls
 
         public HexRichTextBox()
         {
-            this.SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
-            this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint, true);
         }
 
         protected override void WndProc(ref Message m)
@@ -23,7 +23,7 @@ namespace InternalsViewer.UI.Controls
                 base.WndProc(ref m);
                 var graphic = CreateGraphics();
 
-                this.OnPaint(new PaintEventArgs(graphic, ClientRectangle));
+                OnPaint(new PaintEventArgs(graphic, ClientRectangle));
 
                 graphic.Dispose();
             }
@@ -37,7 +37,7 @@ namespace InternalsViewer.UI.Controls
         {
             foreach (var block in blocks)
             {
-                this.DrawBlock(e.Graphics, block);
+                DrawBlock(e.Graphics, block);
             }
         }
 

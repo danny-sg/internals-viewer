@@ -6,6 +6,5 @@ namespace InternalsViewer.Internals.BlobPointers
 {
     public class Field: Markable
     {
-
     }
 }

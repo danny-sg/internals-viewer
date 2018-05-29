@@ -1,8 +1,11 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 
 namespace InternalsViewer.SsmsAddin2017.ToolWindowPanes
 {
@@ -20,11 +23,31 @@ namespace InternalsViewer.SsmsAddin2017.ToolWindowPanes
         /// </summary>
         public PageViewerToolWindow() : base(null)
         {
-            Caption = "PageViewerToolWindow";
+            Caption = "Page";
 
             PageViewerWindow = new PageViewerWindow();
-            
+
+            PageViewerWindow.OpenDecodeWindow += PageViewerWindow_OpenDecodeWindow;
+
             Control = PageViewerWindow;
+        }
+
+        private void PageViewerWindow_OpenDecodeWindow(object sender, System.EventArgs e)
+        {
+            var package = Package as Package;
+
+            var window = package.FindToolWindow(typeof(DecodeToolWindow), 0, true);
+            
+            if (window?.Frame == null)
+            {
+                throw new NotSupportedException("Cannot create Internals Viewer");
+            }
+            
+            ((DecodeToolWindow)window).DecodeWindow.ParentWindow = PageViewerWindow;
+
+            var windowFrame = (IVsWindowFrame)window.Frame;
+
+            Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(windowFrame.Show());
         }
 
         public void LoadPage(string connectionString, PageAddress pageAddress)

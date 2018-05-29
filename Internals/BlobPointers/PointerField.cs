@@ -12,7 +12,7 @@ namespace InternalsViewer.Internals.BlobPointers
         public PointerField(byte[] data, int offset)
             : base(data, offset)
         {
-            Mark("Timestamp", Offset + sizeof(byte), sizeof(Int32));
+            Mark("Timestamp", Offset + sizeof(byte), sizeof(int));
 
             Timestamp = BitConverter.ToInt32(data, 0);
         }

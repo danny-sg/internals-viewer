@@ -21,7 +21,7 @@ namespace InternalsViewer.Internals.Records
         public const short SmallSizeOffset = 14;
         public const short TypeOffset = 12;
 
-        public BlobRecord(Page page, UInt16 slot)
+        public BlobRecord(Page page, ushort slot)
             : base(page, slot, null)
         {
             BlobRecordLoader.Load(this);

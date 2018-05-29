@@ -22,8 +22,8 @@ namespace InternalsViewer.UI
 
             dataTypeComboBox.SelectedIndex = 0;
 
-            this.rtfColours = RtfColour.CreateColourTable();
-            this.rtfHeader = RtfColour.CreateRtfHeader(this.rtfColours);
+            rtfColours = RtfColour.CreateColourTable();
+            rtfHeader = RtfColour.CreateRtfHeader(rtfColours);
         }
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void FindTextBox_TextChanged(object sender, EventArgs e)
         {
-            this.EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem.ToString());
+            EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem.ToString());
         }
 
         /// <summary>
@@ -49,59 +49,59 @@ namespace InternalsViewer.UI
             switch (dataType)
             {
                 case "binary":
-                    this.CheckHex(text);
+                    CheckHex(text);
                     break;
 
                 case "bigint":
-                    this.EncodeInt64(text);
+                    EncodeInt64(text);
                     break;
 
                 case "int":
-                    this.EncodeInt32(text);
+                    EncodeInt32(text);
                     break;
 
                 case "smallint":
-                    this.EncodeInt16(text);
+                    EncodeInt16(text);
                     break;
 
                 case "tinyint":
-                    this.EncodeByte(text);
+                    EncodeByte(text);
                     break;
 
                 case "varchar":
-                    this.EncodeChar(text);
+                    EncodeChar(text);
                     break;
 
                 case "nvarchar":
-                    this.EncodeNChar(text);
+                    EncodeNChar(text);
                     break;
 
                 case "datetime":
-                    this.EncodeDateTime(text, false);
+                    EncodeDateTime(text, false);
                     break;
 
                 case "smalldatetime":
-                    this.EncodeDateTime(text, true);
+                    EncodeDateTime(text, true);
                     break;
 
                 case "real":
-                    this.EncodeReal(text);
+                    EncodeReal(text);
                     break;
 
                 case "float":
-                    this.EncodeFloat(text);
+                    EncodeFloat(text);
                     break;
 
                 case "money":
-                    this.EncodeMoney(text, false);
+                    EncodeMoney(text, false);
                     break;
 
                 case "smallmoney":
-                    this.EncodeMoney(text, true);
+                    EncodeMoney(text, true);
                     break;
 
                 case "decimal":
-                    this.EncodeDecimal(text);
+                    EncodeDecimal(text);
                     break;
             }
         }
@@ -112,13 +112,13 @@ namespace InternalsViewer.UI
 
             if (decimal.TryParse(text, out value))
             {
-                this.hexTextBox.ForeColor = Color.Black;
-                this.hexTextBox.Text = DataConverter.EncodeDecimal(value);
+                hexTextBox.ForeColor = Color.Black;
+                hexTextBox.Text = DataConverter.EncodeDecimal(value);
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
@@ -128,12 +128,12 @@ namespace InternalsViewer.UI
 
             if (float.TryParse(text, out value))
             {
-                this.hexTextBox.Text = DataConverter.EncodeReal(value);
+                hexTextBox.Text = DataConverter.EncodeReal(value);
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
@@ -145,17 +145,17 @@ namespace InternalsViewer.UI
             {
                 if (small)
                 {
-                    this.hexTextBox.Text = DataConverter.EncodeSmallMoney(value);
+                    hexTextBox.Text = DataConverter.EncodeSmallMoney(value);
                 }
                 else
                 {
-                    this.hexTextBox.Text = DataConverter.EncodeMoney(value);
+                    hexTextBox.Text = DataConverter.EncodeMoney(value);
                 }
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
@@ -165,12 +165,12 @@ namespace InternalsViewer.UI
 
             if (double.TryParse(text, out value))
             {
-                this.hexTextBox.Text = DataConverter.EncodeFloat(value);
+                hexTextBox.Text = DataConverter.EncodeFloat(value);
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
@@ -180,12 +180,12 @@ namespace InternalsViewer.UI
 
             if (hexRegex.IsMatch(text))
             {
-                this.hexTextBox.Text = text.ToUpper();
+                hexTextBox.Text = text.ToUpper();
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
@@ -195,12 +195,12 @@ namespace InternalsViewer.UI
 
             if (long.TryParse(text, out value))
             {
-                this.hexTextBox.Text = DataConverter.EncodeInt64(value);
+                hexTextBox.Text = DataConverter.EncodeInt64(value);
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
@@ -210,7 +210,7 @@ namespace InternalsViewer.UI
 
             if (DateTime.TryParse(text, out value))
             {
-                var sb = new StringBuilder(this.rtfHeader);
+                var sb = new StringBuilder(rtfHeader);
 
                 string[] dateValue;
 
@@ -223,55 +223,55 @@ namespace InternalsViewer.UI
                     dateValue = DataConverter.EncodeDateTime(value);
                 }
 
-                sb.Append(RtfColour.RtfTag(this.rtfColours, "Blue", "White"));
+                sb.Append(RtfColour.RtfTag(rtfColours, "Blue", "White"));
                 sb.Append(dateValue[0]);
                 sb.Append("} ");
-                sb.Append(RtfColour.RtfTag(this.rtfColours, "Green", "White"));
+                sb.Append(RtfColour.RtfTag(rtfColours, "Green", "White"));
                 sb.Append(dateValue[1]);
                 sb.Append("}");
 
-                this.hexTextBox.Rtf = sb.ToString();
+                hexTextBox.Rtf = sb.ToString();
 
                 sb.Length = 0;
 
-                sb.Append(this.rtfHeader);
+                sb.Append(rtfHeader);
 
-                sb.Append(RtfColour.RtfTag(this.rtfColours, "Blue", "Control"));
+                sb.Append(RtfColour.RtfTag(rtfColours, "Blue", "Control"));
                 sb.Append("Time");
                 sb.Append("} ");
-                sb.Append(RtfColour.RtfTag(this.rtfColours, "Green", "Control"));
+                sb.Append(RtfColour.RtfTag(rtfColours, "Green", "Control"));
                 sb.Append("Date");
                 sb.Append("}");
 
-                this.keyTextBox.Rtf = sb.ToString();
+                keyTextBox.Rtf = sb.ToString();
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
         private void EncodeNChar(string text)
         {
-            this.hexTextBox.Text = BitConverter.ToString(Encoding.Unicode.GetBytes(text)).Replace("-", " ");
+            hexTextBox.Text = BitConverter.ToString(Encoding.Unicode.GetBytes(text)).Replace("-", " ");
         }
 
         private void EncodeChar(string text)
         {
-            this.hexTextBox.Text = BitConverter.ToString(Encoding.UTF8.GetBytes(text)).Replace("-", " ");
+            hexTextBox.Text = BitConverter.ToString(Encoding.UTF8.GetBytes(text)).Replace("-", " ");
         }
 
         private void EncodeByte(string text)
         {
             if (text.Length == 1)
             {
-                this.hexTextBox.Text = ((byte)text.ToCharArray()[0]).ToString();
+                hexTextBox.Text = ((byte)text.ToCharArray()[0]).ToString();
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
@@ -281,12 +281,12 @@ namespace InternalsViewer.UI
 
             if (short.TryParse(text, out value))
             {
-                this.hexTextBox.Text = DataConverter.EncodeInt16(value);
+                hexTextBox.Text = DataConverter.EncodeInt16(value);
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
@@ -296,18 +296,18 @@ namespace InternalsViewer.UI
 
             if (int.TryParse(text, out value))
             {
-                this.hexTextBox.Text = DataConverter.EncodeInt32(value);
+                hexTextBox.Text = DataConverter.EncodeInt32(value);
             }
             else
             {
-                this.hexTextBox.ForeColor = Color.Red;
-                this.hexTextBox.Text = "N/A";
+                hexTextBox.ForeColor = Color.Red;
+                hexTextBox.Text = "N/A";
             }
         }
 
         private void DataTypeComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            this.EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem.ToString());
+            EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem.ToString());
         }
 
         public PageViewerWindow ParentWindow
@@ -318,31 +318,31 @@ namespace InternalsViewer.UI
             }
             set
             {
-                this.parentWindow = value;
+                parentWindow = value;
 
                 System.Diagnostics.Debug.Print("Parent Window set to " + parentWindow.Page.PageAddress.ToString());
 
-                if (this.parentWindow == null)
+                if (parentWindow == null)
                 {
-                    this.findButton.Enabled = false;
+                    findButton.Enabled = false;
                 }
                 else
                 {
-                    this.parentWindow.Disposed += new EventHandler(ParentWindow_Disposed);
+                    parentWindow.Disposed += new EventHandler(ParentWindow_Disposed);
                 }
             }
         }
 
         void ParentWindow_Disposed(object sender, EventArgs e)
         {
-            this.findButton.Enabled = false;
+            findButton.Enabled = false;
         }
 
         private void FindButton_Click(object sender, EventArgs e)
         {
-            if (this.ParentWindow != null)
+            if (ParentWindow != null)
             {
-                this.parentWindow.FindNext(hexTextBox.Text.Replace(" ", string.Empty));
+                parentWindow.FindNext(hexTextBox.Text.Replace(" ", string.Empty));
             }
             else
             {

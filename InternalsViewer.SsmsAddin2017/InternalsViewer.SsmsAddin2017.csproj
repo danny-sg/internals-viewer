@@ -53,6 +53,7 @@
   <ItemGroup>
     <Compile Include="ConnectionManager.cs" />
     <Compile Include="InternalsViewerPackage.cs" />
+    <Compile Include="ToolWindowPanes\DecodeToolWindow.cs" />
     <Compile Include="ToolWindowPanes\InternalsViewerToolWindow.cs" />
     <Compile Include="ToolWindowPanes\PageViewerToolWindow.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

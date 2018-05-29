@@ -12,6 +12,7 @@ namespace InternalsViewer.Internals
         /// <summary>
         /// Executes a given command and returns the value in the first row and column
         /// </summary>
+        /// <param name="connectionString"></param>
         /// <param name="database">The database.</param>
         /// <param name="command">The command text.</param>
         /// <param name="commandType">Type of the command.</param>

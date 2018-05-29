@@ -10,15 +10,15 @@ namespace InternalsViewer.UI
 
         public BlockSelection(int startPos, int endPos)
         {
-            this.StartPos = startPos;
-            this.EndPos = endPos;
+            StartPos = startPos;
+            EndPos = endPos;
         }
 
         public BlockSelection(int startPos, int endPos, Color colour)
         {
-            this.StartPos = startPos;
-            this.EndPos = endPos;
-            this.Colour = colour;
+            StartPos = startPos;
+            EndPos = endPos;
+            Colour = colour;
         }
 
         public int StartPos { get; set; }

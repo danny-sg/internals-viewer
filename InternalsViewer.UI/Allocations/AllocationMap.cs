@@ -49,50 +49,50 @@ namespace InternalsViewer.UI.Allocations
         {
             SuspendLayout();
 
-            this.BackColor = Color.White;
+            BackColor = Color.White;
 
             SetStyle(ControlStyles.AllPaintingInWmPaint, true);
             SetStyle(ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.DoubleBuffer, true);
 
-            this.Padding = new Padding(1);
-            this.scrollBar = new VScrollBar();
-            this.scrollBar.Enabled = false;
-            this.scrollBar.Dock = DockStyle.Right;
+            Padding = new Padding(1);
+            scrollBar = new VScrollBar();
+            scrollBar.Enabled = false;
+            scrollBar.Dock = DockStyle.Right;
 
-            Controls.Add(this.scrollBar);
+            Controls.Add(scrollBar);
 
             ResumeLayout(false);
 
-            this.MouseClick += this.AllocationMapPanel_MouseClick;
-            this.scrollBar.ValueChanged += this.ScrollBar_ValueChanged;
-            this.MouseMove += this.AllocationMapPanel_MouseMove;
-            this.Resize += new EventHandler(AllocationMap_Resize);
-            this.extentSize = AllocationMap.Small;
+            MouseClick += AllocationMapPanel_MouseClick;
+            scrollBar.ValueChanged += ScrollBar_ValueChanged;
+            MouseMove += AllocationMapPanel_MouseMove;
+            Resize += new EventHandler(AllocationMap_Resize);
+            extentSize = AllocationMap.Small;
 
-            this.imageBufferBackgroundWorker.DoWork += this.ImageBufferBackgroundWorker_DoWork;
-            this.imageBufferBackgroundWorker.RunWorkerCompleted += this.ImageBufferBackgroundWorker_RunWorkerCompleted;
-            this.imageBufferBackgroundWorker.ProgressChanged += this.ImageBufferBackgroundWorker_ProgressChanged;
+            imageBufferBackgroundWorker.DoWork += ImageBufferBackgroundWorker_DoWork;
+            imageBufferBackgroundWorker.RunWorkerCompleted += ImageBufferBackgroundWorker_RunWorkerCompleted;
+            imageBufferBackgroundWorker.ProgressChanged += ImageBufferBackgroundWorker_ProgressChanged;
 
-            this.imageBufferBackgroundWorker.WorkerReportsProgress = true;
-            this.imageBufferBackgroundWorker.WorkerSupportsCancellation = true;
+            imageBufferBackgroundWorker.WorkerReportsProgress = true;
+            imageBufferBackgroundWorker.WorkerSupportsCancellation = true;
 
-            this.pageExtentRenderer = new PageExtentRenderer(Color.WhiteSmoke, Color.FromArgb(234, 234, 234));
+            pageExtentRenderer = new PageExtentRenderer(Color.WhiteSmoke, Color.FromArgb(234, 234, 234));
             pfsRenderer = new PfsRenderer(new Rectangle(0, 0, Large.Height, Large.Width / 8), Color.WhiteSmoke);
 
-            this.pageExtentRenderer.CreateBrushesAndPens(this.ExtentSize);
+            pageExtentRenderer.CreateBrushesAndPens(ExtentSize);
 
-            this.backgroundBrush = new LinearGradientBrush(this.ClientRectangle, SystemColors.Control, SystemColors.ControlLightLight, LinearGradientMode.Horizontal);
-            this.backgroundBrush.WrapMode = WrapMode.TileFlipX;
+            backgroundBrush = new LinearGradientBrush(ClientRectangle, SystemColors.Control, SystemColors.ControlLightLight, LinearGradientMode.Horizontal);
+            backgroundBrush.WrapMode = WrapMode.TileFlipX;
 
-            this.MapLayers = new List<AllocationLayer>();
+            MapLayers = new List<AllocationLayer>();
         }
 
         void AllocationMap_Resize(object sender, EventArgs e)
         {
-            this.backgroundBrush.ResetTransform();
-            this.backgroundBrush.ScaleTransform(this.Bounds.Height / this.backgroundBrush.Rectangle.Height,
-                                                this.Bounds.Width / this.backgroundBrush.Rectangle.Width,
+            backgroundBrush.ResetTransform();
+            backgroundBrush.ScaleTransform(Bounds.Height / backgroundBrush.Rectangle.Height,
+                                                Bounds.Width / backgroundBrush.Rectangle.Width,
                                                 MatrixOrder.Append);
         }
 
@@ -101,20 +101,20 @@ namespace InternalsViewer.UI.Allocations
         /// </summary>
         public void ShowFullMap()
         {
-            this.HoldingMessage = "Rendering...";
+            HoldingMessage = "Rendering...";
 
-            if (this.imageBufferBackgroundWorker.IsBusy)
+            if (imageBufferBackgroundWorker.IsBusy)
             {
-                this.imageBufferBackgroundWorker.CancelAsync();
+                imageBufferBackgroundWorker.CancelAsync();
             }
 
-            while (this.imageBufferBackgroundWorker.IsBusy)
+            while (imageBufferBackgroundWorker.IsBusy)
             {
                 Application.DoEvents();
             }
 
-            this.imageBufferBackgroundWorker.RunWorkerAsync();
-            this.BackgroundImageLayout = ImageLayout.Stretch;
+            imageBufferBackgroundWorker.RunWorkerAsync();
+            BackgroundImageLayout = ImageLayout.Stretch;
         }
 
         /// <summary>
@@ -123,9 +123,9 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
         private void DrawSinglePages(PaintEventArgs e)
         {
-            this.pageExtentRenderer.ResizePageBrush(this.ExtentSize);
+            pageExtentRenderer.ResizePageBrush(ExtentSize);
 
-            foreach (var layer in this.MapLayers)
+            foreach (var layer in MapLayers)
             {
                 if (layer.Visible)
                 {
@@ -140,37 +140,37 @@ namespace InternalsViewer.UI.Allocations
                         pageColour = layer.Colour;
                     }
 
-                    this.pageExtentRenderer.SetExtentBrushColour(pageColour, ExtentColour.LightBackgroundColour(pageColour));
+                    pageExtentRenderer.SetExtentBrushColour(pageColour, ExtentColour.LightBackgroundColour(pageColour));
 
                     if (layer.UseBorderColour)
                     {
-                        this.pageExtentRenderer.PageBorderColour = layer.BorderColour;
+                        pageExtentRenderer.PageBorderColour = layer.BorderColour;
                     }
                     else
                     {
-                        this.pageExtentRenderer.PageBorderColour = this.defaultPageBorderColour;
+                        pageExtentRenderer.PageBorderColour = defaultPageBorderColour;
                     }
 
                     foreach (var allocation in layer.Allocations)
                     {
                         foreach (var address in allocation.SinglePageSlots)
                         {
-                            if (address.FileId == this.FileId && address.PageId != 0 && this.CheckPageVisible(address.PageId))
+                            if (address.FileId == FileId && address.PageId != 0 && CheckPageVisible(address.PageId))
                             {
-                                this.pageExtentRenderer.DrawPage(e.Graphics,
-                                                                 this.PagePosition(address.PageId - (this.WindowPosition * 8)),
+                                pageExtentRenderer.DrawPage(e.Graphics,
+                                                                 PagePosition(address.PageId - (WindowPosition * 8)),
                                                                  layer.LayerType);
                             }
                         }
 
-                        if (this.IncludeIam)
+                        if (IncludeIam)
                         {
                             foreach (var page in allocation.Pages)
                             {
-                                if (this.CheckPageVisible(page.PageAddress.PageId))
+                                if (CheckPageVisible(page.PageAddress.PageId))
                                 {
-                                    this.pageExtentRenderer.DrawPage(e.Graphics,
-                                                                     this.PagePosition(page.PageAddress.PageId - (this.WindowPosition * 8)),
+                                    pageExtentRenderer.DrawPage(e.Graphics,
+                                                                     PagePosition(page.PageAddress.PageId - (WindowPosition * 8)),
                                                                      AllocationLayerType.Standard);
                                 }
                             }
@@ -186,26 +186,26 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
         private void DrawExtents(PaintEventArgs e)
         {
-            this.pageExtentRenderer.ResizeExtentBrush(this.ExtentSize);
+            pageExtentRenderer.ResizeExtentBrush(ExtentSize);
 
-            for (var extent = this.windowPosition;
-                 extent < this.ExtentCount && extent < (this.VisibleExtents + this.windowPosition);
+            for (var extent = windowPosition;
+                 extent < ExtentCount && extent < (VisibleExtents + windowPosition);
                  extent++)
             {
-                foreach (var layer in this.MapLayers)
+                foreach (var layer in MapLayers)
                 {
                     if (layer.Visible && !layer.SingleSlotsOnly)
                     {
                         foreach (var chain in layer.Allocations)
                         {
-                            var targetExtent = extent + (this.StartPage.PageId / 8);
+                            var targetExtent = extent + (StartPage.PageId / 8);
 
-                            if (Allocation.CheckAllocationStatus(targetExtent, this.FileId, layer.Invert, chain))
+                            if (Allocation.CheckAllocationStatus(targetExtent, FileId, layer.Invert, chain))
                             {
-                                this.pageExtentRenderer.SetExtentBrushColour(layer.Colour,
+                                pageExtentRenderer.SetExtentBrushColour(layer.Colour,
                                                                              ExtentColour.BackgroundColour(layer.Colour));
 
-                                this.pageExtentRenderer.DrawExtent(e.Graphics, this.ExtentPosition(extent - this.WindowPosition));
+                                pageExtentRenderer.DrawExtent(e.Graphics, ExtentPosition(extent - WindowPosition));
                             }
                         }
                     }
@@ -220,7 +220,7 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         private bool CheckPageVisible(int pageId)
         {
-            return pageId >= (this.windowPosition * 8) && pageId <= ((this.VisibleExtents + this.windowPosition) * 8);
+            return pageId >= (windowPosition * 8) && pageId <= ((VisibleExtents + windowPosition) * 8);
         }
 
         /// <summary>
@@ -230,16 +230,16 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         private Rectangle ExtentPosition(int extent)
         {
-            if (this.extentsHorizontal > 1)
+            if (extentsHorizontal > 1)
             {
-                return new Rectangle((extent * this.extentSize.Width) % (this.extentsHorizontal * this.extentSize.Width),
-                                     (int)Math.Floor((decimal)extent / this.extentsHorizontal) * this.extentSize.Height,
-                                     this.extentSize.Width,
-                                     this.extentSize.Height);
+                return new Rectangle((extent * extentSize.Width) % (extentsHorizontal * extentSize.Width),
+                                     (int)Math.Floor((decimal)extent / extentsHorizontal) * extentSize.Height,
+                                     extentSize.Width,
+                                     extentSize.Height);
             }
             else
             {
-                return new Rectangle(0, 0, this.extentSize.Width, this.extentSize.Height);
+                return new Rectangle(0, 0, extentSize.Width, extentSize.Height);
             }
         }
 
@@ -250,18 +250,18 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         private Rectangle PagePosition(int page)
         {
-            var pageWidth = this.extentSize.Width / 8;
+            var pageWidth = extentSize.Width / 8;
 
             if (page != 0)
             {
-                return new Rectangle((page * pageWidth) % ((this.extentsHorizontal * 8) * pageWidth),
-                                     (int)Math.Floor((decimal)page / (this.extentsHorizontal * 8)) * this.extentSize.Height,
+                return new Rectangle((page * pageWidth) % ((extentsHorizontal * 8) * pageWidth),
+                                     (int)Math.Floor((decimal)page / (extentsHorizontal * 8)) * extentSize.Height,
                                      pageWidth,
-                                     this.extentSize.Height);
+                                     extentSize.Height);
             }
             else
             {
-                return new Rectangle(0, 0, pageWidth, this.extentSize.Height);
+                return new Rectangle(0, 0, pageWidth, extentSize.Height);
             }
         }
 
@@ -272,7 +272,7 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="y">The y co-ordinate</param>
         private int ExtentPosition(int x, int y)
         {
-            return 1 + (y / this.extentSize.Height * this.extentsHorizontal) + (x / this.extentSize.Width);
+            return 1 + (y / extentSize.Height * extentsHorizontal) + (x / extentSize.Width);
         }
 
         /// <summary>
@@ -282,7 +282,7 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="y">The y co-ordinate</param>
         private int PagePosition(int x, int y)
         {
-            return (y / this.extentSize.Height * (this.extentsHorizontal * 8)) + (x / (this.extentSize.Width / 8));
+            return (y / extentSize.Height * (extentsHorizontal * 8)) + (x / (extentSize.Width / 8));
         }
 
         /// <summary>
@@ -290,48 +290,48 @@ namespace InternalsViewer.UI.Allocations
         /// </summary>
         internal void CalculateVisibleExtents()
         {
-            this.extentsHorizontal = (int)Math.Floor((decimal)(Width - this.scrollBar.Width) / this.extentSize.Width);
-            this.extentsVertical = (int)Math.Ceiling((decimal)Height / this.extentSize.Height);
+            extentsHorizontal = (int)Math.Floor((decimal)(Width - scrollBar.Width) / extentSize.Width);
+            extentsVertical = (int)Math.Ceiling((decimal)Height / extentSize.Height);
 
-            if (this.extentsHorizontal == 0 | this.extentsVertical == 0 | this.ExtentCount == 0)
+            if (extentsHorizontal == 0 | extentsVertical == 0 | ExtentCount == 0)
             {
                 return;
             }
 
-            this.extentsRemaining = this.ExtentCount - (this.extentsHorizontal * this.extentsVertical);
+            extentsRemaining = ExtentCount - (extentsHorizontal * extentsVertical);
 
-            this.scrollBar.SmallChange = this.extentsHorizontal;
-            this.scrollBar.LargeChange = (this.extentsVertical - 1) * this.extentsHorizontal;
+            scrollBar.SmallChange = extentsHorizontal;
+            scrollBar.LargeChange = (extentsVertical - 1) * extentsHorizontal;
 
-            if (this.extentsHorizontal == 0)
+            if (extentsHorizontal == 0)
             {
-                this.extentsHorizontal = 1;
+                extentsHorizontal = 1;
             }
 
-            if (this.extentsHorizontal * this.extentsVertical > this.ExtentCount)
+            if (extentsHorizontal * extentsVertical > ExtentCount)
             {
-                this.VisibleExtents = this.ExtentCount;
-                this.scrollBar.Enabled = false;
+                VisibleExtents = ExtentCount;
+                scrollBar.Enabled = false;
             }
             else
             {
-                this.scrollBar.Enabled = true;
-                this.VisibleExtents = this.extentsHorizontal * this.extentsVertical;
+                scrollBar.Enabled = true;
+                VisibleExtents = extentsHorizontal * extentsVertical;
             }
 
-            this.scrollBar.Maximum = this.ExtentCount + this.extentsHorizontal;
+            scrollBar.Maximum = ExtentCount + extentsHorizontal;
 
-            if (this.extentsHorizontal > this.ExtentCount)
+            if (extentsHorizontal > ExtentCount)
             {
-                this.extentsHorizontal = this.ExtentCount;
+                extentsHorizontal = ExtentCount;
             }
 
-            if (this.extentsVertical > (this.ExtentCount / this.extentsHorizontal))
+            if (extentsVertical > (ExtentCount / extentsHorizontal))
             {
-                this.extentsVertical = (this.ExtentCount / this.extentsHorizontal);
+                extentsVertical = (ExtentCount / extentsHorizontal);
             }
 
-            this.extentsRemaining = this.ExtentCount - (this.extentsHorizontal * this.extentsVertical);
+            extentsRemaining = ExtentCount - (extentsHorizontal * extentsVertical);
         }
 
         /// <summary>
@@ -340,11 +340,11 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
         private void DrawSelectedRange(PaintEventArgs e)
         {
-            if (this.SelectionStartExtent > 0)
+            if (SelectionStartExtent > 0)
             {
-                for (var extent = this.SelectionStartExtent; extent < (this.SelectionEndExtent < 0 ? this.provisionalEndExtent : this.SelectionEndExtent); extent++)
+                for (var extent = SelectionStartExtent; extent < (SelectionEndExtent < 0 ? provisionalEndExtent : SelectionEndExtent); extent++)
                 {
-                    this.pageExtentRenderer.DrawSelection(e.Graphics, this.ExtentPosition(extent));
+                    pageExtentRenderer.DrawSelection(e.Graphics, ExtentPosition(extent));
                 }
             }
         }
@@ -356,9 +356,9 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.ComponentModel.DoWorkEventArgs"/> instance containing the event data.</param>
         private void ImageBufferBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
         {
-            this.Invalidate();
+            Invalidate();
 
-            e.Result = FullMapRenderer.RenderMapLayers((BackgroundWorker)sender, this.MapLayers, this.Bounds, this.FileId, this.File.Size);
+            e.Result = FullMapRenderer.RenderMapLayers((BackgroundWorker)sender, MapLayers, Bounds, FileId, File.Size);
         }
 
         /// <summary>
@@ -368,12 +368,12 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.ComponentModel.RunWorkerCompletedEventArgs"/> instance containing the event data.</param>
         private void ImageBufferBackgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            this.BackgroundImage = (Bitmap)e.Result;
-            this.BackgroundImageLayout = ImageLayout.Stretch;
+            BackgroundImage = (Bitmap)e.Result;
+            BackgroundImageLayout = ImageLayout.Stretch;
 
-            this.HoldingMessage = string.Empty;
+            HoldingMessage = string.Empty;
 
-            this.Refresh();
+            Refresh();
         }
 
         /// <summary>
@@ -383,10 +383,10 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.ComponentModel.ProgressChangedEventArgs"/> instance containing the event data.</param>
         private void ImageBufferBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            this.BackgroundImage = (Bitmap)e.UserState;
-            this.BackgroundImageLayout = ImageLayout.Stretch;
+            BackgroundImage = (Bitmap)e.UserState;
+            BackgroundImageLayout = ImageLayout.Stretch;
 
-            this.Refresh();
+            Refresh();
         }
 
         #region Events
@@ -397,23 +397,23 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">A <see cref="T:System.Windows.Forms.PaintEventArgs"/> that contains the event data.</param>
         protected override void OnPaint(PaintEventArgs e)
         {
-            if (this.imageBufferBackgroundWorker.IsBusy || this.Holding)
+            if (imageBufferBackgroundWorker.IsBusy || Holding)
             {
                 // SolidBrush brush = new SolidBrush(Color.FromArgb(200, Color.Black));
-                e.Graphics.FillRectangle(backgroundBrush, this.Bounds);
+                e.Graphics.FillRectangle(backgroundBrush, Bounds);
 
                 //for (int l = 0; l < Height; l += 4)
                 //{
                 //    e.Graphics.DrawLine(this.backgroundLine, 0, l, Width, l);
                 //}
 
-                TextRenderer.DrawText(e.Graphics, this.HoldingMessage, this.Font, new Point(4, 4), Color.Black);
+                TextRenderer.DrawText(e.Graphics, HoldingMessage, Font, new Point(4, 4), Color.Black);
             }
             else
             {
-                if (!e.ClipRectangle.IsEmpty && this.ExtentCount > 0 && Visible)
+                if (!e.ClipRectangle.IsEmpty && ExtentCount > 0 && Visible)
                 {
-                    if (this.Mode != MapMode.Full)
+                    if (Mode != MapMode.Full)
                     {
                         // e.Graphics.FillRectangle(backgroundBrush, this.Bounds);
 
@@ -422,35 +422,35 @@ namespace InternalsViewer.UI.Allocations
                         //    e.Graphics.DrawLine(this.backgroundLine, 0, l, Width, l);
                         //}
 
-                        this.CalculateVisibleExtents();
+                        CalculateVisibleExtents();
 
-                        this.pageExtentRenderer.DrawBackgroundExtents(e,
-                                                                     this.ExtentSize,
-                                                                     this.extentsHorizontal,
-                                                                     this.extentsVertical,
-                                                                     this.extentsRemaining);
+                        pageExtentRenderer.DrawBackgroundExtents(e,
+                                                                     ExtentSize,
+                                                                     extentsHorizontal,
+                                                                     extentsVertical,
+                                                                     extentsRemaining);
                     }
                     else
                     {
-                        this.scrollBar.Enabled = false;
+                        scrollBar.Enabled = false;
                     }
 
-                    switch (this.mode)
+                    switch (mode)
                     {
                         case MapMode.Standard:
 
-                            if (this.ExtentCount > 0)
+                            if (ExtentCount > 0)
                             {
-                                this.DrawExtents(e);
+                                DrawExtents(e);
                             }
 
-                            this.DrawSinglePages(e);
+                            DrawSinglePages(e);
 
-                            var mapWidth = this.extentsHorizontal * this.extentSize.Width;
+                            var mapWidth = extentsHorizontal * extentSize.Width;
 
-                            e.Graphics.FillRectangle(backgroundBrush, mapWidth, 0, this.Width - mapWidth, this.Height);
+                            e.Graphics.FillRectangle(backgroundBrush, mapWidth, 0, Width - mapWidth, Height);
 
-                            e.Graphics.DrawLine(SystemPens.ControlDark, mapWidth, 0, mapWidth, this.Height);
+                            e.Graphics.DrawLine(SystemPens.ControlDark, mapWidth, 0, mapWidth, Height);
 
                             break;
 
@@ -467,7 +467,7 @@ namespace InternalsViewer.UI.Allocations
 
                         case MapMode.RangeSelection:
 
-                            this.DrawSelectedRange(e);
+                            DrawSelectedRange(e);
                             break;
 
                         case MapMode.Full:
@@ -493,9 +493,9 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         internal virtual void OnWindowPositionChanged(object sender, EventArgs e)
         {
-            if (this.WindowPositionChanged != null)
+            if (WindowPositionChanged != null)
             {
-                this.WindowPositionChanged(sender, e);
+                WindowPositionChanged(sender, e);
             }
         }
 
@@ -508,27 +508,27 @@ namespace InternalsViewer.UI.Allocations
         {
             if (e.Button == MouseButtons.Left)
             {
-                var newSelectedBlock = this.ExtentPosition(e.X, e.Y);
+                var newSelectedBlock = ExtentPosition(e.X, e.Y);
 
-                if (newSelectedBlock != this.SelectedPage)
+                if (newSelectedBlock != SelectedPage)
                 {
-                    var page = this.PagePosition(e.X, e.Y) + (this.WindowPosition * 8);
+                    var page = PagePosition(e.X, e.Y) + (WindowPosition * 8);
 
-                    if (page <= (this.ExtentCount * 8))
+                    if (page <= (ExtentCount * 8))
                     {
-                        this.SelectedPage = this.PagePosition(e.X, e.Y) + (this.WindowPosition * 8);
+                        SelectedPage = PagePosition(e.X, e.Y) + (WindowPosition * 8);
 
-                        if (this.Mode == MapMode.RangeSelection)
+                        if (Mode == MapMode.RangeSelection)
                         {
-                            if (this.SelectionStartExtent <= 0)
+                            if (SelectionStartExtent <= 0)
                             {
-                                this.SelectionStartExtent = newSelectedBlock;
+                                SelectionStartExtent = newSelectedBlock;
                             }
                             else
                             {
-                                this.SelectionEndExtent = newSelectedBlock;
+                                SelectionEndExtent = newSelectedBlock;
 
-                                var temp = this.RangeSelected;
+                                var temp = RangeSelected;
                                 if (temp != null)
                                 {
                                     temp(this, EventArgs.Empty);
@@ -537,13 +537,13 @@ namespace InternalsViewer.UI.Allocations
                         }
                         else
                         {
-                            var temp = this.PageClicked;
+                            var temp = PageClicked;
 
                             if (temp != null)
                             {
                                 var openInNewWindow = Control.ModifierKeys == Keys.Shift;
 
-                                temp(this, new PageEventArgs(new RowIdentifier(this.FileId, page + this.StartPage.PageId, 0), openInNewWindow));
+                                temp(this, new PageEventArgs(new RowIdentifier(FileId, page + StartPage.PageId, 0), openInNewWindow));
                             }
                         }
                     }
@@ -558,29 +558,29 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
         private void AllocationMapPanel_MouseMove(object sender, MouseEventArgs e)
         {
-            if (this.Mode != MapMode.Full)
+            if (Mode != MapMode.Full)
             {
-                var newSelectedBlock = this.ExtentPosition(e.X, e.Y);
+                var newSelectedBlock = ExtentPosition(e.X, e.Y);
 
-                if (newSelectedBlock != this.SelectedPage)
+                if (newSelectedBlock != SelectedPage)
                 {
-                    var page = this.PagePosition(e.X, e.Y) + (this.WindowPosition * 8);
+                    var page = PagePosition(e.X, e.Y) + (WindowPosition * 8);
 
-                    if (page <= (this.ExtentCount * 8))
+                    if (page <= (ExtentCount * 8))
                     {
-                        var temp = this.PageOver;
+                        var temp = PageOver;
 
                         if (temp != null)
                         {
-                            temp(this, new PageEventArgs(new RowIdentifier(this.FileId, page + this.StartPage.PageId, 0), false));
+                            temp(this, new PageEventArgs(new RowIdentifier(FileId, page + StartPage.PageId, 0), false));
                         }
 
-                        if (this.Mode == MapMode.RangeSelection)
+                        if (Mode == MapMode.RangeSelection)
                         {
-                            if (this.provisionalEndExtent != newSelectedBlock)
+                            if (provisionalEndExtent != newSelectedBlock)
                             {
-                                this.provisionalEndExtent = newSelectedBlock;
-                                this.Invalidate();
+                                provisionalEndExtent = newSelectedBlock;
+                                Invalidate();
                             }
                         }
                     }
@@ -608,7 +608,7 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void ScrollBar_ValueChanged(object sender, EventArgs e)
         {
-            this.WindowPosition = this.scrollBar.Value - (this.scrollBar.Value % this.extentsHorizontal);
+            WindowPosition = scrollBar.Value - (scrollBar.Value % extentsHorizontal);
         }
 
         #endregion
@@ -639,8 +639,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value>The border colour.</value>
         public Color BorderColour
         {
-            get { return this.pageExtentRenderer.PageBorderColour; }
-            set { this.pageExtentRenderer.PageBorderColour = value; }
+            get { return pageExtentRenderer.PageBorderColour; }
+            set { pageExtentRenderer.PageBorderColour = value; }
         }
 
         /// <summary>
@@ -649,8 +649,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value>The selected page.</value>
         public int SelectedPage
         {
-            get { return this.selectedPage + this.StartPage.PageId; }
-            set { this.selectedPage = value; }
+            get { return selectedPage + StartPage.PageId; }
+            set { selectedPage = value; }
         }
 
         /// <summary>
@@ -661,15 +661,15 @@ namespace InternalsViewer.UI.Allocations
         {
             get
             {
-                return this.extentSize;
+                return extentSize;
             }
 
             set
             {
-                this.extentSize = value;
-                this.CalculateVisibleExtents();
+                extentSize = value;
+                CalculateVisibleExtents();
 
-                this.pageExtentRenderer.ResizeExtentBrush(this.extentSize);
+                pageExtentRenderer.ResizeExtentBrush(extentSize);
             }
         }
 
@@ -687,14 +687,14 @@ namespace InternalsViewer.UI.Allocations
         {
             get
             {
-                return this.windowPosition;
+                return windowPosition;
             }
 
             set
             {
-                this.windowPosition = value;
-                this.scrollBar.Value = this.windowPosition;
-                this.OnWindowPositionChanged(this, EventArgs.Empty);
+                windowPosition = value;
+                scrollBar.Value = windowPosition;
+                OnWindowPositionChanged(this, EventArgs.Empty);
                 Invalidate();
             }
         }
@@ -713,13 +713,13 @@ namespace InternalsViewer.UI.Allocations
         {
             get
             {
-                return this.mode;
+                return mode;
             }
 
             set
             {
-                this.mode = value;
-                this.BackgroundImage = null;
+                mode = value;
+                BackgroundImage = null;
             }
         }
 
@@ -752,8 +752,8 @@ namespace InternalsViewer.UI.Allocations
         /// </summary>
         public bool DrawBorder
         {
-            get { return this.pageExtentRenderer.DrawBorder; }
-            set { this.pageExtentRenderer.DrawBorder = value; }
+            get { return pageExtentRenderer.DrawBorder; }
+            set { pageExtentRenderer.DrawBorder = value; }
         }
 
         /// <summary>
@@ -772,9 +772,9 @@ namespace InternalsViewer.UI.Allocations
 
         void IDisposable.Dispose()
         {
-            this.backgroundLine.Dispose();
-            this.pageExtentRenderer.Dispose();
-            this.backgroundBrush.Dispose();
+            backgroundLine.Dispose();
+            pageExtentRenderer.Dispose();
+            backgroundBrush.Dispose();
         }
     }
 }

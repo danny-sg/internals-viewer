@@ -5,14 +5,18 @@ using System.Data.SqlClient;
 using System.Globalization;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.PageIO
+namespace InternalsViewer.Internals.PageIo
 {
+    /// <inheritdoc />
     /// <summary>
     /// Reads a page using a database connection with DBCC PAGE
     /// </summary>
     public class DatabasePageReader : PageReader
     {
         private readonly Dictionary<string, string> headerData = new Dictionary<string, string>();
+
+        private const int DataStartPosition = 22;
+        private const int dataEndPosition = 44;
 
         public DatabasePageReader(string connectionString, PageAddress pageAddress, int databaseId)
             : base(pageAddress, databaseId)
@@ -43,10 +47,8 @@ namespace InternalsViewer.Internals.PageIO
                                                PageAddress.FileId,
                                                PageAddress.PageId,
                                                2);
-            string currentData;
-            string currentRow;
             var offset = 0;
-            var data = new byte[8192];
+            var data = new byte[Page.Size];
 
             using (var conn = new SqlConnection(ConnectionString))
             {
@@ -64,14 +66,14 @@ namespace InternalsViewer.Internals.PageIO
                         {
                             if (reader[0].ToString() == "DATA:" && reader[1].ToString().StartsWith("Memory Dump"))
                             {
-                                currentRow = reader[3].ToString();
-                                currentData = currentRow.Replace(" ", "").Substring(currentRow.IndexOf(":") + 1, 40);
+                                var currentRow = reader[3].ToString();
+                                var currentData = currentRow.Substring(20, 44).Replace(" ", string.Empty);
 
-                                for (var i = 0; i < 40; i += 2)
+                                for (var i = 0; i < currentData.Length; i += 2)
                                 {
                                     var byteString = currentData.Substring(i, 2);
 
-                                    if (!byteString.Contains("†") && !byteString.Contains(".") && offset < 8192)
+                                    if (!byteString.Contains("†") && !byteString.Contains(".") && offset < Page.Size)
                                     {
                                         if (byte.TryParse(byteString,
                                                           NumberStyles.HexNumber,
@@ -108,11 +110,9 @@ namespace InternalsViewer.Internals.PageIO
         /// <returns></returns>
         public override bool LoadHeader()
         {
-            var parsed = true;
-
             var header = new Header();
 
-            parsed = DatabaseHeaderReader.LoadHeader(headerData, header);
+            var parsed = DatabaseHeaderReader.LoadHeader(headerData, header);
 
             Header = header;
 

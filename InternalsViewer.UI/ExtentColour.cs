@@ -54,9 +54,9 @@ namespace InternalsViewer.UI
             var g = Graphics.FromImage(key);
 
             using (var brush = new LinearGradientBrush(keyRectange,
-                                                                       color,
-                                                                       BackgroundColour(color),
-                                                                       LinearGradientMode.Horizontal))
+                                                       color,
+                                                       BackgroundColour(color),
+                                                       LinearGradientMode.Horizontal))
             {   
                 g.FillRectangle(brush, keyRectange);
                 g.DrawRectangle(SystemPens.ControlDark, keyRectange);

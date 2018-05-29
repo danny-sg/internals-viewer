@@ -16,15 +16,15 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <param name="size">The size.</param>
         /// <param name="offset">The offset.</param>
         /// <returns>An array of 2-byte integers</returns>
-        public static UInt16[] GetOffsetArray(byte[] record, int size, int offset)
+        public static ushort[] GetOffsetArray(byte[] record, int size, int offset)
         {
-            var offsetArray = new UInt16[size];
+            var offsetArray = new ushort[size];
 
             for (var i = 0; i < size; i++)
             {
                 offsetArray[i] = BitConverter.ToUInt16(record, offset);
 
-                offset += sizeof(UInt16);
+                offset += sizeof(ushort);
             }
 
             return offsetArray;
@@ -35,6 +35,7 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// </summary>
         /// <param name="field">The field.</param>
         /// <param name="data">The data.</param>
+        /// <param name="offset">The offset.</param>
         public static void LoadLobField(RecordField field, byte[] data, int offset)
         {
             field.Mark("BlobInlineRoot");
@@ -62,9 +63,9 @@ namespace InternalsViewer.Internals.RecordLoaders
         /// <summary>
         /// Flips the high bit if set
         /// </summary>
-        /// <param name="offset">The value.</param>
+        /// <param name="value">The value.</param>
         /// <returns></returns>
-        public static UInt16 DecodeOffset(UInt16 value)
+        public static ushort DecodeOffset(ushort value)
         {
             if ((value | 0x8000) == value)
             {

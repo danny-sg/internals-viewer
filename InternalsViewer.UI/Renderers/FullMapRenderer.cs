@@ -6,11 +6,10 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
-using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Allocations;
 
-namespace InternalsViewer.UI
+namespace InternalsViewer.UI.Renderers
 {
     internal class FullMapRenderer
     {

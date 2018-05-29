@@ -8,19 +8,19 @@ using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.RecordLoaders
 {
-    class IndexRecordLoader : RecordLoader
+    internal class IndexRecordLoader : RecordLoader
     {
         internal static void Load(IndexRecord record)
         {
             var varColStartIndex = 0;
 
-            IndexRecordLoader.LoadIndexType(record);
+            LoadIndexType(record);
 
-            IndexRecordLoader.LoadStatusBits(record);
+            LoadStatusBits(record);
 
             if (record.HasNullBitmap)
             {
-                IndexRecordLoader.LoadNullBitmap(record);
+                LoadNullBitmap(record);
 
                 varColStartIndex = 2 + record.NullBitmapSize;
             }
@@ -30,18 +30,18 @@ namespace InternalsViewer.Internals.RecordLoaders
                 LoadColumnOffsetArray(record, varColStartIndex);
             }
 
-            record.VariableLengthDataOffset = (ushort)(record.Page.Header.MinLen + sizeof(Int16) + varColStartIndex + (sizeof(Int16) * record.VariableLengthColumnCount));
+            record.VariableLengthDataOffset = (ushort)(record.Page.Header.MinLen + sizeof(short) + varColStartIndex + (sizeof(short) * record.VariableLengthColumnCount));
 
-            IndexRecordLoader.LoadColumnValues(record);
+            LoadColumnValues(record);
 
             if (record.IsIndexType(IndexTypes.Node) | record.Page.Header.IndexId == 1)
             {
-                IndexRecordLoader.LoadDownPagePointer(record);
+                LoadDownPagePointer(record);
             }
 
             if (record.IsIndexType(IndexTypes.Heap) && (!(record.Structure as IndexStructure).Unique | record.IsIndexType(IndexTypes.Leaf)))
             {
-                IndexRecordLoader.LoadRid(record);
+                LoadRid(record);
             }
         }
 
@@ -86,14 +86,14 @@ namespace InternalsViewer.Internals.RecordLoaders
 
             record.VariableLengthColumnCount = BitConverter.ToUInt16(record.Page.PageData, varColCountOffset);
 
-            record.Mark("VariableLengthColumnCount", varColCountOffset, sizeof(Int16));
+            record.Mark("VariableLengthColumnCount", varColCountOffset, sizeof(short));
 
             // Load offset array of 2-byte ints indicating the end offset of each variable length field
             record.ColOffsetArray = GetOffsetArray(record.Page.PageData,
                                                        record.VariableLengthColumnCount,
-                                                       record.SlotOffset + record.Page.Header.MinLen + sizeof(Int16) + varColStartIndex);
+                                                       record.SlotOffset + record.Page.Header.MinLen + sizeof(short) + varColStartIndex);
 
-            record.Mark("ColOffsetArrayDescription", varColCountOffset + sizeof(Int16), record.VariableLengthColumnCount * sizeof(Int16));
+            record.Mark("ColOffsetArrayDescription", varColCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));
         }
 
         private static void LoadColumnValues(IndexRecord record)
@@ -176,17 +176,17 @@ namespace InternalsViewer.Internals.RecordLoaders
 
         private static void LoadNullBitmap(IndexRecord record)
         {
-            record.NullBitmapSize = (Int16)((record.Structure.Columns.Count - 1) / 8 + 1);
+            record.NullBitmapSize = (short)((record.Structure.Columns.Count - 1) / 8 + 1);
 
             var columnCountPosition = record.SlotOffset + record.Page.Header.MinLen;
 
             record.ColumnCount = BitConverter.ToInt16(record.Page.PageData, columnCountPosition);
 
-            record.Mark("ColumnCount", columnCountPosition, sizeof(Int16));
+            record.Mark("ColumnCount", columnCountPosition, sizeof(short));
 
             var nullBitmapBytes = new byte[record.NullBitmapSize];
 
-            var nullBitmapPosition = record.SlotOffset + record.Page.Header.MinLen + sizeof(Int16);
+            var nullBitmapPosition = record.SlotOffset + record.Page.Header.MinLen + sizeof(short);
 
             Array.Copy(record.Page.PageData,
                        nullBitmapPosition,

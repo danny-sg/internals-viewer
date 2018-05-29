@@ -59,7 +59,7 @@ namespace InternalsViewer.Internals
         /// </summary>
         /// <param name="database"></param>
         /// <param name="pageAddress"></param>
-        protected override void BuildChain(Database database, PageAddress pageAddress)
+        protected new void BuildChain(Database database, PageAddress pageAddress)
         {
             var page = new AllocationPage(database, pageAddress);
             Pages.Add(page);

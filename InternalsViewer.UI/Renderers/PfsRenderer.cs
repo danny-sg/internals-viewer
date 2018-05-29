@@ -101,31 +101,31 @@ namespace InternalsViewer.UI.Renderers
 
             switch (pfsByte.PageSpaceFree)
             {
-                case PfsByte.SpaceFree.Empty:
+                case SpaceFree.Empty:
 
                     spaceFree = "0%";
                     spaceUsedWidth = 0;
                     break;
 
-                case PfsByte.SpaceFree.FiftyPercent:
+                case SpaceFree.FiftyPercent:
 
                     spaceFree = "50%";
                     spaceUsedWidth = (int)(rect.Width * 0.5);
                     break;
 
-                case PfsByte.SpaceFree.EightyPercent:
+                case SpaceFree.EightyPercent:
 
                     spaceFree = "80%";
                     spaceUsedWidth = (int)(rect.Width * 0.8);
                     break;
 
-                case PfsByte.SpaceFree.NinetyFivePercent:
+                case SpaceFree.NinetyFivePercent:
 
                     spaceFree = "95%";
                     spaceUsedWidth = (int)(rect.Width * 0.95);
                     break;
 
-                case PfsByte.SpaceFree.OneHundredPercent:
+                case SpaceFree.OneHundredPercent:
 
                     spaceFree = "100%";
                     spaceUsedWidth = rect.Width;

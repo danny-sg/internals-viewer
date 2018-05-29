@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using InternalsViewer.Internals.Compression;
-using InternalsViewer.Internals.PageIO;
+using InternalsViewer.Internals.PageIo;
 
 namespace InternalsViewer.Internals.Pages
 {
@@ -263,11 +263,11 @@ namespace InternalsViewer.Internals.Pages
             return allocationUnitName;
         }
 
-        private static Int16 GetDatabaseId(string connectionString, string database)
+        private static short GetDatabaseId(string connectionString, string database)
         {
-            Int16 databaseId;
+            short databaseId;
 
-            databaseId = (Int16)DataAccess.GetScalar(connectionString,
+            databaseId = (short)DataAccess.GetScalar(connectionString,
                                                      "master",
                                                      Properties.Resources.SQL_DatabaseId,
                                                      CommandType.Text,
@@ -326,7 +326,7 @@ namespace InternalsViewer.Internals.Pages
         /// Gets the offset table.
         /// </summary>
         /// <value>The offset table.</value>
-        public List<UInt16> OffsetTable { get; } = new List<UInt16>();
+        public List<ushort> OffsetTable { get; } = new List<ushort>();
 
         public CompressionInformation CompressionInformation { get; set; }
 

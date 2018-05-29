@@ -9,6 +9,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.UI", "Inter
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.SsmsAddin2017", "InternalsViewer.SsmsAddin2017\InternalsViewer.SsmsAddin2017.csproj", "{A361B0BB-4F30-46C3-8C87-E50F6528E10C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{43A61A9A-21FE-418D-8DBC-7C741668B4A6}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug (v2008)|Any CPU = Debug (v2008)|Any CPU

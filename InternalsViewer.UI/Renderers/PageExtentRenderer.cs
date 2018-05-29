@@ -4,7 +4,7 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.UI.Allocations;
 
-namespace InternalsViewer.UI
+namespace InternalsViewer.UI.Renderers
 {
     /// <summary>
     /// Renders extents and pages
@@ -21,7 +21,7 @@ namespace InternalsViewer.UI
         /// </summary>
         public void Dispose()
         {
-            this.extentPageBrush.Dispose();
+            extentPageBrush.Dispose();
         }
 
         /// <summary>
@@ -64,12 +64,12 @@ namespace InternalsViewer.UI
         {
             var gradientRect = new Rectangle(0, 0, extentSize.Width, extentSize.Height);
 
-            this.extentPageBrush = new LinearGradientBrush(gradientRect,
-                                                           this.backgroundColour,
-                                                           this.unusedColour,
+            extentPageBrush = new LinearGradientBrush(gradientRect,
+                                                           backgroundColour,
+                                                           unusedColour,
                                                            LinearGradientMode.Horizontal);
 
-            this.borderPen = new Pen(this.PageBorderColour);
+            borderPen = new Pen(PageBorderColour);
         }
 
         /// <summary>
@@ -79,15 +79,15 @@ namespace InternalsViewer.UI
         /// <param name="rect">The rectange of the extent.</param>
         internal void DrawExtent(Graphics g, Rectangle rect)
         {
-            g.FillRectangle(this.extentPageBrush, rect);
+            g.FillRectangle(extentPageBrush, rect);
 
-            if (this.DrawBorder)
+            if (DrawBorder)
             {
-                g.DrawRectangle(this.borderPen, rect);
+                g.DrawRectangle(borderPen, rect);
 
                 for (var j = 1; j < 9; j++)
                 {
-                    g.DrawLine(this.borderPen,
+                    g.DrawLine(borderPen,
                                rect.X + (j * rect.Width / 8),
                                rect.Y,
                                (rect.X + j * rect.Width / 8),
@@ -108,7 +108,7 @@ namespace InternalsViewer.UI
             {
                 case AllocationLayerType.Standard:
 
-                    g.FillRectangle(this.extentPageBrush, rect);
+                    g.FillRectangle(extentPageBrush, rect);
                     break;
 
                 case AllocationLayerType.TopLeftCorner:
@@ -122,13 +122,13 @@ namespace InternalsViewer.UI
 
                     g.SmoothingMode = SmoothingMode.AntiAlias;
 
-                    g.FillPath(this.extentPageBrush, path);
+                    g.FillPath(extentPageBrush, path);
                     break;
             }
 
-            if (this.DrawBorder)
+            if (DrawBorder)
             {
-                g.DrawRectangle(this.borderPen, rect);
+                g.DrawRectangle(borderPen, rect);
             }
         }
 
@@ -146,9 +146,9 @@ namespace InternalsViewer.UI
                                             int extentsVertical,
                                             int extentsRemaining)
         {
-            this.ResizeExtentBrush(extentSize);
+            ResizeExtentBrush(extentSize);
 
-            this.SetExtentBrushColour(this.backgroundColour, this.unusedColour);
+            SetExtentBrushColour(backgroundColour, unusedColour);
 
             for (var i = 0; i < extentsHorizontal; i++)
             {
@@ -169,13 +169,13 @@ namespace InternalsViewer.UI
                                          extentsVertical * extentSize.Height);
                 }
 
-                e.Graphics.FillRectangle(this.extentPageBrush, rect);
+                e.Graphics.FillRectangle(extentPageBrush, rect);
 
                 for (var j = 0; j <= 8; j++)
                 {
                     if (i < extentsRemaining)
                     {
-                        e.Graphics.DrawLine(this.borderPen,
+                        e.Graphics.DrawLine(borderPen,
                                             j * (extentSize.Width / 8) + (extentSize.Width * i),
                                             0,
                                             j * (extentSize.Width / 8) + (extentSize.Width * i),
@@ -183,7 +183,7 @@ namespace InternalsViewer.UI
                     }
                     else
                     {
-                        e.Graphics.DrawLine(this.borderPen,
+                        e.Graphics.DrawLine(borderPen,
                                             j * (extentSize.Width / 8) + (extentSize.Width * i),
                                             0,
                                             j * (extentSize.Width / 8) + (extentSize.Width * i),
@@ -193,7 +193,7 @@ namespace InternalsViewer.UI
 
                 for (var k = 0; k < extentsVertical + 1; k++)
                 {
-                    e.Graphics.DrawLine(this.borderPen,
+                    e.Graphics.DrawLine(borderPen,
                                         0,
                                         k * extentSize.Height,
                                         extentSize.Width * extentsHorizontal,
@@ -211,13 +211,13 @@ namespace InternalsViewer.UI
         {
             g.FillRectangle(Brushes.LightGray, rect);
 
-            if (this.DrawBorder)
+            if (DrawBorder)
             {
-                g.DrawRectangle(this.borderPen, rect);
+                g.DrawRectangle(borderPen, rect);
 
                 for (var j = 1; j < 9; j++)
                 {
-                    g.DrawLine(this.borderPen,
+                    g.DrawLine(borderPen,
                                rect.X + (j * rect.Width / 8),
                                rect.Y,
                                (rect.X + j * rect.Width / 8),
@@ -233,9 +233,9 @@ namespace InternalsViewer.UI
         /// <param name="backColour">The back colour.</param>
         internal void SetExtentBrushColour(Color foreColour, Color backColour)
         {
-            if (this.extentPageBrush.LinearColors[0] != foreColour || this.extentPageBrush.LinearColors[1] != backColour)
+            if (extentPageBrush.LinearColors[0] != foreColour || extentPageBrush.LinearColors[1] != backColour)
             {
-                this.extentPageBrush.LinearColors = new Color[2] { foreColour, backColour };
+                extentPageBrush.LinearColors = new Color[2] { foreColour, backColour };
             }
         }
 
@@ -245,9 +245,9 @@ namespace InternalsViewer.UI
         /// <param name="extentSize">Size of the extent.</param>
         internal void ResizeExtentBrush(Size extentSize)
         {
-            this.extentPageBrush.ResetTransform();
-            this.extentPageBrush.ScaleTransform(extentSize.Height / this.extentPageBrush.Rectangle.Height,
-                                                extentSize.Width / this.extentPageBrush.Rectangle.Width,
+            extentPageBrush.ResetTransform();
+            extentPageBrush.ScaleTransform(extentSize.Height / extentPageBrush.Rectangle.Height,
+                                                extentSize.Width / extentPageBrush.Rectangle.Width,
                                                 MatrixOrder.Append);
         }
 
@@ -257,9 +257,9 @@ namespace InternalsViewer.UI
         /// <param name="pageSize">Size of the page.</param>
         internal void ResizePageBrush(Size pageSize)
         {
-            this.extentPageBrush.ResetTransform();
-            this.extentPageBrush.ScaleTransform((pageSize.Width / this.extentPageBrush.Rectangle.Width) / 8,
-                                                (pageSize.Width / this.extentPageBrush.Rectangle.Width) / 8,
+            extentPageBrush.ResetTransform();
+            extentPageBrush.ScaleTransform((pageSize.Width / extentPageBrush.Rectangle.Width) / 8,
+                                                (pageSize.Width / extentPageBrush.Rectangle.Width) / 8,
                                                 MatrixOrder.Append);
         }
 

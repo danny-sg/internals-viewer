@@ -11,27 +11,15 @@ namespace InternalsViewer.Internals
 
         public int TotalExtents { get; set; }
 
-        public int TotalPages
-        {
-            get { return TotalExtents * 8; }
-        }
+        public int TotalPages => TotalExtents * 8;
 
-        public int UsedPages
-        {
-            get { return UsedExtents * 8; }
-        }
+        public int UsedPages => UsedExtents * 8;
 
         public int UsedExtents { get; set; }
 
-        public float TotalMb
-        {
-            get { return ((TotalExtents * 64) / 1024F); }
-        }
+        public float TotalMb => ((TotalExtents * 64) / 1024F);
 
-        public float UsedMb
-        {
-            get { return ((UsedExtents * 64) / 1024F); }
-        }
+        public float UsedMb => ((UsedExtents * 64) / 1024F);
 
         public int FileId { get; set; }
 
@@ -41,10 +29,7 @@ namespace InternalsViewer.Internals
 
         public string PhysicalName { get; set; }
 
-        public string FileName
-        {
-            get { return PhysicalName.Substring(PhysicalName.LastIndexOf(@"\") + 1); }
-        }
+        public string FileName => PhysicalName.Substring(PhysicalName.LastIndexOf(@"\") + 1);
 
         public int Size { get; set; }
 

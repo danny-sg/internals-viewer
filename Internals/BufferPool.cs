@@ -12,6 +12,18 @@ namespace InternalsViewer.Internals
     public class BufferPool
     {
         /// <summary>
+        /// Gets the clean page addresses.
+        /// </summary>
+        /// <value>The clean page addresses.</value>
+        public List<PageAddress> CleanPages { get; }
+
+        /// <summary>
+        /// Gets the dirty page addresses.
+        /// </summary>
+        /// <value>The dirty page addresses.</value>
+        public List<PageAddress> DirtyPages { get; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="BufferPool"/> class.
         /// </summary>
         public BufferPool()
@@ -58,17 +70,5 @@ namespace InternalsViewer.Internals
                 conn.Close();
             }
         }
-
-        /// <summary>
-        /// Gets the clean page addresses.
-        /// </summary>
-        /// <value>The clean page addresses.</value>
-        public List<PageAddress> CleanPages { get; }
-
-        /// <summary>
-        /// Gets the dirty page addresses.
-        /// </summary>
-        /// <value>The dirty page addresses.</value>
-        public List<PageAddress> DirtyPages { get; }
     }
 }

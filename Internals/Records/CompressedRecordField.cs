@@ -40,7 +40,7 @@ namespace InternalsViewer.Internals.Records
         public bool PageSymbol { get; set; }
 
         [MarkAttribute("", "Black", "PaleGreen", "LightGreen", true)]
-        public string Value
+        public new string Value
         {
             get
             {
@@ -57,7 +57,7 @@ namespace InternalsViewer.Internals.Records
                     return CompressedDataConverter.CompressedBinaryToBinary(Data,
                                                                             Column.DataType,
                                                                             Column.Precision,
-                                                                            Column.Scale) ?? String.Empty;
+                                                                            Column.Scale) ?? string.Empty;
                 }
             }
         }

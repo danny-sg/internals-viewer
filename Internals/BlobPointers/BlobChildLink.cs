@@ -1,13 +1,10 @@
 ﻿using InternalsViewer.Internals.Pages;
-using System.Collections.Generic;
 using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.BlobPointers
 {
     public class BlobChildLink: Markable
     {
-        private List<MarkItem> markItems = new List<MarkItem>();
-
         public BlobChildLink()
         {
         }

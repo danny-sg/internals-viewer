@@ -92,9 +92,9 @@
     <Compile Include="IndexTypes.cs" />
     <Compile Include="LogSequenceNumber.cs" />
     <Compile Include="Markable.cs" />
-    <Compile Include="PageIO\DatabaseHeaderReader.cs" />
-    <Compile Include="PageIO\DatabasePageReader.cs" />
-    <Compile Include="PageIO\PageReader.cs" />
+    <Compile Include="PageIo\DatabaseHeaderReader.cs" />
+    <Compile Include="PageIo\DatabasePageReader.cs" />
+    <Compile Include="PageIo\PageReader.cs" />
     <Compile Include="Pages\AllocationPage.cs" />
     <Compile Include="Pages\BootPage.cs" />
     <Compile Include="Pages\Header.cs" />
@@ -133,6 +133,7 @@
     <Compile Include="MarkItem.cs" />
     <Compile Include="Records\RecordType.cs" />
     <Compile Include="Records\SparseVector.cs" />
+    <Compile Include="SpaceFree.cs" />
     <Compile Include="Structures\Column.cs" />
     <Compile Include="Structures\HobtEntryPoint.cs" />
     <Compile Include="Structures\Hobt.cs" />

@@ -24,47 +24,47 @@ namespace InternalsViewer.UI.Controls
 
         public PageAddressTextBox()
         {
-            normalColour = this.ForeColor;
+            normalColour = ForeColor;
             
             InitializeContextMenu();
 
-            this.GotFocus += new EventHandler(PageAddressTextBox_GotFocus);
-            this.LostFocus += new EventHandler(PageAddressTextBox_LostFocus);
-            this.TextChanged += new EventHandler(PageAddressTextBox_TextChanged);
+            GotFocus += new EventHandler(PageAddressTextBox_GotFocus);
+            LostFocus += new EventHandler(PageAddressTextBox_LostFocus);
+            TextChanged += new EventHandler(PageAddressTextBox_TextChanged);
 
-            this.Text = blankText;
+            Text = blankText;
 
             PageAddressTextBox_LostFocus(null, EventArgs.Empty);
         }
 
         void PageAddressTextBox_TextChanged(object sender, EventArgs e)
         {
-            if (!this.Text.Equals(blankText))
+            if (!Text.Equals(blankText))
             {
-                this.ForeColor = normalColour;
+                ForeColor = normalColour;
             }
         }
 
         void PageAddressTextBox_LostFocus(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(this.Text) | this.Text.Equals(blankText))
+            if (string.IsNullOrEmpty(Text) | Text.Equals(blankText))
             {
-                this.Text = blankText;
-                this.ForeColor = blankColour;
+                Text = blankText;
+                ForeColor = blankColour;
             }
             else
             {
-                this.ForeColor = normalColour;
+                ForeColor = normalColour;
             }
         }
 
         void PageAddressTextBox_GotFocus(object sender, EventArgs e)
         {
-            if (this.Text.Equals(blankText))
+            if (Text.Equals(blankText))
             {
-                this.Text = string.Empty;
+                Text = string.Empty;
             }
-            this.ForeColor = normalColour;
+            ForeColor = normalColour;
 
         }
 
@@ -114,7 +114,7 @@ namespace InternalsViewer.UI.Controls
             option3RowIntepretationToolStripMenuItem.Text = "Option 3 - Row intepretation";
             option3RowIntepretationToolStripMenuItem.Click += Option3ToolStripMenuItem_Click;
 
-            this.TextBox.ContextMenuStrip = pageAddressContextMenuStrip;
+            TextBox.ContextMenuStrip = pageAddressContextMenuStrip;
         }
 
         void CopyCommandToolStripMenuItem_Click(object sender, EventArgs e)
@@ -144,7 +144,7 @@ namespace InternalsViewer.UI.Controls
 
         public void CopyDbccPageToClipboard(int option, PageAddress address)
         {
-            var text = string.Format(Properties.Resources.SQL_CopyDbccPage, this.DatabaseId, address.FileId, address.PageId, option);
+            var text = string.Format(Properties.Resources.SQL_CopyDbccPage, DatabaseId, address.FileId, address.PageId, option);
 
             Clipboard.SetText(text);
         }

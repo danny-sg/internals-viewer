@@ -45,8 +45,8 @@ namespace InternalsViewer.UI.Allocations
         /// <param name="page">The allocation.</param>
         public AllocationLayer(Allocation page)
         {
-            this.allocations.Add(page);
-            this.name = page.ToString();
+            allocations.Add(page);
+            name = page.ToString();
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace InternalsViewer.UI.Allocations
         public AllocationLayer(string name, Allocation allocation, Color colour)
         {
             this.name = name;
-            this.allocations.Add(allocation);
+            allocations.Add(allocation);
             this.colour = colour;
         }
 
@@ -74,11 +74,11 @@ namespace InternalsViewer.UI.Allocations
 
             if (page.Header.PageType == PageType.Iam)
             {
-                this.allocations.Add(new IamAllocation(page));
+                allocations.Add(new IamAllocation(page));
             }
             else
             {
-                this.allocations.Add(new Allocation(page));
+                allocations.Add(new Allocation(page));
             }
 
             this.colour = colour;
@@ -129,7 +129,7 @@ namespace InternalsViewer.UI.Allocations
         /// <returns></returns>
         public AllocationLayer FindExtent(int extent, int fileId, bool findInverted)
         {
-            foreach (var alloc in this.allocations)
+            foreach (var alloc in allocations)
             {
                 if (Allocation.CheckAllocationStatus(extent, fileId, findInverted, alloc))
                 {
@@ -152,7 +152,7 @@ namespace InternalsViewer.UI.Allocations
 
             extentAddress = pageAddress.PageId / 8;
 
-            foreach (var alloc in this.allocations)
+            foreach (var alloc in allocations)
             {
                 // Check if it's the actual IAM
                 if (alloc.Pages.Exists(delegate(AllocationPage p) { return p.PageAddress == pageAddress; }))
@@ -182,8 +182,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value><c>true</c> if transparent; otherwise, <c>false</c>.</value>
         public bool Transparent
         {
-            get { return this.transparent; }
-            set { this.transparent = value; }
+            get { return transparent; }
+            set { transparent = value; }
         }
 
         /// <summary>
@@ -192,8 +192,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value>The type of the layer.</value>
         public AllocationLayerType LayerType
         {
-            get { return this.layerType; }
-            set { this.layerType = value; }
+            get { return layerType; }
+            set { layerType = value; }
         }
 
         /// <summary>
@@ -204,19 +204,19 @@ namespace InternalsViewer.UI.Allocations
         {
             get
             {
-                if (this.transparent)
+                if (transparent)
                 {
-                    return Color.FromArgb(this.transparency, this.colour);
+                    return Color.FromArgb(transparency, colour);
                 }
                 else
                 {
-                    return this.colour;
+                    return colour;
                 }
             }
 
             set
             {
-                this.colour = value;
+                colour = value;
             }
         }
 
@@ -226,8 +226,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value>The name.</value>
         public string Name
         {
-            get { return this.name; }
-            set { this.name = value; }
+            get { return name; }
+            set { name = value; }
         }
 
         /// <summary>
@@ -236,8 +236,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value>The allocations.</value>
         public List<Allocation> Allocations
         {
-            get { return this.allocations; }
-            set { this.allocations = value; }
+            get { return allocations; }
+            set { allocations = value; }
         }
 
         /// <summary>
@@ -246,8 +246,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value>The order.</value>
         public int Order
         {
-            get { return this.order; }
-            set { this.order = value; }
+            get { return order; }
+            set { order = value; }
         }
 
         /// <summary>
@@ -256,8 +256,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value><c>true</c> if invert; otherwise, <c>false</c>.</value>
         public bool Invert
         {
-            get { return this.invert; }
-            set { this.invert = value; }
+            get { return invert; }
+            set { invert = value; }
         }
 
         /// <summary>
@@ -268,8 +268,8 @@ namespace InternalsViewer.UI.Allocations
         /// </value>
         public bool UseDefaultSinglePageColour
         {
-            get { return this.useDefaultSinglePageColour; }
-            set { this.useDefaultSinglePageColour = value; }
+            get { return useDefaultSinglePageColour; }
+            set { useDefaultSinglePageColour = value; }
         }
 
         /// <summary>
@@ -278,8 +278,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value><c>true</c> if visible; otherwise, <c>false</c>.</value>
         public bool Visible
         {
-            get { return this.visible; }
-            set { this.visible = value; }
+            get { return visible; }
+            set { visible = value; }
         }
 
         /// <summary>
@@ -288,8 +288,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value>The border colour.</value>
         public Color BorderColour
         {
-            get { return this.borderColour; }
-            set { this.borderColour = value; }
+            get { return borderColour; }
+            set { borderColour = value; }
         }
 
         /// <summary>
@@ -298,8 +298,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value><c>true</c> if [use border colour]; otherwise, <c>false</c>.</value>
         public bool UseBorderColour
         {
-            get { return this.useBorderColour; }
-            set { this.useBorderColour = value; }
+            get { return useBorderColour; }
+            set { useBorderColour = value; }
         }
 
         /// <summary>
@@ -308,8 +308,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value><c>true</c> if [single slots only]; otherwise, <c>false</c>.</value>
         public bool SingleSlotsOnly
         {
-            get { return this.singleSlotsOnly; }
-            set { this.singleSlotsOnly = value; }
+            get { return singleSlotsOnly; }
+            set { singleSlotsOnly = value; }
         }
 
         /// <summary>
@@ -318,8 +318,8 @@ namespace InternalsViewer.UI.Allocations
         /// <value>The transparency level.</value>
         public int Transparency
         {
-            get { return this.transparency; }
-            set { this.transparency = value; }
+            get { return transparency; }
+            set { transparency = value; }
         }
 
         public string IndexName

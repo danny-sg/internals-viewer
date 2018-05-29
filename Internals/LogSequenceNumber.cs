@@ -44,17 +44,14 @@ namespace InternalsViewer.Internals
             return string.Format("{0:X8}:{1:X8}:{2:X4}", virtualLogFile, fileOffset, recordSequence);
         }
 
-        public Decimal ToDecimal()
+        public decimal ToDecimal()
         {
-            return Decimal.Parse(string.Format("{0}{1:0000000000}{2:00000}",
-                                               virtualLogFile,
-                                               fileOffset,
-                                               recordSequence));
+            return decimal.Parse($"{virtualLogFile}{fileOffset:0000000000}{recordSequence:00000}");
         }
 
         public decimal ToDecimalFileOffsetOnly()
         {
-            return Decimal.Parse(string.Format("{0}{1:0000000000}", virtualLogFile, fileOffset));
+            return decimal.Parse($"{virtualLogFile}{fileOffset:0000000000}");
         }
 
         int IComparable<LogSequenceNumber>.CompareTo(LogSequenceNumber other)

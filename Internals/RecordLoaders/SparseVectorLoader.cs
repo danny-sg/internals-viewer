@@ -16,21 +16,21 @@ namespace InternalsViewer.Internals.RecordLoaders
 
             sparseVector.ComplexHeader = BitConverter.ToInt16(sparseVector.Data, 0);
 
-            sparseVector.Mark("ComplexHeaderDescription", vectorOffset, sizeof(Int16));
+            sparseVector.Mark("ComplexHeaderDescription", vectorOffset, sizeof(short));
 
             sparseVector.ColCount = BitConverter.ToInt16(sparseVector.Data, 2);
 
-            sparseVector.Mark("ColCount", vectorOffset + SparseVector.ColCountOffset, sizeof(Int16));
+            sparseVector.Mark("ColCount", vectorOffset + SparseVector.ColCountOffset, sizeof(short));
 
-            sparseVector.Columns = new UInt16[sparseVector.ColCount];
+            sparseVector.Columns = new ushort[sparseVector.ColCount];
 
-            sparseVector.Mark("ColumnsDescription", vectorOffset + SparseVector.ColumnsOffset, sparseVector.ColCount * sizeof(Int16));
+            sparseVector.Mark("ColumnsDescription", vectorOffset + SparseVector.ColumnsOffset, sparseVector.ColCount * sizeof(short));
 
-            sparseVector.Offset = new UInt16[sparseVector.ColCount];
+            sparseVector.Offset = new ushort[sparseVector.ColCount];
 
             sparseVector.Mark("OffsetsDescription",
-                              vectorOffset + SparseVector.ColumnsOffset + sparseVector.ColCount * sizeof(Int16),
-                              sparseVector.ColCount * sizeof(Int16));
+                              vectorOffset + SparseVector.ColumnsOffset + sparseVector.ColCount * sizeof(short),
+                              sparseVector.ColCount * sizeof(short));
 
             var previousOffset = 4 + (sparseVector.ColCount * 4);
 

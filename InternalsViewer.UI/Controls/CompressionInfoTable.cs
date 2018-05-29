@@ -15,7 +15,7 @@ namespace InternalsViewer.UI.Controls
         {
             public CompressionStructure(CompressionInformation.CompressionInfoStructure structure)
             {
-                this.Structure = structure;
+                Structure = structure;
             }
 
             public CompressionInformation.CompressionInfoStructure Structure { get; set; }

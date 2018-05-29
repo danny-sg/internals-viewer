@@ -15,9 +15,7 @@ namespace InternalsViewer.Internals.Records
         /// <summary>
         /// Initializes a new instance of the <see cref="Record"/> class.
         /// </summary>
-        /// <param name="page">The page.</param>
-        /// <param name="offset">The offset.</param>
-        public Record(Page page, UInt16 slotOffset, Structure structure)
+        protected Record(Page page, ushort slotOffset, Structure structure)
         {
             Page = page;
             SlotOffset = slotOffset;
@@ -34,15 +32,24 @@ namespace InternalsViewer.Internals.Records
         {
             switch (recordType)
             {
-                case RecordType.Primary: return "Primary Record";
-                case RecordType.Forwarded: return "Forwarded Record";
-                case RecordType.Forwarding: return "Forwarding Record";
-                case RecordType.Index: return "Index Record";
-                case RecordType.Blob: return "BLOB Fragment";
-                case RecordType.GhostIndex: return "Ghost Index Record";
-                case RecordType.GhostData: return "Ghost Data Record";
-                case RecordType.GhostRecordVersion: return "Ghost Record Version";
-                default: return "Unknown";
+                case RecordType.Primary:
+                    return "Primary Record";
+                case RecordType.Forwarded:
+                    return "Forwarded Record";
+                case RecordType.Forwarding:
+                    return "Forwarding Record";
+                case RecordType.Index:
+                    return "Index Record";
+                case RecordType.Blob:
+                    return "BLOB Fragment";
+                case RecordType.GhostIndex:
+                    return "Ghost Index Record";
+                case RecordType.GhostData:
+                    return "Ghost Data Record";
+                case RecordType.GhostRecordVersion:
+                    return "Ghost Record Version";
+                default:
+                    return "Unknown";
             }
         }
 
@@ -62,7 +69,7 @@ namespace InternalsViewer.Internals.Records
             return stringBuilder.ToString();
         }
 
-        public static string GetArrayString(UInt16[] array)
+        public static string GetArrayString(ushort[] array)
         {
             var sb = new StringBuilder();
 
@@ -82,9 +89,7 @@ namespace InternalsViewer.Internals.Records
         /// <summary>
         /// Get a specific null bitmap value
         /// </summary>
-        /// <param name="columnOrdinal">The column ordinal.</param>
-        /// <returns></returns>
-        public bool NullBitmapValue(Int16 index)
+        public bool NullBitmapValue(short index)
         {
             if (false) // TODO: has sparse column...
             {
@@ -146,19 +151,16 @@ namespace InternalsViewer.Internals.Records
         /// </summary>
         /// <value>The slot offset.</value>
         [MarkAttribute("Slot Offset")]
-        public UInt16 SlotOffset { get; set; }
+        public ushort SlotOffset { get; set; }
 
         /// <summary>
         /// Gets or sets the Column Offset Array
         /// </summary>
         /// <value>The col offset array.</value>
-        public UInt16[] ColOffsetArray { get; set; }
+        public ushort[] ColOffsetArray { get; set; }
 
         [MarkAttribute("Column Offset Array", "Blue", "AliceBlue", true)]
-        public string ColOffsetArrayDescription
-        {
-            get { return GetArrayString(ColOffsetArray); }
-        }
+        public string ColOffsetArrayDescription => GetArrayString(ColOffsetArray);
 
         /// <summary>
         /// Gets or sets the status bits A value
@@ -167,10 +169,7 @@ namespace InternalsViewer.Internals.Records
         public BitArray StatusBitsA { get; set; }
 
         [MarkAttribute("Status Bits A", "Red", "Gainsboro", true)]
-        public string StatusBitsADescription
-        {
-            get { return GetRecordTypeDescription(RecordType) + GetStatusBitsDescription(this); }
-        }
+        public string StatusBitsADescription => GetRecordTypeDescription(RecordType) + GetStatusBitsDescription(this);
 
         /// <summary>
         /// Gets or sets the status bits B value
@@ -183,21 +182,21 @@ namespace InternalsViewer.Internals.Records
         /// </summary>
         /// <value>The number of bytes used for the column count.</value>
         /// <remarks>Used for SQL Server 2008 page compression</remarks>
-        public Int16 ColumnCountBytes { get; set; }
+        public short ColumnCountBytes { get; set; }
 
         /// <summary>
         /// Gets or sets the number of columns.
         /// </summary>
         /// <value>The number of columns in the record</value>
         [MarkAttribute("Column Count", "DarkGreen", "Gainsboro", true)]
-        public Int16 ColumnCount { get; set; }
+        public short ColumnCount { get; set; }
 
         /// <summary>
         /// Gets or sets the fixed column offset.
         /// </summary>
         /// <value>The offset location of the start of the fixed column fields</value>
         [MarkAttribute("Column Count Offset", "Blue", "Gainsboro", true)]
-        public Int16 ColumnCountOffset { get; set; }
+        public short ColumnCountOffset { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this instance has variable length columns.
@@ -211,14 +210,14 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the variable length data offset.
         /// </summary>
         /// <value>The variable length data offset.</value>
-        public UInt16 VariableLengthDataOffset { get; set; }
+        public ushort VariableLengthDataOffset { get; set; }
 
         /// <summary>
         /// Gets or sets the variable length column count.
         /// </summary>
         /// <value>The variable length column count.</value>
         [MarkAttribute("Variable Length Column Count", "Black", "AliceBlue", true)]
-        public UInt16 VariableLengthColumnCount { get; set; }
+        public ushort VariableLengthColumnCount { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this instance has a null bitmap.
@@ -232,7 +231,7 @@ namespace InternalsViewer.Internals.Records
         /// Gets or sets the size of the null bitmap in bytes
         /// </summary>
         /// <value>The size of the null bitmap in bytes</value>
-        public Int16 NullBitmapSize { get; set; }
+        public short NullBitmapSize { get; set; }
 
         /// <summary>
         /// Gets or sets the null bitmap.
@@ -241,10 +240,7 @@ namespace InternalsViewer.Internals.Records
         public BitArray NullBitmap { get; set; }
 
         [MarkAttribute("Null Bitmap", "Purple", "Gainsboro", true)]
-        public string NullBitmapDescription
-        {
-            get { return HasNullBitmap ? GetNullBitmapString(NullBitmap) : string.Empty; }
-        }
+        public string NullBitmapDescription => HasNullBitmap ? GetNullBitmapString(NullBitmap) : string.Empty;
 
         /// <summary>
         /// Gets or sets a value indicating whether this instance has a uniqueifier.
@@ -266,12 +262,8 @@ namespace InternalsViewer.Internals.Records
         /// <value>The record fields.</value>
         public List<RecordField> Fields { get; set; }
 
-        public RecordField[] FieldsArray
-        {
-            get { return Fields.ToArray(); }
-        }
-
-
+        public RecordField[] FieldsArray => Fields.ToArray();
+        
         /// <summary>
         /// Gets or sets the record structure.
         /// </summary>

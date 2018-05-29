@@ -9,7 +9,7 @@ namespace InternalsViewer.Internals.Records
         public const int ColCountOffset = 2;
         public const int ColumnsOffset = 4;
 
-        internal SparseVector(byte[] sparseRecord, TableStructure structure, DataRecord parentRecord, Int16 recordOffset)
+        internal SparseVector(byte[] sparseRecord, TableStructure structure, DataRecord parentRecord, short recordOffset)
         {
             Data = sparseRecord;
             Structure = structure;
@@ -19,7 +19,7 @@ namespace InternalsViewer.Internals.Records
             SparseVectorLoader.Load(this);
         }
 
-        public static string GetComplexHeaderDescription(Int16 complexVector)
+        public static string GetComplexHeaderDescription(short complexVector)
         {
             switch (complexVector)
             {
@@ -36,7 +36,7 @@ namespace InternalsViewer.Internals.Records
 
         internal DataRecord ParentRecord { get; set; }
 
-        public UInt16[] Columns { get; set; }
+        public ushort[] Columns { get; set; }
 
         [MarkAttribute("Sparse Columns", "Black", "Olive", true)]
         public string ColumnsDescription
@@ -50,14 +50,14 @@ namespace InternalsViewer.Internals.Records
             get { return Record.GetArrayString(Offset); }
         }
 
-        public UInt16[] Offset { get; set; }
+        public ushort[] Offset { get; set; }
 
         [MarkAttribute("Sparse Column Count", "Black", "SeaGreen", true)]
-        public Int16 ColCount { get; set; }
+        public short ColCount { get; set; }
 
-        public Int16 RecordOffset { get; set; }
+        public short RecordOffset { get; set; }
 
-        public Int16 ComplexHeader { get; set; }
+        public short ComplexHeader { get; set; }
 
         [MarkAttribute("Complex Header", "Green", "Gainsboro", true)]
         public string ComplexHeaderDescription

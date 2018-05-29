@@ -9,9 +9,9 @@ namespace InternalsViewer.UI
     {
         internal ColourRange(int from, int to, Color colour)
         {
-            this.From = from;
-            this.To = to;
-            this.Colour = colour;
+            From = from;
+            To = to;
+            Colour = colour;
         }
 
         /// <summary>

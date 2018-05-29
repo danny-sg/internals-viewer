@@ -12,10 +12,10 @@ namespace InternalsViewer.UI.Controls
 
         public FlatMenuStrip()
         {
-            this.Dock = DockStyle.Top;
+            Dock = DockStyle.Top;
             GripStyle = ToolStripGripStyle.Hidden;
 
-            this.AutoSize = false;
+            AutoSize = false;
 
            // this.SetRenderer();
         }
@@ -36,16 +36,16 @@ namespace InternalsViewer.UI.Controls
         /// </summary>
         private void SetRenderer()
         {
-            if ((Renderer is ToolStripProfessionalRenderer) && (Renderer != this.renderer))
+            if ((Renderer is ToolStripProfessionalRenderer) && (Renderer != renderer))
             {
-                if (this.renderer == null)
+                if (renderer == null)
                 {
-                    this.renderer = new ToolStripProfessionalRenderer();
+                    renderer = new ToolStripProfessionalRenderer();
 
-                    this.renderer.RoundedEdges = false;
+                    renderer.RoundedEdges = false;
                 }
 
-                Renderer = this.renderer;
+                Renderer = renderer;
             }
         }
     }

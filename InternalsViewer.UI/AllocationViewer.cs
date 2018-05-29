@@ -27,10 +27,10 @@ namespace InternalsViewer.UI
         {
             InitializeComponent();
 
-            this.allocationMap.PageOver += this.OnPageOver;
-            this.allocationMap.PageClicked += this.OnPageClicked;
+            allocationMap.PageOver += OnPageOver;
+            allocationMap.PageClicked += OnPageClicked;
 
-            this.SetColours(AllocationViewer.CreateIamColours());
+            SetColours(AllocationViewer.CreateIamColours());
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace InternalsViewer.UI
         /// <returns></returns>
         public List<Marker> SetAllocationPage(PageAddress pageAddress, string databaseName, string connectionString, bool showHeader)
         {
-            this.topPanel.Visible = showHeader;
+            topPanel.Visible = showHeader;
 
             var allocationPage = new AllocationPage(connectionString, databaseName, pageAddress);
 
@@ -125,7 +125,7 @@ namespace InternalsViewer.UI
 
             if (showHeader)
             {
-                this.SetIamInformation(allocationPage);
+                SetIamInformation(allocationPage);
             }
 
             var markers = MarkerBuilder.BuildMarkers(allocationPage, string.Empty);
@@ -141,7 +141,7 @@ namespace InternalsViewer.UI
         /// <param name="connectionString">The connection string.</param>
         public void SetPfsPage(PageAddress pageAddress, string databaseName, string connectionString)
         {
-            this.topPanel.Visible = false;
+            topPanel.Visible = false;
 
             var pfsPage = new PfsPage(connectionString, databaseName, pageAddress);
 
@@ -170,9 +170,9 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         internal virtual void OnPageOver(object sender, PageEventArgs e)
         {
-            if (this.PageOver != null)
+            if (PageOver != null)
             {
-                this.PageOver(sender, e);
+                PageOver(sender, e);
             }
         }
 
@@ -183,9 +183,9 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         internal virtual void OnPageClicked(object sender, PageEventArgs e)
         {
-            if (this.PageClicked != null)
+            if (PageClicked != null)
             {
-                this.PageClicked(sender, e);
+                PageClicked(sender, e);
             }
         }
 
@@ -198,7 +198,7 @@ namespace InternalsViewer.UI
         {
             var pageAddress = PageAddress.Parse((sender as TextBox).Text);
 
-            this.OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, 0), false));
+            OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, 0), false));
         }
 
         /// <summary>

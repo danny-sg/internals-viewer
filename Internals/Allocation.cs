@@ -79,7 +79,7 @@ namespace InternalsViewer.Internals
 
             if (page.Header.PageType == PageType.Iam)
             {
-                throw new ArgumentException();
+                //throw new ArgumentException();
             }
 
             Pages.Add(page);

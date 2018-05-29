@@ -63,13 +63,13 @@ namespace InternalsViewer.Internals.Structures
         /// Gets or sets the data length
         /// </summary>
         /// <value>The length of the data.</value>
-        public Int16 DataLength { get; set; } = 0;
+        public short DataLength { get; set; } = 0;
 
         /// <summary>
         /// Gets or sets the leaf offset.
         /// </summary>
         /// <value>The leaf offset.</value>
-        public Int16 LeafOffset { get; set; }
+        public short LeafOffset { get; set; }
 
         /// <summary>
         /// Gets or sets the precision.
@@ -99,7 +99,7 @@ namespace InternalsViewer.Internals.Structures
         /// Gets or sets the index of null bit.
         /// </summary>
         /// <value>The index of null bit.</value>
-        public Int16 NullBit { get; set; }
+        public short NullBit { get; set; }
 
         #endregion
     }

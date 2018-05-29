@@ -27,11 +27,11 @@ namespace InternalsViewer.Internals.BlobPointers
 
             Timestamp = BitConverter.ToInt32(data, TimestampOffset);
 
-            Mark("Timestamp", offset + RootField.TimestampOffset, sizeof(Int32));
+            Mark("Timestamp", offset + RootField.TimestampOffset, sizeof(int));
 
             UpdateSeq = BitConverter.ToInt16(data, UpdateSeqOffset);
 
-            Mark("UpdateSeq", offset + RootField.UpdateSeqOffset, sizeof(Int16));
+            Mark("UpdateSeq", offset + RootField.UpdateSeqOffset, sizeof(short));
         }
 
         protected override void LoadLinks()
@@ -53,9 +53,9 @@ namespace InternalsViewer.Internals.BlobPointers
 
                 var link = new BlobChildLink(rowId, 0, length);
 
-                link.Mark("Length", Offset + RootField.ChildOffset + (i * 12), sizeof(Int32));
+                link.Mark("Length", Offset + RootField.ChildOffset + (i * 12), sizeof(int));
 
-                link.Mark("RowIdentifier", Offset + RootField.ChildOffset + (i * 12) + sizeof(Int32), 8);
+                link.Mark("RowIdentifier", Offset + RootField.ChildOffset + (i * 12) + sizeof(int), 8);
 
                 Links.Add(link);
             }

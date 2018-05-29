@@ -34,10 +34,10 @@ namespace InternalsViewer.UI
         {
             InitializeComponent();
 
-            this.colourTable = new ProfessionalColorTable();
-            this.colourTable.UseSystemColors = true;
+            colourTable = new ProfessionalColorTable();
+            colourTable.UseSystemColors = true;
 
-            this.pfsRenderer = new PfsRenderer(new Rectangle(1, 1, 34, 34), Color.White, SystemColors.ControlDark);
+            pfsRenderer = new PfsRenderer(new Rectangle(1, 1, 34, 34), Color.White, SystemColors.ControlDark);
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace InternalsViewer.UI
         /// </summary>
         private void CreateKeyImages()
         {
-            this.keyImages = new ImageList();
+            keyImages = new ImageList();
         }
 
         /// <summary>
@@ -54,21 +54,21 @@ namespace InternalsViewer.UI
         /// <param name="page">The page.</param>
         private void RefreshPage(Page page)
         {
-            this.pageToolStripTextBox.Text = page.PageAddress.ToString();
-            this.hexViewer.Page = this.Page;
-            this.pageBindingSource.DataSource = this.Page.Header;
-            this.offsetTable.Page = this.Page;
+            pageToolStripTextBox.Text = page.PageAddress.ToString();
+            hexViewer.Page = Page;
+            pageBindingSource.DataSource = Page.Header;
+            offsetTable.Page = Page;
 
             if (page.CompressionType == CompressionType.Page && !Page.OffsetTable.Contains(96))
             {
-                this.compressionInfoPanel.Visible = true;
+                compressionInfoPanel.Visible = true;
             }
             else
             {
-                this.compressionInfoPanel.Visible = false;
+                compressionInfoPanel.Visible = false;
             }
 
-            this.OnPageChanged(this, new PageEventArgs(new RowIdentifier(this.Page.PageAddress, 0), false));
+            OnPageChanged(this, new PageEventArgs(new RowIdentifier(Page.PageAddress, 0), false));
         }
 
         /// <summary>
@@ -83,20 +83,20 @@ namespace InternalsViewer.UI
             Image dcmAllocated = ExtentColour.KeyImage(Color.FromArgb(120, 150, 150));
             Image bcmAllocated = ExtentColour.KeyImage(Color.FromArgb(150, 120, 150));
 
-            this.gamPictureBox.Image = this.Page.AllocationStatus(PageType.Gam) ? unallocated : gamAllocated;
-            this.sGamPictureBox.Image = this.Page.AllocationStatus(PageType.Sgam) ? sGamAllocated : unallocated;
-            this.dcmPictureBox.Image = this.Page.AllocationStatus(PageType.Dcm) ? dcmAllocated : unallocated;
-            this.bcmPictureBox.Image = this.Page.AllocationStatus(PageType.Bcm) ? bcmAllocated : unallocated;
+            gamPictureBox.Image = Page.AllocationStatus(PageType.Gam) ? unallocated : gamAllocated;
+            sGamPictureBox.Image = Page.AllocationStatus(PageType.Sgam) ? sGamAllocated : unallocated;
+            dcmPictureBox.Image = Page.AllocationStatus(PageType.Dcm) ? dcmAllocated : unallocated;
+            bcmPictureBox.Image = Page.AllocationStatus(PageType.Bcm) ? bcmAllocated : unallocated;
 
-            this.gamTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Gam).ToString();
-            this.sgamTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Sgam).ToString();
-            this.dcmTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Dcm).ToString();
-            this.bcmTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Bcm).ToString();
-            this.pfsTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Pfs).ToString();
+            gamTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Gam).ToString();
+            sgamTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Sgam).ToString();
+            dcmTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Dcm).ToString();
+            bcmTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Bcm).ToString();
+            pfsTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Pfs).ToString();
 
-            this.pfsByte = this.Page.PfsStatus();
+            pfsByte = Page.PfsStatus();
 
-            this.pfsPanel.Invalidate();
+            pfsPanel.Invalidate();
         }
 
         /// <summary>
@@ -106,9 +106,9 @@ namespace InternalsViewer.UI
         /// <param name="rowIdentifier">The row identifier.</param>
         public void LoadPage(string connectionString, RowIdentifier rowIdentifier)
         {
-            this.LoadPage(connectionString, rowIdentifier.PageAddress);
+            LoadPage(connectionString, rowIdentifier.PageAddress);
 
-            this.offsetTable.SelectedSlot = rowIdentifier.SlotId;
+            offsetTable.SelectedSlot = rowIdentifier.SlotId;
         }
 
         /// <summary>
@@ -125,16 +125,16 @@ namespace InternalsViewer.UI
             {
                 var builder = new SqlConnectionStringBuilder(connectionString);
 
-                this.ConnectionString = connectionString;
+                ConnectionString = connectionString;
 
-                this.Page = new Page(this.ConnectionString, builder.InitialCatalog, pageAddress);
+                Page = new Page(ConnectionString, builder.InitialCatalog, pageAddress);
 
-                this.RefreshAllocationStatus(this.Page.PageAddress);
+                RefreshAllocationStatus(Page.PageAddress);
 
-                this.pageToolStripTextBox.DatabaseId = this.Page.DatabaseId;
+                pageToolStripTextBox.DatabaseId = Page.DatabaseId;
 
-                this.serverToolStripStatusLabel.Text = builder.DataSource;
-                this.dataaseToolStripStatusLabel.Text = builder.InitialCatalog;
+                serverToolStripStatusLabel.Text = builder.DataSource;
+                dataaseToolStripStatusLabel.Text = builder.InitialCatalog;
             }
         }
 
@@ -145,7 +145,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
         private void PageTextBox_MouseClick(object sender, MouseEventArgs e)
         {
-            this.LoadPage(this.ConnectionString, PageAddress.Parse((sender as TextBox).Text));
+            LoadPage(ConnectionString, PageAddress.Parse((sender as TextBox).Text));
         }
 
         /// <summary>
@@ -157,9 +157,9 @@ namespace InternalsViewer.UI
         {
             if (offsetTable.SelectedOffset > 0)
             {
-                this.compressionInfoTable.SelectedStructure = CompressionInformation.CompressionInfoStructure.None;
+                compressionInfoTable.SelectedStructure = CompressionInformation.CompressionInfoStructure.None;
 
-                this.LoadRecord(offsetTable.SelectedOffset);
+                LoadRecord(offsetTable.SelectedOffset);
             }
         }
 
@@ -171,19 +171,19 @@ namespace InternalsViewer.UI
         {
             Record record = null;
 
-            switch (this.Page.Header.PageType)
+            switch (Page.Header.PageType)
             {
                 case PageType.Data:
 
-                    Structure tableStructure = new TableStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
+                    Structure tableStructure = new TableStructure(Page.Header.AllocationUnitId, Page.Database);
 
-                    if (this.Page.CompressionType == CompressionType.None)
+                    if (Page.CompressionType == CompressionType.None)
                     {
-                        record = new DataRecord(this.Page, offset, tableStructure);
+                        record = new DataRecord(Page, offset, tableStructure);
                     }
                     else
                     {
-                        record = new CompressedDataRecord(this.Page, offset, tableStructure);
+                        record = new CompressedDataRecord(Page, offset, tableStructure);
                     }
 
                     allocationViewer.Visible = false;
@@ -192,9 +192,9 @@ namespace InternalsViewer.UI
 
                 case PageType.Index:
 
-                    Structure indexStructure = new IndexStructure(this.Page.Header.AllocationUnitId, this.Page.Database);
+                    Structure indexStructure = new IndexStructure(Page.Header.AllocationUnitId, Page.Database);
 
-                    record = new IndexRecord(this.Page, offset, indexStructure);
+                    record = new IndexRecord(Page, offset, indexStructure);
 
                     allocationViewer.Visible = false;
                     markerKeyTable.Visible = true;
@@ -206,10 +206,10 @@ namespace InternalsViewer.UI
                 case PageType.Bcm:
                 case PageType.Dcm:
 
-                    allocationViewer.SetAllocationPage(this.Page.Header.PageAddress,
-                                                       this.Page.Database.Name,
-                                                       this.ConnectionString,
-                                                      (this.Page.Header.PageType == PageType.Iam));
+                    allocationViewer.SetAllocationPage(Page.Header.PageAddress,
+                                                       Page.Database.Name,
+                                                       ConnectionString,
+                                                      (Page.Header.PageType == PageType.Iam));
 
                     markerKeyTable.Visible = false;
                     allocationViewer.Visible = true;
@@ -217,9 +217,9 @@ namespace InternalsViewer.UI
 
                 case PageType.Pfs:
 
-                    allocationViewer.SetPfsPage(this.Page.Header.PageAddress,
-                                                this.Page.Database.Name,
-                                                this.ConnectionString);
+                    allocationViewer.SetPfsPage(Page.Header.PageAddress,
+                                                Page.Database.Name,
+                                                ConnectionString);
 
                     markerKeyTable.Visible = false;
                     allocationViewer.Visible = true;
@@ -228,7 +228,7 @@ namespace InternalsViewer.UI
                 case PageType.Lob3:
                 case PageType.Lob4:
 
-                    record = new BlobRecord(this.Page, offset);
+                    record = new BlobRecord(Page, offset);
 
                     allocationViewer.Visible = false;
                     markerKeyTable.Visible = true;
@@ -239,13 +239,13 @@ namespace InternalsViewer.UI
             {
                 var markers = MarkerBuilder.BuildMarkers((Markable)record);
 
-                this.hexViewer.AddMarkers(markers);
+                hexViewer.AddMarkers(markers);
 
-                this.markerKeyTable.SetMarkers(markers);
+                markerKeyTable.SetMarkers(markers);
 
-                this.hexViewer.ScrollToOffset(offset);
+                hexViewer.ScrollToOffset(offset);
 
-                this.offsetTableToolStripTextBox.Text = string.Format("{0:0000}", offset);
+                offsetTableToolStripTextBox.Text = string.Format("{0:0000}", offset);
             }
         }
 
@@ -255,12 +255,12 @@ namespace InternalsViewer.UI
         /// <param name="slotId">The slot id.</param>
         public void SetSlot(int slotId)
         {
-            this.offsetTable.SelectedSlot = slotId;
+            offsetTable.SelectedSlot = slotId;
         }
 
         private void FindRecord(int offset)
         {
-            var sortedOffsetTable = new List<ushort>(this.Page.OffsetTable.ToArray());
+            var sortedOffsetTable = new List<ushort>(Page.OffsetTable.ToArray());
 
             sortedOffsetTable.Sort();
 
@@ -280,7 +280,7 @@ namespace InternalsViewer.UI
 
             if (currentOffset > 0)
             {
-                this.offsetTable.SelectedSlot = Page.OffsetTable.IndexOf(currentOffset);
+                offsetTable.SelectedSlot = Page.OffsetTable.IndexOf(currentOffset);
             }
         }
 
@@ -289,7 +289,7 @@ namespace InternalsViewer.UI
             int startPos;
             int endPos;
 
-            var hexString = this.hexViewer.Text.Replace(" ", string.Empty).Replace("\n", string.Empty);
+            var hexString = hexViewer.Text.Replace(" ", string.Empty).Replace("\n", string.Empty);
 
             startPos = hexString.IndexOf(findHex, searchPos + 1);
 
@@ -300,11 +300,11 @@ namespace InternalsViewer.UI
                     endPos = startPos + findHex.Length - 1;
                     searchPos = endPos;
 
-                    this.hexViewer.SetSelection(startPos / 2, endPos / 2);
+                    hexViewer.SetSelection(startPos / 2, endPos / 2);
                 }
                 else if (!suppressContinue)
                 {
-                    this.FindNext(findHex, true);
+                    FindNext(findHex, true);
                     return;
                 }
             }
@@ -325,7 +325,7 @@ namespace InternalsViewer.UI
             {
                 try
                 {
-                    this.LoadPage(this.ConnectionString, PageAddress.Parse(pageToolStripTextBox.Text));
+                    LoadPage(ConnectionString, PageAddress.Parse(pageToolStripTextBox.Text));
                 }
                 catch (Exception ex)
                 {
@@ -341,7 +341,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void PreviousToolStripButton_Click(object sender, EventArgs e)
         {
-            this.LoadPage(this.ConnectionString, new PageAddress(this.Page.PageAddress.FileId, this.Page.PageAddress.PageId - 1));
+            LoadPage(ConnectionString, new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId - 1));
         }
 
         /// <summary>
@@ -351,7 +351,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void NextToolStripButton_Click(object sender, EventArgs e)
         {
-            this.LoadPage(this.ConnectionString, new PageAddress(this.Page.PageAddress.FileId, this.Page.PageAddress.PageId + 1));
+            LoadPage(ConnectionString, new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId + 1));
         }
 
         /// <summary>
@@ -361,7 +361,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
         {
-            this.LoadPage(this.ConnectionString, e.RowId);
+            LoadPage(ConnectionString, e.RowId);
         }
 
         /// <summary>
@@ -371,7 +371,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void MarkerKeyTable_SelectionChanged(object sender, EventArgs e)
         {
-            this.hexViewer.SelectMarker(markerKeyTable.SelectedMarker);
+            hexViewer.SelectMarker(markerKeyTable.SelectedMarker);
         }
 
         /// <summary>
@@ -381,7 +381,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         private void MarkerKeyTable_SelectionClicked(object sender, EventArgs e)
         {
-            this.hexViewer.HideToolTip();
+            hexViewer.HideToolTip();
         }
 
         /// <summary>
@@ -391,7 +391,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.UI.OffsetEventArgs"/> instance containing the event data.</param>
         private void HexViewer_OffsetOver(object sender, OffsetEventArgs e)
         {
-            switch (this.Page.Header.PageType)
+            switch (Page.Header.PageType)
             {
                 case PageType.Bcm:
                 case PageType.Dcm:
@@ -437,31 +437,31 @@ namespace InternalsViewer.UI
             {
                 case CompressionInformation.CompressionInfoStructure.Anchor:
 
-                    if (this.Page.CompressionInformation.AnchorRecord != null)
+                    if (Page.CompressionInformation.AnchorRecord != null)
                     {
-                        markers = MarkerBuilder.BuildMarkers(this.Page.CompressionInformation.AnchorRecord);
+                        markers = MarkerBuilder.BuildMarkers(Page.CompressionInformation.AnchorRecord);
                     }
 
                     break;
 
                 case CompressionInformation.CompressionInfoStructure.Dictionary:
 
-                    if (this.Page.CompressionInformation.HasDictionary)
+                    if (Page.CompressionInformation.HasDictionary)
                     {
-                        markers = MarkerBuilder.BuildMarkers(this.Page.CompressionInformation.CompressionDictionary);
+                        markers = MarkerBuilder.BuildMarkers(Page.CompressionInformation.CompressionDictionary);
                     }
 
                     break;
 
                 case CompressionInformation.CompressionInfoStructure.Header:
 
-                    markers = MarkerBuilder.BuildMarkers(this.Page?.CompressionInformation);
+                    markers = MarkerBuilder.BuildMarkers(Page?.CompressionInformation);
                     break;
             }
 
-            this.hexViewer.AddMarkers(markers);
+            hexViewer.AddMarkers(markers);
 
-            this.markerKeyTable.SetMarkers(markers);
+            markerKeyTable.SetMarkers(markers);
         }
 
 
@@ -472,7 +472,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         private void AllocationViewer_PageOver(object sender, PageEventArgs e)
         {
-            if (this.Page.Header.PageType == PageType.Pfs)
+            if (Page.Header.PageType == PageType.Pfs)
             {
                 pageAddressToolStripStatusLabel.Text = e.Address.ToString(); //+ " " + this.allocationViewer.allocationContainer.PagePfsByte(e.Address).ToString();
             }
@@ -489,7 +489,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         private void AllocationViewer_PageClicked(object sender, PageEventArgs e)
         {
-            this.LoadPage(this.ConnectionString, e.Address);
+            LoadPage(ConnectionString, e.Address);
         }
 
         /// <summary>
@@ -505,7 +505,7 @@ namespace InternalsViewer.UI
 
                 if (ushort.TryParse(offsetTableToolStripTextBox.Text, out offset) && offset < Page.Size && offset > 0)
                 {
-                    this.LoadRecord(offset);
+                    LoadRecord(offset);
                 }
             }
         }
@@ -517,9 +517,9 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
         private void PfsPanel_Paint(object sender, PaintEventArgs e)
         {
-            if (this.pfsByte != null)
+            if (pfsByte != null)
             {
-                this.pfsRenderer.DrawPfsPage(e.Graphics, new Rectangle(0, 0, 32, 32), this.pfsByte);
+                pfsRenderer.DrawPfsPage(e.Graphics, new Rectangle(0, 0, 32, 32), pfsByte);
             }
         }
 
@@ -532,7 +532,7 @@ namespace InternalsViewer.UI
         {
             int offset = e.Offset;
 
-            this.FindRecord(offset);
+            FindRecord(offset);
         }
 
         /// <summary>
@@ -542,7 +542,7 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.UI.OffsetEventArgs"/> instance containing the event data.</param>
         private void HexViewer_OffsetSet(object sender, OffsetEventArgs e)
         {
-            this.LoadRecord(e.Offset);
+            LoadRecord(e.Offset);
         }
 
         /// <summary>
@@ -554,8 +554,8 @@ namespace InternalsViewer.UI
             base.OnPaint(e);
 
             using (var brush = new LinearGradientBrush(ClientRectangle,
-                                                                       this.colourTable.ToolStripGradientBegin,
-                                                                       this.colourTable.ToolStripGradientEnd,
+                                                                       colourTable.ToolStripGradientBegin,
+                                                                       colourTable.ToolStripGradientEnd,
                                                                        LinearGradientMode.Horizontal))
             {
                 e.Graphics.FillRectangle(brush, ClientRectangle);
@@ -569,17 +569,17 @@ namespace InternalsViewer.UI
         /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
         internal virtual void OnPageChanged(object sender, PageEventArgs e)
         {
-            if (this.PageChanged != null)
+            if (PageChanged != null)
             {
-                this.PageChanged(sender, e);
+                PageChanged(sender, e);
             }
         }
 
         internal virtual void OnOpenDecodeWindow(object sender, PageEventArgs e)
         {
-            if (this.OpenDecodeWindow != null)
+            if (OpenDecodeWindow != null)
             {
-                this.OpenDecodeWindow(sender, e);
+                OpenDecodeWindow(sender, e);
             }
         }
 
@@ -591,15 +591,15 @@ namespace InternalsViewer.UI
         {
             get
             {
-                return this.page;
+                return page;
             }
             set
             {
-                this.page = value;
+                page = value;
 
-                if (this.page != null)
+                if (page != null)
                 {
-                    this.RefreshPage(this.Page);
+                    RefreshPage(Page);
                 }
             }
         }
@@ -614,24 +614,24 @@ namespace InternalsViewer.UI
         {
             offsetTable.SelectedSlot = -1;
 
-            this.DisplayCompressionInfoStructure(compressionInfoTable.SelectedStructure);
+            DisplayCompressionInfoStructure(compressionInfoTable.SelectedStructure);
         }
 
         private void EncodeAndFindToolStripButton_Click(object sender, EventArgs e)
         {
-            this.OpenDecodeWindow(this, EventArgs.Empty);
+            OpenDecodeWindow(this, EventArgs.Empty);
         }
 
         internal void FindNext(string hexString)
         {
-            this.FindNext(hexString, false);
+            FindNext(hexString, false);
         }
 
         public void SetLogData(Dictionary<string, LogData> logData)
         {
             this.logData = logData;
-            this.logToolStripComboBox.Visible = true;
-            this.logToolStripLabel.Visible = true;
+            logToolStripComboBox.Visible = true;
+            logToolStripLabel.Visible = true;
         }
 
         private void LogToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -668,17 +668,17 @@ namespace InternalsViewer.UI
             }
             if (logData != null)
             {
-                logData.MergeData(this.Page);
+                logData.MergeData(Page);
 
-                startPos = this.Page.OffsetTable[logData.Slot] + logData.Offset;
+                startPos = Page.OffsetTable[logData.Slot] + logData.Offset;
                 endPos = startPos + logData.Data.Length;
 
-                this.hexViewer.AddBlock(new BlockSelection() { Colour = colour, StartPos = startPos, EndPos = endPos });
+                hexViewer.AddBlock(new BlockSelection() { Colour = colour, StartPos = startPos, EndPos = endPos });
 
             }
 
-            this.Refresh();
-            this.LoadRecord(this.offsetTable.SelectedOffset);
+            Refresh();
+            LoadRecord(offsetTable.SelectedOffset);
         }
     }
 }
