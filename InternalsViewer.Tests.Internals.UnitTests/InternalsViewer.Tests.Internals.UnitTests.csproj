@@ -50,7 +50,7 @@
   <ItemGroup>
     <Compile Include="Helpers\FileHeaderReader.cs" />
     <Compile Include="Helpers\TextPageReader.cs" />
-    <Compile Include="UnitTest1.cs" />
+    <Compile Include="TextHeaderReaderUnitTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
