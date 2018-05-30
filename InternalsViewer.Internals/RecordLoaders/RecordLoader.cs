@@ -44,17 +44,14 @@ namespace InternalsViewer.Internals.RecordLoaders
             switch ((BlobFieldType)data[0])
             {
                 case BlobFieldType.LobPointer:
-
                     field.BlobInlineRoot = new PointerField(data, offset);
                     break;
 
                 case BlobFieldType.LobRoot:
-
                     field.BlobInlineRoot = new RootField(data, offset);
                     break;
 
                 case BlobFieldType.RowOverflow:
-
                     field.BlobInlineRoot = new OverflowField(data, offset);
                     break;
             }
@@ -71,10 +68,8 @@ namespace InternalsViewer.Internals.RecordLoaders
             {
                 return Convert.ToUInt16(value ^ 0x8000);
             }
-            else
-            {
-                return value;
-            }
+
+            return value;
         }
     }
 }

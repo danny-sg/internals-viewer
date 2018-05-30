@@ -45,14 +45,11 @@ namespace InternalsViewer.Internals.Pages
                 case PageType.Iam:
                 case PageType.Sgam:
                 case PageType.Gam:
-
-
                     LoadAllocationMap();
                     break;
                 default:
                     throw new InvalidOperationException(Header.PageType + " is not an allocation page");
             }
-
         }
 
         public AllocationPage(string connectionString, string database, PageAddress pageAddress)
@@ -139,17 +136,17 @@ namespace InternalsViewer.Internals.Pages
         /// </summary>
         private void LoadSinglePageSlots()
         {
-            var slotOffset = SinglePageSlotOffset;
+            var offset = SinglePageSlotOffset;
 
             for (var i = 0; i < 8; i++)
             {
                 var pageAddress = new byte[6];
 
-                Array.Copy(PageData, slotOffset, pageAddress, 0, 6);
+                Array.Copy(PageData, offset, pageAddress, 0, 6);
 
                 SinglePageSlots.Add(new PageAddress(pageAddress));
 
-                slotOffset += 6;
+                offset += 6;
             }
         }
 

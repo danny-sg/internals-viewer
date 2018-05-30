@@ -234,12 +234,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Internals\InternalsViewer.Internals.csproj">
-      <Project>{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}</Project>
-      <Name>InternalsViewer.Internals</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="InternalsViewer.UI.snk" />
     <None Include="Resources\connect.png" />
   </ItemGroup>
@@ -310,6 +304,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\connect1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj">
+      <Project>{90f9f46a-dfa3-4f98-b6bf-8e2f087dd8a8}</Project>
+      <Name>InternalsViewer.Internals</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

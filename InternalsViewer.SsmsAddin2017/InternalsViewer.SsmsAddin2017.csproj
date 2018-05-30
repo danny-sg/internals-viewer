@@ -207,13 +207,13 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj">
+      <Project>{90f9f46a-dfa3-4f98-b6bf-8e2f087dd8a8}</Project>
+      <Name>InternalsViewer.Internals</Name>
+    </ProjectReference>
     <ProjectReference Include="..\InternalsViewer.UI\InternalsViewer.UI.csproj">
       <Project>{f9ce00a7-4c8d-4c8b-85f1-cd1aa3d1386d}</Project>
       <Name>InternalsViewer.UI</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Internals\InternalsViewer.Internals.csproj">
-      <Project>{90f9f46a-dfa3-4f98-b6bf-8e2f087dd8a8}</Project>
-      <Name>InternalsViewer.Internals</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -95,6 +95,7 @@
     <Compile Include="PageIo\DatabaseHeaderReader.cs" />
     <Compile Include="PageIo\DatabasePageReader.cs" />
     <Compile Include="PageIo\PageReader.cs" />
+    <Compile Include="PageIo\StringPageReader.cs" />
     <Compile Include="Pages\AllocationPage.cs" />
     <Compile Include="Pages\BootPage.cs" />
     <Compile Include="Pages\Header.cs" />

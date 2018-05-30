@@ -36,9 +36,7 @@ namespace InternalsViewer.Internals.RecordLoaders
             var columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);
 
             dataRecord.ColumnCountOffset = BitConverter.ToInt16(dataRecord.Page.PageData, columnCountOffsetPosition);
-
-            dataRecord.Mark("ColumnCountOffset", columnCountOffsetPosition, sizeof(short));
-
+            
             dataRecord.Mark("ColumnCountOffset", columnCountOffsetPosition, sizeof(short));
 
             // Column count 2-byte int located at the column count offset
@@ -266,8 +264,8 @@ namespace InternalsViewer.Internals.RecordLoaders
             var statusA = record.Page.PageData[record.SlotOffset];
 
             // bytes 0 and 1 are Status Bits A and B
-            record.StatusBitsA = new BitArray(new byte[] { statusA });
-            record.StatusBitsB = new BitArray(new byte[] { record.Page.PageData[record.SlotOffset + 1] });
+            record.StatusBitsA = new BitArray(new[] { statusA });
+            record.StatusBitsB = new BitArray(new[] { record.Page.PageData[record.SlotOffset + 1] });
 
             record.Mark("StatusBitsADescription", record.SlotOffset, sizeof(byte));
 

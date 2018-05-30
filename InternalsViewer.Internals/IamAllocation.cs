@@ -39,12 +39,9 @@ namespace InternalsViewer.Internals
         /// <returns></returns>
         public override bool Allocated(int extent, int fileId)
         {
-            var page = Pages.Find(delegate(AllocationPage p)
-            {
-                return p.StartPage.FileId == fileId &&
-                       extent >= (p.StartPage.PageId / 8) &&
-                       extent <= ((p.StartPage.PageId + Database.AllocationInterval) / 8);
-            });
+            var page = Pages.Find(p => p.StartPage.FileId == fileId &&
+                                       extent >= (p.StartPage.PageId / 8) &&
+                                       extent <= ((p.StartPage.PageId + Database.AllocationInterval) / 8));
 
             if (page == null)
             {
