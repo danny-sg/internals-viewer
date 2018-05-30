@@ -1,5 +1,7 @@
 ﻿using System;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Tests.Internals.UnitTests.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

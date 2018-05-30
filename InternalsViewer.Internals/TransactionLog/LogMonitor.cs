@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.TransactionLog
@@ -43,7 +44,7 @@ namespace InternalsViewer.Internals.TransactionLog
 
         private static void Checkpoint(string connectionString, string database)
         {
-            DataAccess.ExecuteNonQuery(connectionString, Properties.Resources.SQL_Checkpoint, database, System.Data.CommandType.Text);
+            DataAccess.ExecuteNonQuery(connectionString, Properties.Resources.SQL_Checkpoint, database, CommandType.Text);
         }
     }
 }

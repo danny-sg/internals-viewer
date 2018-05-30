@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace InternalsViewer.Internals.Pages
+namespace InternalsViewer.Internals.Engine.Address
 {
     /// <summary>
     /// Row Identifier (RID)
@@ -10,6 +10,18 @@ namespace InternalsViewer.Internals.Pages
     public struct RowIdentifier
     {
         public const int Size = sizeof(short) + sizeof(short) + sizeof(int);
+
+        /// <summary>
+        /// Gets or sets the page address.
+        /// </summary>
+        /// <value>The page address.</value>
+        public PageAddress PageAddress { get; set; }
+
+        /// <summary>
+        /// Gets or sets the slot id.
+        /// </summary>
+        /// <value>The slot id.</value>
+        public int SlotId { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RowIdentifier"/> struct.
@@ -51,8 +63,6 @@ namespace InternalsViewer.Internals.Pages
         /// <returns></returns>
         public static RowIdentifier Parse(string address)
         {
-            int fileId;
-            int pageId;
             short slot = 0;
 
             var sb = new StringBuilder(address);
@@ -67,8 +77,8 @@ namespace InternalsViewer.Internals.Pages
                 throw new ArgumentException("Invalid format");
             }
 
-            var parsed = true & int.TryParse(splitAddress[0], out fileId);
-            parsed = parsed & int.TryParse(splitAddress[1], out pageId);
+            var parsed = true & int.TryParse(splitAddress[0], out var fileId);
+            parsed = parsed & int.TryParse(splitAddress[1], out var pageId);
 
             if (splitAddress.Length > 2)
             {
@@ -79,10 +89,8 @@ namespace InternalsViewer.Internals.Pages
             {
                 return new RowIdentifier(new PageAddress(fileId, pageId), slot);
             }
-            else
-            {
-                throw new ArgumentException("Invalid format");
-            }
+
+            throw new ArgumentException("Invalid format");
         }
 
         /// <summary>
@@ -98,17 +106,5 @@ namespace InternalsViewer.Internals.Pages
                                  PageAddress.PageId,
                                  SlotId);
         }
-
-        /// <summary>
-        /// Gets or sets the page address.
-        /// </summary>
-        /// <value>The page address.</value>
-        public PageAddress PageAddress { get; set; }
-
-        /// <summary>
-        /// Gets or sets the slot id.
-        /// </summary>
-        /// <value>The slot id.</value>
-        public int SlotId { get; set; }
     }
 }

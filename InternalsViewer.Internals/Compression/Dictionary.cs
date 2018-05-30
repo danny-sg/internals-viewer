@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Compression

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using InternalsViewer.Internals.BlobPointers;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.RecordLoaders;
+using InternalsViewer.Internals.Records;
 
-namespace InternalsViewer.Internals.Records
+namespace InternalsViewer.Internals.Engine.Records.Blob
 {
     public class BlobRecord : Record
     {

@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using InternalsViewer.Internals.Pages;
 using System.Collections.Generic;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.BlobPointers
@@ -20,19 +21,19 @@ namespace InternalsViewer.Internals.BlobPointers
         public OverflowField(byte[] data, int offset)
             : base(data, offset)
         {
-            Mark("Unused", offset + OverflowField.UnusedOffset, sizeof(byte));
+            Mark("Unused", offset + UnusedOffset, sizeof(byte));
 
             Unused = data[UnusedOffset];
 
-            Mark("Level", offset + OverflowField.LevelOffset, sizeof(byte));
+            Mark("Level", offset + LevelOffset, sizeof(byte));
 
             Level = data[LevelOffset];
 
-            Mark("Timestamp", offset + OverflowField.LevelOffset, sizeof(int));
+            Mark("Timestamp", offset + LevelOffset, sizeof(int));
 
             Timestamp = BitConverter.ToInt32(data, TimestampOffset);
 
-            Mark("UpdateSeq", offset + OverflowField.UpdateSeqOffset, sizeof(short));
+            Mark("UpdateSeq", offset + UpdateSeqOffset, sizeof(short));
 
             UpdateSeq = BitConverter.ToInt16(data, UpdateSeqOffset);
         }

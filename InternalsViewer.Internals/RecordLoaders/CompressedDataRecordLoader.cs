@@ -6,6 +6,8 @@ using InternalsViewer.Internals.Structures;
 using System.Collections;
 using System.Data;
 using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.Compressed;
 
 namespace InternalsViewer.Internals.RecordLoaders
 {

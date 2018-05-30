@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.PageIo.Headers;
 using InternalsViewer.Internals.Pages;
 

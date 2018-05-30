@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Pages
 {
@@ -12,6 +14,24 @@ namespace InternalsViewer.Internals.Pages
         public const int AllocationArrayOffset = 194;
         public const int SinglePageSlotOffset = 142;
         public const int StartPageOffset = 136;
+
+        /// <summary>
+        /// Gets the allocation map.
+        /// </summary>
+        /// <value>The allocation map.</value>
+        public bool[] AllocationMap { get; } = new bool[64000];
+
+        /// <summary>
+        /// Gets the single page slots collection.
+        /// </summary>
+        /// <value>The single page slots collection.</value>
+        public List<PageAddress> SinglePageSlots { get; } = new List<PageAddress>();
+
+        /// <summary>
+        /// Gets or sets the start page.
+        /// </summary>
+        /// <value>The start page.</value>
+        public PageAddress StartPage { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AllocationPage"/> class.
@@ -149,27 +169,5 @@ namespace InternalsViewer.Internals.Pages
                 offset += 6;
             }
         }
-
-        #region Properties
-
-        /// <summary>
-        /// Gets the allocation map.
-        /// </summary>
-        /// <value>The allocation map.</value>
-        public bool[] AllocationMap { get; } = new bool[64000];
-
-        /// <summary>
-        /// Gets the single page slots collection.
-        /// </summary>
-        /// <value>The single page slots collection.</value>
-        public List<PageAddress> SinglePageSlots { get; } = new List<PageAddress>();
-
-        /// <summary>
-        /// Gets or sets the start page.
-        /// </summary>
-        /// <value>The start page.</value>
-        public PageAddress StartPage { get; set; }
-
-        #endregion
     }
 }

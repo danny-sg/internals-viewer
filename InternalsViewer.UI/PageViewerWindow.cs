@@ -11,6 +11,13 @@ using InternalsViewer.UI.Markers;
 using System.Drawing;
 using InternalsViewer.UI.Renderers;
 using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.Blob;
+using InternalsViewer.Internals.Engine.Records.Compressed;
+using InternalsViewer.Internals.Engine.Records.Data;
+using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.TransactionLog;
 
 namespace InternalsViewer.UI

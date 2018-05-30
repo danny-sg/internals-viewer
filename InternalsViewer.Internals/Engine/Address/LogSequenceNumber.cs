@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Text;
 
-namespace InternalsViewer.Internals
+namespace InternalsViewer.Internals.Engine.Address
 {
     public struct LogSequenceNumber : IComparable<LogSequenceNumber>
     {
         private readonly int fileOffset;
         private readonly int recordSequence;
         private readonly int virtualLogFile;
+
+        public const int Size = sizeof(int) + sizeof(int) + sizeof(short);
 
         public LogSequenceNumber(byte[] value)
         {
@@ -36,12 +38,12 @@ namespace InternalsViewer.Internals
 
         public override string ToString()
         {
-            return string.Format("({0}:{1}:{2})", virtualLogFile, fileOffset, recordSequence);
+            return $"({virtualLogFile}:{fileOffset}:{recordSequence})";
         }
 
         public string ToBinaryString()
         {
-            return string.Format("{0:X8}:{1:X8}:{2:X4}", virtualLogFile, fileOffset, recordSequence);
+            return $"{virtualLogFile:X8}:{fileOffset:X8}:{recordSequence:X4}";
         }
 
         public decimal ToDecimal()

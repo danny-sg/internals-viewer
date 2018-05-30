@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.TransactionLog
@@ -13,9 +14,9 @@ namespace InternalsViewer.Internals.TransactionLog
         public ushort Offset { get; set; }
 
         public ushort Slot { get; set; }
-        
+
         public byte[] Data { get; set; }
-        
+
         public LogSequenceNumber LogSequenceNumber { get; set; }
 
         public override string ToString()

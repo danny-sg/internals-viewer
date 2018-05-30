@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals;
 using System.Collections.Generic;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.TransactionLog;
 
 namespace InternalsViewer.UI

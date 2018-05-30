@@ -1,7 +1,8 @@
 ﻿using InternalsViewer.Internals.BlobPointers;
+using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
 
-namespace InternalsViewer.Internals.Records
+namespace InternalsViewer.Internals.Engine.Records
 {
     /// <summary>
     /// Record field

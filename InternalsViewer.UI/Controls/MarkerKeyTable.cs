@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Markers;
 

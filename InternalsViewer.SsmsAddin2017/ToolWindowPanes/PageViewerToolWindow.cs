@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI;
 using Microsoft.VisualStudio.Shell;

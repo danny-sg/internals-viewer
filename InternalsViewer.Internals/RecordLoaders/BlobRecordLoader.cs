@@ -4,6 +4,9 @@ using System.Text;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.BlobPointers;
 using System.Collections;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.Blob;
 using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.RecordLoaders

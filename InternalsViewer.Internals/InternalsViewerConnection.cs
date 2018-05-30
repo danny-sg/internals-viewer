@@ -91,7 +91,7 @@ namespace InternalsViewer.Internals
                 conn.Close();
             }
 
-            var databasesDataTable = DataAccess.GetDataTable(InternalsViewerConnection.CurrentConnection().ConnectionString,
+            var databasesDataTable = DataAccess.GetDataTable(CurrentConnection().ConnectionString,
                                                                    Properties.Resources.SQL_Databases,
                                                                    "master",
                                                                    "Databases",

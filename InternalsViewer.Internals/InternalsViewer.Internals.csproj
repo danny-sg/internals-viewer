@@ -74,7 +74,7 @@
     <Compile Include="BlobPointers\BlobChildLink.cs" />
     <Compile Include="BlobPointers\BlobField.cs" />
     <Compile Include="BlobPointers\BlobFieldType.cs" />
-    <Compile Include="BlobPointers\Field.cs" />
+    <Compile Include="Engine\Records\Field.cs" />
     <Compile Include="BlobPointers\OverflowField.cs" />
     <Compile Include="BlobPointers\PointerField.cs" />
     <Compile Include="BlobPointers\RootField.cs" />
@@ -90,7 +90,7 @@
     <Compile Include="DataConverter.cs" />
     <Compile Include="IamAllocation.cs" />
     <Compile Include="IndexTypes.cs" />
-    <Compile Include="LogSequenceNumber.cs" />
+    <Compile Include="Engine\Address\LogSequenceNumber.cs" />
     <Compile Include="Markable.cs" />
     <Compile Include="PageIo\Headers\DictionaryHeaderReader.cs" />
     <Compile Include="PageIo\Pages\DatabasePageReader.cs" />
@@ -102,11 +102,11 @@
     <Compile Include="Pages\BootPage.cs" />
     <Compile Include="Pages\Header.cs" />
     <Compile Include="Pages\Page.cs" />
-    <Compile Include="Pages\PageAddress.cs" />
+    <Compile Include="Engine\Address\PageAddress.cs" />
     <Compile Include="Pages\PageEventArgs.cs" />
-    <Compile Include="Pages\PageType.cs" />
+    <Compile Include="Engine\Pages\PageType.cs" />
     <Compile Include="Pages\PfsPage.cs" />
-    <Compile Include="Pages\RowIdentifier.cs" />
+    <Compile Include="Engine\Address\RowIdentifier.cs" />
     <Compile Include="Pfs.cs" />
     <Compile Include="PfsByte.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -120,22 +120,21 @@
     <Compile Include="RecordLoaders\CompressedDataRecordLoader.cs" />
     <Compile Include="RecordLoaders\IndexRecordLoader.cs" />
     <Compile Include="RecordLoaders\SparseVectorLoader.cs" />
-    <Compile Include="Records\BlobRecord.cs" />
+    <Compile Include="Engine\Records\Blob\BlobRecord.cs" />
     <Compile Include="Records\BlobType.cs" />
-    <Compile Include="Records\ColumnDescriptor.cs" />
-    <Compile Include="Records\CompressedDataRecord.cs" />
+    <Compile Include="Engine\Records\Compressed\CompressedDataRecord.cs" />
     <Compile Include="Compression\CompressionInformation.cs" />
-    <Compile Include="Records\CompressedRecordField.cs" />
-    <Compile Include="Records\DataRecord.cs" />
+    <Compile Include="Engine\Records\Compressed\CompressedRecordField.cs" />
+    <Compile Include="Engine\Records\Data\DataRecord.cs" />
     <Compile Include="RecordLoaders\DataRecordLoader.cs" />
-    <Compile Include="Records\IndexRecord.cs" />
+    <Compile Include="Engine\Records\Index\IndexRecord.cs" />
     <Compile Include="Records\MarkType.cs" />
-    <Compile Include="Records\Record.cs" />
+    <Compile Include="Engine\Records\Record.cs" />
     <Compile Include="Records\MarkAttribute.cs" />
-    <Compile Include="Records\RecordField.cs" />
+    <Compile Include="Engine\Records\RecordField.cs" />
     <Compile Include="RecordLoaders\RecordLoader.cs" />
     <Compile Include="MarkItem.cs" />
-    <Compile Include="Records\RecordType.cs" />
+    <Compile Include="Engine\Records\RecordType.cs" />
     <Compile Include="Records\SparseVector.cs" />
     <Compile Include="SpaceFree.cs" />
     <Compile Include="Structures\Column.cs" />
@@ -166,6 +165,7 @@
   <ItemGroup>
     <None Include="InternalsViewer.Internals.snk" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

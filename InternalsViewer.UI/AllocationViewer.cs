@@ -9,6 +9,7 @@ using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Allocations;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.UI
 {

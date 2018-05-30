@@ -1,4 +1,5 @@
 ﻿using System;
+using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
 

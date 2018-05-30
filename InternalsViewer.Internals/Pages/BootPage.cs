@@ -1,4 +1,5 @@
 ﻿using System;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Pages
 {
@@ -29,7 +30,7 @@ namespace InternalsViewer.Internals.Pages
         {
             var checkpointLsnValue = new byte[10];
 
-            Array.Copy(PageData, CheckpointLsnOffset, checkpointLsnValue, 0, 10);
+            Array.Copy(PageData, CheckpointLsnOffset, checkpointLsnValue, 0, LogSequenceNumber.Size);
             CheckpointLsn = new LogSequenceNumber(checkpointLsnValue);
         }
 

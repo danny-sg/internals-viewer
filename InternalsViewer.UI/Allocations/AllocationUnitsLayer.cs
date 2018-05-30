@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.UI.Allocations

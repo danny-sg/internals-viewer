@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Windows.Forms;
 using System.Drawing;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.UI.Controls

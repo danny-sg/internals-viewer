@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Text;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.Compressed;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
@@ -66,7 +68,7 @@ namespace InternalsViewer.Internals.Compression
 
         private static void LoadDictionary(CompressionInformation ci)
         {
-            ci.CompressionDictionary = new Dictionary(ci.Page.PageData, CompressionInformation.Offset + ci.Length);
+            ci.CompressionDictionary = new Dictionary(ci.Page.PageData, Offset + ci.Length);
         }
 
         private static void LoadAnchor(CompressionInformation ci)

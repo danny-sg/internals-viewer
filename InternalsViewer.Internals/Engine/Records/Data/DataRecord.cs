@@ -1,10 +1,11 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.RecordLoaders;
+using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
 
-namespace InternalsViewer.Internals.Records
+namespace InternalsViewer.Internals.Engine.Records.Data
 {
     public class DataRecord : Record
     {

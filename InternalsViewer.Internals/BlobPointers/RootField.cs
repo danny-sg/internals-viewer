@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using InternalsViewer.Internals.Pages;
 using System.Collections.Generic;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.BlobPointers
@@ -23,15 +24,15 @@ namespace InternalsViewer.Internals.BlobPointers
 
             Level = data[LevelOffset];
 
-            Mark("Level", offset + RootField.LevelOffset, sizeof(byte));
+            Mark("Level", offset + LevelOffset, sizeof(byte));
 
             Timestamp = BitConverter.ToInt32(data, TimestampOffset);
 
-            Mark("Timestamp", offset + RootField.TimestampOffset, sizeof(int));
+            Mark("Timestamp", offset + TimestampOffset, sizeof(int));
 
             UpdateSeq = BitConverter.ToInt16(data, UpdateSeqOffset);
 
-            Mark("UpdateSeq", offset + RootField.UpdateSeqOffset, sizeof(short));
+            Mark("UpdateSeq", offset + UpdateSeqOffset, sizeof(short));
         }
 
         protected override void LoadLinks()
@@ -53,9 +54,9 @@ namespace InternalsViewer.Internals.BlobPointers
 
                 var link = new BlobChildLink(rowId, 0, length);
 
-                link.Mark("Length", Offset + RootField.ChildOffset + (i * 12), sizeof(int));
+                link.Mark("Length", Offset + ChildOffset + (i * 12), sizeof(int));
 
-                link.Mark("RowIdentifier", Offset + RootField.ChildOffset + (i * 12) + sizeof(int), 8);
+                link.Mark("RowIdentifier", Offset + ChildOffset + (i * 12) + sizeof(int), 8);
 
                 Links.Add(link);
             }

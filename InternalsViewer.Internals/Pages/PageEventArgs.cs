@@ -1,4 +1,5 @@
 ﻿using System;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Pages
 {

@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using InternalsViewer.Internals.Structures;
-using InternalsViewer.Internals.RecordLoaders;
+﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.RecordLoaders;
+using InternalsViewer.Internals.Structures;
 
-namespace InternalsViewer.Internals.Records
+namespace InternalsViewer.Internals.Engine.Records.Compressed
 {
     public class CompressedDataRecord : Record
     {

@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Pages;
+﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Structures
 {

@@ -4,6 +4,8 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 using System.Runtime.Serialization;
 using System;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.UI.Allocations
 {

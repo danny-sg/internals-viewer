@@ -2,6 +2,7 @@
 using System.Text;
 using System;
 using System.Collections.Generic;
+using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.BlobPointers

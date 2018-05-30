@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace InternalsViewer.Internals.Pages
+namespace InternalsViewer.Internals.Engine.Address
 {
     /// <summary>
     /// Page Address that gives a unique address for a page in a database
@@ -15,6 +15,18 @@ namespace InternalsViewer.Internals.Pages
         public const int Size = sizeof(int) + sizeof(short);
 
         /// <summary>
+        /// Gets or sets the file id.
+        /// </summary>
+        /// <value>The file id.</value>
+        public int FileId { get; }
+
+        /// <summary>
+        /// Gets or sets the page id.
+        /// </summary>
+        /// <value>The page id.</value>
+        public int PageId { get; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="PageAddress"/> struct.
         /// </summary>
         /// <param name="address">The page address in a valid format.</param>
@@ -23,6 +35,7 @@ namespace InternalsViewer.Internals.Pages
             try
             {
                 var pageAddress = Parse(address);
+
                 FileId = pageAddress.FileId;
                 PageId = pageAddress.PageId;
             }
@@ -40,8 +53,8 @@ namespace InternalsViewer.Internals.Pages
         /// <param name="pageId">The page id.</param>
         public PageAddress(int fileId, int pageId)
         {
-            this.FileId = fileId;
-            this.PageId = pageId;
+            FileId = fileId;
+            PageId = pageId;
         }
 
         /// <summary>
@@ -68,12 +81,9 @@ namespace InternalsViewer.Internals.Pages
                 return ParseBytes(address);
             }
 
-            int fileId;
-            int pageId;
-
-            bool parsed;
 
             var sb = new StringBuilder(address);
+
             sb.Replace("(", string.Empty);
             sb.Replace(")", string.Empty);
             sb.Replace(",", ":");
@@ -85,8 +95,8 @@ namespace InternalsViewer.Internals.Pages
                 throw new ArgumentException("Invalid Format");
             }
 
-            parsed = true & int.TryParse(splitAddress[0], out fileId);
-            parsed = parsed & int.TryParse(splitAddress[1], out pageId);
+            var parsed = true & int.TryParse(splitAddress[0], out var fileId);
+            parsed = parsed & int.TryParse(splitAddress[1], out var pageId);
 
             if (parsed)
             {
@@ -105,13 +115,10 @@ namespace InternalsViewer.Internals.Pages
         /// <returns></returns>
         private static PageAddress ParseBytes(string address)
         {
-            int fileId;
-            int pageId;
-
             var bytes = address.Split(':');
 
-            int.TryParse(bytes[0], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out fileId);
-            int.TryParse(bytes[1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out pageId);
+            int.TryParse(bytes[0], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var fileId);
+            int.TryParse(bytes[1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var pageId);
 
             return new PageAddress(fileId, pageId);
         }
@@ -136,7 +143,7 @@ namespace InternalsViewer.Internals.Pages
         /// </returns>
         public override bool Equals(object obj)
         {
-            return obj is PageAddress && this == (PageAddress)obj;
+            return obj is PageAddress address && this == address;
         }
 
         /// <summary>
@@ -187,26 +194,14 @@ namespace InternalsViewer.Internals.Pages
         /// </summary>
         /// <param name="other">An object to compare with this object.</param>
         /// <returns>
-        /// A 32-bit signed integer that indicates the relative order of the objects being compared. 
-        /// The return value has the following meanings: Value Meaning Less than zero This object is less than the <paramref name="other"/> 
-        /// parameter. 
+        /// A 32-bit signed integer that indicates the relative order of the objects being compared.
+        /// The return value has the following meanings: Value Meaning Less than zero This object is less than the <paramref name="other"/>
+        /// parameter.
         /// Zero This object is equal to <paramref name="other"/>. Greater than zero This object is greater than <paramref name="other"/>.
         /// </returns>
         public int CompareTo(PageAddress other)
         {
             return (FileId.CompareTo(other.FileId) * 9999999) + PageId.CompareTo(other.PageId);
         }
-
-        /// <summary>
-        /// Gets or sets the file id.
-        /// </summary>
-        /// <value>The file id.</value>
-        public int FileId { get; }
-
-        /// <summary>
-        /// Gets or sets the page id.
-        /// </summary>
-        /// <value>The page id.</value>
-        public int PageId { get; }
     }
 }

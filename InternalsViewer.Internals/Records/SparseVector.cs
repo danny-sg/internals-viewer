@@ -1,4 +1,6 @@
 ﻿using System;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.RecordLoaders;
 using InternalsViewer.Internals.Structures;
 

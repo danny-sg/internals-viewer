@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
 
-namespace InternalsViewer.Internals.Records
+namespace InternalsViewer.Internals.Engine.Records
 {
     /// <summary>
     /// Database Record Stucture

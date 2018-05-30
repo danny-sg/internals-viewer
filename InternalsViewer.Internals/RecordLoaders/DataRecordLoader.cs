@@ -2,6 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using InternalsViewer.Internals.BlobPointers;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
 using InternalsViewer.Internals.Pages;
@@ -36,7 +39,7 @@ namespace InternalsViewer.Internals.RecordLoaders
             var columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);
 
             dataRecord.ColumnCountOffset = BitConverter.ToInt16(dataRecord.Page.PageData, columnCountOffsetPosition);
-            
+
             dataRecord.Mark("ColumnCountOffset", columnCountOffsetPosition, sizeof(short));
 
             // Column count 2-byte int located at the column count offset

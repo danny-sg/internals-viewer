@@ -1,6 +1,7 @@
 ﻿using System;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.BlobPointers;
+using InternalsViewer.Internals.Engine.Records;
 
 namespace InternalsViewer.Internals.RecordLoaders
 {

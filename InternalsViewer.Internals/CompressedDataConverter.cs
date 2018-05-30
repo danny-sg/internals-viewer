@@ -133,7 +133,7 @@ namespace InternalsViewer.Internals
 
         private static string DecodeInt(byte[] data, bool unsigned)
         {
-            byte[] returnData = DecodeInt(data, unsigned, 4);
+            var returnData = DecodeInt(data, unsigned, 4);
 
             if (unsigned)
             {

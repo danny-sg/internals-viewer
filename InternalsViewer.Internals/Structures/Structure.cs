@@ -5,7 +5,7 @@ namespace InternalsViewer.Internals.Structures
 {
     public abstract class Structure
     {
-        public Structure(long allocationUnitId, Database database)
+        protected Structure(long allocationUnitId, Database database)
         {
             Columns = new List<Column>();
             AllocationUnitId = allocationUnitId;

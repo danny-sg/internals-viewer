@@ -6,8 +6,8 @@ namespace InternalsViewer.Internals.Records
     /// <summary>
     /// Custom attribute to store mark properties
     /// </summary>
-    [AttributeUsage(System.AttributeTargets.Property)]
-    public class MarkAttribute : System.Attribute
+    [AttributeUsage(AttributeTargets.Property)]
+    public class MarkAttribute : Attribute
     {
         public string Description { get; set; }
 

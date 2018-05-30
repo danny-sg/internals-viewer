@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using InternalsViewer.Internals.Records;
 using System.Collections;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Structures;
 

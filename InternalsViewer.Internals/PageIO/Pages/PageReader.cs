@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.PageIo.Headers;
 using InternalsViewer.Internals.Pages;
 

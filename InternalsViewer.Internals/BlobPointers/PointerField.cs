@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using InternalsViewer.Internals.Pages;
 using System.Collections.Generic;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.BlobPointers
 {

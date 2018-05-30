@@ -1,4 +1,6 @@
-﻿using InternalsViewer.Internals.Pages;
+﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.PageIo.Headers
 {

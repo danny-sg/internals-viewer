@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.PageIo;
 using InternalsViewer.Internals.PageIo.Pages;
 
@@ -39,7 +41,7 @@ namespace InternalsViewer.Internals.Pages
         {
             PageAddress = pageAddress;
 
-            DatabaseId = Page.GetDatabaseId(connectionString, database);
+            DatabaseId = GetDatabaseId(connectionString, database);
 
             var compatabilityLevel = Database.GetCompatabilityLevel(connectionString, database);
             Database = new Database(connectionString, DatabaseId, database, 1, compatabilityLevel);
@@ -175,8 +177,6 @@ namespace InternalsViewer.Internals.Pages
         /// <summary>
         /// Lookups the name of the database.
         /// </summary>
-        /// <param name="databaseId">The database id.</param>
-        /// <returns></returns>
         private static string LookupDatabaseName(string connectionString, int databaseId)
         {
             string databaseName;

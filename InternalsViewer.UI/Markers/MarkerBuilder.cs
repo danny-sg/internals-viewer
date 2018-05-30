@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Reflection;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.MarkStyles;

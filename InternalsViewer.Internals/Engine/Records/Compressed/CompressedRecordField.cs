@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Structures;
 
-namespace InternalsViewer.Internals.Records
+namespace InternalsViewer.Internals.Engine.Records.Compressed
 {
     class CompressedRecordField : RecordField
     {
