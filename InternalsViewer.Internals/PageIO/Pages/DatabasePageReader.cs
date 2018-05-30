@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-using System.Globalization;
+using InternalsViewer.Internals.PageIo.Headers;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.PageIo
+namespace InternalsViewer.Internals.PageIo.Pages
 {
     /// <inheritdoc />
     /// <summary>
@@ -15,10 +15,14 @@ namespace InternalsViewer.Internals.PageIo
     {
         private readonly Dictionary<string, string> headerData = new Dictionary<string, string>();
 
+        public string ConnectionString { get; set; }
+
         public DatabasePageReader(string connectionString, PageAddress pageAddress, int databaseId)
             : base(pageAddress, databaseId)
         {
             ConnectionString = connectionString;
+
+            HeaderReader = new DictionaryHeaderReader(headerData);
         }
 
         /// <summary>
@@ -86,22 +90,5 @@ namespace InternalsViewer.Internals.PageIo
 
             return data;
         }
-
-        /// <summary>
-        /// Loads the page  header.
-        /// </summary>
-        /// <returns></returns>
-        public override bool LoadHeader()
-        {
-            var header = new Header();
-
-            var parsed = DatabaseHeaderReader.LoadHeader(headerData, header);
-
-            Header = header;
-
-            return parsed;
-        }
-
-        public string ConnectionString { get; set; }
     }
 }

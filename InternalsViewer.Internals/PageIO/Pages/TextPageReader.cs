@@ -1,15 +1,20 @@
 ﻿using System;
+using InternalsViewer.Internals.PageIo.Headers;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.PageIo
+namespace InternalsViewer.Internals.PageIo.Pages
 {
-    public class StringPageReader : PageReader
+    /// <summary>
+    /// Loads a page from text, e.g. DBCC PAGE output
+    /// </summary>
+    public class TextPageReader : PageReader
     {
         public string PageText { get; set; }
 
-        public StringPageReader(string pageText)
+        public TextPageReader(string pageText)
         {
             PageText = pageText;
+            HeaderReader = new TextHeaderReader(PageText);
         }
 
         public override void Load()
@@ -44,12 +49,6 @@ namespace InternalsViewer.Internals.PageIo
             }
 
             return data;
-        }
-
-        public override bool LoadHeader()
-        {
-            return false;
-            //throw new NotImplementedException();
         }
     }
 }

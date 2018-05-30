@@ -1,7 +1,8 @@
 ﻿using System.Globalization;
+using InternalsViewer.Internals.PageIo.Headers;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.PageIo
+namespace InternalsViewer.Internals.PageIo.Pages
 {
     /// <summary>
     /// Abstract class for reading pages
@@ -53,12 +54,6 @@ namespace InternalsViewer.Internals.PageIo
         /// </summary>
         public abstract void Load();
 
-        /// <summary>
-        /// Loads the header.
-        /// </summary>
-        /// <returns></returns>
-        public abstract bool LoadHeader();
-
         protected static int ReadData(string currentRow, int offset, byte[] data)
         {
             var currentData = currentRow.Substring(20, 44).Replace(" ", string.Empty);
@@ -79,6 +74,23 @@ namespace InternalsViewer.Internals.PageIo
             }
 
             return offset;
+        }
+
+        protected HeaderReader HeaderReader { get; set; }
+
+        /// <summary>
+        /// Loads the page  header.
+        /// </summary>
+        /// <returns></returns>
+        public bool LoadHeader()
+        {
+            var header = new Header();
+
+            var parsed = HeaderReader.LoadHeader(header);
+
+            Header = header;
+
+            return parsed;
         }
     }
 }

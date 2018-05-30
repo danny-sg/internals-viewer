@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.SqlClient;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.PageIo;
+using InternalsViewer.Internals.PageIo.Pages;
 
 namespace InternalsViewer.Internals.Pages
 {

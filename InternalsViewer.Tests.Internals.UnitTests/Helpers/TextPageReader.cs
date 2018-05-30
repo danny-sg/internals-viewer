@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.PageIo;
+using InternalsViewer.Internals.PageIo.Pages;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Helpers
 {
@@ -14,7 +15,7 @@ namespace InternalsViewer.Tests.Internals.UnitTests.Helpers
         {
             var pageString = File.ReadAllText(path);
 
-            var reader = new StringPageReader(pageString);
+            var reader = new TextPageReader(pageString);
 
             reader.Load();
 

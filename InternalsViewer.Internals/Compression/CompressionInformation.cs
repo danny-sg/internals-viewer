@@ -40,7 +40,7 @@ namespace InternalsViewer.Internals.Compression
             ci.HasDictionary = ci.StatusBits[2];
 
             ci.PageModCount = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 1);
-            
+
             ci.Mark("PageModCount", ci.SlotOffset + sizeof(byte), sizeof(short));
 
             ci.Length = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 3);

@@ -92,10 +92,12 @@
     <Compile Include="IndexTypes.cs" />
     <Compile Include="LogSequenceNumber.cs" />
     <Compile Include="Markable.cs" />
-    <Compile Include="PageIo\DatabaseHeaderReader.cs" />
-    <Compile Include="PageIo\DatabasePageReader.cs" />
-    <Compile Include="PageIo\PageReader.cs" />
-    <Compile Include="PageIo\StringPageReader.cs" />
+    <Compile Include="PageIo\Headers\DictionaryHeaderReader.cs" />
+    <Compile Include="PageIo\Pages\DatabasePageReader.cs" />
+    <Compile Include="PageIo\Headers\HeaderReader.cs" />
+    <Compile Include="PageIo\Headers\TextHeaderReader.cs" />
+    <Compile Include="PageIo\Pages\PageReader.cs" />
+    <Compile Include="PageIo\Pages\TextPageReader.cs" />
     <Compile Include="Pages\AllocationPage.cs" />
     <Compile Include="Pages\BootPage.cs" />
     <Compile Include="Pages\Header.cs" />

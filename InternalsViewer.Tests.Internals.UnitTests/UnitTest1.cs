@@ -10,7 +10,7 @@ namespace InternalsViewer.Tests.Internals.UnitTests
         [TestMethod]
         public void TestMethod1()
         {
-            var d = FilePageReader.ReadPage(@".\TestPages\Records\SimpleHeapNullablePage1.txt");
+            var d = FileHeaderReader.ReadHeader(@".\TestPages\Records\SimpleHeapNullablePage1.txt");
 
         }
     }
