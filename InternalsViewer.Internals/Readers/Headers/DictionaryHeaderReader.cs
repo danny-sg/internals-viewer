@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using InternalsViewer.Internals.Pages;
+﻿using System.Collections.Generic;
 
-namespace InternalsViewer.Internals.PageIo.Headers
+namespace InternalsViewer.Internals.Readers.Headers
 {
     /// <summary>
     /// Readers header information from a given key value pair dictionary

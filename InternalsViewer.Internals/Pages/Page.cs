@@ -4,9 +4,10 @@ using System.Data;
 using System.Data.SqlClient;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.PageIo;
-using InternalsViewer.Internals.PageIo.Pages;
+using InternalsViewer.Internals.Readers.Pages;
 
 namespace InternalsViewer.Internals.Pages
 {

@@ -1,8 +1,8 @@
 ﻿
-namespace InternalsViewer.Internals
-{
-    using System.Collections;
+using System.Collections;
 
+namespace InternalsViewer.Internals.Engine.Database
+{
     public class PfsByte
     {
         public PfsByte(byte pageByte)

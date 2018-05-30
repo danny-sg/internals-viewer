@@ -1,8 +1,8 @@
 ﻿using System;
-using InternalsViewer.Internals.PageIo.Headers;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Readers.Headers;
 
-namespace InternalsViewer.Internals.PageIo.Pages
+namespace InternalsViewer.Internals.Readers.Pages
 {
     /// <summary>
     /// Loads a page from text, e.g. DBCC PAGE output

@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals
+namespace InternalsViewer.Internals.Engine.Database
 {
     /// <summary>
     /// An IAM allocation structure

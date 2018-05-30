@@ -6,8 +6,8 @@ using System.Collections;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Index;
+using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.RecordLoaders
 {

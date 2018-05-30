@@ -5,8 +5,8 @@ using InternalsViewer.Internals.BlobPointers;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
+using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Records;
-using InternalsViewer.Internals.Structures;
 using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.RecordLoaders

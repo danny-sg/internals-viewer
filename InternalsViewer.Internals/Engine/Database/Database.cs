@@ -2,9 +2,8 @@
 using System.Data;
 using System.Data.SqlClient;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals
+namespace InternalsViewer.Internals.Engine.Database
 {
     public class Database
     {

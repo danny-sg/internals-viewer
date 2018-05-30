@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals
+namespace InternalsViewer.Internals.Engine.Database
 {
     public class Pfs
     {

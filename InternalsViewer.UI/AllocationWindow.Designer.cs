@@ -95,11 +95,12 @@ namespace InternalsViewer.UI
             this.allocationContainer.HoldingMessage = "";
             this.allocationContainer.IncludeIam = false;
             this.allocationContainer.LayoutStyle = InternalsViewer.UI.Allocations.LayoutStyle.Horizontal;
-            this.allocationContainer.Location = new System.Drawing.Point(0, 30);
+            this.allocationContainer.Location = new System.Drawing.Point(0, 58);
+            this.allocationContainer.Margin = new System.Windows.Forms.Padding(12);
             this.allocationContainer.Mode = InternalsViewer.UI.Allocations.MapMode.Standard;
             this.allocationContainer.Name = "allocationContainer";
             this.allocationContainer.ShowFileInformation = false;
-            this.allocationContainer.Size = new System.Drawing.Size(945, 404);
+            this.allocationContainer.Size = new System.Drawing.Size(1890, 792);
             this.allocationContainer.TabIndex = 2;
             this.allocationContainer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageClicked);
             this.allocationContainer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageOver);
@@ -108,6 +109,7 @@ namespace InternalsViewer.UI
             // 
             this.splitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
             this.splitContainer.Location = new System.Drawing.Point(0, 0);
+            this.splitContainer.Margin = new System.Windows.Forms.Padding(6);
             this.splitContainer.Name = "splitContainer";
             this.splitContainer.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
@@ -119,8 +121,9 @@ namespace InternalsViewer.UI
             // splitContainer.Panel2
             // 
             this.splitContainer.Panel2.Controls.Add(this.keysDataGridView);
-            this.splitContainer.Size = new System.Drawing.Size(945, 557);
-            this.splitContainer.SplitterDistance = 434;
+            this.splitContainer.Size = new System.Drawing.Size(1890, 1091);
+            this.splitContainer.SplitterDistance = 850;
+            this.splitContainer.SplitterWidth = 8;
             this.splitContainer.TabIndex = 0;
             // 
             // flatMenuStrip
@@ -128,6 +131,7 @@ namespace InternalsViewer.UI
             this.flatMenuStrip.AutoSize = false;
             this.flatMenuStrip.BackColor = System.Drawing.SystemColors.Control;
             this.flatMenuStrip.GripStyle = System.Windows.Forms.ToolStripGripStyle.Hidden;
+            this.flatMenuStrip.ImageScalingSize = new System.Drawing.Size(32, 32);
             this.flatMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripLabel1,
             this.databaseToolStripComboBox,
@@ -143,15 +147,15 @@ namespace InternalsViewer.UI
             this.toolStripLabel2});
             this.flatMenuStrip.Location = new System.Drawing.Point(0, 0);
             this.flatMenuStrip.Name = "flatMenuStrip";
-            this.flatMenuStrip.Padding = new System.Windows.Forms.Padding(4, 0, 1, 0);
-            this.flatMenuStrip.Size = new System.Drawing.Size(945, 30);
+            this.flatMenuStrip.Padding = new System.Windows.Forms.Padding(8, 0, 2, 0);
+            this.flatMenuStrip.Size = new System.Drawing.Size(1890, 58);
             this.flatMenuStrip.TabIndex = 1;
             this.flatMenuStrip.Text = "flatMenuStrip1";
             // 
             // toolStripLabel1
             // 
             this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(55, 27);
+            this.toolStripLabel1.Size = new System.Drawing.Size(113, 55);
             this.toolStripLabel1.Text = "Database";
             // 
             // databaseToolStripComboBox
@@ -159,7 +163,7 @@ namespace InternalsViewer.UI
             this.databaseToolStripComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.databaseToolStripComboBox.Enabled = false;
             this.databaseToolStripComboBox.Name = "databaseToolStripComboBox";
-            this.databaseToolStripComboBox.Size = new System.Drawing.Size(121, 30);
+            this.databaseToolStripComboBox.Size = new System.Drawing.Size(238, 58);
             this.databaseToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.DatabaseToolStripComboBox_SelectedIndexChanged);
             // 
             // connectToolStripButton
@@ -169,14 +173,14 @@ namespace InternalsViewer.UI
             this.connectToolStripButton.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.connectToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.connectToolStripButton.Name = "connectToolStripButton";
-            this.connectToolStripButton.Size = new System.Drawing.Size(23, 27);
+            this.connectToolStripButton.Size = new System.Drawing.Size(23, 55);
             this.connectToolStripButton.Text = "Connect to database";
             this.connectToolStripButton.Click += new System.EventHandler(this.OnConnect);
             // 
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(6, 30);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(6, 58);
             // 
             // mapToolStripButton
             // 
@@ -189,7 +193,7 @@ namespace InternalsViewer.UI
             this.mapToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.allocationMapIcon;
             this.mapToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
             this.mapToolStripButton.Name = "mapToolStripButton";
-            this.mapToolStripButton.Size = new System.Drawing.Size(32, 27);
+            this.mapToolStripButton.Size = new System.Drawing.Size(59, 55);
             this.mapToolStripButton.Text = "Allocation Units";
             // 
             // allocationUnitsToolStripMenuItem
@@ -197,7 +201,7 @@ namespace InternalsViewer.UI
             this.allocationUnitsToolStripMenuItem.Image = global::InternalsViewer.UI.Properties.Resources.allocationMapIcon;
             this.allocationUnitsToolStripMenuItem.ImageScaling = System.Windows.Forms.ToolStripItemImageScaling.None;
             this.allocationUnitsToolStripMenuItem.Name = "allocationUnitsToolStripMenuItem";
-            this.allocationUnitsToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.allocationUnitsToolStripMenuItem.Size = new System.Drawing.Size(347, 38);
             this.allocationUnitsToolStripMenuItem.Text = "Allocation Units";
             this.allocationUnitsToolStripMenuItem.Click += new System.EventHandler(this.AllocationUnitsToolStripMenuItem_Click);
             // 
@@ -210,7 +214,7 @@ namespace InternalsViewer.UI
             this.dcmToolStripMenuItem});
             this.allocationMapsToolStripMenuItem.Image = global::InternalsViewer.UI.Properties.Resources.GAMallocationMapIcon;
             this.allocationMapsToolStripMenuItem.Name = "allocationMapsToolStripMenuItem";
-            this.allocationMapsToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.allocationMapsToolStripMenuItem.Size = new System.Drawing.Size(347, 38);
             this.allocationMapsToolStripMenuItem.Text = "Allocation Maps";
             this.allocationMapsToolStripMenuItem.Click += new System.EventHandler(this.AllocationMapsToolStripMenuItem_Click);
             // 
@@ -220,7 +224,7 @@ namespace InternalsViewer.UI
             this.gamToolStripMenuItem.CheckOnClick = true;
             this.gamToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.gamToolStripMenuItem.Name = "gamToolStripMenuItem";
-            this.gamToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.gamToolStripMenuItem.Size = new System.Drawing.Size(180, 38);
             this.gamToolStripMenuItem.Text = "GAM";
             // 
             // sgamToolStripMenuItem
@@ -229,28 +233,28 @@ namespace InternalsViewer.UI
             this.sgamToolStripMenuItem.CheckOnClick = true;
             this.sgamToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.sgamToolStripMenuItem.Name = "sgamToolStripMenuItem";
-            this.sgamToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.sgamToolStripMenuItem.Size = new System.Drawing.Size(180, 38);
             this.sgamToolStripMenuItem.Text = "SGAM";
             // 
             // bcmToolStripMenuItem
             // 
             this.bcmToolStripMenuItem.CheckOnClick = true;
             this.bcmToolStripMenuItem.Name = "bcmToolStripMenuItem";
-            this.bcmToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.bcmToolStripMenuItem.Size = new System.Drawing.Size(180, 38);
             this.bcmToolStripMenuItem.Text = "BCM";
             // 
             // dcmToolStripMenuItem
             // 
             this.dcmToolStripMenuItem.CheckOnClick = true;
             this.dcmToolStripMenuItem.Name = "dcmToolStripMenuItem";
-            this.dcmToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.dcmToolStripMenuItem.Size = new System.Drawing.Size(180, 38);
             this.dcmToolStripMenuItem.Text = "DCM";
             // 
             // pFSToolStripMenuItem
             // 
             this.pFSToolStripMenuItem.Image = global::InternalsViewer.UI.Properties.Resources.pfs;
             this.pFSToolStripMenuItem.Name = "pFSToolStripMenuItem";
-            this.pFSToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.pFSToolStripMenuItem.Size = new System.Drawing.Size(347, 38);
             this.pFSToolStripMenuItem.Text = "PFS (Page Free Space)";
             this.pFSToolStripMenuItem.Click += new System.EventHandler(this.pFSToolStripMenuItem_Click);
             // 
@@ -261,7 +265,7 @@ namespace InternalsViewer.UI
             this.bufferPoolToolStripButton.Image = global::InternalsViewer.UI.Properties.Resources.bufferpool;
             this.bufferPoolToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.bufferPoolToolStripButton.Name = "bufferPoolToolStripButton";
-            this.bufferPoolToolStripButton.Size = new System.Drawing.Size(86, 27);
+            this.bufferPoolToolStripButton.Size = new System.Drawing.Size(169, 55);
             this.bufferPoolToolStripButton.Text = "Buffer Pool";
             this.bufferPoolToolStripButton.Click += new System.EventHandler(this.BufferPoolToolStripButton_Click);
             // 
@@ -276,7 +280,7 @@ namespace InternalsViewer.UI
             this.showKeyToolStripButton.Margin = new System.Windows.Forms.Padding(0, 2, 0, 2);
             this.showKeyToolStripButton.Name = "showKeyToolStripButton";
             this.showKeyToolStripButton.Padding = new System.Windows.Forms.Padding(0, 2, 0, 2);
-            this.showKeyToolStripButton.Size = new System.Drawing.Size(46, 26);
+            this.showKeyToolStripButton.Size = new System.Drawing.Size(90, 54);
             this.showKeyToolStripButton.Text = "Key";
             this.showKeyToolStripButton.Click += new System.EventHandler(this.ShowKeyToolStripButton_Click);
             // 
@@ -289,14 +293,14 @@ namespace InternalsViewer.UI
             this.fileDetailsToolStripButton.Margin = new System.Windows.Forms.Padding(4, 2, 0, 2);
             this.fileDetailsToolStripButton.Name = "fileDetailsToolStripButton";
             this.fileDetailsToolStripButton.Padding = new System.Windows.Forms.Padding(4, 2, 0, 2);
-            this.fileDetailsToolStripButton.Size = new System.Drawing.Size(87, 26);
+            this.fileDetailsToolStripButton.Size = new System.Drawing.Size(171, 54);
             this.fileDetailsToolStripButton.Text = "File Details";
             this.fileDetailsToolStripButton.CheckedChanged += new System.EventHandler(this.FileDetailsToolStripButton_CheckedChanged);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(6, 30);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(6, 58);
             // 
             // extentSizeToolStripComboBox
             // 
@@ -309,7 +313,7 @@ namespace InternalsViewer.UI
             "Large",
             "Fit"});
             this.extentSizeToolStripComboBox.Name = "extentSizeToolStripComboBox";
-            this.extentSizeToolStripComboBox.Size = new System.Drawing.Size(100, 30);
+            this.extentSizeToolStripComboBox.Size = new System.Drawing.Size(196, 58);
             this.extentSizeToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.ExtentSizeToolStripComboBox_SelectedIndexChanged);
             // 
             // pageToolStripTextBox
@@ -328,7 +332,7 @@ namespace InternalsViewer.UI
             // 
             this.toolStripLabel2.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
             this.toolStripLabel2.Name = "toolStripLabel2";
-            this.toolStripLabel2.Size = new System.Drawing.Size(36, 27);
+            this.toolStripLabel2.Size = new System.Drawing.Size(71, 55);
             this.toolStripLabel2.Text = "Page:";
             // 
             // keysDataGridView
@@ -370,6 +374,7 @@ namespace InternalsViewer.UI
             this.keysDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.keysDataGridView.GridColor = System.Drawing.Color.White;
             this.keysDataGridView.Location = new System.Drawing.Point(0, 0);
+            this.keysDataGridView.Margin = new System.Windows.Forms.Padding(6);
             this.keysDataGridView.Name = "keysDataGridView";
             this.keysDataGridView.ReadOnly = true;
             dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
@@ -382,7 +387,7 @@ namespace InternalsViewer.UI
             this.keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
             this.keysDataGridView.RowHeadersVisible = false;
             this.keysDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.keysDataGridView.Size = new System.Drawing.Size(945, 119);
+            this.keysDataGridView.Size = new System.Drawing.Size(1890, 233);
             this.keysDataGridView.TabIndex = 2;
             this.keysDataGridView.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.KeysDataGridView_CellClick);
             this.keysDataGridView.SelectionChanged += new System.EventHandler(this.KeysDataGridView_SelectionChanged);
@@ -438,6 +443,7 @@ namespace InternalsViewer.UI
             // 
             // statusStrip
             // 
+            this.statusStrip.ImageScalingSize = new System.Drawing.Size(32, 32);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.errorImageToolStripStatusLabel,
             this.errorToolStripStatusLabel,
@@ -448,9 +454,10 @@ namespace InternalsViewer.UI
             this.AllocUnitLabel,
             this.pageAddressToolStripStatusLabel,
             this.iconToolStripStatusLabel});
-            this.statusStrip.Location = new System.Drawing.Point(0, 557);
+            this.statusStrip.Location = new System.Drawing.Point(0, 1091);
             this.statusStrip.Name = "statusStrip";
-            this.statusStrip.Size = new System.Drawing.Size(945, 22);
+            this.statusStrip.Padding = new System.Windows.Forms.Padding(2, 0, 28, 0);
+            this.statusStrip.Size = new System.Drawing.Size(1890, 22);
             this.statusStrip.SizingGrip = false;
             this.statusStrip.TabIndex = 1;
             this.statusStrip.Text = "statusStrip1";
@@ -471,7 +478,7 @@ namespace InternalsViewer.UI
             // 
             this.allocUnitProgressBar.Enabled = false;
             this.allocUnitProgressBar.Name = "allocUnitProgressBar";
-            this.allocUnitProgressBar.Size = new System.Drawing.Size(100, 16);
+            this.allocUnitProgressBar.Size = new System.Drawing.Size(200, 31);
             this.allocUnitProgressBar.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
             this.allocUnitProgressBar.Visible = false;
             // 
@@ -483,7 +490,7 @@ namespace InternalsViewer.UI
             // spacerToolStripStatusLabel
             // 
             this.spacerToolStripStatusLabel.Name = "spacerToolStripStatusLabel";
-            this.spacerToolStripStatusLabel.Size = new System.Drawing.Size(930, 17);
+            this.spacerToolStripStatusLabel.Size = new System.Drawing.Size(1860, 17);
             this.spacerToolStripStatusLabel.Spring = true;
             // 
             // toolStripStatusLabel2
@@ -528,12 +535,13 @@ namespace InternalsViewer.UI
             // 
             // AllocationWindow
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.splitContainer);
             this.Controls.Add(this.statusStrip);
+            this.Margin = new System.Windows.Forms.Padding(6);
             this.Name = "AllocationWindow";
-            this.Size = new System.Drawing.Size(945, 579);
+            this.Size = new System.Drawing.Size(1890, 1113);
             this.splitContainer.Panel1.ResumeLayout(false);
             this.splitContainer.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).EndInit();

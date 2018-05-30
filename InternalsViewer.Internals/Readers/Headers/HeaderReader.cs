@@ -2,12 +2,12 @@
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.PageIo.Headers
+namespace InternalsViewer.Internals.Readers.Headers
 {
     public abstract class HeaderReader
     {
         /// <summary>
-        /// Loads the header.
+        /// Reads a header.
         /// </summary>
         public bool LoadHeader(Header header)
         {

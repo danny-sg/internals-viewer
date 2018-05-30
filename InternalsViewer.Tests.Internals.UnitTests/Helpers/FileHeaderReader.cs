@@ -1,6 +1,6 @@
 ﻿using System.IO;
-using InternalsViewer.Internals.PageIo.Headers;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Readers.Headers;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Helpers
 {

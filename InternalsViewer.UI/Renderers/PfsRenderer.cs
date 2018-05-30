@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.UI.Renderers
 {

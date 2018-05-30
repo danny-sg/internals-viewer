@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 using InternalsViewer.Internals.Records;
-using InternalsViewer.Internals.Structures;
 using System.Collections;
 using System.Data;
 using InternalsViewer.Internals.Compression;

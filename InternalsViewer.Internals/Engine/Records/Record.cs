@@ -1,9 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Records;
-using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records
 {

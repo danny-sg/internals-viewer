@@ -2,10 +2,9 @@
 using System.Data;
 using System.Data.SqlClient;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Properties;
 
-namespace InternalsViewer.Internals
+namespace InternalsViewer.Internals.Engine.Database
 {
     /// <summary>
     /// Set of pages in the server's buffer bool

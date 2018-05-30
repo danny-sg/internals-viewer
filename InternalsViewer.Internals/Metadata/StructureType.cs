@@ -1,8 +1,8 @@
 ﻿
-namespace InternalsViewer.Internals.Structures
+namespace InternalsViewer.Internals.Metadata
 {
     /// <summary>
-    /// HOBT dtructure type
+    /// HOBT structure type
     /// </summary>
     public enum StructureType
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace InternalsViewer.Internals.PageIo.Headers
+namespace InternalsViewer.Internals.Readers.Headers
 {
     /// <summary>
     /// Reads a header from a text chunk (DBCC PAGE output)

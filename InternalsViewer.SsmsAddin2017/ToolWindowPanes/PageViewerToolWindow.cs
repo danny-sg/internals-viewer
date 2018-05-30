@@ -27,7 +27,7 @@ namespace InternalsViewer.SsmsAddin2017.ToolWindowPanes
             Caption = "Page";
 
             PageViewerWindow = new PageViewerWindow();
-
+            
             PageViewerWindow.OpenDecodeWindow += PageViewerWindow_OpenDecodeWindow;
 
             Control = PageViewerWindow;

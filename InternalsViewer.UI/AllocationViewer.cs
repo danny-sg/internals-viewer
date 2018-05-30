@@ -10,6 +10,7 @@ using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Allocations;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.UI
 {

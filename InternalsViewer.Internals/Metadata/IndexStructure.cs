@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Data;
 using System.Data.SqlClient;
+using InternalsViewer.Internals.Engine.Database;
 
-namespace InternalsViewer.Internals.Structures
+namespace InternalsViewer.Internals.Metadata
 {
     public class IndexStructure : Structure
     {

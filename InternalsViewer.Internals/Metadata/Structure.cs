@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Data;
+using InternalsViewer.Internals.Engine.Database;
 
-namespace InternalsViewer.Internals.Structures
+namespace InternalsViewer.Internals.Metadata
 {
     public abstract class Structure
     {

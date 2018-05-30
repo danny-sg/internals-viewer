@@ -1,7 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.Structures
+namespace InternalsViewer.Internals.Metadata
 {
     /// <summary>
     /// The entry point pages for a HOBT

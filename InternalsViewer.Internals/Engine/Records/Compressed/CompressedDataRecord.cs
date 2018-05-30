@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.RecordLoaders;
-using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records.Compressed
 {

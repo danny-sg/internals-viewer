@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Pages

@@ -1,5 +1,5 @@
 ﻿
-namespace InternalsViewer.Internals
+namespace InternalsViewer.Internals.Engine.Database
 {
     public class DatabaseFile
     {

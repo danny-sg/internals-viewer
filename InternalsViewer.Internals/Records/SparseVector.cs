@@ -1,8 +1,8 @@
 ﻿using System;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
+using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.RecordLoaders;
-using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.Records
 {

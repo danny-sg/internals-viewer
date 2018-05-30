@@ -70,7 +70,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Allocation.cs" />
+    <Compile Include="Engine\Database\Allocation.cs" />
     <Compile Include="BlobPointers\BlobChildLink.cs" />
     <Compile Include="BlobPointers\BlobField.cs" />
     <Compile Include="BlobPointers\BlobFieldType.cs" />
@@ -78,26 +78,26 @@
     <Compile Include="BlobPointers\OverflowField.cs" />
     <Compile Include="BlobPointers\PointerField.cs" />
     <Compile Include="BlobPointers\RootField.cs" />
-    <Compile Include="BufferPool.cs" />
+    <Compile Include="Engine\Database\BufferPool.cs" />
     <Compile Include="CompressedDataConverter.cs" />
     <Compile Include="Compression\CdArrayItem.cs" />
     <Compile Include="Compression\CompressionType.cs" />
     <Compile Include="Compression\Dictionary.cs" />
     <Compile Include="Compression\DictionaryEntry.cs" />
     <Compile Include="DataAccess.cs" />
-    <Compile Include="Database.cs" />
-    <Compile Include="DatabaseFile.cs" />
+    <Compile Include="Engine\Database\Database.cs" />
+    <Compile Include="Engine\Database\DatabaseFile.cs" />
     <Compile Include="DataConverter.cs" />
-    <Compile Include="IamAllocation.cs" />
+    <Compile Include="Engine\Database\IamAllocation.cs" />
     <Compile Include="IndexTypes.cs" />
     <Compile Include="Engine\Address\LogSequenceNumber.cs" />
     <Compile Include="Markable.cs" />
-    <Compile Include="PageIo\Headers\DictionaryHeaderReader.cs" />
-    <Compile Include="PageIo\Pages\DatabasePageReader.cs" />
-    <Compile Include="PageIo\Headers\HeaderReader.cs" />
-    <Compile Include="PageIo\Headers\TextHeaderReader.cs" />
-    <Compile Include="PageIo\Pages\PageReader.cs" />
-    <Compile Include="PageIo\Pages\TextPageReader.cs" />
+    <Compile Include="Readers\Headers\DictionaryHeaderReader.cs" />
+    <Compile Include="Readers\Pages\DatabasePageReader.cs" />
+    <Compile Include="Readers\Headers\HeaderReader.cs" />
+    <Compile Include="Readers\Headers\TextHeaderReader.cs" />
+    <Compile Include="Readers\Pages\PageReader.cs" />
+    <Compile Include="Readers\Pages\TextPageReader.cs" />
     <Compile Include="Pages\AllocationPage.cs" />
     <Compile Include="Pages\BootPage.cs" />
     <Compile Include="Pages\Header.cs" />
@@ -107,8 +107,8 @@
     <Compile Include="Engine\Pages\PageType.cs" />
     <Compile Include="Pages\PfsPage.cs" />
     <Compile Include="Engine\Address\RowIdentifier.cs" />
-    <Compile Include="Pfs.cs" />
-    <Compile Include="PfsByte.cs" />
+    <Compile Include="Engine\Database\Pfs.cs" />
+    <Compile Include="Engine\Database\PfsByte.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -136,15 +136,15 @@
     <Compile Include="MarkItem.cs" />
     <Compile Include="Engine\Records\RecordType.cs" />
     <Compile Include="Records\SparseVector.cs" />
-    <Compile Include="SpaceFree.cs" />
-    <Compile Include="Structures\Column.cs" />
-    <Compile Include="Structures\HobtEntryPoint.cs" />
-    <Compile Include="Structures\Hobt.cs" />
-    <Compile Include="Structures\IndexColumn.cs" />
-    <Compile Include="Structures\IndexStructure.cs" />
-    <Compile Include="Structures\Structure.cs" />
-    <Compile Include="Structures\StructureType.cs" />
-    <Compile Include="Structures\TableStructure.cs" />
+    <Compile Include="Engine\Database\SpaceFree.cs" />
+    <Compile Include="Metadata\Column.cs" />
+    <Compile Include="Metadata\HobtEntryPoint.cs" />
+    <Compile Include="Metadata\Hobt.cs" />
+    <Compile Include="Metadata\IndexColumn.cs" />
+    <Compile Include="Metadata\IndexStructure.cs" />
+    <Compile Include="Metadata\Structure.cs" />
+    <Compile Include="Metadata\StructureType.cs" />
+    <Compile Include="Metadata\TableStructure.cs" />
     <Compile Include="TransactionLog\LogData.cs" />
     <Compile Include="TransactionLog\LogMonitor.cs" />
   </ItemGroup>

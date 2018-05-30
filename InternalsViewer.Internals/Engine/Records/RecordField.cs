@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Internals.BlobPointers;
+using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Records;
-using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records
 {

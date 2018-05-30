@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Internals.Structures
+﻿namespace InternalsViewer.Internals.Metadata
 {
     public class IndexColumn : Column
     {

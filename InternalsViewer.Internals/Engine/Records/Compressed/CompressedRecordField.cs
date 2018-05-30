@@ -1,6 +1,6 @@
 ﻿using System;
+using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Records;
-using InternalsViewer.Internals.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records.Compressed
 {

@@ -1,7 +1,6 @@
-﻿using System;
-using System.Data;
+﻿using System.Data;
 
-namespace InternalsViewer.Internals.Structures
+namespace InternalsViewer.Internals.Metadata
 {
     /// <summary>
     /// Database Index or Table column

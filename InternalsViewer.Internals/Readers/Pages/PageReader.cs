@@ -1,9 +1,9 @@
 ﻿using System.Globalization;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.PageIo.Headers;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Readers.Headers;
 
-namespace InternalsViewer.Internals.PageIo.Pages
+namespace InternalsViewer.Internals.Readers.Pages
 {
     /// <summary>
     /// Abstract class for reading pages
