@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using InternalsViewer.Internals.PageIo;
 using InternalsViewer.Internals.Readers.Pages;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Helpers
