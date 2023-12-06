@@ -1,18 +1,17 @@
-﻿namespace InternalsViewer.UI.Allocations
+﻿namespace InternalsViewer.UI.Allocations;
+
+/// <summary>
+/// Types of allocation layers
+/// </summary>
+public enum AllocationLayerType
 {
     /// <summary>
-    /// Types of allocation layers
+    /// Standard Allocation
     /// </summary>
-    public enum AllocationLayerType
-    {
-        /// <summary>
-        /// Standard Allocation
-        /// </summary>
-        Standard,
+    Standard,
 
-        /// <summary>
-        /// Tag in top left hand corner
-        /// </summary>
-        TopLeftCorner
-    }
+    /// <summary>
+    /// Tag in top left hand corner
+    /// </summary>
+    TopLeftCorner
 }

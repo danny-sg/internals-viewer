@@ -1,18 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using InternalsViewer.Internals.Records;
+﻿using InternalsViewer.Internals.Records;
 
-namespace InternalsViewer.Internals.Compression
+namespace InternalsViewer.Internals.Compression;
+
+public class DictionaryEntry(byte[] data) : Markable
 {
-    public class DictionaryEntry: Markable
-    {
-        public DictionaryEntry(byte[] data)
-        {
-            Data = data;
-        }
-
-        [Mark(MarkType.Value)]
-        public byte[] Data { get; set; }
-    }
+    [Mark(MarkType.Value)]
+    public byte[] Data { get; set; } = data;
 }

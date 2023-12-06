@@ -1,18 +1,17 @@
 ﻿
-namespace InternalsViewer.Internals.Metadata
+namespace InternalsViewer.Internals.Metadata;
+
+/// <summary>
+/// HOBT structure type
+/// </summary>
+public enum StructureType
 {
     /// <summary>
-    /// HOBT structure type
+    /// Heap - table without a clustered index
     /// </summary>
-    public enum StructureType
-    {
-        /// <summary>
-        /// Heap - table without a custered index
-        /// </summary>
-        Heap,
-        /// <summary>
-        /// B-Tree (Index)
-        /// </summary>
-        BTree
-    }
+    Heap,
+    /// <summary>
+    /// B-Tree (Index)
+    /// </summary>
+    BTree
 }

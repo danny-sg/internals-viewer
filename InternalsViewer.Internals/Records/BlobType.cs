@@ -1,11 +1,10 @@
 ﻿
-namespace InternalsViewer.Internals.Records
+namespace InternalsViewer.Internals.Records;
+
+public enum BlobType : byte
 {
-    public enum BlobType : byte
-    {
-        Data = 3,
-        Internal = 2,
-        LargeRoot = 5,
-        SmallRoot = 0
-    }
+    Data = 3,
+    Internal = 2,
+    LargeRoot = 5,
+    SmallRoot = 0
 }

@@ -1,74 +1,68 @@
 ﻿using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Properties;
+using Microsoft.Data.SqlClient;
 
-namespace InternalsViewer.Internals.Engine.Database
+namespace InternalsViewer.Internals.Engine.Database;
+
+/// <summary>
+/// Set of pages in the server's buffer bool
+/// </summary>
+public class BufferPool
 {
     /// <summary>
-    /// Set of pages in the server's buffer bool
+    /// Gets the clean page addresses.
     /// </summary>
-    public class BufferPool
+    public List<PageAddress> CleanPages { get; }
+
+    /// <summary>
+    /// Gets the dirty page addresses.
+    /// </summary>
+    public List<PageAddress> DirtyPages { get; }
+
+    public BufferPool()
     {
-        /// <summary>
-        /// Gets the clean page addresses.
-        /// </summary>
-        /// <value>The clean page addresses.</value>
-        public List<PageAddress> CleanPages { get; }
+        CleanPages = new List<PageAddress>();
+        DirtyPages = new List<PageAddress>();
 
-        /// <summary>
-        /// Gets the dirty page addresses.
-        /// </summary>
-        /// <value>The dirty page addresses.</value>
-        public List<PageAddress> DirtyPages { get; }
+        Refresh();
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BufferPool"/> class.
-        /// </summary>
-        public BufferPool()
+    /// <summary>
+    /// Re-queries buffer pool information.
+    /// </summary>
+    public void Refresh()
+    {
+        CleanPages.Clear();
+        DirtyPages.Clear();
+
+        if (InternalsViewerConnection.CurrentConnection().CurrentDatabase == null)
         {
-            CleanPages = new List<PageAddress>();
-            DirtyPages = new List<PageAddress>();
-
-            Refresh();
+            return;
         }
 
-        /// <summary>
-        /// Requeries buffer pool information.
-        /// </summary>
-        public void Refresh()
+        using var conn = new SqlConnection(InternalsViewerConnection.CurrentConnection().ConnectionString);
+
+        var cmd = new SqlCommand(Resources.SQL_Buffer_Pool, conn);
+        
+        cmd.CommandType = CommandType.Text;
+        cmd.Parameters.AddWithValue("database", InternalsViewerConnection.CurrentConnection().CurrentDatabase.Name);
+
+        conn.Open();
+
+        var reader = cmd.ExecuteReader();
+
+        while (reader.Read())
         {
-            CleanPages.Clear();
-            DirtyPages.Clear();
-
-            if (InternalsViewerConnection.CurrentConnection().CurrentDatabase == null)
+            if (reader.GetBoolean(2))
             {
-                return;
+                DirtyPages.Add(new PageAddress(reader.GetInt32(0), reader.GetInt32(1)));
             }
 
-            using (var conn = new SqlConnection(InternalsViewerConnection.CurrentConnection().ConnectionString))
-            {
-                var cmd = new SqlCommand(Resources.SQL_Buffer_Pool, conn);
-                cmd.CommandType = CommandType.Text;
-                cmd.Parameters.AddWithValue("database", InternalsViewerConnection.CurrentConnection().CurrentDatabase.Name);
-
-                conn.Open();
-
-                var reader = cmd.ExecuteReader();
-
-                while (reader.Read())
-                {
-                    if (reader.GetBoolean(2))
-                    {
-                        DirtyPages.Add(new PageAddress(reader.GetInt32(0), reader.GetInt32(1)));
-                    }
-
-                    CleanPages.Add(new PageAddress(reader.GetInt32(0), reader.GetInt32(1)));
-                }
-
-                conn.Close();
-            }
+            CleanPages.Add(new PageAddress(reader.GetInt32(0), reader.GetInt32(1)));
         }
+
+        conn.Close();
     }
 }

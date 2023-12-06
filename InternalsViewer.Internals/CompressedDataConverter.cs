@@ -1,239 +1,247 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Data;
 using System.Globalization;
 
-namespace InternalsViewer.Internals
+namespace InternalsViewer.Internals;
+
+public class CompressedDataConverter
 {
-    public class CompressedDataConverter
+    public static string CompressedBinaryToBinary(byte[] data, SqlDbType sqlType, byte precision, byte scale)
     {
-        public static string CompressedBinaryToBinary(byte[] data, SqlDbType sqlType, byte precision, byte scale)
+        if (data == null) return null;
+
+        try
         {
-            if (data == null) return null;
+            var unsigned = (data[0] & 0x80) == 0x80;
 
-            try
+            switch (sqlType)
             {
-                var unsigned = (data[0] & 0x80) == 0x80;
+                case SqlDbType.BigInt:
 
-                switch (sqlType)
-                {
-                    case SqlDbType.BigInt:
+                    return DecodeBigInt(data, unsigned);
 
-                        return DecodeBigInt(data, unsigned);
+                case SqlDbType.TinyInt:
 
-                    case SqlDbType.TinyInt:
+                    return DataConverter.BinaryToString(data, sqlType, precision, scale);
 
-                        return DataConverter.BinaryToString(data, sqlType, precision, scale);
+                case SqlDbType.SmallInt:
 
-                    case SqlDbType.SmallInt:
+                    return DecodeSmallInt(data, unsigned);
 
-                        return DecodeSmallInt(data, unsigned);
+                case SqlDbType.Int:
 
-                    case SqlDbType.Int:
+                    return DecodeInt(data, unsigned);
 
-                        return DecodeInt(data, unsigned);
+                case SqlDbType.Money:
+                case SqlDbType.SmallMoney:
 
-                    case SqlDbType.Money:
-                    case SqlDbType.SmallMoney:
+                    return DataConverter.BinaryToString(DecodeInt(data, unsigned, 8), sqlType, precision, scale);
 
-                        return DataConverter.BinaryToString(DecodeInt(data, unsigned, 8), sqlType, precision, scale);
+                case SqlDbType.NChar:
+                case SqlDbType.NVarChar:
 
-                    case SqlDbType.NChar:
-                    case SqlDbType.NVarChar:
+                    return DataConverter.BinaryToString(data, SqlDbType.VarChar, precision, scale);
 
-                        return DataConverter.BinaryToString(data, SqlDbType.VarChar, precision, scale);
+                case SqlDbType.DateTime:
 
-                    case SqlDbType.DateTime:
+                    return DecodeDateTime(data, unsigned);
 
-                        return DecodeDateTime(data, unsigned);
+                case SqlDbType.SmallDateTime:
 
-                    case SqlDbType.SmallDateTime:
+                    return DecodeSmallDateTime(data);
 
-                        return DecodeSmallDateTime(data);
+                //case SqlDbType.VarBinary:
+                //case SqlDbType.Binary:
+                //    break;
 
-                    //case SqlDbType.VarBinary:
-                    //case SqlDbType.Binary:
-                    //    break;
+                //case SqlDbType.UniqueIdentifier:
+                //    break;
 
-                    //case SqlDbType.UniqueIdentifier:
-                    //    break;
+                //case SqlDbType.Decimal:
+                //    break;
 
-                    //case SqlDbType.Decimal:
-                    //    break;
+                //case SqlDbType.Money:
+                //case SqlDbType.SmallMoney:
 
-                    //case SqlDbType.Money:
-                    //case SqlDbType.SmallMoney:
+                //    break;
 
-                    //    break;
+                //case SqlDbType.Real:
+                //    break;
 
-                    //case SqlDbType.Real:
-                    //    break;
+                //case SqlDbType.Float:
+                //    break;
 
-                    //case SqlDbType.Float:
-                    //    break;
+                //case SqlDbType.Variant:
+                //    break;
 
-                    //case SqlDbType.Variant:
-                    //    break;
+                ////New 2008 types (STC)
+                //case SqlDbType.Date:
+                //    break;
 
-                    ////New 2008 types (STC)
-                    //case SqlDbType.Date:
-                    //    break;
+                //case SqlDbType.Time:
 
-                    //case SqlDbType.Time:
+                //    break;
 
-                    //    break;
+                //case SqlDbType.DateTime2:
 
-                    //case SqlDbType.DateTime2:
+                //    break;
 
-                    //    break;
+                //case SqlDbType.DateTimeOffset:
 
-                    //case SqlDbType.DateTimeOffset:
+                //    break;
 
-                    //    break;
-
-                    default:
-                        return DataConverter.BinaryToString(data, sqlType, precision, scale);
-                }
-            }
-            catch
-            {
-                return string.Empty;
+                case SqlDbType.Binary:
+                case SqlDbType.Bit:
+                case SqlDbType.Char:
+                case SqlDbType.Decimal:
+                case SqlDbType.Float:
+                case SqlDbType.Image:
+                case SqlDbType.NText:
+                case SqlDbType.Real:
+                case SqlDbType.UniqueIdentifier:
+                case SqlDbType.Text:
+                case SqlDbType.Timestamp:
+                case SqlDbType.VarBinary:
+                case SqlDbType.VarChar:
+                case SqlDbType.Variant:
+                case SqlDbType.Xml:
+                case SqlDbType.Udt:
+                case SqlDbType.Structured:
+                case SqlDbType.Date:
+                case SqlDbType.Time:
+                case SqlDbType.DateTime2:
+                case SqlDbType.DateTimeOffset:
+                default:
+                    return DataConverter.BinaryToString(data, sqlType, precision, scale);
             }
         }
-
-        private static string DecodeBigInt(byte[] data, bool unsigned)
+        catch
         {
+            return string.Empty;
+        }
+    }
 
-            var returnData = DecodeInt(data, unsigned, 8);
+    private static string DecodeBigInt(byte[] data, bool unsigned)
+    {
 
-            if (unsigned)
-            {
-                return BitConverter.ToUInt64(returnData, 0).ToString(CultureInfo.CurrentCulture);
-            }
-            else
-            {
-                return BitConverter.ToInt64(returnData, 0).ToString(CultureInfo.CurrentCulture);
-            }
+        var returnData = DecodeInt(data, unsigned, 8);
+
+        if (unsigned)
+        {
+            return BitConverter.ToUInt64(returnData, 0).ToString(CultureInfo.CurrentCulture);
         }
 
-        private static string DecodeSmallInt(byte[] data, bool unsigned)
-        {
-            var returnData = DecodeInt(data, unsigned, 2);
+        return BitConverter.ToInt64(returnData, 0).ToString(CultureInfo.CurrentCulture);
+    }
 
-            if (unsigned)
-            {
-                return BitConverter.ToUInt16(returnData, 0).ToString(CultureInfo.CurrentCulture);
-            }
-            else
-            {
-                return BitConverter.ToInt16(returnData, 0).ToString(CultureInfo.CurrentCulture);
-            }
+    private static string DecodeSmallInt(byte[] data, bool unsigned)
+    {
+        var returnData = DecodeInt(data, unsigned, 2);
+
+        if (unsigned)
+        {
+            return BitConverter.ToUInt16(returnData, 0).ToString(CultureInfo.CurrentCulture);
         }
 
-        private static string DecodeInt(byte[] data, bool unsigned)
-        {
-            var returnData = DecodeInt(data, unsigned, 4);
+        return BitConverter.ToInt16(returnData, 0).ToString(CultureInfo.CurrentCulture);
+    }
 
-            if (unsigned)
-            {
-                return BitConverter.ToUInt32(returnData, 0).ToString(CultureInfo.CurrentCulture);
-            }
-            else
-            {
-                return BitConverter.ToInt32(returnData, 0).ToString(CultureInfo.CurrentCulture);
-            }
+    private static string DecodeInt(byte[] data, bool unsigned)
+    {
+        var returnData = DecodeInt(data, unsigned, 4);
+
+        if (unsigned)
+        {
+            return BitConverter.ToUInt32(returnData, 0).ToString(CultureInfo.CurrentCulture);
         }
 
-        private static string DecodeSmallDateTime(byte[] data)
+        return BitConverter.ToInt32(returnData, 0).ToString(CultureInfo.CurrentCulture);
+    }
+
+    private static string DecodeSmallDateTime(byte[] data)
+    {
+        if (data.Length == 2)
         {
-            if (data.Length == 2)
-            {
-                var expandedDate = new byte[4];
+            var expandedDate = new byte[4];
 
-                Array.Copy(data, 0, expandedDate, 2, 2);
+            Array.Copy(data, 0, expandedDate, 2, 2);
 
-                return DataConverter.BinaryToString(expandedDate, SqlDbType.SmallDateTime, 0, 0);
-            }
-            else
-            {
-                return DataConverter.BinaryToString(data, SqlDbType.SmallDateTime, 0, 0);
-            }
+            return DataConverter.BinaryToString(expandedDate, SqlDbType.SmallDateTime, 0, 0);
         }
 
-        private static string DecodeDateTime(byte[] data, bool unsigned)
+        return DataConverter.BinaryToString(data, SqlDbType.SmallDateTime, 0, 0);
+    }
+
+    private static string DecodeDateTime(byte[] data, bool unsigned)
+    {
+        var expandedDateTime = new byte[8];
+
+        if (data.Length < 5)
         {
-            var expandedDateTime = new byte[8];
-
-            if (data.Length < 5)
-            {
-                //Time only
-                Array.Copy(DecodeInt(data, unsigned, 4), expandedDateTime, data.Length);
-            }
-            else
-            {
-                //time is always the last 4 bytes
-
-                var timePart = new byte[4];
-                var datePart = new byte[data.Length - 4];
-
-                Array.Copy(data, data.Length - 4, timePart, 0, 4);
-                Array.Copy(data, datePart, data.Length - 4);
-
-                Array.Copy(DecodeInt(timePart, (timePart[0] & 0x80) == 0x80, 4), expandedDateTime, timePart.Length);
-
-                if (!unsigned)
-                {
-                    datePart[0] = Convert.ToByte(datePart[0] ^ 0x80);
-                }
-
-                Array.Copy(DecodeInt(datePart, unsigned, 4), 0, expandedDateTime, 4, 4);
-            }
-
-            return DataConverter.BinaryToString(expandedDateTime, SqlDbType.DateTime, 0, 0);
+            //Time only
+            Array.Copy(DecodeInt(data, unsigned, 4), expandedDateTime, data.Length);
         }
-
-        private static byte[] DecodeInt(byte[] data, bool unsigned, int size)
+        else
         {
-            var returnData = new byte[size];
+            //time is always the last 4 bytes
+
+            var timePart = new byte[4];
+            var datePart = new byte[data.Length - 4];
+
+            Array.Copy(data, data.Length - 4, timePart, 0, 4);
+            Array.Copy(data, datePart, data.Length - 4);
+
+            Array.Copy(DecodeInt(timePart, (timePart[0] & 0x80) == 0x80, 4), expandedDateTime, timePart.Length);
 
             if (!unsigned)
             {
-                for (var i = 0; i < returnData.Length; i++)
-                {
-                    returnData[i] = 0xFF;
-                }
-            }
-            else
-            {
-                data[0] = Convert.ToByte(data[0] ^ 0x80);
+                datePart[0] = Convert.ToByte(datePart[0] ^ 0x80);
             }
 
-            Array.Reverse(data);
-
-            Array.Copy(data, returnData, data.Length);
-
-            return returnData;
+            Array.Copy(DecodeInt(datePart, unsigned, 4), 0, expandedDateTime, 4, 4);
         }
 
-        public static int DecodeInternalInt(byte[] data, int startPos)
+        return DataConverter.BinaryToString(expandedDateTime, SqlDbType.DateTime, 0, 0);
+    }
+
+    private static byte[] DecodeInt(byte[] data, bool unsigned, int size)
+    {
+        var returnData = new byte[size];
+
+        if (!unsigned)
         {
-            if ((data[startPos] & 0x80) == 0x80)
+            for (var i = 0; i < returnData.Length; i++)
             {
-                var numberOfColumnsData = new byte[2];
-
-                Array.Copy(data, startPos, numberOfColumnsData, 0, 2);
-                
-                numberOfColumnsData[0] = Convert.ToByte(numberOfColumnsData[0] ^ 0x80);
-                
-                Array.Reverse(numberOfColumnsData);
-
-                return BitConverter.ToUInt16(numberOfColumnsData, 0);
-            }
-            else
-            {
-                return data[startPos];
+                returnData[i] = 0xFF;
             }
         }
+        else
+        {
+            data[0] = Convert.ToByte(data[0] ^ 0x80);
+        }
+
+        Array.Reverse(data);
+
+        Array.Copy(data, returnData, data.Length);
+
+        return returnData;
+    }
+
+    public static int DecodeInternalInt(byte[] data, int startPos)
+    {
+        if ((data[startPos] & 0x80) == 0x80)
+        {
+            var numberOfColumnsData = new byte[2];
+
+            Array.Copy(data, startPos, numberOfColumnsData, 0, 2);
+                
+            numberOfColumnsData[0] = Convert.ToByte(numberOfColumnsData[0] ^ 0x80);
+                
+            Array.Reverse(numberOfColumnsData);
+
+            return BitConverter.ToUInt16(numberOfColumnsData, 0);
+        }
+
+        return data[startPos];
     }
 }

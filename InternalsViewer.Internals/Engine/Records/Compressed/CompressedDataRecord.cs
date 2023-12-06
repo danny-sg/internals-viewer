@@ -4,33 +4,32 @@ using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.RecordLoaders;
 
-namespace InternalsViewer.Internals.Engine.Records.Compressed
+namespace InternalsViewer.Internals.Engine.Records.Compressed;
+
+public class CompressedDataRecord : Record
 {
-    public class CompressedDataRecord : Record
+    public CompressedDataRecord(Page page, ushort slotOffset, Structure structure)
+        : base(page, slotOffset, structure)
     {
-        public CompressedDataRecord(Page page, ushort slotOffset, Structure structure)
-            : base(page, slotOffset, structure)
-        {
-            CdItems = new List<CdArrayItem>();
+        CdItems = new List<CdArrayItem>();
 
-            CompressedDataRecordLoader.Load(this);
-        }
-
-        //public byte[] CdArray
-        //{
-        //    get { return cdArray; }
-        //    set { cdArray = value; }
-        //}
-
-        public List<CdArrayItem> CdItems { get; }
-
-        public CdArrayItem[] CdItemsArray => CdItems.ToArray();
-
-        public byte GetCdByte(int columnId)
-        {
-            return CdItems[columnId / 2].Values[columnId % 2];
-        }
-
-        public short CompressedSize { get; set; }
+        CompressedDataRecordLoader.Load(this);
     }
+
+    //public byte[] CdArray
+    //{
+    //    get { return cdArray; }
+    //    set { cdArray = value; }
+    //}
+
+    public List<CdArrayItem> CdItems { get; }
+
+    public CdArrayItem[] CdItemsArray => CdItems.ToArray();
+
+    public byte GetCdByte(int columnId)
+    {
+        return CdItems[columnId / 2].Values[columnId % 2];
+    }
+
+    public short CompressedSize { get; set; }
 }

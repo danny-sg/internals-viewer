@@ -5,90 +5,77 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 
-namespace InternalsViewer.Internals.Pages
+namespace InternalsViewer.Internals.Pages;
+
+/// <inheritdoc />
+/// <summary>
+/// PFS (Page Free Space) page
+/// </summary>
+public class PfsPage : Page
 {
-    /// <inheritdoc />
+    private const int PfsOffset = 100;
+    private const int PfsSize = 8088;
+
     /// <summary>
-    /// PFS (Page Free Space) page
+    /// Initializes a new instance of the <see cref="PfsPage"/> class.
     /// </summary>
-    public class PfsPage : Page
+    public PfsPage(Database database, PageAddress address)
+        : base(database, address)
     {
-        private const int PfsOffset = 100;
-        private const int PfsSize = 8088;
+        LoadPage();
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="PfsPage"/> class.
-        /// </summary>
-        /// <param name="database">The database.</param>
-        /// <param name="address">The address.</param>
-        public PfsPage(Database database, PageAddress address)
-            : base(database, address)
+    private void LoadPage()
+    {
+        if (Header.PageType != PageType.Pfs)
         {
-            LoadPage();
+            throw new InvalidOperationException("Page type is not PFS");
         }
 
-        private void LoadPage()
+        PfsBytes = new List<PfsByte>();
+
+        LoadPfsBytes();
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PfsPage"/> class.
+    /// </summary>
+    public PfsPage(string connectionString, string database, PageAddress pageAddress)
+        : base(connectionString, database, pageAddress)
+    {
+        LoadPage();
+    }
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+
+        for (var i = 0; i <= PfsBytes.Count - 1; i++)
         {
-            if (Header.PageType != PageType.Pfs)
-            {
-                throw new InvalidOperationException("Page type is not PFS");
-            }
-
-            PfsBytes = new List<PfsByte>();
-
-            LoadPfsBytes();
+            sb.AppendFormat("{0,-14}{1}", new PageAddress(1, i), PfsBytes[i]);
+            sb.Append(Environment.NewLine);
         }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="PfsPage"/> class.
-        /// </summary>
-        /// <param name="connectionString">The connection string.</param>
-        /// <param name="database">The database.</param>
-        /// <param name="pageAddress">The page address.</param>
-        public PfsPage(string connectionString, string database, PageAddress pageAddress)
-            : base(connectionString, database, pageAddress)
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Gets or sets the PFS bytes collection.
+    /// </summary>
+    public List<PfsByte> PfsBytes { get; set; }
+
+    /// <summary>
+    /// Loads the PFS bytes collection
+    /// </summary>
+    private void LoadPfsBytes()
+    {
+        var pfsData = new byte[PfsSize];
+
+        Array.Copy(PageData, PfsOffset, pfsData, 0, PfsSize);
+
+        foreach (var pfsByte in pfsData)
         {
-            LoadPage();
-        }
-
-        /// <summary>
-        /// Returns a <see cref="T:System.String"/> that represents the current <see cref="T:System.Object"/>.
-        /// </summary>
-        /// <returns>
-        /// A <see cref="T:System.String"/> that represents the current <see cref="T:System.Object"/>.
-        /// </returns>
-        public override string ToString()
-        {
-            var sb = new StringBuilder();
-
-            for (var i = 0; i <= PfsBytes.Count - 1; i++)
-            {
-                sb.AppendFormat("{0,-14}{1}", new PageAddress(1, i), PfsBytes[i]);
-                sb.Append(Environment.NewLine);
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Gets or sets the PFS bytes collection.
-        /// </summary>
-        /// <value>The PFS bytes collection.</value>
-        public List<PfsByte> PfsBytes { get; set; }
-
-        /// <summary>
-        /// Loads the PFS bytes collection
-        /// </summary>
-        private void LoadPfsBytes()
-        {
-            var pfsData = new byte[PfsSize];
-
-            Array.Copy(PageData, PfsOffset, pfsData, 0, PfsSize);
-
-            foreach (var pfsByte in pfsData)
-            {
-                PfsBytes.Add(new PfsByte(pfsByte));
-            }
+            PfsBytes.Add(new PfsByte(pfsByte));
         }
     }
 }

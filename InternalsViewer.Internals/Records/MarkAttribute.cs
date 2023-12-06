@@ -1,41 +1,20 @@
 ﻿using System;
-using System.Drawing;
 
-namespace InternalsViewer.Internals.Records
+namespace InternalsViewer.Internals.Records;
+
+/// <summary>
+/// Custom attribute to store mark properties
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public class MarkAttribute(MarkType markType, string description) : Attribute
 {
-    /// <summary>
-    /// Custom attribute to store mark properties
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property)]
-    public class MarkAttribute : Attribute
+    public string Description { get; set; } = description;
+
+    public MarkType MarkType { get; set; } = markType;
+
+    public MarkAttribute(MarkType markType) : this(markType, null)
     {
-        public string Description { get; set; }
-
-        public MarkType MarkType { get; set; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MarkAttribute"/> class.
-        /// </summary>
-        public MarkAttribute(MarkType markType)
-        {
-            MarkType = markType;
-        }
-        
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MarkAttribute"/> class.
-        /// </summary>
-        public MarkAttribute(MarkType markType, string description)
-        {
-            MarkType = markType;
-            Description = description;
-        }
-
-
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this <see cref="MarkAttribute"/> is visible.
-        /// </summary>
-        /// <value><c>true</c> if visible; otherwise, <c>false</c>.</value>
-        public bool Visible { get; set; }
     }
+
+    public bool Visible { get; set; }
 }

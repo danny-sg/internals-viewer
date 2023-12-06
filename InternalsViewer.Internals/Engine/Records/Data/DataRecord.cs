@@ -5,46 +5,45 @@ using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.RecordLoaders;
 using InternalsViewer.Internals.Records;
 
-namespace InternalsViewer.Internals.Engine.Records.Data
+namespace InternalsViewer.Internals.Engine.Records.Data;
+
+public class DataRecord : Record
 {
-    public class DataRecord : Record
+    public DataRecord(Page page, ushort slotOffset, Structure structure)
+        : base(page, slotOffset, structure)
     {
-        public DataRecord(Page page, ushort slotOffset, Structure structure)
-            : base(page, slotOffset, structure)
-        {
-            DataRecordLoader.Load(this);
-        }
-
-        public SparseVector SparseVector { get; set; }
-
-        public override string ToString()
-        {
-            var sb = new StringBuilder();
-
-            sb.AppendFormat("DataRecord | Page: {0} | Slot Offset: {1} | Allocation Unit: {2}\n",
-                            Page.Header.PageAddress,
-                            SlotOffset,
-                            Page.Header.AllocationUnit);
-
-            sb.Append("-----------------------------------------------------------------------------------------\n");
-            sb.AppendFormat("Status Bits A:                {0}\n", GetStatusBitsDescription(this));
-            sb.AppendFormat("Column count offset:          {0}\n", ColumnCountOffset);
-            sb.AppendFormat("Number of columns:            {0}\n", ColumnCount);
-            sb.AppendFormat("Null bitmap:                  {0}\n", HasNullBitmap ? GetNullBitmapString(NullBitmap) : "(No null bitmap)");
-            sb.AppendFormat("Variable length column count: {0}\n", VariableLengthColumnCount);
-            sb.AppendFormat("Column offset array:          {0}\n", HasVariableLengthColumns ? GetArrayString(ColOffsetArray) : "(no variable length columns)");
-
-            foreach (var field in Fields)
-            {
-                sb.AppendLine(field.ToString());
-            }
-            return sb.ToString();
-        }
-
-        [Mark(MarkType.StatusBitsB)]
-        public string StatusBitsBDescription => "";
-
-        [Mark(MarkType.ForwardingRecord)]
-        public RowIdentifier ForwardingRecord { get; set; }
+        DataRecordLoader.Load(this);
     }
+
+    public SparseVector SparseVector { get; set; }
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+
+        sb.Append(
+            $"DataRecord | Page: {Page.Header.PageAddress} | Slot Offset: {SlotOffset} | Allocation Unit: {Page.Header.AllocationUnit}\n");
+
+        sb.Append("-----------------------------------------------------------------------------------------\n");
+        sb.Append($"Status Bits A:                {GetStatusBitsDescription(this)}\n");
+        sb.Append($"Column count offset:          {ColumnCountOffset}\n");
+        sb.Append($"Number of columns:            {ColumnCount}\n");
+        sb.Append(
+            $"Null bitmap:                  {(HasNullBitmap ? GetNullBitmapString(NullBitmap) : "(No null bitmap)")}\n");
+        sb.Append($"Variable length column count: {VariableLengthColumnCount}\n");
+        sb.Append(
+            $"Column offset array:          {(HasVariableLengthColumns ? GetArrayString(ColOffsetArray) : "(no variable length columns)")}\n");
+
+        foreach (var field in Fields)
+        {
+            sb.AppendLine(field.ToString());
+        }
+        return sb.ToString();
+    }
+
+    [Mark(MarkType.StatusBitsB)]
+    public string StatusBitsBDescription => "";
+
+    [Mark(MarkType.ForwardingRecord)]
+    public RowIdentifier ForwardingRecord { get; set; }
 }

@@ -2,21 +2,20 @@
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Readers.Headers;
 
-namespace InternalsViewer.Tests.Internals.UnitTests.Helpers
+namespace InternalsViewer.Tests.Internals.UnitTests.Helpers;
+
+public class FileHeaderReader
 {
-    public class FileHeaderReader
+    public static Header ReadHeader(string path)
     {
-        public static Header ReadHeader(string path)
-        {
-            var pageString = File.ReadAllText(path);
+        var pageString = File.ReadAllText(path);
 
-            var reader = new TextHeaderReader(pageString);
+        var reader = new TextHeaderReader(pageString);
 
-            var header = new Header();
+        var header = new Header();
 
-            reader.LoadHeader(header);
+        reader.LoadHeader(header);
 
-            return header;
-        }
+        return header;
     }
 }

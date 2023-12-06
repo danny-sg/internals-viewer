@@ -1,30 +1,29 @@
 ﻿
-namespace InternalsViewer.UI.Allocations
+namespace InternalsViewer.UI.Allocations;
+
+/// <summary>
+/// Modes for the allocation map
+/// </summary>
+public enum MapMode
 {
     /// <summary>
-    /// Modes for the allocation map
+    /// Standard Map Mode
     /// </summary>
-    public enum MapMode
-    {
-        /// <summary>
-        /// Standard Map Mode
-        /// </summary>
-        Standard,
+    Standard,
 
-        /// <summary>
-        /// PFS Mode - SQL Internals Viewer Only
-        /// </summary>
-        Pfs,
+    /// <summary>
+    /// PFS Mode - SQL Internals Viewer Only
+    /// </summary>
+    Pfs,
         
-        /// <summary>
-        /// Can't remember why this one's here
-        /// </summary>
-        Map,
+    /// <summary>
+    /// Can't remember why this one's here
+    /// </summary>
+    Map,
         
-        /// <summary>
-        /// Range mode - not used
-        /// </summary>
-        RangeSelection,
-        Full
-    }
+    /// <summary>
+    /// Range mode - not used
+    /// </summary>
+    RangeSelection,
+    Full
 }

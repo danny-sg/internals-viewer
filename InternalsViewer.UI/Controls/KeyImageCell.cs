@@ -3,35 +3,34 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace InternalsViewer.UI.Controls
+namespace InternalsViewer.UI.Controls;
+
+public class KeyImageCell : DataGridViewImageCell
 {
-    public class KeyImageCell : DataGridViewImageCell
+    public KeyImageCell()
     {
-        public KeyImageCell()
-        {
-            ValueType = typeof(Color);
-        }
+        ValueType = typeof(Color);
+    }
 
-        public override object DefaultNewRowValue
-        {
-            get { return 0; }
-        }
+    public override object DefaultNewRowValue
+    {
+        get { return 0; }
+    }
 
-        protected override object GetFormattedValue(object value,
-            int rowIndex,
-            ref DataGridViewCellStyle cellStyle,
-            TypeConverter valueTypeConverter,
-            TypeConverter formattedValueTypeConverter,
-            DataGridViewDataErrorContexts context)
+    protected override object GetFormattedValue(object value,
+        int rowIndex,
+        ref DataGridViewCellStyle cellStyle,
+        TypeConverter valueTypeConverter,
+        TypeConverter formattedValueTypeConverter,
+        DataGridViewDataErrorContexts context)
+    {
+        if (value != DBNull.Value)
         {
-            if (value != DBNull.Value)
-            {
-                return ExtentColour.KeyImage((Color)value);
-            }
-            else
-            {
-                return null;
-            }
+            return ExtentColour.KeyImage((Color)value);
+        }
+        else
+        {
+            return null;
         }
     }
 }

@@ -1,25 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using InternalsViewer.Internals.PageIo;
+﻿using System.IO;
 using InternalsViewer.Internals.Readers.Pages;
 
-namespace InternalsViewer.Tests.Internals.UnitTests.Helpers
+namespace InternalsViewer.Tests.Internals.UnitTests.Helpers;
+
+public class FilePageReader
 {
-    public class FilePageReader
+    public static byte[] ReadPage(string path)
     {
-        public static byte[] ReadPage(string path)
-        {
-            var pageString = File.ReadAllText(path);
+        var pageString = File.ReadAllText(path);
 
-            var reader = new TextPageReader(pageString);
+        var reader = new TextPageReader(pageString);
 
-            reader.Load();
+        reader.Load();
 
-            return reader.Data;
-        }
+        return reader.Data;
     }
 }

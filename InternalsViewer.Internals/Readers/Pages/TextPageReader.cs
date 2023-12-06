@@ -2,53 +2,52 @@
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Readers.Headers;
 
-namespace InternalsViewer.Internals.Readers.Pages
+namespace InternalsViewer.Internals.Readers.Pages;
+
+/// <summary>
+/// Loads a page from text, e.g. DBCC PAGE output
+/// </summary>
+public class TextPageReader : PageReader
 {
-    /// <summary>
-    /// Loads a page from text, e.g. DBCC PAGE output
-    /// </summary>
-    public class TextPageReader : PageReader
+    public string PageText { get; set; }
+
+    public TextPageReader(string pageText)
     {
-        public string PageText { get; set; }
+        PageText = pageText;
+        HeaderReader = new TextHeaderReader(PageText);
+    }
 
-        public TextPageReader(string pageText)
+    public override void Load()
+    {
+        Data = LoadTextPage(PageText);
+        LoadHeader();
+    }
+
+    private byte[] LoadTextPage(string pageText)
+    {
+        var offset = 0;
+
+        var dumpFound = false;
+
+        var data = new byte[Page.Size];
+
+        foreach (var line in pageText.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
         {
-            PageText = pageText;
-            HeaderReader = new TextHeaderReader(PageText);
-        }
-
-        public override void Load()
-        {
-            Data = LoadTextPage(PageText);
-            LoadHeader();
-        }
-
-        private byte[] LoadTextPage(string pageText)
-        {
-            var offset = 0;
-
-            var dumpFound = false;
-
-            var data = new byte[Page.Size];
-
-            foreach (var line in pageText.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
+            if (line.StartsWith("OFFSET TABLE"))
             {
-                if (line.StartsWith("OFFSET TABLE"))
-                {
-                    break;
-                }
-                if (line.StartsWith(@"Memory Dump @"))
-                {
-                    dumpFound = true;
-                    continue;
-                }
-                if (dumpFound && !string.IsNullOrEmpty(line))
-                {
-                    offset = ReadData(line, offset, data);
-                }
+                break;
             }
-
-            return data;
+            if (line.StartsWith(@"Memory Dump @"))
+            {
+                dumpFound = true;
+                continue;
+            }
+            if (dumpFound && !string.IsNullOrEmpty(line))
+            {
+                offset = ReadData(line, offset, data);
+            }
         }
+
+        return data;
     }
 }

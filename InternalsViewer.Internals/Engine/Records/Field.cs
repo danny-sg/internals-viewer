@@ -1,6 +1,3 @@
-﻿namespace InternalsViewer.Internals.Engine.Records
-{
-    public class Field: Markable
-    {
-    }
-}
+﻿namespace InternalsViewer.Internals.Engine.Records;
+
+public class Field : Markable;

@@ -1,14 +1,13 @@
 ﻿using System.Drawing;
 using System.Windows.Forms;
 
-namespace InternalsViewer.UI.Controls
+namespace InternalsViewer.UI.Controls;
+
+public class KeyImageColumn : DataGridViewImageColumn
 {
-    public class KeyImageColumn : DataGridViewImageColumn
+    public KeyImageColumn()
     {
-        public KeyImageColumn()
-        {
-            CellTemplate = new KeyImageCell();
-            ValueType = typeof(Color);
-        }
+        CellTemplate = new KeyImageCell();
+        ValueType = typeof(Color);
     }
 }

@@ -1,67 +1,63 @@
 ﻿using System;
 using System.Text;
 
-namespace InternalsViewer.Internals.Engine.Address
+namespace InternalsViewer.Internals.Engine.Address;
+
+public readonly struct LogSequenceNumber : IComparable<LogSequenceNumber>
 {
-    public struct LogSequenceNumber : IComparable<LogSequenceNumber>
+    private readonly int fileOffset;
+    private readonly int recordSequence;
+    private readonly int virtualLogFile;
+
+    public const int Size = sizeof(int) + sizeof(int) + sizeof(short);
+
+    public LogSequenceNumber(byte[] value)
     {
-        private readonly int fileOffset;
-        private readonly int recordSequence;
-        private readonly int virtualLogFile;
+        virtualLogFile = BitConverter.ToInt32(value, 0);
+        fileOffset = BitConverter.ToInt32(value, 4);
+        recordSequence = BitConverter.ToInt16(value, 8);
+    }
 
-        public const int Size = sizeof(int) + sizeof(int) + sizeof(short);
+    public LogSequenceNumber(string value)
+    {
+        var sb = new StringBuilder(value);
+        sb.Replace("(", string.Empty);
+        sb.Replace(")", string.Empty);
 
-        public LogSequenceNumber(byte[] value)
+        var splitAddress = sb.ToString().Split(@":".ToCharArray());
+
+        if (splitAddress.Length != 3)
         {
-            virtualLogFile = BitConverter.ToInt32(value, 0);
-            fileOffset = BitConverter.ToInt32(value, 4);
-            recordSequence = BitConverter.ToInt16(value, 8);
+            throw new ArgumentException("Invalid format");
         }
 
-        public LogSequenceNumber(string value)
-        {
-            var sb = new StringBuilder(value);
-            sb.Replace("(", string.Empty);
-            sb.Replace(")", string.Empty);
+        virtualLogFile = int.Parse(splitAddress[0]);
+        fileOffset = int.Parse(splitAddress[1]);
+        recordSequence = int.Parse(splitAddress[2]);
+    }
 
-            var splitAddress = sb.ToString().Split(@":".ToCharArray());
+    public override string ToString() => $"({virtualLogFile}:{fileOffset}:{recordSequence})";
 
-            if (splitAddress.Length != 3)
-            {
-                throw new ArgumentException("Invalid format");
-            }
+    public string ToBinaryString()
+    {
+        return $"{virtualLogFile:X8}:{fileOffset:X8}:{recordSequence:X4}";
+    }
 
-            virtualLogFile = int.Parse(splitAddress[0]);
-            fileOffset = int.Parse(splitAddress[1]);
-            recordSequence = int.Parse(splitAddress[2]);
-        }
+    public decimal ToDecimal()
+    {
+        return decimal.Parse($"{virtualLogFile}{fileOffset:0000000000}{recordSequence:00000}");
+    }
 
-        public override string ToString()
-        {
-            return $"({virtualLogFile}:{fileOffset}:{recordSequence})";
-        }
+    public decimal ToDecimalFileOffsetOnly()
+    {
+        return decimal.Parse($"{virtualLogFile}{fileOffset:0000000000}");
+    }
 
-        public string ToBinaryString()
-        {
-            return $"{virtualLogFile:X8}:{fileOffset:X8}:{recordSequence:X4}";
-        }
+    int IComparable<LogSequenceNumber>.CompareTo(LogSequenceNumber other)
+    {
+        return fileOffset.CompareTo(other.virtualLogFile)
+               + recordSequence.CompareTo(other.fileOffset)
+               + recordSequence.CompareTo(other.recordSequence);
 
-        public decimal ToDecimal()
-        {
-            return decimal.Parse($"{virtualLogFile}{fileOffset:0000000000}{recordSequence:00000}");
-        }
-
-        public decimal ToDecimalFileOffsetOnly()
-        {
-            return decimal.Parse($"{virtualLogFile}{fileOffset:0000000000}");
-        }
-
-        int IComparable<LogSequenceNumber>.CompareTo(LogSequenceNumber other)
-        {
-            return fileOffset.CompareTo(other.virtualLogFile)
-                   + recordSequence.CompareTo(other.fileOffset)
-                   + recordSequence.CompareTo(other.recordSequence);
-
-        }
     }
 }

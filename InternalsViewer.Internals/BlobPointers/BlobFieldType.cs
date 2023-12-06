@@ -1,9 +1,8 @@
-﻿namespace InternalsViewer.Internals.BlobPointers
+﻿namespace InternalsViewer.Internals.BlobPointers;
+
+public enum BlobFieldType
 {
-    public enum BlobFieldType
-    {
-        LobPointer = 0x00,
-        LobRoot = 0x04,
-        RowOverflow = 0x02
-    }
+    LobPointer = 0x00,
+    LobRoot = 0x04,
+    RowOverflow = 0x02
 }

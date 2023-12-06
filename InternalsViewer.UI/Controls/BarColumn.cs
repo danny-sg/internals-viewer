@@ -1,17 +1,16 @@
 ﻿using System.Collections.Generic;
 using System.Windows.Forms;
 
-namespace InternalsViewer.UI.Controls
-{
-    public class BarColumn : DataGridViewImageColumn
-    {
-        public BarColumn()
-        {
-            CellTemplate = new BarCell();
-            ColourRanges = new List<ColourRange>();
-            ValueType = typeof(decimal);
-        }
+namespace InternalsViewer.UI.Controls;
 
-        internal List<ColourRange> ColourRanges { get; set; }
+public class BarColumn : DataGridViewImageColumn
+{
+    public BarColumn()
+    {
+        CellTemplate = new BarCell();
+        ColourRanges = new List<ColourRange>();
+        ValueType = typeof(decimal);
     }
+
+    internal List<ColourRange> ColourRanges { get; set; }
 }
