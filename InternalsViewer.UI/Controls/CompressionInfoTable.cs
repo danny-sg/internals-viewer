@@ -18,10 +18,7 @@ public partial class CompressionInfoTable : UserControl
 
         public CompressionInformation.CompressionInfoStructure Structure { get; set; }
 
-        public string Description
-        {
-            get { return Enum.GetName(typeof(CompressionInformation.CompressionInfoStructure), Structure); }
-        }
+        public string Description => Enum.GetName(typeof(CompressionInformation.CompressionInfoStructure), Structure);
     }
 
     public CompressionInfoTable()
@@ -96,15 +93,11 @@ public partial class CompressionInfoTable : UserControl
         }
     }
 
-    #region INotifyPropertyChanged Members
-
     public event PropertyChangedEventHandler PropertyChanged
     {
-        add { Changed += value; }
-        remove { Changed -= value; }
+        add => Changed += value;
+        remove => Changed -= value;
     }
-
-    #endregion
 
     private event PropertyChangedEventHandler Changed;
 

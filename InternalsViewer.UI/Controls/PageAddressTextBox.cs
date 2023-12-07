@@ -2,6 +2,7 @@
 using System.Windows.Forms;
 using System.Drawing;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.UI.Properties;
 
 namespace InternalsViewer.UI.Controls;
 
@@ -26,9 +27,9 @@ public class PageAddressTextBox : ToolStripTextBox
             
         InitializeContextMenu();
 
-        GotFocus += new EventHandler(PageAddressTextBox_GotFocus);
-        LostFocus += new EventHandler(PageAddressTextBox_LostFocus);
-        TextChanged += new EventHandler(PageAddressTextBox_TextChanged);
+        GotFocus += PageAddressTextBox_GotFocus;
+        LostFocus += PageAddressTextBox_LostFocus;
+        TextChanged += PageAddressTextBox_TextChanged;
 
         Text = blankText;
 
@@ -95,7 +96,7 @@ public class PageAddressTextBox : ToolStripTextBox
         });
         copyCommandToolStripMenuItem.Size = new Size(267, 22);
         copyCommandToolStripMenuItem.Text = "Copy DBCC PAGE command to Clipboard";
-        copyCommandToolStripMenuItem.Click += new EventHandler(CopyCommandToolStripMenuItem_Click);
+        copyCommandToolStripMenuItem.Click += CopyCommandToolStripMenuItem_Click;
         option0HeaderOnlyToolStripMenuItem.Size = new Size(211, 22);
         option0HeaderOnlyToolStripMenuItem.Text = "Option 0 - Header Only";
         option0HeaderOnlyToolStripMenuItem.Click += Option0ToolStripMenuItem_Click;
@@ -142,7 +143,7 @@ public class PageAddressTextBox : ToolStripTextBox
 
     public void CopyDbccPageToClipboard(int option, PageAddress address)
     {
-        var text = string.Format(Properties.Resources.SQL_CopyDbccPage, DatabaseId, address.FileId, address.PageId, option);
+        var text = string.Format(Resources.SQL_CopyDbccPage, DatabaseId, address.FileId, address.PageId, option);
 
         Clipboard.SetText(text);
     }

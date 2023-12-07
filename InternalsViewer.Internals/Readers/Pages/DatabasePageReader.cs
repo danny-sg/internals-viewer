@@ -44,22 +44,24 @@ public class DatabasePageReader : PageReader
     /// </returns>
     private byte[] LoadDatabasePage()
     {
-        var pageCommand = string.Format(Properties.Resources.SQL_Page,
-            DatabaseId,
-            PageAddress.FileId,
-            PageAddress.PageId,
-            2);
+        var pageCommand = string.Format(SqlCommands.Page,
+                                        DatabaseId,
+                                        PageAddress.FileId,
+                                        PageAddress.PageId,
+                                        2);
         var offset = 0;
         var data = new byte[Page.Size];
 
-        using var conn = new SqlConnection(ConnectionString);
-        var cmd = new SqlCommand(pageCommand, conn);
-        cmd.CommandType = CommandType.Text;
+        using var connection = new SqlConnection(ConnectionString);
+        
+        var command = new SqlCommand(pageCommand, connection);
+
+        command.CommandType = CommandType.Text;
 
         try
         {
-            conn.Open();
-            var reader = cmd.ExecuteReader();
+            connection.Open();
+            var reader = command.ExecuteReader();
 
             if (reader.HasRows)
             {
@@ -85,7 +87,7 @@ public class DatabasePageReader : PageReader
             System.Diagnostics.Debug.Print(ex.ToString());
         }
 
-        cmd.Dispose();
+        command.Dispose();
 
         return data;
     }

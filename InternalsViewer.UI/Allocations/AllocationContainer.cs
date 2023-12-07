@@ -6,6 +6,7 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Pages;
+#pragma warning disable CA1416
 
 namespace InternalsViewer.UI.Allocations;
 
@@ -14,7 +15,7 @@ namespace InternalsViewer.UI.Allocations;
 /// </summary>
 public partial class AllocationContainer : UserControl
 {
-    private Size extentSize = new Size(64, 8);
+    private Size extentSize = new(64, 8);
     private MapMode mode;
     private bool showFileInformation;
 
@@ -162,10 +163,8 @@ public partial class AllocationContainer : UserControl
 
             return true;
         }
-        else
-        {
-            return false;
-        }
+
+        return false;
     }
 
     /// <summary>
@@ -292,18 +291,13 @@ public partial class AllocationContainer : UserControl
         }
     }
 
-    #region Properties
-
     /// <summary>
     /// Gets or sets a value indicating whether [show file information].
     /// </summary>
     /// <value><c>true</c> if [show file information]; otherwise, <c>false</c>.</value>
     public bool ShowFileInformation
     {
-        get
-        {
-            return showFileInformation;
-        }
+        get => showFileInformation;
 
         set
         {
@@ -321,10 +315,7 @@ public partial class AllocationContainer : UserControl
     /// <value>The mode.</value>
     public MapMode Mode
     {
-        get
-        {
-            return mode;
-        }
+        get => mode;
 
         set
         {
@@ -357,7 +348,7 @@ public partial class AllocationContainer : UserControl
     /// Gets the map layers collection
     /// </summary>
     /// <value>The map layers.</value>
-    public List<AllocationLayer> AllocationLayers { get; } = new List<AllocationLayer>();
+    public List<AllocationLayer> AllocationLayers { get; } = new();
 
     /// <summary>
     /// Gets or sets the size of the extent.
@@ -365,10 +356,7 @@ public partial class AllocationContainer : UserControl
     /// <value>The size of the extent.</value>
     public Size ExtentSize
     {
-        get
-        {
-            return extentSize;
-        }
+        get => extentSize;
 
         set
         {
@@ -397,7 +385,7 @@ public partial class AllocationContainer : UserControl
     /// Gets the allocation map Dictionary collection
     /// </summary>
     /// <value>The allocation maps.</value>
-    public Dictionary<int, AllocationMap> AllocationMaps { get; } = new Dictionary<int, AllocationMap>();
+    public Dictionary<int, AllocationMap> AllocationMaps { get; } = new();
 
     public bool DrawBorder
     {
@@ -407,10 +395,8 @@ public partial class AllocationContainer : UserControl
             {
                 return AllocationMaps[0].DrawBorder;
             }
-            else
-            {
-                return true;
-            }
+
+            return true;
         }
 
         set
@@ -430,10 +416,8 @@ public partial class AllocationContainer : UserControl
             {
                 return AllocationMaps[InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files[0].FileId].Holding;
             }
-            else
-            {
-                return true;
-            }
+
+            return true;
         }
 
         set
@@ -453,10 +437,8 @@ public partial class AllocationContainer : UserControl
             {
                 return AllocationMaps[0].HoldingMessage;
             }
-            else
-            {
-                return string.Empty;
-            }
+
+            return string.Empty;
         }
 
         set
@@ -467,7 +449,4 @@ public partial class AllocationContainer : UserControl
             }
         }
     }
-
-    #endregion
-
 }

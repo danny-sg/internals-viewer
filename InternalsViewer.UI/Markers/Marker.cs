@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace InternalsViewer.UI.Markers;
 
@@ -11,7 +12,7 @@ public class Marker
 
     public static Marker GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
     {
-        return markers.Find(delegate(Marker marker) { return marker.StartPosition >= startPosition & marker.EndPosition <= endPosition; });
+        return markers.First(marker => marker.StartPosition >= startPosition & marker.EndPosition <= endPosition);
     }
 
     public override string ToString()

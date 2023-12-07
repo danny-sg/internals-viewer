@@ -153,7 +153,7 @@ public class Page : Markable
     }
 
     /// <summary>
-    /// Refresh the Page
+    /// Refresh the Page (with no load)
     /// </summary>
     public virtual void Refresh()
     {
@@ -183,9 +183,9 @@ public class Page : Markable
     {
         var databaseName = (string)DataAccess.GetScalar(connectionString,
             "master",
-            Properties.Resources.SQL_Database,
+            SqlCommands.Database,
             CommandType.Text,
-            new SqlParameter[1] { new("database_id", databaseId) });
+            new SqlParameter[1] { new("DatabaseId", databaseId) });
 
         return databaseName;
     }
@@ -199,11 +199,11 @@ public class Page : Markable
         {
             return (CompressionType)(DataAccess.GetScalar(connectionString,
                 DatabaseName,
-                Properties.Resources.SQL_Compression,
+                SqlCommands.Compression,
                 CommandType.Text,
                 new SqlParameter[]
                 {
-                    new("partition_id", Header.PartitionId)
+                    new("PartitionId", Header.PartitionId)
                 }) ?? CompressionType.None);
         }
 
@@ -236,7 +236,7 @@ public class Page : Markable
     {
         string allocationUnitName;
 
-        var sqlCommand = Properties.Resources.SQL_Allocation_Unit;
+        var sqlCommand = SqlCommands.AllocationUnit;
 
         if (DatabaseName == null)
         {
@@ -250,7 +250,7 @@ public class Page : Markable
                 CommandType.Text,
                 new SqlParameter[]
                 {
-                    new("allocation_unit_id", allocationUnitId)
+                    new("AllocationUnitId", allocationUnitId)
                 });
         }
 
@@ -261,7 +261,7 @@ public class Page : Markable
     {
         var databaseId = (short)DataAccess.GetScalar(connectionString,
             "master",
-            Properties.Resources.SQL_DatabaseId,
+            SqlCommands.DatabaseId,
             CommandType.Text,
             new SqlParameter[]
             {

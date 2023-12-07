@@ -8,7 +8,7 @@ namespace InternalsViewer.UI.Controls;
 
 internal class HexRichTextBox : RichTextBox
 {
-    private readonly List<BlockSelection> blocks = new List<BlockSelection>();
+    private readonly List<BlockSelection> blocks = new();
 
     public HexRichTextBox()
     {
@@ -59,8 +59,6 @@ internal class HexRichTextBox : RichTextBox
             lines = ((endPos.Y - startPos.Y) / TextSize.Height);
 
             Rectangle top;
-            Rectangle middle;
-            Rectangle bottom;
 
             if (startPos.Y == endPos.Y)
             {
@@ -74,12 +72,12 @@ internal class HexRichTextBox : RichTextBox
                     TextSize.Height);
             }
 
-            middle = new Rectangle(topPos.X - 2,
+            var middle = new Rectangle(topPos.X - 2,
                 startPos.Y + TextSize.Height,
                 3 + TextLineSize.Width - topPos.X,
                 TextSize.Height * (lines - 1));
 
-            bottom = new Rectangle(topPos.X - 2,
+            var bottom = new Rectangle(topPos.X - 2,
                 endPos.Y,
                 endPos.X,
                 TextSize.Height);

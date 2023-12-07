@@ -50,22 +50,16 @@ public class TableStructure : Structure
         var returnDataTable = new DataTable();
 
         using var conn = new SqlConnection(database.ConnectionString);
+
         string commandText;
 
-        if (database.CompatibilityLevel > 90)
-        {
-            commandText = Properties.Resources.SQL_Table_Columns_2008;
-        }
-        else
-        {
-            commandText = Properties.Resources.SQL_Table_Columns_2005;
-        }
+        commandText = SqlCommands.TableColumns;
 
         var cmd = new SqlCommand(commandText, conn);
 
         cmd.CommandType = CommandType.Text;
 
-        cmd.Parameters.AddWithValue("@allocation_unit_id", allocationUnitId);
+        cmd.Parameters.AddWithValue("@AllocationUnitId", allocationUnitId);
         cmd.CommandType = CommandType.Text;
 
         var da = new SqlDataAdapter(cmd);

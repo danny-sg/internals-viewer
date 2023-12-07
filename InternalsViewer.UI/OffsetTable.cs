@@ -79,10 +79,7 @@ public partial class OffsetTable : UserControl
     /// <value>The page.</value>
     public Page Page
     {
-        get
-        {
-            return page;
-        }
+        get => page;
         set
         {
             page = value;

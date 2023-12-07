@@ -82,8 +82,8 @@ public class TransactionLogTabPage : TabPage
         dataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
         dataGridView.Size = new System.Drawing.Size(200, 100);
         dataGridView.TabIndex = 1;
-        dataGridView.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(DataGridView_CellFormatting);
-        dataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(DataGridView_CellContentClick);
+        dataGridView.CellFormatting += DataGridView_CellFormatting;
+        dataGridView.CellContentClick += DataGridView_CellContentClick;
         // 
         // LsnColumn
         // 

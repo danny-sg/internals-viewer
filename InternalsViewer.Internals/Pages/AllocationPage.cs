@@ -124,10 +124,10 @@ public class AllocationPage : Page
         }
 
         Array.Copy(PageData,
-            allocationArrayOffset,
-            allocationData,
-            0,
-            allocationData.Length - (Header.SlotCount * 2));
+                   allocationArrayOffset,
+                   allocationData,
+                   0,
+                   allocationData.Length - (Header.SlotCount * 2));
 
         var bitArray = new BitArray(allocationData);
 

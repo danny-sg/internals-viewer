@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Data;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Properties;
 using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Engine.Database;
@@ -44,7 +43,7 @@ public class BufferPool
 
         using var conn = new SqlConnection(InternalsViewerConnection.CurrentConnection().ConnectionString);
 
-        var cmd = new SqlCommand(Resources.SQL_Buffer_Pool, conn);
+        var cmd = new SqlCommand(SqlCommands.BufferPool, conn);
         
         cmd.CommandType = CommandType.Text;
         cmd.Parameters.AddWithValue("database", InternalsViewerConnection.CurrentConnection().CurrentDatabase.Name);

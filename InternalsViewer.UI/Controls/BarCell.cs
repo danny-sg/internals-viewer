@@ -13,10 +13,7 @@ public class BarCell : DataGridViewImageCell
         ValueType = typeof(decimal);
     }
 
-    public override object DefaultNewRowValue
-    {
-        get { return 0; }
-    }
+    public override object DefaultNewRowValue => 0;
 
     protected override object GetFormattedValue(object value,
         int rowIndex,

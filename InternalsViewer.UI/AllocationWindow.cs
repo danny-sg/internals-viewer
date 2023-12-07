@@ -17,7 +17,7 @@ public partial class AllocationWindow : UserControl
     public event EventHandler<PageEventArgs> ViewPage;
 
     protected delegate void LoadDatabaseDelegate();
-    private readonly BufferPool bufferPool = new BufferPool();
+    private readonly BufferPool bufferPool = new();
     private bool keyChanging;
     private const string AllocationMapText = "Allocation Map";
     private const string AllocationUnitsText = "Allocation Units";

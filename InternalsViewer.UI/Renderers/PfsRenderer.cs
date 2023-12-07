@@ -192,8 +192,6 @@ internal class PfsRenderer : IDisposable
         displayAllocationText = (TextRenderer.MeasureText("%", pfsFont).Height < height / 2);
     }
 
-    #region IDisposable Members
-
     void IDisposable.Dispose()
     {
         pfsIamBrush.Dispose();
@@ -204,6 +202,4 @@ internal class PfsRenderer : IDisposable
         borderPen.Dispose();
         pageBorderPen.Dispose();
     }
-
-    #endregion
 }

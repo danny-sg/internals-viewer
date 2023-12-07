@@ -16,9 +16,9 @@ namespace InternalsViewer.UI.Allocations;
 /// </summary>
 public class AllocationMap : Panel, IDisposable
 {
-    public static Size Large = new Size(256, 32);
-    public static Size Medium = new Size(96, 12);
-    public static Size Small = new Size(64, 8);
+    public static Size Large = new(256, 32);
+    public static Size Medium = new(96, 12);
+    public static Size Small = new(64, 8);
 
     private readonly Color defaultPageBorderColour = Color.White;
     private Color borderColour = Color.Gainsboro;
@@ -38,9 +38,9 @@ public class AllocationMap : Panel, IDisposable
     private readonly PfsRenderer pfsRenderer;
 
     private int provisionalEndExtent;
-    private readonly BackgroundWorker imageBufferBackgroundWorker = new BackgroundWorker();
+    private readonly BackgroundWorker imageBufferBackgroundWorker = new();
 
-    private readonly Pen backgroundLine = new Pen(Color.FromArgb(242, 242, 242), 2);
+    private readonly Pen backgroundLine = new(Color.FromArgb(242, 242, 242), 2);
     private readonly LinearGradientBrush backgroundBrush;
 
     /// <summary>
@@ -68,7 +68,7 @@ public class AllocationMap : Panel, IDisposable
         MouseClick += AllocationMapPanel_MouseClick;
         scrollBar.ValueChanged += ScrollBar_ValueChanged;
         MouseMove += AllocationMapPanel_MouseMove;
-        Resize += new EventHandler(AllocationMap_Resize);
+        Resize += AllocationMap_Resize;
         extentSize = AllocationMap.Small;
 
         imageBufferBackgroundWorker.DoWork += ImageBufferBackgroundWorker_DoWork;
@@ -238,10 +238,8 @@ public class AllocationMap : Panel, IDisposable
                 extentSize.Width,
                 extentSize.Height);
         }
-        else
-        {
-            return new Rectangle(0, 0, extentSize.Width, extentSize.Height);
-        }
+
+        return new Rectangle(0, 0, extentSize.Width, extentSize.Height);
     }
 
     /// <summary>
@@ -260,10 +258,8 @@ public class AllocationMap : Panel, IDisposable
                 pageWidth,
                 extentSize.Height);
         }
-        else
-        {
-            return new Rectangle(0, 0, pageWidth, extentSize.Height);
-        }
+
+        return new Rectangle(0, 0, pageWidth, extentSize.Height);
     }
 
     /// <summary>
@@ -389,8 +385,6 @@ public class AllocationMap : Panel, IDisposable
 
         Refresh();
     }
-
-    #region Events
 
     /// <summary>
     /// Raises the <see cref="E:System.Windows.Forms.Control.Paint"/> event.
@@ -612,10 +606,6 @@ public class AllocationMap : Panel, IDisposable
         WindowPosition = scrollBar.Value - (scrollBar.Value % extentsHorizontal);
     }
 
-    #endregion
-
-    #region Properties
-
     /// <summary>
     /// Gets or sets the file id.
     /// </summary>
@@ -640,8 +630,8 @@ public class AllocationMap : Panel, IDisposable
     /// <value>The border colour.</value>
     public Color BorderColour
     {
-        get { return pageExtentRenderer.PageBorderColour; }
-        set { pageExtentRenderer.PageBorderColour = value; }
+        get => pageExtentRenderer.PageBorderColour;
+        set => pageExtentRenderer.PageBorderColour = value;
     }
 
     /// <summary>
@@ -650,8 +640,8 @@ public class AllocationMap : Panel, IDisposable
     /// <value>The selected page.</value>
     public int SelectedPage
     {
-        get { return selectedPage + StartPage.PageId; }
-        set { selectedPage = value; }
+        get => selectedPage + StartPage.PageId;
+        set => selectedPage = value;
     }
 
     /// <summary>
@@ -660,10 +650,7 @@ public class AllocationMap : Panel, IDisposable
     /// <value>The size of the extent.</value>
     public Size ExtentSize
     {
-        get
-        {
-            return extentSize;
-        }
+        get => extentSize;
 
         set
         {
@@ -686,10 +673,7 @@ public class AllocationMap : Panel, IDisposable
     /// <value>The window position.</value>
     public int WindowPosition
     {
-        get
-        {
-            return windowPosition;
-        }
+        get => windowPosition;
 
         set
         {
@@ -712,10 +696,7 @@ public class AllocationMap : Panel, IDisposable
     /// <value>The allocation map mode.</value>
     public MapMode Mode
     {
-        get
-        {
-            return mode;
-        }
+        get => mode;
 
         set
         {
@@ -740,7 +721,7 @@ public class AllocationMap : Panel, IDisposable
     /// Gets or sets the start page.
     /// </summary>
     /// <value>The start page.</value>
-    public PageAddress StartPage { get; set; } = new PageAddress(1, 0);
+    public PageAddress StartPage { get; set; } = new(1, 0);
 
     /// <summary>
     /// Gets or sets the file.
@@ -753,8 +734,8 @@ public class AllocationMap : Panel, IDisposable
     /// </summary>
     public bool DrawBorder
     {
-        get { return pageExtentRenderer.DrawBorder; }
-        set { pageExtentRenderer.DrawBorder = value; }
+        get => pageExtentRenderer.DrawBorder;
+        set => pageExtentRenderer.DrawBorder = value;
     }
 
     /// <summary>
@@ -768,8 +749,6 @@ public class AllocationMap : Panel, IDisposable
     public string HoldingMessage { get; set; }
 
     public Pfs Pfs { get; set; }
-
-    #endregion
 
     void IDisposable.Dispose()
     {

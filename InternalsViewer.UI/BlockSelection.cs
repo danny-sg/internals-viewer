@@ -27,8 +27,5 @@ public class BlockSelection
 
     public Color Colour { get; set; }
 
-    public bool HasColour
-    {
-        get { return Colour != null; }
-    }
+    public bool HasColour => Colour != null;
 }

@@ -67,6 +67,7 @@ public class InternalsViewerConnection
         builder.DataSource = serverName;
         builder.ApplicationName = "Internals Viewer";
         builder.InitialCatalog = databaseName;
+        builder.TrustServerCertificate = true;
 
         if (!integratedSecurity)
         {
@@ -93,7 +94,7 @@ public class InternalsViewerConnection
         }
 
         var databasesDataTable = DataAccess.GetDataTable(CurrentConnection().ConnectionString,
-            Properties.Resources.SQL_Databases,
+            SqlCommands.Databases,
             "master",
             "Databases",
             CommandType.Text);
@@ -113,11 +114,10 @@ public class InternalsViewerConnection
 
     private static void CheckSysAdmin(SqlConnection conn)
     {
-        var cmd = new SqlCommand(Properties.Resources.SQL_Sysadmin_Check, conn);
+        var cmd = new SqlCommand(SqlCommands.SysAdminCheck, conn);
 
         cmd.CommandType = CommandType.Text;
-        cmd.CommandText = Properties.Resources.SQL_Sysadmin_Check;
-
+        
         var hasSysadmin = (bool)cmd.ExecuteScalar();
 
         if (!hasSysadmin)
@@ -128,7 +128,7 @@ public class InternalsViewerConnection
 
     private void CheckVersion(SqlConnection conn)
     {
-        var cmd = new SqlCommand(Properties.Resources.SQL_Version, conn);
+        var cmd = new SqlCommand(SqlCommands.Version, conn);
 
         var reader = cmd.ExecuteReader(CommandBehavior.SingleRow);
 

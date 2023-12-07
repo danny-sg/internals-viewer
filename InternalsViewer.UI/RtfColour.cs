@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Text;
@@ -14,6 +13,10 @@ internal class RtfColour
 {
     private RtfColour()
     {
+        var colours = new[]
+        {
+            Color.Blue,
+        }
     }
 
     /// <summary>
@@ -39,7 +42,7 @@ internal class RtfColour
     }
 
     /// <summary>
-    /// Create an rtf tag with a forecolour and backcolour
+    /// Create an rtf tag with a fore colour and back colour
     /// </summary>
     /// <param name="rtfColours">The RTF colours.</param>
     /// <param name="foreColour">The fore colour.</param>
@@ -47,31 +50,34 @@ internal class RtfColour
     /// <returns></returns>
     public static string RtfTag(List<Color> rtfColours, string foreColour, string backColour)
     {
-        int foreColourIndex;
-        int backColourIndex;
-
-        foreColourIndex = rtfColours.FindIndex(delegate(Color col) { return col.Name == foreColour; }) + 1;
-        backColourIndex = rtfColours.FindIndex(delegate(Color col) { return col.Name == backColour; }) + 1;
+        var foreColourIndex = rtfColours.FindIndex(col => col.Name == foreColour) + 1;
+        var backColourIndex = rtfColours.FindIndex(col => col.Name == backColour) + 1;
 
         return string.Format(CultureInfo.InvariantCulture,
-            Resources.Rtf_ColourHighlightTag,
-            foreColourIndex,
-            backColourIndex);
+                             Resources.Rtf_ColourHighlightTag,
+                             foreColourIndex,
+                             backColourIndex);
     }
 
     /// <summary>
     /// Creates the RTF colour table for the given list of colours
     /// </summary>
     /// <returns></returns>
-    public static List<Color> CreateColourTable()
+    public static List<Color> CreateColourTable(List<string> colours)
     {
         var rtfColours = new List<Color>();
 
-        foreach (var name in Enum.GetNames(typeof(KnownColor)))
+        foreach (var name in colours)
         {
             rtfColours.Add(Color.FromName(name));
         }
 
         return rtfColours;
     }
+}
+
+public enum TagColour
+{
+    White,
+    Black,
 }

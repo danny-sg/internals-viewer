@@ -20,8 +20,8 @@ public partial class DecodeWindow : UserControl
 
         dataTypeComboBox.SelectedIndex = 0;
 
-        rtfColours = RtfColour.CreateColourTable();
-        rtfHeader = RtfColour.CreateRtfHeader(rtfColours);
+        //rtfColours = RtfColour.CreateColourTable();
+        //rtfHeader = RtfColour.CreateRtfHeader(rtfColours);
     }
 
     /// <summary>
@@ -310,10 +310,7 @@ public partial class DecodeWindow : UserControl
 
     public PageViewerWindow ParentWindow
     {
-        get
-        {
-            return parentWindow;
-        }
+        get => parentWindow;
         set
         {
             parentWindow = value;
@@ -326,7 +323,7 @@ public partial class DecodeWindow : UserControl
             }
             else
             {
-                parentWindow.Disposed += new EventHandler(ParentWindow_Disposed);
+                parentWindow.Disposed += ParentWindow_Disposed;
             }
         }
     }

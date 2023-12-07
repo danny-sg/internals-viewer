@@ -19,7 +19,7 @@ public class LogMonitor
     public static DataTable StopMonitoring(string database, LogSequenceNumber startLsn, string connectionString)
     {
         var logTable = DataAccess.GetDataTable(connectionString,
-            Properties.Resources.SQL_TransactionLog,
+            SqlCommands.TransactionLog,
             database,
             "Transaction Log",
             CommandType.Text,
@@ -44,6 +44,6 @@ public class LogMonitor
 
     private static void Checkpoint(string connectionString, string database)
     {
-        DataAccess.ExecuteNonQuery(connectionString, Properties.Resources.SQL_Checkpoint, database, CommandType.Text);
+        DataAccess.ExecuteNonQuery(connectionString, SqlCommands.Checkpoint, database, CommandType.Text);
     }
 }

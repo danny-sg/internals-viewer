@@ -15,7 +15,7 @@ namespace InternalsViewer.UI.Allocations;
 [Serializable]
 public class AllocationLayer
 {
-    private List<Allocation> allocations = new List<Allocation>();
+    private List<Allocation> allocations = new();
     private Color borderColour;
     private Color colour;
     private bool invert;
@@ -150,14 +150,12 @@ public class AllocationLayer
     /// <returns></returns>
     public AllocationLayer FindPage(PageAddress pageAddress, bool findInverted)
     {
-        int extentAddress;
-
-        extentAddress = pageAddress.PageId / 8;
+        var extentAddress = pageAddress.PageId / 8;
 
         foreach (var alloc in allocations)
         {
             // Check if it's the actual IAM
-            if (alloc.Pages.Exists(delegate(AllocationPage p) { return p.PageAddress == pageAddress; }))
+            if (alloc.Pages.Exists(p => p.PageAddress == pageAddress))
             {
                 return this;
             }
@@ -176,16 +174,14 @@ public class AllocationLayer
         return null;
     }
 
-    #region Properties
-
     /// <summary>
     /// Gets or sets a value indicating whether this <see cref="AllocationLayer"/> is transparent.
     /// </summary>
     /// <value><c>true</c> if transparent; otherwise, <c>false</c>.</value>
     public bool Transparent
     {
-        get { return transparent; }
-        set { transparent = value; }
+        get => transparent;
+        set => transparent = value;
     }
 
     /// <summary>
@@ -194,8 +190,8 @@ public class AllocationLayer
     /// <value>The type of the layer.</value>
     public AllocationLayerType LayerType
     {
-        get { return layerType; }
-        set { layerType = value; }
+        get => layerType;
+        set => layerType = value;
     }
 
     /// <summary>
@@ -210,16 +206,11 @@ public class AllocationLayer
             {
                 return Color.FromArgb(transparency, colour);
             }
-            else
-            {
-                return colour;
-            }
+
+            return colour;
         }
 
-        set
-        {
-            colour = value;
-        }
+        set => colour = value;
     }
 
     /// <summary>
@@ -228,8 +219,8 @@ public class AllocationLayer
     /// <value>The name.</value>
     public string Name
     {
-        get { return name; }
-        set { name = value; }
+        get => name;
+        set => name = value;
     }
 
     /// <summary>
@@ -238,8 +229,8 @@ public class AllocationLayer
     /// <value>The allocations.</value>
     public List<Allocation> Allocations
     {
-        get { return allocations; }
-        set { allocations = value; }
+        get => allocations;
+        set => allocations = value;
     }
 
     /// <summary>
@@ -248,8 +239,8 @@ public class AllocationLayer
     /// <value>The order.</value>
     public int Order
     {
-        get { return order; }
-        set { order = value; }
+        get => order;
+        set => order = value;
     }
 
     /// <summary>
@@ -258,8 +249,8 @@ public class AllocationLayer
     /// <value><c>true</c> if invert; otherwise, <c>false</c>.</value>
     public bool Invert
     {
-        get { return invert; }
-        set { invert = value; }
+        get => invert;
+        set => invert = value;
     }
 
     /// <summary>
@@ -270,8 +261,8 @@ public class AllocationLayer
     /// </value>
     public bool UseDefaultSinglePageColour
     {
-        get { return useDefaultSinglePageColour; }
-        set { useDefaultSinglePageColour = value; }
+        get => useDefaultSinglePageColour;
+        set => useDefaultSinglePageColour = value;
     }
 
     /// <summary>
@@ -280,8 +271,8 @@ public class AllocationLayer
     /// <value><c>true</c> if visible; otherwise, <c>false</c>.</value>
     public bool Visible
     {
-        get { return visible; }
-        set { visible = value; }
+        get => visible;
+        set => visible = value;
     }
 
     /// <summary>
@@ -290,8 +281,8 @@ public class AllocationLayer
     /// <value>The border colour.</value>
     public Color BorderColour
     {
-        get { return borderColour; }
-        set { borderColour = value; }
+        get => borderColour;
+        set => borderColour = value;
     }
 
     /// <summary>
@@ -300,8 +291,8 @@ public class AllocationLayer
     /// <value><c>true</c> if [use border colour]; otherwise, <c>false</c>.</value>
     public bool UseBorderColour
     {
-        get { return useBorderColour; }
-        set { useBorderColour = value; }
+        get => useBorderColour;
+        set => useBorderColour = value;
     }
 
     /// <summary>
@@ -310,8 +301,8 @@ public class AllocationLayer
     /// <value><c>true</c> if [single slots only]; otherwise, <c>false</c>.</value>
     public bool SingleSlotsOnly
     {
-        get { return singleSlotsOnly; }
-        set { singleSlotsOnly = value; }
+        get => singleSlotsOnly;
+        set => singleSlotsOnly = value;
     }
 
     /// <summary>
@@ -320,38 +311,36 @@ public class AllocationLayer
     /// <value>The transparency level.</value>
     public int Transparency
     {
-        get { return transparency; }
-        set { transparency = value; }
+        get => transparency;
+        set => transparency = value;
     }
 
     public string IndexName
     {
-        get { return indexName; }
-        set { indexName = value; }
+        get => indexName;
+        set => indexName = value;
     }
 
     public IndexTypes IndexType
     {
-        get { return indexType; }
-        set { indexType = value; }
+        get => indexType;
+        set => indexType = value;
     }
     public int UsedPages
     {
-        get { return usedPages; }
-        set { usedPages = value; }
+        get => usedPages;
+        set => usedPages = value;
     }
 
     public int TotalPages
     {
-        get { return totalPages; }
-        set { totalPages = value; }
+        get => totalPages;
+        set => totalPages = value;
     }
 
     public string ObjectName
     {
-        get { return objectName; }
-        set { objectName = value; }
+        get => objectName;
+        set => objectName = value;
     }
-
-    #endregion
 }

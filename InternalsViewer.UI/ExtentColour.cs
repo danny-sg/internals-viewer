@@ -14,13 +14,9 @@ public class ExtentColour
     /// <param name="color">The color.</param>
     public static Color BackgroundColour(Color color)
     {
-        int red;
-        int green;
-        int blue;
-
-        red = color.R + 32 > 255 ? 255 : color.R + 32;
-        green = color.G + 32 > 255 ? 255 : color.G + 32;
-        blue = color.B + 32 > 255 ? 255 : color.B + 32;
+        var red = color.R + 32 > 255 ? 255 : color.R + 32;
+        var green = color.G + 32 > 255 ? 255 : color.G + 32;
+        var blue = color.B + 32 > 255 ? 255 : color.B + 32;
 
         return Color.FromArgb(color.A, red, green, blue);
     }
@@ -31,13 +27,9 @@ public class ExtentColour
     /// <param name="color">The color.</param>
     public static Color LightBackgroundColour(Color color)
     {
-        int red;
-        int green;
-        int blue;
-
-        red = color.R + 48 > 255 ? 255 : color.R + 48;
-        green = color.G + 48 > 255 ? 255 : color.G + 48;
-        blue = color.B + 48 > 255 ? 255 : color.B + 48;
+        var red = color.R + 48 > 255 ? 255 : color.R + 48;
+        var green = color.G + 48 > 255 ? 255 : color.G + 48;
+        var blue = color.B + 48 > 255 ? 255 : color.B + 48;
 
         return Color.FromArgb(color.A, red, green, blue);
     }
@@ -53,14 +45,12 @@ public class ExtentColour
         var keyRectange = new Rectangle(0, 0, key.Width - 1, key.Height - 1);
         var g = Graphics.FromImage(key);
 
-        using (var brush = new LinearGradientBrush(keyRectange,
-                   color,
-                   BackgroundColour(color),
-                   LinearGradientMode.Horizontal))
-        {   
-            g.FillRectangle(brush, keyRectange);
-            g.DrawRectangle(SystemPens.ControlDark, keyRectange);
-        }
+        using var brush = new LinearGradientBrush(keyRectange,
+            color,
+            BackgroundColour(color),
+            LinearGradientMode.Horizontal);
+        g.FillRectangle(brush, keyRectange);
+        g.DrawRectangle(SystemPens.ControlDark, keyRectange);
 
         return key;
     }

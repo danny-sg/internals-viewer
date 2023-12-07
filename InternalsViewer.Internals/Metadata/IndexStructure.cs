@@ -60,12 +60,12 @@ public class IndexStructure : Structure
 
         using var conn = new SqlConnection(database.ConnectionString);
 
-        var commandText = Properties.Resources.SQL_Index_Columns;
+        var commandText = SqlCommands.IndexColumns;
 
         var cmd = new SqlCommand(commandText, conn);
         cmd.CommandType = CommandType.Text;
 
-        cmd.Parameters.AddWithValue("@allocation_unit_id", allocationUnitId);
+        cmd.Parameters.AddWithValue("@AllocationUnitId", allocationUnitId);
         cmd.CommandType = CommandType.Text;
 
         var da = new SqlDataAdapter(cmd);

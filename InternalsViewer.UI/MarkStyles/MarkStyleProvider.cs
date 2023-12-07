@@ -6,7 +6,7 @@ namespace InternalsViewer.UI.MarkStyles;
 
 public class MarkStyleProvider
 {
-    private Dictionary<MarkType, MarkStyle> Styles = new Dictionary<MarkType, MarkStyle>()
+    private Dictionary<MarkType, MarkStyle> Styles = new()
     {
         { MarkType.Rid, new MarkStyle(Color.DarkMagenta, Color.Thistle, "Row Identifier")},
         { MarkType.BlobChildOffset, new MarkStyle(Color.Blue, Color.Thistle, "Offset")},

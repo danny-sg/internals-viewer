@@ -5,6 +5,12 @@ using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
+/// <summary>
+/// PFS (Page Free Space) Page
+/// </summary>
+/// <remarks> 
+///     <see href="https://learn.microsoft.com/en-us/sql/relational-databases/pages-and-extents-architecture-guide"/>
+/// </remarks>
 public class Pfs
 {
     private readonly List<PfsPage> pfsPages;

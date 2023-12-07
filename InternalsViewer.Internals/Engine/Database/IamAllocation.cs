@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
+using System.Linq;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
@@ -8,6 +9,8 @@ namespace InternalsViewer.Internals.Engine.Database;
 /// </summary>
 /// <remarks>
 /// This is a subclass of Allocation as the BuildChain and Allocated method is overriden with a different method
+/// 
+/// <see href="https://www.sqlskills.com/blogs/paul/inside-the-storage-engine-iam-pages-iam-chains-and-allocation-units/"/>
 /// </remarks>
 public class IamAllocation : Allocation
 {
@@ -28,9 +31,9 @@ public class IamAllocation : Allocation
     /// </summary>
     public override bool Allocated(int extent, int fileId)
     {
-        var page = Pages.Find(p => p.StartPage.FileId == fileId &&
-                                   extent >= (p.StartPage.PageId / 8) &&
-                                   extent <= ((p.StartPage.PageId + Database.AllocationInterval) / 8));
+        var page = Pages.FirstOrDefault(p => p.StartPage.FileId == fileId &&
+                                             extent >= (p.StartPage.PageId / 8) &&
+                                             extent <= ((p.StartPage.PageId + Database.AllocationInterval) / 8));
 
         if (page == null)
         {
@@ -45,15 +48,22 @@ public class IamAllocation : Allocation
     /// </summary>
     protected new void BuildChain(Database database, PageAddress pageAddress)
     {
-        var page = new AllocationPage(database, pageAddress);
-
-        Pages.Add(page);
-        
-        SinglePageSlots.AddRange(page.SinglePageSlots);
-
-        if (page.Header.NextPage != PageAddress.Empty)
+        while (true)
         {
-            BuildChain(database, page.Header.NextPage);
+            var page = new AllocationPage(database, pageAddress);
+
+            Pages.Add(page);
+
+            SinglePageSlots.AddRange(page.SinglePageSlots);
+
+            if (page.Header.NextPage != PageAddress.Empty)
+            {
+                pageAddress = page.Header.NextPage;
+
+                continue;
+            }
+
+            break;
         }
     }
 }

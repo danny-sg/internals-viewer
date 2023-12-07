@@ -141,8 +141,5 @@ public partial class MarkerKeyTable : UserControl
         }
     }
 
-    public Marker SelectedMarker
-    {
-        get { return (Marker)markerBindingSource.Current; }
-    }
+    public Marker SelectedMarker => (Marker)markerBindingSource.Current;
 }

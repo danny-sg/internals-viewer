@@ -12,10 +12,7 @@ public class KeyImageCell : DataGridViewImageCell
         ValueType = typeof(Color);
     }
 
-    public override object DefaultNewRowValue
-    {
-        get { return 0; }
-    }
+    public override object DefaultNewRowValue => 0;
 
     protected override object GetFormattedValue(object value,
         int rowIndex,

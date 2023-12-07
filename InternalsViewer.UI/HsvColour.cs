@@ -14,17 +14,13 @@ internal class HsvColour
 {
     internal static Color HsvToColor(int hue, int saturation, int value)
     {
-        double h;
-        double s;
-        double v;
-
         double r = 0;
         double g = 0;
         double b = 0;
 
-        h = ((double)hue / 255 * 360) % 360;
-        s = (double)saturation / 255;
-        v = (double)value / 255;
+        var h = ((double)hue / 255 * 360) % 360;
+        var s = (double)saturation / 255;
+        var v = (double)value / 255;
 
         if (s == 0)
         {
@@ -34,22 +30,14 @@ internal class HsvColour
         }
         else
         {
-            double p;
-            double q;
-            double t;
+            var sectorPos = h / 60;
+            var sectorNumber = (int)(Math.Floor(sectorPos));
 
-            double fractionalSector;
-            int sectorNumber;
-            double sectorPos;
+            var fractionalSector = sectorPos - sectorNumber;
 
-            sectorPos = h / 60;
-            sectorNumber = (int)(Math.Floor(sectorPos));
-
-            fractionalSector = sectorPos - sectorNumber;
-
-            p = v * (1 - s);
-            q = v * (1 - (s * fractionalSector));
-            t = v * (1 - (s * (1 - fractionalSector)));
+            var p = v * (1 - s);
+            var q = v * (1 - (s * fractionalSector));
+            var t = v * (1 - (s * (1 - fractionalSector)));
 
             switch (sectorNumber)
             {

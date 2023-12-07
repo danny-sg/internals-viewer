@@ -18,13 +18,13 @@ namespace InternalsViewer.UI;
 public partial class HexViewer : UserControl
 {
     private readonly bool hexMode = false;
-    private static readonly string RtfLineBreak = @"\par ";
+    private static readonly string RtfLineBreak = @"\par " + Environment.NewLine;
     private ushort currentOffset;
     private string dataRtf;
     private string dataText;
     private readonly Color headerColour = Color.FromArgb(245, 245, 250);
     private readonly Color offsetColour = Color.FromArgb(245, 250, 245);
-    private readonly List<Marker> markers = new List<Marker>();
+    private readonly List<Marker> markers = new();
     private Page page;
     private readonly VisualStyleRenderer renderer;
     private readonly List<Color> rtfColours;
@@ -44,7 +44,7 @@ public partial class HexViewer : UserControl
     {
         InitializeComponent();
 
-        rtfColours = RtfColour.CreateColourTable();
+        rtfColours = RtfColour.CreateColourTable(new List<string>());
 
         rtfColours.Add(headerColour);
         rtfColours.Add(offsetColour);
@@ -359,8 +359,6 @@ public partial class HexViewer : UserControl
         dataRichTextBox.ScrollToCaret();
     }
 
-    #region Events
-
     /// <summary>
     /// Raises the <see cref="E:System.Windows.Forms.Control.Paint"/> event.
     /// </summary>
@@ -424,13 +422,11 @@ public partial class HexViewer : UserControl
     /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
     private void LeftPanel_Paint(object sender, PaintEventArgs e)
     {
-        using (var gradientBrush = new LinearGradientBrush(leftPanel.Bounds,
-                   Color.White,
-                   Color.WhiteSmoke,
-                   LinearGradientMode.Horizontal))
-        {
-            e.Graphics.FillRectangle(gradientBrush, leftPanel.ClientRectangle);
-        }
+        using var gradientBrush = new LinearGradientBrush(leftPanel.Bounds,
+            Color.White,
+            Color.WhiteSmoke,
+            LinearGradientMode.Horizontal);
+        e.Graphics.FillRectangle(gradientBrush, leftPanel.ClientRectangle);
     }
 
     /// <summary>
@@ -545,10 +541,6 @@ public partial class HexViewer : UserControl
         }
     }
 
-    #endregion
-
-    #region Properties
-
     /// <summary>
     /// Gets or sets the colour and offset dictionary.
     /// </summary>
@@ -561,10 +553,7 @@ public partial class HexViewer : UserControl
     /// <value>The data text.</value>
     public string DataText
     {
-        get
-        {
-            return dataText;
-        }
+        get => dataText;
 
         set
         {
@@ -579,15 +568,20 @@ public partial class HexViewer : UserControl
     /// <value>The data RTF.</value>
     public string DataRtf
     {
-        get
-        {
-            return dataRtf;
-        }
+        get => dataRtf;
 
         set
         {
             dataRtf = value;
-            dataRichTextBox.Rtf = DataRtf;
+            try
+            {
+                dataRichTextBox.Rtf = DataRtf;
+            }
+            catch (Exception)
+            {
+                dataRichTextBox.Text = DataText;
+            }
+
             UpdateAddressTextBox();
         }
     }
@@ -598,10 +592,7 @@ public partial class HexViewer : UserControl
     /// <value>The page.</value>
     public Page Page
     {
-        get
-        {
-            return page;
-        }
+        get => page;
 
         set
         {
@@ -627,10 +618,7 @@ public partial class HexViewer : UserControl
     /// <value>The selected record.</value>
     public int SelectedRecord
     {
-        get
-        {
-            return selectedRecord;
-        }
+        get => selectedRecord;
 
         set
         {
@@ -649,10 +637,7 @@ public partial class HexViewer : UserControl
     /// <value>The selected offset.</value>
     public int SelectedOffset
     {
-        get
-        {
-            return selectedOffset;
-        }
+        get => selectedOffset;
 
         set
         {
@@ -665,19 +650,13 @@ public partial class HexViewer : UserControl
     /// Gets the index of the selection char.
     /// </summary>
     /// <value>The index of the selection char.</value>
-    public int SelectionCharIndex
-    {
-        get { return dataRichTextBox.SelectionStart / 3; }
-    }
+    public int SelectionCharIndex => dataRichTextBox.SelectionStart / 3;
 
     /// <summary>
     /// Gets the length of the selection.
     /// </summary>
     /// <value>The length of the selection.</value>
-    public int SelectionLength
-    {
-        get { return dataRichTextBox.SelectionLength / 3; }
-    }
+    public int SelectionLength => dataRichTextBox.SelectionLength / 3;
 
     /// <summary>
     /// Gets or sets a value indicating whether the hex viewer is colourised by markers
@@ -689,12 +668,7 @@ public partial class HexViewer : UserControl
     /// </summary>
     /// <value></value>
     /// <returns>The text associated with this control.</returns>
-    public override string Text
-    {
-        get { return dataRichTextBox.Text; }
-    }
-
-    #endregion
+    public override string Text => dataRichTextBox.Text;
 
     private void SetOffsetToolStripMenuItem_Click(object sender, EventArgs e)
     {

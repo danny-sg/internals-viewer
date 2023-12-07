@@ -135,7 +135,7 @@ public class Database
 
     private void LoadFiles()
     {
-        var sqlCommand = Properties.Resources.SQL_Files;
+        var sqlCommand = SqlCommands.Files;
 
         var filesDataTable = DataAccess.GetDataTable(ConnectionString, sqlCommand, Name, "Files", CommandType.Text);
 
@@ -156,14 +156,14 @@ public class Database
 
     public DataTable Tables()
     {
-        var sqlCommand = Properties.Resources.SQL_Database_Tables;
+        var sqlCommand = SqlCommands.DatabaseTables;
 
         return DataAccess.GetDataTable(ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
     }
 
     public DataTable AllocationUnits()
     {
-        var sqlCommand = Properties.Resources.SQL_Allocation_Units;
+        var sqlCommand = SqlCommands.AllocationUnits;
 
         return DataAccess.GetDataTable(ConnectionString, sqlCommand, Name, "Tables", CommandType.Text);
     }
@@ -171,11 +171,11 @@ public class Database
     public DataTable TableInfo(int objectId)
     {
         return DataAccess.GetDataTable(ConnectionString,
-            Properties.Resources.SQL_Table_Info,
+            SqlCommands.TableInfo,
             Name,
             "Tables",
             CommandType.Text,
-            new SqlParameter[1] { new("object_id", objectId) });
+            new SqlParameter[1] { new("ObjectId", objectId) });
     }
 
     public DataTable TableColumns(int objectId)
@@ -187,9 +187,9 @@ public class Database
     {
         return (int)DataAccess.GetScalar(ConnectionString,
             Name,
-            Properties.Resources.SQL_File_Size,
+            SqlCommands.FileSize,
             CommandType.Text,
-            new SqlParameter[1] { new("file_id", databaseFile.FileId) });
+            new SqlParameter[1] { new("FileId", databaseFile.FileId) });
     }
 
     internal static byte GetCompatabilityLevel(string connectionString, string database)
@@ -198,11 +198,11 @@ public class Database
 
         compatabilityLevel = (byte)DataAccess.GetScalar(connectionString,
             "master",
-            Properties.Resources.SQL_CompatabilityLevel,
+            SqlCommands.CompatibilityLevel,
             CommandType.Text,
             new SqlParameter[1]
             {
-                new("name", database)
+                new("Name", database)
             });
         return compatabilityLevel;
     }

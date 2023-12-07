@@ -18,7 +18,7 @@ public class Hobt
     {
         if (Convert.ToBoolean(DataAccess.GetScalar(connectionString,
                 databaseName,
-                Properties.Resources.SQL_ObjectHasClusteredIndex,
+                SqlCommands.ObjectHasClusteredIndex,
                 CommandType.Text,
                 new[] { new SqlParameter("TableName", objectName) })))
         {
@@ -49,7 +49,7 @@ public class Hobt
         var entryPoints = new List<HobtEntryPoint>();
 
         var entryPointDataTable = DataAccess.GetDataTable(connectionString, 
-            Properties.Resources.SQL_EntryPoints,
+            SqlCommands.EntryPoints,
             database,
             string.Empty,
             CommandType.Text,

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
@@ -19,6 +18,7 @@ using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.TransactionLog;
+using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.UI;
 
@@ -293,12 +293,11 @@ public partial class PageViewerWindow : UserControl
 
     public void FindNext(string findHex, bool suppressContinue)
     {
-        int startPos;
         int endPos;
 
         var hexString = hexViewer.Text.Replace(" ", string.Empty).Replace("\n", string.Empty);
 
-        startPos = hexString.IndexOf(findHex, searchPos + 1);
+        var startPos = hexString.IndexOf(findHex, searchPos + 1);
 
         if (startPos > 0)
         {
@@ -560,13 +559,11 @@ public partial class PageViewerWindow : UserControl
     {
         base.OnPaint(e);
 
-        using (var brush = new LinearGradientBrush(ClientRectangle,
-                   colourTable.ToolStripGradientBegin,
-                   colourTable.ToolStripGradientEnd,
-                   LinearGradientMode.Horizontal))
-        {
-            e.Graphics.FillRectangle(brush, ClientRectangle);
-        }
+        using var brush = new LinearGradientBrush(ClientRectangle,
+            colourTable.ToolStripGradientBegin,
+            colourTable.ToolStripGradientEnd,
+            LinearGradientMode.Horizontal);
+        e.Graphics.FillRectangle(brush, ClientRectangle);
     }
 
     /// <summary>
@@ -596,10 +593,7 @@ public partial class PageViewerWindow : UserControl
     /// <value>The page.</value>
     public Page Page
     {
-        get
-        {
-            return page;
-        }
+        get => page;
         set
         {
             page = value;
