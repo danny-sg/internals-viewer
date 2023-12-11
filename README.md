@@ -1,12 +1,7 @@
-#Internals Viewer for SQL Server Managment Studio 2017
+# Internals Viewer 2024
 
-##Setup
+This is based on the codebase for Internals Viewer from 2007. The code has been upgraded to .NET Core 8 and I've started modernizing. I'll hopefully be able to refactor and extra testing to bring the 16 year old code back to life and up to scratch.
 
-##TODO
+I've added a test winforms app to get it running. Once I've done a bit more refactoring I'll look into adding it in as a SSMS extension again.
 
-+ General Refactor/Code cleanup
-+ Add Unit Tests
-+ Remove DataTables and update data acess
-+ Remove MarkerAttribute and replace with colour dictionary
-+ Convert to WPF
-+ Add new SQL Server 2012+ data structures
+After that I'll look into if any new features since SQL Server 2008 can be added, for example if Column Store indexes.
