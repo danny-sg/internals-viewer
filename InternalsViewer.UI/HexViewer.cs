@@ -11,6 +11,7 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Rtf;
+
 #pragma warning disable CA1416
 
 namespace InternalsViewer.UI;
@@ -62,7 +63,7 @@ public partial class HexViewer : UserControl
     /// <returns></returns>
     private string FormatPageDetails(Page targetPage)
     {
-        return RtfBuilder.BuildRtf(targetPage, markers, Colourise, selectedOffset);
+        return PageRtfBuilder.BuildRtf(targetPage, markers, Colourise, selectedOffset);
     }
 
     /// <summary>

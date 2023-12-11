@@ -7,6 +7,8 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI.Allocations;
 
 public class AllocationUnitsLayer

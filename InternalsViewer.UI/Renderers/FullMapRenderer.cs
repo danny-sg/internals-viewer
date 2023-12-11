@@ -9,6 +9,8 @@ using System.Runtime.InteropServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.Allocations;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI.Renderers;
 
 internal class FullMapRenderer
@@ -28,11 +30,11 @@ internal class FullMapRenderer
 
         stopWatch.Start();
 
-        fileSize = fileSize / 8;
+        fileSize /= 8;
 
-        var fileRectange = GetFileRectange(rect, fileSize);
+        var rectangle = GetFileRectangle(rect, fileSize);
 
-        var bitmap = new Bitmap(fileRectange.Width, fileRectange.Height, PixelFormat.Format24bppRgb);
+        var bitmap = new Bitmap(rectangle.Width, rectangle.Height, PixelFormat.Format24bppRgb);
 
         var returnBitmap = new Bitmap(rect.Width, rect.Height);
 
@@ -81,7 +83,7 @@ internal class FullMapRenderer
     /// <param name="rect">The rect.</param>
     /// <param name="fileSize">Size of the file.</param>
     /// <returns></returns>
-    private static Rectangle GetFileRectange(Rectangle rect, int fileSize)
+    private static Rectangle GetFileRectangle(Rectangle rect, int fileSize)
     {
         // The image is later stretched as extents are 8 pages wide
         var widthHeightRatio = rect.Width / (rect.Height * 6D);

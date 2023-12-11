@@ -9,6 +9,8 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Renderers;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI.Allocations;
 
 /// <summary>
@@ -69,7 +71,7 @@ public class AllocationMap : Panel, IDisposable
         scrollBar.ValueChanged += ScrollBar_ValueChanged;
         MouseMove += AllocationMapPanel_MouseMove;
         Resize += AllocationMap_Resize;
-        extentSize = AllocationMap.Small;
+        extentSize = Small;
 
         imageBufferBackgroundWorker.DoWork += ImageBufferBackgroundWorker_DoWork;
         imageBufferBackgroundWorker.RunWorkerCompleted += ImageBufferBackgroundWorker_RunWorkerCompleted;
@@ -225,7 +227,7 @@ public class AllocationMap : Panel, IDisposable
     }
 
     /// <summary>
-    /// Get Rectange for a particular extent
+    /// Get Rectangle for a particular extent
     /// </summary>
     /// <param name="extent">The extent.</param>
     /// <returns></returns>
@@ -536,7 +538,7 @@ public class AllocationMap : Panel, IDisposable
 
                         if (temp != null)
                         {
-                            var openInNewWindow = Control.ModifierKeys == Keys.Shift;
+                            var openInNewWindow = ModifierKeys == Keys.Shift;
 
                             temp(this, new PageEventArgs(new RowIdentifier(FileId, page + StartPage.PageId, 0), openInNewWindow));
                         }

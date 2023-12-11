@@ -4,6 +4,8 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Database;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI.Renderers;
 
 internal class PfsRenderer : IDisposable
@@ -164,16 +166,16 @@ internal class PfsRenderer : IDisposable
     internal static Bitmap KeyImage(Color color)
     {
         var key = new Bitmap(16, 16);
-        var keyRectange = new Rectangle(0, 0, key.Width - 1, key.Height - 1);
+        var keyRectangle = new Rectangle(0, 0, key.Width - 1, key.Height - 1);
         var g = Graphics.FromImage(key);
 
-        var brush = new LinearGradientBrush(keyRectange,
+        var brush = new LinearGradientBrush(keyRectangle,
             color,
             ExtentColour.BackgroundColour(color),
             LinearGradientMode.Horizontal);
 
-        g.FillRectangle(brush, keyRectange);
-        g.DrawRectangle(SystemPens.ControlDark, keyRectange);
+        g.FillRectangle(brush, keyRectangle);
+        g.DrawRectangle(SystemPens.ControlDark, keyRectangle);
 
         return key;
     }

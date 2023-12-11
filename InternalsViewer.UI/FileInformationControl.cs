@@ -3,6 +3,8 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Database;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI;
 
 public partial class FileInformationControl : UserControl

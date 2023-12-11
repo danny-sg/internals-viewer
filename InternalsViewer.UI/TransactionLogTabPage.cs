@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.TransactionLog;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI;
 
 public class TransactionLogTabPage : TabPage
@@ -40,16 +42,16 @@ public class TransactionLogTabPage : TabPage
 
     private void InitializeComponent()
     {
-        dataGridView = new System.Windows.Forms.DataGridView();
-        lsnColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-        operationColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-        contextColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-        pageAddressColumn = new System.Windows.Forms.DataGridViewLinkColumn();
-        slotColumn = new System.Windows.Forms.DataGridViewLinkColumn();
-        allocUnitNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-        descriptionColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-        isSystemColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-        isAllocationColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+        dataGridView = new DataGridView();
+        lsnColumn = new DataGridViewTextBoxColumn();
+        operationColumn = new DataGridViewTextBoxColumn();
+        contextColumn = new DataGridViewTextBoxColumn();
+        pageAddressColumn = new DataGridViewLinkColumn();
+        slotColumn = new DataGridViewLinkColumn();
+        allocUnitNameColumn = new DataGridViewTextBoxColumn();
+        descriptionColumn = new DataGridViewTextBoxColumn();
+        isSystemColumn = new DataGridViewTextBoxColumn();
+        isAllocationColumn = new DataGridViewTextBoxColumn();
         ((System.ComponentModel.ISupportInitialize)(dataGridView)).BeginInit();
         SuspendLayout();
         // 
@@ -58,29 +60,20 @@ public class TransactionLogTabPage : TabPage
         dataGridView.AllowUserToAddRows = false;
         dataGridView.AllowUserToDeleteRows = false;
         dataGridView.AllowUserToResizeRows = false;
-        dataGridView.BackgroundColor = System.Drawing.Color.White;
-        dataGridView.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-        dataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-        dataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            lsnColumn,
-            operationColumn,
-            contextColumn,
-            pageAddressColumn,
-            slotColumn,
-            allocUnitNameColumn,
-            descriptionColumn,
-            isSystemColumn,
-            isAllocationColumn});
-        dataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
-        dataGridView.GridColor = System.Drawing.SystemColors.Control;
-        dataGridView.Location = new System.Drawing.Point(0, 0);
-        dataGridView.Margin = new System.Windows.Forms.Padding(0);
+        dataGridView.BackgroundColor = Color.White;
+        dataGridView.BorderStyle = BorderStyle.Fixed3D;
+        dataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+        dataGridView.Columns.AddRange(lsnColumn, operationColumn, contextColumn, pageAddressColumn, slotColumn, allocUnitNameColumn, descriptionColumn, isSystemColumn, isAllocationColumn);
+        dataGridView.Dock = DockStyle.Fill;
+        dataGridView.GridColor = SystemColors.Control;
+        dataGridView.Location = new Point(0, 0);
+        dataGridView.Margin = new Padding(0);
         dataGridView.Name = "dataGridView";
         dataGridView.RowHeadersVisible = false;
-        dataGridView.RowTemplate.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.WhiteSmoke;
-        dataGridView.RowTemplate.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.Black;
-        dataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-        dataGridView.Size = new System.Drawing.Size(200, 100);
+        dataGridView.RowTemplate.DefaultCellStyle.SelectionBackColor = Color.WhiteSmoke;
+        dataGridView.RowTemplate.DefaultCellStyle.SelectionForeColor = Color.Black;
+        dataGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        dataGridView.Size = new Size(200, 100);
         dataGridView.TabIndex = 1;
         dataGridView.CellFormatting += DataGridView_CellFormatting;
         dataGridView.CellContentClick += DataGridView_CellContentClick;
@@ -110,28 +103,28 @@ public class TransactionLogTabPage : TabPage
         // 
         // PageAddressColumn
         // 
-        pageAddressColumn.ActiveLinkColor = System.Drawing.Color.Blue;
+        pageAddressColumn.ActiveLinkColor = Color.Blue;
         pageAddressColumn.DataPropertyName = "PageAddress";
         pageAddressColumn.HeaderText = "Page";
         pageAddressColumn.Name = "pageAddressColumn";
         pageAddressColumn.ReadOnly = true;
-        pageAddressColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-        pageAddressColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
+        pageAddressColumn.Resizable = DataGridViewTriState.True;
+        pageAddressColumn.SortMode = DataGridViewColumnSortMode.Automatic;
         pageAddressColumn.TrackVisitedState = false;
-        pageAddressColumn.VisitedLinkColor = System.Drawing.Color.Blue;
+        pageAddressColumn.VisitedLinkColor = Color.Blue;
         pageAddressColumn.Width = 80;
         // 
         // SlotColumn
         // 
-        slotColumn.ActiveLinkColor = System.Drawing.Color.Blue;
+        slotColumn.ActiveLinkColor = Color.Blue;
         slotColumn.DataPropertyName = "SlotId";
         slotColumn.HeaderText = "Slot";
         slotColumn.Name = "slotColumn";
         slotColumn.ReadOnly = true;
-        slotColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-        slotColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
+        slotColumn.Resizable = DataGridViewTriState.True;
+        slotColumn.SortMode = DataGridViewColumnSortMode.Automatic;
         slotColumn.TrackVisitedState = false;
-        slotColumn.VisitedLinkColor = System.Drawing.Color.Blue;
+        slotColumn.VisitedLinkColor = Color.Blue;
         slotColumn.Width = 50;
         // 
         // AllocUnitNameColumn
@@ -145,7 +138,7 @@ public class TransactionLogTabPage : TabPage
         // 
         // DescriptionColumn
         // 
-        descriptionColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+        descriptionColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
         descriptionColumn.DataPropertyName = "Description";
         descriptionColumn.FillWeight = 9.523804F;
         descriptionColumn.HeaderText = "Description";

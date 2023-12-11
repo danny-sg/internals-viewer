@@ -1,6 +1,8 @@
 ﻿using System.Drawing;
 using System.Drawing.Drawing2D;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI;
 
 /// <summary>
@@ -42,15 +44,16 @@ public class ExtentColour
     public static Bitmap KeyImage(Color color)
     {
         var key = new Bitmap(16, 16);
-        var keyRectange = new Rectangle(0, 0, key.Width - 1, key.Height - 1);
+        var keyRectangle = new Rectangle(0, 0, key.Width - 1, key.Height - 1);
+
         var g = Graphics.FromImage(key);
 
-        using var brush = new LinearGradientBrush(keyRectange,
+        using var brush = new LinearGradientBrush(keyRectangle,
             color,
             BackgroundColour(color),
             LinearGradientMode.Horizontal);
-        g.FillRectangle(brush, keyRectange);
-        g.DrawRectangle(SystemPens.ControlDark, keyRectange);
+        g.FillRectangle(brush, keyRectangle);
+        g.DrawRectangle(SystemPens.ControlDark, keyRectangle);
 
         return key;
     }

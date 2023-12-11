@@ -124,9 +124,6 @@
   <data name="Search_16x" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Search_16x.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Rtf_ColourHighlightTag" xml:space="preserve">
-    <value>{{\cf{0}\highlight{1} </value>
-  </data>
   <data name="Collapse_large" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Collapse_large.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -141,9 +138,6 @@
   </data>
   <data name="WindowSplit" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\WindowSplit.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Rtf_ColourTable" xml:space="preserve">
-    <value>\red{0}\green{1}\blue{2};</value>
   </data>
   <data name="fileinfo1" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\fileinfo1.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -166,9 +160,6 @@
   <data name="connect" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\connect.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Rtf_ColourTag" xml:space="preserve">
-    <value>{{\cf{0} </value>
-  </data>
   <data name="allocationMapIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\allocationMapIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -177,9 +168,6 @@
   </data>
   <data name="GAMallocationMapIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\GAMallocationMapIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Rtf_HeaderStart" xml:space="preserve">
-    <value></value>
   </data>
   <data name="pfs" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\pfs.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -195,10 +183,6 @@
 DBCC TRACEON(3604)
 DBCC PAGE({0},{1},{2},{3})
 GO</value>
-  </data>
-  <data name="Rtf_HeaderEnd" xml:space="preserve">
-    <value>}}\viewkind4\uc1 
-\pard\cf1\highlight2\f0\fs17</value>
   </data>
   <data name="connect1" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\connect1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

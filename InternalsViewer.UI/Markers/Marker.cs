@@ -6,10 +6,6 @@ namespace InternalsViewer.UI.Markers;
 
 public class Marker
 {
-    public Marker()
-    {
-    }
-
     public static Marker GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
     {
         return markers.First(marker => marker.StartPosition >= startPosition & marker.EndPosition <= endPosition);

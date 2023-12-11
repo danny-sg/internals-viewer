@@ -1,7 +1,8 @@
-﻿using System;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 
 namespace InternalsViewer.UI.Controls;
+
+#pragma warning disable CA1416
 
 /// <summary>
 /// Menu Strip without the rounded corners
@@ -17,18 +18,7 @@ internal class FlatMenuStrip : ToolStrip
 
         AutoSize = false;
 
-        // this.SetRenderer();
-    }
-
-    /// <summary>
-    /// Raises the <see cref="E:System.Windows.Forms.ToolStrip.RendererChanged"/> event.
-    /// </summary>
-    /// <param name="e">An <see cref="T:System.EventArgs"/> that contains the event data.</param>
-    protected override void OnRendererChanged(EventArgs e)
-    {
-        base.OnRendererChanged(e);
-
-        // this.SetRenderer();
+        SetRenderer();
     }
 
     /// <summary>

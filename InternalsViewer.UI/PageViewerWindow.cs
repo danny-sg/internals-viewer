@@ -20,6 +20,8 @@ using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.TransactionLog;
 using Microsoft.Data.SqlClient;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI;
 
 public partial class PageViewerWindow : UserControl
@@ -28,10 +30,9 @@ public partial class PageViewerWindow : UserControl
     public event EventHandler OpenDecodeWindow;
     private readonly ProfessionalColorTable colourTable;
     private Page page;
-    private ImageList keyImages;
     private readonly PfsRenderer pfsRenderer;
     private PfsByte pfsByte;
-    int searchPos = 0;
+    int searchPosition = 0;
     private Dictionary<string, LogData> logData;
 
     /// <summary>
@@ -52,7 +53,7 @@ public partial class PageViewerWindow : UserControl
     /// </summary>
     private void CreateKeyImages()
     {
-        keyImages = new ImageList();
+        new ImageList();
     }
 
     /// <summary>
@@ -61,7 +62,7 @@ public partial class PageViewerWindow : UserControl
     /// <param name="page">The page.</param>
     private void RefreshPage(Page page)
     {
-        pageToolStripTextBox.Text = page.PageAddress.ToString();
+        pageToolStripTextBox.Text = page.PageAddress.ToString() ?? string.Empty;
         hexViewer.Page = Page;
         pageBindingSource.DataSource = Page.Header;
         offsetTable.Page = Page;
@@ -297,14 +298,14 @@ public partial class PageViewerWindow : UserControl
 
         var hexString = hexViewer.Text.Replace(" ", string.Empty).Replace("\n", string.Empty);
 
-        var startPos = hexString.IndexOf(findHex, searchPos + 1);
+        var startPos = hexString.IndexOf(findHex, searchPosition + 1);
 
         if (startPos > 0)
         {
             if (startPos % 2 == 0)
             {
                 endPos = startPos + findHex.Length - 1;
-                searchPos = endPos;
+                searchPosition = endPos;
 
                 hexViewer.SetSelection(startPos / 2, endPos / 2);
             }
@@ -316,7 +317,7 @@ public partial class PageViewerWindow : UserControl
         }
         else
         {
-            searchPos = 0;
+            searchPosition = 0;
             MessageBox.Show("Search hex not found", "Find", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
         }
     }

@@ -6,6 +6,8 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Markers;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI.Controls;
 
 public partial class MarkerKeyTable : UserControl
@@ -32,7 +34,9 @@ public partial class MarkerKeyTable : UserControl
     internal virtual void OnSelectedMarkerChanged(object sender, EventArgs e)
     {
         if (SelectionChanged != null)
+        {
             SelectionChanged(sender, e);
+        }
     }
 
     public void SetMarkers(List<Marker> markers)

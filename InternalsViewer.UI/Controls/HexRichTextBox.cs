@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+#pragma warning disable CA1416
 
 namespace InternalsViewer.UI.Controls;
 
@@ -43,6 +44,11 @@ internal class HexRichTextBox : RichTextBox
 
     private void DrawBlock(Graphics graphics, BlockSelection block)
     {
+        if(block.Colour==null)
+        {
+            return;
+        }
+
         var startCharIndex = block.StartPos * 3;
         var endCharIndex = (block.EndPos * 3) - 2;
 
@@ -50,7 +56,7 @@ internal class HexRichTextBox : RichTextBox
         var startPos = GetPositionFromCharIndex(startCharIndex);
         var endPos = GetPositionFromCharIndex(endCharIndex);
 
-        var blockPen = new Pen(block.Colour);
+        var blockPen = new Pen(block.Colour.Value);
 
         int lines;
 
@@ -137,12 +143,12 @@ internal class HexRichTextBox : RichTextBox
         {
             lines = 1;
 
-            var textRectange = new Rectangle(startPos.X < 3 ? 0 : startPos.X - 2,
+            var textRectangle = new Rectangle(startPos.X < 3 ? 0 : startPos.X - 2,
                 startPos.Y,
                 (endPos.X - startPos.X + TextSize.Width - 2) % TextLineSize.Width,
                 lines * TextSize.Height);
 
-            graphics.DrawRectangle(blockPen, textRectange);
+            graphics.DrawRectangle(blockPen, textRectangle);
         }
     }
 

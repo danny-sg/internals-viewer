@@ -3,6 +3,8 @@ using System.Windows.Forms;
 
 namespace InternalsViewer.UI.Controls;
 
+#pragma warning disable CA1416
+
 internal class BorderPanel : Panel
 {
     public BorderPanel()

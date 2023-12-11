@@ -3,21 +3,14 @@ using System.Drawing;
 
 namespace InternalsViewer.UI;
 
-public class OffsetEventArgs : EventArgs
+public class OffsetEventArgs(ushort offset, string markerDescription, Color foreColour, Color backColour)
+    : EventArgs
 {
-    public OffsetEventArgs(ushort offset, string markerDescription, Color foreColour, Color backColour)
-    {
-        Offset = offset;
-        MarkerDescription = markerDescription;
-        ForeColour = foreColour;
-        BackColour = backColour;
-    }
+    public Color ForeColour { get; set; } = foreColour;
 
-    public Color ForeColour { get; set; }
+    public Color BackColour { get; set; } = backColour;
 
-    public Color BackColour { get; set; }
+    public string MarkerDescription { get; set; } = markerDescription;
 
-    public string MarkerDescription { get; set; }
-
-    public ushort Offset { get; set; }
+    public ushort Offset { get; set; } = offset;
 }

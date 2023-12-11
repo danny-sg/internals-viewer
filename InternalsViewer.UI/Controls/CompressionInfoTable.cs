@@ -5,6 +5,8 @@ using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Compression;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI.Controls;
 
 public partial class CompressionInfoTable : UserControl

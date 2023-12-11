@@ -7,6 +7,7 @@ using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Allocations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+#pragma warning disable CA1416
 
 namespace InternalsViewer.UI;
 
@@ -28,7 +29,7 @@ public partial class AllocationViewer : UserControl
         allocationMap.PageOver += OnPageOver;
         allocationMap.PageClicked += OnPageClicked;
 
-        SetColours(AllocationViewer.CreateIamColours());
+        SetColours(CreateIamColours());
     }
 
     /// <summary>
@@ -60,15 +61,15 @@ public partial class AllocationViewer : UserControl
     {
         if (page.SinglePageSlots.Count == 8)
         {
-            slotZeroTextBox.Text = page.SinglePageSlots[0].ToString();
-            slotOneTextBox.Text = page.SinglePageSlots[1].ToString();
-            slotTwoTextBox.Text = page.SinglePageSlots[2].ToString();
-            slotThreeTextBox.Text = page.SinglePageSlots[3].ToString();
-            slotFourTextBox.Text = page.SinglePageSlots[4].ToString();
-            slotFiveTextBox.Text = page.SinglePageSlots[5].ToString();
-            slotSixTextBox.Text = page.SinglePageSlots[6].ToString();
-            slotSevenTextBox.Text = page.SinglePageSlots[7].ToString();
-            startPageTextBox.Text = page.StartPage.ToString();
+            slotZeroTextBox.Text = page.SinglePageSlots[0].ToString() ?? string.Empty;
+            slotOneTextBox.Text = page.SinglePageSlots[1].ToString() ?? string.Empty;
+            slotTwoTextBox.Text = page.SinglePageSlots[2].ToString() ?? string.Empty;
+            slotThreeTextBox.Text = page.SinglePageSlots[3].ToString() ?? string.Empty;
+            slotFourTextBox.Text = page.SinglePageSlots[4].ToString() ?? string.Empty;
+            slotFiveTextBox.Text = page.SinglePageSlots[5].ToString() ?? string.Empty;
+            slotSixTextBox.Text = page.SinglePageSlots[6].ToString() ?? string.Empty;
+            slotSevenTextBox.Text = page.SinglePageSlots[7].ToString() ?? string.Empty;
+            startPageTextBox.Text = page.StartPage.ToString() ?? string.Empty;
         }
     }
 
@@ -181,10 +182,7 @@ public partial class AllocationViewer : UserControl
     /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
     internal virtual void OnPageClicked(object sender, PageEventArgs e)
     {
-        if (PageClicked != null)
-        {
-            PageClicked(sender, e);
-        }
+        PageClicked?.Invoke(sender, e);
     }
 
     /// <summary>

@@ -4,6 +4,8 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.UI.Allocations;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI.Renderers;
 
 /// <summary>
@@ -39,7 +41,7 @@ internal class PageExtentRenderer : IDisposable
     /// Draws the LSN map page.
     /// </summary>
     /// <param name="g">The graphics object.</param>
-    /// <param name="rect">The page Rectange.</param>
+    /// <param name="rect">The page Rectangle.</param>
     /// <param name="lsn">The LSN.</param>
     /// <param name="maxLsn">The max LSN.</param>
     /// <param name="minLsn">The min LSN.</param>
@@ -100,7 +102,7 @@ internal class PageExtentRenderer : IDisposable
     /// Draws an individual page.
     /// </summary>
     /// <param name="g">The graphics object.</param>
-    /// <param name="rect">The page Rectange.</param>
+    /// <param name="rect">The page Rectangle.</param>
     /// <param name="layerType">Type of the layer.</param>
     internal void DrawPage(Graphics g, Rectangle rect, AllocationLayerType layerType)
     {
@@ -206,7 +208,7 @@ internal class PageExtentRenderer : IDisposable
     /// Draws the selection.
     /// </summary>
     /// <param name="g">The graphics object.</param>
-    /// <param name="rect">The page Rectange.</param>
+    /// <param name="rect">The page Rectangle.</param>
     internal void DrawSelection(Graphics g, Rectangle rect)
     {
         g.FillRectangle(Brushes.LightGray, rect);

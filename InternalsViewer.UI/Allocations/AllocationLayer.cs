@@ -7,6 +7,8 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI.Allocations;
 
 /// <summary>

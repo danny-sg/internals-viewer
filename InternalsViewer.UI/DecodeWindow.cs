@@ -7,13 +7,13 @@ using InternalsViewer.Internals;
 using System.Text.RegularExpressions;
 using InternalsViewer.UI.Rtf;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI;
 
 public partial class DecodeWindow : UserControl
 {
     private PageViewerWindow parentWindow;
-    private readonly List<Color> rtfColours;
-    private readonly string rtfHeader;
 
     public DecodeWindow()
     {
@@ -32,14 +32,12 @@ public partial class DecodeWindow : UserControl
     /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void FindTextBox_TextChanged(object sender, EventArgs e)
     {
-        EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem.ToString());
+        EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem?.ToString());
     }
 
     /// <summary>
     /// Encodes the text to a given data type
     /// </summary>
-    /// <param name="text">The text.</param>
-    /// <param name="dataType">The data tyoe.</param>
     private void EncodeText(string text, string dataType)
     {
         keyTextBox.Text = string.Empty;
@@ -107,9 +105,7 @@ public partial class DecodeWindow : UserControl
 
     private void EncodeDecimal(string text)
     {
-        decimal value;
-
-        if (decimal.TryParse(text, out value))
+        if (decimal.TryParse(text, out var value))
         {
             hexTextBox.ForeColor = Color.Black;
             hexTextBox.Text = DataConverter.EncodeDecimal(value);
@@ -123,9 +119,7 @@ public partial class DecodeWindow : UserControl
 
     private void EncodeReal(string text)
     {
-        float value;
-
-        if (float.TryParse(text, out value))
+        if (float.TryParse(text, out var value))
         {
             hexTextBox.Text = DataConverter.EncodeReal(value);
         }
@@ -138,9 +132,7 @@ public partial class DecodeWindow : UserControl
 
     private void EncodeMoney(string text, bool small)
     {
-        decimal value;
-
-        if (decimal.TryParse(text, out value))
+        if (decimal.TryParse(text, out var value))
         {
             if (small)
             {
@@ -160,9 +152,7 @@ public partial class DecodeWindow : UserControl
 
     private void EncodeFloat(string text)
     {
-        double value;
-
-        if (double.TryParse(text, out value))
+        if (double.TryParse(text, out var value))
         {
             hexTextBox.Text = DataConverter.EncodeFloat(value);
         }
@@ -190,9 +180,7 @@ public partial class DecodeWindow : UserControl
 
     private void EncodeInt64(string text)
     {
-        long value;
-
-        if (long.TryParse(text, out value))
+        if (long.TryParse(text, out var value))
         {
             hexTextBox.Text = DataConverter.EncodeInt64(value);
         }
@@ -205,12 +193,8 @@ public partial class DecodeWindow : UserControl
 
     private void EncodeDateTime(string text, bool small)
     {
-        DateTime value;
-
-        if (DateTime.TryParse(text, out value))
+        if (DateTime.TryParse(text, out var value))
         {
-            var sb = new StringBuilder(rtfHeader);
-
             string[] dateValue;
 
             if (small)
@@ -222,27 +206,10 @@ public partial class DecodeWindow : UserControl
                 dateValue = DataConverter.EncodeDateTime(value);
             }
 
-            sb.Append(RtfBuilder.RtfTag(rtfColours, "Blue", "White"));
-            sb.Append(dateValue[0]);
-            sb.Append("} ");
-            sb.Append(RtfBuilder.RtfTag(rtfColours, "Green", "White"));
-            sb.Append(dateValue[1]);
-            sb.Append("}");
+            hexTextBox.Rtf = DateTimeRtfBuilder.BuildRtf(dateValue[0], dateValue[1], Color.White);
 
-            hexTextBox.Rtf = sb.ToString();
-
-            sb.Length = 0;
-
-            sb.Append(rtfHeader);
-
-            sb.Append(RtfBuilder.RtfTag(rtfColours, "Blue", "Control"));
-            sb.Append("Time");
-            sb.Append("} ");
-            sb.Append(RtfBuilder.RtfTag(rtfColours, "Green", "Control"));
-            sb.Append("Date");
-            sb.Append("}");
-
-            keyTextBox.Rtf = sb.ToString();
+            
+            keyTextBox.Rtf = DateTimeRtfBuilder.BuildRtf($"Time {dateValue[0]}", $"Date {dateValue[1]}", SystemColors.Control);
         }
         else
         {
@@ -276,9 +243,7 @@ public partial class DecodeWindow : UserControl
 
     private void EncodeInt16(string text)
     {
-        short value;
-
-        if (short.TryParse(text, out value))
+        if (short.TryParse(text, out var value))
         {
             hexTextBox.Text = DataConverter.EncodeInt16(value);
         }
@@ -291,9 +256,7 @@ public partial class DecodeWindow : UserControl
 
     private void EncodeInt32(string text)
     {
-        int value;
-
-        if (int.TryParse(text, out value))
+        if (int.TryParse(text, out var value))
         {
             hexTextBox.Text = DataConverter.EncodeInt32(value);
         }
@@ -306,7 +269,7 @@ public partial class DecodeWindow : UserControl
 
     private void DataTypeComboBox_SelectedIndexChanged(object sender, EventArgs e)
     {
-        EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem.ToString());
+        EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem?.ToString());
     }
 
     public PageViewerWindow ParentWindow
@@ -316,7 +279,7 @@ public partial class DecodeWindow : UserControl
         {
             parentWindow = value;
 
-            System.Diagnostics.Debug.Print("Parent Window set to " + parentWindow.Page.PageAddress.ToString());
+            System.Diagnostics.Debug.Print("Parent Window set to " + parentWindow.Page.PageAddress);
 
             if (parentWindow == null)
             {

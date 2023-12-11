@@ -6,6 +6,8 @@ using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI;
 
 public partial class OffsetTable : UserControl
@@ -101,13 +103,10 @@ public partial class OffsetTable : UserControl
         {
             if (offsetDataGridView.SelectedRows.Count > 0)
             {
-                return ushort.Parse(offsetDataGridView.SelectedRows[0].Cells[1].Value.ToString());
+                return ushort.Parse(offsetDataGridView.SelectedRows[0].Cells[1].Value?.ToString() ?? string.Empty);
             }
-            else
-            {
 
-                return 0;
-            }
+            return 0;
         }
     }
 
@@ -119,10 +118,8 @@ public partial class OffsetTable : UserControl
             {
                 return offsetDataGridView.SelectedRows[0].Index;
             }
-            else
-            {
-                return -1;
-            }
+
+            return -1;
         }
         set
         {

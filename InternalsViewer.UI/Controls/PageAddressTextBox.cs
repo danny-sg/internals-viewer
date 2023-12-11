@@ -4,6 +4,8 @@ using System.Drawing;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.Properties;
 
+#pragma warning disable CA1416
+
 namespace InternalsViewer.UI.Controls;
 
 public class PageAddressTextBox : ToolStripTextBox

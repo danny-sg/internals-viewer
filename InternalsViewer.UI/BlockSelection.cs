@@ -25,7 +25,7 @@ public class BlockSelection
 
     public int EndPos { get; set; }
 
-    public Color Colour { get; set; }
+    public Color? Colour { get; set; }
 
     public bool HasColour => Colour != null;
 }
