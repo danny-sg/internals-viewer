@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Markers;
+using InternalsViewer.UI.Rtf;
+#pragma warning disable CA1416
 
 namespace InternalsViewer.UI;
 
@@ -18,17 +21,15 @@ namespace InternalsViewer.UI;
 public partial class HexViewer : UserControl
 {
     private readonly bool hexMode = false;
-    private static readonly string RtfLineBreak = @"\par " + Environment.NewLine;
+
     private ushort currentOffset;
     private string dataRtf;
     private string dataText;
-    private readonly Color headerColour = Color.FromArgb(245, 245, 250);
-    private readonly Color offsetColour = Color.FromArgb(245, 250, 245);
+
     private readonly List<Marker> markers = new();
     private Page page;
     private readonly VisualStyleRenderer renderer;
-    private readonly List<Color> rtfColours;
-    private readonly string rtfHeader;
+
     private int selectedOffset = -1;
     private int selectedRecord = -1;
     private bool suppressTooltip;
@@ -43,13 +44,6 @@ public partial class HexViewer : UserControl
     public HexViewer()
     {
         InitializeComponent();
-
-        rtfColours = RtfColour.CreateColourTable(new List<string>());
-
-        rtfColours.Add(headerColour);
-        rtfColours.Add(offsetColour);
-
-        rtfHeader = RtfColour.CreateRtfHeader(rtfColours);
 
         if (VisualStyleRenderer.IsSupported)
         {
@@ -68,86 +62,16 @@ public partial class HexViewer : UserControl
     /// <returns></returns>
     private string FormatPageDetails(Page targetPage)
     {
-        if (targetPage==null)
-        {
-            return string.Empty;
-        }
-        var alternate = false;
-
-        var sb = new StringBuilder();
-
-        sb.Append(rtfHeader);
-
-        // Start header
-        sb.Append(RtfColour.RtfTag(rtfColours, Color.Blue.Name, headerColour.Name));
-
-        var currentPos = 0;
-
-        for (var rows = 0; rows < targetPage.PageData.Length / 16; rows++)
-        {
-            for (var cols = 0; cols < 16; cols++)
-            {
-                if (currentPos == 96)
-                {
-                    // End Header
-                    sb.Append("}");
-                }
-
-                if (currentPos == selectedOffset)
-                {
-                    sb.Append(@"{\uldb ");
-                }
-
-                if (currentPos == Page.Size - targetPage.Header.SlotCount * 2)
-                {
-                    // Start offset table
-                    sb.Append(RtfColour.RtfTag(rtfColours, Color.Green.Name, offsetColour.Name));
-                }
-
-                // Start marker/colour tag
-                if (Colourise)
-                {
-                    alternate = FindStartMarkers(currentPos, sb, alternate);
-                }
-
-                // Add the byte
-                sb.Append(DataConverter.ToHexString(targetPage.PageData[currentPos]));
-
-                // End marker/close colour tag
-                if (Colourise)
-                {
-                    FindEndMarkers(currentPos, sb);
-                }
-
-                if (currentPos == selectedOffset)
-                {
-                    sb.Append("}");
-                }
-
-                if (cols != 15)
-                {
-                    sb.Append(" ");
-                }
-
-                currentPos++;
-            }
-
-            sb.Append(RtfLineBreak);
-        }
-
-        sb.Append("}");
-
-        return sb.ToString();
+        return RtfBuilder.BuildRtf(targetPage, markers, Colourise, selectedOffset);
     }
 
     /// <summary>
     /// Adds a collection of markers
     /// </summary>
-    /// <param name="markers">The markers.</param>
-    public void AddMarkers(List<Marker> markers)
+    public void AddMarkers(List<Marker> sourceMarkers)
     {
-        this.markers.Clear();
-        this.markers.AddRange(markers);
+        markers.Clear();
+        markers.AddRange(sourceMarkers);
 
         DataRtf = FormatPageDetails(page);
     }
@@ -181,57 +105,13 @@ public partial class HexViewer : UserControl
     }
 
     /// <summary>
-    /// Find if a marker starts at a given positions, and if it does add a start RTF colour tag
-    /// </summary>
-    /// <param name="position">The current position.</param>
-    /// <param name="sb">The StringBuilder.</param>
-    private bool FindStartMarkers(int position, StringBuilder sb, bool alternate)
-    {
-        var startMarkers = markers.FindAll(delegate(Marker marker) { return marker.StartPosition == position; });
-
-        foreach (var startMarker in startMarkers)
-        {
-            sb.Append(RtfColour.RtfTag(rtfColours,
-                startMarker.ForeColour.Name,
-                alternate ? startMarker.AlternateBackColour.Name : startMarker.BackColour.Name));
-
-            alternate = !alternate;
-        }
-
-        return alternate;
-    }
-
-    /// <summary>
-    /// Find if a marker ends at a given positions, and if it does add an end RTF colour tag
-    /// </summary>
-    /// <param name="position">The current position.</param>
-    /// <param name="sb">The StringBuilder.</param>
-    private void FindEndMarkers(int position, StringBuilder sb)
-    {
-        if (position <= 0)
-        {
-            return;
-        }
-
-        var endMarkers = markers.FindAll(delegate(Marker marker) { return marker.EndPosition == position; });
-
-        for (var i = 0; i < endMarkers.Count; i++)
-        {
-            sb.Append("}");
-        }
-    }
-
-    /// <summary>
     /// Gets the marker at a given offset.
     /// </summary>
     /// <param name="offset">The offset.</param>
     /// <returns></returns>
     private Marker GetMarkerAtPosition(ushort offset)
     {
-        return markers.Find(delegate(Marker marker)
-        {
-            return offset >= marker.StartPosition && offset <= marker.EndPosition;
-        });
+        return markers.FirstOrDefault(marker => offset >= marker.StartPosition && offset <= marker.EndPosition);
     }
 
     /// <summary>
@@ -379,10 +259,7 @@ public partial class HexViewer : UserControl
     /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
     private void HeaderPanel_Paint(object sender, PaintEventArgs e)
     {
-        var addressRectangle = new Rectangle(headerPanel.Bounds.X,
-            headerPanel.Bounds.Y,
-            addressLabel.Width,
-            headerPanel.Height + 1);
+        var addressRectangle = headerPanel.Bounds with { Width = addressLabel.Width, Height = headerPanel.Height + 1 };
 
         var dataRectangle = new Rectangle(headerPanel.Bounds.X + addressLabel.Width,
             headerPanel.Bounds.Y,
@@ -483,7 +360,7 @@ public partial class HexViewer : UserControl
     {
         var offset = (ushort)(dataRichTextBox.GetCharIndexFromPosition(e.Location) / 3);
 
-        setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
+        setOffsetToolStripMenuItem.Text = $"Set offset to: {offset}";
         currentOffset = offset;
         var markerDescription = string.Empty;
 
@@ -498,7 +375,7 @@ public partial class HexViewer : UserControl
             backColour = hoverMarker.BackColour;
         }
 
-        setOffsetToolStripMenuItem.Text = "Set offset to: " + offset;
+        setOffsetToolStripMenuItem.Text = $"Set offset to: {offset}";
 
         var temp = OffsetOver;
 
@@ -573,15 +450,9 @@ public partial class HexViewer : UserControl
         set
         {
             dataRtf = value;
-            try
-            {
-                dataRichTextBox.Rtf = DataRtf;
-            }
-            catch (Exception)
-            {
-                dataRichTextBox.Text = DataText;
-            }
-
+            dataRichTextBox.Rtf = value;
+            //dataRichTextBox.Text = DataText;
+            System.Diagnostics.Debug.Print(value);
             UpdateAddressTextBox();
         }
     }

@@ -5,6 +5,7 @@ using System.Text;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
 using System.Text.RegularExpressions;
+using InternalsViewer.UI.Rtf;
 
 namespace InternalsViewer.UI;
 
@@ -221,10 +222,10 @@ public partial class DecodeWindow : UserControl
                 dateValue = DataConverter.EncodeDateTime(value);
             }
 
-            sb.Append(RtfColour.RtfTag(rtfColours, "Blue", "White"));
+            sb.Append(RtfBuilder.RtfTag(rtfColours, "Blue", "White"));
             sb.Append(dateValue[0]);
             sb.Append("} ");
-            sb.Append(RtfColour.RtfTag(rtfColours, "Green", "White"));
+            sb.Append(RtfBuilder.RtfTag(rtfColours, "Green", "White"));
             sb.Append(dateValue[1]);
             sb.Append("}");
 
@@ -234,10 +235,10 @@ public partial class DecodeWindow : UserControl
 
             sb.Append(rtfHeader);
 
-            sb.Append(RtfColour.RtfTag(rtfColours, "Blue", "Control"));
+            sb.Append(RtfBuilder.RtfTag(rtfColours, "Blue", "Control"));
             sb.Append("Time");
             sb.Append("} ");
-            sb.Append(RtfColour.RtfTag(rtfColours, "Green", "Control"));
+            sb.Append(RtfBuilder.RtfTag(rtfColours, "Green", "Control"));
             sb.Append("Date");
             sb.Append("}");
 
