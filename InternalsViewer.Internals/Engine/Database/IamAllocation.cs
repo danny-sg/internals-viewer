@@ -1,6 +1,6 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Linq;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
-using System.Linq;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
@@ -17,19 +17,19 @@ public class IamAllocation : Allocation
     public IamAllocation(Database database, PageAddress pageAddress)
         : base(database, pageAddress)
     {
-        MultiFile = true;
+        IsMultiFile = true;
     }
 
     public IamAllocation(AllocationPage page)
         : base(page)
     {
-        MultiFile = true;
+        IsMultiFile = true;
     }
 
     /// <summary>
     /// Check is a specific extent is allocated
     /// </summary>
-    public override bool Allocated(int extent, int fileId)
+    public override bool IsAllocated(int extent, int fileId)
     {
         var page = Pages.FirstOrDefault(p => p.StartPage.FileId == fileId &&
                                              extent >= (p.StartPage.PageId / 8) &&

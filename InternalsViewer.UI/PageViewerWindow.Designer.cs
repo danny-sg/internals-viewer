@@ -1,4 +1,7 @@
-﻿using InternalsViewer.UI.Controls;
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+using InternalsViewer.UI.Controls;
+
 namespace InternalsViewer.UI
 {
     partial class PageViewerWindow
@@ -6,7 +9,7 @@ namespace InternalsViewer.UI
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -1227,94 +1230,94 @@ namespace InternalsViewer.UI
 
         #endregion
 
-        private System.Windows.Forms.ToolStripMenuItem logContents0ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem rowLogContents1ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem rowLogContents2ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem rowLogContents3ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem rowLogContents4ToolStripMenuItem;
-        private InternalsViewer.UI.Controls.FlatMenuStrip flatMenuStrip1;
-        private System.Windows.Forms.ToolStripLabel toolStripLabel1;
-        private System.Windows.Forms.ToolStripButton previousToolStripButton;
-        private System.Windows.Forms.ToolStripButton nextToolStripButton;
-        private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
-        private System.Windows.Forms.ToolStripLabel toolStripLabel2;
+        private ToolStripMenuItem logContents0ToolStripMenuItem;
+        private ToolStripMenuItem rowLogContents1ToolStripMenuItem;
+        private ToolStripMenuItem rowLogContents2ToolStripMenuItem;
+        private ToolStripMenuItem rowLogContents3ToolStripMenuItem;
+        private ToolStripMenuItem rowLogContents4ToolStripMenuItem;
+        private FlatMenuStrip flatMenuStrip1;
+        private ToolStripLabel toolStripLabel1;
+        private ToolStripButton previousToolStripButton;
+        private ToolStripButton nextToolStripButton;
+        private ToolStripSeparator toolStripSeparator2;
+        private ToolStripLabel toolStripLabel2;
         private PageAddressTextBox pageToolStripTextBox;
-        private System.Windows.Forms.ToolStripTextBox offsetTableToolStripTextBox;
-        private System.Windows.Forms.Panel leftPanel;
-        private InternalsViewer.UI.Controls.BorderPanel headerBorderPanel;
-        private System.Windows.Forms.PictureBox bcmPictureBox;
-        private System.Windows.Forms.PictureBox dcmPictureBox;
-        private System.Windows.Forms.PictureBox sGamPictureBox;
-        private System.Windows.Forms.PictureBox gamPictureBox;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label19;
-        private System.Windows.Forms.Label label20;
-        private System.Windows.Forms.Label label21;
-        private System.Windows.Forms.Label label15;
-        private System.Windows.Forms.Panel pfsPanel;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.TextBox textBox15;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.TextBox textBox4;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.TextBox textBox3;
-        private System.Windows.Forms.TextBox textBox2;
-        private System.Windows.Forms.TextBox textBox14;
-        private System.Windows.Forms.TextBox textBox13;
-        private System.Windows.Forms.TextBox textBox12;
-        private System.Windows.Forms.TextBox textBox11;
-        private System.Windows.Forms.TextBox textBox10;
-        private System.Windows.Forms.TextBox textBox9;
-        private System.Windows.Forms.TextBox textBox8;
-        private System.Windows.Forms.TextBox textBox7;
-        private System.Windows.Forms.TextBox textBox6;
-        private System.Windows.Forms.TextBox textBox17;
-        private System.Windows.Forms.TextBox textBox16;
-        private System.Windows.Forms.TextBox textBox5;
-        private System.Windows.Forms.TextBox previousPageTextBox;
-        private System.Windows.Forms.TextBox nextPageTextBox;
-        private System.Windows.Forms.Label label18;
-        private System.Windows.Forms.Label label16;
-        private System.Windows.Forms.Label label14;
-        private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.Label label11;
-        private System.Windows.Forms.Label label10;
-        private System.Windows.Forms.Label label36;
-        private System.Windows.Forms.Label label17;
-        private System.Windows.Forms.Label label13;
-        private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.BindingSource pageBindingSource;
-        private System.Windows.Forms.SplitContainer splitContainer1;
+        private ToolStripTextBox offsetTableToolStripTextBox;
+        private Panel leftPanel;
+        private BorderPanel headerBorderPanel;
+        private PictureBox bcmPictureBox;
+        private PictureBox dcmPictureBox;
+        private PictureBox sGamPictureBox;
+        private PictureBox gamPictureBox;
+        private Label label1;
+        private Label label19;
+        private Label label20;
+        private Label label21;
+        private Label label15;
+        private Panel pfsPanel;
+        private Label label6;
+        private TextBox textBox15;
+        private Label label5;
+        private TextBox textBox4;
+        private Label label4;
+        private TextBox textBox3;
+        private TextBox textBox2;
+        private TextBox textBox14;
+        private TextBox textBox13;
+        private TextBox textBox12;
+        private TextBox textBox11;
+        private TextBox textBox10;
+        private TextBox textBox9;
+        private TextBox textBox8;
+        private TextBox textBox7;
+        private TextBox textBox6;
+        private TextBox textBox17;
+        private TextBox textBox16;
+        private TextBox textBox5;
+        private TextBox previousPageTextBox;
+        private TextBox nextPageTextBox;
+        private Label label18;
+        private Label label16;
+        private Label label14;
+        private Label label12;
+        private Label label11;
+        private Label label10;
+        private Label label36;
+        private Label label17;
+        private Label label13;
+        private Label label9;
+        private Label label8;
+        private Label label7;
+        private Label label3;
+        private Label label2;
+        private BindingSource pageBindingSource;
+        private SplitContainer splitContainer1;
         private HexViewer hexViewer;
-        private System.Windows.Forms.Panel topLeftPanel;
+        private Panel topLeftPanel;
         private OffsetTable offsetTable;
-        private InternalsViewer.UI.Controls.MarkerKeyTable markerKeyTable;
-        private InternalsViewer.UI.AllocationViewer allocationViewer;
-        private System.Windows.Forms.StatusStrip statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel pageAddressToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel errorImageToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel errorToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel3;
-        private System.Windows.Forms.ToolStripStatusLabel markerDescriptionToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel offsetToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
-        private System.Windows.Forms.TextBox bcmTextBox;
-        private System.Windows.Forms.TextBox dcmTextBox;
-        private System.Windows.Forms.TextBox sgamTextBox;
-        private System.Windows.Forms.TextBox gamTextBox;
-        private System.Windows.Forms.TextBox pfsTextBox;
-        private System.Windows.Forms.Panel compressionInfoPanel;
+        private MarkerKeyTable markerKeyTable;
+        private AllocationViewer allocationViewer;
+        private StatusStrip statusStrip;
+        private ToolStripStatusLabel pageAddressToolStripStatusLabel;
+        private ToolStripStatusLabel errorImageToolStripStatusLabel;
+        private ToolStripStatusLabel errorToolStripStatusLabel;
+        private ToolStripStatusLabel toolStripStatusLabel3;
+        private ToolStripStatusLabel markerDescriptionToolStripStatusLabel;
+        private ToolStripStatusLabel offsetToolStripStatusLabel;
+        private ToolStripSeparator toolStripSeparator1;
+        private TextBox bcmTextBox;
+        private TextBox dcmTextBox;
+        private TextBox sgamTextBox;
+        private TextBox gamTextBox;
+        private TextBox pfsTextBox;
+        private Panel compressionInfoPanel;
         private CompressionInfoTable compressionInfoTable;
-        private System.Windows.Forms.ToolStripButton encodeAndFindToolStripButton;
-        private System.Windows.Forms.ToolStripStatusLabel serverToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel dataaseToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
-        private System.Windows.Forms.ToolStripLabel logToolStripLabel;
-        private System.Windows.Forms.ToolStripComboBox logToolStripComboBox;
+        private ToolStripButton encodeAndFindToolStripButton;
+        private ToolStripStatusLabel serverToolStripStatusLabel;
+        private ToolStripStatusLabel dataaseToolStripStatusLabel;
+        private ToolStripSeparator toolStripSeparator3;
+        private ToolStripLabel logToolStripLabel;
+        private ToolStripComboBox logToolStripComboBox;
 
     }
 }

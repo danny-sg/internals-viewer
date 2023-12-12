@@ -29,7 +29,7 @@ public class RecordField(Column column) : Field
 
     public string Name => Column.ColumnName;
 
-    [Mark(MarkType.Value)]
+    [DataStructureItem(DataStructureItemType.Value)]
     public string Value => DataConverter.BinaryToString(Data, Column.DataType, Column.Precision, Column.Scale);
 
     public override string ToString()

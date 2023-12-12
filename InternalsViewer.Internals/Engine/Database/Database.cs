@@ -9,6 +9,7 @@ public class Database
 {
     public const int AllocationInterval = 511232;
     public const int PfsInterval = 8088;
+
     private readonly Dictionary<int, Allocation> bcm = new();
     private readonly Dictionary<int, Allocation> dcm = new();
     private readonly Dictionary<int, Allocation> gam = new();
@@ -192,11 +193,9 @@ public class Database
             new SqlParameter[1] { new("FileId", databaseFile.FileId) });
     }
 
-    internal static byte GetCompatabilityLevel(string connectionString, string database)
+    internal static byte GetCompatibilityLevel(string connectionString, string database)
     {
-        byte compatabilityLevel;
-
-        compatabilityLevel = (byte)DataAccess.GetScalar(connectionString,
+        var compatibilityLevel = (byte)DataAccess.GetScalar(connectionString,
             "master",
             SqlCommands.CompatibilityLevel,
             CommandType.Text,
@@ -204,6 +203,6 @@ public class Database
             {
                 new("Name", database)
             });
-        return compatabilityLevel;
+        return compatibilityLevel;
     }
 }

@@ -10,7 +10,7 @@ using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Compression;
 
-public class CompressionInformation: Markable
+public class CompressionInformation : DataStructure
 {
     public static byte CiSize = 7;
     public static short Offset = 96;
@@ -34,24 +34,24 @@ public class CompressionInformation: Markable
     {
         ci.StatusBits = new BitArray(new[] { ci.Page.PageData[ci.SlotOffset] });
 
-        ci.Mark("StatusDescription", ci.SlotOffset, 1);
+        ci.MarkDataStructure("StatusDescription", ci.SlotOffset, 1);
 
         ci.HasAnchorRecord = ci.StatusBits[1];
         ci.HasDictionary = ci.StatusBits[2];
 
         ci.PageModCount = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 1);
 
-        ci.Mark("PageModCount", ci.SlotOffset + sizeof(byte), sizeof(short));
+        ci.MarkDataStructure("PageModCount", ci.SlotOffset + sizeof(byte), sizeof(short));
 
         ci.Length = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 3);
 
-        ci.Mark("Length", ci.SlotOffset + sizeof(byte) + sizeof(short), sizeof(short));
+        ci.MarkDataStructure("Length", ci.SlotOffset + sizeof(byte) + sizeof(short), sizeof(short));
 
         if (ci.HasDictionary)
         {
             ci.Size = BitConverter.ToInt16(ci.Page.PageData, ci.SlotOffset + 5);
 
-            ci.Mark("Size", ci.SlotOffset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
+            ci.MarkDataStructure("Size", ci.SlotOffset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
         }
 
         if (ci.HasAnchorRecord)
@@ -100,10 +100,10 @@ public class CompressionInformation: Markable
         return structure;
     }
 
-    [Mark(MarkType.PageModCount)]
+    [DataStructureItem(DataStructureItemType.PageModCount)]
     public short PageModCount { get; set; }
 
-    [Mark(MarkType.CiSize)]
+    [DataStructureItem(DataStructureItemType.CiSize)]
     public short Size { get; set; }
 
     public BitArray StatusBits { get; set; }
@@ -112,7 +112,7 @@ public class CompressionInformation: Markable
 
     public Page Page { get; set; }
 
-    [Mark(MarkType.StatusBitsA)]
+    [DataStructureItem(DataStructureItemType.StatusBitsA)]
     public string StatusDescription
     {
         get
@@ -145,7 +145,7 @@ public class CompressionInformation: Markable
 
     public bool HasDictionary { get; set; }
 
-    [Mark(MarkType.CiLength)]
+    [DataStructureItem(DataStructureItemType.CiLength)]
     public short Length { get; set; }
 
     public enum CompressionInfoStructure

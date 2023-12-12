@@ -1,11 +1,14 @@
-﻿namespace InternalsViewer.UI
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+
+namespace InternalsViewer.UI
 {
     partial class DecodeWindow
     {
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -181,15 +184,15 @@
 
         #endregion
 
-        private System.Windows.Forms.RichTextBox keyTextBox;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.RichTextBox hexTextBox;
-        private System.Windows.Forms.Button findButton;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.ComboBox dataTypeComboBox;
-        private System.Windows.Forms.TextBox findTextBox;
-        private System.Windows.Forms.Label label1;
+        private RichTextBox keyTextBox;
+        private Label label6;
+        private RichTextBox hexTextBox;
+        private Button findButton;
+        private Label label3;
+        private Label label2;
+        private ComboBox dataTypeComboBox;
+        private TextBox findTextBox;
+        private Label label1;
 
     }
 }

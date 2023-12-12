@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using InternalsViewer.Internals;
-using InternalsViewer.Internals.Pages;
-using InternalsViewer.UI.Markers;
-using System.Drawing;
-using InternalsViewer.UI.Renderers;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -17,7 +15,10 @@ using InternalsViewer.Internals.Engine.Records.Compressed;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Metadata;
+using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.TransactionLog;
+using InternalsViewer.UI.Markers;
+using InternalsViewer.UI.Renderers;
 using Microsoft.Data.SqlClient;
 
 #pragma warning disable CA1416
@@ -32,7 +33,7 @@ public partial class PageViewerWindow : UserControl
     private Page page;
     private readonly PfsRenderer pfsRenderer;
     private PfsByte pfsByte;
-    int searchPosition = 0;
+    int searchPosition;
     private Dictionary<string, LogData> logData;
 
     /// <summary>
@@ -245,7 +246,7 @@ public partial class PageViewerWindow : UserControl
 
         if (record != null)
         {
-            var markers = MarkerBuilder.BuildMarkers((Markable)record);
+            var markers = MarkerBuilder.BuildMarkers(record);
 
             hexViewer.AddMarkers(markers);
 
@@ -280,10 +281,8 @@ public partial class PageViewerWindow : UserControl
             {
                 break;
             }
-            else
-            {
-                currentOffset = (ushort)i;
-            }
+
+            currentOffset = (ushort)i;
         }
 
         if (currentOffset > 0)
@@ -312,7 +311,6 @@ public partial class PageViewerWindow : UserControl
             else if (!suppressContinue)
             {
                 FindNext(findHex, true);
-                return;
             }
         }
         else
@@ -336,7 +334,7 @@ public partial class PageViewerWindow : UserControl
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.Print(ex.ToString());
+                Debug.Print(ex.ToString());
             }
         }
     }
@@ -612,7 +610,7 @@ public partial class PageViewerWindow : UserControl
     /// <value>The connection string.</value>
     public string ConnectionString { get; set; }
 
-    private void CompressionInfoTable_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void CompressionInfoTable_PropertyChanged(object sender, PropertyChangedEventArgs e)
     {
         offsetTable.SelectedSlot = -1;
 
@@ -675,7 +673,7 @@ public partial class PageViewerWindow : UserControl
             startPos = Page.OffsetTable[logData.Slot] + logData.Offset;
             endPos = startPos + logData.Data.Length;
 
-            hexViewer.AddBlock(new BlockSelection() { Colour = colour, StartPos = startPos, EndPos = endPos });
+            hexViewer.AddBlock(new BlockSelection { Colour = colour, StartPos = startPos, EndPos = endPos });
 
         }
 

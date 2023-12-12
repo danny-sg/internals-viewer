@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
-using InternalsViewer.Internals.Pages;
-using InternalsViewer.UI.Markers;
-using InternalsViewer.UI.Allocations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Pages;
+using InternalsViewer.UI.Allocations;
+using InternalsViewer.UI.Markers;
+
 #pragma warning disable CA1416
 
 namespace InternalsViewer.UI;

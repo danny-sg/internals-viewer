@@ -1,11 +1,15 @@
-﻿namespace InternalsViewer.UI
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+using InternalsViewer.UI.Controls;
+
+namespace InternalsViewer.UI
 {
     partial class HexViewer
     {
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -177,16 +181,16 @@
 
         #endregion
 
-        private System.Windows.Forms.Panel headerPanel;
-        private System.Windows.Forms.Panel mainPanel;
-        private System.Windows.Forms.Panel leftPanel;
-        private System.Windows.Forms.Label addressLabel;
-        private InternalsViewer.UI.Controls.HexRichTextBox dataRichTextBox;
-        private System.Windows.Forms.ToolTip dataToolTip;
-        private System.Windows.Forms.ContextMenuStrip dataContextMenuStrip;
-        private System.Windows.Forms.ToolStripMenuItem setOffsetToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem findRecordToolStripMenuItem;
-        private System.Windows.Forms.ContextMenuStrip addressContextMenuStrip;
-        private System.Windows.Forms.ToolStripMenuItem hexNumericToolStripMenuItem;
+        private Panel headerPanel;
+        private Panel mainPanel;
+        private Panel leftPanel;
+        private Label addressLabel;
+        private HexRichTextBox dataRichTextBox;
+        private ToolTip dataToolTip;
+        private ContextMenuStrip dataContextMenuStrip;
+        private ToolStripMenuItem setOffsetToolStripMenuItem;
+        private ToolStripMenuItem findRecordToolStripMenuItem;
+        private ContextMenuStrip addressContextMenuStrip;
+        private ToolStripMenuItem hexNumericToolStripMenuItem;
     }
 }

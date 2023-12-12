@@ -5,7 +5,7 @@ namespace InternalsViewer.Internals.Compression;
 /// <summary>
 /// CD (Column Description) Array Item
 /// </summary>
-public class CdArrayItem(int index, byte value) : Markable
+public class CdArray(int index, byte value) : DataStructure
 {
     private static string GetCdDescription(byte cdItem)
     {
@@ -31,7 +31,7 @@ public class CdArrayItem(int index, byte value) : Markable
 
     public byte Value { get; set; } = value;
 
-    [Mark(MarkType.CdArrayItem)]
+    [DataStructureItem(DataStructureItemType.CdArrayItem)]
     public string Description => string.Format("Column {0}: {1}, Column {2}: {3}",
         (Index * 2),
         GetCdDescription(Values[0]),

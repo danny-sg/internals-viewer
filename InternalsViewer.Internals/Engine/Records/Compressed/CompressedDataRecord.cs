@@ -11,7 +11,7 @@ public class CompressedDataRecord : Record
     public CompressedDataRecord(Page page, ushort slotOffset, Structure structure)
         : base(page, slotOffset, structure)
     {
-        CdItems = new List<CdArrayItem>();
+        CdItems = new List<CdArray>();
 
         CompressedDataRecordLoader.Load(this);
     }
@@ -22,9 +22,9 @@ public class CompressedDataRecord : Record
     //    set { cdArray = value; }
     //}
 
-    public List<CdArrayItem> CdItems { get; }
+    public List<CdArray> CdItems { get; }
 
-    public CdArrayItem[] CdItemsArray => CdItems.ToArray();
+    public CdArray[] CdItemsArray => CdItems.ToArray();
 
     public byte GetCdByte(int columnId)
     {

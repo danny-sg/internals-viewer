@@ -454,8 +454,6 @@ public static class DataConverter
             case 8:
                 decodedData.Add(DataString(binaryData, SqlDbType.BigInt));
                 break;
-            default:
-                break;
         }
 
         if (binaryData.Length == 1)

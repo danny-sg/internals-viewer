@@ -1,11 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using InternalsViewer.Internals;
-using InternalsViewer.Internals.Pages;
-using System;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Pages;
 
 #pragma warning disable CA1416
 
@@ -23,12 +23,12 @@ public class AllocationLayer
     private bool invert;
     private string name = string.Empty;
     private int order;
-    private bool singleSlotsOnly = false;
+    private bool singleSlotsOnly;
     private bool transparent;
     private bool useBorderColour;
     private AllocationLayerType layerType = AllocationLayerType.Standard;
     private int transparency = 40;
-    private bool useDefaultSinglePageColour = false;
+    private bool useDefaultSinglePageColour;
     private bool visible = true;
     private string indexName = string.Empty;
     private int usedPages;

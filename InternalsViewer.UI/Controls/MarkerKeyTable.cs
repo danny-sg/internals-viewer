@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
@@ -55,18 +56,26 @@ public partial class MarkerKeyTable : UserControl
     {
         try
         {
-            if (e.ColumnIndex == 0)
+            if (e.ColumnIndex == 0 && e.CellStyle != null)
             {
                 markersDataGridView.Rows[e.RowIndex].SetValues("00");
 
+                Color? backColour;
+
                 if (e.RowIndex % 2 == 0)
                 {
-                    e.CellStyle.BackColor = (Color)markersDataGridView.Rows[e.RowIndex].Cells["BackColourColumn"].Value;
+                    backColour = (Color?)markersDataGridView.Rows[e.RowIndex].Cells["BackColourColumn"].Value;
+
+
                 }
                 else
                 {
+                    backColour = (Color?)markersDataGridView.Rows[e.RowIndex].Cells["AlternateBackColourColumn"].Value;
+                }
 
-                    e.CellStyle.BackColor = (Color)markersDataGridView.Rows[e.RowIndex].Cells["AlternateBackColourColumn"].Value;
+                if (backColour != null)
+                {
+                    e.CellStyle.BackColor = backColour.Value;
                 }
 
                 e.CellStyle.SelectionBackColor = e.CellStyle.BackColor;
@@ -96,7 +105,7 @@ public partial class MarkerKeyTable : UserControl
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.Print(ex.ToString());
+            Debug.Print(ex.ToString());
         }
     }
 

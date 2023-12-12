@@ -27,9 +27,7 @@ public class KeyImageCell : DataGridViewImageCell
         {
             return ExtentColour.KeyImage((Color)value);
         }
-        else
-        {
-            return null;
-        }
+
+        return null;
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Readers.Headers;
@@ -84,7 +85,7 @@ public class DatabasePageReader : PageReader
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.Print(ex.ToString());
+            Debug.Print(ex.ToString());
         }
 
         command.Dispose();

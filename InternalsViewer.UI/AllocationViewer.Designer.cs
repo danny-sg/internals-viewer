@@ -1,4 +1,7 @@
-﻿using InternalsViewer.Internals.Pages;
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+using InternalsViewer.UI.Allocations;
+
 namespace InternalsViewer.UI
 {
     partial class AllocationViewer
@@ -6,7 +9,7 @@ namespace InternalsViewer.UI
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -498,36 +501,36 @@ namespace InternalsViewer.UI
 
         #endregion
 
-        private System.Windows.Forms.Panel topPanel;
-        private InternalsViewer.UI.Allocations.AllocationMap allocationMap;
-        private System.Windows.Forms.PictureBox slot7Box;
-        private System.Windows.Forms.PictureBox slot3Box;
-        private System.Windows.Forms.PictureBox slot6Box;
-        private System.Windows.Forms.PictureBox slot2Box;
-        private System.Windows.Forms.PictureBox slot5Box;
-        private System.Windows.Forms.PictureBox slot1Box;
-        private System.Windows.Forms.PictureBox slot4Box;
-        private System.Windows.Forms.PictureBox slot0Box;
-        private System.Windows.Forms.PictureBox startPageBox;
-        private System.Windows.Forms.Label label15;
-        private System.Windows.Forms.Label label14;
-        private System.Windows.Forms.TextBox slotSixTextBox;
-        private System.Windows.Forms.TextBox slotFiveTextBox;
-        private System.Windows.Forms.Label label10;
-        private System.Windows.Forms.TextBox slotSevenTextBox;
-        private System.Windows.Forms.Label label11;
-        private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.TextBox slotFourTextBox;
-        private System.Windows.Forms.Label label13;
-        private System.Windows.Forms.TextBox slotTwoTextBox;
-        private System.Windows.Forms.TextBox slotOneTextBox;
-        private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.TextBox slotThreeTextBox;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.TextBox slotZeroTextBox;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.TextBox startPageTextBox;
-        private System.Windows.Forms.Label label2;
+        private Panel topPanel;
+        private AllocationMap allocationMap;
+        private PictureBox slot7Box;
+        private PictureBox slot3Box;
+        private PictureBox slot6Box;
+        private PictureBox slot2Box;
+        private PictureBox slot5Box;
+        private PictureBox slot1Box;
+        private PictureBox slot4Box;
+        private PictureBox slot0Box;
+        private PictureBox startPageBox;
+        private Label label15;
+        private Label label14;
+        private TextBox slotSixTextBox;
+        private TextBox slotFiveTextBox;
+        private Label label10;
+        private TextBox slotSevenTextBox;
+        private Label label11;
+        private Label label12;
+        private TextBox slotFourTextBox;
+        private Label label13;
+        private TextBox slotTwoTextBox;
+        private TextBox slotOneTextBox;
+        private Label label9;
+        private TextBox slotThreeTextBox;
+        private Label label8;
+        private Label label7;
+        private TextBox slotZeroTextBox;
+        private Label label6;
+        private TextBox startPageTextBox;
+        private Label label2;
     }
 }

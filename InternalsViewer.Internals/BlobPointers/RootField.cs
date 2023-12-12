@@ -18,19 +18,19 @@ public class RootField : BlobField
     {
         Unused = data[UnusedOffset];
 
-        Mark("Unused", offset + UnusedOffset, sizeof(byte));
+        MarkDataStructure("Unused", offset + UnusedOffset, sizeof(byte));
 
         Level = data[LevelOffset];
 
-        Mark("Level", offset + LevelOffset, sizeof(byte));
+        MarkDataStructure("Level", offset + LevelOffset, sizeof(byte));
 
         Timestamp = BitConverter.ToInt32(data, TimestampOffset);
 
-        Mark("Timestamp", offset + TimestampOffset, sizeof(int));
+        MarkDataStructure("Timestamp", offset + TimestampOffset, sizeof(int));
 
         UpdateSeq = BitConverter.ToInt16(data, UpdateSeqOffset);
 
-        Mark("UpdateSeq", offset + UpdateSeqOffset, sizeof(short));
+        MarkDataStructure("UpdateSeq", offset + UpdateSeqOffset, sizeof(short));
     }
 
     protected override void LoadLinks()
@@ -41,7 +41,7 @@ public class RootField : BlobField
 
         for (var i = 0; i < SlotCount; i++)
         {
-            Mark("LinksArray", "Child " + i + " - ", i);
+            MarkDataStructure("LinksArray", "Child " + i + " - ", i);
 
             var length = BitConverter.ToInt32(Data, ChildOffset + (i * 12));
 
@@ -52,23 +52,23 @@ public class RootField : BlobField
 
             var link = new BlobChildLink(rowId, 0, length);
 
-            link.Mark("Length", Offset + ChildOffset + (i * 12), sizeof(int));
+            link.MarkDataStructure("Length", Offset + ChildOffset + (i * 12), sizeof(int));
 
-            link.Mark("RowIdentifier", Offset + ChildOffset + (i * 12) + sizeof(int), 8);
+            link.MarkDataStructure("RowIdentifier", Offset + ChildOffset + (i * 12) + sizeof(int), 8);
 
             Links.Add(link);
         }
     }
 
-    [Mark(MarkType.SlotCount)]
+    [DataStructureItem(DataStructureItemType.SlotCount)]
     public int SlotCount { get; set; }
 
-    [Mark(MarkType.Level)]
+    [DataStructureItem(DataStructureItemType.Level)]
     public byte Level { get; set; }
 
-    [Mark(MarkType.Unused)]
+    [DataStructureItem(DataStructureItemType.Unused)]
     public byte Unused { get; set; }
 
-    [Mark(MarkType.UpdateSeq)]
+    [DataStructureItem(DataStructureItemType.UpdateSeq)]
     public short UpdateSeq { get; set; }
 }

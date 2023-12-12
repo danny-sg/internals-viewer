@@ -1,3 +1,3 @@
 ﻿namespace InternalsViewer.Internals.Engine.Records;
 
-public class Field : Markable;
+public class Field : DataStructure;

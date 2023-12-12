@@ -1,11 +1,14 @@
-﻿namespace InternalsViewer.UI.Controls
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+
+namespace InternalsViewer.UI.Controls
 {
     partial class CompressionInfoTable
     {
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -128,10 +131,10 @@
 
         #endregion
 
-        private System.Windows.Forms.Panel compressionInfoPanel;
-        private System.Windows.Forms.DataGridView offsetDataGridView;
-        private System.Windows.Forms.DataGridViewTextBoxColumn StructureColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn ValueColumn;
-        private System.Windows.Forms.BindingSource bindingSource;
+        private Panel compressionInfoPanel;
+        private DataGridView offsetDataGridView;
+        private DataGridViewTextBoxColumn StructureColumn;
+        private DataGridViewTextBoxColumn ValueColumn;
+        private BindingSource bindingSource;
     }
 }

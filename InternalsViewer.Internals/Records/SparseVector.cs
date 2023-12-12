@@ -5,7 +5,7 @@ using InternalsViewer.Internals.RecordLoaders;
 
 namespace InternalsViewer.Internals.Records;
 
-public class SparseVector: Markable
+public class SparseVector: DataStructure
 {
     public const int ColCountOffset = 2;
     public const int ColumnsOffset = 4;
@@ -39,21 +39,21 @@ public class SparseVector: Markable
 
     public ushort[] Columns { get; set; }
 
-    [Mark(MarkType.SparseColumns)]
+    [DataStructureItem(DataStructureItemType.SparseColumns)]
     public string ColumnsDescription => Record.GetArrayString(Columns);
 
-    [Mark(MarkType.SparseColumnOffsets)]
+    [DataStructureItem(DataStructureItemType.SparseColumnOffsets)]
     public string OffsetsDescription => Record.GetArrayString(Offset);
 
     public ushort[] Offset { get; set; }
 
-    [Mark(MarkType.SparseColumnCount)]
+    [DataStructureItem(DataStructureItemType.SparseColumnCount)]
     public short ColCount { get; set; }
 
     public short RecordOffset { get; set; }
 
     public short ComplexHeader { get; set; }
 
-    [Mark(MarkType.ComplexHeader)]
+    [DataStructureItem(DataStructureItemType.ComplexHeader)]
     public string ComplexHeaderDescription => GetComplexHeaderDescription(ComplexHeader);
 }

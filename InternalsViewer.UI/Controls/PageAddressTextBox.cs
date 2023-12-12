@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Windows.Forms;
 using System.Drawing;
+using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.Properties;
 

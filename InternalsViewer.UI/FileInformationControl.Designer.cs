@@ -1,11 +1,14 @@
-﻿namespace InternalsViewer.UI
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+
+namespace InternalsViewer.UI
 {
     partial class FileInformationControl
     {
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -350,28 +353,28 @@
 
         #endregion
 
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.Label label18;
-        private System.Windows.Forms.BindingSource databaseFileBindingSource;
-        private System.Windows.Forms.Label label19;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Label label17;
-        private System.Windows.Forms.Label label16;
-        private System.Windows.Forms.Label label15;
-        private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.Label label10;
-        private System.Windows.Forms.Label label11;
-        private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.Label label13;
-        private System.Windows.Forms.Label label14;
-        private System.Windows.Forms.Panel spaceUsedPanel;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Panel panel1;
+        private Label label4;
+        private Label label8;
+        private Label label5;
+        private Label label1;
+        private Label label7;
+        private Label label18;
+        private BindingSource databaseFileBindingSource;
+        private Label label19;
+        private Label label6;
+        private Label label17;
+        private Label label16;
+        private Label label15;
+        private Label label9;
+        private Label label2;
+        private TableLayoutPanel tableLayoutPanel1;
+        private Label label10;
+        private Label label11;
+        private Label label12;
+        private Label label13;
+        private Label label14;
+        private Panel spaceUsedPanel;
+        private Label label3;
+        private Panel panel1;
     }
 }

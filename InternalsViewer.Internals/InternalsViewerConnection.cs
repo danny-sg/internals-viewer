@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Security;
 using InternalsViewer.Internals.Engine.Database;
 using Microsoft.Data.SqlClient;
 
@@ -122,7 +123,7 @@ public class InternalsViewerConnection
 
         if (!hasSysadmin)
         {
-            throw new System.Security.SecurityException("The specified login does not have the required sysadmin role.");
+            throw new SecurityException("The specified login does not have the required sysadmin role.");
         }
     }
 

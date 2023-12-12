@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.BlobPointers;
 
-public class BlobChildLink : Markable
+public class BlobChildLink : DataStructure
 {
     public BlobChildLink()
     {
@@ -16,13 +16,13 @@ public class BlobChildLink : Markable
         Length = length;
     }
 
-    [Mark(MarkType.Rid)]
+    [DataStructureItem(DataStructureItemType.Rid)]
     public RowIdentifier RowIdentifier { get; set; }
 
-    [Mark(MarkType.BlobChildOffset)]
+    [DataStructureItem(DataStructureItemType.BlobChildOffset)]
     public int Offset { get; set; }
 
-    [Mark(MarkType.BlobChildLength)]
+    [DataStructureItem(DataStructureItemType.BlobChildLength)]
     public int Length { get; set; }
 
     public override string ToString()

@@ -32,7 +32,7 @@ public abstract class RecordLoader
     /// </summary>
     public static void LoadLobField(RecordField field, byte[] data, int offset)
     {
-        field.Mark("BlobInlineRoot");
+        field.MarkDataStructure("BlobInlineRoot");
 
         // First byte gives the Blob field type
         switch ((BlobFieldType)data[0])

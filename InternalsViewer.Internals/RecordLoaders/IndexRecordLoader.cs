@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections;
+using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Index;
@@ -56,7 +56,7 @@ internal class IndexRecordLoader : RecordLoader
 
         record.DownPagePointer = new PageAddress(address);
 
-        record.Mark("DownPagePointer", downPagePointerOffset, PageAddress.Size);
+        record.MarkDataStructure("DownPagePointer", downPagePointerOffset, PageAddress.Size);
     }
 
     private static void LoadRid(IndexRecord record)
@@ -77,7 +77,7 @@ internal class IndexRecordLoader : RecordLoader
 
         record.Rid = new RowIdentifier(ridAddress);
 
-        record.Mark("Rid", ridOffset, RowIdentifier.Size);
+        record.MarkDataStructure("Rid", ridOffset, RowIdentifier.Size);
     }
 
     private static void LoadColumnOffsetArray(IndexRecord record, int varColStartIndex)
@@ -86,14 +86,14 @@ internal class IndexRecordLoader : RecordLoader
 
         record.VariableLengthColumnCount = BitConverter.ToUInt16(record.Page.PageData, varColCountOffset);
 
-        record.Mark("VariableLengthColumnCount", varColCountOffset, sizeof(short));
+        record.MarkDataStructure("VariableLengthColumnCount", varColCountOffset, sizeof(short));
 
         // Load offset array of 2-byte ints indicating the end offset of each variable length field
         record.ColOffsetArray = GetOffsetArray(record.Page.PageData,
             record.VariableLengthColumnCount,
             record.SlotOffset + record.Page.Header.MinLen + sizeof(short) + varColStartIndex);
 
-        record.Mark("ColOffsetArrayDescription", varColCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));
+        record.MarkDataStructure("ColOffsetArrayDescription", varColCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));
     }
 
     private static void LoadColumnValues(IndexRecord record)
@@ -159,10 +159,10 @@ internal class IndexRecordLoader : RecordLoader
                 field.Data = data;
                 field.VariableOffset = variableIndex;
 
-                field.Mark("Value", record.SlotOffset + field.Offset, field.Length);
+                field.MarkDataStructure("Value", record.SlotOffset + field.Offset, field.Length);
 
 
-                record.Mark("FieldsArray", field.Name, index);
+                record.MarkDataStructure("FieldsArray", field.Name, index);
 
                 index++;
 
@@ -181,7 +181,7 @@ internal class IndexRecordLoader : RecordLoader
 
         record.ColumnCount = BitConverter.ToInt16(record.Page.PageData, columnCountPosition);
 
-        record.Mark("ColumnCount", columnCountPosition, sizeof(short));
+        record.MarkDataStructure("ColumnCount", columnCountPosition, sizeof(short));
 
         var nullBitmapBytes = new byte[record.NullBitmapSize];
 
@@ -195,7 +195,7 @@ internal class IndexRecordLoader : RecordLoader
 
         record.NullBitmap = new BitArray(nullBitmapBytes);
 
-        record.Mark("NullBitmapDescription", nullBitmapPosition, record.NullBitmapSize);
+        record.MarkDataStructure("NullBitmapDescription", nullBitmapPosition, record.NullBitmapSize);
     }
 
     private static void LoadStatusBits(IndexRecord record)
@@ -204,7 +204,7 @@ internal class IndexRecordLoader : RecordLoader
 
         record.StatusBitsA = new BitArray(new[] { statusA });
 
-        record.Mark("StatusBitsADescription", record.SlotOffset, 1);
+        record.MarkDataStructure("StatusBitsADescription", record.SlotOffset, 1);
 
         record.RecordType = (RecordType)((statusA >> 1) & 7);
 

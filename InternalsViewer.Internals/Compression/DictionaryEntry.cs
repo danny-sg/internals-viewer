@@ -2,8 +2,8 @@
 
 namespace InternalsViewer.Internals.Compression;
 
-public class DictionaryEntry(byte[] data) : Markable
+public class DictionaryEntry(byte[] data) : DataStructure
 {
-    [Mark(MarkType.Value)]
+    [DataStructureItem(DataStructureItemType.Value)]
     public byte[] Data { get; set; } = data;
 }

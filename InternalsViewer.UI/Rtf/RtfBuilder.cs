@@ -4,10 +4,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using InternalsViewer.Internals;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Markers;
-using InternalsViewer.UI.MarkStyles;
 
 namespace InternalsViewer.UI.Rtf;
 

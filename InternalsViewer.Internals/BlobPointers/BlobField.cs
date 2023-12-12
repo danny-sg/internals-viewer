@@ -1,5 +1,5 @@
-﻿using System.Text;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Text;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Records;
 
@@ -19,7 +19,7 @@ public class BlobField : Field
         PointerType = (BlobFieldType)data[0];
         Offset = offset;
 
-        Mark("PointerType", offset, sizeof(byte));
+        MarkDataStructure("PointerType", offset, sizeof(byte));
 
         LoadLinks();
     }
@@ -28,17 +28,17 @@ public class BlobField : Field
     /// Gets or sets the timestamp used by DBCC CHECKTABLE
     /// </summary>
     /// <value>The timestamp.</value>
-    [Mark(MarkType.Timestamp)]
+    [DataStructureItem(DataStructureItemType.Timestamp)]
     public int Timestamp { get; set; }
 
     public List<BlobChildLink> Links { get; set; }
 
-    [Mark(MarkType.Rid)]
+    [DataStructureItem(DataStructureItemType.Rid)]
     public BlobChildLink[] LinksArray => Links.ToArray();
 
     public byte[] Data { get; set; }
 
-    [Mark(MarkType.PointerType)]
+    [DataStructureItem(DataStructureItemType.PointerType)]
     public BlobFieldType PointerType { get; set; }
 
     public int Offset { get; set; }

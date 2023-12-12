@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Windows.Forms;
+
 namespace InternalsViewer.UI.Controls
 {
     partial class MarkerKeyTable
@@ -5,7 +8,7 @@ namespace InternalsViewer.UI.Controls
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -286,25 +289,25 @@ namespace InternalsViewer.UI.Controls
 
         #endregion
 
-        private System.Windows.Forms.DataGridView markersDataGridView;
-        private System.Windows.Forms.BindingSource markerBindingSource;
-        private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
-        private System.Windows.Forms.ToolStripMenuItem navigateToToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem navigateToInNewWindowToolStripMenuItem;
-        private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
-        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItem1;
-        private System.Windows.Forms.ContextMenuStrip pageContextMenuStrip;
-        private System.Windows.Forms.ToolStripMenuItem navigateToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem navigateToInNewWindowToolStripMenuItem1;
-        private System.Windows.Forms.DataGridViewTextBoxColumn KeyColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn AlternateBackColourColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn BackColourColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn ForeColourColumn;
-        private System.Windows.Forms.DataGridViewCheckBoxColumn IsNullColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn DataTypeColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn nameDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewLinkColumn valueDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn startPositionDataGridViewTextBoxColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn endPositionDataGridViewTextBoxColumn;
+        private DataGridView markersDataGridView;
+        private BindingSource markerBindingSource;
+        private ContextMenuStrip contextMenuStrip1;
+        private ToolStripMenuItem navigateToToolStripMenuItem;
+        private ToolStripMenuItem navigateToInNewWindowToolStripMenuItem;
+        private ToolStripSeparator toolStripSeparator1;
+        private ToolStripMenuItem toolStripMenuItem1;
+        private ContextMenuStrip pageContextMenuStrip;
+        private ToolStripMenuItem navigateToolStripMenuItem;
+        private ToolStripMenuItem navigateToInNewWindowToolStripMenuItem1;
+        private DataGridViewTextBoxColumn KeyColumn;
+        private DataGridViewTextBoxColumn AlternateBackColourColumn;
+        private DataGridViewTextBoxColumn BackColourColumn;
+        private DataGridViewTextBoxColumn ForeColourColumn;
+        private DataGridViewCheckBoxColumn IsNullColumn;
+        private DataGridViewTextBoxColumn DataTypeColumn;
+        private DataGridViewTextBoxColumn nameDataGridViewTextBoxColumn;
+        private DataGridViewLinkColumn valueDataGridViewTextBoxColumn;
+        private DataGridViewTextBoxColumn startPositionDataGridViewTextBoxColumn;
+        private DataGridViewTextBoxColumn endPositionDataGridViewTextBoxColumn;
     }
 }

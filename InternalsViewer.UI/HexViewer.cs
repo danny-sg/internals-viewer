@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
@@ -209,10 +210,8 @@ public partial class HexViewer : UserControl
 
             return decodedDataStringBuilder.ToString();
         }
-        else
-        {
-            return string.Empty;
-        }
+
+        return string.Empty;
     }
 
     /// <summary>
@@ -453,7 +452,7 @@ public partial class HexViewer : UserControl
             dataRtf = value;
             dataRichTextBox.Rtf = value;
             //dataRichTextBox.Text = DataText;
-            System.Diagnostics.Debug.Print(value);
+            Debug.Print(value);
             UpdateAddressTextBox();
         }
     }

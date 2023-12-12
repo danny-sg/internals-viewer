@@ -21,6 +21,7 @@ public readonly struct LogSequenceNumber : IComparable<LogSequenceNumber>
     public LogSequenceNumber(string value)
     {
         var sb = new StringBuilder(value);
+
         sb.Replace("(", string.Empty);
         sb.Replace(")", string.Empty);
 

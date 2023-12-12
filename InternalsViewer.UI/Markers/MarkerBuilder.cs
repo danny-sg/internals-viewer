@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Records;
@@ -11,7 +12,7 @@ namespace InternalsViewer.UI.Markers;
 /// </summary>
 public class MarkerBuilder
 {
-    public static List<Marker> BuildMarkers(Markable markedObject)
+    public static List<Marker> BuildMarkers(DataStructure markedObject)
     {
         return BuildMarkers(markedObject, string.Empty);
     }
@@ -19,7 +20,7 @@ public class MarkerBuilder
     /// <summary>
     /// Builds the markers using an IMarkable collection and reflection to access the property values
     /// </summary>
-    public static List<Marker> BuildMarkers(Markable markedObject, string prefix)
+    public static List<Marker> BuildMarkers(DataStructure markedObject, string prefix)
     {
         if (markedObject == null)
         {
@@ -38,13 +39,13 @@ public class MarkerBuilder
 
             var property = markedObject.GetType().GetProperty(item.PropertyName);
 
-            var markAttribute = property?.GetCustomAttributes(typeof(MarkAttribute), false);
+            var markAttribute = property?.GetCustomAttributes(typeof(DataStructureItem), false);
 
             if (markAttribute != null && markAttribute.Length > 0)
             {
-                var attribute = (markAttribute[0] as MarkAttribute);
+                var attribute = (markAttribute[0] as DataStructureItem);
                     
-                var style = styleProvider.GetMarkStyle(attribute.MarkType);
+                var style = styleProvider.GetMarkStyle(attribute.DataStructureItemType);
                     
                 marker.ForeColour = style.ForeColour;
                 marker.BackColour = style.BackColour;
@@ -118,7 +119,7 @@ public class MarkerBuilder
     /// </summary>
     private static void SetValue(List<Marker> markers, Marker marker, object value, string prefix)
     {
-        var markable = value as Markable;
+        var markable = value as DataStructure;
 
         if (markable != null)
         {
@@ -126,7 +127,7 @@ public class MarkerBuilder
         }
         else if (value is byte[])
         {
-            marker.Value = DataConverter.BinaryToString((byte[])value, System.Data.SqlDbType.VarChar, 0, 0);
+            marker.Value = DataConverter.BinaryToString((byte[])value, SqlDbType.VarChar, 0, 0);
         }
         else
         {

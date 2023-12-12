@@ -1,11 +1,11 @@
-﻿using InternalsViewer.Internals;
-using InternalsViewer.UI.Markers;
-using InternalsViewer.UI.MarkStyles;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using InternalsViewer.Internals;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.UI.Markers;
+using InternalsViewer.UI.MarkStyles;
 
 namespace InternalsViewer.UI.Rtf;
 
@@ -52,6 +52,7 @@ internal class PageRtfBuilder: RtfBuilder
 
                 if (currentPos == selectedOffset)
                 {
+                    // Double underline
                     sb.Append(@"{\uldb ");
                 }
 

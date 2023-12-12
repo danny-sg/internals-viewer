@@ -41,9 +41,9 @@ public class DataRecord : Record
         return sb.ToString();
     }
 
-    [Mark(MarkType.StatusBitsB)]
+    [DataStructureItem(DataStructureItemType.StatusBitsB)]
     public string StatusBitsBDescription => "";
 
-    [Mark(MarkType.ForwardingRecord)]
+    [DataStructureItem(DataStructureItemType.ForwardingRecord)]
     public RowIdentifier ForwardingRecord { get; set; }
 }

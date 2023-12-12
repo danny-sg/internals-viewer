@@ -16,7 +16,7 @@ public class Allocation
     public Allocation(Database database, PageAddress pageAddress)
     {
         FileId = pageAddress.FileId;
-        MultiFile = false;
+        IsMultiFile = false;
 
         BuildChain(database, pageAddress);
     }
@@ -24,7 +24,7 @@ public class Allocation
     public Allocation(AllocationPage page)
     {
         FileId = page.PageAddress.FileId;
-        MultiFile = false;
+        IsMultiFile = false;
         Pages.Add(page);
         interval = Database.AllocationInterval;
         SinglePageSlots.AddRange(page.SinglePageSlots);
@@ -33,7 +33,7 @@ public class Allocation
     /// <summary>
     /// Check if a specific extent is allocated
     /// </summary>
-    public virtual bool Allocated(int extent, int allocationFileId)
+    public virtual bool IsAllocated(int extent, int allocationFileId)
     {
         return Pages[(extent * 8) / interval].AllocationMap[extent % ((interval / 8) + 1)];
     }
@@ -44,13 +44,13 @@ public class Allocation
     public static bool CheckAllocationStatus(int targetExtent, int fileId, bool invert, Allocation chain)
     {
         return (!invert
-                && chain.Allocated(targetExtent, fileId)
-                && (fileId == chain.FileId || chain.MultiFile)
+                && chain.IsAllocated(targetExtent, fileId)
+                && (fileId == chain.FileId || chain.IsMultiFile)
                )
                ||
                (invert
-                && !chain.Allocated(targetExtent, fileId)
-                && (fileId == chain.FileId || chain.MultiFile)
+                && !chain.IsAllocated(targetExtent, fileId)
+                && (fileId == chain.FileId || chain.IsMultiFile)
                );
     }
 
@@ -187,5 +187,5 @@ public class Allocation
     /// <summary>
     /// Determines if the Allocation spans multiple files
     /// </summary>
-    public bool MultiFile { get; set; }
+    public bool IsMultiFile { get; set; }
 }

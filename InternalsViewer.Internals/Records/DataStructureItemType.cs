@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Records;
 
-public enum MarkType
+public enum DataStructureItemType
 {
     ColumnOffsetArray,
     StatusBitsA,

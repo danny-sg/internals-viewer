@@ -27,36 +27,36 @@ public class BlobRecord : Record
         BlobRecordLoader.Load(this);
     }
 
-    [Mark(MarkType.StatusBitsA)]
+    [DataStructureItem(DataStructureItemType.StatusBitsA)]
     public new string StatusBitsADescription => "TODO";
 
-    [Mark(MarkType.StatusBitsB)]
+    [DataStructureItem(DataStructureItemType.StatusBitsB)]
     public string StatusBitsBDescription => string.Empty;
 
-    [Mark(MarkType.BlobId)]
+    [DataStructureItem(DataStructureItemType.BlobId)]
     public long BlobId { get; set; }
 
-    [Mark(MarkType.BlobLength)]
+    [DataStructureItem(DataStructureItemType.BlobLength)]
     public int Length { get; set; }
 
     public BlobType BlobType { get; set; }
 
-    [Mark(MarkType.BlobType)]
+    [DataStructureItem(DataStructureItemType.BlobType)]
     public string BlobTypeDescription => BlobType.ToString();
 
-    [Mark(MarkType.MaxLinks)]
+    [DataStructureItem(DataStructureItemType.MaxLinks)]
     public int MaxLinks { get; set; }
 
-    [Mark(MarkType.CurrentLinks)]
+    [DataStructureItem(DataStructureItemType.CurrentLinks)]
     public int CurLinks { get; set; }
 
-    [Mark(MarkType.Level)]
+    [DataStructureItem(DataStructureItemType.Level)]
     public short Level { get; set; }
 
-    [Mark(MarkType.BlobSize)]
+    [DataStructureItem(DataStructureItemType.BlobSize)]
     public short Size { get; set; }
 
-    [Mark(MarkType.BlobData)]
+    [DataStructureItem(DataStructureItemType.BlobData)]
     public byte[] Data { get; set; }
 
     public List<BlobChildLink> BlobChildren { get; set; }

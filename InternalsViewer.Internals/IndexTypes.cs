@@ -1,5 +1,6 @@
 ﻿
 using System;
+
 namespace InternalsViewer.Internals;
 
 [Flags]

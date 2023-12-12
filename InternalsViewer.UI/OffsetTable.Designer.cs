@@ -1,11 +1,14 @@
-﻿namespace InternalsViewer.UI
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+
+namespace InternalsViewer.UI
 {
     partial class OffsetTable
     {
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -125,9 +128,9 @@
 
         #endregion
 
-        private System.Windows.Forms.DataGridView offsetDataGridView;
-        private System.Windows.Forms.DataGridViewTextBoxColumn SlotDataGridViewColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn HexOffsetGridViewColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn OffsetGridViewColumn;
+        private DataGridView offsetDataGridView;
+        private DataGridViewTextBoxColumn SlotDataGridViewColumn;
+        private DataGridViewTextBoxColumn HexOffsetGridViewColumn;
+        private DataGridViewTextBoxColumn OffsetGridViewColumn;
     }
 }

@@ -17,19 +17,19 @@ class SparseVectorLoader
 
         sparseVector.ComplexHeader = BitConverter.ToInt16(sparseVector.Data, 0);
 
-        sparseVector.Mark("ComplexHeaderDescription", vectorOffset, sizeof(short));
+        sparseVector.MarkDataStructure("ComplexHeaderDescription", vectorOffset, sizeof(short));
 
         sparseVector.ColCount = BitConverter.ToInt16(sparseVector.Data, 2);
 
-        sparseVector.Mark("ColCount", vectorOffset + SparseVector.ColCountOffset, sizeof(short));
+        sparseVector.MarkDataStructure("ColCount", vectorOffset + SparseVector.ColCountOffset, sizeof(short));
 
         sparseVector.Columns = new ushort[sparseVector.ColCount];
 
-        sparseVector.Mark("ColumnsDescription", vectorOffset + SparseVector.ColumnsOffset, sparseVector.ColCount * sizeof(short));
+        sparseVector.MarkDataStructure("ColumnsDescription", vectorOffset + SparseVector.ColumnsOffset, sparseVector.ColCount * sizeof(short));
 
         sparseVector.Offset = new ushort[sparseVector.ColCount];
 
-        sparseVector.Mark("OffsetsDescription",
+        sparseVector.MarkDataStructure("OffsetsDescription",
             vectorOffset + SparseVector.ColumnsOffset + sparseVector.ColCount * sizeof(short),
             sparseVector.ColCount * sizeof(short));
 
@@ -54,9 +54,9 @@ class SparseVectorLoader
             field.Offset = sparseVector.Offset[i];
             field.Length = sparseVector.Offset[i] - previousOffset;
 
-            field.Mark("Value", vectorOffset + previousOffset, field.Length);
+            field.MarkDataStructure("Value", vectorOffset + previousOffset, field.Length);
 
-            sparseVector.ParentRecord.Mark("FieldsArray", field.Name + " (Sparse)", sparseVector.ParentRecord.Fields.Count);
+            sparseVector.ParentRecord.MarkDataStructure("FieldsArray", field.Name + " (Sparse)", sparseVector.ParentRecord.Fields.Count);
 
             previousOffset = sparseVector.Offset[i];
 

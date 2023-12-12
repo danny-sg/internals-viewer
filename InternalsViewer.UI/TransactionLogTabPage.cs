@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
-using InternalsViewer.Internals.Pages;
-using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.TransactionLog;
 
 #pragma warning disable CA1416
@@ -52,7 +54,7 @@ public class TransactionLogTabPage : TabPage
         descriptionColumn = new DataGridViewTextBoxColumn();
         isSystemColumn = new DataGridViewTextBoxColumn();
         isAllocationColumn = new DataGridViewTextBoxColumn();
-        ((System.ComponentModel.ISupportInitialize)(dataGridView)).BeginInit();
+        ((ISupportInitialize)(dataGridView)).BeginInit();
         SuspendLayout();
         // 
         // dataGridView
@@ -164,7 +166,7 @@ public class TransactionLogTabPage : TabPage
         // TransactionLogTabPage
         // 
         Controls.Add(dataGridView);
-        ((System.ComponentModel.ISupportInitialize)(dataGridView)).EndInit();
+        ((ISupportInitialize)(dataGridView)).EndInit();
         ResumeLayout(false);
 
     }
@@ -271,7 +273,7 @@ public class TransactionLogTabPage : TabPage
         // logData.LogSequenceNumber = new LogSequenceNumber((row.DataBoundItem as DataRowView)["LSN"].ToString());
         logData.Data = (byte[])(row.DataBoundItem as DataRowView)["Contents" + contentsIndex];
 
-        System.Diagnostics.Debug.Print(logData.ToString());
+        Debug.Print(logData.ToString());
 
         return logData;
     }

@@ -13,7 +13,7 @@ namespace InternalsViewer.Internals.Pages;
 /// <summary>
 /// Database Page
 /// </summary>
-public class Page : Markable
+public class Page : DataStructure
 {
     public const int Size = 8192;
     private readonly PageReader reader;
@@ -43,7 +43,7 @@ public class Page : Markable
 
         DatabaseId = GetDatabaseId(connectionString, database);
 
-        var compatibilityLevel = Database.GetCompatabilityLevel(connectionString, database);
+        var compatibilityLevel = Database.GetCompatibilityLevel(connectionString, database);
 
         Database = new Database(connectionString, DatabaseId, database, 1, compatibilityLevel);
 

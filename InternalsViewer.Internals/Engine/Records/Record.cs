@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Engine.Records;
 /// <summary>
 /// Database Record Structure
 /// </summary>
-public abstract class Record : Markable
+public abstract class Record : DataStructure
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="Record"/> class.
@@ -83,10 +83,8 @@ public abstract class Record : Markable
         {
             return false;
         }
-        else
-        {
-            return NullBitmap.Get(index - (HasUniqueifier ? 0 : 1));
-        }
+
+        return NullBitmap.Get(index - (HasUniqueifier ? 0 : 1));
     }
 
     public bool NullBitmapValue(Column column)
@@ -133,7 +131,7 @@ public abstract class Record : Markable
     /// <summary>
     /// Gets or sets the slot offset in the page
     /// </summary>
-    [Mark(MarkType.SlotOffset)]
+    [DataStructureItem(DataStructureItemType.SlotOffset)]
     public ushort SlotOffset { get; set; }
 
     /// <summary>
@@ -141,7 +139,7 @@ public abstract class Record : Markable
     /// </summary>
     public ushort[] ColOffsetArray { get; set; }
 
-    [Mark(MarkType.ColumnOffsetArray)]
+    [DataStructureItem(DataStructureItemType.ColumnOffsetArray)]
     public string ColOffsetArrayDescription => GetArrayString(ColOffsetArray);
 
     /// <summary>
@@ -149,7 +147,7 @@ public abstract class Record : Markable
     /// </summary>
     public BitArray StatusBitsA { get; set; }
 
-    [Mark(MarkType.StatusBitsA)]
+    [DataStructureItem(DataStructureItemType.StatusBitsA)]
     public string StatusBitsADescription => GetRecordTypeDescription(RecordType) + GetStatusBitsDescription(this);
 
     /// <summary>
@@ -167,14 +165,14 @@ public abstract class Record : Markable
     /// <summary>
     /// Gets or sets the number of columns in the record
     /// </summary>
-    [Mark(MarkType.ColumnCount)]
+    [DataStructureItem(DataStructureItemType.ColumnCount)]
     public short ColumnCount { get; set; }
 
     /// <summary>
     /// Gets or sets the fixed column offset.
     /// </summary>
     /// <value>The offset location of the start of the fixed column fields</value>
-    [Mark(MarkType.ColumnCountOffset)]
+    [DataStructureItem(DataStructureItemType.ColumnCountOffset)]
     public short ColumnCountOffset { get; set; }
 
     /// <summary>
@@ -193,7 +191,7 @@ public abstract class Record : Markable
     /// <summary>
     /// Gets or sets the variable length column count.
     /// </summary>
-    [Mark(MarkType.VariableLengthColumnCount)]
+    [DataStructureItem(DataStructureItemType.VariableLengthColumnCount)]
     public ushort VariableLengthColumnCount { get; set; }
 
     /// <summary>
@@ -214,7 +212,7 @@ public abstract class Record : Markable
     /// </summary>
     public BitArray NullBitmap { get; set; }
 
-    [Mark(MarkType.NullBitmap)]
+    [DataStructureItem(DataStructureItemType.NullBitmap)]
     public string NullBitmapDescription => HasNullBitmap ? GetNullBitmapString(NullBitmap) : string.Empty;
 
     /// <summary>

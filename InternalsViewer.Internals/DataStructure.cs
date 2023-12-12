@@ -2,29 +2,29 @@
 
 namespace InternalsViewer.Internals;
 
-public class Markable
+public class DataStructure
 {
-    public void Mark(string propertyName, int startPosition, int length)
+    public void MarkDataStructure(string propertyName, int startPosition, int length)
     {
         MarkItems.Add(new MarkItem(propertyName, startPosition, length));
     }
 
-    public void Mark(string propertyName, int startPosition, int length, int index)
+    public void MarkDataStructure(string propertyName, int startPosition, int length, int index)
     {
         MarkItems.Add(new MarkItem(propertyName, startPosition, length, index));
     }
 
-    public void Mark(string propertyName, string prefix, int startPosition, int length, int index)
+    public void MarkDataStructure(string propertyName, string prefix, int startPosition, int length, int index)
     {
         MarkItems.Add(new MarkItem(propertyName, startPosition, length, index));
     }
 
-    public void Mark(string propertyName, string prefix, int index)
+    public void MarkDataStructure(string propertyName, string prefix, int index)
     {
         MarkItems.Add(new MarkItem(propertyName, prefix, index));
     }
 
-    public void Mark(string propertyName)
+    public void MarkDataStructure(string propertyName)
     {
         MarkItems.Add(new MarkItem(propertyName, string.Empty, -1));
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
@@ -8,6 +9,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Allocations;
+
 #pragma warning disable CA1416
 
 namespace InternalsViewer.UI;
@@ -675,7 +677,7 @@ public partial class AllocationWindow : UserControl
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.Print(ex.ToString());
+                Debug.Print(ex.ToString());
             }
         }
     }

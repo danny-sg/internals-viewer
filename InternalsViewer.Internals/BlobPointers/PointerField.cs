@@ -11,7 +11,7 @@ public class PointerField : BlobField
     public PointerField(byte[] data, int offset)
         : base(data, offset)
     {
-        Mark("Timestamp", Offset + sizeof(byte), sizeof(int));
+        MarkDataStructure("Timestamp", Offset + sizeof(byte), sizeof(int));
 
         Timestamp = BitConverter.ToInt32(data, 0);
     }
@@ -23,13 +23,13 @@ public class PointerField : BlobField
         var rowIdData = new byte[8];
         Array.Copy(Data, RowIdOffset, rowIdData, 0, 8);
 
-        Mark("LinksArray", string.Empty, 0);
+        MarkDataStructure("LinksArray", string.Empty, 0);
 
         var rowId = new RowIdentifier(rowIdData);
 
         var link = new BlobChildLink(rowId, 0, 0);
 
-        link.Mark("RowIdentifier", Offset + RowIdOffset, 8);
+        link.MarkDataStructure("RowIdentifier", Offset + RowIdOffset, 8);
 
         Links.Add(link);
     }

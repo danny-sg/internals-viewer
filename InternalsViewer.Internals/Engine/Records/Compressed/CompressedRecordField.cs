@@ -32,7 +32,7 @@ internal class CompressedRecordField(Column column, CompressedDataRecord parentR
 
     public bool PageSymbol { get; set; }
 
-    [Mark(MarkType.CompressedValue)]
+    [DataStructureItem(DataStructureItemType.CompressedValue)]
     public new string Value
     {
         get

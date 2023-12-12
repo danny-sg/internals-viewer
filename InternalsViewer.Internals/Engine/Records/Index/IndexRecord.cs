@@ -22,13 +22,13 @@ public class IndexRecord : Record
     /// <summary>
     /// Gets or sets down page pointer to the next page in the index
     /// </summary>
-    [Mark(MarkType.DownPagePointer)]
+    [DataStructureItem(DataStructureItemType.DownPagePointer)]
     public PageAddress DownPagePointer { get; set; }
 
     /// <summary>
     /// Gets or sets the RID (Row Identifier) the index is pointing to
     /// </summary>
-    [Mark(MarkType.Rid)]
+    [DataStructureItem(DataStructureItemType.Rid)]
     public RowIdentifier Rid { get; set; }
 
     public IndexTypes IndexType { get; set; }

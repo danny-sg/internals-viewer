@@ -88,8 +88,8 @@ internal class FullMapRenderer
         // The image is later stretched as extents are 8 pages wide
         var widthHeightRatio = rect.Width / (rect.Height * 6D);
 
-        var height = (int)(Math.Ceiling(Math.Sqrt((double)fileSize) / widthHeightRatio));
-        var width = (int)(Math.Ceiling(Math.Sqrt((double)fileSize) * widthHeightRatio));
+        var height = (int)(Math.Ceiling(Math.Sqrt(fileSize) / widthHeightRatio));
+        var width = (int)(Math.Ceiling(Math.Sqrt(fileSize) * widthHeightRatio));
 
         // Adjust so the stride won't have any padding bytes
         width = (width + 4) - (width % 4);

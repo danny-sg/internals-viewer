@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
-using System.Text.RegularExpressions;
 using InternalsViewer.UI.Rtf;
 
 #pragma warning disable CA1416
@@ -279,7 +279,7 @@ public partial class DecodeWindow : UserControl
         {
             parentWindow = value;
 
-            System.Diagnostics.Debug.Print("Parent Window set to " + parentWindow.Page.PageAddress);
+            Debug.Print("Parent Window set to " + parentWindow.Page.PageAddress);
 
             if (parentWindow == null)
             {

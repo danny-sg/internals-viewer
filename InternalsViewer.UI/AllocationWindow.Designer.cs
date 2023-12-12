@@ -1,4 +1,8 @@
-﻿using InternalsViewer.UI.Controls;
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+using InternalsViewer.UI.Allocations;
+using InternalsViewer.UI.Controls;
+
 namespace InternalsViewer.UI
 {
     partial class AllocationWindow
@@ -6,7 +10,7 @@ namespace InternalsViewer.UI
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -559,47 +563,47 @@ namespace InternalsViewer.UI
 
         #endregion
 
-        private System.Windows.Forms.SplitContainer splitContainer;
-        private InternalsViewer.UI.Allocations.AllocationContainer allocationContainer;
+        private SplitContainer splitContainer;
+        private AllocationContainer allocationContainer;
         private FlatMenuStrip flatMenuStrip;
-        private System.Windows.Forms.ToolStripLabel toolStripLabel1;
-        private System.Windows.Forms.ToolStripComboBox databaseToolStripComboBox;
-        private System.Windows.Forms.ToolStripButton connectToolStripButton;
-        private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
-        private System.ComponentModel.BackgroundWorker allocUnitBackgroundWorker;
-        private System.Windows.Forms.ToolStripComboBox extentSizeToolStripComboBox;
-        private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
-        private System.Windows.Forms.ToolStripButton bufferPoolToolStripButton;
-        private System.Windows.Forms.StatusStrip statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel errorImageToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel errorToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripProgressBar allocUnitProgressBar;
-        private System.Windows.Forms.ToolStripStatusLabel allocUnitToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel spacerToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel2;
-        private System.Windows.Forms.ToolStripStatusLabel AllocUnitLabel;
-        private System.Windows.Forms.ToolStripStatusLabel pageAddressToolStripStatusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel iconToolStripStatusLabel;
-        private System.Windows.Forms.BindingSource allocationBindingSource;
-        private System.Windows.Forms.DataGridView keysDataGridView;
+        private ToolStripLabel toolStripLabel1;
+        private ToolStripComboBox databaseToolStripComboBox;
+        private ToolStripButton connectToolStripButton;
+        private ToolStripSeparator toolStripSeparator1;
+        private BackgroundWorker allocUnitBackgroundWorker;
+        private ToolStripComboBox extentSizeToolStripComboBox;
+        private ToolStripSeparator toolStripSeparator2;
+        private ToolStripButton bufferPoolToolStripButton;
+        private StatusStrip statusStrip;
+        private ToolStripStatusLabel errorImageToolStripStatusLabel;
+        private ToolStripStatusLabel errorToolStripStatusLabel;
+        private ToolStripProgressBar allocUnitProgressBar;
+        private ToolStripStatusLabel allocUnitToolStripStatusLabel;
+        private ToolStripStatusLabel spacerToolStripStatusLabel;
+        private ToolStripStatusLabel toolStripStatusLabel2;
+        private ToolStripStatusLabel AllocUnitLabel;
+        private ToolStripStatusLabel pageAddressToolStripStatusLabel;
+        private ToolStripStatusLabel iconToolStripStatusLabel;
+        private BindingSource allocationBindingSource;
+        private DataGridView keysDataGridView;
         private KeyImageColumn keyImageColumn1;
         private KeyImageColumn KeyColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn NameColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn IndexNameColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn IndexTypeColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn TotalPagesColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn UsedPagesColumn;
+        private DataGridViewTextBoxColumn NameColumn;
+        private DataGridViewTextBoxColumn IndexNameColumn;
+        private DataGridViewTextBoxColumn IndexTypeColumn;
+        private DataGridViewTextBoxColumn TotalPagesColumn;
+        private DataGridViewTextBoxColumn UsedPagesColumn;
         private PageAddressTextBox pageToolStripTextBox;
-        private System.Windows.Forms.ToolStripLabel toolStripLabel2;
-        private System.Windows.Forms.ToolStripButton showKeyToolStripButton;
-        private System.Windows.Forms.ToolStripButton fileDetailsToolStripButton;
-        private System.Windows.Forms.ToolStripSplitButton mapToolStripButton;
-        private System.Windows.Forms.ToolStripMenuItem allocationUnitsToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem allocationMapsToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem gamToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem sgamToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem bcmToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem dcmToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem pFSToolStripMenuItem;
+        private ToolStripLabel toolStripLabel2;
+        private ToolStripButton showKeyToolStripButton;
+        private ToolStripButton fileDetailsToolStripButton;
+        private ToolStripSplitButton mapToolStripButton;
+        private ToolStripMenuItem allocationUnitsToolStripMenuItem;
+        private ToolStripMenuItem allocationMapsToolStripMenuItem;
+        private ToolStripMenuItem gamToolStripMenuItem;
+        private ToolStripMenuItem sgamToolStripMenuItem;
+        private ToolStripMenuItem bcmToolStripMenuItem;
+        private ToolStripMenuItem dcmToolStripMenuItem;
+        private ToolStripMenuItem pFSToolStripMenuItem;
     }
 }

@@ -80,10 +80,8 @@ public partial class CompressionInfoTable : UserControl
             {
                 return (CompressionInformation.CompressionInfoStructure)offsetDataGridView.SelectedRows[0].Cells[0].Value;
             }
-            else
-            {
-                return CompressionInformation.CompressionInfoStructure.None;
-            }
+
+            return CompressionInformation.CompressionInfoStructure.None;
         }
 
         set
