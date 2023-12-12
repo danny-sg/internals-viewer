@@ -82,7 +82,7 @@ public class CompressionInformation : DataStructure
 
     private static TableStructure CreateTableStructure(int records, CompressionInformation ci)
     {
-        var structure = new TableStructure(ci.Page.Header.AllocationUnitId, ci.Page.Database);
+        var structure = new TableStructure(ci.Page.Header.AllocationUnitId);
 
         for (short i = 0; i < records; i++)
         {

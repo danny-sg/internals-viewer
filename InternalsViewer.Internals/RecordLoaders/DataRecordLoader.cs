@@ -11,7 +11,7 @@ using InternalsViewer.Internals.Records;
 namespace InternalsViewer.Internals.RecordLoaders;
 
 /// <summary>
-/// Loads a DataRecord object
+/// Loads a Data Record object
 /// </summary>
 public class DataRecordLoader : RecordLoader
 {

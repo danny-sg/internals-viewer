@@ -94,23 +94,23 @@ public class InternalsViewerConnection
             conn.Close();
         }
 
-        var databasesDataTable = DataAccess.GetDataTable(CurrentConnection().ConnectionString,
-            SqlCommands.Databases,
-            "master",
-            "Databases",
-            CommandType.Text);
-        Databases.Clear();
+        //var databasesDataTable = DataAccess.GetDataTable(CurrentConnection().ConnectionString,
+        //    SqlCommands.Databases,
+        //    "master",
+        //    "Databases",
+        //    CommandType.Text);
+        //Databases.Clear();
 
-        foreach (DataRow r in databasesDataTable.Rows)
-        {
-            Databases.Add(new Database(ConnectionString,
-                (int)r["database_id"],
-                (string)r["name"],
-                (byte)r["state"],
-                (byte)r["compatibility_level"]));
-        }
+        //foreach (DataRow r in databasesDataTable.Rows)
+        //{
+        //    Databases.Add(new Database(ConnectionString,
+        //        (int)r["database_id"],
+        //        (string)r["name"],
+        //        (byte)r["state"],
+        //        (byte)r["compatibility_level"]));
+        //}
 
-        currentDatabase = Databases.Find(d => d.Name == databaseName);
+        //currentDatabase = Databases.Find(d => d.Name == databaseName);
     }
 
     private static void CheckSysAdmin(SqlConnection conn)

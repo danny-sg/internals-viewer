@@ -39,11 +39,11 @@ public class MarkerBuilder
 
             var property = markedObject.GetType().GetProperty(item.PropertyName);
 
-            var markAttribute = property?.GetCustomAttributes(typeof(DataStructureItem), false);
+            var markAttribute = property?.GetCustomAttributes(typeof(DataStructureItemAttribute), false);
 
             if (markAttribute != null && markAttribute.Length > 0)
             {
-                var attribute = (markAttribute[0] as DataStructureItem);
+                var attribute = (markAttribute[0] as DataStructureItemAttribute);
                     
                 var style = styleProvider.GetMarkStyle(attribute.DataStructureItemType);
                     

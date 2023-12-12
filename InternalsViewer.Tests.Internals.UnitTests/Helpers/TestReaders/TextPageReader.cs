@@ -1,9 +1,8 @@
-﻿using System.IO;
-using InternalsViewer.Internals.Readers.Pages;
+﻿using InternalsViewer.Internals.Readers.Pages;
 
-namespace InternalsViewer.Tests.Internals.UnitTests.Helpers;
+namespace InternalsViewer.Internals.Tests.Helpers.TestReaders;
 
-public class FilePageReader
+public class TestPageReader
 {
     public static byte[] ReadPage(string path)
     {

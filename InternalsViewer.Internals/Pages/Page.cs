@@ -39,17 +39,17 @@ public class Page : DataStructure
 
     public Page(string connectionString, string database, PageAddress pageAddress)
     {
-        PageAddress = pageAddress;
+        //PageAddress = pageAddress;
 
-        DatabaseId = GetDatabaseId(connectionString, database);
+        //DatabaseId = GetDatabaseId(connectionString, database);
 
-        var compatibilityLevel = Database.GetCompatibilityLevel(connectionString, database);
+        //var compatibilityLevel = (byte)0;// Database.GetCompatibilityLevel(connectionString, database);
 
-        Database = new Database(connectionString, DatabaseId, database, 1, compatibilityLevel);
+        //Database = new Database(connectionString, DatabaseId, database, 1, compatibilityLevel);
 
-        reader = new DatabasePageReader(connectionString, PageAddress, DatabaseId);
+        //reader = new DatabasePageReader(connectionString, PageAddress, DatabaseId);
 
-        LoadPage();
+        //LoadPage();
     }
 
     /// <summary>
@@ -90,9 +90,9 @@ public class Page : DataStructure
             Header.PageType != PageType.Sgam ||
             Header.PageType != PageType.Pfs)
         {
-            DatabaseName = LookupDatabaseName(Database.ConnectionString, DatabaseId);
+            //DatabaseName = LookupDatabaseName(Database.ConnectionString, DatabaseId);
             Header.PageTypeName = GetPageTypeName(Header.PageType);
-            Header.AllocationUnit = LookupAllocationUnit(Header.AllocationUnitId);
+           // Header.AllocationUnit = LookupAllocationUnit(Header.AllocationUnitId);
 
             if (Database.CompatibilityLevel > 90)
             {
@@ -177,35 +177,21 @@ public class Page : DataStructure
     }
 
     /// <summary>
-    /// Lookups the name of the database.
-    /// </summary>
-    private static string LookupDatabaseName(string connectionString, int databaseId)
-    {
-        var databaseName = (string)DataAccess.GetScalar(connectionString,
-            "master",
-            SqlCommands.Database,
-            CommandType.Text,
-            new SqlParameter[1] { new("DatabaseId", databaseId) });
-
-        return databaseName;
-    }
-
-    /// <summary>
     /// Gets the type of the page compression.
     /// </summary>
     private CompressionType GetPageCompressionType(string connectionString)
     {
-        if (Header != null)
-        {
-            return (CompressionType)(DataAccess.GetScalar(connectionString,
-                DatabaseName,
-                SqlCommands.Compression,
-                CommandType.Text,
-                new SqlParameter[]
-                {
-                    new("PartitionId", Header.PartitionId)
-                }) ?? CompressionType.None);
-        }
+        //if (Header != null)
+        //{
+        //    return (CompressionType)(DataAccess.GetScalar(connectionString,
+        //        DatabaseName,
+        //        SqlCommands.Compression,
+        //        CommandType.Text,
+        //        new SqlParameter[]
+        //        {
+        //            new("PartitionId", Header.PartitionId)
+        //        }) ?? CompressionType.None);
+        //}
 
         return CompressionType.None;
     }
@@ -229,46 +215,33 @@ public class Page : DataStructure
         }
     }
 
-    /// <summary>
-    /// Lookups the allocation unit.
-    /// </summary>
-    private string LookupAllocationUnit(long allocationUnitId)
-    {
-        string allocationUnitName;
+    ///// <summary>
+    ///// Lookups the allocation unit.
+    ///// </summary>
+    //private string LookupAllocationUnit(long allocationUnitId)
+    //{
+    //    string allocationUnitName;
 
-        var sqlCommand = SqlCommands.AllocationUnit;
+    //    var sqlCommand = SqlCommands.AllocationUnitName;
 
-        if (DatabaseName == null)
-        {
-            allocationUnitName = Header.AllocationUnit;
-        }
-        else
-        {
-            allocationUnitName = (string)DataAccess.GetScalar(Database.ConnectionString,
-                DatabaseName,
-                sqlCommand,
-                CommandType.Text,
-                new SqlParameter[]
-                {
-                    new("AllocationUnitId", allocationUnitId)
-                });
-        }
+    //    if (DatabaseName == null)
+    //    {
+    //        allocationUnitName = Header.AllocationUnit;
+    //    }
+    //    else
+    //    {
+    //        allocationUnitName = (string)DataAccess.GetScalar(Database.ConnectionString,
+    //            DatabaseName,
+    //            sqlCommand,
+    //            CommandType.Text,
+    //            new SqlParameter[]
+    //            {
+    //                new("AllocationUnitId", allocationUnitId)
+    //            });
+    //    }
 
-        return allocationUnitName;
-    }
-
-    private static short GetDatabaseId(string connectionString, string database)
-    {
-        var databaseId = (short)DataAccess.GetScalar(connectionString,
-            "master",
-            SqlCommands.DatabaseId,
-            CommandType.Text,
-            new SqlParameter[]
-            {
-                new("DatabaseName", database)
-            });
-        return databaseId;
-    }
+    //    return allocationUnitName;
+    //}
 
     /// <summary>
     /// Gets or sets the type of page compression (2008+).

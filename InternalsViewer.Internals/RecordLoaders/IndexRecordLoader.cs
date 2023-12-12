@@ -39,7 +39,7 @@ internal class IndexRecordLoader : RecordLoader
             LoadDownPagePointer(record);
         }
 
-        if (record.IsIndexType(IndexTypes.Heap) && (!((IndexStructure)record.Structure).Unique | record.IsIndexType(IndexTypes.Leaf)))
+        if (record.IsIndexType(IndexTypes.Heap) && (!((IndexStructure)record.Structure).IsUnique | record.IsIndexType(IndexTypes.Leaf)))
         {
             LoadRid(record);
         }
@@ -232,7 +232,7 @@ internal class IndexRecordLoader : RecordLoader
             record.IndexType |= IndexTypes.Leaf;
         }
 
-        if (((IndexStructure)record.Structure).Heap)
+        if (((IndexStructure)record.Structure).IsHeap)
         {
             record.IndexType |= IndexTypes.Heap;
         }
@@ -241,7 +241,7 @@ internal class IndexRecordLoader : RecordLoader
             record.IndexType |= IndexTypes.TableClustered;
         }
 
-        record.IncludeKey = (!((IndexStructure)record.Structure).Unique
+        record.IncludeKey = (!((IndexStructure)record.Structure).IsUnique
                              && record.IsIndexType(IndexTypes.NonClustered))
                             || record.IsIndexType(IndexTypes.NonClusteredLeaf);
 

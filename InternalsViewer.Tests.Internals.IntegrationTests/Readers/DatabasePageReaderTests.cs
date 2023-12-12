@@ -1,8 +1,8 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Readers.Pages;
-using InternalsViewer.Internals.Tests.Helpers;
+using InternalsViewer.Tests.Internals.IntegrationTests.Helpers;
 
-namespace InternalsViewer.Internals.Tests.Readers;
+namespace InternalsViewer.Tests.Internals.IntegrationTests.Readers;
 
 public class DatabasePageReaderTests
 {

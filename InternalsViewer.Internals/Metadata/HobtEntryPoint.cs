@@ -4,6 +4,8 @@ namespace InternalsViewer.Internals.Metadata;
 
 /// <summary>
 /// The entry point pages for a HOBT
+/// 
+/// See https://learn.microsoft.com/en-us/sql/relational-databases/pages-and-extents-architecture-guide
 /// </summary>
 public struct HobtEntryPoint
 {

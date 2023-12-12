@@ -1,10 +1,9 @@
-﻿using System.IO;
-using InternalsViewer.Internals.Pages;
+﻿using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Readers.Headers;
 
-namespace InternalsViewer.Tests.Internals.UnitTests.Helpers;
+namespace InternalsViewer.Internals.Tests.Helpers.TestReaders;
 
-public class FileHeaderReader
+public class TestHeaderReader
 {
     public static Header ReadHeader(string path)
     {

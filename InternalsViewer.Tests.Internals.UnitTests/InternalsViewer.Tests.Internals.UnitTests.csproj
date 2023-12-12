@@ -9,27 +9,11 @@
     <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="TestPages\Allocation\**" />
-    <Compile Remove="TestPages\Header\**" />
-    <EmbeddedResource Remove="TestPages\Allocation\**" />
-    <EmbeddedResource Remove="TestPages\Header\**" />
-    <None Remove="TestPages\Allocation\**" />
-    <None Remove="TestPages\Header\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="TestPages\Records\SimpleHeapNullablePage1.txt">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.*" />
     <PackageReference Include="MSTest.TestAdapter" Version="1.2.0" />
     <PackageReference Include="MSTest.TestFramework" Version="1.2.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Metadata\" />
   </ItemGroup>
 </Project>

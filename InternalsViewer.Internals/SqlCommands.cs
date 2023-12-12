@@ -2,7 +2,7 @@
 
 internal class SqlCommands
 {
-    public static readonly string AllocationUnit =
+    public static readonly string AllocationUnitName =
 @"SELECT CONCAT(s.name, '.', o.name) AS Alloc_Unit
   FROM   sys.allocation_units au
          INNER JOIN sys.partitions p ON au.container_id = p.partition_id
@@ -16,7 +16,7 @@ internal class SqlCommands
       ,s.name AS schema_name
 	  ,o.name AS table_name
       ,i.name AS index_name
-	  ,is_ms_shipped AS system
+	  ,is_ms_shipped AS is_system
       ,p.index_id
       ,i.type AS index_type
       ,iau.type AS allocation_unit_type
@@ -92,7 +92,7 @@ FROM   sys.system_internals_allocation_units iau
 WHERE p.object_id = OBJECT_ID(@ObjectName) AND ISNULL(i.name, '') = @IndexName AND iau.type = 1
 ORDER BY partition_number";
 
-    public static readonly string FileSize = @"SELECT size FROM sys.database_files WHERE file_id = @file_id";
+    public static readonly string FileSize = @"SELECT size FROM sys.database_files WHERE file_id = @FileId";
 
     public static readonly string Files = 
 @"CREATE TABLE #FileStats

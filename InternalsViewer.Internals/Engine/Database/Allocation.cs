@@ -27,6 +27,7 @@ public class Allocation
         IsMultiFile = false;
         Pages.Add(page);
         interval = Database.AllocationInterval;
+
         SinglePageSlots.AddRange(page.SinglePageSlots);
     }
 
@@ -67,6 +68,7 @@ public class Allocation
         }
 
         Pages.Add(page);
+
         SinglePageSlots.AddRange(page.SinglePageSlots);
 
         interval = Database.AllocationInterval;
@@ -78,8 +80,7 @@ public class Allocation
             for (var i = 1; i < pageCount; i++)
             {
                 Pages.Add(new AllocationPage(database,
-                    new PageAddress(pageAddress.FileId,
-                        pageAddress.PageId + (i * interval))));
+                                             new PageAddress(pageAddress.FileId, pageAddress.PageId + i * interval)));
             }
         }
     }
