@@ -20,7 +20,7 @@ public class DatabaseFileInfoProviderTests
 
         var databaseFileInfoProvider = new DatabaseFileInfoProvider(connection);
 
-        var databaseFileInfo = await databaseFileInfoProvider.GetFiles();
+        var databaseFileInfo = await databaseFileInfoProvider.GetFiles(connection.DatabaseName);
 
         Assert.Single(databaseFileInfo);
 

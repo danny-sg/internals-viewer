@@ -8,7 +8,7 @@ public abstract class ProviderBase(CurrentConnection connection)
 {
     public CurrentConnection Connection { get; } = connection;
 
-    protected async Task<T> GetScalar<T>(string commandText, SqlParameter[] parameters)
+    protected async Task<T?> GetScalar<T>(string commandText, SqlParameter[] parameters)
     {
         await using var connection = new SqlConnection(Connection.ConnectionString);
 

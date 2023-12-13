@@ -16,6 +16,11 @@ using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Providers;
+using InternalsViewer.Internals.Providers.Metadata;
+using InternalsViewer.Internals.Readers.Pages;
+using InternalsViewer.Internals.Services.Loaders;
+using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.TransactionLog;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Renderers;
@@ -92,18 +97,18 @@ public partial class PageViewerWindow : UserControl
         Image dcmAllocated = ExtentColour.KeyImage(Color.FromArgb(120, 150, 150));
         Image bcmAllocated = ExtentColour.KeyImage(Color.FromArgb(150, 120, 150));
 
-        gamPictureBox.Image = Page.AllocationStatus(PageType.Gam) ? unallocated : gamAllocated;
-        sGamPictureBox.Image = Page.AllocationStatus(PageType.Sgam) ? sGamAllocated : unallocated;
-        dcmPictureBox.Image = Page.AllocationStatus(PageType.Dcm) ? dcmAllocated : unallocated;
-        bcmPictureBox.Image = Page.AllocationStatus(PageType.Bcm) ? bcmAllocated : unallocated;
+        //gamPictureBox.Image = Page.AllocationStatus.Gam ? unallocated : gamAllocated;
+        //sGamPictureBox.Image = Page.AllocationStatus.Sgam ? sGamAllocated : unallocated;
+        //dcmPictureBox.Image = Page.AllocationStatus.Dcm ? dcmAllocated : unallocated;
+        //bcmPictureBox.Image = Page.AllocationStatus.Bcm ? bcmAllocated : unallocated;
 
-        gamTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Gam).ToString();
-        sgamTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Sgam).ToString();
-        dcmTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Dcm).ToString();
-        bcmTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Bcm).ToString();
-        pfsTextBox.Text = Allocation.AllocationPageAddress(pageAddress, PageType.Pfs).ToString();
+        //gamTextBox.Text = page.AllocationStatus.GamPageAddress.ToString();
+        //sgamTextBox.Text = page.AllocationStatus.SgamPageAddress.ToString();
+        //dcmTextBox.Text = page.AllocationStatus.DcmPageAddress.ToString();
+        //bcmTextBox.Text = page.AllocationStatus.BcmPageAddress.ToString();
+        //pfsTextBox.Text = page.AllocationStatus.PfsPageAddress.ToString();
 
-        pfsByte = Page.PfsStatus();
+        //pfsByte = Page.PfsStatus();
 
         pfsPanel.Invalidate();
     }
@@ -136,16 +141,24 @@ public partial class PageViewerWindow : UserControl
 
             ConnectionString = connectionString;
 
-            Page = new Page(ConnectionString, builder.InitialCatalog, pageAddress);
+            var connection = new CurrentConnection(ConnectionString, builder.InitialCatalog);
 
-            RefreshAllocationStatus(Page.PageAddress);
 
-            pageToolStripTextBox.DatabaseId = Page.DatabaseId;
+            var databaseInfoProvider = new DatabaseInfoProvider(connection);
+            var structureInfoProvider = new StructureInfoProvider(connection);
 
-            serverToolStripStatusLabel.Text = builder.DataSource;
-            dataaseToolStripStatusLabel.Text = builder.InitialCatalog;
+            //Page = new Page(ConnectionString, builder.InitialCatalog, pageAddress);
+
+            //RefreshAllocationStatus(Page.PageAddress);
+
+            //pageToolStripTextBox.DatabaseId = Page.Database!.DatabaseId;
+
+            //serverToolStripStatusLabel.Text = builder.DataSource;
+            //dataaseToolStripStatusLabel.Text = builder.InitialCatalog;
         }
     }
+
+    
 
     /// <summary>
     /// Handles the MouseClick event of the Page text boxes control.
@@ -166,7 +179,7 @@ public partial class PageViewerWindow : UserControl
     {
         if (offsetTable.SelectedOffset > 0)
         {
-            compressionInfoTable.SelectedStructure = CompressionInformation.CompressionInfoStructure.None;
+            compressionInfoTable.SelectedStructure = CompressionInfoStructure.None;
 
             LoadRecord(offsetTable.SelectedOffset);
         }
@@ -184,7 +197,7 @@ public partial class PageViewerWindow : UserControl
         {
             case PageType.Data:
 
-                Structure tableStructure = new TableStructure(Page.Header.AllocationUnitId, Page.Database);
+                Structure tableStructure = new TableStructure(Page.Header.AllocationUnitId);
 
                 if (Page.CompressionType == CompressionType.None)
                 {
@@ -201,7 +214,7 @@ public partial class PageViewerWindow : UserControl
 
             case PageType.Index:
 
-                Structure indexStructure = new IndexStructure(Page.Header.AllocationUnitId, Page.Database);
+                Structure indexStructure = new IndexStructure(Page.Header.AllocationUnitId);
 
                 record = new IndexRecord(Page, offset, indexStructure);
 
@@ -363,7 +376,7 @@ public partial class PageViewerWindow : UserControl
     /// Handles the PageNavigated event of the MarkerKeyTable control.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
     {
         LoadPage(ConnectionString, e.RowId);
@@ -434,33 +447,33 @@ public partial class PageViewerWindow : UserControl
         offsetToolStripStatusLabel.Text = string.Format("Offset: {0:0000}", e.Offset);
     }
 
-    private void DisplayCompressionInfoStructure(CompressionInformation.CompressionInfoStructure compressionInfoStructure)
+    private void DisplayCompressionInfoStructure(CompressionInfoStructure compressionInfoStructure)
     {
         var markers = new List<Marker>();
 
         switch (compressionInfoStructure)
         {
-            case CompressionInformation.CompressionInfoStructure.Anchor:
+            case CompressionInfoStructure.Anchor:
 
-                if (Page.CompressionInformation.AnchorRecord != null)
+                if (Page.CompressionInfo.AnchorRecord != null)
                 {
-                    markers = MarkerBuilder.BuildMarkers(Page.CompressionInformation.AnchorRecord);
+                    markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.AnchorRecord);
                 }
 
                 break;
 
-            case CompressionInformation.CompressionInfoStructure.Dictionary:
+            case CompressionInfoStructure.Dictionary:
 
-                if (Page.CompressionInformation.HasDictionary)
+                if (Page.CompressionInfo.HasDictionary)
                 {
-                    markers = MarkerBuilder.BuildMarkers(Page.CompressionInformation.CompressionDictionary);
+                    markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.CompressionDictionary);
                 }
 
                 break;
 
-            case CompressionInformation.CompressionInfoStructure.Header:
+            case CompressionInfoStructure.Header:
 
-                markers = MarkerBuilder.BuildMarkers(Page?.CompressionInformation);
+                markers = MarkerBuilder.BuildMarkers(Page?.CompressionInfo);
                 break;
         }
 
@@ -474,7 +487,7 @@ public partial class PageViewerWindow : UserControl
     /// Handles the PageOver event of the AllocationViewer control.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void AllocationViewer_PageOver(object sender, PageEventArgs e)
     {
         if (Page.Header.PageType == PageType.Pfs)
@@ -491,7 +504,7 @@ public partial class PageViewerWindow : UserControl
     /// Handles the PageClicked event of the AllocationViewer control.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void AllocationViewer_PageClicked(object sender, PageEventArgs e)
     {
         LoadPage(ConnectionString, e.Address);
@@ -569,7 +582,7 @@ public partial class PageViewerWindow : UserControl
     /// Called when the current page changes
     /// </summary>
     /// <param name="sender">The sender.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     internal virtual void OnPageChanged(object sender, PageEventArgs e)
     {
         if (PageChanged != null)
@@ -645,7 +658,7 @@ public partial class PageViewerWindow : UserControl
         {
             case "None":
 
-                Page.Refresh();
+               // Page.Refresh();
                 break;
 
             case "Before":

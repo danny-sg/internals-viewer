@@ -2,27 +2,12 @@
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.RecordLoaders;
 
 namespace InternalsViewer.Internals.Engine.Records.Compressed;
 
-public class CompressedDataRecord : Record
+public class CompressedDataRecord(Page page, ushort slotOffset, Structure structure) : Record(page, slotOffset, structure)
 {
-    public CompressedDataRecord(Page page, ushort slotOffset, Structure structure)
-        : base(page, slotOffset, structure)
-    {
-        CdItems = new List<CdArray>();
-
-        CompressedDataRecordLoader.Load(this);
-    }
-
-    //public byte[] CdArray
-    //{
-    //    get { return cdArray; }
-    //    set { cdArray = value; }
-    //}
-
-    public List<CdArray> CdItems { get; }
+    public List<CdArray> CdItems { get; } = new();
 
     public CdArray[] CdItemsArray => CdItems.ToArray();
 

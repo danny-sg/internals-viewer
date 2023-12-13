@@ -13,14 +13,14 @@ public partial class CompressionInfoTable : UserControl
 {
     private class CompressionStructure
     {
-        public CompressionStructure(CompressionInformation.CompressionInfoStructure structure)
+        public CompressionStructure(CompressionInfoStructure structure)
         {
             Structure = structure;
         }
 
-        public CompressionInformation.CompressionInfoStructure Structure { get; set; }
+        public CompressionInfoStructure Structure { get; set; }
 
-        public string Description => Enum.GetName(typeof(CompressionInformation.CompressionInfoStructure), Structure);
+        public string Description => Enum.GetName(typeof(CompressionInfo), Structure);
     }
 
     public CompressionInfoTable()
@@ -36,16 +36,16 @@ public partial class CompressionInfoTable : UserControl
     {
         var elements = new List<CompressionStructure>();
 
-        elements.Add(new CompressionStructure(CompressionInformation.CompressionInfoStructure.Header));
+        elements.Add(new CompressionStructure(CompressionInfoStructure.Header));
 
         if (hasAnchor)
         {
-            elements.Add(new CompressionStructure(CompressionInformation.CompressionInfoStructure.Anchor));
+            elements.Add(new CompressionStructure(CompressionInfoStructure.Anchor));
         }
 
         if (hasDictionary)
         {
-            elements.Add(new CompressionStructure(CompressionInformation.CompressionInfoStructure.Dictionary));
+            elements.Add(new CompressionStructure(CompressionInfoStructure.Dictionary));
         }
 
         offsetDataGridView.DataSource = elements;
@@ -56,9 +56,9 @@ public partial class CompressionInfoTable : UserControl
     {
         var elements = new List<CompressionStructure>();
 
-        foreach (CompressionInformation.CompressionInfoStructure s in Enum.GetValues(typeof(CompressionInformation.CompressionInfoStructure)))
+        foreach (CompressionInfoStructure s in Enum.GetValues(typeof(CompressionInfoStructure)))
         {
-            if (s != CompressionInformation.CompressionInfoStructure.None)
+            if (s != CompressionInfoStructure.None)
             {
                 elements.Add(new CompressionStructure(s));
             }
@@ -72,21 +72,21 @@ public partial class CompressionInfoTable : UserControl
         bindingSource.ResetBindings(false);
     }
 
-    public CompressionInformation.CompressionInfoStructure SelectedStructure
+    public CompressionInfoStructure SelectedStructure
     {
         get
         {
             if (offsetDataGridView.SelectedRows.Count > 0)
             {
-                return (CompressionInformation.CompressionInfoStructure)offsetDataGridView.SelectedRows[0].Cells[0].Value;
+                return (CompressionInfoStructure)offsetDataGridView.SelectedRows[0].Cells[0].Value;
             }
 
-            return CompressionInformation.CompressionInfoStructure.None;
+            return CompressionInfoStructure.None;
         }
 
         set
         {
-            if (value == CompressionInformation.CompressionInfoStructure.None)
+            if (value == CompressionInfoStructure.None)
             {
                 offsetDataGridView.ClearSelection();
             }

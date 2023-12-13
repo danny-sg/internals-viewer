@@ -203,7 +203,7 @@ public class AllocationMap : Panel, IDisposable
                     {
                         var targetExtent = extent + (StartPage.PageId / 8);
 
-                        if (Allocation.CheckAllocationStatus(targetExtent, FileId, layer.Invert, chain))
+                        if (AllocationChain.CheckAllocationStatus(targetExtent, FileId, layer.Invert, chain))
                         {
                             pageExtentRenderer.SetExtentBrushColour(layer.Colour,
                                 ExtentColour.BackgroundColour(layer.Colour));
@@ -593,7 +593,7 @@ public class AllocationMap : Panel, IDisposable
             {
                 var pageId = i + (WindowPosition * 8);
 
-                pfsRenderer.DrawPfsPage(e.Graphics, PagePosition(i), Pfs.PagePfsByte(pageId));
+                pfsRenderer.DrawPfsPage(e.Graphics, PagePosition(i), Pfs.GetPagePfsByte(pageId));
             }
         }
     }

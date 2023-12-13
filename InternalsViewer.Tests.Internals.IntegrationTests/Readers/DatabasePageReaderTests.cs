@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Tests.Internals.IntegrationTests.Helpers;
 
@@ -7,14 +8,16 @@ namespace InternalsViewer.Tests.Internals.IntegrationTests.Readers;
 public class DatabasePageReaderTests
 {
     [Fact]
-    public void Can_Read_Database_Page()
+    public async Task Can_Read_Database_Page()
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var reader = new DatabasePageReader(connectionString, new PageAddress(1, 1), 1);
+        var currentConnection = new CurrentConnection(connectionString, "AdventureWorks2022");
 
-        reader.Load();
+        var reader = new DatabasePageReader(currentConnection);
 
-        Assert.NotNull(reader.Data);
+        var result = await reader.Read(currentConnection.DatabaseName, new PageAddress(1, 1));
+
+        Assert.NotNull(result.Data);
     }
 }

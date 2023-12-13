@@ -20,7 +20,7 @@ public partial class AllocationWindow : UserControl
     public event EventHandler<PageEventArgs> ViewPage;
 
     protected delegate void LoadDatabaseDelegate();
-    private readonly BufferPool bufferPool = new();
+    private readonly BufferPool bufferPool = new(default, default);
     private bool keyChanging;
     private const string AllocationMapText = "Allocation Map";
     private const string AllocationUnitsText = "Allocation Units";
@@ -281,7 +281,7 @@ public partial class AllocationWindow : UserControl
     /// </summary>
     private void DisplayBufferPoolLayer()
     {
-        bufferPool.Refresh();
+        //bufferPool.Refresh();
 
         var clean = new AllocationPage();
 
@@ -412,7 +412,7 @@ public partial class AllocationWindow : UserControl
         string description,
         Color layerColour,
         bool invert,
-        IDictionary<int, Allocation> allocation)
+        IDictionary<int, AllocationChain> allocation)
     {
         foreach (var fileId in allocation.Keys)
         {
@@ -444,7 +444,7 @@ public partial class AllocationWindow : UserControl
     /// Called when a page is requested to be viewed
     /// </summary>
     /// <param name="sender">The sender.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     internal virtual void OnViewPage(object sender, PageEventArgs e)
     {
         if (ViewPage != null)
@@ -499,7 +499,7 @@ public partial class AllocationWindow : UserControl
     /// Handles the PageOver event of the AllocationContainer control.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void AllocationContainer_PageOver(object sender, PageEventArgs e)
     {
         AllocUnitLabel.Text = string.Empty;
@@ -656,7 +656,7 @@ public partial class AllocationWindow : UserControl
     /// Handles the PageClicked event of the AllocationContainer control.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void AllocationContainer_PageClicked(object sender, PageEventArgs e)
     {
         OnViewPage(sender, e);

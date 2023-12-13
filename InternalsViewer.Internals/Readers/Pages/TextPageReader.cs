@@ -1,27 +1,14 @@
 ﻿using System;
 using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.Readers.Headers;
 
 namespace InternalsViewer.Internals.Readers.Pages;
 
 /// <summary>
 /// Loads a page from text, e.g. DBCC PAGE output
 /// </summary>
-public class TextPageReader : PageReader
+public class TextPageReader(string pageText) : PageReader
 {
-    public string PageText { get; set; }
-
-    public TextPageReader(string pageText)
-    {
-        PageText = pageText;
-        HeaderReader = new TextHeaderReader(PageText);
-    }
-
-    public override void Load()
-    {
-        Data = LoadTextPage(PageText);
-        LoadHeader();
-    }
+    public string PageText { get; set; } = pageText;
 
     private byte[] LoadTextPage(string pageText)
     {

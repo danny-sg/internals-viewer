@@ -1,15 +1,8 @@
 ﻿
 namespace InternalsViewer.Internals;
 
-public class MarkItem
+public class MarkItem(string propertyName, int startPosition, int length)
 {
-    public MarkItem(string propertyName, int startPosition, int length)
-    {
-        PropertyName = propertyName;
-        StartPosition = startPosition;
-        Length = length;
-    }
-
     public MarkItem(string propertyName, int startPosition, int length, int index)
         : this(propertyName, startPosition, length)
     {
@@ -22,20 +15,17 @@ public class MarkItem
         Prefix = prefix;
     }
 
-    public MarkItem(string propertyName, string prefix, int index)
+    public MarkItem(string propertyName, string prefix, int index) : this(propertyName, -1, 0)
     {
-        PropertyName = propertyName;
         Prefix = prefix;
         Index = index;
-        StartPosition = -1;
-
     }
 
-    public int StartPosition { get; set; }
+    public int StartPosition { get; set; } = startPosition;
 
-    public int Length { get; set; }
+    public int Length { get; set; } = length;
 
-    public string PropertyName { get; set; }
+    public string PropertyName { get; set; } = propertyName;
 
     public int Index { get; set; } = -1;
 

@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Tests.Internals.IntegrationTests.Helpers;
@@ -38,16 +39,6 @@ public class DatabaseInfoProviderTests
     }
 
     [Fact]
-    public async Task Can_Get_Database_Id()
-    {
-        var databaseInfoProvider = GetProvider();
-
-        var databaseId = await databaseInfoProvider.GetDatabaseId("master");
-
-        Assert.Equal(1, databaseId);
-    }
-
-    [Fact]
     public async Task Can_Get_Allocation_Units()
     {
         var databaseInfoProvider = GetProvider();
@@ -59,7 +50,7 @@ public class DatabaseInfoProviderTests
         var first = allocationUnits.First();
 
         Assert.True(first.ObjectId > 0);
-        Assert.NotEqual(new byte[8], first.FirstIamPage);
+        Assert.NotEqual(new PageAddress(new byte[8]), first.FirstIamPage);
         Assert.NotEmpty(first.SchemaName);
         Assert.NotEmpty(first.TableName);
         Assert.True(first.IsSystem);

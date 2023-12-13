@@ -17,7 +17,7 @@ namespace InternalsViewer.UI.Allocations;
 [Serializable]
 public class AllocationLayer
 {
-    private List<Allocation> allocations = new();
+    private List<AllocationChain> allocations = new();
     private Color borderColour;
     private Color colour;
     private bool invert;
@@ -47,7 +47,7 @@ public class AllocationLayer
     /// Initializes a new instance of the <see cref="AllocationLayer"/> class.
     /// </summary>
     /// <param name="page">The allocation.</param>
-    public AllocationLayer(Allocation page)
+    public AllocationLayer(AllocationChain page)
     {
         allocations.Add(page);
         name = page.ToString();
@@ -57,12 +57,12 @@ public class AllocationLayer
     /// Initializes a new instance of the <see cref="AllocationLayer"/> class.
     /// </summary>
     /// <param name="name">The name.</param>
-    /// <param name="allocation">The allocation.</param>
+    /// <param name="allocationChain">The allocation.</param>
     /// <param name="colour">The colour of the layer.</param>
-    public AllocationLayer(string name, Allocation allocation, Color colour)
+    public AllocationLayer(string name, AllocationChain allocationChain, Color colour)
     {
         this.name = name;
-        allocations.Add(allocation);
+        allocations.Add(allocationChain);
         this.colour = colour;
     }
 
@@ -78,11 +78,11 @@ public class AllocationLayer
 
         if (page.Header.PageType == PageType.Iam)
         {
-            allocations.Add(new IamAllocation(page));
+            allocations.Add(new IamChain(page));
         }
         else
         {
-            allocations.Add(new Allocation(page));
+            allocations.Add(new AllocationChain(page));
         }
 
         this.colour = colour;
@@ -135,7 +135,7 @@ public class AllocationLayer
     {
         foreach (var alloc in allocations)
         {
-            if (Allocation.CheckAllocationStatus(extent, fileId, findInverted, alloc))
+            if (AllocationChain.CheckAllocationStatus(extent, fileId, findInverted, alloc))
             {
                 return this;
             }
@@ -162,7 +162,7 @@ public class AllocationLayer
                 return this;
             }
 
-            if (Allocation.CheckAllocationStatus(extentAddress, pageAddress.FileId, findInverted, alloc))
+            if (AllocationChain.CheckAllocationStatus(extentAddress, pageAddress.FileId, findInverted, alloc))
             {
                 return this;
             }
@@ -229,7 +229,7 @@ public class AllocationLayer
     /// Gets the allocations.
     /// </summary>
     /// <value>The allocations.</value>
-    public List<Allocation> Allocations
+    public List<AllocationChain> Allocations
     {
         get => allocations;
         set => allocations = value;

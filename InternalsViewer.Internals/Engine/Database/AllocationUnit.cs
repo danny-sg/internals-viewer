@@ -1,10 +1,12 @@
-﻿namespace InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Address;
+
+namespace InternalsViewer.Internals.Engine.Database;
 
 public class AllocationUnit
 {
     public int ObjectId { get; set; }
 
-    public byte[] FirstIamPage { get; set; } = new byte[8];
+    public PageAddress FirstIamPage { get; set; }
 
     public string SchemaName { get; set; } = string.Empty;
 

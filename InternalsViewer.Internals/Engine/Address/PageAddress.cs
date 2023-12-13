@@ -120,7 +120,7 @@ public struct PageAddress : IEquatable<PageAddress>, IComparable<PageAddress>
         return string.Format(CultureInfo.CurrentCulture, "({0}:{1})", FileId, PageId);
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         return obj is PageAddress address && this == address;
     }

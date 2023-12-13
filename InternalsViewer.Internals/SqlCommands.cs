@@ -38,10 +38,8 @@ ORDER BY is_ms_shipped desc, s.name asc , o.name asc";
 @"SELECT file_id
       ,page_id
       ,is_modified
-      ,row_count
-      ,free_space_in_bytes
 FROM   sys.dm_os_buffer_descriptors WITH (NOLOCK)
-WHERE  database_id = DB_ID(@database)";
+WHERE  database_id = DB_ID(@DatabaseName)";
 
     public static readonly string Checkpoint = @"CHECKPOINT";
 

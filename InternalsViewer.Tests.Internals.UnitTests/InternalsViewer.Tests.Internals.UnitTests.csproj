@@ -2,18 +2,26 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <AssemblyTitle>InternalsViewer.Tests.Internals.UnitTests</AssemblyTitle>
-    <Product>InternalsViewer.Tests.Internals.UnitTests</Product>
-    <Copyright>Copyright ©  2018</Copyright>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+      <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.*" />
-    <PackageReference Include="MSTest.TestAdapter" Version="1.2.0" />
-    <PackageReference Include="MSTest.TestFramework" Version="1.2.0" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
+      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
+      <PackageReference Include="Moq" Version="4.20.70" />
+      <PackageReference Include="xunit" Version="2.4.2" />
+      <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+          <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
+      <PackageReference Include="coverlet.collector" Version="6.0.0">
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+          <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Helpers\TestReaders\" />
   </ItemGroup>
 </Project>

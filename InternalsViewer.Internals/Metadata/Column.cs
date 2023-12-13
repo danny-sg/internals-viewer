@@ -27,7 +27,7 @@ public class Column
     /// <summary>
     /// Gets or sets the name of the column.
     /// </summary>
-    public string ColumnName { get; set; }
+    public string ColumnName { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the column id.

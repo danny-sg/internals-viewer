@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob;
 using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Services.Loaders.Records;
 
 namespace InternalsViewer.Internals.RecordLoaders;
 

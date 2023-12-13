@@ -75,7 +75,7 @@ internal class CompressedRecordField(Column column, CompressedDataRecord parentR
     private string GetPageSymbolValue()
     {
         var dictionaryEntry = CompressedDataConverter.DecodeInternalInt(Data, 0);
-        var dictionaryValue = Record.Page.CompressionInformation.CompressionDictionary.DictionaryEntries[dictionaryEntry].Data;
+        var dictionaryValue = Record.Page.CompressionInfo.CompressionDictionary.DictionaryEntries[dictionaryEntry].Data;
 
         string value;
 

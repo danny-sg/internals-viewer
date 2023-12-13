@@ -7,6 +7,7 @@ using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Services.Loaders.Records;
 
 namespace InternalsViewer.Internals.RecordLoaders;
 

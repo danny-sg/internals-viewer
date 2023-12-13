@@ -17,5 +17,5 @@ public interface IStructureInfoProvider
 
     Task<CompressionType> GetCompressionType(long partitionId);
 
-    Task<string> GetName(long allocationUnitId);
+    Task<string?> GetName(long allocationUnitId);
 }

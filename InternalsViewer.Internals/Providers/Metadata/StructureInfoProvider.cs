@@ -25,6 +25,8 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
 
         await connection.ChangeDatabaseAsync(Connection.DatabaseName);
 
+        command.Parameters.AddWithValue("@AllocationUnitId", allocationUnitId);
+
         await using var reader = await command.ExecuteReaderAsync();
 
         var first = true;
@@ -55,7 +57,7 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
             currentColumn.IncludedColumn = reader.GetFieldValue<bool>("is_included_column");
             currentColumn.DataType = DataConverter.ToSqlType(reader.GetFieldValue<byte>("system_type_id"));
             currentColumn.DataLength = reader.GetFieldValue<short>("max_length");
-           
+
             currentColumn.Key = reader.GetFieldValue<bool>("IsKey");
             currentColumn.Uniqueifer = reader.GetFieldValue<bool>("is_uniqueifier");
             currentColumn.Dropped = reader.GetFieldValue<bool>("is_dropped");
@@ -124,10 +126,10 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
             new("@PartitionId", partitionId)
         };
 
-        return await GetScalar<CompressionType>(SqlCommands.ObjectHasClusteredIndex, parameters);
+        return await GetScalar<CompressionType>(SqlCommands.Compression, parameters);
     }
 
-    public async Task<string> GetName(long allocationUnitId)
+    public async Task<string?> GetName(long allocationUnitId)
     {
         var parameters = new SqlParameter[]
         {
@@ -146,6 +148,8 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
         var command = new SqlCommand(SqlCommands.TableColumns, connection);
 
         command.CommandType = CommandType.Text;
+
+        command.Parameters.AddWithValue("@AllocationUnitId", allocationUnitId);
 
         await connection.OpenAsync();
 

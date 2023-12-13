@@ -222,7 +222,7 @@ public class TransactionLogTabPage : TabPage
     /// Called when [page clicked].
     /// </summary>
     /// <param name="sender">The sender.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     internal virtual void OnPageClicked(object sender, PageEventArgs e)
     {
         if (PageClicked != null)

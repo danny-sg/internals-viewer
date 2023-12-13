@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Interfaces.MetadataProviders;
 
 public interface IDatabaseFileInfoProvider
 {
-    Task<List<DatabaseFile>> GetFiles();
+    Task<List<DatabaseFile>> GetFiles(string name);
 
     Task<int> GetFileSize(int fileId);
 }

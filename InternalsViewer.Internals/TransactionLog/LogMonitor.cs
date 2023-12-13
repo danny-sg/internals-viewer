@@ -2,7 +2,6 @@
 using System.Data;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
-using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.TransactionLog;
 
@@ -12,7 +11,7 @@ public class LogMonitor
     {
         Checkpoint(connectionString, database);
 
-        var bootPage = new BootPage(connectionString, database);
+        var bootPage = new BootPage();
 
         return bootPage.CheckpointLsn;
     }

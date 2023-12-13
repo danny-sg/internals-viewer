@@ -342,7 +342,7 @@ public partial class AllocationContainer : UserControl
 
     internal PfsByte PagePfsByte(PageAddress pageAddress)
     {
-        return AllocationMaps[pageAddress.FileId].Pfs.PagePfsByte(pageAddress.PageId);
+        return AllocationMaps[pageAddress.FileId].Pfs.GetPagePfsByte(pageAddress.PageId);
     }
 
     /// <summary>

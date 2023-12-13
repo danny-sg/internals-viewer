@@ -8,7 +8,7 @@ public interface IDatabaseInfoProvider
 {
     Task<List<DatabaseInfo>> GetDatabases();
 
-    Task<short> GetDatabaseId(string name);
+    Task<DatabaseInfo?> GetDatabase(string name);
 
     Task<List<AllocationUnit>> GetAllocationUnits();
 

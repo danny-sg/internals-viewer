@@ -4,7 +4,7 @@ public class DatabaseInfo
 {
     public int DatabaseId { get; set; }
 
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     public DatabaseState State { get; set; }
 

@@ -103,7 +103,7 @@ public partial class AllocationViewer : UserControl
     {
         topPanel.Visible = showHeader;
 
-        var allocationPage = new AllocationPage(connectionString, databaseName, pageAddress);
+        var allocationPage = new AllocationPage();
 
         allocationMap.Mode = MapMode.Standard;
         allocationMap.ExtentCount = 63903;
@@ -143,11 +143,11 @@ public partial class AllocationViewer : UserControl
     {
         topPanel.Visible = false;
 
-        var pfsPage = new PfsPage(connectionString, databaseName, pageAddress);
+        var pfsPage = new PfsPage();
 
         allocationMap.Mode = MapMode.Pfs;
 
-        allocationMap.Pfs = new Pfs(pfsPage);
+        allocationMap.Pfs = new PfsChain();
         allocationMap.ExtentCount = 1011;
         allocationMap.ExtentSize = AllocationMap.Large;
 
@@ -167,7 +167,7 @@ public partial class AllocationViewer : UserControl
     /// Called when the mouse hovers over a page on the allocation map
     /// </summary>
     /// <param name="sender">The sender.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     internal virtual void OnPageOver(object sender, PageEventArgs e)
     {
         if (PageOver != null)
@@ -180,7 +180,7 @@ public partial class AllocationViewer : UserControl
     /// Called when a page is clicked on the allocation map
     /// </summary>
     /// <param name="sender">The sender.</param>
-    /// <param name="e">The <see cref="InternalsViewer.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
+    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     internal virtual void OnPageClicked(object sender, PageEventArgs e)
     {
         PageClicked?.Invoke(sender, e);

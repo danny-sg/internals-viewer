@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
@@ -42,14 +43,11 @@ public class DatabaseInfoProvider(CurrentConnection connection)
         return databases;
     }
 
-    public async Task<short> GetDatabaseId(string name)
+    public async Task<DatabaseInfo?> GetDatabase(string name)
     {
-        var parameters = new SqlParameter[]
-        {
-            new("@DatabaseName", name)
-        };
+        var databases = await GetDatabases();
 
-        return await GetScalar<short>(SqlCommands.DatabaseId, parameters);
+        return databases.FirstOrDefault(d => d.Name == name);
     }
 
     public async Task<List<AllocationUnit>> GetAllocationUnits()
@@ -74,7 +72,11 @@ public class DatabaseInfoProvider(CurrentConnection connection)
 
             allocationUnit.ObjectId = reader.GetFieldValue<int>("object_id");
             allocationUnit.IndexId = reader.GetFieldValue<int>("index_id");
-            allocationUnit.FirstIamPage = reader.GetFieldValue<byte[]>("first_iam_page");
+
+            var firstIamPage = reader.GetFieldValue<byte[]>("first_iam_page");
+
+            allocationUnit.FirstIamPage = new(firstIamPage);
+
             allocationUnit.SchemaName = reader.GetFieldValue<string>("schema_name");
             allocationUnit.TableName = reader.GetFieldValue<string>("table_name");
             allocationUnit.IndexName = reader.GetNullableValue<string?>("index_name") ?? string.Empty;

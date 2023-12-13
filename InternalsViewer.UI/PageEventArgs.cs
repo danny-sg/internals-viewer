@@ -1,7 +1,7 @@
 ﻿using System;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Internals.Pages;
+namespace InternalsViewer.UI;
 
 /// <summary>
 /// Event data for page related events

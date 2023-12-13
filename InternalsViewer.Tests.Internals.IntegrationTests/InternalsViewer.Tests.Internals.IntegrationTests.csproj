@@ -28,4 +28,8 @@
     <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Services\" />
+  </ItemGroup>
+
 </Project>

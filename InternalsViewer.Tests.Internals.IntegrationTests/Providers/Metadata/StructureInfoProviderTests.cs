@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Metadata;
@@ -23,22 +24,38 @@ public class StructureInfoProviderTests
     public async Task Can_Get_Index_Structure()
     {
         var provider = GetProvider();
+
+        var indexStructure = await provider.GetIndexStructure(72057594055622656);
+
+        Assert.True(indexStructure.Columns.Count > 0);
     }
 
     [Fact]
     public async Task Can_Get_Table_Structure()
     {
         var provider = GetProvider();
+
+        var tableStructure = await provider.GetTableStructure(72057594055622656);
+
+        Assert.True(tableStructure.Columns.Count > 0);
     }
 
+    [Fact]
+    public async Task Can_Get_Compression_Type()
+    {
+        var provider = GetProvider();
 
+        var compressionType = await provider.GetCompressionType(72057594047954944);
+
+        Assert.Equal(CompressionType.None, compressionType);
+    }
     [Fact]
     public async Task Can_Get_Entry_Points()
     {
         var provider = GetProvider();
 
         var entryPoints = await provider.GetEntryPoints("Person.Address", "PK_Address_AddressID");
-   
+
         Assert.True(entryPoints.Count > 0);
 
         var entryPoint = entryPoints.First();
@@ -67,7 +84,7 @@ public class StructureInfoProviderTests
         var provider = GetProvider();
 
         var structureType = await provider.GetStructureType("Person.Address");
-  
+
         Assert.Equal(StructureType.BTree, structureType);
     }
 }

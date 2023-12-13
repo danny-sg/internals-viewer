@@ -106,8 +106,8 @@ namespace InternalsViewer.UI
             this.allocationContainer.ShowFileInformation = false;
             this.allocationContainer.Size = new System.Drawing.Size(1890, 792);
             this.allocationContainer.TabIndex = 2;
-            this.allocationContainer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageClicked);
-            this.allocationContainer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationContainer_PageOver);
+            this.allocationContainer.PageClicked += new System.EventHandler<PageEventArgs>(this.AllocationContainer_PageClicked);
+            this.allocationContainer.PageOver += new System.EventHandler<PageEventArgs>(this.AllocationContainer_PageOver);
             // 
             // splitContainer
             // 

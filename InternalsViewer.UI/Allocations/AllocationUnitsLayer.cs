@@ -134,7 +134,7 @@ public class AllocationUnitsLayer
             {
                 if (layer != null)
                 {
-                    layer.Allocations.Add(new IamAllocation(database, address));
+                    layer.Allocations.Add(new IamChain(database, address));
                 }
             }
 

@@ -2,81 +2,78 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.Readers.Headers;
+using InternalsViewer.Internals.Providers;
 using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Readers.Pages;
 
-/// <inheritdoc />
 /// <summary>
 /// Reads a page using a database connection with DBCC PAGE
 /// </summary>
-public class DatabasePageReader : PageReader
+/// <remarks>
+/// Reads header values and a full page hex dump
+/// </remarks>
+public class DatabasePageReader(CurrentConnection connection) : PageReader, IPageReader
 {
-    private readonly Dictionary<string, string> headerData = new();
+    private const int ParentObjectIndex = 0;
+    private const int ObjectIndex = 1;
+    private const int FieldIndex = 2;
+    private const int ValueIndex = 3;
 
-    public string ConnectionString { get; set; }
+    private const int DbccPageHexDumpOption = 2;
 
-    public DatabasePageReader(string connectionString, PageAddress pageAddress, int databaseId)
-        : base(pageAddress, databaseId)
-    {
-        ConnectionString = connectionString;
-
-        HeaderReader = new DictionaryHeaderReader(headerData);
-    }
+    public CurrentConnection Connection { get; } = connection;
 
     /// <summary>
-    /// Loads this instance.
+    /// Loads the database page using DBCC PAGE (hex dump)
     /// </summary>
-    public override void Load()
+    public async Task<PageData> Read(string databaseName, PageAddress pageAddress)
     {
-        headerData.Clear();
-        Data = LoadDatabasePage();
-        LoadHeader();
-    }
+        var headerValues = new Dictionary<string, string>();
 
-    /// <summary>
-    /// Loads the database page.
-    /// </summary>
-    /// <returns>
-    /// Byte array containing the page data
-    /// </returns>
-    private byte[] LoadDatabasePage()
-    {
         var pageCommand = string.Format(SqlCommands.Page,
-                                        DatabaseId,
-                                        PageAddress.FileId,
-                                        PageAddress.PageId,
-                                        2);
+                                        databaseName,
+                                        pageAddress.FileId,
+                                        pageAddress.PageId,
+                                        DbccPageHexDumpOption);
         var offset = 0;
         var data = new byte[Page.Size];
 
-        using var connection = new SqlConnection(ConnectionString);
-        
-        var command = new SqlCommand(pageCommand, connection);
+        await using var connection = new SqlConnection(Connection.ConnectionString);
+
+        await using var command = new SqlCommand(pageCommand, connection);
 
         command.CommandType = CommandType.Text;
 
         try
         {
-            connection.Open();
-            var reader = command.ExecuteReader();
+            await connection.OpenAsync();
+
+            await connection.ChangeDatabaseAsync(Connection.DatabaseName);  
+
+            var reader = await command.ExecuteReaderAsync();
 
             if (reader.HasRows)
             {
                 while (reader.Read())
                 {
-                    if (reader[0].ToString() == "DATA:" && reader[1].ToString()!.StartsWith("Memory Dump"))
-                    {
-                        var currentRow = reader[3].ToString();
+                    var parentObject = reader.GetString(ParentObjectIndex);
+                    var objectName = reader.GetString(ObjectIndex);
+                    var field = reader.GetString(FieldIndex);
+                    var value = reader.GetString(ValueIndex);
 
-                        offset = ReadData(currentRow, offset, data);
-                    }
-                    else if (reader[0].ToString() == "PAGE HEADER:")
+                    if (parentObject == "DATA:" 
+                        && objectName.StartsWith("Memory Dump"))
                     {
-                        headerData.Add(reader[2].ToString()!, reader[3].ToString());
+                        offset = ReadData(value, offset, data);
+                    }
+                    else if (parentObject == "PAGE HEADER:")
+                    {
+                        headerValues.Add(field, value);
                     }
                 }
 
@@ -88,8 +85,10 @@ public class DatabasePageReader : PageReader
             Debug.Print(ex.ToString());
         }
 
-        command.Dispose();
-
-        return data;
+        return new PageData
+        {
+            Data = data,
+            HeaderValues = headerValues
+        };
     }
 }

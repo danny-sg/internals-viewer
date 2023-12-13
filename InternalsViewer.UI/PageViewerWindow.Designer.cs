@@ -969,7 +969,7 @@ namespace InternalsViewer.UI
             this.compressionInfoTable.Margin = new System.Windows.Forms.Padding(12);
             this.compressionInfoTable.Name = "compressionInfoTable";
             this.compressionInfoTable.Padding = new System.Windows.Forms.Padding(2);
-            this.compressionInfoTable.SelectedStructure = InternalsViewer.Internals.Compression.CompressionInformation.CompressionInfoStructure.Header;
+            this.compressionInfoTable.SelectedStructure = InternalsViewer.Internals.Compression.CompressionInfoStructure.Header;
             this.compressionInfoTable.Size = new System.Drawing.Size(354, 196);
             this.compressionInfoTable.TabIndex = 0;
             this.compressionInfoTable.PropertyChanged += new System.ComponentModel.PropertyChangedEventHandler(this.CompressionInfoTable_PropertyChanged);
@@ -983,8 +983,8 @@ namespace InternalsViewer.UI
             this.allocationViewer.Size = new System.Drawing.Size(1148, 541);
             this.allocationViewer.TabIndex = 1;
             this.allocationViewer.Visible = false;
-            this.allocationViewer.PageOver += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationViewer_PageOver);
-            this.allocationViewer.PageClicked += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.AllocationViewer_PageClicked);
+            this.allocationViewer.PageOver += new System.EventHandler<PageEventArgs>(this.AllocationViewer_PageOver);
+            this.allocationViewer.PageClicked += new System.EventHandler<PageEventArgs>(this.AllocationViewer_PageClicked);
             // 
             // markerKeyTable
             // 
@@ -998,7 +998,7 @@ namespace InternalsViewer.UI
             this.markerKeyTable.TabIndex = 0;
             this.markerKeyTable.SelectionChanged += new System.EventHandler(this.MarkerKeyTable_SelectionChanged);
             this.markerKeyTable.SelectionClicked += new System.EventHandler(this.MarkerKeyTable_SelectionClicked);
-            this.markerKeyTable.PageNavigated += new System.EventHandler<InternalsViewer.Internals.Pages.PageEventArgs>(this.MarkerKeyTable_PageNavigated);
+            this.markerKeyTable.PageNavigated += new System.EventHandler<PageEventArgs>(this.MarkerKeyTable_PageNavigated);
             // 
             // statusStrip
             // 

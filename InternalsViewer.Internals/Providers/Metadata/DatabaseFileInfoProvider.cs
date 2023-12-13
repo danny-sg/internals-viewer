@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 public class DatabaseFileInfoProvider(CurrentConnection connection) 
     : ProviderBase(connection), IDatabaseFileInfoProvider
 {
-    public async Task<List<DatabaseFile>> GetFiles()
+    public async Task<List<DatabaseFile>> GetFiles(string name)
     {
         var files = new List<DatabaseFile>();
 
@@ -18,7 +18,7 @@ public class DatabaseFileInfoProvider(CurrentConnection connection)
 
         await connection.OpenAsync();
 
-        await connection.ChangeDatabaseAsync(Connection.DatabaseName);
+        await connection.ChangeDatabaseAsync(name);
 
         var command = new SqlCommand(SqlCommands.Files, connection);
 

@@ -81,7 +81,7 @@ public class Header
     /// <summary>
     /// Gets or sets the flag bits.
     /// </summary>
-    public string FlagBits { get; set; }
+    public string FlagBits { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the object id.
@@ -101,10 +101,5 @@ public class Header
     /// <summary>
     /// Gets or sets the allocation unit.
     /// </summary>
-    public string AllocationUnit { get; set; }
-
-    /// <summary>
-    /// Gets or sets the name of the page type.
-    /// </summary>
-    public string PageTypeName { get; set; }
+    public string AllocationUnit { get; set; } = string.Empty;
 }
