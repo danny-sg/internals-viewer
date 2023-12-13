@@ -40,7 +40,6 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
     private void LoadAllocationMap(AllocationPage page)
     {
         var allocationData = new byte[8000];
-        int allocationArrayOffset = AllocationPage.AllocationArrayOffset;
 
         switch (page.Header.PageType)
         {
@@ -48,22 +47,17 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
             case PageType.Sgam:
             case PageType.Dcm:
             case PageType.Bcm:
-
                 page.StartPage = new PageAddress(page.Header.PageAddress.FileId, 0);
                 break;
 
             case PageType.Iam:
-                page.StartPage = GetIamHeader(page);
+                page.StartPage = GetIamStartPage(page);
                 page.SinglePageSlots = GetSinglePageSlots(page);
-
                 break;
-
-            default:
-                return;
         }
 
         Array.Copy(page.PageData,
-                   allocationArrayOffset,
+                   AllocationPage.AllocationArrayOffset,
                    allocationData,
                    0,
                    allocationData.Length - (page.Header.SlotCount * 2));
@@ -73,29 +67,29 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
         bitArray.CopyTo(page.AllocationMap, 0);
     }
 
-    private List<PageAddress> GetSinglePageSlots(AllocationPage page)
+    private static List<PageAddress> GetSinglePageSlots(AllocationPage page)
     {
         var singlePageSlots = new List<PageAddress>();
 
         var offset = AllocationPage.SinglePageSlotOffset;
 
-        for (var i = 0; i < 8; i++)
+        for (var i = 0; i < AllocationPage.SlotCount; i++)
         {
-            var pageAddress = new byte[6];
+            var pageAddress = new byte[PageAddress.Size];
 
             Array.Copy(page.PageData, offset, pageAddress, 0, PageAddress.Size);
 
             singlePageSlots.Add(new PageAddress(pageAddress));
 
-            offset += 6;
+            offset += PageAddress.Size;
         }
 
         return singlePageSlots;
     }
 
-    private PageAddress GetIamHeader(AllocationPage page)
+    private static PageAddress GetIamStartPage(AllocationPage page)
     {
-        var pageAddress = new byte[6];
+        var pageAddress = new byte[PageAddress.Size];
 
         Array.Copy(page.PageData, AllocationPage.StartPageOffset, pageAddress, 0, PageAddress.Size);
 

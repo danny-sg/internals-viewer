@@ -82,7 +82,7 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
         }
         catch (Exception ex)
         {
-            Debug.Print(ex.ToString());
+            throw new Exception($"Error reading page {pageAddress.FileId}:{pageAddress.PageId}", ex);
         }
 
         return new PageData

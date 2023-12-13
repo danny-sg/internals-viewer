@@ -56,9 +56,9 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
     /// <summary>
     /// Load the offset table with a given slot count from the page data
     /// </summary>
-    private static void LoadOffsetTable(Page page)
+    public static void LoadOffsetTable(Page page)
     {
-        var slotCount = page.Header!.SlotCount;
+        var slotCount = page.Header.SlotCount;
 
         for (var i = 2; i <= slotCount * 2; i += 2)
         {
@@ -68,7 +68,7 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
 
     private async Task LoadCompressionInfo(Page page)
     {
-        var compressionType = await StructureInfoProvider.GetCompressionType(page.Header!.PartitionId);
+        var compressionType = await StructureInfoProvider.GetCompressionType(page.Header.PartitionId);
 
         page.CompressionType = compressionType;
 

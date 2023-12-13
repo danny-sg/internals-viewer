@@ -5,6 +5,4 @@ public class CurrentConnection(string connectionString, string databaseName)
     public string ConnectionString { get; } = connectionString;
 
     public string DatabaseName { get; } = databaseName;
-
-    public int DatabaseId { get; set; }
 }

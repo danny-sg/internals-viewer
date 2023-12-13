@@ -5,15 +5,19 @@ using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Services.Loaders;
 
+/// <summary>
+/// Service responsible for loading PFS pages
+/// </summary>
 public class PfsPageService(IPageService pageService) : IPfsPageService
 {
-    private const int PfsOffset = 100;
-    private const int PfsSize = 8088;
+    private const int PfsOffset = 100; // PFS byte array starts at offset 100
+    private const int PfsSize = 8088; // PFS byte array is 8088 bytes/pages
 
     public IPageService PageService { get; } = pageService;
 
@@ -34,7 +38,7 @@ public class PfsPageService(IPageService pageService) : IPfsPageService
     }
 
     /// <summary>
-    /// Loads the PFS bytes collection
+    /// Loads the PFS bytes collection from the page data
     /// </summary>
     private static List<PfsByte> GetPfsBytes(Page page)
     {
@@ -42,6 +46,6 @@ public class PfsPageService(IPageService pageService) : IPfsPageService
 
         Array.Copy(page.PageData, PfsOffset, pfsData, 0, PfsSize);
 
-        return pfsData.Select(pfsByte => new PfsByte(pfsByte)).ToList();
+        return pfsData.Select(PfsByteParser.Parse).ToList();
     }
 }

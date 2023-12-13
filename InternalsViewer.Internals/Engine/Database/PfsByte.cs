@@ -1,21 +1,16 @@
-﻿
-using System.Collections;
+﻿using System.Text;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
-public class PfsByte
+/// <summary>
+/// Page Free Space Byte
+/// </summary>
+/// <remarks>
+/// See <see cref="Parsers.PfsByteParser"/> for details of the PFS byte structure
+/// </remarks>
+public record PfsByte
 {
-    public PfsByte(byte pageByte)
-    {
-        var bitArray = new BitArray(new[] { pageByte });
-
-        GhostRecords = bitArray[3];
-        Iam = bitArray[4];
-        Mixed = bitArray[5];
-        Allocated = bitArray[6];
-
-        PageSpaceFree = (SpaceFree)(pageByte & 7);
-    }
+    public byte Byte { get; set; }
 
     public SpaceFree PageSpaceFree { get; set; }
 
@@ -29,14 +24,35 @@ public class PfsByte
 
     public override string ToString()
     {
-        return
-            string.Format(
-                "PFS Status: {0:Allocated ; ;Not Allocated }| {1} Full{2: | IAM Page ; ; }{3:| Mixed Extent ; ; }{4:| Has Ghost ; ; }",
-                Allocated ? 1 : 0,
-                SpaceFreeDescription(PageSpaceFree),
-                Iam ? 1 : 0,
-                Mixed ? 1 : 0,
-                GhostRecords ? 1 : 0);
+        var stringBuilder = new StringBuilder($"PFS Status");
+
+        if (Allocated)
+        {
+            stringBuilder.Append(": Allocated");
+        }
+        else
+        {
+            stringBuilder.Append(": Not Allocated");
+        }
+
+        stringBuilder.Append($" | {SpaceFreeDescription(PageSpaceFree)} Full");
+
+        if (Iam)
+        {
+            stringBuilder.Append(" | IAM Page");
+        }
+
+        if (Mixed)
+        {
+            stringBuilder.Append(" | Mixed Extent");
+        }
+
+        if (GhostRecords)
+        {
+            stringBuilder.Append(" | Has Ghost");
+        }
+
+        return stringBuilder.ToString();
     }
 
     public static string SpaceFreeDescription(SpaceFree spaceFree)

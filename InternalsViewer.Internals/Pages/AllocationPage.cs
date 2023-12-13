@@ -17,6 +17,16 @@ public class AllocationPage : Page
     
     public const int StartPageOffset = 136;
 
+    public const int SlotCount = 8;
+
+    public const int FirstGamPage = 2;
+
+    public const int FirstSgamPage = 3;
+
+    public const int FirstDcmPage = 6;  
+
+    public const int FirstBcmPage = 7;
+
     /// <summary>
     /// Allocation bitmap
     /// </summary>
