@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
@@ -131,7 +132,7 @@ public partial class PageViewerWindow : UserControl
         offsetTable.SelectedSlot = rowIdentifier.SlotId;
     }
 
-    public async void LoadPage(PageAddress pageAddress)
+    public async Task LoadPage(PageAddress pageAddress)
     {
         pageAddressToolStripStatusLabel.Text = string.Empty;
         offsetToolStripStatusLabel.Text = string.Empty;
@@ -145,14 +146,14 @@ public partial class PageViewerWindow : UserControl
 
             pageToolStripTextBox.DatabaseId = Page.Database!.DatabaseId;
 
-            //serverToolStripStatusLabel.Text = builder.DataSource;
+            serverToolStripStatusLabel.Text = Page.Database.Name;
             //dataaseToolStripStatusLabel.Text = builder.InitialCatalog;
         }
     }
 
-    private void PageTextBox_MouseClick(object sender, MouseEventArgs e)
+    private async  void PageTextBox_MouseClick(object sender, MouseEventArgs e)
     {
-        LoadPage(PageAddressParser.Parse(((TextBox)sender).Text));
+        await LoadPage(PageAddressParser.Parse(((TextBox)sender).Text));
     }
 
     private void OffsetTable_SlotChanged(object sender, EventArgs e)

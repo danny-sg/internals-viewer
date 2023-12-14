@@ -36,15 +36,15 @@ public partial class TestForm : Form
         allocationWindow.RefreshDatabases();
     }
 
-    private void allocationWindow_ViewPage(object? sender, PageEventArgs e)
+    private async void allocationWindow_ViewPage(object? sender, PageEventArgs e)
     {
         if(allocationWindow.CurrentDatabase!=null)
         {
             var window = new PageViewer(PageService, allocationWindow.CurrentDatabase);
 
-            window.LoadPage(e.Address);
-
             window.Show();
+
+            await window.LoadPage(e.Address);
         }
        
     }

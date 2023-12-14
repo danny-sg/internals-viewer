@@ -22,10 +22,14 @@ public partial class PageViewer : Form
         InitializeComponent();
     }
 
-    public void LoadPage(PageAddress pageAddress)
+    public async Task LoadPage(PageAddress pageAddress)
     {
+        SuspendLayout();
+
         pageViewerWindow.Database = Database;
 
-        pageViewerWindow.LoadPage(pageAddress);
+        await pageViewerWindow.LoadPage(pageAddress);
+
+        ResumeLayout();
     }
 }

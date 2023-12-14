@@ -52,7 +52,10 @@ partial class PageViewer
         ClientSize = new Size(1008, 729);
         Controls.Add(pageViewerWindow);
         Name = "PageViewer";
-        Text = "PageViewer";
+        Text = "Page Viewer";
+
+        DoubleBuffered = true;
+
         ResumeLayout(false);
     }
 
