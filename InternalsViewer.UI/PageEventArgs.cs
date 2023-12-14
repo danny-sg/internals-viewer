@@ -8,11 +8,17 @@ namespace InternalsViewer.UI;
 /// </summary>
 public class PageEventArgs : EventArgs
 {
-    private RowIdentifier rowId;
+    public RowIdentifier RowId { get; } = new();
 
     public PageEventArgs(RowIdentifier address, bool openInNewWindow)
     {
         RowId = address;
+        OpenInNewWindow = openInNewWindow;
+    }
+
+    public PageEventArgs(PageAddress address, bool openInNewWindow)
+    {
+        RowId = new RowIdentifier { PageAddress = address };
         OpenInNewWindow = openInNewWindow;
     }
 
@@ -23,20 +29,7 @@ public class PageEventArgs : EventArgs
     public bool OpenInNewWindow { get; set; }
 
     /// <summary>
-    /// Gets or sets the row id.
-    /// </summary>
-    public RowIdentifier RowId
-    {
-        get => rowId;
-        set => rowId = value;
-    }
-
-    /// <summary>
     /// Gets or sets the page address.
     /// </summary>
-    public PageAddress Address
-    {
-        get => rowId.PageAddress;
-        set => rowId.PageAddress = value;
-    }
+    public PageAddress Address => RowId.PageAddress;
 }

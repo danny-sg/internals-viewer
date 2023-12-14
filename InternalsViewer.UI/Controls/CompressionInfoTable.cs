@@ -18,9 +18,9 @@ public partial class CompressionInfoTable : UserControl
             Structure = structure;
         }
 
-        public CompressionInfoStructure Structure { get; set; }
+        private CompressionInfoStructure Structure { get; set; }
 
-        public string Description => Enum.GetName(typeof(CompressionInfo), Structure);
+        public string Description => Enum.GetName(typeof(CompressionInfoStructure), Structure);
     }
 
     public CompressionInfoTable()
@@ -78,7 +78,7 @@ public partial class CompressionInfoTable : UserControl
         {
             if (offsetDataGridView.SelectedRows.Count > 0)
             {
-                return (CompressionInfoStructure)offsetDataGridView.SelectedRows[0].Cells[0].Value;
+               // return (CompressionInfoStructure)offsetDataGridView.SelectedRows[0].Cells[0].Value;
             }
 
             return CompressionInfoStructure.None;

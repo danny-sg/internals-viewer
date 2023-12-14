@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using System;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
@@ -53,6 +54,11 @@ public class DatabaseInfoProvider(CurrentConnection connection)
 
     public async Task<List<AllocationUnit>> GetAllocationUnits()
     {
+        if(Connection.DatabaseName == null)
+        {
+            throw new InvalidOperationException("Database name not set");
+        }   
+
         var allocationUnits = new List<AllocationUnit>();
 
         await using var connection = new SqlConnection(Connection.ConnectionString);
@@ -71,22 +77,24 @@ public class DatabaseInfoProvider(CurrentConnection connection)
         {
             var allocationUnit = new AllocationUnit();
 
-            allocationUnit.ObjectId = reader.GetFieldValue<int>("object_id");
-            allocationUnit.IndexId = reader.GetFieldValue<int>("index_id");
+            allocationUnit.AllocationUnitId = reader.GetFieldValue<long>("AllocationUnitId");
 
-            var firstIamPage = reader.GetFieldValue<byte[]>("first_iam_page");
+            allocationUnit.ObjectId = reader.GetFieldValue<int>("ObjectId");
+            allocationUnit.IndexId = reader.GetFieldValue<int>("IndexId");
+
+            var firstIamPage = reader.GetFieldValue<byte[]>("FirstIamPage");
 
             allocationUnit.FirstIamPage = PageAddressParser.Parse(firstIamPage);
 
-            allocationUnit.SchemaName = reader.GetFieldValue<string>("schema_name");
-            allocationUnit.TableName = reader.GetFieldValue<string>("table_name");
-            allocationUnit.IndexName = reader.GetNullableValue<string?>("index_name") ?? string.Empty;
-            allocationUnit.IsSystem = reader.GetFieldValue<bool>("is_system");
-            allocationUnit.IndexId = reader.GetFieldValue<int>("index_id");
-            allocationUnit.IndexType = reader.GetFieldValue<byte>("index_type");
-            allocationUnit.AllocationUnitType = reader.GetFieldValue<AllocationUnitType>("allocation_unit_type");
-            allocationUnit.UsedPages = reader.GetFieldValue<long>("used_pages");
-            allocationUnit.TotalPages = reader.GetFieldValue<long>("total_pages");
+            allocationUnit.SchemaName = reader.GetFieldValue<string>("SchemaName");
+            allocationUnit.TableName = reader.GetFieldValue<string>("TableName");
+            allocationUnit.IndexName = reader.GetNullableValue<string?>("IndexName") ?? string.Empty;
+            allocationUnit.IsSystem = reader.GetFieldValue<bool>("IsSystem");
+            allocationUnit.IndexId = reader.GetFieldValue<int>("IndexId");
+            allocationUnit.IndexType = reader.GetFieldValue<byte>("IndexType");
+            allocationUnit.AllocationUnitType = reader.GetFieldValue<AllocationUnitType>("AllocationUnitType");
+            allocationUnit.UsedPages = reader.GetFieldValue<long>("UsedPages");
+            allocationUnit.TotalPages = reader.GetFieldValue<long>("TotalPages");
 
             allocationUnits.Add(allocationUnit);
         }

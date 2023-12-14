@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.UI.Renderers;
 
@@ -129,7 +130,7 @@ public class AllocationMap : Panel, IDisposable
 
         foreach (var layer in MapLayers)
         {
-            if (layer.Visible)
+            if (layer.IsVisible)
             {
                 Color pageColour;
 
@@ -196,13 +197,13 @@ public class AllocationMap : Panel, IDisposable
         {
             foreach (var layer in MapLayers)
             {
-                if (layer.Visible && !layer.SingleSlotsOnly)
+                if (layer.IsVisible && !layer.SingleSlotsOnly)
                 {
                     foreach (var chain in layer.Allocations)
                     {
                         var targetExtent = extent + (StartPage.PageId / 8);
 
-                        if (AllocationChain.CheckAllocationStatus(targetExtent, FileId, layer.Invert, chain))
+                        if (AllocationChain.GetAllocatedStatus(targetExtent, FileId, layer.IsInverted, chain))
                         {
                             pageExtentRenderer.SetExtentBrushColour(layer.Colour,
                                 ExtentColour.BackgroundColour(layer.Colour));
@@ -539,7 +540,7 @@ public class AllocationMap : Panel, IDisposable
                         {
                             var openInNewWindow = ModifierKeys == Keys.Shift;
 
-                            temp(this, new PageEventArgs(new RowIdentifier(FileId, page + StartPage.PageId, 0), openInNewWindow));
+                            temp(this, new PageEventArgs(new PageAddress(FileId, page + StartPage.PageId), openInNewWindow));
                         }
                     }
                 }
@@ -568,7 +569,7 @@ public class AllocationMap : Panel, IDisposable
 
                     if (temp != null)
                     {
-                        temp(this, new PageEventArgs(new RowIdentifier(FileId, page + StartPage.PageId, 0), false));
+                        temp(this, new PageEventArgs(new PageAddress(FileId, page + StartPage.PageId), false));
                     }
 
                     if (Mode == MapMode.RangeSelection)

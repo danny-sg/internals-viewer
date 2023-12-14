@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 
 #pragma warning disable CA1416
@@ -22,6 +24,8 @@ public partial class AllocationContainer : UserControl
     public event EventHandler<PageEventArgs> PageClicked;
     public event EventHandler<PageEventArgs> PageOver;
     public event EventHandler RangeSelected;
+
+    public Database? CurrentDatabase { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AllocationContainer"/> class.
@@ -81,7 +85,7 @@ public partial class AllocationContainer : UserControl
             {
                 filePanel.Margin = new Padding(0);
             }
-            else if(showFileInformation)
+            else if (showFileInformation)
             {
                 filePanel.Controls.Add(new FileInformationControl(file));
             }
@@ -101,25 +105,12 @@ public partial class AllocationContainer : UserControl
         throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// Forces the control to invalidate its client area and immediately redraw itself and any child controls.
-    /// </summary>
-    /// <PermissionSet>
-    /// 	<IPermission class="System.Security.Permissions.EnvironmentPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Unrestricted="true"/>
-    /// 	<IPermission class="System.Security.Permissions.FileIOPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Unrestricted="true"/>
-    /// 	<IPermission class="System.Security.Permissions.SecurityPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Flags="UnmanagedCode, ControlEvidence"/>
-    /// 	<IPermission class="System.Diagnostics.PerformanceCounterPermission, System, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Unrestricted="true"/>
-    /// </PermissionSet>
     public override void Refresh()
     {
         base.Refresh();
         Invalidate();
     }
 
-    /// <summary>
-    /// Adds a map layer.
-    /// </summary>
-    /// <param name="layer">The layer.</param>
     public void AddMapLayer(AllocationLayer layer)
     {
         AllocationLayers.Add(layer);
@@ -130,9 +121,6 @@ public partial class AllocationContainer : UserControl
         }
     }
 
-    /// <summary>
-    /// Clears all map layers.
-    /// </summary>
     public void ClearMapLayers()
     {
         AllocationLayers.Clear();
@@ -143,14 +131,9 @@ public partial class AllocationContainer : UserControl
         }
     }
 
-    /// <summary>
-    /// Removes a layer.
-    /// </summary>
-    /// <param name="name">The name of the layer to remove</param>
-    /// <returns></returns>
     public bool RemoveLayer(string name)
     {
-        var existing = AllocationLayers.Find(delegate(AllocationLayer layer) { return (layer.Name == name); });
+        var existing = AllocationLayers.FirstOrDefault(layer => (layer.Name == name));
 
         if (existing != null)
         {
@@ -167,10 +150,6 @@ public partial class AllocationContainer : UserControl
         return false;
     }
 
-    /// <summary>
-    /// Calculates the size of the fit.
-    /// </summary>
-    /// <returns></returns>
     public Size CalculateFitSize()
     {
         double maxExtentCount = 0;
@@ -206,27 +185,17 @@ public partial class AllocationContainer : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the Paint event of the AllocationContainer control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
     protected void AllocationContainer_Paint(object sender, PaintEventArgs e)
     {
         if (AllocationMaps.Count == 0)
         {
             ControlPaint.DrawBorder(e.Graphics,
-                new Rectangle(0, 0, Width, Height),
-                SystemColors.ControlDark,
-                ButtonBorderStyle.Solid);
+                                    new Rectangle(0, 0, Width, Height),
+                                    SystemColors.ControlDark,
+                                    ButtonBorderStyle.Solid);
         }
     }
 
-    /// <summary>
-    /// Creates the allocation map.
-    /// </summary>
-    /// <param name="file">The file.</param>
-    /// <returns></returns>
     private AllocationMap CreateAllocationMap(DatabaseFile file)
     {
         var allocationMap = new AllocationMap();
@@ -246,73 +215,35 @@ public partial class AllocationContainer : UserControl
         return allocationMap;
     }
 
-    /// <summary>
-    /// Handles the RangeSelected event of the AllocationMap control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void AllocationMap_RangeSelected(object sender, EventArgs e)
     {
-        var temp = RangeSelected;
-
-        if (temp != null)
-        {
-            temp(this, e);
-        }
+        RangeSelected?.Invoke(this, e);
     }
 
-    /// <summary>
-    /// Handles the PageOver event of the AllocationMap control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="SqlInternals.AllocationInfo.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
     private void AllocationMap_PageOver(object sender, PageEventArgs e)
     {
-        var temp = PageOver;
-
-        if (temp != null)
-        {
-            temp(this, e);
-        }
+        PageOver?.Invoke(this, e);
     }
 
-    /// <summary>
-    /// Handles the PageClicked event of the AllocationMap control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="SqlInternals.AllocationInfo.Internals.Pages.PageEventArgs"/> instance containing the event data.</param>
     private void AllocationMap_PageClicked(object sender, PageEventArgs e)
     {
-        var temp = PageClicked;
-
-        if (temp != null)
-        {
-            temp(this, e);
-        }
+        PageClicked?.Invoke(this, e);
     }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether [show file information].
-    /// </summary>
-    /// <value><c>true</c> if [show file information]; otherwise, <c>false</c>.</value>
     public bool ShowFileInformation
     {
         get => showFileInformation;
 
         set
         {
-            if (value != showFileInformation)
+            if (value != showFileInformation && CurrentDatabase != null)
             {
                 showFileInformation = value;
-                CreateAllocationMaps(InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files);
+                CreateAllocationMaps(CurrentDatabase.Files);
             }
         }
     }
 
-    /// <summary>
-    /// Gets or sets the allocation map mode.
-    /// </summary>
-    /// <value>The mode.</value>
     public MapMode Mode
     {
         get => mode;
@@ -344,16 +275,8 @@ public partial class AllocationContainer : UserControl
         return AllocationMaps[pageAddress.FileId].Pfs.GetPagePfsStatus(pageAddress.PageId);
     }
 
-    /// <summary>
-    /// Gets the map layers collection
-    /// </summary>
-    /// <value>The map layers.</value>
     public List<AllocationLayer> AllocationLayers { get; } = new();
 
-    /// <summary>
-    /// Gets or sets the size of the extent.
-    /// </summary>
-    /// <value>The size of the extent.</value>
     public Size ExtentSize
     {
         get => extentSize;
@@ -369,22 +292,10 @@ public partial class AllocationContainer : UserControl
         }
     }
 
-    /// <summary>
-    /// Gets or sets the layout style.
-    /// </summary>
-    /// <value>The layout style.</value>
     public LayoutStyle LayoutStyle { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether the IAM is included
-    /// </summary>
-    /// <value><c>true</c> if [include iam]; otherwise, <c>false</c>.</value>
     public bool IncludeIam { get; set; }
 
-    /// <summary>
-    /// Gets the allocation map Dictionary collection
-    /// </summary>
-    /// <value>The allocation maps.</value>
     public Dictionary<int, AllocationMap> AllocationMaps { get; } = new();
 
     public bool DrawBorder
@@ -412,9 +323,9 @@ public partial class AllocationContainer : UserControl
     {
         get
         {
-            if (AllocationMaps.Count > 1)
+            if (AllocationMaps.Count > 1 && CurrentDatabase != null)
             {
-                return AllocationMaps[InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files[0].FileId].Holding;
+                return AllocationMaps[CurrentDatabase.Files[0].FileId].Holding;
             }
 
             return true;

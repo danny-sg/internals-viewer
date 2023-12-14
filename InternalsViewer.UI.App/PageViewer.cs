@@ -1,16 +1,26 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Interfaces.Services.Loaders;
 
 namespace InternalsViewer.UI.App;
 
 public partial class PageViewer : Form
 {
-    public PageViewer()
+    public IPageService PageService { get; }
+
+    public Database Database { get; }
+
+    public PageViewer(IPageService pageService, Database database)
     {
+        PageService = pageService;
+        Database = database;
         InitializeComponent();
     }
 
-    public void LoadPage(string connectionString, PageAddress pageAddress)
+    public void LoadPage(PageAddress pageAddress)
     {
-        pageViewerWindow1.LoadPage(connectionString, pageAddress);
+        pageViewerWindow.Database = Database;
+
+        pageViewerWindow.LoadPage(pageAddress);
     }
 }

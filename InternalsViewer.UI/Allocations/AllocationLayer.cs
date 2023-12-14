@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Pages;
 
@@ -17,51 +17,22 @@ namespace InternalsViewer.UI.Allocations;
 [Serializable]
 public class AllocationLayer
 {
-    private List<AllocationChain> allocations = new();
-    private Color borderColour;
     private Color colour;
-    private bool invert;
-    private string name = string.Empty;
-    private int order;
-    private bool singleSlotsOnly;
-    private bool transparent;
-    private bool useBorderColour;
-    private AllocationLayerType layerType = AllocationLayerType.Standard;
     private int transparency = 40;
-    private bool useDefaultSinglePageColour;
-    private bool visible = true;
-    private string indexName = string.Empty;
-    private long usedPages;
-    private IndexTypes indexType;
-    private long totalPages;
-    private string objectName;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AllocationLayer"/> class.
-    /// </summary>
     public AllocationLayer()
     {
     }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AllocationLayer"/> class.
-    /// </summary>
-    /// <param name="page">The allocation.</param>
     public AllocationLayer(AllocationChain page)
     {
         Allocations.Add(page);
-        name = page.ToString();
+        Name = page.ToString();
     }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AllocationLayer"/> class.
-    /// </summary>
-    /// <param name="name">The name.</param>
-    /// <param name="allocationChain">The allocation.</param>
-    /// <param name="colour">The colour of the layer.</param>
     public AllocationLayer(string name, AllocationChain allocationChain, Color colour)
     {
-        this.name = name;
+        Name = name;
         Allocations.Add(allocationChain);
         this.colour = colour;
     }
@@ -74,7 +45,7 @@ public class AllocationLayer
     /// <param name="colour">The colour of the layer.</param>
     public AllocationLayer(string name, AllocationPage page, Color colour)
     {
-        this.name = name;
+        Name = name;
 
         if (page.Header.PageType == PageType.Iam)
         {
@@ -82,25 +53,19 @@ public class AllocationLayer
         }
         else
         {
-           // allocations.Add(new AllocationChain(page));
+            // allocations.Add(new AllocationChain(page));
         }
 
         this.colour = colour;
     }
 
-    /// <summary>
-    /// Finds a page.
-    /// </summary>
-    /// <param name="page">The page address.</param>
-    /// <param name="layers">The layers to search.</param>
-    /// <returns></returns>
     public static List<string> FindPage(PageAddress page, List<AllocationLayer> layers)
     {
         var layerNames = new List<string>();
 
         foreach (var layer in layers)
         {
-            if (layer.FindPage(page, layer.Invert) != null)
+            if (layer.FindPage(page, layer.IsInverted) != null)
             {
                 layerNames.Add(layer.Name);
             }
@@ -109,33 +74,22 @@ public class AllocationLayer
         return layerNames;
     }
 
-    /// <summary>
-    /// Refreshes the layers.
-    /// </summary>
-    /// <param name="layers">The layers.</param>
     public static void RefreshLayers(List<AllocationLayer> layers)
     {
         foreach (var layer in layers)
         {
             foreach (var page in layer.Allocations)
             {
-               // page.Refresh();
+                // page.Refresh();
             }
         }
     }
 
-    /// <summary>
-    /// Finds an allocated extent in the layer.
-    /// </summary>
-    /// <param name="extent">The extent.</param>
-    /// <param name="fileId">The file id.</param>
-    /// <param name="findInverted">if set to <c>true</c> [find inverted].</param>
-    /// <returns></returns>
-    public AllocationLayer FindExtent(int extent, short fileId, bool findInverted)
+    public AllocationLayer? FindExtent(int extent, short fileId, bool findInverted)
     {
         foreach (var alloc in Allocations)
         {
-            if (AllocationChain.CheckAllocationStatus(extent, fileId, findInverted, alloc))
+            if (AllocationChain.GetAllocatedStatus(extent, fileId, findInverted, alloc))
             {
                 return this;
             }
@@ -144,13 +98,7 @@ public class AllocationLayer
         return null;
     }
 
-    /// <summary>
-    /// Finds a page.
-    /// </summary>
-    /// <param name="pageAddress">The page address.</param>
-    /// <param name="findInverted">if set to <c>true</c> [find inverted].</param>
-    /// <returns></returns>
-    public AllocationLayer FindPage(PageAddress pageAddress, bool findInverted)
+    public AllocationLayer? FindPage(PageAddress pageAddress, bool findInverted)
     {
         var extentAddress = pageAddress.PageId / 8;
 
@@ -162,7 +110,7 @@ public class AllocationLayer
                 return this;
             }
 
-            if (AllocationChain.CheckAllocationStatus(extentAddress, pageAddress.FileId, findInverted, alloc))
+            if (AllocationChain.GetAllocatedStatus(extentAddress, pageAddress.FileId, findInverted, alloc))
             {
                 return this;
             }
@@ -176,35 +124,16 @@ public class AllocationLayer
         return null;
     }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether this <see cref="AllocationLayer"/> is transparent.
-    /// </summary>
-    /// <value><c>true</c> if transparent; otherwise, <c>false</c>.</value>
-    public bool Transparent
-    {
-        get => transparent;
-        set => transparent = value;
-    }
+    public bool IsTransparent { get; set; }
 
-    /// <summary>
-    /// Gets or sets the type of the layer.
-    /// </summary>
-    /// <value>The type of the layer.</value>
     public AllocationLayerType LayerType
-    {
-        get => layerType;
-        set => layerType = value;
-    }
+    { get; set; }
 
-    /// <summary>
-    /// Gets or sets the layer colour.
-    /// </summary>
-    /// <value>The layer colour.</value>
     public Color Colour
     {
         get
         {
-            if (transparent)
+            if (IsTransparent)
             {
                 return Color.FromArgb(transparency, colour);
             }
@@ -215,134 +144,33 @@ public class AllocationLayer
         set => colour = value;
     }
 
-    /// <summary>
-    /// Gets or sets the name.
-    /// </summary>
-    /// <value>The name.</value>
-    public string Name
-    {
-        get => name;
-        set => name = value;
-    }
+    public string Name { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Gets the allocations.
-    /// </summary>
-    /// <value>The allocations.</value>
-    public List<AllocationChain> Allocations
-    {
-        get => allocations;
-        set => allocations = value;
-    }
+    public List<AllocationChain> Allocations { get; set; } = new();
 
-    /// <summary>
-    /// Gets or sets the order.
-    /// </summary>
-    /// <value>The order.</value>
-    public int Order
-    {
-        get => order;
-        set => order = value;
-    }
+    public int Order { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether this <see cref="AllocationLayer"/> is invert.
-    /// </summary>
-    /// <value><c>true</c> if invert; otherwise, <c>false</c>.</value>
-    public bool Invert
-    {
-        get => invert;
-        set => invert = value;
-    }
+    public bool IsInverted { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether to use the default single page colour.
-    /// </summary>
-    /// <value>
-    /// 	<c>true</c> if use default single page colour; otherwise, <c>false</c>.
-    /// </value>
-    public bool UseDefaultSinglePageColour
-    {
-        get => useDefaultSinglePageColour;
-        set => useDefaultSinglePageColour = value;
-    }
+    public bool UseDefaultSinglePageColour { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether this <see cref="AllocationLayer"/> is visible.
-    /// </summary>
-    /// <value><c>true</c> if visible; otherwise, <c>false</c>.</value>
-    public bool Visible
-    {
-        get => visible;
-        set => visible = value;
-    }
+    public bool IsVisible { get; set; } = true;
 
-    /// <summary>
-    /// Gets or sets the border colour.
-    /// </summary>
-    /// <value>The border colour.</value>
-    public Color BorderColour
-    {
-        get => borderColour;
-        set => borderColour = value;
-    }
+    public Color BorderColour { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether to use border colour.
-    /// </summary>
-    /// <value><c>true</c> if [use border colour]; otherwise, <c>false</c>.</value>
-    public bool UseBorderColour
-    {
-        get => useBorderColour;
-        set => useBorderColour = value;
-    }
+    public bool UseBorderColour { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether to display single slots only.
-    /// </summary>
-    /// <value><c>true</c> if [single slots only]; otherwise, <c>false</c>.</value>
-    public bool SingleSlotsOnly
-    {
-        get => singleSlotsOnly;
-        set => singleSlotsOnly = value;
-    }
+    public bool SingleSlotsOnly { get; set; }
 
-    /// <summary>
-    /// Gets or sets the transparency level.
-    /// </summary>
-    /// <value>The transparency level.</value>
-    public int Transparency
-    {
-        get => transparency;
-        set => transparency = value;
-    }
+    public int Transparency { get; set; }
 
-    public string IndexName
-    {
-        get => indexName;
-        set => indexName = value;
-    }
+    public string IndexName { get; set; }
 
-    public IndexTypes IndexType
-    {
-        get => indexType;
-        set => indexType = value;
-    }
-    public long UsedPages
-    {
-        get => usedPages;
-        set => usedPages = value;
-    }
+    public IndexTypes IndexType { get; set; }
 
-    public long TotalPages
-    {
-        get => totalPages;
-        set => totalPages = value;
-    }
+    public long UsedPages { get; set; }
 
-    public string ObjectName
-    {
-        get => objectName;
-        set => objectName = value;
-    }
+    public long TotalPages { get; set; }
+
+    public string ObjectName { get; set; }
 }

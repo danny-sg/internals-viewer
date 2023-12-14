@@ -1,13 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Internals.Engine.Allocation;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
 public class Database : DatabaseInfo
 {
-    public const int AllocationInterval = 511232;
-    public const int PfsInterval = 8088;
-
     /// <summary>
     /// GAM (Global Allocation Map) chain per database file
     /// </summary>

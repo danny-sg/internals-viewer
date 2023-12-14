@@ -40,8 +40,7 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
     /// </summary>
     private void LoadAllocationMap(AllocationPage page)
     {
-        //TODO: Check 8000 bytes is correct
-        var allocationData = new byte[8000];
+        var allocationData = new byte[AllocationPage.AllocationInterval / 8];
 
         switch (page.Header.PageType)
         {
@@ -62,7 +61,7 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
                    AllocationPage.AllocationArrayOffset,
                    allocationData,
                    0,
-                   allocationData.Length - page.Header.SlotCount * sizeof(short));
+                   allocationData.Length);
 
         var bitArray = new BitArray(allocationData);
 

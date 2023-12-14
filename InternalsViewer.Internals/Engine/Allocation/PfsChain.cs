@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.Engine.Database;
+namespace InternalsViewer.Internals.Engine.Allocation;
 
 /// <summary>
 /// PFS (Page Free Space) Page
@@ -15,6 +15,12 @@ public class PfsChain
 
     public PfsByte GetPagePfsStatus(int page)
     {
-        return PfsPages[page / Database.PfsInterval].PfsBytes[page % Database.PfsInterval];
+        // How many pages into the PFS chain is the page
+        var pfsPageIndex = page / PfsPage.PfsInterval;
+
+        // Where in the byte map is the page
+        var pfsByteIndex = page % PfsPage.PfsInterval;
+
+        return PfsPages[pfsPageIndex].PfsBytes[pfsByteIndex];
     }
 }

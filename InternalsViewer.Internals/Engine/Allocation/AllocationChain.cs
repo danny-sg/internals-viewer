@@ -2,10 +2,10 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Pages;
 
-namespace InternalsViewer.Internals.Engine.Database;
+namespace InternalsViewer.Internals.Engine.Allocation;
 
 /// <summary>
-/// An Allocation structure represented by a collection of allocation pages separated by an interval
+/// An Allocation structure represented by a collection of allocation pages
 /// </summary>
 public class AllocationChain
 {
@@ -14,23 +14,23 @@ public class AllocationChain
     /// </summary>
     public virtual bool IsAllocated(int extent, short fileId)
     {
-        return Pages[extent * 8 / Database.AllocationInterval].AllocationMap[extent % (Database.AllocationInterval / 8 + 1)];
+        // How many pages into the chain is the extent
+        var pageIndex = extent / AllocationPage.AllocationInterval;
+
+        // Bit index of the extent in the allocation (bit) map
+        var extentIndex = extent % (AllocationPage.AllocationInterval + 1);
+
+        return Pages[pageIndex].AllocationMap[extentIndex];
     }
 
     /// <summary>
     /// Checks the allocation status or an extent
     /// </summary>
-    public static bool CheckAllocationStatus(int targetExtent, short fileId, bool invert, AllocationChain chain)
+    public static bool GetAllocatedStatus(int targetExtent, short fileId, bool invert, AllocationChain chain)
     {
-        return (!invert
-                && chain.IsAllocated(targetExtent, fileId)
-                && (fileId == chain.FileId || chain.IsMultiFile)
-               )
-               ||
-               (invert
-                && !chain.IsAllocated(targetExtent, fileId)
-                && (fileId == chain.FileId || chain.IsMultiFile)
-               );
+        var value = chain.IsAllocated(targetExtent, fileId) && (fileId == chain.FileId || chain.IsMultiFile);
+
+        return invert ? !value : value;
     }
 
     public List<AllocationPage> Pages { get; } = new();

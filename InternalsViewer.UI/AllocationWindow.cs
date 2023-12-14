@@ -4,11 +4,11 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
-using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.Internals.Interfaces.MetadataProviders;
+using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Allocations;
 
@@ -18,6 +18,8 @@ namespace InternalsViewer.UI;
 
 public partial class AllocationWindow : UserControl
 {
+    public IDatabaseService DatabaseService { get; }
+
     public event EventHandler Connect;
     public event EventHandler<PageEventArgs> ViewPage;
 
@@ -28,8 +30,11 @@ public partial class AllocationWindow : UserControl
     private const string AllocationUnitsText = "Allocation Units";
     private const string PageFreeSpaceText = "PFS";
 
-    public AllocationWindow()
+    public Database? CurrentDatabase { get; set; }
+
+    public AllocationWindow(IDatabaseService databaseService)
     {
+        DatabaseService = databaseService;
         InitializeComponent();
 
         SetStyle(ControlStyles.UserPaint, true);
@@ -38,11 +43,9 @@ public partial class AllocationWindow : UserControl
 
         extentSizeToolStripComboBox.SelectedIndex = 0;
     }
-        
-    /// <summary>
-    /// Enables buttons on the toolbar.
-    /// </summary>
-    /// <param name="enabled">if set to <c>true</c> [enabled].</param>
+
+    public List<DatabaseInfo> Databases { get; set; } = new();
+
     private void EnableToolbar(bool enabled)
     {
         databaseToolStripComboBox.Enabled = enabled;
@@ -53,25 +56,22 @@ public partial class AllocationWindow : UserControl
         mapToolStripButton.Enabled = enabled;
     }
 
-    /// <summary>
-    /// Refreshes the databases list
-    /// </summary>
     public void RefreshDatabases()
     {
-        databaseToolStripComboBox.ComboBox.DataSource = null;
+        if (databaseToolStripComboBox.ComboBox != null)
+        {
+            databaseToolStripComboBox.ComboBox.DataSource = null;
 
-        databaseToolStripComboBox.ComboBox.Items.Clear();
+            databaseToolStripComboBox.ComboBox.Items.Clear();
 
-        EnableToolbar(InternalsViewerConnection.CurrentConnection().Databases.Count > 0);
+            EnableToolbar(Databases.Count > 0);
 
-        databaseToolStripComboBox.ComboBox.DataSource = InternalsViewerConnection.CurrentConnection().Databases;
-        databaseToolStripComboBox.ComboBox.DisplayMember = "Name";
-        databaseToolStripComboBox.ComboBox.ValueMember = "DatabaseId";
+            databaseToolStripComboBox.ComboBox.DataSource = Databases;
+            databaseToolStripComboBox.ComboBox.DisplayMember = "Name";
+            databaseToolStripComboBox.ComboBox.ValueMember = "DatabaseId";
+        }
     }
 
-    /// <summary>
-    /// Loads the selected database.
-    /// </summary>
     private void LoadDatabase()
     {
         if (allocationContainer.InvokeRequired)
@@ -80,14 +80,16 @@ public partial class AllocationWindow : UserControl
         }
         else
         {
-            if (databaseToolStripComboBox.ComboBox.SelectedItem != InternalsViewerConnection.CurrentConnection().CurrentDatabase)
+            if (databaseToolStripComboBox.ComboBox != null && databaseToolStripComboBox.ComboBox.SelectedItem != CurrentDatabase)
             {
-                databaseToolStripComboBox.ComboBox.SelectedItem = InternalsViewerConnection.CurrentConnection().CurrentDatabase;
+                databaseToolStripComboBox.ComboBox.SelectedItem = CurrentDatabase;
             }
 
-            if (InternalsViewerConnection.CurrentConnection().CurrentDatabase != null)
+            if (CurrentDatabase != null)
             {
-                allocationContainer.CreateAllocationMaps(InternalsViewerConnection.CurrentConnection().CurrentDatabase.Files);
+                allocationContainer.CurrentDatabase = CurrentDatabase;
+
+                allocationContainer.CreateAllocationMaps(CurrentDatabase.Files);
             }
 
             CancelWorkerAndWait(allocUnitBackgroundWorker);
@@ -103,9 +105,6 @@ public partial class AllocationWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Displays the allocation layers.
-    /// </summary>
     private void DisplayAllocationUnitLayers()
     {
         allocationContainer.IncludeIam = false;
@@ -115,7 +114,7 @@ public partial class AllocationWindow : UserControl
 
         unallocated.Name = "Available - (Unused)";
         unallocated.Colour = Color.Gainsboro;
-        unallocated.Visible = false;
+        unallocated.IsVisible = false;
 
         allocationContainer.AddMapLayer(unallocated);
 
@@ -124,10 +123,6 @@ public partial class AllocationWindow : UserControl
         allocUnitBackgroundWorker.RunWorkerAsync();
     }
 
-    /// <summary>
-    /// Cancels a BackgroundWorker and wait for it to complete
-    /// </summary>
-    /// <param name="worker">The worker.</param>
     private void CancelWorkerAndWait(BackgroundWorker worker)
     {
         if (worker.IsBusy)
@@ -141,32 +136,17 @@ public partial class AllocationWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the DoWork event of the AllocUnitBackgroundWorker control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.ComponentModel.DoWorkEventArgs"/> instance containing the event data.</param>
     private void AllocUnitBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
     {
-        e.Result = AllocationUnitsLayer.GenerateLayers(InternalsViewerConnection.CurrentConnection().CurrentDatabase, (BackgroundWorker)sender, true, false);
+        e.Result = AllocationUnitsLayer.GenerateLayers(CurrentDatabase, (BackgroundWorker)sender, true, false);
     }
 
-    /// <summary>
-    /// Handles the ProgressChanged event of the AllocUnitBackgroundWorker control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.ComponentModel.ProgressChangedEventArgs"/> instance containing the event data.</param>
     private void AllocUnitBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
     {
         allocUnitProgressBar.Value = e.ProgressPercentage;
         allocUnitToolStripStatusLabel.Text = "Loading " + (string)e.UserState;
     }
 
-    /// <summary>
-    /// Handles the RunWorkerCompleted event of the AllocUnitBackgroundWorker control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.ComponentModel.RunWorkerCompletedEventArgs"/> instance containing the event data.</param>
     private void AllocUnitBackgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
     {
         Cursor = Cursors.Arrow;
@@ -214,15 +194,16 @@ public partial class AllocationWindow : UserControl
         ShowPfs(false);
     }
 
-    /// <summary>
-    /// Show or hide the PFS.
-    /// </summary>
-    /// <param name="show">if set to <c>true</c> [show].</param>
     private void ShowPfs(bool show)
     {
+        if(CurrentDatabase==null)
+        {
+            return;
+        }
+
         if (show)
         {
-            allocationContainer.Pfs = InternalsViewerConnection.CurrentConnection().CurrentDatabase.Pfs;
+            allocationContainer.Pfs = CurrentDatabase.Pfs;
             allocationContainer.ExtentSize = AllocationMap.Large;
             allocationContainer.Mode = MapMode.Pfs;
         }
@@ -233,16 +214,13 @@ public partial class AllocationWindow : UserControl
 
             if (allocationContainer.AllocationLayers.Count == 0)
             {
-                DisplayAllocationUnitLayers();
+                // DisplayAllocationUnitLayers();
             }
         }
 
         allocationContainer.Refresh();
     }
 
-    /// <summary>
-    /// Changes the size of the extent on the allocation maps
-    /// </summary>
     private void ChangeExtentSize()
     {
         switch (extentSizeToolStripComboBox.SelectedItem.ToString())
@@ -278,9 +256,6 @@ public partial class AllocationWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Displays the buffer pool layer.
-    /// </summary>
     private void DisplayBufferPoolLayer()
     {
         //bufferPool.Refresh();
@@ -293,7 +268,7 @@ public partial class AllocationWindow : UserControl
         {
             SingleSlotsOnly = true,
             Transparency = 80,
-            Transparent = true,
+            IsTransparent = true,
             BorderColour = Color.WhiteSmoke,
             UseBorderColour = true,
             UseDefaultSinglePageColour = false
@@ -306,7 +281,7 @@ public partial class AllocationWindow : UserControl
         var bufferPoolDirtyLayer = new AllocationLayer("Buffer Pool (Dirty)", dirty, Color.IndianRed)
         {
             SingleSlotsOnly = true,
-            Transparent = false,
+            IsTransparent = false,
             BorderColour = Color.WhiteSmoke,
             UseBorderColour = true,
             UseDefaultSinglePageColour = false,
@@ -317,10 +292,6 @@ public partial class AllocationWindow : UserControl
         allocationContainer.AddMapLayer(bufferPoolDirtyLayer);
     }
 
-    /// <summary>
-    /// Shows the buffer pool.
-    /// </summary>
-    /// <param name="show">if set to <c>true</c> [show].</param>
     private void ShowBufferPool(bool show)
     {
         if (show)
@@ -343,13 +314,18 @@ public partial class AllocationWindow : UserControl
     {
         allocationContainer.ClearMapLayers();
 
+        if(CurrentDatabase==null)
+        {
+            return;
+        }
+
         if (gamToolStripMenuItem.Checked)
         {
             AddDatabaseAllocation("GAM (Inverted)",
                 "Unavailable - (Uniform extent/full mixed extent)",
                 Color.FromArgb(172, 186, 214),
                 true,
-                InternalsViewerConnection.CurrentConnection().CurrentDatabase.Gam);
+                CurrentDatabase.Gam);
         }
 
         if (sgamToolStripMenuItem.Checked)
@@ -358,7 +334,7 @@ public partial class AllocationWindow : UserControl
                 "Partially Unavailable - (Mixed extent with free pages)",
                 Color.FromArgb(168, 204, 162),
                 false,
-                InternalsViewerConnection.CurrentConnection().CurrentDatabase.SGam);
+                CurrentDatabase.SGam);
         }
 
         if (dcmToolStripMenuItem.Checked)
@@ -367,7 +343,7 @@ public partial class AllocationWindow : UserControl
                 "Differential Change Map",
                 Color.FromArgb(120, 150, 150),
                 false,
-                InternalsViewerConnection.CurrentConnection().CurrentDatabase.Dcm);
+                CurrentDatabase.Dcm);
         }
 
         if (bcmToolStripMenuItem.Checked)
@@ -376,7 +352,7 @@ public partial class AllocationWindow : UserControl
                 "Bulk Change Map",
                 Color.FromArgb(150, 120, 150),
                 false,
-                InternalsViewerConnection.CurrentConnection().CurrentDatabase.Bcm);
+                CurrentDatabase.Bcm);
         }
 
         ShowExtendedColumns(false);
@@ -391,10 +367,6 @@ public partial class AllocationWindow : UserControl
         ShowPfs(false);
     }
 
-    /// <summary>
-    /// Shows the extended key columns
-    /// </summary>
-    /// <param name="visible">if set to <c>true</c> [visible].</param>
     private void ShowExtendedColumns(bool visible)
     {
         IndexTypeColumn.Visible = visible;
@@ -402,19 +374,11 @@ public partial class AllocationWindow : UserControl
         UsedPagesColumn.Visible = visible;
     }
 
-    /// <summary>
-    /// Adds the database allocation for each file in the database
-    /// </summary>
-    /// <param name="layerName">Name of the layer.</param>
-    /// <param name="description">The description.</param>
-    /// <param name="layerColour">The layer colour.</param>
-    /// <param name="invert">if set to <c>true</c> [invert].</param>
-    /// <param name="allocation">The allocation.</param>
     private void AddDatabaseAllocation(string layerName,
-        string description,
-        Color layerColour,
-        bool invert,
-        IDictionary<int, AllocationChain> allocation)
+                                       string description,
+                                       Color layerColour,
+                                       bool invert,
+                                       IDictionary<int, AllocationChain> allocation)
     {
         foreach (var fileId in allocation.Keys)
         {
@@ -423,17 +387,12 @@ public partial class AllocationWindow : UserControl
                 Name = layerName,
                 ObjectName = layerName,
                 IndexName = description,
-                Invert = invert,
+                IsInverted = invert,
                 Colour = layerColour
             });
         }
     }
 
-    /// <summary>
-    /// Called when a connection request is made.
-    /// </summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     internal virtual void OnConnect(object sender, EventArgs e)
     {
         if (Connect != null)
@@ -442,11 +401,6 @@ public partial class AllocationWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Called when a page is requested to be viewed
-    /// </summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     internal virtual void OnViewPage(object sender, PageEventArgs e)
     {
         if (ViewPage != null)
@@ -455,23 +409,22 @@ public partial class AllocationWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the SelectedIndexChanged event of the DatabaseToolStripComboBox control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
-    private void DatabaseToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
+    private async void DatabaseToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
     {
-        InternalsViewerConnection.CurrentConnection().CurrentDatabase = (Database)databaseToolStripComboBox.SelectedItem;
+        var databaseInfo = (DatabaseInfo)databaseToolStripComboBox.SelectedItem;
+
+        if(databaseInfo==null)
+        {
+            return;
+        }
+
+        var database = await DatabaseService.Load(databaseInfo.Name);
+
+        CurrentDatabase = database;
 
         LoadDatabase();
     }
 
-    /// <summary>
-    /// Handles the SelectedIndexChanged event of the ExtentSizeToolStripComboBox control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void ExtentSizeToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
     {
         ChangeExtentSize();
@@ -487,21 +440,11 @@ public partial class AllocationWindow : UserControl
     //    this.ShowPfs(this.pfsToolStripButton.Checked);
     //}
 
-    /// <summary>
-    /// Handles the Click event of the BufferPoolToolStripButton control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void BufferPoolToolStripButton_Click(object sender, EventArgs e)
     {
         ShowBufferPool(bufferPoolToolStripButton.Checked);
     }
 
-    /// <summary>
-    /// Handles the PageOver event of the AllocationContainer control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void AllocationContainer_PageOver(object sender, PageEventArgs e)
     {
         AllocUnitLabel.Text = string.Empty;
@@ -512,14 +455,14 @@ public partial class AllocationWindow : UserControl
         {
             case MapMode.Standard:
 
-                if (e.Address.PageId % Database.PfsInterval == 0 || e.Address.PageId == 1)
+                if (e.Address.PageId % PfsPage.PfsInterval == 0 || e.Address.PageId == 1)
                 {
                     AllocUnitLabel.Text = "PFS";
                 }
 
-                if (e.Address.PageId % Database.AllocationInterval < 8)
+                if (e.Address.PageId % (AllocationPage.AllocationInterval * 8) < 8)
                 {
-                    switch (e.Address.PageId % Database.AllocationInterval)
+                    switch (e.Address.PageId % (AllocationPage.AllocationInterval * 8))
                     {
                         case 0:
 
@@ -578,11 +521,6 @@ public partial class AllocationWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the Click event of the FileDetailsToolStripButton control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void FileDetailsToolStripButton_Click(object sender, EventArgs e)
     {
         allocationContainer.CreateAllocationMaps(allocationContainer.AllocationMaps);
@@ -590,11 +528,6 @@ public partial class AllocationWindow : UserControl
         LoadDatabase();
     }
 
-    /// <summary>
-    /// Handles the SelectionChanged event of the KeysDataGridView control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void KeysDataGridView_SelectionChanged(object sender, EventArgs e)
     {
         keyChanging = true;
@@ -610,7 +543,7 @@ public partial class AllocationWindow : UserControl
                         var name = (string)keysDataGridView.SelectedRows[0].Cells[1].Value;
                         var indexName = (string)keysDataGridView.SelectedRows[0].Cells[2].Value;
 
-                        layer.Transparent = !(layer.Name == name && layer.IndexName == indexName);
+                        layer.IsTransparent = !(layer.Name == name && layer.IndexName == indexName);
                     }
                 }
 
@@ -625,7 +558,7 @@ public partial class AllocationWindow : UserControl
                 {
                     if (layer.Name != "Buffer Pool")
                     {
-                        layer.Transparent = false;
+                        layer.IsTransparent = false;
                     }
                 }
 
@@ -636,11 +569,6 @@ public partial class AllocationWindow : UserControl
         keysDataGridView.Invalidate();
     }
 
-    /// <summary>
-    /// Handles the CellClick event of the KeysDataGridView control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.Windows.Forms.DataGridViewCellEventArgs"/> instance containing the event data.</param>
     private void KeysDataGridView_CellClick(object sender, DataGridViewCellEventArgs e)
     {
         if (!keyChanging)
@@ -654,21 +582,11 @@ public partial class AllocationWindow : UserControl
         keyChanging = false;
     }
 
-    /// <summary>
-    /// Handles the PageClicked event of the AllocationContainer control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void AllocationContainer_PageClicked(object sender, PageEventArgs e)
     {
         OnViewPage(sender, e);
     }
 
-    /// <summary>
-    /// Handles the KeyDown event of the PageToolStripTextBox control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.Windows.Forms.KeyEventArgs"/> instance containing the event data.</param>
     private void PageToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.KeyCode == Keys.Return)
@@ -684,21 +602,11 @@ public partial class AllocationWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the Click event of the ShowKeyToolStripButton control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void ShowKeyToolStripButton_Click(object sender, EventArgs e)
     {
         splitContainer.Panel2Collapsed = !showKeyToolStripButton.Checked;
     }
 
-    /// <summary>
-    /// Handles the CheckedChanged event of the FileDetailsToolStripButton control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void FileDetailsToolStripButton_CheckedChanged(object sender, EventArgs e)
     {
         if (fileDetailsToolStripButton.Enabled)
@@ -707,11 +615,6 @@ public partial class AllocationWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the Click event of the AllocationUnitsToolStripMenuItem control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void AllocationUnitsToolStripMenuItem_Click(object sender, EventArgs e)
     {
         mapToolStripButton.Image = (sender as ToolStripMenuItem).Image;

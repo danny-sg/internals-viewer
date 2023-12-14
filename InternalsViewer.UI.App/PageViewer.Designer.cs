@@ -30,26 +30,27 @@ partial class PageViewer
     /// </summary>
     private void InitializeComponent()
     {
-        pageViewerWindow1 = new PageViewerWindow();
+        pageViewerWindow = new PageViewerWindow(PageService);
+
         SuspendLayout();
         // 
         // pageViewerWindow1
         // 
-        pageViewerWindow1.ConnectionString = null;
-        pageViewerWindow1.Dock = DockStyle.Fill;
-        pageViewerWindow1.Location = new Point(0, 0);
-        pageViewerWindow1.Margin = new Padding(4, 4, 4, 4);
-        pageViewerWindow1.Name = "pageViewerWindow1";
-        pageViewerWindow1.Page = null;
-        pageViewerWindow1.Size = new Size(1008, 729);
-        pageViewerWindow1.TabIndex = 0;
+        pageViewerWindow.ConnectionString = null;
+        pageViewerWindow.Dock = DockStyle.Fill;
+        pageViewerWindow.Location = new Point(0, 0);
+        pageViewerWindow.Margin = new Padding(4, 4, 4, 4);
+        pageViewerWindow.Name = "pageViewerWindow";
+        pageViewerWindow.Page = null;
+        pageViewerWindow.Size = new Size(1008, 729);
+        pageViewerWindow.TabIndex = 0;
         // 
         // PageViewer
         // 
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(1008, 729);
-        Controls.Add(pageViewerWindow1);
+        Controls.Add(pageViewerWindow);
         Name = "PageViewer";
         Text = "PageViewer";
         ResumeLayout(false);
@@ -57,5 +58,5 @@ partial class PageViewer
 
     #endregion
 
-    private PageViewerWindow pageViewerWindow1;
+    private PageViewerWindow pageViewerWindow;
 }

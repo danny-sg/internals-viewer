@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Internals.Compression;
 
-namespace InternalsViewer.Internals.Interfaces.Services.Loaders;
+namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 
 public interface IDictionaryService
 {

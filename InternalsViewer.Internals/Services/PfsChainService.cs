@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Services;
 
@@ -15,7 +17,7 @@ public class PfsChainService(IPfsPageService pageService) : IPfsChainService
 
     public async Task<PfsChain> LoadChain(Database database, short fileId)
     {
-        var pfsCount = (int)Math.Ceiling(database.GetFileSize(fileId) / (decimal)Database.PfsInterval);
+        var pfsCount = (int)Math.Ceiling(database.GetFileSize(fileId) / (decimal)PfsPage.PfsInterval);
 
         var pfsChain = new PfsChain();
 
@@ -27,7 +29,7 @@ public class PfsChainService(IPfsPageService pageService) : IPfsChainService
         {
             for (var i = 1; i < pfsCount; i++)
             {
-                var nextAddress = new PageAddress(fileId, i * Database.PfsInterval);
+                var nextAddress = new PageAddress(fileId, i * PfsPage.PfsInterval);
 
                 var nextPage = await PageService.Load(database, nextAddress);
 

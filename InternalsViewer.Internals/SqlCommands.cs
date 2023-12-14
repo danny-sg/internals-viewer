@@ -11,28 +11,32 @@ internal class SqlCommands
   WHERE  au.allocation_unit_id = @AllocationUnitId";
 
     public static readonly string AllocationUnits =
-@"SELECT o.object_id
-	  ,iau.first_iam_page
-      ,s.name AS schema_name
-	  ,o.name AS table_name
-      ,i.name AS index_name
-	  ,is_ms_shipped AS is_system
-      ,p.index_id
-      ,i.type AS index_type
-      ,iau.type AS allocation_unit_type
+@"SELECT iau.allocation_unit_id               AS AllocationUnitId
+      ,o.object_id                          AS ObjectId
+	  ,iau.first_iam_page                   AS FirstIamPage
+      ,s.name                               AS SchemaName
+	  ,o.name                               AS TableName
+      ,i.name                               AS IndexName
+	  ,is_ms_shipped                        AS IsSystem
+      ,p.index_id                           AS IndexId
+      ,i.type                               AS IndexType
+      ,iau.type                             AS AllocationUnitType
 	  ,CASE iau.type
 			WHEN 1 THEN 'Row Data'
 			WHEN 2 THEN 'LOB Data'
 			WHEN 3 THEN 'Row Overflow Data'
-	   END AS type_description
-      ,iau.used_pages
-      ,iau.total_pages
+	   END                                  AS TypeDescription
+      ,iau.used_pages                       AS UsedPages    
+      ,iau.total_pages                      AS TotalPages    
 FROM   sys.all_objects o
-	   INNER JOIN sys.schemas s ON o.schema_id = s.schema_id 
+	   INNER JOIN sys.schemas s    ON o.schema_id = s.schema_id 
 	   INNER JOIN sys.partitions p ON p.object_id = o.object_id
-       INNER JOIN sys.indexes i ON i.object_id = o.object_id AND i.index_id = p.index_id
-	   INNER JOIN sys.system_internals_allocation_units iau ON iau.container_id = p.partition_id
-ORDER BY is_ms_shipped desc, s.name asc , o.name asc";
+       INNER JOIN sys.indexes i    ON i.object_id = o.object_id AND i.index_id = p.index_id
+	   INNER JOIN sys.system_internals_allocation_units iau 
+           ON iau.container_id = p.partition_id
+ORDER BY is_ms_shipped DESC
+        ,s.name ASC
+        ,o.name ASC";
 
     public static readonly string BufferPool =
 @"SELECT CONVERT(SMALLINT, file_id) AS FileId

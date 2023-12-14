@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
+using System.Linq;
 
 namespace InternalsViewer.Internals.Services.Loaders;
 
@@ -12,6 +13,7 @@ namespace InternalsViewer.Internals.Services.Loaders;
 public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
                              IDatabaseFileInfoProvider databaseFileInfoProvider,
                              IAllocationChainService allocationChainService,
+                             IIamChainService iamChainService,
                              IPfsChainService pfsChainService)
     : IDatabaseService
 {
@@ -20,6 +22,8 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
     public IDatabaseFileInfoProvider DatabaseFileInfoProvider { get; } = databaseFileInfoProvider;
 
     public IAllocationChainService AllocationChainService { get; } = allocationChainService;
+
+    public IIamChainService IamChainService { get; } = iamChainService;
 
     public IPfsChainService PfsChainService { get; } = pfsChainService;
 
@@ -43,7 +47,23 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
 
         await RefreshPfs(database);
 
+        await RefreshAllocationUnits(database);
+
         return database;
+    }
+
+    private async Task RefreshAllocationUnits(Database database)
+    {
+        var allocationUnits = await DatabaseInfoProvider.GetAllocationUnits();
+
+        database.AllocationUnits.Clear();
+
+        foreach (var allocationUnit in allocationUnits.Where(a => a.FirstIamPage.PageId > 0))
+        {
+            allocationUnit.IamChain = await IamChainService.LoadChain(database, allocationUnit.FirstIamPage);
+        }
+
+        database.AllocationUnits.AddRange(allocationUnits);
     }
 
     private async Task RefreshPfs(Database database)

@@ -11,6 +11,16 @@ namespace InternalsViewer.Internals.Pages;
 /// </summary>
 public class AllocationPage : Page
 {
+    /// <summary>
+    /// Interval between allocation pages
+    /// </summary>
+    /// <remarks>
+    /// 1 bit per extent representing allocation status of the extent
+    /// 
+    /// 63,904 bits = 7,988 bytes = 1 page (8,192 bytes) less page header/overhead.
+    /// </remarks>
+    public const int AllocationInterval = 63904;
+
     public const int AllocationArrayOffset = 194;
     
     public const int SinglePageSlotOffset = 142;
@@ -30,7 +40,7 @@ public class AllocationPage : Page
     /// <summary>
     /// Allocation bitmap
     /// </summary>
-    public bool[] AllocationMap { get; set; } = new bool[Database.AllocationInterval];
+    public bool[] AllocationMap { get; set; } = new bool[AllocationInterval];
 
     /// <summary>
     /// Single page slots collection (IAM pages only).

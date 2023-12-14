@@ -30,7 +30,7 @@ partial class TestForm
     /// </summary>
     private void InitializeComponent()
     {
-        allocationWindow = new AllocationWindow();
+        allocationWindow = new AllocationWindow(DatabaseService);
         SuspendLayout();
         // 
         // allocationWindow

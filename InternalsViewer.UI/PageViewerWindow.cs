@@ -7,6 +7,7 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
@@ -15,14 +16,12 @@ using InternalsViewer.Internals.Engine.Records.Blob;
 using InternalsViewer.Internals.Engine.Records.Compressed;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;
+using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.Providers;
-using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.TransactionLog;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Renderers;
-using Microsoft.Data.SqlClient;
 
 #pragma warning disable CA1416
 
@@ -30,20 +29,33 @@ namespace InternalsViewer.UI;
 
 public partial class PageViewerWindow : UserControl
 {
-    public event EventHandler<PageEventArgs> PageChanged;
+    public IPageService PageService { get; }
+
+    public event EventHandler<PageEventArgs>? PageChanged;
+
     public event EventHandler OpenDecodeWindow;
+
     private readonly ProfessionalColorTable colourTable;
+
     private Page page;
+
     private readonly PfsRenderer pfsRenderer;
+
     private PfsByte pfsByte;
+
     int searchPosition;
+
     private Dictionary<string, LogData> logData;
+
+    public Database Database { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
     /// </summary>
-    public PageViewerWindow()
+    public PageViewerWindow(IPageService pageService)
     {
+        PageService = pageService;
+
         InitializeComponent();
 
         colourTable = new ProfessionalColorTable();
@@ -80,7 +92,7 @@ public partial class PageViewerWindow : UserControl
             compressionInfoPanel.Visible = false;
         }
 
-        OnPageChanged(this, new PageEventArgs(new RowIdentifier(Page.PageAddress, 0), false));
+        OnPageChanged(this, new PageEventArgs(page.PageAddress, false));
     }
 
     /// <summary>
@@ -95,10 +107,11 @@ public partial class PageViewerWindow : UserControl
         Image dcmAllocated = ExtentColour.KeyImage(Color.FromArgb(120, 150, 150));
         Image bcmAllocated = ExtentColour.KeyImage(Color.FromArgb(150, 120, 150));
 
-        //gamPictureBox.Image = Page.AllocationStatus.Gam ? unallocated : gamAllocated;
-        //sGamPictureBox.Image = Page.AllocationStatus.Sgam ? sGamAllocated : unallocated;
-        //dcmPictureBox.Image = Page.AllocationStatus.Dcm ? dcmAllocated : unallocated;
-        //bcmPictureBox.Image = Page.AllocationStatus.Bcm ? bcmAllocated : unallocated;
+        var fileId = pageAddress.FileId;
+        gamPictureBox.Image = Page.Database.Gam[fileId].IsAllocated(pageAddress.Extent, fileId) ? unallocated : gamAllocated;
+        sGamPictureBox.Image = Page.Database.SGam[fileId].IsAllocated(pageAddress.Extent, fileId) ? unallocated : sGamAllocated;
+        dcmPictureBox.Image = Page.Database.Dcm[fileId].IsAllocated(pageAddress.Extent, fileId) ? unallocated : dcmAllocated;
+        bcmPictureBox.Image = Page.Database.Bcm[fileId].IsAllocated(pageAddress.Extent, fileId) ? unallocated : bcmAllocated;
 
         //gamTextBox.Text = page.AllocationStatus.GamPageAddress.ToString();
         //sgamTextBox.Text = page.AllocationStatus.SgamPageAddress.ToString();
@@ -111,68 +124,37 @@ public partial class PageViewerWindow : UserControl
         pfsPanel.Invalidate();
     }
 
-    /// <summary>
-    /// Loads the page from a RID
-    /// </summary>
-    /// <param name="connectionString">The connection string.</param>
-    /// <param name="rowIdentifier">The row identifier.</param>
-    public void LoadPage(string connectionString, RowIdentifier rowIdentifier)
+    public void LoadPage(RowIdentifier rowIdentifier)
     {
-        LoadPage(connectionString, rowIdentifier.PageAddress);
+        // LoadPage(connectionString, rowIdentifier.PageAddress);
 
         offsetTable.SelectedSlot = rowIdentifier.SlotId;
     }
 
-    /// <summary>
-    /// Loads a page from a page address
-    /// </summary>
-    /// <param name="connectionString">The connection string.</param>
-    /// <param name="pageAddress">The page address.</param>
-    public void LoadPage(string connectionString, PageAddress pageAddress)
+    public async void LoadPage(PageAddress pageAddress)
     {
         pageAddressToolStripStatusLabel.Text = string.Empty;
         offsetToolStripStatusLabel.Text = string.Empty;
 
         if (pageAddress.FileId > 0)
         {
-            var builder = new SqlConnectionStringBuilder(connectionString);
-
-            ConnectionString = connectionString;
-
-            var connection = new CurrentConnection();
-
-
-            var databaseInfoProvider = new DatabaseInfoProvider(connection);
-            var structureInfoProvider = new StructureInfoProvider(connection);
-
+            Page = await PageService.Load<Page>(Database, pageAddress);
             //Page = new Page(ConnectionString, builder.InitialCatalog, pageAddress);
 
-            //RefreshAllocationStatus(Page.PageAddress);
+            RefreshAllocationStatus(Page.PageAddress);
 
-            //pageToolStripTextBox.DatabaseId = Page.Database!.DatabaseId;
+            pageToolStripTextBox.DatabaseId = Page.Database!.DatabaseId;
 
             //serverToolStripStatusLabel.Text = builder.DataSource;
             //dataaseToolStripStatusLabel.Text = builder.InitialCatalog;
         }
     }
 
-    
-
-    /// <summary>
-    /// Handles the MouseClick event of the Page text boxes control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
     private void PageTextBox_MouseClick(object sender, MouseEventArgs e)
     {
-        LoadPage(ConnectionString, PageAddressParser.Parse((sender as TextBox).Text));
+        LoadPage(PageAddressParser.Parse(((TextBox)sender).Text));
     }
 
-    /// <summary>
-    /// Handles the SlotChanged event of the OffsetTable control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void OffsetTable_SlotChanged(object sender, EventArgs e)
     {
         if (offsetTable.SelectedOffset > 0)
@@ -183,13 +165,14 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Loads a record
-    /// </summary>
-    /// <param name="offset">The offset.</param>
     private void LoadRecord(ushort offset)
     {
-        Record record = null;
+        if (Page == null)
+        {
+            return;
+        }
+
+        Record? record = null;
 
         switch (Page.Header.PageType)
         {
@@ -265,14 +248,10 @@ public partial class PageViewerWindow : UserControl
 
             hexViewer.ScrollToOffset(offset);
 
-            offsetTableToolStripTextBox.Text = string.Format("{0:0000}", offset);
+            offsetTableToolStripTextBox.Text = $@"{offset:0000}";
         }
     }
 
-    /// <summary>
-    /// Sets record by slot
-    /// </summary>
-    /// <param name="slotId">The slot id.</param>
     public void SetSlot(int slotId)
     {
         offsetTable.SelectedSlot = slotId;
@@ -304,20 +283,18 @@ public partial class PageViewerWindow : UserControl
 
     public void FindNext(string findHex, bool suppressContinue)
     {
-        int endPos;
-
         var hexString = hexViewer.Text.Replace(" ", string.Empty).Replace("\n", string.Empty);
 
-        var startPos = hexString.IndexOf(findHex, searchPosition + 1);
+        var startPosition = hexString.IndexOf(findHex, searchPosition + 1, StringComparison.Ordinal);
 
-        if (startPos > 0)
+        if (startPosition > 0)
         {
-            if (startPos % 2 == 0)
+            if (startPosition % 2 == 0)
             {
-                endPos = startPos + findHex.Length - 1;
-                searchPosition = endPos;
+                var endPosition = startPosition + findHex.Length - 1;
+                searchPosition = endPosition;
 
-                hexViewer.SetSelection(startPos / 2, endPos / 2);
+                hexViewer.SetSelection(startPosition / 2, endPosition / 2);
             }
             else if (!suppressContinue)
             {
@@ -341,7 +318,7 @@ public partial class PageViewerWindow : UserControl
         {
             try
             {
-                LoadPage(ConnectionString, PageAddressParser.Parse(pageToolStripTextBox.Text));
+                LoadPage(PageAddressParser.Parse(pageToolStripTextBox.Text));
             }
             catch (Exception ex)
             {
@@ -350,63 +327,38 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the Click event of the PreviousToolStripButton control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void PreviousToolStripButton_Click(object sender, EventArgs e)
     {
-        LoadPage(ConnectionString, new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId - 1));
+        LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId - 1));
     }
 
-    /// <summary>
-    /// Handles the Click event of the NextToolStripButton control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void NextToolStripButton_Click(object sender, EventArgs e)
     {
-        LoadPage(ConnectionString, new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId + 1));
+        LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId + 1));
     }
 
-    /// <summary>
-    /// Handles the PageNavigated event of the MarkerKeyTable control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
     {
-        LoadPage(ConnectionString, e.RowId);
+        LoadPage(e.RowId);
     }
 
-    /// <summary>
-    /// Handles the SelectionChanged event of the MarkerKeyTable control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void MarkerKeyTable_SelectionChanged(object sender, EventArgs e)
     {
         hexViewer.SelectMarker(markerKeyTable.SelectedMarker);
     }
 
-    /// <summary>
-    /// Handles the SelectionClicked event of the MarkerKeyTable control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void MarkerKeyTable_SelectionClicked(object sender, EventArgs e)
     {
         hexViewer.HideToolTip();
     }
 
-    /// <summary>
-    /// Handles the OffsetOver event of the HexViewer control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="InternalsViewer.UI.OffsetEventArgs"/> instance containing the event data.</param>
     private void HexViewer_OffsetOver(object sender, OffsetEventArgs e)
     {
+        if (Page == null)
+        {
+            return;
+        }
+
         switch (Page.Header.PageType)
         {
             case PageType.Bcm:
@@ -442,7 +394,7 @@ public partial class PageViewerWindow : UserControl
         markerDescriptionToolStripStatusLabel.ForeColor = e.ForeColour;
         markerDescriptionToolStripStatusLabel.BackColor = e.BackColour;
 
-        offsetToolStripStatusLabel.Text = string.Format("Offset: {0:0000}", e.Offset);
+        offsetToolStripStatusLabel.Text = $"Offset: {e.Offset:0000}";
     }
 
     private void DisplayCompressionInfoStructure(CompressionInfoStructure compressionInfoStructure)
@@ -453,7 +405,7 @@ public partial class PageViewerWindow : UserControl
         {
             case CompressionInfoStructure.Anchor:
 
-                if (Page.CompressionInfo.AnchorRecord != null)
+                if (Page.CompressionInfo?.AnchorRecord != null)
                 {
                     markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.AnchorRecord);
                 }
@@ -462,7 +414,7 @@ public partial class PageViewerWindow : UserControl
 
             case CompressionInfoStructure.Dictionary:
 
-                if (Page.CompressionInfo.HasDictionary)
+                if (Page.CompressionInfo is { HasDictionary: true })
                 {
                     markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.CompressionDictionary);
                 }
@@ -480,12 +432,6 @@ public partial class PageViewerWindow : UserControl
         markerKeyTable.SetMarkers(markers);
     }
 
-
-    /// <summary>
-    /// Handles the PageOver event of the AllocationViewer control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void AllocationViewer_PageOver(object sender, PageEventArgs e)
     {
         if (Page.Header.PageType == PageType.Pfs)
@@ -498,21 +444,11 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the PageClicked event of the AllocationViewer control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     private void AllocationViewer_PageClicked(object sender, PageEventArgs e)
     {
-        LoadPage(ConnectionString, e.Address);
+        LoadPage(e.Address);
     }
 
-    /// <summary>
-    /// Handles the KeyDown event of the offsetTableToolStripTextBox control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.Windows.Forms.KeyEventArgs"/> instance containing the event data.</param>
     private void OffsetTableToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.KeyCode == Keys.Return)
@@ -526,11 +462,6 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the Paint event of the PfsPanel control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
     private void PfsPanel_Paint(object sender, PaintEventArgs e)
     {
         if (pfsByte != null)
@@ -539,11 +470,6 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Handles the RecordFind event of the HexViewer control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="InternalsViewer.UI.OffsetEventArgs"/> instance containing the event data.</param>
     private void HexViewer_RecordFind(object sender, OffsetEventArgs e)
     {
         int offset = e.Offset;
@@ -551,20 +477,11 @@ public partial class PageViewerWindow : UserControl
         FindRecord(offset);
     }
 
-    /// <summary>
-    /// Handles the OffsetSet event of the HexViewer control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="InternalsViewer.UI.OffsetEventArgs"/> instance containing the event data.</param>
     private void HexViewer_OffsetSet(object sender, OffsetEventArgs e)
     {
         LoadRecord(e.Offset);
     }
 
-    /// <summary>
-    /// Raises the <see cref="E:System.Windows.Forms.Control.Paint"/> event.
-    /// </summary>
-    /// <param name="e">A <see cref="T:System.Windows.Forms.PaintEventArgs"/> that contains the event data.</param>
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
@@ -576,11 +493,6 @@ public partial class PageViewerWindow : UserControl
         e.Graphics.FillRectangle(brush, ClientRectangle);
     }
 
-    /// <summary>
-    /// Called when the current page changes
-    /// </summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
     internal virtual void OnPageChanged(object sender, PageEventArgs e)
     {
         if (PageChanged != null)
@@ -597,11 +509,7 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    /// <summary>
-    /// Gets or sets the current Page.
-    /// </summary>
-    /// <value>The page.</value>
-    public Page Page
+    public Page? Page
     {
         get => page;
         set
@@ -630,7 +538,7 @@ public partial class PageViewerWindow : UserControl
 
     private void EncodeAndFindToolStripButton_Click(object sender, EventArgs e)
     {
-        OpenDecodeWindow(this, EventArgs.Empty);
+        OpenDecodeWindow?.Invoke(this, EventArgs.Empty);
     }
 
     internal void FindNext(string hexString)
@@ -647,32 +555,30 @@ public partial class PageViewerWindow : UserControl
 
     private void LogToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
     {
-        int startPos;
-        int endPos;
         var colour = Color.Black;
         LogData logData = null;
 
-        switch (logToolStripComboBox.SelectedItem.ToString())
+        switch (logToolStripComboBox.SelectedItem?.ToString())
         {
             case "None":
 
-               // Page.Refresh();
+                // Page.Refresh();
                 break;
 
             case "Before":
 
-                if (this.logData.ContainsKey("Before"))
+                if (this.logData.TryGetValue("Before", out var before))
                 {
-                    logData = this.logData["Before"];
+                    logData = before;
                     colour = Color.Blue;
                 }
                 break;
 
             case "After":
 
-                if (this.logData.ContainsKey("After"))
+                if (this.logData.TryGetValue("After", out var after))
                 {
-                    logData = this.logData["After"];
+                    logData = after;
                     colour = Color.OrangeRed;
                 }
                 break;
@@ -681,10 +587,10 @@ public partial class PageViewerWindow : UserControl
         {
             logData.MergeData(Page);
 
-            startPos = Page.OffsetTable[logData.Slot] + logData.Offset;
-            endPos = startPos + logData.Data.Length;
+            var startPosition = Page.OffsetTable[logData.Slot] + logData.Offset;
+            var endPosition = startPosition + logData.Data.Length;
 
-            hexViewer.AddBlock(new BlockSelection { Colour = colour, StartPos = startPos, EndPos = endPos });
+            hexViewer.AddBlock(new BlockSelection { Colour = colour, StartPos = startPosition, EndPos = endPosition });
 
         }
 

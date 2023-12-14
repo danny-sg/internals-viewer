@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Pages;
 

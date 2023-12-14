@@ -9,6 +9,7 @@ using System;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
+using System.Linq;
 
 namespace InternalsViewer.Internals.Services.Loaders;
 
@@ -37,7 +38,7 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
 
         page.PageData = data.Data;
 
-        LoadHeader(data, page);
+        LoadHeader(data, page, database);
 
         LoadOffsetTable(page);
 
@@ -46,11 +47,13 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
         return page;
     }
 
-    private static void LoadHeader(PageData data, Page page)
+    private static void LoadHeader(PageData data, Page page, Database database)
     {
         _ = KeyValueHeaderParser.TryParse(data.HeaderValues, out var header);
 
         page.Header = header;
+
+        page.Header.AllocationUnit = database.AllocationUnits.FirstOrDefault(a=>a.AllocationUnitId == page.Header.AllocationUnitId)?.TableName ?? string.Empty;
     }
 
     /// <summary>

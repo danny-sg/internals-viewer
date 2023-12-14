@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
@@ -18,6 +19,7 @@ public class DatabaseServiceTests
         var databaseInfoProvider = new Mock<IDatabaseInfoProvider>();
         var databaseFileInfoProvider = new Mock<IDatabaseFileInfoProvider>();
         var allocationChainService = new Mock<IAllocationChainService>();
+        var iamChainService = new Mock<IIamChainService>();
         var pfsChainService = new Mock<IPfsChainService>();
 
         var databaseInfo = new DatabaseInfo
@@ -43,6 +45,7 @@ public class DatabaseServiceTests
         var databaseService = new DatabaseService(databaseInfoProvider.Object,
                                                   databaseFileInfoProvider.Object,
                                                   allocationChainService.Object,
+                                                  iamChainService.Object,
                                                   pfsChainService.Object);
 
         var result = await databaseService.Load("TestDatabase");
@@ -61,6 +64,7 @@ public class DatabaseServiceTests
         var databaseInfoProvider = new Mock<IDatabaseInfoProvider>();
         var databaseFileInfoProvider = new Mock<IDatabaseFileInfoProvider>();
         var allocationChainService = new Mock<IAllocationChainService>();
+        var iamChainService = new Mock<IIamChainService>();
         var pfsChainService = new Mock<IPfsChainService>();
 
         var databaseInfo = new DatabaseInfo
@@ -89,6 +93,7 @@ public class DatabaseServiceTests
         var databaseService = new DatabaseService(databaseInfoProvider.Object,
                                                   databaseFileInfoProvider.Object,
                                                   allocationChainService.Object,
+                                                  iamChainService.Object,
                                                   pfsChainService.Object);
 
         var result = await databaseService.Load("TestDatabase");
@@ -114,6 +119,7 @@ public class DatabaseServiceTests
         var databaseInfoProvider = new Mock<IDatabaseInfoProvider>();
         var databaseFileInfoProvider = new Mock<IDatabaseFileInfoProvider>();
         var allocationChainService = new Mock<IAllocationChainService>();
+        var iamChainService = new Mock<IIamChainService>();
         var pfsChainService = new Mock<IPfsChainService>();
 
         var databaseInfo = new DatabaseInfo
@@ -142,6 +148,7 @@ public class DatabaseServiceTests
         var databaseService = new DatabaseService(databaseInfoProvider.Object,
                                                   databaseFileInfoProvider.Object,
                                                   allocationChainService.Object,
+                                                  iamChainService.Object,
                                                   pfsChainService.Object);
 
         var result = await databaseService.Load("TestDatabase");

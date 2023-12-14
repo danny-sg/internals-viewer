@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Allocation;
 
 namespace InternalsViewer.Internals.Pages;
 
@@ -11,6 +11,11 @@ namespace InternalsViewer.Internals.Pages;
 /// </summary>
 public class PfsPage : Page
 {
+    /// <summary>
+    /// Interval between PFS pages = 8088 bytes/pages (1 byte = 1 pfs entry)
+    /// </summary>
+    public const int PfsInterval = 8088;
+
     /// <summary>
     /// Gets or sets the PFS bytes collection.
     /// </summary>

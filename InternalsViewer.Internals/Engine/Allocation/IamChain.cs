@@ -1,6 +1,7 @@
-﻿using System.Linq;
+﻿using InternalsViewer.Internals.Pages;
+using System.Linq;
 
-namespace InternalsViewer.Internals.Engine.Database;
+namespace InternalsViewer.Internals.Engine.Allocation;
 
 /// <summary>
 /// IAM (Index Allocation Map) Structure
@@ -40,13 +41,13 @@ public class IamChain : AllocationChain
     {
         var page = Pages.FirstOrDefault(p => p.StartPage.FileId == fileId &&
                                              extent >= p.StartPage.PageId / 8 &&
-                                             extent <= (p.StartPage.PageId + Database.AllocationInterval) / 8);
+                                             extent <= (p.StartPage.PageId + AllocationPage.AllocationInterval * 8) / 8);
 
         if (page == null)
         {
             return false;
         }
 
-        return page.AllocationMap[extent - page.StartPage.PageId / 8];
+        return page.AllocationMap[extent - page.StartPage.Extent];
     }
 }

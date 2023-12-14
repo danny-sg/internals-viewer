@@ -22,7 +22,7 @@ public partial class FileInformationControl : UserControl
 
         base.Dock = DockStyle.Bottom;
         databaseFileBindingSource.DataSource = fileInfo;
-        spaceUsed = ((100F / fileInfo.TotalExtents) * fileInfo.UsedExtents / 100);
+        spaceUsed = ((100F / fileInfo.TotalPages) * fileInfo.UsedPages / 100);
     }
 
     private void SpaceUsedPanel_Paint(object sender, PaintEventArgs e)
