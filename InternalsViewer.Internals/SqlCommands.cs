@@ -35,9 +35,9 @@ FROM   sys.all_objects o
 ORDER BY is_ms_shipped desc, s.name asc , o.name asc";
 
     public static readonly string BufferPool =
-@"SELECT file_id
-      ,page_id
-      ,is_modified
+@"SELECT CONVERT(SMALLINT, file_id) AS FileId
+      ,page_id                    AS PageId
+      ,is_modified                AS IsModified
 FROM   sys.dm_os_buffer_descriptors WITH (NOLOCK)
 WHERE  database_id = DB_ID(@DatabaseName)";
 
@@ -92,30 +92,21 @@ ORDER BY partition_number";
 
     public static readonly string FileSize = @"SELECT size FROM sys.database_files WHERE file_id = @FileId";
 
-    public static readonly string Files = 
-@"CREATE TABLE #FileStats
-            (file_id int
-            ,filegroup int  
-            ,total_extents int
-            ,used_extents int 
-            ,name sysname
-            ,file_name nchar(520))
-INSERT #FileStats EXEC ('dbcc showfilestats')
-		
-SELECT df.file_id
-      ,df.type
-      ,fg.name as filegroup_name
-      ,df.name
-      ,physical_name
-      ,size
-      ,total_extents
-      ,used_extents
-FROM   sys.database_files df
-       INNER JOIN sys.filegroups fg ON df.data_space_id = fg.data_space_id
-       INNER JOIN #FileStats fs ON df.file_id = fs.file_id
-WHERE  df.type = 0
-
-DROP TABLE #FileStats";
+    public static readonly string Files =
+@"
+SELECT f.file_id                        AS FileId
+      ,f.file_guid                      AS FileGuid
+      ,fg.name                          AS FileGroupName
+      ,f.name                           AS [Name]
+      ,f.physical_name                  AS PhysicalName
+      ,f.size                           AS FileSize
+      ,su.total_page_count              AS TotalPageCount
+      ,su.allocated_extent_page_count   AS AllocatedExtentPageCount
+      ,su.unallocated_extent_page_count AS UnallocatedExtentPageCount
+FROM   sys.database_files f
+       INNER JOIN sys.dm_db_file_space_usage su ON f.file_id = su.file_id
+       INNER JOIN sys.filegroups fg ON f.data_space_id = fg.data_space_id
+WHERE  f.type = 0";
 
     public static readonly string IndexColumns = @"-- The reason this is necessary is that the key columns are in sys.system_internals_partition_columns
 -- but there doesn''''t seem to be a link to which column they are. 

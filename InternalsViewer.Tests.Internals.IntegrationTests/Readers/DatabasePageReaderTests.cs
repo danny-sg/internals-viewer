@@ -12,11 +12,11 @@ public class DatabasePageReaderTests
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var currentConnection = new CurrentConnection(connectionString, "AdventureWorks2022");
+        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
 
-        var reader = new DatabasePageReader(currentConnection);
+        var reader = new DatabasePageReader(connection);
 
-        var result = await reader.Read(currentConnection.DatabaseName, new PageAddress(1, 1));
+        var result = await reader.Read(connection.DatabaseName, new PageAddress(1, 1));
 
         Assert.NotNull(result.Data);
     }

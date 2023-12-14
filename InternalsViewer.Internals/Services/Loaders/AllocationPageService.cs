@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Pages;
 
@@ -39,6 +40,7 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
     /// </summary>
     private void LoadAllocationMap(AllocationPage page)
     {
+        //TODO: Check 8000 bytes is correct
         var allocationData = new byte[8000];
 
         switch (page.Header.PageType)
@@ -60,7 +62,7 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
                    AllocationPage.AllocationArrayOffset,
                    allocationData,
                    0,
-                   allocationData.Length - (page.Header.SlotCount * 2));
+                   allocationData.Length - page.Header.SlotCount * sizeof(short));
 
         var bitArray = new BitArray(allocationData);
 
@@ -79,7 +81,7 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
 
             Array.Copy(page.PageData, offset, pageAddress, 0, PageAddress.Size);
 
-            singlePageSlots.Add(new PageAddress(pageAddress));
+            singlePageSlots.Add(PageAddressParser.Parse(pageAddress));
 
             offset += PageAddress.Size;
         }
@@ -93,6 +95,6 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
 
         Array.Copy(page.PageData, AllocationPage.StartPageOffset, pageAddress, 0, PageAddress.Size);
 
-        return new PageAddress(pageAddress);
+        return PageAddressParser.Parse(pageAddress);
     }
 }

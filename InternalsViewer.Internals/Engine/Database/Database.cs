@@ -39,7 +39,7 @@ public class Database : DatabaseInfo
 
     public bool IsCompatible => CompatibilityLevel >= 90 && State == 0;
 
-    public int GetFileSize(int fileId)
+    public int GetFileSize(short fileId)
     {
         return Files.FirstOrDefault(file => file.FileId == fileId)?.Size ?? 0;
     }

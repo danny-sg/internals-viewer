@@ -25,7 +25,7 @@ public class AllocationChainService(IAllocationPageService pageService)
 {
     public IAllocationPageService PageService { get; } = pageService;
 
-    public async Task<AllocationChain> LoadChain(Database database, int fileId, PageType pageType)
+    public async Task<AllocationChain> LoadChain(Database database, short fileId, PageType pageType)
     {
         int startPage = pageType switch
         {

@@ -13,7 +13,7 @@ public class StructureInfoProviderTests
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var connection = new CurrentConnection(connectionString, "AdventureWorks2022");
+        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
 
         var provider = new StructureInfoProvider(connection);
 

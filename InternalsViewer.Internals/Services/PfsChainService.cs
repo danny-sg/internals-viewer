@@ -13,7 +13,7 @@ public class PfsChainService(IPfsPageService pageService) : IPfsChainService
 {
     public IPfsPageService PageService { get; set; } = pageService;
 
-    public async Task<PfsChain> LoadChain(Database database, int fileId)
+    public async Task<PfsChain> LoadChain(Database database, short fileId)
     {
         var pfsCount = (int)Math.Ceiling(database.GetFileSize(fileId) / (decimal)Database.PfsInterval);
 

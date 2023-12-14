@@ -6,7 +6,6 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Renderers;
 
 #pragma warning disable CA1416
@@ -593,7 +592,7 @@ public class AllocationMap : Panel, IDisposable
             {
                 var pageId = i + (WindowPosition * 8);
 
-                pfsRenderer.DrawPfsPage(e.Graphics, PagePosition(i), Pfs.GetPagePfsByte(pageId));
+                pfsRenderer.DrawPfsPage(e.Graphics, PagePosition(i), Pfs.GetPagePfsStatus(pageId));
             }
         }
     }
@@ -612,7 +611,7 @@ public class AllocationMap : Panel, IDisposable
     /// Gets or sets the file id.
     /// </summary>
     /// <value>The file id.</value>
-    public int FileId { get; set; }
+    public short FileId { get; set; }
 
     /// <summary>
     /// Gets or sets the map layers.
@@ -750,7 +749,7 @@ public class AllocationMap : Panel, IDisposable
     /// </summary>
     public string HoldingMessage { get; set; }
 
-    public Pfs Pfs { get; set; }
+    public PfsChain Pfs { get; set; }
 
     void IDisposable.Dispose()
     {

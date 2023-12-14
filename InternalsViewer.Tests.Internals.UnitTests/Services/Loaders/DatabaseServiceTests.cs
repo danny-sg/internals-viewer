@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
@@ -84,7 +83,7 @@ public class DatabaseServiceTests
         databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
             .ReturnsAsync(databaseInfo);
 
-        allocationChainService.Setup(a => a.LoadChain(It.IsAny<Database>(), It.IsAny<int>(), It.IsAny<PageType>()))
+        allocationChainService.Setup(a => a.LoadChain(It.IsAny<Database>(), It.IsAny<short>(), It.IsAny<PageType>()))
             .ReturnsAsync(new AllocationChain());
 
         var databaseService = new DatabaseService(databaseInfoProvider.Object,
@@ -137,7 +136,7 @@ public class DatabaseServiceTests
         databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
             .ReturnsAsync(databaseInfo);
 
-        pfsChainService.Setup(a => a.LoadChain(It.IsAny<Database>(), It.IsAny<int>()))
+        pfsChainService.Setup(a => a.LoadChain(It.IsAny<Database>(), It.IsAny<short>()))
             .ReturnsAsync(new PfsChain());
 
         var databaseService = new DatabaseService(databaseInfoProvider.Object,

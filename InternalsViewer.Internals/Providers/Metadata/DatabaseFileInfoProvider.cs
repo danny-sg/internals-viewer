@@ -28,16 +28,16 @@ public class DatabaseFileInfoProvider(CurrentConnection connection)
 
         while (await reader.ReadAsync())
         {
-            var fileId = reader.GetFieldValue<int>("file_id");
+            var fileId = (short)reader.GetFieldValue<int>("FileId");
 
             var file = new DatabaseFile(fileId);
 
-            file.FileGroup = reader.GetFieldValue<string>("filegroup_name");
-            file.Name = reader.GetFieldValue<string>("name");
-            file.PhysicalName = reader.GetFieldValue<string>("physical_name");
-            file.Size = reader.GetFieldValue<int>("size");
-            file.TotalExtents = reader.GetFieldValue<int>("total_extents");
-            file.UsedExtents = reader.GetFieldValue<int>("used_extents");
+            file.FileGroup = reader.GetFieldValue<string>("FileGroupName");
+            file.Name = reader.GetFieldValue<string>("Name");
+            file.PhysicalName = reader.GetFieldValue<string>("PhysicalName");
+            file.Size = reader.GetFieldValue<int>("FileSize");
+            file.TotalPages = reader.GetFieldValue<long>("TotalPageCount");
+            file.UsedPages = reader.GetFieldValue<long>("AllocatedExtentPageCount");
 
             files.Add(file);
         }
@@ -45,7 +45,7 @@ public class DatabaseFileInfoProvider(CurrentConnection connection)
         return files;
     }
 
-    public async Task<int> GetFileSize(int fileId)
+    public async Task<int> GetFileSize(short fileId)
     {
         var result = await GetScalar<int>(SqlCommands.FileSize,
                                           new[] { new SqlParameter("@FileId", fileId) });

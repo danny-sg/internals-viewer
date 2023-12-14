@@ -12,7 +12,7 @@ public class DatabaseInfoProviderTests
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var connection = new CurrentConnection(connectionString, "master");
+        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "master" };
 
         var databaseInfoProvider = new DatabaseInfoProvider(connection);
 
@@ -50,7 +50,7 @@ public class DatabaseInfoProviderTests
         var first = allocationUnits.First();
 
         Assert.True(first.ObjectId > 0);
-        Assert.NotEqual(new PageAddress(new byte[8]), first.FirstIamPage);
+        Assert.NotEqual(new PageAddress(0,0), first.FirstIamPage);
         Assert.NotEmpty(first.SchemaName);
         Assert.NotEmpty(first.TableName);
         Assert.True(first.IsSystem);

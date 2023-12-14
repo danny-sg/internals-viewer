@@ -9,6 +9,7 @@ using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob;
 using InternalsViewer.Internals.Engine.Records.Compressed;
@@ -18,9 +19,6 @@ using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Metadata;
-using InternalsViewer.Internals.Readers.Pages;
-using InternalsViewer.Internals.Services.Loaders;
-using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.TransactionLog;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Renderers;
@@ -141,7 +139,7 @@ public partial class PageViewerWindow : UserControl
 
             ConnectionString = connectionString;
 
-            var connection = new CurrentConnection(ConnectionString, builder.InitialCatalog);
+            var connection = new CurrentConnection();
 
 
             var databaseInfoProvider = new DatabaseInfoProvider(connection);
@@ -167,7 +165,7 @@ public partial class PageViewerWindow : UserControl
     /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
     private void PageTextBox_MouseClick(object sender, MouseEventArgs e)
     {
-        LoadPage(ConnectionString, PageAddress.Parse((sender as TextBox).Text));
+        LoadPage(ConnectionString, PageAddressParser.Parse((sender as TextBox).Text));
     }
 
     /// <summary>
@@ -343,7 +341,7 @@ public partial class PageViewerWindow : UserControl
         {
             try
             {
-                LoadPage(ConnectionString, PageAddress.Parse(pageToolStripTextBox.Text));
+                LoadPage(ConnectionString, PageAddressParser.Parse(pageToolStripTextBox.Text));
             }
             catch (Exception ex)
             {

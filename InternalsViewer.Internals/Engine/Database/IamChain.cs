@@ -36,7 +36,7 @@ public class IamChain : AllocationChain
     /// <summary>
     /// Check is a specific extent is allocated
     /// </summary>
-    public override bool IsAllocated(int extent, int fileId)
+    public override bool IsAllocated(int extent, short fileId)
     {
         var page = Pages.FirstOrDefault(p => p.StartPage.FileId == fileId &&
                                              extent >= p.StartPage.PageId / 8 &&

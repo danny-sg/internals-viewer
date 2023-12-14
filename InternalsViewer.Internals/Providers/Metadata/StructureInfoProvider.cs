@@ -3,6 +3,7 @@ using System.Data;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Metadata;
 using Microsoft.Data.SqlClient;
@@ -106,10 +107,10 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
 
         while (await reader.ReadAsync())
         {
-            var firstIam = new PageAddress(reader.GetFieldValue<byte[]>("first_iam_page"));
+            var firstIam = PageAddressParser.Parse(reader.GetFieldValue<byte[]>("first_iam_page"));
 
-            var rootPage = new PageAddress(reader.GetFieldValue<byte[]>("root_page"));
-            var firstPage = new PageAddress(reader.GetFieldValue<byte[]>("first_page"));
+            var rootPage = PageAddressParser.Parse(reader.GetFieldValue<byte[]>("root_page"));
+            var firstPage = PageAddressParser.Parse(reader.GetFieldValue<byte[]>("first_page"));
 
             var partitionNumber = reader.GetInt32("partition_number");
 

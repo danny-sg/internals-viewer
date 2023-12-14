@@ -27,7 +27,7 @@ public struct RowIdentifier
         SlotId = slot;
     }
 
-    public RowIdentifier(int fileId, int pageId, int slot)
+    public RowIdentifier(short fileId, int pageId, int slot)
     {
         PageAddress = new PageAddress(fileId, pageId);
         SlotId = slot;
@@ -50,7 +50,7 @@ public struct RowIdentifier
             throw new ArgumentException("Invalid format");
         }
 
-        var parsed = true & int.TryParse(splitAddress[0], out var fileId);
+        var parsed = true & short.TryParse(splitAddress[0], out var fileId);
         parsed &= int.TryParse(splitAddress[1], out var pageId);
 
         if (splitAddress.Length > 2)

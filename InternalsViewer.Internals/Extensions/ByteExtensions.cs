@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Pages;
-using System.Collections;
+﻿using System.Collections;
 using System.Text;
 
 namespace InternalsViewer.Internals.Extensions;

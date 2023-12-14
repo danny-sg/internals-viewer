@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Readers.Headers;
@@ -30,12 +31,12 @@ public class KeyValueHeaderParser
         parsed &= int.TryParse(GetValue("m_xactReserved"), out var xactReservedCount);
         parsed &= long.TryParse(GetValue("m_tornBits"), out var tornBits);
 
-        result.PageAddress = new PageAddress(GetValue("m_pageId"));
+        result.PageAddress = PageAddressParser.Parse(GetValue("m_pageId"));
         result.PageType = (PageType)pageType;
         result.Lsn = new LogSequenceNumber(GetValue("m_lsn"));
         result.FlagBits = GetValue("m_flagBits");
-        result.PreviousPage = new PageAddress(GetValue("m_prevPage"));
-        result.NextPage = new PageAddress(GetValue("m_nextPage"));
+        result.PreviousPage = PageAddressParser.Parse(GetValue("m_prevPage"));
+        result.NextPage = PageAddressParser.Parse(GetValue("m_nextPage"));
 
         result.SlotCount = slotCount;
         result.FreeCount = freeCount;

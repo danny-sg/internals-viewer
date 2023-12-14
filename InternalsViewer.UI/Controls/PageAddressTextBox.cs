@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.UI.Properties;
 
 #pragma warning disable CA1416
@@ -120,27 +121,27 @@ public class PageAddressTextBox : ToolStripTextBox
 
     void CopyCommandToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        Clipboard.SetText(PageAddress.Parse(Text).ToString());
+        Clipboard.SetText(PageAddressParser.Parse(Text).ToString());
     }
 
     private void Option0ToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        CopyDbccPageToClipboard(0, PageAddress.Parse(Text));
+        CopyDbccPageToClipboard(0, PageAddressParser.Parse(Text));
     }
 
     private void Option1ToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        CopyDbccPageToClipboard(1, PageAddress.Parse(Text));
+        CopyDbccPageToClipboard(1, PageAddressParser.Parse(Text));
     }
 
     private void Option2ToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        CopyDbccPageToClipboard(2, PageAddress.Parse(Text));
+        CopyDbccPageToClipboard(2, PageAddressParser.Parse(Text));
     }
 
     private void Option3ToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        CopyDbccPageToClipboard(3, PageAddress.Parse(Text));
+        CopyDbccPageToClipboard(3, PageAddressParser.Parse(Text));
     }
 
     public void CopyDbccPageToClipboard(int option, PageAddress address)

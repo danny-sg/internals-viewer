@@ -5,7 +5,6 @@ using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Pages;
 
 #pragma warning disable CA1416
 
@@ -329,7 +328,7 @@ public partial class AllocationContainer : UserControl
         }
     }
 
-    internal Dictionary<int, Pfs> Pfs
+    internal Dictionary<int, PfsChain> Pfs
     {
         set
         {
@@ -342,7 +341,7 @@ public partial class AllocationContainer : UserControl
 
     internal PfsByte PagePfsByte(PageAddress pageAddress)
     {
-        return AllocationMaps[pageAddress.FileId].Pfs.GetPagePfsByte(pageAddress.PageId);
+        return AllocationMaps[pageAddress.FileId].Pfs.GetPagePfsStatus(pageAddress.PageId);
     }
 
     /// <summary>

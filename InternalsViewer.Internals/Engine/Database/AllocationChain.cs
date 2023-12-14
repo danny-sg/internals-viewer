@@ -12,7 +12,7 @@ public class AllocationChain
     /// <summary>
     /// Check if a specific extent is allocated
     /// </summary>
-    public virtual bool IsAllocated(int extent, int fileId)
+    public virtual bool IsAllocated(int extent, short fileId)
     {
         return Pages[extent * 8 / Database.AllocationInterval].AllocationMap[extent % (Database.AllocationInterval / 8 + 1)];
     }
@@ -20,7 +20,7 @@ public class AllocationChain
     /// <summary>
     /// Checks the allocation status or an extent
     /// </summary>
-    public static bool CheckAllocationStatus(int targetExtent, int fileId, bool invert, AllocationChain chain)
+    public static bool CheckAllocationStatus(int targetExtent, short fileId, bool invert, AllocationChain chain)
     {
         return (!invert
                 && chain.IsAllocated(targetExtent, fileId)
@@ -37,7 +37,7 @@ public class AllocationChain
 
     public List<PageAddress> SinglePageSlots { get; set; } = new();
 
-    public int FileId { get; set; }
+    public short FileId { get; set; }
 
     /// <summary>
     /// Determines if the Allocation spans multiple files

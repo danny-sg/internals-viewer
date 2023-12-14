@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using InternalsViewer.Internals.Providers;
+﻿using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Tests.Internals.IntegrationTests.Helpers;
 
@@ -16,7 +11,7 @@ public class DatabaseFileInfoProviderTests
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var connection = new CurrentConnection(connectionString, "AdventureWorks2022");
+        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
 
         var databaseFileInfoProvider = new DatabaseFileInfoProvider(connection);
 
@@ -31,10 +26,10 @@ public class DatabaseFileInfoProviderTests
         Assert.Equal(1, file.FileId);
         Assert.Equal("AdventureWorks2022.mdf", file.FileName);
         Assert.Equal("C:\\Program Files\\Microsoft SQL Server\\MSSQL16.MSSQLSERVER\\MSSQL\\DATA\\AdventureWorks2022.mdf", file.PhysicalName);
-        
+
         Assert.True(file.Size > 1);
-        Assert.True(file.TotalExtents > 0);
-        Assert.True(file.UsedExtents > 0);
+        Assert.True(file.TotalPages > 0);
+        Assert.True(file.UsedPages > 0);
         Assert.True(file.TotalMb > 1);
         Assert.True(file.TotalPages > 1);
         Assert.True(file.UsedPages > 0);
@@ -45,7 +40,7 @@ public class DatabaseFileInfoProviderTests
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var connection = new CurrentConnection(connectionString, "AdventureWorks2022");
+        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
 
         var databaseFileInfoProvider = new DatabaseFileInfoProvider(connection);
 

@@ -24,7 +24,7 @@ internal class FullMapRenderer
     /// <param name="fileId">The file id.</param>
     /// <param name="fileSize">Size of the file.</param>
     /// <returns></returns>
-    public static Bitmap RenderMapLayers(BackgroundWorker worker, List<AllocationLayer> mapLayers, Rectangle rect, int fileId, int fileSize)
+    public static Bitmap RenderMapLayers(BackgroundWorker worker, List<AllocationLayer> mapLayers, Rectangle rect, short fileId, int fileSize)
     {
         var stopWatch = new Stopwatch();
 

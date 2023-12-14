@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Metadata;
@@ -55,7 +56,7 @@ internal class IndexRecordLoader : RecordLoader
 
         Array.Copy(record.Page.PageData, downPagePointerOffset, address, 0, PageAddress.Size);
 
-        record.DownPagePointer = new PageAddress(address);
+        record.DownPagePointer = PageAddressParser.Parse(address);
 
         record.MarkDataStructure("DownPagePointer", downPagePointerOffset, PageAddress.Size);
     }

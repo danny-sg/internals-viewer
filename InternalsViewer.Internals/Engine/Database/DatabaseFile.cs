@@ -1,34 +1,25 @@
 ﻿
 namespace InternalsViewer.Internals.Engine.Database;
 
-public class DatabaseFile(int fileId)
+public class DatabaseFile(short fileId)
 {
-    public int TotalExtents { get; set; }
+    public long TotalPages { get; set; }
 
-    public int TotalPages => TotalExtents * 8;
+    public long UsedPages { get; set; }
 
-    public int UsedPages => UsedExtents * 8;
+    public float TotalMb => TotalPages * 512 / 1024F;
 
-    public int UsedExtents { get; set; }
+    public float UsedMb => UsedPages * 512 / 1024F;
 
-    public float TotalMb => ((TotalExtents * 64) / 1024F);
+    public short FileId { get; set; } = fileId;
 
-    public float UsedMb => ((UsedExtents * 64) / 1024F);
+    public string FileGroup { get; set; } = string.Empty;
 
-    public int FileId { get; set; } = fileId;
+    public string Name { get; set; } = string.Empty;
 
-    public string FileGroup { get; set; }
-
-    public string Name { get; set; }
-
-    public string PhysicalName { get; set; }
+    public string PhysicalName { get; set; } = string.Empty;
 
     public string FileName => PhysicalName[(PhysicalName.LastIndexOf('\\') + 1)..];
 
     public int Size { get; set; }
-
-    //public void RefreshSize()
-    //{
-    //    Size = Database.GetSize(this);
-    //}
 }

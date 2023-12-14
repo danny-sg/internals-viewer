@@ -31,9 +31,9 @@ public class AllocationLayer
     private bool useDefaultSinglePageColour;
     private bool visible = true;
     private string indexName = string.Empty;
-    private int usedPages;
+    private long usedPages;
     private IndexTypes indexType;
-    private int totalPages;
+    private long totalPages;
     private string objectName;
 
     /// <summary>
@@ -49,7 +49,7 @@ public class AllocationLayer
     /// <param name="page">The allocation.</param>
     public AllocationLayer(AllocationChain page)
     {
-        allocations.Add(page);
+        Allocations.Add(page);
         name = page.ToString();
     }
 
@@ -62,7 +62,7 @@ public class AllocationLayer
     public AllocationLayer(string name, AllocationChain allocationChain, Color colour)
     {
         this.name = name;
-        allocations.Add(allocationChain);
+        Allocations.Add(allocationChain);
         this.colour = colour;
     }
 
@@ -78,11 +78,11 @@ public class AllocationLayer
 
         if (page.Header.PageType == PageType.Iam)
         {
-            allocations.Add(new IamChain(page));
+            //allocations.Add(new IamChain(page));
         }
         else
         {
-            allocations.Add(new AllocationChain(page));
+           // allocations.Add(new AllocationChain(page));
         }
 
         this.colour = colour;
@@ -119,7 +119,7 @@ public class AllocationLayer
         {
             foreach (var page in layer.Allocations)
             {
-                page.Refresh();
+               // page.Refresh();
             }
         }
     }
@@ -131,9 +131,9 @@ public class AllocationLayer
     /// <param name="fileId">The file id.</param>
     /// <param name="findInverted">if set to <c>true</c> [find inverted].</param>
     /// <returns></returns>
-    public AllocationLayer FindExtent(int extent, int fileId, bool findInverted)
+    public AllocationLayer FindExtent(int extent, short fileId, bool findInverted)
     {
-        foreach (var alloc in allocations)
+        foreach (var alloc in Allocations)
         {
             if (AllocationChain.CheckAllocationStatus(extent, fileId, findInverted, alloc))
             {
@@ -154,7 +154,7 @@ public class AllocationLayer
     {
         var extentAddress = pageAddress.PageId / 8;
 
-        foreach (var alloc in allocations)
+        foreach (var alloc in Allocations)
         {
             // Check if it's the actual IAM
             if (alloc.Pages.Exists(p => p.PageAddress == pageAddress))
@@ -328,13 +328,13 @@ public class AllocationLayer
         get => indexType;
         set => indexType = value;
     }
-    public int UsedPages
+    public long UsedPages
     {
         get => usedPages;
         set => usedPages = value;
     }
 
-    public int TotalPages
+    public long TotalPages
     {
         get => totalPages;
         set => totalPages = value;

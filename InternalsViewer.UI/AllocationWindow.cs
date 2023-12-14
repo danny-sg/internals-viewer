@@ -7,6 +7,8 @@ using System.Windows.Forms;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Parsers;
+using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Allocations;
 
@@ -673,7 +675,7 @@ public partial class AllocationWindow : UserControl
         {
             try
             {
-                OnViewPage(this, new PageEventArgs(new RowIdentifier(PageAddress.Parse(pageToolStripTextBox.Text), 0), e.Shift));
+                OnViewPage(this, new PageEventArgs(new RowIdentifier(PageAddressParser.Parse(pageToolStripTextBox.Text), 0), e.Shift));
             }
             catch (Exception ex)
             {

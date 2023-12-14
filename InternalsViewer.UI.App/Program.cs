@@ -1,16 +1,33 @@
+using InternalsViewer.Internals;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
 namespace InternalsViewer.UI.App;
 
 internal static class Program
 {
-    /// <summary>
-    ///  The main entry point for the application.
-    /// </summary>
+    public static IServiceProvider ServiceProvider { get; private set; } = null!;
+
     [STAThread]
-    static void Main()
+    private static void Main()
     {
-        // To customize application configuration such as set high DPI settings or default font,
-        // see https://aka.ms/applicationconfiguration.
-        ApplicationConfiguration.Initialize();
-        Application.Run(new TestForm());
+        Application.SetHighDpiMode(HighDpiMode.SystemAware);
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+
+        var host = CreateHostBuilder().Build();
+        ServiceProvider = host.Services;
+
+        Application.Run(ServiceProvider.GetRequiredService<TestForm>());
+    }
+
+    private static IHostBuilder CreateHostBuilder()
+    {
+        return Host.CreateDefaultBuilder()
+            .ConfigureServices((context, services) => {
+                
+                services.AddTransient<TestForm>();
+                services.RegisterServices();
+            });
     }
 }

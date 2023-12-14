@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.TransactionLog;
 
 #pragma warning disable CA1416
@@ -203,7 +203,7 @@ public class TransactionLogTabPage : TabPage
         if (dataGridView.Columns[e.ColumnIndex].DataPropertyName == "PageAddress" ||
             dataGridView.Columns[e.ColumnIndex].DataPropertyName == "SlotId")
         {
-            var pageAddress = PageAddress.Parse(dataGridView[3, e.RowIndex].Value.ToString());
+            var pageAddress = PageAddressParser.Parse(dataGridView[3, e.RowIndex].Value.ToString());
 
             var slot = (int)dataGridView[4, e.RowIndex].Value;
 

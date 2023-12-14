@@ -3,6 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
       <IsTestProject>true</IsTestProject>
+      <UserSecretsId>0bea6d33-89c1-4668-9645-b2d85a3b49b8</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />

@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using Microsoft.Data.SqlClient;
@@ -75,7 +76,7 @@ public class DatabaseInfoProvider(CurrentConnection connection)
 
             var firstIamPage = reader.GetFieldValue<byte[]>("first_iam_page");
 
-            allocationUnit.FirstIamPage = new(firstIamPage);
+            allocationUnit.FirstIamPage = PageAddressParser.Parse(firstIamPage);
 
             allocationUnit.SchemaName = reader.GetFieldValue<string>("schema_name");
             allocationUnit.TableName = reader.GetFieldValue<string>("table_name");

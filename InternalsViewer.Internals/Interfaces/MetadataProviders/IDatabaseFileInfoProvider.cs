@@ -8,5 +8,5 @@ public interface IDatabaseFileInfoProvider
 {
     Task<List<DatabaseFile>> GetFiles(string name);
 
-    Task<int> GetFileSize(int fileId);
+    Task<int> GetFileSize(short fileId);
 }

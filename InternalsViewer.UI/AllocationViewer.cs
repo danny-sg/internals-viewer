@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Allocations;
 using InternalsViewer.UI.Markers;
@@ -193,7 +194,7 @@ public partial class AllocationViewer : UserControl
     /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
     private void PageAddressTextBox_Click(object sender, EventArgs e)
     {
-        var pageAddress = PageAddress.Parse((sender as TextBox).Text);
+        var pageAddress = PageAddressParser.Parse((sender as TextBox).Text);
 
         OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, 0), false));
     }

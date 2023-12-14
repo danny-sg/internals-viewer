@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Markers;
 
 #pragma warning disable CA1416

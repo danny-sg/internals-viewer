@@ -30,14 +30,19 @@ public class BufferPoolInfoProvider(CurrentConnection connection): ProviderBase(
 
         while (reader.Read())
         {
+            var fileId = reader.GetInt16(0);
+            var pageId = reader.GetInt32(1);
+
+            var pageAddress = new PageAddress(fileId, pageId);
+
             if (reader.GetBoolean(2))
             {
-                dirtyPages.Add(new PageAddress(reader.GetInt32(0), reader.GetInt32(1)));
+                dirtyPages.Add(pageAddress);
             }
 
             else
             {
-                cleanPages.Add(new PageAddress(reader.GetInt32(0), reader.GetInt32(1)));
+                cleanPages.Add(pageAddress);
             }
         }
 

@@ -1,8 +1,8 @@
 ﻿namespace InternalsViewer.Internals.Providers;
 
-public class CurrentConnection(string connectionString, string databaseName)
+public class CurrentConnection
 {
-    public string ConnectionString { get; } = connectionString;
+    public string? ConnectionString { get; set; } 
 
-    public string DatabaseName { get; } = databaseName;
+    public string? DatabaseName { get; set; }
 }
