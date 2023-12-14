@@ -11,7 +11,7 @@ namespace InternalsViewer.UI.Rtf;
 
 internal class PageRtfBuilder: RtfBuilder
 {
-    public static string BuildRtf(Page targetPage, List<Marker> markers, bool colourise, int selectedOffset)
+    public static string BuildRtf(Page? targetPage, List<Marker> markers, bool colourise, int selectedOffset)
     {
         var standardColours = new[]
         {
@@ -20,7 +20,10 @@ internal class PageRtfBuilder: RtfBuilder
 
         var markerStyles = new MarkStyleProvider().Styles.Values;
 
-        var rtfColours = standardColours.Union(markerStyles.Select(s => s.BackColour)).Union(markerStyles.Select(s => s.ForeColour)).Distinct().ToList();
+        var rtfColours = standardColours.Union(markerStyles.Select(s => s.BackColour))
+                                        .Union(markerStyles.Select(s => s.ForeColour))
+                                        .Distinct()
+                                        .ToList();
 
         var rtfHeader = CreateHeader(rtfColours);
 

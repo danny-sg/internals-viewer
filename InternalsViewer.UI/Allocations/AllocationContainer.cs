@@ -21,15 +21,12 @@ public partial class AllocationContainer : UserControl
     private MapMode mode;
     private bool showFileInformation;
 
-    public event EventHandler<PageEventArgs> PageClicked;
-    public event EventHandler<PageEventArgs> PageOver;
-    public event EventHandler RangeSelected;
+    public event EventHandler<PageEventArgs>? PageClicked;
+    public event EventHandler<PageEventArgs>? PageOver;
+    public event EventHandler? RangeSelected;
 
     public Database? CurrentDatabase { get; set; }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AllocationContainer"/> class.
-    /// </summary>
     public AllocationContainer()
     {
         InitializeComponent();
@@ -41,10 +38,6 @@ public partial class AllocationContainer : UserControl
         SetStyle(ControlStyles.DoubleBuffer, true);
     }
 
-    /// <summary>
-    /// Creates the allocation maps.
-    /// </summary>
-    /// <param name="files">The database files.</param>
     public void CreateAllocationMaps(List<DatabaseFile> files)
     {
         SuspendLayout();
@@ -185,7 +178,7 @@ public partial class AllocationContainer : UserControl
         }
     }
 
-    protected void AllocationContainer_Paint(object sender, PaintEventArgs e)
+    protected void AllocationContainer_Paint(object? sender, PaintEventArgs e)
     {
         if (AllocationMaps.Count == 0)
         {
@@ -215,17 +208,17 @@ public partial class AllocationContainer : UserControl
         return allocationMap;
     }
 
-    private void AllocationMap_RangeSelected(object sender, EventArgs e)
+    private void AllocationMap_RangeSelected(object? sender, EventArgs e)
     {
         RangeSelected?.Invoke(this, e);
     }
 
-    private void AllocationMap_PageOver(object sender, PageEventArgs e)
+    private void AllocationMap_PageOver(object? sender, PageEventArgs e)
     {
         PageOver?.Invoke(this, e);
     }
 
-    private void AllocationMap_PageClicked(object sender, PageEventArgs e)
+    private void AllocationMap_PageClicked(object? sender, PageEventArgs e)
     {
         PageClicked?.Invoke(this, e);
     }
@@ -270,9 +263,9 @@ public partial class AllocationContainer : UserControl
         }
     }
 
-    internal PfsByte PagePfsByte(PageAddress pageAddress)
+    internal PfsByte? PagePfsByte(PageAddress pageAddress)
     {
-        return AllocationMaps[pageAddress.FileId].Pfs.GetPagePfsStatus(pageAddress.PageId);
+        return AllocationMaps[pageAddress.FileId].Pfs?.GetPagePfsStatus(pageAddress.PageId);
     }
 
     public List<AllocationLayer> AllocationLayers { get; } = new();

@@ -13,7 +13,7 @@ namespace InternalsViewer.UI;
 
 public partial class DecodeWindow : UserControl
 {
-    private PageViewerWindow parentWindow;
+    private PageViewerWindow? parentWindow;
 
     public DecodeWindow()
     {
@@ -21,16 +21,12 @@ public partial class DecodeWindow : UserControl
 
         dataTypeComboBox.SelectedIndex = 0;
 
-        //rtfColours = RtfColour.CreateColourTable();
-        //rtfHeader = RtfColour.CreateRtfHeader(rtfColours);
     }
 
     /// <summary>
     /// Handles the TextChanged event of the FindTextBox control.
     /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
-    private void FindTextBox_TextChanged(object sender, EventArgs e)
+    private void FindTextBox_TextChanged(object? sender, EventArgs e)
     {
         EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem?.ToString());
     }
@@ -38,7 +34,7 @@ public partial class DecodeWindow : UserControl
     /// <summary>
     /// Encodes the text to a given data type
     /// </summary>
-    private void EncodeText(string text, string dataType)
+    private void EncodeText(string text, string? dataType)
     {
         keyTextBox.Text = string.Empty;
         hexTextBox.ForeColor = Color.Black;
@@ -272,14 +268,14 @@ public partial class DecodeWindow : UserControl
         EncodeText(findTextBox.Text, dataTypeComboBox.SelectedItem?.ToString());
     }
 
-    public PageViewerWindow ParentWindow
+    public PageViewerWindow? ParentWindow
     {
         get => parentWindow;
         set
         {
             parentWindow = value;
 
-            Debug.Print("Parent Window set to " + parentWindow.Page.PageAddress);
+            Debug.Print("Parent Window set to " + parentWindow?.Page?.PageAddress);
 
             if (parentWindow == null)
             {
@@ -292,7 +288,7 @@ public partial class DecodeWindow : UserControl
         }
     }
 
-    void ParentWindow_Disposed(object sender, EventArgs e)
+    void ParentWindow_Disposed(object? sender, EventArgs e)
     {
         findButton.Enabled = false;
     }
@@ -301,7 +297,7 @@ public partial class DecodeWindow : UserControl
     {
         if (ParentWindow != null)
         {
-            parentWindow.FindNext(hexTextBox.Text.Replace(" ", string.Empty));
+            ParentWindow.FindNext(hexTextBox.Text.Replace(" ", string.Empty));
         }
         else
         {

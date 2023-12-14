@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -18,13 +17,7 @@ internal class FullMapRenderer
     /// <summary>
     /// Renders the map layers and returns a bitmap
     /// </summary>
-    /// <param name="worker">The worker.</param>
-    /// <param name="mapLayers">The map layers.</param>
-    /// <param name="rect">The rect.</param>
-    /// <param name="fileId">The file id.</param>
-    /// <param name="fileSize">Size of the file.</param>
-    /// <returns></returns>
-    public static Bitmap RenderMapLayers(BackgroundWorker worker, List<AllocationLayer> mapLayers, Rectangle rect, short fileId, int fileSize)
+    public static Bitmap RenderMapLayers(List<AllocationLayer> mapLayers, Rectangle rect, short fileId, int fileSize)
     {
         var stopWatch = new Stopwatch();
 
@@ -78,11 +71,8 @@ internal class FullMapRenderer
     }
 
     /// <summary>
-    /// Gets the file rectange for the file bitmap
+    /// Gets the file rectangle for the file bitmap
     /// </summary>
-    /// <param name="rect">The rect.</param>
-    /// <param name="fileSize">Size of the file.</param>
-    /// <returns></returns>
     private static Rectangle GetFileRectangle(Rectangle rect, int fileSize)
     {
         // The image is later stretched as extents are 8 pages wide
@@ -100,20 +90,15 @@ internal class FullMapRenderer
     /// <summary>
     /// Writes the allocation bytes directly to the bitmap data
     /// </summary>
-    /// <param name="bitmap">The bitmap.</param>
-    /// <param name="allocation">The allocation structure.</param>
-    /// <param name="startPage">The start page.</param>
-    /// <param name="fileSize">Size of the file.</param>
-    /// <param name="colour">The layer colour.</param>
     private static void AddAllocationToBitmap(Bitmap bitmap, bool[] allocation, PageAddress startPage, int fileSize, Color colour)
     {
         var startExtent = startPage.PageId / 8;
 
-        var bytesPerExtent = 3; // R, G, B bytes
+        const int bytesPerExtent = 3; // R, G, B bytes
 
         var bitmapData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),
-            ImageLockMode.ReadWrite,
-            bitmap.PixelFormat);
+                                         ImageLockMode.ReadWrite,
+                                         bitmap.PixelFormat);
 
         var ptr = bitmapData.Scan0;
 

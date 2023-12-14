@@ -7,7 +7,7 @@ using System.Windows.Forms;
 
 namespace InternalsViewer.UI.Controls;
 
-public class KeyImageCell : DataGridViewImageCell
+public sealed class KeyImageCell : DataGridViewImageCell
 {
     public KeyImageCell()
     {
@@ -16,12 +16,12 @@ public class KeyImageCell : DataGridViewImageCell
 
     public override object DefaultNewRowValue => 0;
 
-    protected override object GetFormattedValue(object value,
-        int rowIndex,
-        ref DataGridViewCellStyle cellStyle,
-        TypeConverter valueTypeConverter,
-        TypeConverter formattedValueTypeConverter,
-        DataGridViewDataErrorContexts context)
+    protected override object? GetFormattedValue(object value,
+                                                 int rowIndex,
+                                                 ref DataGridViewCellStyle cellStyle,
+                                                 TypeConverter valueTypeConverter,
+                                                 TypeConverter formattedValueTypeConverter,
+                                                 DataGridViewDataErrorContexts context)
     {
         if (value != DBNull.Value)
         {

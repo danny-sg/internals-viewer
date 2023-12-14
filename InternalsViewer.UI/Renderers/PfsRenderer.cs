@@ -19,16 +19,20 @@ internal class PfsRenderer : IDisposable
 
     private readonly Color backColour;
     private readonly Color borderColour = Color.DarkGray;
-    private Pen borderPen;
+    
     private bool displayAllocationText;
-    private Pen pageBorderPen;
     private readonly Rectangle pageRectangle;
-    private LinearGradientBrush pfsAllocatedBrush;
-    private Font pfsFont;
-    private Brush pfsGhostBrush;
-    private Brush pfsIamBrush;
-    private Brush pfsMixedBrush;
-    private LinearGradientBrush pfsSpaceBrush;
+    
+    private Font? pfsFont;
+
+    private Pen? borderPen;
+    private Pen? pageBorderPen;
+
+    private Brush? pfsGhostBrush;
+    private Brush? pfsIamBrush;
+    private Brush? pfsMixedBrush;
+    private LinearGradientBrush? pfsAllocatedBrush;
+    private LinearGradientBrush? pfsSpaceBrush;
 
     public PfsRenderer(Rectangle pageRectangle, Color backgroundColour)
     {
@@ -42,6 +46,7 @@ internal class PfsRenderer : IDisposable
         this.pageRectangle = pageRectangle;
         backColour = backgroundColour;
         this.borderColour = borderColour;
+
         CreateBrushesAndPens();
     }
 
@@ -52,15 +57,16 @@ internal class PfsRenderer : IDisposable
         pfsMixedBrush = new SolidBrush(MixedColor);
 
         pfsAllocatedBrush = new LinearGradientBrush(pageRectangle,
-            AllocatedColour,
-            backColour,
-            LinearGradientMode.ForwardDiagonal);
+                                                    AllocatedColour,
+                                                    backColour,
+                                                    LinearGradientMode.ForwardDiagonal);
+
         pfsAllocatedBrush.WrapMode = WrapMode.TileFlipX;
 
         pfsSpaceBrush = new LinearGradientBrush(pageRectangle,
-            ExtentColour.LightBackgroundColour(SpaceColour),
-            SpaceColour,
-            LinearGradientMode.Vertical);
+                                                ExtentColour.LightBackgroundColour(SpaceColour),
+                                                SpaceColour,
+                                                LinearGradientMode.Vertical);
 
         pageBorderPen = new Pen(borderColour);
         borderPen = new Pen(Color.Gainsboro);
@@ -77,29 +83,29 @@ internal class PfsRenderer : IDisposable
 
         var indLen = (rect.Height / 3);
 
-        var pfsRect = new Rectangle(rect.X, rect.Y, rect.Width, indLen);
+        var pfsRect = rect with { Height = indLen };
         var iamRect = new Rectangle(rect.X + 1, rect.Y + pfsRect.Height, indLen, indLen);
         var mixedRect = new Rectangle(rect.X + 1 + iamRect.Width, rect.Y + pfsRect.Height, indLen, indLen);
         var ghostRect = new Rectangle(rect.X + 1 + iamRect.Width * 2, rect.Y + pfsRect.Height, indLen, indLen);
-        var spaceRect = new Rectangle(rect.X, mixedRect.Y + mixedRect.Height + 1, rect.Width, indLen + 1);
+        var spaceRect = rect with { Y = mixedRect.Y + mixedRect.Height + 1, Height = indLen + 1 };
 
         if (pfsByte.Allocated)
         {
-            g.FillRectangle(pfsAllocatedBrush, pfsRect);
+            g.FillRectangle(pfsAllocatedBrush!, pfsRect);
         }
         if (pfsByte.Iam)
         {
-            g.FillRectangle(pfsIamBrush, iamRect);
+            g.FillRectangle(pfsIamBrush!, iamRect);
         }
 
         if (pfsByte.Mixed)
         {
-            g.FillRectangle(pfsMixedBrush, mixedRect);
+            g.FillRectangle(pfsMixedBrush!, mixedRect);
         }
 
         if (pfsByte.GhostRecords)
         {
-            g.FillRectangle(pfsGhostBrush, ghostRect);
+            g.FillRectangle(pfsGhostBrush!, ghostRect);
         }
 
         switch (pfsByte.PageSpaceFree)
@@ -135,7 +141,7 @@ internal class PfsRenderer : IDisposable
                 break;
         }
 
-        g.FillRectangle(pfsSpaceBrush, new Rectangle(spaceRect.X, spaceRect.Y, spaceUsedWidth, spaceRect.Height));
+        g.FillRectangle(pfsSpaceBrush!, spaceRect with { Width = spaceUsedWidth });
 
         if (displayAllocationText)
         {
@@ -147,10 +153,10 @@ internal class PfsRenderer : IDisposable
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
-        g.DrawRectangle(borderPen, iamRect);
-        g.DrawRectangle(borderPen, mixedRect);
-        g.DrawRectangle(borderPen, ghostRect);
-        g.DrawRectangle(pageBorderPen, rect);
+        g.DrawRectangle(borderPen!, iamRect);
+        g.DrawRectangle(borderPen!, mixedRect);
+        g.DrawRectangle(borderPen!, ghostRect);
+        g.DrawRectangle(pageBorderPen!, rect);
     }
 
     public Bitmap PfsBitmap(PfsByte pfsByte)
@@ -171,9 +177,9 @@ internal class PfsRenderer : IDisposable
         var g = Graphics.FromImage(key);
 
         var brush = new LinearGradientBrush(keyRectangle,
-            color,
-            ExtentColour.BackgroundColour(color),
-            LinearGradientMode.Horizontal);
+                                            color,
+                                            ExtentColour.BackgroundColour(color),
+                                            LinearGradientMode.Horizontal);
 
         g.FillRectangle(brush, keyRectangle);
         g.DrawRectangle(SystemPens.ControlDark, keyRectangle);
@@ -183,26 +189,26 @@ internal class PfsRenderer : IDisposable
 
     internal void ResizePage(int width, int height)
     {
-        var sx = pfsAllocatedBrush.Rectangle.Height / height;
-        var sy = pfsAllocatedBrush.Rectangle.Width / width;
+        var sx = pfsAllocatedBrush!.Rectangle.Height / height;
+        var sy = pfsAllocatedBrush!.Rectangle.Width / width;
 
         pfsAllocatedBrush.ResetTransform();
         pfsAllocatedBrush.ScaleTransform(sx, sy);
 
-        pfsSpaceBrush.ResetTransform();
-        pfsSpaceBrush.ScaleTransform(sx, sy);
+        pfsSpaceBrush!.ResetTransform();
+        pfsSpaceBrush!.ScaleTransform(sx, sy);
 
         displayAllocationText = (TextRenderer.MeasureText("%", pfsFont).Height < height / 2);
     }
 
     void IDisposable.Dispose()
     {
-        pfsIamBrush.Dispose();
-        pfsMixedBrush.Dispose();
-        pfsGhostBrush.Dispose();
-        pfsAllocatedBrush.Dispose();
-        pfsSpaceBrush.Dispose();
-        borderPen.Dispose();
-        pageBorderPen.Dispose();
+        pfsIamBrush?.Dispose();
+        pfsMixedBrush?.Dispose();
+        pfsGhostBrush?.Dispose();
+        pfsAllocatedBrush?.Dispose();
+        pfsSpaceBrush?.Dispose();
+        borderPen?.Dispose();
+        pageBorderPen?.Dispose();
     }
 }

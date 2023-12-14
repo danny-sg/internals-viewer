@@ -11,19 +11,22 @@ namespace InternalsViewer.UI.Renderers;
 /// <summary>
 /// Renders extents and pages
 /// </summary>
-internal class PageExtentRenderer : IDisposable
+internal sealed class PageExtentRenderer : IDisposable
 {
-    private readonly Color backgroundColour;
-    private readonly Color unusedColour;
-    private Pen borderPen;
-    private LinearGradientBrush extentPageBrush;
+    public Color BackgroundColour { get; }
+
+    public Color UnusedColour { get; }
+    
+    public Pen? BorderPen { get; private set; }
+    
+    public LinearGradientBrush? ExtentPageBrush { get; private set; }
 
     /// <summary>
     /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
     /// </summary>
     public void Dispose()
     {
-        extentPageBrush.Dispose();
+        ExtentPageBrush?.Dispose();
     }
 
     /// <summary>
@@ -33,8 +36,8 @@ internal class PageExtentRenderer : IDisposable
     /// <param name="unusedColour">The unused colour.</param>
     internal PageExtentRenderer(Color backgroundColour, Color unusedColour)
     {
-        this.backgroundColour = backgroundColour;
-        this.unusedColour = unusedColour;
+        BackgroundColour = backgroundColour;
+        UnusedColour = unusedColour;
     }
 
     /// <summary>
@@ -47,12 +50,13 @@ internal class PageExtentRenderer : IDisposable
     /// <param name="minLsn">The min LSN.</param>
     internal static void DrawLsnMapPage(Graphics g, Rectangle rect, decimal lsn, decimal maxLsn, decimal minLsn)
     {
-        var h = 140;
+        var hueValue = 140;
+
         var step = 230F / ((float)(maxLsn - minLsn));
 
         var value = (int)(step / 1.175F * (float)lsn);
 
-        var pageColour = HsvColour.HsvToColor(h, (255 - value) % 255, value);
+        var pageColour = HsvColour.HsvToColor(hueValue, (255 - value) % 255, value);
 
         g.FillRectangle(new SolidBrush(pageColour), rect);
         g.DrawRectangle(Pens.White, rect);
@@ -66,34 +70,37 @@ internal class PageExtentRenderer : IDisposable
     {
         var gradientRect = new Rectangle(0, 0, extentSize.Width, extentSize.Height);
 
-        extentPageBrush = new LinearGradientBrush(gradientRect,
-            backgroundColour,
-            unusedColour,
-            LinearGradientMode.Horizontal);
+        ExtentPageBrush = new LinearGradientBrush(gradientRect,
+                                                  BackgroundColour,
+                                                  UnusedColour,
+                                                  LinearGradientMode.Horizontal);
 
-        borderPen = new Pen(PageBorderColour);
+        BorderPen = new Pen(PageBorderColour);
     }
 
     /// <summary>
     /// Draws an extent at a specified Rectangle size and location
     /// </summary>
-    /// <param name="g">The graphics object.</param>
-    /// <param name="rect">The rectange of the extent.</param>
     internal void DrawExtent(Graphics g, Rectangle rect)
     {
-        g.FillRectangle(extentPageBrush, rect);
+        if(ExtentPageBrush == null || BorderPen== null)
+        {
+            return;
+        }
+
+        g.FillRectangle(ExtentPageBrush, rect);
 
         if (DrawBorder)
         {
-            g.DrawRectangle(borderPen, rect);
+            g.DrawRectangle(BorderPen, rect);
 
             for (var j = 1; j < 9; j++)
             {
-                g.DrawLine(borderPen,
-                    rect.X + (j * rect.Width / 8),
-                    rect.Y,
-                    (rect.X + j * rect.Width / 8),
-                    rect.Y + rect.Height);
+                g.DrawLine(BorderPen,
+                           rect.X + (j * rect.Width / 8),
+                           rect.Y,
+                           (rect.X + j * rect.Width / 8),
+                           rect.Y + rect.Height);
             }
         }
     }
@@ -106,11 +113,16 @@ internal class PageExtentRenderer : IDisposable
     /// <param name="layerType">Type of the layer.</param>
     internal void DrawPage(Graphics g, Rectangle rect, AllocationLayerType layerType)
     {
+        if (ExtentPageBrush == null || BorderPen == null)
+        {
+            return;
+        }
+
         switch (layerType)
         {
             case AllocationLayerType.Standard:
 
-                g.FillRectangle(extentPageBrush, rect);
+                g.FillRectangle(ExtentPageBrush, rect);
                 break;
 
             case AllocationLayerType.TopLeftCorner:
@@ -124,13 +136,13 @@ internal class PageExtentRenderer : IDisposable
 
                 g.SmoothingMode = SmoothingMode.AntiAlias;
 
-                g.FillPath(extentPageBrush, path);
+                g.FillPath(ExtentPageBrush, path);
                 break;
         }
 
         if (DrawBorder)
         {
-            g.DrawRectangle(borderPen, rect);
+            g.DrawRectangle(BorderPen, rect);
         }
     }
 
@@ -143,14 +155,14 @@ internal class PageExtentRenderer : IDisposable
     /// <param name="extentsVertical">The extents vertical.</param>
     /// <param name="extentsRemaining">The extents remaining.</param>
     internal void DrawBackgroundExtents(PaintEventArgs e,
-        Size extentSize,
-        int extentsHorizontal,
-        int extentsVertical,
-        int extentsRemaining)
+                                        Size extentSize,
+                                        int extentsHorizontal,
+                                        int extentsVertical,
+                                        int extentsRemaining)
     {
         ResizeExtentBrush(extentSize);
 
-        SetExtentBrushColour(backgroundColour, unusedColour);
+        SetExtentBrushColour(BackgroundColour, UnusedColour);
 
         for (var i = 0; i < extentsHorizontal; i++)
         {
@@ -171,13 +183,13 @@ internal class PageExtentRenderer : IDisposable
                     extentsVertical * extentSize.Height);
             }
 
-            e.Graphics.FillRectangle(extentPageBrush, rect);
+            e.Graphics.FillRectangle(ExtentPageBrush!, rect);
 
             for (var j = 0; j <= 8; j++)
             {
                 if (i < extentsRemaining)
                 {
-                    e.Graphics.DrawLine(borderPen,
+                    e.Graphics.DrawLine(BorderPen!,
                         j * (extentSize.Width / 8) + (extentSize.Width * i),
                         0,
                         j * (extentSize.Width / 8) + (extentSize.Width * i),
@@ -185,7 +197,7 @@ internal class PageExtentRenderer : IDisposable
                 }
                 else
                 {
-                    e.Graphics.DrawLine(borderPen,
+                    e.Graphics.DrawLine(BorderPen!,
                         j * (extentSize.Width / 8) + (extentSize.Width * i),
                         0,
                         j * (extentSize.Width / 8) + (extentSize.Width * i),
@@ -195,7 +207,7 @@ internal class PageExtentRenderer : IDisposable
 
             for (var k = 0; k < extentsVertical + 1; k++)
             {
-                e.Graphics.DrawLine(borderPen,
+                e.Graphics.DrawLine(BorderPen!,
                     0,
                     k * extentSize.Height,
                     extentSize.Width * extentsHorizontal,
@@ -215,11 +227,11 @@ internal class PageExtentRenderer : IDisposable
 
         if (DrawBorder)
         {
-            g.DrawRectangle(borderPen, rect);
+            g.DrawRectangle(BorderPen!, rect);
 
             for (var j = 1; j < 9; j++)
             {
-                g.DrawLine(borderPen,
+                g.DrawLine(BorderPen!,
                     rect.X + (j * rect.Width / 8),
                     rect.Y,
                     (rect.X + j * rect.Width / 8),
@@ -231,13 +243,11 @@ internal class PageExtentRenderer : IDisposable
     /// <summary>
     /// Sets the extent brush colour.
     /// </summary>
-    /// <param name="foreColour">The fore colour.</param>
-    /// <param name="backColour">The back colour.</param>
     internal void SetExtentBrushColour(Color foreColour, Color backColour)
     {
-        if (extentPageBrush.LinearColors[0] != foreColour || extentPageBrush.LinearColors[1] != backColour)
+        if (ExtentPageBrush!.LinearColors[0] != foreColour || ExtentPageBrush.LinearColors[1] != backColour)
         {
-            extentPageBrush.LinearColors = new Color[2] { foreColour, backColour };
+            ExtentPageBrush.LinearColors = new Color[2] { foreColour, backColour };
         }
     }
 
@@ -247,9 +257,9 @@ internal class PageExtentRenderer : IDisposable
     /// <param name="extentSize">Size of the extent.</param>
     internal void ResizeExtentBrush(Size extentSize)
     {
-        extentPageBrush.ResetTransform();
-        extentPageBrush.ScaleTransform(extentSize.Height / extentPageBrush.Rectangle.Height,
-            extentSize.Width / extentPageBrush.Rectangle.Width,
+        ExtentPageBrush!.ResetTransform();
+        ExtentPageBrush!.ScaleTransform(extentSize.Height / ExtentPageBrush.Rectangle.Height,
+            extentSize.Width / ExtentPageBrush.Rectangle.Width,
             MatrixOrder.Append);
     }
 
@@ -259,9 +269,9 @@ internal class PageExtentRenderer : IDisposable
     /// <param name="pageSize">Size of the page.</param>
     internal void ResizePageBrush(Size pageSize)
     {
-        extentPageBrush.ResetTransform();
-        extentPageBrush.ScaleTransform((pageSize.Width / extentPageBrush.Rectangle.Width) / 8,
-            (pageSize.Width / extentPageBrush.Rectangle.Width) / 8,
+        ExtentPageBrush!.ResetTransform();
+        ExtentPageBrush!.ScaleTransform((pageSize.Width / ExtentPageBrush.Rectangle.Width) / 8,
+            (pageSize.Width / ExtentPageBrush.Rectangle.Width) / 8,
             MatrixOrder.Append);
     }
 

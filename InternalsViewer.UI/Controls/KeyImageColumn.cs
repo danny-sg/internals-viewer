@@ -5,7 +5,7 @@ using System.Windows.Forms;
 
 namespace InternalsViewer.UI.Controls;
 
-public class KeyImageColumn : DataGridViewImageColumn
+public sealed class KeyImageColumn : DataGridViewImageColumn
 {
     public KeyImageColumn()
     {

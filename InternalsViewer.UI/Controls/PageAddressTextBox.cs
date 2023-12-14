@@ -9,15 +9,16 @@ using InternalsViewer.UI.Properties;
 
 namespace InternalsViewer.UI.Controls;
 
-public class PageAddressTextBox : ToolStripTextBox
+public sealed class PageAddressTextBox : ToolStripTextBox
 {
-    private ToolStripMenuItem copyCommandToolStripMenuItem;
-    private ToolStripMenuItem copyToolStripMenuItem;
-    private ToolStripMenuItem option0HeaderOnlyToolStripMenuItem;
-    private ToolStripMenuItem option1ToolStripMenuItem;
-    private ToolStripMenuItem option2DataDumpToolStripMenuItem;
-    private ToolStripMenuItem option3RowIntepretationToolStripMenuItem;
-    private ContextMenuStrip pageAddressContextMenuStrip;
+    private ToolStripMenuItem? copyCommandToolStripMenuItem;
+    private ToolStripMenuItem? copyToolStripMenuItem;
+    private ToolStripMenuItem? option0HeaderOnlyToolStripMenuItem;
+    private ToolStripMenuItem? option1ToolStripMenuItem;
+    private ToolStripMenuItem? option2DataDumpToolStripMenuItem;
+    private ToolStripMenuItem? option3RowInterpretationToolStripMenuItem;
+
+    private ContextMenuStrip? pageAddressContextMenuStrip;
 
     private readonly string blankText = "(File Id:Page Id)";
     private readonly Color blankColour = Color.Gray;
@@ -39,7 +40,7 @@ public class PageAddressTextBox : ToolStripTextBox
         PageAddressTextBox_LostFocus(null, EventArgs.Empty);
     }
 
-    void PageAddressTextBox_TextChanged(object sender, EventArgs e)
+    private void PageAddressTextBox_TextChanged(object? sender, EventArgs e)
     {
         if (!Text.Equals(blankText))
         {
@@ -47,7 +48,7 @@ public class PageAddressTextBox : ToolStripTextBox
         }
     }
 
-    void PageAddressTextBox_LostFocus(object sender, EventArgs e)
+    private void PageAddressTextBox_LostFocus(object? sender, EventArgs e)
     {
         if (string.IsNullOrEmpty(Text) | Text.Equals(blankText))
         {
@@ -60,7 +61,7 @@ public class PageAddressTextBox : ToolStripTextBox
         }
     }
 
-    void PageAddressTextBox_GotFocus(object sender, EventArgs e)
+    private void PageAddressTextBox_GotFocus(object? sender, EventArgs e)
     {
         if (Text.Equals(blankText))
         {
@@ -78,13 +79,14 @@ public class PageAddressTextBox : ToolStripTextBox
         option0HeaderOnlyToolStripMenuItem = new ToolStripMenuItem();
         option1ToolStripMenuItem = new ToolStripMenuItem();
         option2DataDumpToolStripMenuItem = new ToolStripMenuItem();
-        option3RowIntepretationToolStripMenuItem = new ToolStripMenuItem();
+        option3RowInterpretationToolStripMenuItem = new ToolStripMenuItem();
 
         pageAddressContextMenuStrip.Items.AddRange(new ToolStripItem[]
         {
             copyToolStripMenuItem,
             copyCommandToolStripMenuItem
         });
+
         pageAddressContextMenuStrip.Size = new Size(268, 48);
 
         copyToolStripMenuItem.Size = new Size(267, 22);
@@ -95,11 +97,12 @@ public class PageAddressTextBox : ToolStripTextBox
             option0HeaderOnlyToolStripMenuItem,
             option1ToolStripMenuItem,
             option2DataDumpToolStripMenuItem,
-            option3RowIntepretationToolStripMenuItem
+            option3RowInterpretationToolStripMenuItem
         });
         copyCommandToolStripMenuItem.Size = new Size(267, 22);
         copyCommandToolStripMenuItem.Text = "Copy DBCC PAGE command to Clipboard";
         copyCommandToolStripMenuItem.Click += CopyCommandToolStripMenuItem_Click;
+        
         option0HeaderOnlyToolStripMenuItem.Size = new Size(211, 22);
         option0HeaderOnlyToolStripMenuItem.Text = "Option 0 - Header Only";
         option0HeaderOnlyToolStripMenuItem.Click += Option0ToolStripMenuItem_Click;
@@ -112,34 +115,34 @@ public class PageAddressTextBox : ToolStripTextBox
         option2DataDumpToolStripMenuItem.Text = "Option 2 - Data Dump";
         option2DataDumpToolStripMenuItem.Click += Option2ToolStripMenuItem_Click;
 
-        option3RowIntepretationToolStripMenuItem.Size = new Size(211, 22);
-        option3RowIntepretationToolStripMenuItem.Text = "Option 3 - Row intepretation";
-        option3RowIntepretationToolStripMenuItem.Click += Option3ToolStripMenuItem_Click;
+        option3RowInterpretationToolStripMenuItem.Size = new Size(211, 22);
+        option3RowInterpretationToolStripMenuItem.Text = "Option 3 - Row intepretation";
+        option3RowInterpretationToolStripMenuItem.Click += Option3ToolStripMenuItem_Click;
 
         TextBox.ContextMenuStrip = pageAddressContextMenuStrip;
     }
 
-    void CopyCommandToolStripMenuItem_Click(object sender, EventArgs e)
+    void CopyCommandToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         Clipboard.SetText(PageAddressParser.Parse(Text).ToString());
     }
 
-    private void Option0ToolStripMenuItem_Click(object sender, EventArgs e)
+    private void Option0ToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         CopyDbccPageToClipboard(0, PageAddressParser.Parse(Text));
     }
 
-    private void Option1ToolStripMenuItem_Click(object sender, EventArgs e)
+    private void Option1ToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         CopyDbccPageToClipboard(1, PageAddressParser.Parse(Text));
     }
 
-    private void Option2ToolStripMenuItem_Click(object sender, EventArgs e)
+    private void Option2ToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         CopyDbccPageToClipboard(2, PageAddressParser.Parse(Text));
     }
 
-    private void Option3ToolStripMenuItem_Click(object sender, EventArgs e)
+    private void Option3ToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         CopyDbccPageToClipboard(3, PageAddressParser.Parse(Text));
     }

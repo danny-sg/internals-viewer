@@ -12,10 +12,10 @@ namespace InternalsViewer.UI.Controls;
 
 public partial class MarkerKeyTable : UserControl
 {
-    private bool loading;
-    public event EventHandler SelectionChanged;
-    public event EventHandler SelectionClicked;
-    public event EventHandler<PageEventArgs> PageNavigated;
+    public bool IsLoading { get; private set; }
+    public event EventHandler? SelectionChanged;
+    public event EventHandler? SelectionClicked;
+    public event EventHandler<PageEventArgs>? PageNavigated;
 
     public MarkerKeyTable()
     {
@@ -23,27 +23,24 @@ public partial class MarkerKeyTable : UserControl
         markerBindingSource.CurrentChanged += MarkerBindingSource_CurrentChanged;
     }
 
-    private void MarkerBindingSource_CurrentChanged(object sender, EventArgs e)
+    private void MarkerBindingSource_CurrentChanged(object? sender, EventArgs e)
     {
-        if (!loading)
+        if (!IsLoading)
         {
             OnSelectedMarkerChanged(sender, e);
         }
     }
 
-    internal virtual void OnSelectedMarkerChanged(object sender, EventArgs e)
+    internal virtual void OnSelectedMarkerChanged(object? sender, EventArgs e)
     {
-        if (SelectionChanged != null)
-        {
-            SelectionChanged(sender, e);
-        }
+        SelectionChanged?.Invoke(sender, e);
     }
 
     public void SetMarkers(List<Marker> markers)
     {
-        loading = true;
+        IsLoading = true;
         markerBindingSource.DataSource = markers;
-        loading = false;
+        IsLoading = false;
     }
 
     public void ClearMarkers()
@@ -55,7 +52,7 @@ public partial class MarkerKeyTable : UserControl
     {
         try
         {
-            if (e.ColumnIndex == 0 && e.CellStyle != null)
+            if (e is { ColumnIndex: 0, CellStyle: not null })
             {
                 markersDataGridView.Rows[e.RowIndex].SetValues("00");
 
@@ -87,12 +84,15 @@ public partial class MarkerKeyTable : UserControl
             {
                 if ((bool)markersDataGridView.Rows[e.RowIndex].Cells["IsNullColumn"].Value)
                 {
-                    e.CellStyle.ForeColor = Color.White;
-                    e.CellStyle.SelectionForeColor = Color.White;
+                    if (e.CellStyle != null)
+                    {
+                        e.CellStyle.ForeColor = Color.White;
+                        e.CellStyle.SelectionForeColor = Color.White;
+                    }
                 }
             }
 
-            if (e.ColumnIndex == markersDataGridView.Columns["valueDataGridViewTextboxColumn"].Index)
+            if (e.ColumnIndex == markersDataGridView.Columns["valueDataGridViewTextboxColumn"]?.Index)
             {
                 if ((MarkerType)markersDataGridView.Rows[e.RowIndex].Cells["DataTypeColumn"].Value ==
                     MarkerType.PageAddress)
@@ -129,7 +129,7 @@ public partial class MarkerKeyTable : UserControl
                     var pageEvent =
                         new PageEventArgs(
                             RowIdentifier.Parse(
-                                markersDataGridView.Rows[e.RowIndex].Cells["valueDataGridViewTextBoxColumn"].Value.
+                                markersDataGridView.Rows[e.RowIndex].Cells["valueDataGridViewTextBoxColumn"].Value?.
                                     ToString()), false);
 
                     temp(this, pageEvent);
@@ -137,8 +137,7 @@ public partial class MarkerKeyTable : UserControl
             }
             else
             {
-                if (SelectionClicked != null)
-                    SelectionClicked(sender, e);
+                SelectionClicked?.Invoke(sender, e);
             }
         }
     }

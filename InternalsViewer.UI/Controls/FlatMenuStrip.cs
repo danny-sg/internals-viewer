@@ -7,9 +7,9 @@ namespace InternalsViewer.UI.Controls;
 /// <summary>
 /// Menu Strip without the rounded corners
 /// </summary>
-internal class FlatMenuStrip : ToolStrip
+internal sealed class FlatMenuStrip : ToolStrip
 {
-    private ToolStripProfessionalRenderer renderer;
+    private ToolStripProfessionalRenderer? renderer;
 
     public FlatMenuStrip()
     {
@@ -26,14 +26,12 @@ internal class FlatMenuStrip : ToolStrip
     /// </summary>
     private void SetRenderer()
     {
-        if ((Renderer is ToolStripProfessionalRenderer) && (Renderer != renderer))
+        if (Renderer is ToolStripProfessionalRenderer && Renderer != renderer)
         {
-            if (renderer == null)
+            renderer ??= new ToolStripProfessionalRenderer
             {
-                renderer = new ToolStripProfessionalRenderer();
-
-                renderer.RoundedEdges = false;
-            }
+                RoundedEdges = false
+            };
 
             Renderer = renderer;
         }

@@ -20,6 +20,7 @@ internal class DateTimeRtfBuilder : RtfBuilder
         sb.Append(RtfTag(rtfColours, Color.Blue.Name, backColour.Name));
         sb.Append(time);
         sb.Append("} ");
+
         sb.Append(RtfTag(rtfColours, Color.Green.Name, backColour.Name));
         sb.Append(date);
         sb.Append("}");

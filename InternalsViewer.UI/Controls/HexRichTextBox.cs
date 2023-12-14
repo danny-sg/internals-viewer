@@ -20,7 +20,7 @@ internal class HexRichTextBox : RichTextBox
 
     protected override void WndProc(ref Message m)
     {
-        if (m.Msg == 0xF)
+        if (m.Msg == 0xF) // WM_PAINT
         {
             base.WndProc(ref m);
             var graphic = CreateGraphics();
@@ -59,11 +59,9 @@ internal class HexRichTextBox : RichTextBox
 
         var blockPen = new Pen(block.Colour.Value);
 
-        int lines;
-
         if (startPos.Y != endPos.Y)
         {
-            lines = ((endPos.Y - startPos.Y) / TextSize.Height);
+            var lines = ((endPos.Y - startPos.Y) / TextSize.Height);
 
             Rectangle top;
 
@@ -74,20 +72,20 @@ internal class HexRichTextBox : RichTextBox
             else
             {
                 top = new Rectangle(startPos.X - 2,
-                    startPos.Y,
-                    3 + TextLineSize.Width - startPos.X,
-                    TextSize.Height);
+                                    startPos.Y,
+                                    3 + TextLineSize.Width - startPos.X,
+                                    TextSize.Height);
             }
 
             var middle = new Rectangle(topPos.X - 2,
-                startPos.Y + TextSize.Height,
-                3 + TextLineSize.Width - topPos.X,
-                TextSize.Height * (lines - 1));
+                                       startPos.Y + TextSize.Height,
+                                       3 + TextLineSize.Width - topPos.X,
+                                       TextSize.Height * (lines - 1));
 
             var bottom = new Rectangle(topPos.X - 2,
-                endPos.Y,
-                endPos.X,
-                TextSize.Height);
+                                       endPos.Y,
+                                       endPos.X,
+                                       TextSize.Height);
 
             var path = new GraphicsPath();
 
@@ -106,17 +104,17 @@ internal class HexRichTextBox : RichTextBox
             {
                 //Blank out top-bottom line
                 graphics.DrawLine(Pens.White,
-                    top.X + 1,
-                    startPos.Y + TextLineSize.Height,
-                    TextLineSize.Width - 3,
-                    startPos.Y + TextLineSize.Height);
+                                  top.X + 1,
+                                  startPos.Y + TextLineSize.Height,
+                                  TextLineSize.Width - 3,
+                                  startPos.Y + TextLineSize.Height);
 
                 //Blank out middle-bottom line
                 graphics.DrawLine(Pens.White,
-                    1,
-                    endPos.Y,
-                    endPos.X + TextSize.Width - 4,
-                    endPos.Y);
+                                  1,
+                                  endPos.Y,
+                                  endPos.X + TextSize.Width - 4,
+                                  endPos.Y);
             }
             else
             {
@@ -124,30 +122,28 @@ internal class HexRichTextBox : RichTextBox
                 {
                     //Blank out start<end line
                     graphics.DrawLine(Pens.White,
-                        startPos.X - 1,
-                        startPos.Y + TextLineSize.Height,
-                        endPos.X + TextSize.Width - 4,
-                        startPos.Y + TextLineSize.Height);
+                                      startPos.X - 1,
+                                      startPos.Y + TextLineSize.Height,
+                                      endPos.X + TextSize.Width - 4,
+                                      startPos.Y + TextLineSize.Height);
                 }
                 else if (endPos.X + TextSize.Width != startPos.X)
                 {
                     //Blank out start>end line
                     graphics.DrawLine(Pens.White,
-                        startPos.X - 4,
-                        startPos.Y + TextLineSize.Height,
-                        endPos.X + TextSize.Width - 1,
-                        startPos.Y + TextLineSize.Height);
+                                      startPos.X - 4,
+                                      startPos.Y + TextLineSize.Height,
+                                      endPos.X + TextSize.Width - 1,
+                                      startPos.Y + TextLineSize.Height);
                 }
             }
         }
         else
         {
-            lines = 1;
-
             var textRectangle = new Rectangle(startPos.X < 3 ? 0 : startPos.X - 2,
-                startPos.Y,
-                (endPos.X - startPos.X + TextSize.Width - 2) % TextLineSize.Width,
-                lines * TextSize.Height);
+                                              startPos.Y,
+                                              (endPos.X - startPos.X + TextSize.Width - 2) % TextLineSize.Width,
+                                              TextSize.Height);
 
             graphics.DrawRectangle(blockPen, textRectangle);
         }

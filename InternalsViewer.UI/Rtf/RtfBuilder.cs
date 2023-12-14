@@ -78,12 +78,9 @@ internal abstract class RtfBuilder
         sb.Append(FontTable);
         sb.AppendLine(ColourTable);
 
-        if (rtfColours != null)
+        foreach (var c in rtfColours)
         {
-            foreach (var c in rtfColours)
-            {
-                sb.AppendFormat(ColourTableEntry, c.R, c.G, c.B);
-            }
+            sb.AppendFormat(ColourTableEntry, c.R, c.G, c.B);
         }
 
         sb.AppendLine(@"}");
@@ -110,7 +107,9 @@ internal abstract class RtfBuilder
                              backColourIndex);
     }
 
-    protected static (int ForeColourIndex, int BackColourIndex) GetColourIndexes(List<Color> rtfColours, string foreColour, string backColour)
+    protected static (int ForeColourIndex, int BackColourIndex) GetColourIndexes(List<Color> rtfColours,
+                                                                                 string foreColour, 
+                                                                                 string backColour)
     {
         var foreColourIndex = rtfColours.FindIndex(col => col.Name == foreColour);
 

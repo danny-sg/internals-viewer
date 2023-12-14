@@ -24,10 +24,10 @@ public class AllocationLayer
     {
     }
 
-    public AllocationLayer(AllocationChain page)
+    public AllocationLayer(AllocationChain allocation)
     {
-        Allocations.Add(page);
-        Name = page.ToString();
+        Allocations.Add(allocation);
+        Name = allocation.ToString();
     }
 
     public AllocationLayer(string name, AllocationChain allocationChain, Color colour)
@@ -37,12 +37,6 @@ public class AllocationLayer
         this.colour = colour;
     }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AllocationLayer"/> class.
-    /// </summary>
-    /// <param name="name">The name.</param>
-    /// <param name="page">The page.</param>
-    /// <param name="colour">The colour of the layer.</param>
     public AllocationLayer(string name, AllocationPage page, Color colour)
     {
         Name = name;
@@ -126,8 +120,7 @@ public class AllocationLayer
 
     public bool IsTransparent { get; set; }
 
-    public AllocationLayerType LayerType
-    { get; set; }
+    public AllocationLayerType LayerType { get; set; }
 
     public Color Colour
     {
@@ -164,7 +157,7 @@ public class AllocationLayer
 
     public int Transparency { get; set; }
 
-    public string IndexName { get; set; }
+    public string IndexName { get; set; } = string.Empty;
 
     public IndexTypes IndexType { get; set; }
 
@@ -172,5 +165,5 @@ public class AllocationLayer
 
     public long TotalPages { get; set; }
 
-    public string ObjectName { get; set; }
+    public string ObjectName { get; set; } = string.Empty;
 }

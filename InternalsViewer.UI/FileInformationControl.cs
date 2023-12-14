@@ -28,13 +28,13 @@ public partial class FileInformationControl : UserControl
     private void SpaceUsedPanel_Paint(object sender, PaintEventArgs e)
     {
         var pfsSpaceBrush = new LinearGradientBrush(spaceUsedPanel.ClientRectangle,
-            ExtentColour.LightBackgroundColour(spaceColour),
-            spaceColour,
-            LinearGradientMode.Vertical);
+                                                    ExtentColour.LightBackgroundColour(spaceColour),
+                                                    spaceColour,
+                                                    LinearGradientMode.Vertical);
         e.Graphics.FillRectangle(pfsSpaceBrush,
-            new Rectangle(spaceUsedPanel.ClientRectangle.Location,
-                new Size((int)(spaceUsedPanel.Width * spaceUsed),
-                    spaceUsedPanel.Height)));
+                                  new Rectangle(spaceUsedPanel.ClientRectangle.Location,
+                                      new Size((int)(spaceUsedPanel.Width * spaceUsed),
+                                          spaceUsedPanel.Height)));
 
         ControlPaint.DrawBorder(e.Graphics, spaceUsedPanel.ClientRectangle, Color.DarkGray, ButtonBorderStyle.Solid);
     }

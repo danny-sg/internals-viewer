@@ -2,13 +2,14 @@
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Windows.Forms;
 
 #pragma warning disable CA1416
 
 namespace InternalsViewer.UI.Controls;
 
-public class BarCell : DataGridViewImageCell
+public sealed class BarCell : DataGridViewImageCell
 {
     public BarCell()
     {
@@ -18,52 +19,49 @@ public class BarCell : DataGridViewImageCell
     public override object DefaultNewRowValue => 0;
 
     protected override object GetFormattedValue(object value,
-        int rowIndex,
-        ref DataGridViewCellStyle cellStyle,
-        TypeConverter valueTypeConverter,
-        TypeConverter formattedValueTypeConverter,
-        DataGridViewDataErrorContexts context)
+                                                int rowIndex,
+                                                ref DataGridViewCellStyle cellStyle,
+                                                TypeConverter valueTypeConverter,
+                                                TypeConverter formattedValueTypeConverter,
+                                                DataGridViewDataErrorContexts context)
     {
         return new Bitmap(1, 1);
     }
 
     protected override void Paint(Graphics graphics,
-        Rectangle clipBounds,
-        Rectangle cellBounds,
-        int rowIndex,
-        DataGridViewElementStates elementState,
-        object value,
-        object formattedValue,
-        string errorText,
-        DataGridViewCellStyle cellStyle,
-        DataGridViewAdvancedBorderStyle advancedBorderStyle,
-        DataGridViewPaintParts paintParts)
+                                  Rectangle clipBounds,
+                                  Rectangle cellBounds,
+                                  int rowIndex,
+                                  DataGridViewElementStates elementState,
+                                  object? value,
+                                  object formattedValue,
+                                  string errorText,
+                                  DataGridViewCellStyle cellStyle,
+                                  DataGridViewAdvancedBorderStyle advancedBorderStyle,
+                                  DataGridViewPaintParts paintParts)
     {
         base.Paint(graphics,
-            clipBounds,
-            cellBounds,
-            rowIndex,
-            elementState,
-            value,
-            formattedValue,
-            errorText,
-            cellStyle,
-            advancedBorderStyle,
-            paintParts);
+                   clipBounds,
+                   cellBounds,
+                   rowIndex,
+                   elementState,
+                   value,
+                   formattedValue,
+                   errorText,
+                   cellStyle,
+                   advancedBorderStyle,
+                   paintParts);
 
         string cellText;
 
-        var font = new Font(DataGridView.DefaultCellStyle.Font, FontStyle.Regular);
+        var font = new Font(DataGridView!.DefaultCellStyle.Font, FontStyle.Regular);
 
         if (value != null)
         {
             Color gradientColour;
 
-            var r = (OwningColumn as BarColumn).ColourRanges.Find(delegate(ColourRange range)
-            {
-                return range.From <= Convert.ToInt32(value ?? 0)
-                       && range.To >= Convert.ToInt32(value ?? 0);
-            });
+            var r = (OwningColumn as BarColumn)?.ColourRanges.FirstOrDefault(range => range.From <= Convert.ToInt32(value ?? 0)
+                                                                             && range.To >= Convert.ToInt32(value ?? 0));
 
             if (r != null)
             {
@@ -75,21 +73,21 @@ public class BarCell : DataGridViewImageCell
             }
 
             using (var brush = new LinearGradientBrush(cellBounds,
-                       gradientColour,
-                       ExtentColour.LightBackgroundColour(gradientColour),
-                       90F,
-                       false))
+                                                       gradientColour,
+                                                       ExtentColour.LightBackgroundColour(gradientColour),
+                                                       90F,
+                                                       false))
             {
                 graphics.FillRectangle(brush,
-                    cellBounds.X + 2,
-                    cellBounds.Y + 3,
-                    (int)((cellBounds.Width - 6) * (Convert.ToDecimal(value) / 100)),
-                    cellBounds.Height - 8);
+                                       cellBounds.X + 2,
+                                       cellBounds.Y + 3,
+                                       (int)((cellBounds.Width - 6) * (Convert.ToDecimal(value) / 100)),
+                                       cellBounds.Height - 8);
             }
 
             graphics.DrawRectangle(Pens.Gray, cellBounds.X + 2, cellBounds.Y + 3, cellBounds.Width - 6, cellBounds.Height - 8);
 
-            cellText = string.Format("{0:0}%", Convert.ToDecimal(value));
+            cellText = $"{Convert.ToDecimal(value):0}%";
         }
         else
         {
@@ -98,7 +96,7 @@ public class BarCell : DataGridViewImageCell
 
         // Centre the text in the middle of the bar
         var textPoint = new Point(cellBounds.X + cellBounds.Width / 2 - (TextRenderer.MeasureText(cellText, font).Width / 2),
-            cellBounds.Y + 4);
+                                  cellBounds.Y + 4);
 
         TextRenderer.DrawText(graphics, cellText, font, textPoint, Color.Black);
     }

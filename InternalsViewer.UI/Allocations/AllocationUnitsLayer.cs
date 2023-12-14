@@ -12,34 +12,27 @@ namespace InternalsViewer.UI.Allocations;
 
 public class AllocationUnitsLayer
 {
-    private static readonly int ColourCount = 360;
-    private static readonly int UserSaturation = 150;
-    private static readonly int UserValue = 220;
+    private const int ColourCount = 360;
+    private const int UserSaturation = 150;
+    private const int UserValue = 220;
 
     /// <summary>
     /// Generates map layers by loading object's allocation structures
     /// </summary>
-    public static List<AllocationLayer> GenerateLayers(Database database, BackgroundWorker worker, bool separateIndexes, bool separateSystemObjects)
+    public static List<AllocationLayer>? GenerateLayers(Database database, 
+                                                        BackgroundWorker worker, 
+                                                        bool separateIndexes, 
+                                                        bool separateSystemObjects)
     {
         var layers = new List<AllocationLayer>();
-        AllocationLayer layer = null;
+        
+        AllocationLayer? layer = null;
+
         var colourIndex = 0;
         var count = 0;
-        var systemColourIndex = 0;
         var previousObjectName = string.Empty;
 
         var allocationUnits = database.AllocationUnits;
-
-        string filter;
-
-        if (separateIndexes)
-        {
-            filter = "allocation_unit_type=1 AND index_id < 2";
-        }
-        else
-        {
-            filter = string.Empty;
-        }
 
         var userObjectCount = allocationUnits.Where(u => !u.IsSystem).DistinctBy(t => t.TableName).Count();
 
@@ -94,8 +87,6 @@ public class AllocationUnitsLayer
                 {
                     if (layer.Name != previousObjectName)
                     {
-                        systemColourIndex += (int)Math.Floor(ColourCount / (double)systemObjectCount);
-
                         if (colourIndex >= ColourCount)
                         {
                             colourIndex = 1;
@@ -128,10 +119,7 @@ public class AllocationUnitsLayer
 
             if (address.PageId > 0)
             {
-                if (layer != null)
-                {
-                   layer.Allocations.Add(allocationUnit.IamChain);
-                }
+                layer?.Allocations.Add(allocationUnit.IamChain);
             }
 
             if (layer != null)

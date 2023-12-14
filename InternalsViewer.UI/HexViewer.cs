@@ -29,7 +29,7 @@ public partial class HexViewer : UserControl
     private string dataText;
 
     private readonly List<Marker> markers = new();
-    private Page page;
+    private Page? page;
     private readonly VisualStyleRenderer renderer;
 
     private int selectedOffset = -1;
@@ -75,7 +75,7 @@ public partial class HexViewer : UserControl
         markers.Clear();
         markers.AddRange(sourceMarkers);
 
-        DataRtf = FormatPageDetails(page);
+        DataRtf = FormatPageDetails(Page);
     }
 
     /// <summary>
@@ -90,7 +90,7 @@ public partial class HexViewer : UserControl
     /// Select a given marker
     /// </summary>
     /// <param name="marker">The marker.</param>
-    public void SelectMarker(Marker marker)
+    public void SelectMarker(Marker? marker)
     {
         if (marker == null || marker.StartPosition < 0)
         {
@@ -111,7 +111,7 @@ public partial class HexViewer : UserControl
     /// </summary>
     /// <param name="offset">The offset.</param>
     /// <returns></returns>
-    private Marker GetMarkerAtPosition(ushort offset)
+    private Marker? GetMarkerAtPosition(ushort offset)
     {
         return markers.FirstOrDefault(marker => offset >= marker.StartPosition && offset <= marker.EndPosition);
     }
@@ -121,7 +121,7 @@ public partial class HexViewer : UserControl
     /// </summary>
     private void UpdateAddressTextBox()
     {
-        if (page == null)
+        if (Page == null)
         {
             return;
         }
@@ -164,10 +164,7 @@ public partial class HexViewer : UserControl
     {
         base.Refresh();
 
-        if (null != page)
-        {
-            DataRtf = FormatPageDetails(page);
-        }
+        DataRtf = FormatPageDetails(Page);
     }
 
     /// <summary>
@@ -230,12 +227,10 @@ public partial class HexViewer : UserControl
     /// <summary>
     /// Sets the selection range.
     /// </summary>
-    /// <param name="startPos">The start pos.</param>
-    /// <param name="endPos">The end pos.</param>
-    public void SetSelection(int startPos, int endPos)
+    public void SetSelection(int startPosition, int endPosition)
     {
-        dataRichTextBox.SelectionStart = 3 * startPos;
-        dataRichTextBox.SelectionLength = 3 * (endPos - startPos + 1) - 1;
+        dataRichTextBox.SelectionStart = 3 * startPosition;
+        dataRichTextBox.SelectionLength = 3 * (endPosition - startPosition + 1) - 1;
         dataRichTextBox.ScrollToCaret();
     }
 
@@ -377,12 +372,7 @@ public partial class HexViewer : UserControl
 
         setOffsetToolStripMenuItem.Text = $"Set offset to: {offset}";
 
-        var temp = OffsetOver;
-
-        if (temp != null)
-        {
-            temp(this, new OffsetEventArgs(offset, markerDescription, foreColour, backColour));
-        }
+        OffsetOver(this, new OffsetEventArgs(offset, markerDescription, foreColour, backColour));
     }
 
     /// <summary>
@@ -495,9 +485,9 @@ public partial class HexViewer : UserControl
         {
             selectedRecord = value;
 
-            if (null != page)
+            if (null != Page)
             {
-                DataRtf = FormatPageDetails(page);
+                DataRtf = FormatPageDetails(Page);
             }
         }
     }

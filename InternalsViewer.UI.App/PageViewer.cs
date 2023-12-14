@@ -12,6 +12,11 @@ public partial class PageViewer : Form
 
     public PageViewer(IPageService pageService, Database database)
     {
+        SetStyle(ControlStyles.AllPaintingInWmPaint |
+                 ControlStyles.UserPaint |
+                 ControlStyles.DoubleBuffer,
+                 true);
+
         PageService = pageService;
         Database = database;
         InitializeComponent();

@@ -23,7 +23,6 @@ public class AllocationMap : Panel, IDisposable
     public static Size Small = new(64, 8);
 
     private readonly Color defaultPageBorderColour = Color.White;
-    private Color borderColour = Color.Gainsboro;
     private int extentsHorizontal;
     private int extentsRemaining;
     private int extentsVertical;
@@ -32,10 +31,12 @@ public class AllocationMap : Panel, IDisposable
     private MapMode mode;
     private readonly VScrollBar scrollBar;
     private int selectedPage = -1;
-    public event EventHandler<PageEventArgs> PageClicked;
-    public event EventHandler RangeSelected;
-    public event EventHandler<PageEventArgs> PageOver;
-    public event EventHandler WindowPositionChanged;
+
+    public event EventHandler<PageEventArgs>? PageClicked;
+    public event EventHandler? RangeSelected;
+    public event EventHandler<PageEventArgs>? PageOver;
+    public event EventHandler? WindowPositionChanged;
+
     private readonly PageExtentRenderer pageExtentRenderer;
     private readonly PfsRenderer pfsRenderer;
 
@@ -85,18 +86,23 @@ public class AllocationMap : Panel, IDisposable
 
         pageExtentRenderer.CreateBrushesAndPens(ExtentSize);
 
-        backgroundBrush = new LinearGradientBrush(ClientRectangle, SystemColors.Control, SystemColors.ControlLightLight, LinearGradientMode.Horizontal);
+        backgroundBrush = new LinearGradientBrush(ClientRectangle,
+                                                  SystemColors.Control,
+                                                  SystemColors.ControlLightLight,
+                                                  LinearGradientMode.Horizontal);
+
         backgroundBrush.WrapMode = WrapMode.TileFlipX;
 
         MapLayers = new List<AllocationLayer>();
     }
 
-    void AllocationMap_Resize(object sender, EventArgs e)
+    private void AllocationMap_Resize(object? sender, EventArgs e)
     {
         backgroundBrush.ResetTransform();
+
         backgroundBrush.ScaleTransform(Bounds.Height / backgroundBrush.Rectangle.Height,
-            Bounds.Width / backgroundBrush.Rectangle.Width,
-            MatrixOrder.Append);
+                                       Bounds.Width / backgroundBrush.Rectangle.Width,
+                                       MatrixOrder.Append);
     }
 
     /// <summary>
@@ -123,7 +129,6 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Draws the pages in the single page slots for the allocations the map displays
     /// </summary>
-    /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
     private void DrawSinglePages(PaintEventArgs e)
     {
         pageExtentRenderer.ResizePageBrush(ExtentSize);
@@ -173,8 +178,8 @@ public class AllocationMap : Panel, IDisposable
                             if (CheckPageVisible(page.PageAddress.PageId))
                             {
                                 pageExtentRenderer.DrawPage(e.Graphics,
-                                    PagePosition(page.PageAddress.PageId - (WindowPosition * 8)),
-                                    AllocationLayerType.Standard);
+                                                            PagePosition(page.PageAddress.PageId - (WindowPosition * 8)),
+                                                            AllocationLayerType.Standard);
                             }
                         }
                     }
@@ -186,7 +191,6 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Draws the extents for each allocation layer
     /// </summary>
-    /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
     private void DrawExtents(PaintEventArgs e)
     {
         pageExtentRenderer.ResizeExtentBrush(ExtentSize);
@@ -206,7 +210,7 @@ public class AllocationMap : Panel, IDisposable
                         if (AllocationChain.GetAllocatedStatus(targetExtent, FileId, layer.IsInverted, chain))
                         {
                             pageExtentRenderer.SetExtentBrushColour(layer.Colour,
-                                ExtentColour.BackgroundColour(layer.Colour));
+                                                                 ExtentColour.BackgroundColour(layer.Colour));
 
                             pageExtentRenderer.DrawExtent(e.Graphics, ExtentPosition(extent - WindowPosition));
                         }
@@ -219,8 +223,6 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Checks the page is visible on the map
     /// </summary>
-    /// <param name="pageId">The page Id.</param>
-    /// <returns></returns>
     private bool CheckPageVisible(int pageId)
     {
         return pageId >= (windowPosition * 8) && pageId <= ((VisibleExtents + windowPosition) * 8);
@@ -229,8 +231,6 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Get Rectangle for a particular extent
     /// </summary>
-    /// <param name="extent">The extent.</param>
-    /// <returns></returns>
     private Rectangle ExtentPosition(int extent)
     {
         if (extentsHorizontal > 1)
@@ -247,8 +247,6 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Get the position for a particular page
     /// </summary>
-    /// <param name="page">The page.</param>
-    /// <returns></returns>
     private Rectangle PagePosition(int page)
     {
         var pageWidth = extentSize.Width / 8;
@@ -267,8 +265,6 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Get the extent at a particular x and y position
     /// </summary>
-    /// <param name="x">The x co-ordinate</param>
-    /// <param name="y">The y co-ordinate</param>
     private int ExtentPosition(int x, int y)
     {
         return 1 + (y / extentSize.Height * extentsHorizontal) + (x / extentSize.Width);
@@ -277,8 +273,6 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Get the page at a particular x and y position
     /// </summary>
-    /// <param name="x">The x co-ordinate</param>
-    /// <param name="y">The y co-ordinate</param>
     private int PagePosition(int x, int y)
     {
         return (y / extentSize.Height * (extentsHorizontal * 8)) + (x / (extentSize.Width / 8));
@@ -336,12 +330,13 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Draws the selected range.
     /// </summary>
-    /// <param name="e">The <see cref="System.Windows.Forms.PaintEventArgs"/> instance containing the event data.</param>
     private void DrawSelectedRange(PaintEventArgs e)
     {
         if (SelectionStartExtent > 0)
         {
-            for (var extent = SelectionStartExtent; extent < (SelectionEndExtent < 0 ? provisionalEndExtent : SelectionEndExtent); extent++)
+            for (var extent = SelectionStartExtent;
+                 extent < (SelectionEndExtent < 0 ? provisionalEndExtent : SelectionEndExtent);
+                 extent++)
             {
                 pageExtentRenderer.DrawSelection(e.Graphics, ExtentPosition(extent));
             }
@@ -351,13 +346,11 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Handles the DoWork event of the ImageBufferBackgroundWorker control.
     /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.ComponentModel.DoWorkEventArgs"/> instance containing the event data.</param>
-    private void ImageBufferBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
+    private void ImageBufferBackgroundWorker_DoWork(object? sender, DoWorkEventArgs e)
     {
         Invalidate();
 
-        e.Result = FullMapRenderer.RenderMapLayers((BackgroundWorker)sender, MapLayers, Bounds, FileId, File.Size);
+        e.Result = FullMapRenderer.RenderMapLayers(MapLayers, Bounds, FileId, File.Size);
     }
 
     /// <summary>
@@ -365,9 +358,9 @@ public class AllocationMap : Panel, IDisposable
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">The <see cref="System.ComponentModel.RunWorkerCompletedEventArgs"/> instance containing the event data.</param>
-    private void ImageBufferBackgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+    private void ImageBufferBackgroundWorker_RunWorkerCompleted(object? sender, RunWorkerCompletedEventArgs e)
     {
-        BackgroundImage = (Bitmap)e.Result;
+        BackgroundImage = (Bitmap)e.Result!;
         BackgroundImageLayout = ImageLayout.Stretch;
 
         HoldingMessage = string.Empty;
@@ -380,18 +373,14 @@ public class AllocationMap : Panel, IDisposable
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">The <see cref="System.ComponentModel.ProgressChangedEventArgs"/> instance containing the event data.</param>
-    private void ImageBufferBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+    private void ImageBufferBackgroundWorker_ProgressChanged(object? sender, ProgressChangedEventArgs e)
     {
-        BackgroundImage = (Bitmap)e.UserState;
+        BackgroundImage = (Bitmap)e.UserState!;
         BackgroundImageLayout = ImageLayout.Stretch;
 
         Refresh();
     }
 
-    /// <summary>
-    /// Raises the <see cref="E:System.Windows.Forms.Control.Paint"/> event.
-    /// </summary>
-    /// <param name="e">A <see cref="T:System.Windows.Forms.PaintEventArgs"/> that contains the event data.</param>
     protected override void OnPaint(PaintEventArgs e)
     {
         if (imageBufferBackgroundWorker.IsBusy || Holding)
@@ -475,33 +464,21 @@ public class AllocationMap : Panel, IDisposable
             }
         }
 
-
-
         ControlPaint.DrawBorder(e.Graphics,
-            new Rectangle(0, 0, Width, Height),
-            SystemColors.ControlDark,
-            ButtonBorderStyle.Solid);
+                                new Rectangle(0, 0, Width, Height),
+                                SystemColors.ControlDark,
+                                ButtonBorderStyle.Solid);
     }
 
-    /// <summary>
-    /// Called when [window position changed].
-    /// </summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
-    internal virtual void OnWindowPositionChanged(object sender, EventArgs e)
+    internal virtual void OnWindowPositionChanged(object? sender, EventArgs e)
     {
-        if (WindowPositionChanged != null)
-        {
-            WindowPositionChanged(sender, e);
-        }
+        WindowPositionChanged?.Invoke(sender, e);
     }
 
     /// <summary>
     /// Handles the MouseClick event of the AllocationMapPanel control.
     /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
-    private void AllocationMapPanel_MouseClick(object sender, MouseEventArgs e)
+    private void AllocationMapPanel_MouseClick(object? sender, MouseEventArgs e)
     {
         if (e.Button == MouseButtons.Left)
         {
@@ -551,9 +528,7 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Handles the MouseMove event of the AllocationMapPanel control.
     /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.Windows.Forms.MouseEventArgs"/> instance containing the event data.</param>
-    private void AllocationMapPanel_MouseMove(object sender, MouseEventArgs e)
+    private void AllocationMapPanel_MouseMove(object? sender, MouseEventArgs e)
     {
         if (Mode != MapMode.Full)
         {
@@ -565,18 +540,14 @@ public class AllocationMap : Panel, IDisposable
 
                 if (page <= (ExtentCount * 8))
                 {
-                    var temp = PageOver;
-
-                    if (temp != null)
-                    {
-                        temp(this, new PageEventArgs(new PageAddress(FileId, page + StartPage.PageId), false));
-                    }
+                    PageOver?.Invoke(this, new PageEventArgs(new PageAddress(FileId, page + StartPage.PageId), false));
 
                     if (Mode == MapMode.RangeSelection)
                     {
                         if (provisionalEndExtent != newSelectedBlock)
                         {
                             provisionalEndExtent = newSelectedBlock;
+
                             Invalidate();
                         }
                     }
@@ -598,58 +569,29 @@ public class AllocationMap : Panel, IDisposable
         }
     }
 
-    /// <summary>
-    /// Handles the ValueChanged event of the ScrollBar control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
-    private void ScrollBar_ValueChanged(object sender, EventArgs e)
+    private void ScrollBar_ValueChanged(object? sender, EventArgs e)
     {
         WindowPosition = scrollBar.Value - (scrollBar.Value % extentsHorizontal);
     }
 
-    /// <summary>
-    /// Gets or sets the file id.
-    /// </summary>
-    /// <value>The file id.</value>
     public short FileId { get; set; }
 
-    /// <summary>
-    /// Gets or sets the map layers.
-    /// </summary>
-    /// <value>The map layers.</value>
     public List<AllocationLayer> MapLayers { get; set; }
 
-    /// <summary>
-    /// Gets or sets the number of visible extents.
-    /// </summary>
-    /// <value>The number visible extents.</value>
     public int VisibleExtents { get; set; }
 
-    /// <summary>
-    /// Gets or sets the border colour.
-    /// </summary>
-    /// <value>The border colour.</value>
     public Color BorderColour
     {
         get => pageExtentRenderer.PageBorderColour;
         set => pageExtentRenderer.PageBorderColour = value;
     }
 
-    /// <summary>
-    /// Gets or sets the selected page.
-    /// </summary>
-    /// <value>The selected page.</value>
     public int SelectedPage
     {
         get => selectedPage + StartPage.PageId;
         set => selectedPage = value;
     }
 
-    /// <summary>
-    /// Gets or sets the size of the extent.
-    /// </summary>
-    /// <value>The size of the extent.</value>
     public Size ExtentSize
     {
         get => extentSize;
@@ -663,16 +605,8 @@ public class AllocationMap : Panel, IDisposable
         }
     }
 
-    /// <summary>
-    /// Gets or sets the extent count.
-    /// </summary>
-    /// <value>The extent count.</value>
     public int ExtentCount { get; set; }
 
-    /// <summary>
-    /// Gets or sets the window position.
-    /// </summary>
-    /// <value>The window position.</value>
     public int WindowPosition
     {
         get => windowPosition;
@@ -689,13 +623,8 @@ public class AllocationMap : Panel, IDisposable
     /// <summary>
     /// Gets or sets a value indicating whether IAMs are included.
     /// </summary>
-    /// <value><c>true</c> if [include iam]; otherwise, <c>false</c>.</value>
     public bool IncludeIam { get; set; }
 
-    /// <summary>
-    /// Gets or sets the allocation map mode.
-    /// </summary>
-    /// <value>The allocation map mode.</value>
     public MapMode Mode
     {
         get => mode;
@@ -707,53 +636,30 @@ public class AllocationMap : Panel, IDisposable
         }
     }
 
-    /// <summary>
-    /// Gets or sets the selection start extent.
-    /// </summary>
-    /// <value>The selection start extent.</value>
     public int SelectionStartExtent { get; set; } = -1;
 
-    /// <summary>
-    /// Gets or sets the selection end extent.
-    /// </summary>
-    /// <value>The selection end extent.</value>
     public int SelectionEndExtent { get; set; } = -1;
 
-    /// <summary>
-    /// Gets or sets the start page.
-    /// </summary>
-    /// <value>The start page.</value>
     public PageAddress StartPage { get; set; } = new(1, 0);
 
-    /// <summary>
-    /// Gets or sets the file.
-    /// </summary>
-    /// <value>The file.</value>
     public DatabaseFile File { get; set; }
 
-    /// <summary>
-    /// Gets or sets if a border is drawn round the map
-    /// </summary>
     public bool DrawBorder
     {
         get => pageExtentRenderer.DrawBorder;
         set => pageExtentRenderer.DrawBorder = value;
     }
 
-    /// <summary>
-    /// Gets or sets if the map is in a holding state
-    /// </summary>
     public bool Holding { get; set; }
 
-    /// <summary>
-    /// Gets or sets the holding status message
-    /// </summary>
     public string HoldingMessage { get; set; }
 
-    public PfsChain Pfs { get; set; }
+    public PfsChain? Pfs { get; set; }
 
-    void IDisposable.Dispose()
+    public new void Dispose()
     {
+        base.Dispose();
+
         backgroundLine.Dispose();
         pageExtentRenderer.Dispose();
         backgroundBrush.Dispose();

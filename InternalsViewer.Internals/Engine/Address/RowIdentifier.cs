@@ -33,7 +33,7 @@ public struct RowIdentifier
         SlotId = slot;
     }
 
-    public static RowIdentifier Parse(string address)
+    public static RowIdentifier Parse(string? address)
     {
         short slot = 0;
 

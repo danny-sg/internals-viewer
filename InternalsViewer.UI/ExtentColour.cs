@@ -13,7 +13,6 @@ public class ExtentColour
     /// <summary>
     /// Return the background colour for a given colour, used for gradients
     /// </summary>
-    /// <param name="color">The color.</param>
     public static Color BackgroundColour(Color color)
     {
         var red = color.R + 32 > 255 ? 255 : color.R + 32;
@@ -26,7 +25,6 @@ public class ExtentColour
     /// <summary>
     /// Return the light background colour for a given colour, used for gradients
     /// </summary>
-    /// <param name="color">The color.</param>
     public static Color LightBackgroundColour(Color color)
     {
         var red = color.R + 48 > 255 ? 255 : color.R + 48;
@@ -39,8 +37,6 @@ public class ExtentColour
     /// <summary>
     /// Creates a Key bitmap for a given colour with a gradient
     /// </summary>
-    /// <param name="color">The color.</param>
-    /// <returns></returns>
     public static Bitmap KeyImage(Color color)
     {
         var key = new Bitmap(16, 16);
@@ -49,9 +45,10 @@ public class ExtentColour
         var g = Graphics.FromImage(key);
 
         using var brush = new LinearGradientBrush(keyRectangle,
-            color,
-            BackgroundColour(color),
-            LinearGradientMode.Horizontal);
+                                                  color,
+                                                  BackgroundColour(color),
+                                                  LinearGradientMode.Horizontal);
+
         g.FillRectangle(brush, keyRectangle);
         g.DrawRectangle(SystemPens.ControlDark, keyRectangle);
 
