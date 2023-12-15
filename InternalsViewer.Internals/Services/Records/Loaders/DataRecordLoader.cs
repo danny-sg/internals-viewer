@@ -97,7 +97,7 @@ public class DataRecordLoader : RecordLoader
         // Variable length data starts after the offset array length (2 byte ints * number of variable length columns)
         dataRecord.VariableLengthDataOffset = (ushort)(offsetStart + sizeof(ushort) * dataRecord.VariableLengthColumnCount);
 
-        LoadColumnValues(dataRecord, structure);
+        LoadValues(page, dataRecord, structure);
 
         if (structure.HasSparseColumns)
         {
@@ -158,7 +158,7 @@ public class DataRecordLoader : RecordLoader
     /// <summary>
     /// Loads the column values.
     /// </summary>
-    private static void LoadColumnValues(DataRecord dataRecord, TableStructure structure)
+    private static void LoadValues(Page page, DataRecord dataRecord, TableStructure structure)
     {
         var columnValues = new List<RecordField>();
 
@@ -177,11 +177,7 @@ public class DataRecordLoader : RecordLoader
 
                 ushort variableIndex = 0;
 
-                if (column.Sparse)
-                {
-                    // Can't remember what needs to happen here, will fix when I revisit the sparse column support
-                }
-                else if (column.LeafOffset is >= 0 and < Page.Size)
+                if (column.LeafOffset is >= 0 and < Page.Size)
                 {
                     // Fixed length field
 
@@ -193,7 +189,7 @@ public class DataRecordLoader : RecordLoader
 
                     data = new byte[length];
 
-                    Array.Copy(data, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
+                    Array.Copy(page.PageData, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
                 }
                 else if (dataRecord is { HasVariableLengthColumns: true, HasNullBitmap: true } && !column.Dropped
                          && (column.ColumnId < 0 || !dataRecord.NullBitmapValue(column)))
@@ -227,7 +223,7 @@ public class DataRecordLoader : RecordLoader
 
                     data = new byte[length];
 
-                    Array.Copy(data, dataRecord.SlotOffset + offset, data, 0, length);
+                    Array.Copy(page.PageData, dataRecord.SlotOffset + offset, data, 0, length);
                 }
 
                 field.Offset = offset;

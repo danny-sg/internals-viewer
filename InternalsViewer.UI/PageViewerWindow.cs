@@ -257,11 +257,11 @@ public partial class PageViewerWindow : UserControl
 
     private void FindRecord(int offset)
     {
-        var sortedOffsetTable = new List<ushort>(Page.OffsetTable.ToArray());
+        var sortedOffsetTable = new List<short>(Page.OffsetTable.ToArray());
 
         sortedOffsetTable.Sort();
 
-        ushort currentOffset = 0;
+        short currentOffset = 0;
 
         foreach (short i in sortedOffsetTable)
         {
@@ -270,7 +270,7 @@ public partial class PageViewerWindow : UserControl
                 break;
             }
 
-            currentOffset = (ushort)i;
+            currentOffset = (short)i;
         }
 
         if (currentOffset > 0)

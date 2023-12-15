@@ -73,7 +73,7 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
 
         for (var i = 2; i <= slotCount * 2; i += 2)
         {
-            page.OffsetTable.Add(BitConverter.ToUInt16(page.PageData, page.PageData.Length - i));
+            page.OffsetTable.Add(BitConverter.ToInt16(page.PageData, page.PageData.Length - i));
         }
     }
 

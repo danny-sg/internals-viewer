@@ -10,11 +10,6 @@ public abstract class PageReader
 {
     protected static int ReadData(string currentRow, int offset, byte[] data)
     {
-        if(currentRow.Length < 86)
-        {
-            return offset;
-        }
-
         var currentData = currentRow.Substring(20, 44).Replace(" ", string.Empty);
 
         for (var i = 0; i < currentData.Length; i += 2)

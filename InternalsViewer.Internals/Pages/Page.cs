@@ -40,7 +40,7 @@ public class Page : DataStructure
     /// <summary>
     /// Table/Array containing the data offset of each row in the page
     /// </summary>
-    public List<ushort> OffsetTable { get; } = new();
+    public List<short> OffsetTable { get; } = new();
 
     public CompressionInfo? CompressionInfo { get; set; }
 

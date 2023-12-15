@@ -76,7 +76,7 @@ public partial class MarkerKeyTable : UserControl
 
                 e.CellStyle.SelectionBackColor = e.CellStyle.BackColor;
 
-                e.CellStyle.ForeColor = (Color)markersDataGridView.Rows[e.RowIndex].Cells["ForeColourColumn"].Value;
+                e.CellStyle.ForeColor = (Color?)markersDataGridView.Rows[e.RowIndex].Cells["ForeColourColumn"].Value ?? Color.Black;
                 e.CellStyle.SelectionForeColor = e.CellStyle.ForeColor;
             }
 
