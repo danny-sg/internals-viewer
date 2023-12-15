@@ -2,7 +2,6 @@
 using System.Data;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Compression;
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Metadata;

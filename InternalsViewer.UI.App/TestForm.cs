@@ -1,4 +1,3 @@
-using InternalsViewer.Internals;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Providers;

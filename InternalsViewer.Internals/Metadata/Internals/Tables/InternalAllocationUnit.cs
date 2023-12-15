@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using InternalsViewer.Internals.Engine.Database;
 
@@ -7,6 +8,7 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 /// <summary>
 /// SQL Server Allocation Units definitions table - sys.sysallocunits    
 /// </summary>
+[GenerateRecordLoader]
 public record InternalAllocationUnit
 {
     public long Auid { get; set; }
@@ -19,11 +21,11 @@ public record InternalAllocationUnit
 
     public short Fgid { get; set; }
 
-    public byte[] Pgfirst { get; set; }
+    public byte[]? Pgfirst { get; set; }
 
-    public byte[] Pgroot { get; set; }
+    public byte[]? Pgroot { get; set; }
 
-    public byte[] Pgfirstiam { get; set; }
+    public byte[]? Pgfirstiam { get; set; }
 
     public long Pcused { get; set; }
 
@@ -31,7 +33,7 @@ public record InternalAllocationUnit
 
     public long Pcreserved { get; set; }
 
-    public static AllocationUnit GetAllocationUnit()
+    public static TableStructure GetAllocationUnit()
     {
         // 1:20
         const long allocationUnitId = 458752;
@@ -63,6 +65,8 @@ public record InternalAllocationUnit
             IndexId = 0
         };
 
-        return allocationUnit;
+        return structure;
     }
 }
+
+public class GenerateRecordLoaderAttribute : Attribute;

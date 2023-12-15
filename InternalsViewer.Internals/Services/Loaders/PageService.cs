@@ -2,11 +2,9 @@
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Readers.Headers;
 using System;
-using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using System.Linq;
@@ -16,16 +14,10 @@ namespace InternalsViewer.Internals.Services.Loaders;
 /// <summary>
 /// Service responsible for loading Page information
 /// </summary>
-public class PageService(IDatabaseInfoProvider databaseInfoProvider,
-                         IStructureInfoProvider structureInfoProvider,
-                         IPageReader reader,
+public class PageService(IPageReader reader,
                          ICompressionInfoService compressionInfoService) : IPageService
 {
     public IPageReader Reader { get; } = reader;
-
-    public IDatabaseInfoProvider DatabaseInfoProvider { get; } = databaseInfoProvider;
-
-    public IStructureInfoProvider StructureInfoProvider { get; } = structureInfoProvider;
 
     public ICompressionInfoService CompressionInfoService { get; } = compressionInfoService;
 
@@ -77,15 +69,11 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
         }
     }
 
+    /// <summary>
+    /// Get compression info (if required)
+    /// </summary>
     private async Task LoadCompressionInfo(Page page)
     {
-        var compressionType = await StructureInfoProvider.GetCompressionType(page.PageHeader.AllocationUnitId);
-
-        page.CompressionType = compressionType;
-
-        if (compressionType == CompressionType.Page)
-        {
-            page.CompressionInfo = CompressionInfoService.Load(page);
-        }
+        page.CompressionInfo = await CompressionInfoService.GetCompressionInfo(page);
     }
 }

@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.BlobPointers;
+﻿using System;
+using InternalsViewer.Internals.BlobPointers;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Records;
 
@@ -9,7 +10,7 @@ namespace InternalsViewer.Internals.Engine.Records;
 /// </summary>
 public class RecordField(ColumnStructure columnStructure) : Field
 {
-    public BlobField BlobInlineRoot { get; set; }
+    public BlobField? BlobInlineRoot { get; set; }
 
     public ColumnStructure ColumnStructure { get; set; } = columnStructure;
 
@@ -19,7 +20,7 @@ public class RecordField(ColumnStructure columnStructure) : Field
 
     public int Offset { get; set; }
 
-    public byte[] Data { get; set; }
+    public byte[] Data { get; set; } = Array.Empty<byte>();
 
     public int VariableOffset { get; set; }
 
@@ -35,11 +36,11 @@ public class RecordField(ColumnStructure columnStructure) : Field
     public override string ToString()
     {
         return string.Format("  Offset: {0, -4} Leaf Offset: {1, -4} Length: {2, -4} Field: {3, -30} Data type: {4, -10} Value: {5}",
-            Offset,
-            LeafOffset,
-            Length,
-            ColumnStructure.ColumnName,
-            ColumnStructure.DataType,
-            DataConverter.ToHexString(Data));
+                             Offset,
+                             LeafOffset,
+                             Length,
+                             ColumnStructure.ColumnName,
+                             ColumnStructure.DataType,
+                             DataConverter.ToHexString(Data));
     }
 }

@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Engine.Allocation;
-using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Extensions;
 using Xunit.Abstractions;

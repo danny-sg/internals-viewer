@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Internals.Engine.Allocation;
 

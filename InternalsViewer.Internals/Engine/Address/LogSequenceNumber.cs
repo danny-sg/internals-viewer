@@ -1,7 +1,4 @@
-﻿using System;
-using System.Text;
-
-namespace InternalsViewer.Internals.Engine.Address;
+﻿namespace InternalsViewer.Internals.Engine.Address;
 
 public readonly record struct LogSequenceNumber(int VirtualLogFile, int FileOffset, short RecordSequence)
 {

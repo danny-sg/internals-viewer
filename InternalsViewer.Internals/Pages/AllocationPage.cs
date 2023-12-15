@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Internals.Pages;
 

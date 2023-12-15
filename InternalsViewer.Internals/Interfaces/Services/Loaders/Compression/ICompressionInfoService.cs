@@ -1,9 +1,10 @@
-﻿using InternalsViewer.Internals.Compression;
+﻿using System.Threading.Tasks;
+using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 
 public interface ICompressionInfoService
 {
-    CompressionInfo Load(Page page);
+    Task<CompressionInfo?> GetCompressionInfo(Page page);
 }

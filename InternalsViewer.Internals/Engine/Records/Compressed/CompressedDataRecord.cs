@@ -1,7 +1,5 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Compression;
-using InternalsViewer.Internals.Metadata;
-using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Engine.Records.Compressed;
 

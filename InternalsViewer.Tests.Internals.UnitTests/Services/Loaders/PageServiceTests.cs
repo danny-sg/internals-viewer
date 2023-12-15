@@ -25,9 +25,7 @@ public class PageServiceTests
 
         var compressionInfoService = new Mock<ICompressionInfoService>();
 
-        var pageService = new PageService(databaseInfoProvider.Object,
-                                          structureInfoProvider.Object,
-                                          reader.Object,
+        var pageService = new PageService(reader.Object,
                                           compressionInfoService.Object);
 
         var database = new Database();
@@ -59,9 +57,7 @@ public class PageServiceTests
         structureInfoProvider.Setup(s => s.GetCompressionType(It.IsAny<long>()))
                              .ReturnsAsync(CompressionType.Page);
 
-        var pageService = new PageService(databaseInfoProvider.Object,
-                                          structureInfoProvider.Object,
-                                          reader.Object,
+        var pageService = new PageService(reader.Object,
                                           compressionInfoService.Object);
 
         var database = new Database();
@@ -76,7 +72,7 @@ public class PageServiceTests
         var page = await pageService.Load<Page>(database, pageAddress);
 
         // Check if the page loader calls the compression info service
-        compressionInfoService.Verify(c => c.Load(page));
+        compressionInfoService.Verify(c => c.GetCompressionInfo(page));
     }
 
 

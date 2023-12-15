@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections;
 using System.Data;
+using System.Threading.Tasks;
 using InternalsViewer.Internals.Compression;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
@@ -13,10 +14,13 @@ namespace InternalsViewer.Internals.Services.Loaders.Compression;
 /// Service responsible for loading CI (Compression Information) data structures
 /// </summary>
 public class CompressionInfoService(IDictionaryService dictionaryService,
+                                    IStructureInfoProvider structureInfoProvider,
                                     ICompressedDataRecordService compressedDataRecordService)
     : ICompressionInfoService
 {
     public IDictionaryService DictionaryService { get; } = dictionaryService;
+
+    public IStructureInfoProvider StructureInfoProvider { get; } = structureInfoProvider;
 
     public ICompressedDataRecordService CompressedDataRecordService { get; } = compressedDataRecordService;                                
 
@@ -98,5 +102,17 @@ public class CompressionInfoService(IDictionaryService dictionaryService,
         }
 
         return structure;
+    }
+
+    public async Task<CompressionInfo?> GetCompressionInfo(Page page)
+    {
+        var compressionType = await StructureInfoProvider.GetCompressionType(page.PageHeader.AllocationUnitId);
+
+        if (compressionType == CompressionType.None)
+        {
+            return null;
+        }
+
+        return await GetCompressionInfo(page);
     }
 }

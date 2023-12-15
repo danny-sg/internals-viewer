@@ -1,8 +1,6 @@
 ﻿using System.Threading.Tasks;
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders;
 using InternalsViewer.Tests.Internals.UnitTests.TestHelpers.TestReaders;
@@ -19,15 +17,10 @@ public class BootPageServiceTests
 
         var reader = new FilePageReader(filePath);
 
-        var databaseInfoProvider = new Mock<IDatabaseInfoProvider>();
-        var structureInfoProvider = new Mock<IStructureInfoProvider>();
-
         var compressionInfoService = new Mock<ICompressionInfoService>();
 
-        var pageService = new PageService(databaseInfoProvider.Object,
-            structureInfoProvider.Object,
-            reader,
-            compressionInfoService.Object);
+        var pageService = new PageService(reader,
+                                          compressionInfoService.Object);
 
         var database = new Database { Name = "TestDatabase" };
 

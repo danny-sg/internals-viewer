@@ -76,9 +76,7 @@ public class AllocationPageServiceTests
 
         var compressionInfoService = new Mock<ICompressionInfoService>();
 
-        var pageService = new PageService(databaseInfoProvider.Object,
-                                          structureInfoProvider.Object,
-                                          reader,
+        var pageService = new PageService(reader,
                                           compressionInfoService.Object);
 
 

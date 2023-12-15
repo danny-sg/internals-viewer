@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using InternalsViewer.Internals.BlobPointers;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Records;
-using InternalsViewer.Internals.Services.Records.Loaders;
 
 namespace InternalsViewer.Internals.Engine.Records.Blob;
 

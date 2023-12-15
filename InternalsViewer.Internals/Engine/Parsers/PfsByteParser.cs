@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Engine.Allocation;
-using InternalsViewer.Internals.Engine.Database;
 using System.Collections;
 
 namespace InternalsViewer.Internals.Engine.Parsers;

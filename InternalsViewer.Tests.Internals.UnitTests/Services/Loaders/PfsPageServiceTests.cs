@@ -28,9 +28,7 @@ public class PfsPageServiceTests(ITestOutputHelper output)
 
         var compressionInfoService = new Mock<ICompressionInfoService>();
 
-        var pageService = new PageService(databaseInfoProvider.Object,
-                                          structureInfoProvider.Object,
-                                          reader,
+        var pageService = new PageService(reader,
                                           compressionInfoService.Object);
 
         var database = new Database { Name = "TestDatabase" };
@@ -57,15 +55,9 @@ public class PfsPageServiceTests(ITestOutputHelper output)
 
         var reader = new FilePageReader(filePath);
 
-        var databaseInfoProvider = new Mock<IDatabaseInfoProvider>();
-        var structureInfoProvider = new Mock<IStructureInfoProvider>();
-
         var compressionInfoService = new Mock<ICompressionInfoService>();
 
-        var pageService = new PageService(databaseInfoProvider.Object,
-        structureInfoProvider.Object,
-        reader,
-        compressionInfoService.Object);
+        var pageService = new PageService(reader, compressionInfoService.Object);
 
         var database = new Database { Name = "TestDatabase" };
 

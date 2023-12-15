@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using System.Linq;
-using InternalsViewer.Internals.Metadata.Internals.Tables;
 
 namespace InternalsViewer.Internals.Services.Loaders;
 
@@ -61,7 +60,7 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
 
     private void AddSystemAllocationUnits(Database database)
     {
-        database.AllocationUnits.Add(InternalAllocationUnit.GetAllocationUnit());
+       // database.AllocationUnits.Add(InternalAllocationUnit.GetAllocationUnit());
     }
 
     /// <summary>

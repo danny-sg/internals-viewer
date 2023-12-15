@@ -5,7 +5,7 @@ using System.Data;
 using System.Data.SqlTypes;
 using System.Globalization;
 using System.Text;
-using System.Text.RegularExpressions;
+using static System.Text.RegularExpressions.Regex;
 
 namespace InternalsViewer.Internals;
 
@@ -22,10 +22,12 @@ public static class DataConverter
     /// </summary>
     /// <param name="bytes">The bytes.</param>
     /// <returns></returns>
-    public static string ToHexString(byte[] bytes)
+    public static string ToHexString(byte[]? bytes)
     {
         if (bytes == null)
+        {
             return string.Empty;
+        }
 
         var chars = new char[bytes.Length * 2];
 
@@ -66,10 +68,12 @@ public static class DataConverter
     /// </summary>
     /// <param name="data">The data.</param>
     /// <returns></returns>
-    public static string BinaryToGuidString(byte[] data)
+    public static string BinaryToGuidString(byte[]? data)
     {
         if (data == null)
+        {
             return string.Empty;
+        }
 
         if (data.Length != 16)
         {
@@ -103,10 +107,12 @@ public static class DataConverter
     /// <param name="sqlType">SQL Server type</param>
     /// <param name="precision">The precision.</param>
     /// <param name="scale">The scale.</param>
-    /// <returns></returns>
-    public static string BinaryToString(byte[] data, SqlDbType sqlType, byte precision, byte scale)
+    public static string BinaryToString(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
     {
-        if (data == null) return string.Empty;
+        if (data == null)
+        {
+            return string.Empty;
+        }
 
         try
         {
@@ -131,7 +137,7 @@ public static class DataConverter
                 case SqlDbType.Char:
                 case SqlDbType.VarChar:
 
-                    return Regex.Replace(Encoding.UTF8.GetString(data), @"[^\t -~]", "");
+                    return Replace(Encoding.UTF8.GetString(data), @"[^\t -~]", "");
 
                 case SqlDbType.NChar:
                 case SqlDbType.NVarChar:
@@ -204,6 +210,54 @@ public static class DataConverter
         }
     }
 
+    public static T? GetValue<T>(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
+    {
+        return (T?)GetValue(data, sqlType, precision, scale);
+    }
+
+    public static object? GetValue(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
+    {
+        if (data == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return sqlType switch
+            {
+                SqlDbType.BigInt => BitConverter.ToInt64(data, 0),
+                SqlDbType.Int => BitConverter.ToInt32(data, 0),
+                SqlDbType.TinyInt => ((int)data[0]),
+                SqlDbType.SmallInt => BitConverter.ToInt16(data, 0),
+                SqlDbType.Char => Encoding.UTF8.GetString(data),
+                SqlDbType.VarChar => Encoding.UTF8.GetString(data),
+                SqlDbType.NChar => Encoding.Unicode.GetString(data),
+                SqlDbType.NVarChar => Encoding.Unicode.GetString(data),
+                SqlDbType.DateTime => DecodeDateTime(data),
+                SqlDbType.SmallDateTime => DecodeSmallDateTime(data),
+                SqlDbType.VarBinary => data,
+                SqlDbType.Binary => data,
+                SqlDbType.UniqueIdentifier => BinaryToGuidString(data),
+                SqlDbType.Decimal => DecodeDecimal(data, precision, scale),
+                SqlDbType.Money => (BitConverter.ToInt64(data, 0) / 10000.0),
+                SqlDbType.SmallMoney => (BitConverter.ToInt64(data, 0) / 10000.0),
+                SqlDbType.Real => BitConverter.ToSingle(data, 0),
+                SqlDbType.Float => BitConverter.ToDouble(data, 0),
+                SqlDbType.Variant => VariantBinaryToString(data),
+                SqlDbType.Date => DecodeDate(data),
+                SqlDbType.Time => DecodeTime(data, scale),
+                SqlDbType.DateTime2 => DecodeDateTime2(data, scale),
+                SqlDbType.DateTimeOffset => DecodeDateTimeOffset(data, scale),
+                _ => string.Format(CultureInfo.CurrentCulture, "not yet supported ({0:G})", sqlType)
+            };
+        }
+        catch
+        {
+            return "Error converting data";
+        }
+    }
+
     /// <summary>
     /// Decodes DATETIMEOFFSET type
     /// </summary>
@@ -227,6 +281,7 @@ public static class DataConverter
         var time = BitConverter.ToInt16(data, data.Length - 2);
 
         var returnDate = new DateTime(0001, 01, 01);
+
         returnDate = returnDate.AddDays(datePart);
         returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
 
