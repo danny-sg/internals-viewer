@@ -9,8 +9,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "InternalsViewer.Tests.Database", "InternalsViewer.Tests.Database\InternalsViewer.Tests.Database.sqlproj", "{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.Internals", "InternalsViewer.Internals\InternalsViewer.Internals.csproj", "{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}"
@@ -19,7 +17,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.Tests.Inter
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.UI.App", "InternalsViewer.UI.App\InternalsViewer.UI.App.csproj", "{0C15A47E-56F3-41A0-AFFA-3047E5FC3FF8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.Tests.Internals.IntegrationTests", "InternalsViewer.Tests.Internals.IntegrationTests\InternalsViewer.Tests.Internals.IntegrationTests.csproj", "{578A3245-72CE-4880-87CF-CDE85E9FA7B7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.Tests.Internals.IntegrationTests", "InternalsViewer.Tests.Internals.IntegrationTests\InternalsViewer.Tests.Internals.IntegrationTests.csproj", "{578A3245-72CE-4880-87CF-CDE85E9FA7B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -34,15 +32,6 @@ Global
 		{F9CE00A7-4C8D-4C8B-85F1-CD1AA3D1386D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F9CE00A7-4C8D-4C8B-85F1-CD1AA3D1386D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F9CE00A7-4C8D-4C8B-85F1-CD1AA3D1386D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}.Debug (v2008)|Any CPU.ActiveCfg = Debug|Any CPU
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}.Debug (v2008)|Any CPU.Build.0 = Debug|Any CPU
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}.Debug (v2008)|Any CPU.Deploy.0 = Debug|Any CPU
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2}.Release|Any CPU.Deploy.0 = Release|Any CPU
 		{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}.Debug (v2008)|Any CPU.ActiveCfg = Debug (v2008)|Any CPU
 		{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}.Debug (v2008)|Any CPU.Build.0 = Debug (v2008)|Any CPU
 		{90F9F46A-DFA3-4F98-B6BF-8E2F087DD8A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -72,12 +61,11 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{258C3F3E-6E1D-416D-B498-0EF1FE749ED2} = {22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}
 		{D125868C-6DAF-4EBF-8D1B-1E2E555017CB} = {22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}
 		{578A3245-72CE-4880-87CF-CDE85E9FA7B7} = {22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {12A1406C-1C68-4A7F-A0FF-E4E7A65AECAE}
 		VisualSVNWorkingCopyRoot = 
+		SolutionGuid = {12A1406C-1C68-4A7F-A0FF-E4E7A65AECAE}
 	EndGlobalSection
 EndGlobal

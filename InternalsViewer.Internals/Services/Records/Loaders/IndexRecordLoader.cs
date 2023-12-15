@@ -33,11 +33,11 @@ internal class IndexRecordLoader : RecordLoader
             LoadColumnOffsetArray(record, varColStartIndex,page);
         }
 
-        record.VariableLengthDataOffset = (ushort)(page.Header.MinLen + sizeof(short) + varColStartIndex + sizeof(short) * record.VariableLengthColumnCount);
+        record.VariableLengthDataOffset = (ushort)(page.PageHeader.MinLen + sizeof(short) + varColStartIndex + sizeof(short) * record.VariableLengthColumnCount);
 
         LoadColumnValues(record, page, structure);
 
-        if (record.IsIndexType(IndexTypes.Node) | page.Header.IndexId == 1)
+        if (record.IsIndexType(IndexTypes.Node) | page.PageHeader.IndexId == 1)
         {
             LoadDownPagePointer(record, page);
         }
@@ -53,7 +53,7 @@ internal class IndexRecordLoader : RecordLoader
         //Last 6 bytes of the fixed slot
         var address = new byte[PageAddress.Size];
 
-        var downPagePointerOffset = record.SlotOffset + page.Header.MinLen - PageAddress.Size;
+        var downPagePointerOffset = record.SlotOffset + page.PageHeader.MinLen - PageAddress.Size;
 
         Array.Copy(page.PageData, downPagePointerOffset, address, 0, PageAddress.Size);
 
@@ -69,11 +69,11 @@ internal class IndexRecordLoader : RecordLoader
 
         if (record.IsIndexType(IndexTypes.Leaf))
         {
-            ridOffset = record.SlotOffset + page.Header.MinLen - 8;
+            ridOffset = record.SlotOffset + page.PageHeader.MinLen - 8;
         }
         else
         {
-            ridOffset = record.SlotOffset + page.Header.MinLen - 14;
+            ridOffset = record.SlotOffset + page.PageHeader.MinLen - 14;
         }
 
         Array.Copy(page.PageData, ridOffset, ridAddress, 0, RowIdentifier.Size);
@@ -85,7 +85,7 @@ internal class IndexRecordLoader : RecordLoader
 
     private static void LoadColumnOffsetArray(IndexRecord record, int varColStartIndex, Page page)
     {
-        var varColCountOffset = record.SlotOffset + page.Header.MinLen + varColStartIndex;
+        var varColCountOffset = record.SlotOffset + page.PageHeader.MinLen + varColStartIndex;
 
         record.VariableLengthColumnCount = BitConverter.ToUInt16(page.PageData, varColCountOffset);
 
@@ -94,7 +94,7 @@ internal class IndexRecordLoader : RecordLoader
         // Load offset array of 2-byte ints indicating the end offset of each variable length field
         record.ColOffsetArray = GetOffsetArray(page.PageData,
                                                record.VariableLengthColumnCount,
-                                               record.SlotOffset + page.Header.MinLen + sizeof(short) + varColStartIndex);
+                                               record.SlotOffset + page.PageHeader.MinLen + sizeof(short) + varColStartIndex);
 
         record.MarkDataStructure("ColOffsetArrayDescription", varColCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));
     }
@@ -180,7 +180,7 @@ internal class IndexRecordLoader : RecordLoader
     {
         record.NullBitmapSize = (short)((structure.Columns.Count - 1) / 8 + 1);
 
-        var columnCountPosition = record.SlotOffset + page.Header.MinLen;
+        var columnCountPosition = record.SlotOffset + page.PageHeader.MinLen;
 
         record.ColumnCount = BitConverter.ToInt16(page.PageData, columnCountPosition);
 
@@ -188,7 +188,7 @@ internal class IndexRecordLoader : RecordLoader
 
         var nullBitmapBytes = new byte[record.NullBitmapSize];
 
-        var nullBitmapPosition = record.SlotOffset + page.Header.MinLen + sizeof(short);
+        var nullBitmapPosition = record.SlotOffset + page.PageHeader.MinLen + sizeof(short);
 
         Array.Copy(page.PageData,
             nullBitmapPosition,
@@ -217,7 +217,7 @@ internal class IndexRecordLoader : RecordLoader
 
     private static void LoadIndexType(IndexRecord record, Page page, IndexStructure structure)
     {
-        if (page.Header.IndexId > 0)
+        if (page.PageHeader.IndexId > 0)
         {
             record.IndexType |= IndexTypes.NonClustered;
         }
@@ -226,7 +226,7 @@ internal class IndexRecordLoader : RecordLoader
             record.IndexType |= IndexTypes.Clustered;
         }
 
-        if (page.Header.Level > 0)
+        if (page.PageHeader.Level > 0)
         {
             record.IndexType |= IndexTypes.Node;
         }

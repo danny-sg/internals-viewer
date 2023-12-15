@@ -81,7 +81,7 @@ public partial class PageViewerWindow : UserControl
     {
         pageToolStripTextBox.Text = page.PageAddress.ToString() ?? string.Empty;
         hexViewer.Page = Page;
-        pageBindingSource.DataSource = Page.Header;
+        pageBindingSource.DataSource = Page.PageHeader;
         offsetTable.Page = Page;
 
         if (page.CompressionType == CompressionType.Page && !Page.OffsetTable.Contains(96))
@@ -175,11 +175,11 @@ public partial class PageViewerWindow : UserControl
 
         Record? record = null;
 
-        switch (Page.Header.PageType)
+        switch (Page.PageHeader.PageType)
         {
             case PageType.Data:
 
-                Structure tableStructure = new TableStructure(Page.Header.AllocationUnitId);
+                Structure tableStructure = new TableStructure(Page.PageHeader.AllocationUnitId);
 
                 if (Page.CompressionType == CompressionType.None)
                 {
@@ -196,7 +196,7 @@ public partial class PageViewerWindow : UserControl
 
             case PageType.Index:
 
-                Structure indexStructure = new IndexStructure(Page.Header.AllocationUnitId);
+                Structure indexStructure = new IndexStructure(Page.PageHeader.AllocationUnitId);
 
                 //record = new IndexRecord(Page, offset, indexStructure);
 
@@ -210,10 +210,10 @@ public partial class PageViewerWindow : UserControl
             case PageType.Bcm:
             case PageType.Dcm:
 
-                allocationViewer.SetAllocationPage(Page.Header.PageAddress,
+                allocationViewer.SetAllocationPage(Page.PageHeader.PageAddress,
                     Page.Database.Name,
                     ConnectionString,
-                    (Page.Header.PageType == PageType.Iam));
+                    (Page.PageHeader.PageType == PageType.Iam));
 
                 markerKeyTable.Visible = false;
                 allocationViewer.Visible = true;
@@ -221,7 +221,7 @@ public partial class PageViewerWindow : UserControl
 
             case PageType.Pfs:
 
-                allocationViewer.SetPfsPage(Page.Header.PageAddress,
+                allocationViewer.SetPfsPage(Page.PageHeader.PageAddress,
                     Page.Database.Name,
                     ConnectionString);
 
@@ -360,7 +360,7 @@ public partial class PageViewerWindow : UserControl
             return;
         }
 
-        switch (Page.Header.PageType)
+        switch (Page.PageHeader.PageType)
         {
             case PageType.Bcm:
             case PageType.Dcm:
@@ -435,7 +435,7 @@ public partial class PageViewerWindow : UserControl
 
     private void AllocationViewer_PageOver(object sender, PageEventArgs e)
     {
-        if (Page.Header.PageType == PageType.Pfs)
+        if (Page.PageHeader.PageType == PageType.Pfs)
         {
             pageAddressToolStripStatusLabel.Text = e.Address.ToString(); //+ " " + this.allocationViewer.allocationContainer.PagePfsByte(e.Address).ToString();
         }

@@ -1,5 +1,9 @@
 ﻿namespace InternalsViewer.Internals.Engine.Database;
 
+/// <summary>
+/// Database States
+/// </summary>
+/// <see href="https://learn.microsoft.com/en-us/sql/relational-databases/databases/database-states"/>
 public enum DatabaseState: byte
 {
     Online = 0,

@@ -456,7 +456,7 @@ namespace InternalsViewer.UI
             // 
             // pageBindingSource
             // 
-            pageBindingSource.DataSource = typeof(Internals.Pages.Header);
+            pageBindingSource.DataSource = typeof(Internals.Pages.PageHeader);
             // 
             // label5
             // 

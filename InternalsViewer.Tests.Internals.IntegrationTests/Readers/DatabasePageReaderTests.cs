@@ -18,6 +18,6 @@ public class DatabasePageReaderTests
 
         var result = await reader.Read(connection.DatabaseName, new PageAddress(1, 1));
 
-        Assert.NotNull(result.Data);
+        Assert.NotNull(result);
     }
 }

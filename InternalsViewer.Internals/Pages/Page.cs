@@ -13,36 +13,39 @@ public class Page : DataStructure
     public const int Size = 8192;
 
     /// <summary>
-    /// Gets or sets the type of page compression (2008+).
+    /// Type of page compression (2008+).
     /// </summary>
     public CompressionType CompressionType { get; set; }
 
     /// <summary>
-    /// Gets the database.
+    /// Database the page belongs to
     /// </summary>
     public Database Database { get; set; } = new();
 
     /// <summary>
-    /// Gets or sets the page address.
+    /// Page Address in the format File Id : Page Id
     /// </summary>
     public PageAddress PageAddress { get; set; }
 
     /// <summary>
-    /// Gets or sets the page data.
+    /// Raw page data
     /// </summary>
     public byte[] PageData { get; set; } =  new byte[Size];
 
     /// <summary>
-    /// Gets or sets the header.
+    /// Page Header
     /// </summary>
-    public Header Header { get; set; } = new();
+    public PageHeader PageHeader { get; set; } = new();
 
     /// <summary>
-    /// Gets the offset table.
+    /// Table/Array containing the data offset of each row in the page
     /// </summary>
     public List<ushort> OffsetTable { get; } = new();
 
     public CompressionInfo? CompressionInfo { get; set; }
-    
-    public AllocationUnit? AllocationUnit { get; set; }
+
+    /// <summary>
+    /// Allocation Unit the page belongs to
+    /// </summary>
+    public AllocationUnit AllocationUnit { get; set; } = AllocationUnit.Unknown;
 }

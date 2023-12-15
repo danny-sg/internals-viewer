@@ -59,7 +59,7 @@ internal class PageRtfBuilder: RtfBuilder
                     sb.Append(@"{\uldb ");
                 }
 
-                if (currentPos == Page.Size - targetPage.Header.SlotCount * 2)
+                if (currentPos == Page.Size - targetPage.PageHeader.SlotCount * 2)
                 {
                     // Start offset table
                     sb.Append(RtfTag(rtfColours, Color.Green.Name, OffsetColour.Name));

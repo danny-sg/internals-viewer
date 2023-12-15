@@ -30,10 +30,8 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
     /// <summary>
     /// Loads the database page using DBCC PAGE (hex dump)
     /// </summary>
-    public async Task<PageData> Read(string databaseName, PageAddress pageAddress)
+    public async Task<byte[]> Read(string databaseName, PageAddress pageAddress)
     {
-        var headerValues = new Dictionary<string, string>();
-
         var pageCommand = string.Format(SqlCommands.Page,
                                         databaseName,
                                         pageAddress.FileId,
@@ -62,17 +60,12 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
                 {
                     var parentObject = reader.GetString(ParentObjectIndex);
                     var objectName = reader.GetString(ObjectIndex);
-                    var field = reader.GetString(FieldIndex);
                     var value = reader.GetString(ValueIndex);
 
                     if (parentObject == "DATA:" 
                         && objectName.StartsWith("Memory Dump"))
                     {
                         offset = ReadData(value, offset, data);
-                    }
-                    else if (parentObject == "PAGE HEADER:")
-                    {
-                        headerValues.Add(field, value);
                     }
                 }
 
@@ -84,10 +77,6 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
             throw new Exception($"Error reading page {pageAddress.FileId}:{pageAddress.PageId}", ex);
         }
 
-        return new PageData
-        {
-            Data = data,
-            HeaderValues = headerValues
-        };
+        return data;
     }
 }

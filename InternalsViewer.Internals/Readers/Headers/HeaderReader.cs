@@ -31,9 +31,9 @@ public class HeaderReader
     private const byte GhostRecordCountOffset = 58;
     private const byte TornBitsOffset = 60;
 
-    public static Header Read(byte[] data)
+    public static PageHeader Read(byte[] data)
     {
-        var header = new Header();
+        var header = new PageHeader();
 
         SetHeaderValues(data, header);
 
@@ -42,38 +42,38 @@ public class HeaderReader
         return header;
     }
 
-    private static void SetHeaderValues(byte[] data, Header header)
+    private static void SetHeaderValues(byte[] data, PageHeader pageHeader)
     {
-        header.PageType = (PageType)data[PageTypeOffset];
+        pageHeader.PageType = (PageType)data[PageTypeOffset];
 
-        header.PageAddress = PageAddressParser.Parse(data[PageAddressOffset..(PageAddressOffset + PageAddress.Size)]);
+        pageHeader.PageAddress = PageAddressParser.Parse(data[PageAddressOffset..(PageAddressOffset + PageAddress.Size)]);
 
-        header.PreviousPage = PageAddressParser.Parse(data[PreviousPageOffset..(PreviousPageOffset + PageAddress.Size)]);
-        header.NextPage = PageAddressParser.Parse(data[NextPageOffset..(NextPageOffset + PageAddress.Size)]);
+        pageHeader.PreviousPage = PageAddressParser.Parse(data[PreviousPageOffset..(PreviousPageOffset + PageAddress.Size)]);
+        pageHeader.NextPage = PageAddressParser.Parse(data[NextPageOffset..(NextPageOffset + PageAddress.Size)]);
 
-        header.ObjectId = BitConverter.ToInt32(data, ObjectIdOffset);
-        header.IndexId = BitConverter.ToInt16(data, IndexIdOffset);
+        pageHeader.ObjectId = BitConverter.ToInt32(data, ObjectIdOffset);
+        pageHeader.IndexId = BitConverter.ToInt16(data, IndexIdOffset);
 
-        header.Level = data[LevelOffset];
+        pageHeader.Level = data[LevelOffset];
 
-        header.HeaderVersion = data[HeaderVersionOffset];
+        pageHeader.HeaderVersion = data[HeaderVersionOffset];
 
-        header.TypeFlagBits = data[TypeFlagBitsOffset];
-        header.FlagBits = BitConverter.ToInt16(data, FlagBitsOffset);
+        pageHeader.TypeFlagBits = data[TypeFlagBitsOffset];
+        pageHeader.FlagBits = BitConverter.ToInt16(data, FlagBitsOffset);
 
-        header.MinLen = BitConverter.ToInt16(data, MinLenOffset);
+        pageHeader.MinLen = BitConverter.ToInt16(data, MinLenOffset);
 
-        header.SlotCount = BitConverter.ToInt16(data, SlotCountOffset);
-        header.FreeCount = BitConverter.ToInt16(data, FreeCountOffset);
-        header.ReservedCount = BitConverter.ToInt16(data, ReservedCountOffset);
+        pageHeader.SlotCount = BitConverter.ToInt16(data, SlotCountOffset);
+        pageHeader.FreeCount = BitConverter.ToInt16(data, FreeCountOffset);
+        pageHeader.ReservedCount = BitConverter.ToInt16(data, ReservedCountOffset);
 
-        header.TransactionReservedCount = BitConverter.ToInt16(data, TransactionReservedCountOffset);
-        header.GhostRecordCount = BitConverter.ToInt16(data, GhostRecordCountOffset);
-        header.FreeData = BitConverter.ToInt16(data, FreeDataOffset);
+        pageHeader.TransactionReservedCount = BitConverter.ToInt16(data, TransactionReservedCountOffset);
+        pageHeader.GhostRecordCount = BitConverter.ToInt16(data, GhostRecordCountOffset);
+        pageHeader.FreeData = BitConverter.ToInt16(data, FreeDataOffset);
 
-        header.TornBits = BitConverter.ToInt32(data, TornBitsOffset);
+        pageHeader.TornBits = BitConverter.ToInt32(data, TornBitsOffset);
 
-        header.Lsn = LogSequenceNumberParser.Parse(data[LsnOffset..(LsnOffset + LogSequenceNumber.Size)]);
+        pageHeader.Lsn = LogSequenceNumberParser.Parse(data[LsnOffset..(LsnOffset + LogSequenceNumber.Size)]);
     }
 
 

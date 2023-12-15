@@ -7,6 +7,8 @@ namespace InternalsViewer.Internals.Pages;
 /// </summary>
 public class BootPage : Page
 {
+    public static PageAddress BootPageAddress = new(1, 9);
+
     /// <summary>
     /// Gets or sets the last checkpoint LSN.
     /// </summary>

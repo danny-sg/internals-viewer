@@ -16,7 +16,7 @@ internal class DataRecordService(IStructureInfoProvider structureInfoProvider)
 
     public async Task<DataRecord> GetDataRecord(Page page, ushort offset)
     {
-        var structure = await StructureInfoProvider.GetTableStructure(page.Header.AllocationUnitId);
+        var structure = await StructureInfoProvider.GetTableStructure(page.PageHeader.AllocationUnitId);
 
         return DataRecordLoader.Load(page, offset, structure);
     }

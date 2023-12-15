@@ -41,7 +41,7 @@ public class AllocationLayer
     {
         Name = name;
 
-        if (page.Header.PageType == PageType.Iam)
+        if (page.PageHeader.PageType == PageType.Iam)
         {
             //allocations.Add(new IamChain(page));
         }

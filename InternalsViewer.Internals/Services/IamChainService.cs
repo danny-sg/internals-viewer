@@ -33,9 +33,9 @@ public class IamChainService(IAllocationPageService pageService) : IIamChainServ
 
             iam.SinglePageSlots.AddRange(page.SinglePageSlots);
 
-            if (page.Header.NextPage != PageAddress.Empty)
+            if (page.PageHeader.NextPage != PageAddress.Empty)
             {
-                pageAddress = page.Header.NextPage;
+                pageAddress = page.PageHeader.NextPage;
 
                 continue;
             }

@@ -15,9 +15,9 @@ public class HeaderReaderTests
 
         var reader = new FilePageReader(filePath);
 
-        var page = await reader.Read("TestDatabase", new PageAddress(1, 9));
+        var data = await reader.Read("TestDatabase", new PageAddress(1, 9));
 
-        var header = HeaderReader.Read(page.Data);
+        var header = HeaderReader.Read(data);
 
         Assert.Equal(new PageAddress(1, 9), header.PageAddress);
         Assert.Equal(1, header.HeaderVersion);

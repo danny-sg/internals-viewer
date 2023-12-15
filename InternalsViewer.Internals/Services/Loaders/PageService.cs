@@ -13,6 +13,9 @@ using System.Linq;
 
 namespace InternalsViewer.Internals.Services.Loaders;
 
+/// <summary>
+/// Service responsible for loading Page information
+/// </summary>
 public class PageService(IDatabaseInfoProvider databaseInfoProvider,
                          IStructureInfoProvider structureInfoProvider,
                          IPageReader reader,
@@ -28,15 +31,15 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
 
     public async Task<T> Load<T>(Database database, PageAddress pageAddress) where T : Page, new()
     {
-        var page = new T();
-
-        page.Database = database;
-
-        page.PageAddress = pageAddress;
+        var page = new T
+        {
+            Database = database,
+            PageAddress = pageAddress
+        };
 
         var data = await Reader.Read(database.Name, pageAddress);
 
-        page.PageData = data.Data;
+        page.PageData = data;
 
         LoadHeader(data, page, database);
 
@@ -47,13 +50,18 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
         return page;
     }
 
-    private static void LoadHeader(PageData data, Page page, Database database)
+    /// <summary>
+    /// Load the page header from the page data and lookup the allocation unit object
+    /// </summary>
+    private static void LoadHeader(byte[] data, Page page, Database database)
     {
-        var header = HeaderReader.Read(data.Data);
+        var header = HeaderReader.Read(data);
 
-        page.Header = header;
+        page.PageHeader = header;
 
-        page.AllocationUnit = database.AllocationUnits.FirstOrDefault(a => a.AllocationUnitId == page.Header.AllocationUnitId);
+        var allocationUnit = database.AllocationUnits.FirstOrDefault(a => a.AllocationUnitId == header.AllocationUnitId);
+
+        page.AllocationUnit = allocationUnit ?? AllocationUnit.Unknown;
     }
 
     /// <summary>
@@ -61,7 +69,7 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
     /// </summary>
     public static void LoadOffsetTable(Page page)
     {
-        var slotCount = page.Header.SlotCount;
+        var slotCount = page.PageHeader.SlotCount;
 
         for (var i = 2; i <= slotCount * 2; i += 2)
         {
@@ -71,7 +79,7 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
 
     private async Task LoadCompressionInfo(Page page)
     {
-        var compressionType = await StructureInfoProvider.GetCompressionType(page.Header.PartitionId);
+        var compressionType = await StructureInfoProvider.GetCompressionType(page.PageHeader.PartitionId);
 
         page.CompressionType = compressionType;
 

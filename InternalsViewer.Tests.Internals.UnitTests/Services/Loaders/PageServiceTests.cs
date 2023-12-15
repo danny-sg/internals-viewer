@@ -34,20 +34,16 @@ public class PageServiceTests
 
         var pageAddress = new PageAddress(1, 1);
 
-        var pageData = new PageData
-        {
-            Data = new byte[8192],
-            HeaderValues = TestHeader.HeaderValues
-        };
+        var data = new byte[8192];
 
         reader.Setup(r => r.Read(database.Name, pageAddress))
-              .ReturnsAsync(pageData);
+              .ReturnsAsync(new byte[8192]);
 
         var page = await pageService.Load<Page>(database, pageAddress);
 
         Assert.Equal(database, page.Database);
         Assert.Equal(pageAddress, page.PageAddress);
-        Assert.Equal(pageData.Data, page.PageData);
+        Assert.Equal(data, page.PageData);
     }
 
     [Fact]
@@ -72,14 +68,10 @@ public class PageServiceTests
 
         var pageAddress = new PageAddress(1, 1);
 
-        var pageData = new PageData
-        {
-            Data = new byte[8192],
-            HeaderValues = TestHeader.HeaderValues
-        };
+        var data = new byte[8192];
 
         reader.Setup(r => r.Read(database.Name, pageAddress))
-            .ReturnsAsync(pageData);
+            .ReturnsAsync(data);
 
         var page = await pageService.Load<Page>(database, pageAddress);
 
@@ -93,7 +85,7 @@ public class PageServiceTests
     {
         var page = new Page();
 
-        page.Header.SlotCount = 10;
+        page.PageHeader.SlotCount = 10;
 
         var offsets = new List<ushort> { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 

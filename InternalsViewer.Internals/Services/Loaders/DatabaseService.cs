@@ -27,9 +27,13 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
 
     public IPfsChainService PfsChainService { get; } = pfsChainService;
 
+    /// <summary>
+    /// Create and load a Database object for the given database name
+    /// </summary>
     public async Task<Database> Load(string name)
     {
-        var databaseInfo = await DatabaseInfoProvider.GetDatabase(name) ?? throw new ArgumentException($"Database {name} not found");
+        var databaseInfo = await DatabaseInfoProvider.GetDatabase(name) 
+                           ?? throw new ArgumentException($"Database {name} not found");
 
         var database = new Database
         {
@@ -52,6 +56,9 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
         return database;
     }
 
+    /// <summary>
+    /// Get Allocation Units with their IAM chains
+    /// </summary>
     private async Task RefreshAllocationUnits(Database database)
     {
         var allocationUnits = await DatabaseInfoProvider.GetAllocationUnits();
@@ -66,6 +73,9 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
         database.AllocationUnits.AddRange(allocationUnits);
     }
 
+    /// <summary>
+    /// Refresh the PFS chains for each file
+    /// </summary>
     private async Task RefreshPfs(Database database)
     {
         database.Pfs.Clear();
@@ -76,6 +86,9 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
         }
     }
 
+    /// <summary>
+    /// Refresh the allocation chains/bitmaps for each file and allocation type (GAM/SGAM/DCM/BCM)
+    /// </summary>
     public async Task RefreshAllocation(Database database)
     {
         database.Gam.Clear();

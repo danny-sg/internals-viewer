@@ -16,7 +16,7 @@ public class BootPageService(IPageService pageService): IBootPageService
 
     public async Task<BootPage> Load(Database database)
     {
-        var page = await PageService.Load<BootPage>(database, new PageAddress(1, 9));
+        var page = await PageService.Load<BootPage>(database, BootPage.BootPageAddress);
 
         page.CheckpointLsn = GetCheckpointLsn(page.PageData);
 

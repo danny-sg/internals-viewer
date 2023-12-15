@@ -27,7 +27,7 @@ public class AllocationPageServiceTests
 
         var page = await service.Load(database, new PageAddress(1, pageId));
 
-        Assert.Equal(pageType, page.Header.PageType);
+        Assert.Equal(pageType, page.PageHeader.PageType);
     }
 
     [Theory]
@@ -40,7 +40,7 @@ public class AllocationPageServiceTests
 
         var page = await service.Load(database, new PageAddress(1, pageId));
 
-        Assert.Equal(PageType.Iam, page.Header.PageType);
+        Assert.Equal(PageType.Iam, page.PageHeader.PageType);
         Assert.Equal(new PageAddress(1, 0), page.StartPage);
 
         Assert.Equal(new PageAddress(1, 99), page.SinglePageSlots[0]);

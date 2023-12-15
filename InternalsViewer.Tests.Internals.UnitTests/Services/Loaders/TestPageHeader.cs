@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Services.Loaders;
 
-public class TestHeader
+public class TestPageHeader
 {
     public static Dictionary<string, string> HeaderValues { get; set; } = new()
     {

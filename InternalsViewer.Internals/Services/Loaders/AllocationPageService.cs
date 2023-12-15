@@ -19,7 +19,7 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
     {
         var page = await PageService.Load<AllocationPage>(database, pageAddress);
 
-        switch (page.Header.PageType)
+        switch (page.PageHeader.PageType)
         {
             case PageType.Bcm:
             case PageType.Dcm:
@@ -29,7 +29,7 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
                 LoadAllocationMap(page);
                 break;
             default:
-                throw new InvalidOperationException(page.Header.PageType + " is not an allocation page");
+                throw new InvalidOperationException(page.PageHeader.PageType + " is not an allocation page");
         }
 
         return page;
@@ -42,13 +42,13 @@ public class AllocationPageService(IPageService pageService): IAllocationPageSer
     {
         var allocationData = new byte[AllocationPage.AllocationInterval / 8];
 
-        switch (page.Header.PageType)
+        switch (page.PageHeader.PageType)
         {
             case PageType.Gam:
             case PageType.Sgam:
             case PageType.Dcm:
             case PageType.Bcm:
-                page.StartPage = new PageAddress(page.Header.PageAddress.FileId, 0);
+                page.StartPage = new PageAddress(page.PageHeader.PageAddress.FileId, 0);
                 break;
 
             case PageType.Iam:

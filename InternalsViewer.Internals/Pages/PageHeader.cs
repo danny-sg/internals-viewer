@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Pages;
 /// <summary>
 /// Page Header
 /// </summary>
-public class Header: DataStructure
+public class PageHeader : DataStructure
 {
     public PageAddress PageAddress { get; set; }
 
@@ -48,7 +48,7 @@ public class Header: DataStructure
     public LogSequenceNumber Lsn { get; set; }
 
     public byte HeaderVersion { get; set; }
-    
+
     public short GhostRecordCount { get; set; }
 
     /// <summary>

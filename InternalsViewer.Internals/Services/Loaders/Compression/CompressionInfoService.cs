@@ -82,7 +82,7 @@ public class CompressionInfoService(IDictionaryService dictionaryService,
 
     private static TableStructure CreateTableStructure(int records, CompressionInfo ci, Page page)
     {
-        var structure = new TableStructure(page.Header.AllocationUnitId);
+        var structure = new TableStructure(page.PageHeader.AllocationUnitId);
 
         for (short i = 0; i < records; i++)
         {

@@ -26,7 +26,7 @@ public class PfsPageService(IPageService pageService) : IPfsPageService
     {
         var page = await PageService.Load<PfsPage>(database, pageAddress);
 
-        if (page.Header.PageType != PageType.Pfs)
+        if (page.PageHeader.PageType != PageType.Pfs)
         {
             throw new InvalidOperationException("Page type is not PFS");
         }
