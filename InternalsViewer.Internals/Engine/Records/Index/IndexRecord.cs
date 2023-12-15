@@ -1,8 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Metadata;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Records;
-using InternalsViewer.Internals.Services.Records.Loaders;
 
 namespace InternalsViewer.Internals.Engine.Records.Index;
 

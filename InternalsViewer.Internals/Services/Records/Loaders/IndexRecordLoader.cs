@@ -13,8 +13,13 @@ namespace InternalsViewer.Internals.Services.Records.Loaders;
 
 internal class IndexRecordLoader : RecordLoader
 {
-    internal static void Load(IndexRecord record, Page page, IndexStructure structure)
+    internal static IndexRecord Load(Page page, ushort offset, IndexStructure structure)
     {
+        var record = new IndexRecord
+        {
+            SlotOffset = offset
+        };
+
         var varColStartIndex = 0;
 
         LoadIndexType(record, page, structure);
@@ -30,10 +35,13 @@ internal class IndexRecordLoader : RecordLoader
 
         if (record.HasVariableLengthColumns)
         {
-            LoadColumnOffsetArray(record, varColStartIndex,page);
+            LoadColumnOffsetArray(record, varColStartIndex, page);
         }
 
-        record.VariableLengthDataOffset = (ushort)(page.PageHeader.MinLen + sizeof(short) + varColStartIndex + sizeof(short) * record.VariableLengthColumnCount);
+        record.VariableLengthDataOffset = (ushort)(page.PageHeader.MinLen
+                                                   + sizeof(short)
+                                                   + varColStartIndex
+                                                   + sizeof(short) * record.VariableLengthColumnCount);
 
         LoadColumnValues(record, page, structure);
 
@@ -46,6 +54,8 @@ internal class IndexRecordLoader : RecordLoader
         {
             LoadRid(record, page);
         }
+
+        return record;
     }
 
     private static void LoadDownPagePointer(IndexRecord record, Page page)
@@ -96,7 +106,8 @@ internal class IndexRecordLoader : RecordLoader
                                                record.VariableLengthColumnCount,
                                                record.SlotOffset + page.PageHeader.MinLen + sizeof(short) + varColStartIndex);
 
-        record.MarkDataStructure("ColOffsetArrayDescription", varColCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));
+        record.MarkDataStructure("ColOffsetArrayDescription",
+                                 varColCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));
     }
 
     private static void LoadColumnValues(IndexRecord record, Page page, IndexStructure structure)

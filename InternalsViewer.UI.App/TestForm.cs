@@ -13,13 +13,20 @@ public partial class TestForm : Form
 
     public IPageService PageService { get; }
 
+    public IRecordService RecordService { get; }
+
     public CurrentConnection Connection { get; }
 
-    public TestForm(IDatabaseInfoProvider databaseInfoProvider, IDatabaseService databaseService, IPageService pageService, CurrentConnection connection)
+    public TestForm(IDatabaseInfoProvider databaseInfoProvider, 
+                    IDatabaseService databaseService, 
+                    IPageService pageService, 
+                    IRecordService recordService, 
+                    CurrentConnection connection)
     {
         DatabaseInfoProvider = databaseInfoProvider;
         DatabaseService = databaseService;
         PageService = pageService;
+        RecordService = recordService;
         Connection = connection;
 
         InitializeComponent();
@@ -38,14 +45,14 @@ public partial class TestForm : Form
 
     private async void allocationWindow_ViewPage(object? sender, PageEventArgs e)
     {
-        if(allocationWindow.CurrentDatabase!=null)
+        if (allocationWindow.CurrentDatabase != null)
         {
-            var window = new PageViewer(PageService, allocationWindow.CurrentDatabase);
+            var window = new PageViewer(PageService, RecordService, allocationWindow.CurrentDatabase);
 
             window.Show();
 
             await window.LoadPage(e.Address);
         }
-       
+
     }
 }

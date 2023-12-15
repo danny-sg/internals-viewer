@@ -13,12 +13,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Engine.Records.Blob;
-using InternalsViewer.Internals.Engine.Records.Compressed;
-using InternalsViewer.Internals.Engine.Records.Data;
-using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
-using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.TransactionLog;
 using InternalsViewer.UI.Markers;
@@ -31,6 +26,8 @@ namespace InternalsViewer.UI;
 public partial class PageViewerWindow : UserControl
 {
     public IPageService PageService { get; }
+
+    public IRecordService RecordService { get; set; }
 
     public event EventHandler<PageEventArgs>? PageChanged;
 
@@ -53,9 +50,10 @@ public partial class PageViewerWindow : UserControl
     /// <summary>
     /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
     /// </summary>
-    public PageViewerWindow(IPageService pageService)
+    public PageViewerWindow(IPageService pageService, IRecordService recordService)
     {
         PageService = pageService;
+        RecordService = recordService;
 
         InitializeComponent();
 
@@ -166,7 +164,7 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    private void LoadRecord(ushort offset)
+    private async void LoadRecord(ushort offset)
     {
         if (Page == null)
         {
@@ -179,16 +177,17 @@ public partial class PageViewerWindow : UserControl
         {
             case PageType.Data:
 
-                Structure tableStructure = new TableStructure(Page.PageHeader.AllocationUnitId);
+                record = await RecordService.GetDataRecord(Page, offset);
+                //Structure tableStructure = new TableStructure(Page.PageHeader.AllocationUnitId);
 
-                if (Page.CompressionType == CompressionType.None)
-                {
-                    record = new DataRecord();
-                }
-                else
-                {
-                   // record = new CompressedDataRecord(Page, offset, tableStructure);
-                }
+                //if (Page.CompressionType == CompressionType.None)
+                //{
+                //    record = new DataRecord();
+                //}
+                //else
+                //{
+                //   // record = new CompressedDataRecord(Page, offset, tableStructure);
+                //}
 
                 allocationViewer.Visible = false;
                 markerKeyTable.Visible = true;
@@ -196,9 +195,7 @@ public partial class PageViewerWindow : UserControl
 
             case PageType.Index:
 
-                Structure indexStructure = new IndexStructure(Page.PageHeader.AllocationUnitId);
-
-                //record = new IndexRecord(Page, offset, indexStructure);
+                record = await RecordService.GetIndexRecord(Page, offset);
 
                 allocationViewer.Visible = false;
                 markerKeyTable.Visible = true;

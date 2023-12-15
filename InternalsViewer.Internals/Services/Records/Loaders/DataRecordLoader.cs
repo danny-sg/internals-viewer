@@ -84,7 +84,9 @@ public class DataRecordLoader : RecordLoader
                                                        dataRecord.VariableLengthColumnCount,
                                                        dataRecord.SlotOffset + offsetStart);
 
-            dataRecord.MarkDataStructure("ColOffsetArrayDescription", dataRecord.SlotOffset + offsetStart, dataRecord.VariableLengthColumnCount * sizeof(short));
+            dataRecord.MarkDataStructure("ColOffsetArrayDescription", 
+                                         dataRecord.SlotOffset + offsetStart, 
+                                         dataRecord.VariableLengthColumnCount * sizeof(short));
         }
         else
         {

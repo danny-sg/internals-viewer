@@ -8,9 +8,11 @@ public partial class PageViewer : Form
 {
     public IPageService PageService { get; }
 
+    public IRecordService RecordService { get; }
+
     public Database Database { get; }
 
-    public PageViewer(IPageService pageService, Database database)
+    public PageViewer(IPageService pageService, IRecordService recordService, Database database)
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint |
                  ControlStyles.UserPaint |
@@ -18,7 +20,9 @@ public partial class PageViewer : Form
                  true);
 
         PageService = pageService;
+        RecordService = recordService;
         Database = database;
+
         InitializeComponent();
     }
 

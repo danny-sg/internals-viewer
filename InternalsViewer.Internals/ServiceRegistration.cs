@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Services;
 using InternalsViewer.Internals.Services.Loaders;
 using InternalsViewer.Internals.Services.Loaders.Compression;
+using InternalsViewer.Internals.Services.Records;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.Internals;
@@ -39,5 +40,7 @@ public static class ServiceRegistration
         services.AddTransient<ICompressionInfoService, CompressionInfoService>();
         services.AddTransient<IDictionaryService, DictionaryService>();
         services.AddTransient<ICompressedDataRecordService, CompressedDataRecordService>();
+
+        services.AddTransient<IRecordService, RecordService>();
     }
 }
