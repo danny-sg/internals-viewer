@@ -12,8 +12,8 @@ namespace InternalsViewer.UI;
 
 public partial class OffsetTable : UserControl
 {
-    private Page page;
-    public event EventHandler SlotChanged;
+    private Page? page;
+    public event EventHandler? SlotChanged;
 
     public OffsetTable()
     {
@@ -69,17 +69,14 @@ public partial class OffsetTable : UserControl
 
     internal virtual void OnSlotChanged(object sender, EventArgs e)
     {
-        if (SlotChanged != null)
-        {
-            SlotChanged(sender, e);
-        }
+        SlotChanged?.Invoke(sender, e);
     }
 
     /// <summary>
     /// Gets or sets the parent page.
     /// </summary>
     /// <value>The page.</value>
-    public Page Page
+    public Page? Page
     {
         get => page;
         set

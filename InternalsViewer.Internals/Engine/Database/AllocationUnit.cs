@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Metadata;
 
 namespace InternalsViewer.Internals.Engine.Database;
 

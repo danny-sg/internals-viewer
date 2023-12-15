@@ -1,19 +1,13 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.RecordLoaders;
 using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Services.Records.Loaders;
 
 namespace InternalsViewer.Internals.Engine.Records.Index;
 
 public class IndexRecord : Record
 {
-    public IndexRecord(Page page, ushort slotOffset, Structure structure)
-        : base(page, slotOffset, structure)
-    {
-        IndexRecordLoader.Load(this);
-    }
-
     public bool IsIndexType(IndexTypes index)
     {
         return (IndexType & index) == index;

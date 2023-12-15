@@ -2,27 +2,18 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.RecordLoaders;
 using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Services.Records.Loaders;
 
 namespace InternalsViewer.Internals.Engine.Records.Data;
 
 public class DataRecord : Record
 {
-    public DataRecord(Page page, ushort slotOffset, Structure structure)
-        : base(page, slotOffset, structure)
-    {
-        DataRecordLoader.Load(this);
-    }
-
     public SparseVector SparseVector { get; set; }
 
     public override string ToString()
     {
         var sb = new StringBuilder();
-
-        sb.Append(
-            $"DataRecord | Page: {Page.Header.PageAddress} | Slot Offset: {SlotOffset} | Allocation Unit: {Page.Header.AllocationUnit}\n");
 
         sb.Append("-----------------------------------------------------------------------------------------\n");
         sb.Append($"Status Bits A:                {GetStatusBitsDescription(this)}\n");
@@ -38,6 +29,7 @@ public class DataRecord : Record
         {
             sb.AppendLine(field.ToString());
         }
+
         return sb.ToString();
     }
 

@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Pages;
 /// <summary>
 /// Page Header
 /// </summary>
-public record Header
+public class Header: DataStructure
 {
     public PageAddress PageAddress { get; set; }
 
@@ -19,7 +19,7 @@ public record Header
 
     public string PageTypeName => PageHelpers.GetPageTypeName(PageType);
 
-    public long AllocationUnitId { get; set; }
+    public long AllocationUnitId => IdHelpers.GetAllocationUnitId(ObjectId, IndexId);
 
     public int Level { get; set; }
 
@@ -35,17 +35,25 @@ public record Header
 
     public int ReservedCount { get; set; }
 
-    public int XactReservedCount { get; set; }
+    public int TransactionReservedCount { get; set; }
 
-    public long TornBits { get; set; }
+    public int TornBits { get; set; }
 
-    public string FlagBits { get; set; } = string.Empty;
+    public short FlagBits { get; set; }
 
-    public long ObjectId { get; set; }
+    public int ObjectId { get; set; }
 
     public long PartitionId { get; set; }
 
     public LogSequenceNumber Lsn { get; set; }
 
-    public string AllocationUnit { get; set; } = string.Empty;
+    public byte HeaderVersion { get; set; }
+    
+    public short GhostRecordCount { get; set; }
+
+    /// <summary>
+    /// 0x80 = Data compressed
+    /// 
+    /// </summary>
+    public byte TypeFlagBits { get; set; }
 }

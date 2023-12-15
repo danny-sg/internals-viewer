@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Pages;
 
@@ -31,6 +32,6 @@ public class BootPageService(IPageService pageService): IBootPageService
 
         Array.Copy(pageData, CheckpointLsnOffset, checkpointLsnValue, 0, LogSequenceNumber.Size);
         
-        return new LogSequenceNumber(checkpointLsnValue);
+        return LogSequenceNumberParser.Parse(checkpointLsnValue);
     }
 }

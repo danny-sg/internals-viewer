@@ -7,7 +7,7 @@ using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Services.Loaders;
-using InternalsViewer.Tests.Internals.UnitTests.Helpers.TestReaders;
+using InternalsViewer.Tests.Internals.UnitTests.TestHelpers.TestReaders;
 using Moq;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Services.Loaders;

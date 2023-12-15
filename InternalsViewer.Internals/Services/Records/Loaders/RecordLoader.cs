@@ -2,7 +2,7 @@
 using InternalsViewer.Internals.BlobPointers;
 using InternalsViewer.Internals.Engine.Records;
 
-namespace InternalsViewer.Internals.Services.Loaders.Records;
+namespace InternalsViewer.Internals.Services.Records.Loaders;
 
 /// <summary>
 /// Loads a record

@@ -1,10 +1,11 @@
 ﻿using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders;
-using InternalsViewer.Tests.Internals.UnitTests.Helpers.TestReaders;
+using InternalsViewer.Tests.Internals.UnitTests.TestHelpers.TestReaders;
 using Moq;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Services.Loaders;
@@ -34,6 +35,6 @@ public class BootPageServiceTests
 
         var page = await service.Load(database);
 
-        Assert.Equal(new LogSequenceNumber("53:29975:37"), page.CheckpointLsn);
+        Assert.Equal(LogSequenceNumberParser.Parse("53:29975:37"), page.CheckpointLsn);
     }
 }

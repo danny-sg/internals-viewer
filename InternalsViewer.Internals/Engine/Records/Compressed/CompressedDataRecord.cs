@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Engine.Records.Compressed;
 
-public class CompressedDataRecord(Page page, ushort slotOffset, Structure structure) : Record(page, slotOffset, structure)
+public class CompressedDataRecord: Record
 {
     public List<CdArray> CdItems { get; } = new();
 

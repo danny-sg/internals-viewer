@@ -43,4 +43,6 @@ public class Page : DataStructure
     public List<ushort> OffsetTable { get; } = new();
 
     public CompressionInfo? CompressionInfo { get; set; }
+    
+    public AllocationUnit? AllocationUnit { get; set; }
 }

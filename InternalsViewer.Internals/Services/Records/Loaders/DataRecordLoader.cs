@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Records;
-using InternalsViewer.Internals.Services.Loaders.Records;
 
-namespace InternalsViewer.Internals.RecordLoaders;
+namespace InternalsViewer.Internals.Services.Records.Loaders;
 
 /// <summary>
 /// Loads a Data Record object
@@ -19,47 +19,48 @@ public class DataRecordLoader : RecordLoader
     /// <summary>
     /// Loads the specified data record.
     /// </summary>
-    /// <param name="dataRecord">The data record.</param>
-    internal static void Load(DataRecord dataRecord)
+    internal static DataRecord Load(Page page, ushort slotOffset, TableStructure structure)
     {
-        if (dataRecord.Structure.Columns.Count == 0)
-        {
-            return;
-        }
+        var data = page.PageData;
 
-        dataRecord.NullBitmapSize = (short)((dataRecord.Structure.Columns.FindAll(column => !column.Sparse).Count - 1) / 8 + 1);
+        var dataRecord = new DataRecord();
 
-        if (LoadStatusBits(dataRecord) == RecordType.Forwarding)
+        dataRecord.SlotOffset = slotOffset;
+
+        dataRecord.NullBitmapSize = (short)((structure.Columns.Count(column => !column.Sparse) - 1) / 8 + 1);
+
+        if (LoadStatusBits(dataRecord, data) == RecordType.Forwarding)
         {
-            LoadForwardingRecord(dataRecord);
-            return;
+            LoadForwardingRecord(dataRecord, data);
+
+            return dataRecord;
         }
 
         // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
         var columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);
 
-        dataRecord.ColumnCountOffset = BitConverter.ToInt16(dataRecord.Page.PageData, columnCountOffsetPosition);
+        dataRecord.ColumnCountOffset = BitConverter.ToInt16(data, columnCountOffsetPosition);
 
         dataRecord.MarkDataStructure("ColumnCountOffset", columnCountOffsetPosition, sizeof(short));
 
         // Column count 2-byte int located at the column count offset
         var columnCountPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset;
 
-        dataRecord.ColumnCount = BitConverter.ToInt16(dataRecord.Page.PageData, columnCountPosition);
+        dataRecord.ColumnCount = BitConverter.ToInt16(data, columnCountPosition);
 
         dataRecord.MarkDataStructure("ColumnCount", columnCountPosition, sizeof(short));
 
         if (dataRecord.HasNullBitmap)
         {
-            LoadNullBitmap(dataRecord);
+            LoadNullBitmap(dataRecord, data);
         }
 
         short offsetStart = 0;
 
-        if (dataRecord.HasVariableLengthColumns && !dataRecord.Compressed)
+        if (dataRecord is { HasVariableLengthColumns: true, Compressed: false })
         {
-            if (dataRecord.Structure.HasSparseColumns
-                && dataRecord.Structure.Columns.FindAll(column => !column.Sparse).Count == 0)
+            if (structure.HasSparseColumns
+                && structure.Columns.Count(column => !column.Sparse) == 0)
             {
                 dataRecord.VariableLengthColumnCount = 1;
 
@@ -70,7 +71,7 @@ public class DataRecordLoader : RecordLoader
                 // Number of variable length columns (2-byte int) located after null bitmap
                 var varColCountOffset = dataRecord.ColumnCountOffset + sizeof(short) + dataRecord.NullBitmapSize;
 
-                dataRecord.VariableLengthColumnCount = BitConverter.ToUInt16(dataRecord.Page.PageData, dataRecord.SlotOffset + varColCountOffset);
+                dataRecord.VariableLengthColumnCount = BitConverter.ToUInt16(data, dataRecord.SlotOffset + varColCountOffset);
 
                 dataRecord.MarkDataStructure("VariableLengthColumnCount", dataRecord.SlotOffset + varColCountOffset, sizeof(short));
 
@@ -79,46 +80,46 @@ public class DataRecordLoader : RecordLoader
             }
 
             // Load offset array of 2-byte ints indicating the end offset of each variable length field
-            dataRecord.ColOffsetArray = GetOffsetArray(dataRecord.Page.PageData,
-                dataRecord.VariableLengthColumnCount,
-                dataRecord.SlotOffset + offsetStart);
+            dataRecord.ColOffsetArray = GetOffsetArray(data,
+                                                       dataRecord.VariableLengthColumnCount,
+                                                       dataRecord.SlotOffset + offsetStart);
 
             dataRecord.MarkDataStructure("ColOffsetArrayDescription", dataRecord.SlotOffset + offsetStart, dataRecord.VariableLengthColumnCount * sizeof(short));
-
         }
         else
         {
             dataRecord.VariableLengthColumnCount = 0;
-            dataRecord.ColOffsetArray = null;
+            dataRecord.ColOffsetArray = Array.Empty<ushort>();
         }
 
         // Variable length data starts after the offset array length (2 byte ints * number of variable length columns)
-        dataRecord.VariableLengthDataOffset = (ushort)(offsetStart + (sizeof(ushort) * dataRecord.VariableLengthColumnCount));
+        dataRecord.VariableLengthDataOffset = (ushort)(offsetStart + sizeof(ushort) * dataRecord.VariableLengthColumnCount);
 
-        LoadColumnValues(dataRecord);
+        LoadColumnValues(dataRecord, structure);
 
-        if (dataRecord.Structure.HasSparseColumns)
+        if (structure.HasSparseColumns)
         {
-            LoadSparseVector(dataRecord);
+            LoadSparseVector(dataRecord, data, structure);
         }
+
+        return dataRecord;
     }
 
     /// <summary>
     /// Loads the null bitmap values
     /// </summary>
-    /// <param name="dataRecord">The data record.</param>
-    private static void LoadNullBitmap(DataRecord dataRecord)
+    private static void LoadNullBitmap(Record dataRecord, byte[] data)
     {
         var nullBitmapBytes = new byte[dataRecord.NullBitmapSize];
 
         // Null bitmap located after column count offset + column count 2-byte int
         var nullBitmapPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset + sizeof(short);
 
-        Array.Copy(dataRecord.Page.PageData,
-            nullBitmapPosition,
-            nullBitmapBytes,
-            0,
-            dataRecord.NullBitmapSize);
+        Array.Copy(data,
+                   nullBitmapPosition,
+                   nullBitmapBytes,
+                   0,
+                   dataRecord.NullBitmapSize);
 
         dataRecord.NullBitmap = new BitArray(nullBitmapBytes);
 
@@ -128,8 +129,7 @@ public class DataRecordLoader : RecordLoader
     /// <summary>
     /// Loads the sparse vector.
     /// </summary>
-    /// <param name="dataRecord">The data record.</param>
-    private static void LoadSparseVector(DataRecord dataRecord)
+    private static void LoadSparseVector(DataRecord dataRecord, byte[] data, TableStructure structure)
     {
         int startOffset;
 
@@ -146,25 +146,23 @@ public class DataRecordLoader : RecordLoader
 
         var sparseRecord = new byte[endOffset - startOffset];
 
-        Array.Copy(dataRecord.Page.PageData, dataRecord.SlotOffset + startOffset, sparseRecord, 0, endOffset - startOffset);
+        Array.Copy(data, dataRecord.SlotOffset + startOffset, sparseRecord, 0, endOffset - startOffset);
 
         dataRecord.MarkDataStructure("SparseVector");
 
-        dataRecord.SparseVector = new SparseVector(sparseRecord, (TableStructure)dataRecord.Structure, dataRecord, (short)startOffset);
+        dataRecord.SparseVector = new SparseVector(sparseRecord, structure, dataRecord, (short)startOffset);
     }
 
     /// <summary>
     /// Loads the column values.
     /// </summary>
-    /// <param name="dataRecord">The data record.</param>
-    /// <returns></returns>
-    private static void LoadColumnValues(DataRecord dataRecord)
+    private static void LoadColumnValues(DataRecord dataRecord, TableStructure structure)
     {
         var columnValues = new List<RecordField>();
 
         var index = 0;
 
-        foreach (var column in dataRecord.Structure.Columns)
+        foreach (var column in structure.Columns)
         {
             if (!column.Sparse)
             {
@@ -173,14 +171,15 @@ public class DataRecordLoader : RecordLoader
                 short length = 0;
                 ushort offset = 0;
                 var isLob = false;
-                byte[] data = null;
+                var data = Array.Empty<byte>();
+
                 ushort variableIndex = 0;
 
                 if (column.Sparse)
                 {
                     // Can't remember what needs to happen here, will fix when I revisit the sparse column support
                 }
-                else if (column.LeafOffset >= 0 && column.LeafOffset < Page.Size)
+                else if (column.LeafOffset is >= 0 and < Page.Size)
                 {
                     // Fixed length field
 
@@ -192,15 +191,15 @@ public class DataRecordLoader : RecordLoader
 
                     data = new byte[length];
 
-                    Array.Copy(dataRecord.Page.PageData, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
+                    Array.Copy(data, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
                 }
-                else if (dataRecord.HasVariableLengthColumns && dataRecord.HasNullBitmap && !column.Dropped
+                else if (dataRecord is { HasVariableLengthColumns: true, HasNullBitmap: true } && !column.Dropped
                          && (column.ColumnId < 0 || !dataRecord.NullBitmapValue(column)))
                 {
                     // Variable Length fields
 
                     // Use the leaf offset to get the variable length column ordinal
-                    variableIndex = (ushort)((column.LeafOffset * -1) - 1);
+                    variableIndex = (ushort)(column.LeafOffset * -1 - 1);
 
                     if (variableIndex == 0)
                     {
@@ -226,7 +225,7 @@ public class DataRecordLoader : RecordLoader
 
                     data = new byte[length];
 
-                    Array.Copy(dataRecord.Page.PageData, dataRecord.SlotOffset + offset, data, 0, length);
+                    Array.Copy(data, dataRecord.SlotOffset + offset, data, 0, length);
                 }
 
                 field.Offset = offset;
@@ -257,19 +256,17 @@ public class DataRecordLoader : RecordLoader
     /// <summary>
     /// Loads the status bits.
     /// </summary>
-    /// <param name="record">The data record.</param>
-    /// <returns>The Record Type property in Status Bits A</returns>
-    private static RecordType LoadStatusBits(DataRecord record)
+    private static RecordType LoadStatusBits(Record record, byte[] data)
     {
-        var statusA = record.Page.PageData[record.SlotOffset];
+        var statusA = data[record.SlotOffset];
 
         // bytes 0 and 1 are Status Bits A and B
         record.StatusBitsA = new BitArray(new[] { statusA });
-        record.StatusBitsB = new BitArray(new[] { record.Page.PageData[record.SlotOffset + 1] });
+        record.StatusBitsB = new BitArray(new[] { data[record.SlotOffset + 1] });
 
         record.MarkDataStructure("StatusBitsADescription", record.SlotOffset, sizeof(byte));
 
-        record.RecordType = (RecordType)((statusA >> 1) & 7);
+        record.RecordType = (RecordType)(statusA >> 1 & 7);
 
         if (record.RecordType == RecordType.Forwarding)
         {
@@ -287,12 +284,11 @@ public class DataRecordLoader : RecordLoader
     /// <summary>
     /// Loads a forwarding record.
     /// </summary>
-    /// <param name="dataRecord">The data record.</param>
-    private static void LoadForwardingRecord(DataRecord dataRecord)
+    private static void LoadForwardingRecord(DataRecord dataRecord, byte[] data)
     {
         var forwardingRecord = new byte[8];
 
-        Array.Copy(dataRecord.Page.PageData, dataRecord.SlotOffset + sizeof(byte), forwardingRecord, 0, 6);
+        Array.Copy(data, dataRecord.SlotOffset + sizeof(byte), forwardingRecord, 0, 6);
 
         dataRecord.ForwardingRecord = new RowIdentifier(forwardingRecord);
 

@@ -25,7 +25,7 @@ public class PageHelpers
             PageType.Boot => "Boot Page",
             PageType.FileHeader => "File Header Page",
             PageType.None => string.Empty,
-            _ => string.Empty
+            _ => "Unknown"
         };
     }
 }

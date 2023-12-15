@@ -49,11 +49,11 @@ public class PageService(IDatabaseInfoProvider databaseInfoProvider,
 
     private static void LoadHeader(PageData data, Page page, Database database)
     {
-        _ = KeyValueHeaderParser.TryParse(data.HeaderValues, out var header);
+        var header = HeaderReader.Read(data.Data);
 
         page.Header = header;
 
-        page.Header.AllocationUnit = database.AllocationUnits.FirstOrDefault(a=>a.AllocationUnitId == page.Header.AllocationUnitId)?.TableName ?? string.Empty;
+        page.AllocationUnit = database.AllocationUnits.FirstOrDefault(a => a.AllocationUnitId == page.Header.AllocationUnitId);
     }
 
     /// <summary>

@@ -52,7 +52,7 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
         {
             await connection.OpenAsync();
 
-            await connection.ChangeDatabaseAsync(Connection.DatabaseName);  
+            await connection.ChangeDatabaseAsync(Connection.DatabaseName!);  
 
             var reader = await command.ExecuteReaderAsync();
 

@@ -183,11 +183,11 @@ public partial class PageViewerWindow : UserControl
 
                 if (Page.CompressionType == CompressionType.None)
                 {
-                    record = new DataRecord(Page, offset, tableStructure);
+                    record = new DataRecord();
                 }
                 else
                 {
-                    record = new CompressedDataRecord(Page, offset, tableStructure);
+                   // record = new CompressedDataRecord(Page, offset, tableStructure);
                 }
 
                 allocationViewer.Visible = false;
@@ -198,7 +198,7 @@ public partial class PageViewerWindow : UserControl
 
                 Structure indexStructure = new IndexStructure(Page.Header.AllocationUnitId);
 
-                record = new IndexRecord(Page, offset, indexStructure);
+                //record = new IndexRecord(Page, offset, indexStructure);
 
                 allocationViewer.Visible = false;
                 markerKeyTable.Visible = true;
@@ -232,7 +232,7 @@ public partial class PageViewerWindow : UserControl
             case PageType.Lob3:
             case PageType.Lob4:
 
-                record = new BlobRecord(Page, offset);
+                //record = new BlobRecord(Page, offset);
 
                 allocationViewer.Visible = false;
                 markerKeyTable.Visible = true;
@@ -408,7 +408,7 @@ public partial class PageViewerWindow : UserControl
 
                 if (Page.CompressionInfo?.AnchorRecord != null)
                 {
-                    markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.AnchorRecord);
+                   // markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.AnchorRecord);
                 }
 
                 break;
@@ -417,7 +417,7 @@ public partial class PageViewerWindow : UserControl
 
                 if (Page.CompressionInfo is { HasDictionary: true })
                 {
-                    markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.CompressionDictionary);
+                   // markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.CompressionDictionary);
                 }
 
                 break;

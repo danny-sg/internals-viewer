@@ -1,8 +1,8 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using InternalsViewer.Internals.Metadata;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Engine.Records;
@@ -12,17 +12,6 @@ namespace InternalsViewer.Internals.Engine.Records;
 /// </summary>
 public abstract class Record : DataStructure
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Record"/> class.
-    /// </summary>
-    protected Record(Page page, ushort slotOffset, Structure structure)
-    {
-        Page = page;
-        SlotOffset = slotOffset;
-        Structure = structure;
-        Fields = new List<RecordField>();
-    }
-
     /// <summary>
     /// Gets the record type description.
     /// </summary>
@@ -106,7 +95,7 @@ public abstract class Record : DataStructure
             statusDescription += ", Variable Length Flag";
         }
 
-        if (record.HasNullBitmap && record.HasVariableLengthColumns)
+        if (record is { HasNullBitmap: true, HasVariableLengthColumns: true })
         {
             statusDescription += " | NULL Bitmap Flag";
         }
@@ -117,11 +106,6 @@ public abstract class Record : DataStructure
 
         return statusDescription;
     }
-
-    /// <summary>
-    /// Gets or sets the record's underlying Page
-    /// </summary>
-    public Page Page { get; set; }
 
     /// <summary>
     /// Gets or sets the record type
@@ -137,7 +121,7 @@ public abstract class Record : DataStructure
     /// <summary>
     /// Gets or sets the Column Offset Array
     /// </summary>
-    public ushort[] ColOffsetArray { get; set; }
+    public ushort[] ColOffsetArray { get; set; } = Array.Empty<ushort>();
 
     [DataStructureItem(DataStructureItemType.ColumnOffsetArray)]
     public string ColOffsetArrayDescription => GetArrayString(ColOffsetArray);
@@ -145,7 +129,7 @@ public abstract class Record : DataStructure
     /// <summary>
     /// Gets or sets the status bits A value (bitmap of row properties)
     /// </summary>
-    public BitArray StatusBitsA { get; set; }
+    public BitArray StatusBitsA { get; set; } = new(0);
 
     [DataStructureItem(DataStructureItemType.StatusBitsA)]
     public string StatusBitsADescription => GetRecordTypeDescription(RecordType) + GetStatusBitsDescription(this);
@@ -153,7 +137,7 @@ public abstract class Record : DataStructure
     /// <summary>
     /// Gets or sets the status bits B value (bitmap of row properties)
     /// </summary>
-    public BitArray StatusBitsB { get; set; }
+    public BitArray StatusBitsB { get; set; } = new(0);
 
     /// <summary>
     /// Gets or sets the column count bytes value
@@ -210,7 +194,7 @@ public abstract class Record : DataStructure
     /// <summary>
     /// Gets or sets the null bitmap.
     /// </summary>
-    public BitArray NullBitmap { get; set; }
+    public BitArray NullBitmap { get; set; } = new(0);
 
     [DataStructureItem(DataStructureItemType.NullBitmap)]
     public string NullBitmapDescription => HasNullBitmap ? GetNullBitmapString(NullBitmap) : string.Empty;
@@ -229,12 +213,7 @@ public abstract class Record : DataStructure
     /// Gets or sets the record fields.
     /// </summary>
     /// <value>The record fields.</value>
-    public List<RecordField> Fields { get; set; }
+    public List<RecordField> Fields { get; set; } = new();
 
     public RecordField[] FieldsArray => Fields.ToArray();
-
-    /// <summary>
-    /// Gets or sets the record structure.
-    /// </summary>
-    public Structure Structure { get; set; }
 }

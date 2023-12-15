@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using InternalsViewer.Internals.BlobPointers;
 using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.RecordLoaders;
 using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Services.Records.Loaders;
 
 namespace InternalsViewer.Internals.Engine.Records.Blob;
 
@@ -20,12 +20,6 @@ public class BlobRecord : Record
     public const short SmallDataOffset = 20;
     public const short SmallSizeOffset = 14;
     public const short TypeOffset = 12;
-
-    public BlobRecord(Page page, ushort slot)
-        : base(page, slot, null)
-    {
-        BlobRecordLoader.Load(this);
-    }
 
     [DataStructureItem(DataStructureItemType.StatusBitsA)]
     public new string StatusBitsADescription => "TODO";
