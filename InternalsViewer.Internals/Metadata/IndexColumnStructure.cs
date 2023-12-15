@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Metadata;
 
-public class IndexColumn : Column
+public class IndexColumnStructure : ColumnStructure
 {
     public bool Key { get; set; }
 

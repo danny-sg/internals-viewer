@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Engine.Records.Compressed;
 
-internal class CompressedRecordField(Column column, CompressedDataRecord parentRecord) : RecordField(column)
+internal class CompressedRecordField(ColumnStructure columnStructure, CompressedDataRecord parentRecord) : RecordField(columnStructure)
 {
     public byte[] ExpandAnchor(byte[] fieldData)
     {
@@ -48,9 +48,9 @@ internal class CompressedRecordField(Column column, CompressedDataRecord parentR
             }
 
             return CompressedDataConverter.CompressedBinaryToBinary(Data,
-                Column.DataType,
-                Column.Precision,
-                Column.Scale) ?? string.Empty;
+                ColumnStructure.DataType,
+                ColumnStructure.Precision,
+                ColumnStructure.Scale) ?? string.Empty;
         }
     }
 
@@ -61,15 +61,15 @@ internal class CompressedRecordField(Column column, CompressedDataRecord parentR
             var compositeData = ExpandAnchor(Data);
 
             return CompressedDataConverter.CompressedBinaryToBinary(compositeData,
-                Column.DataType,
-                Column.Precision,
-                Column.Scale);
+                ColumnStructure.DataType,
+                ColumnStructure.Precision,
+                ColumnStructure.Scale);
         }
 
         return CompressedDataConverter.CompressedBinaryToBinary(AnchorField.Data,
-            Column.DataType,
-            Column.Precision,
-            Column.Scale);
+            ColumnStructure.DataType,
+            ColumnStructure.Precision,
+            ColumnStructure.Scale);
     }
 
     private string GetPageSymbolValue()
@@ -84,16 +84,16 @@ internal class CompressedRecordField(Column column, CompressedDataRecord parentR
             var compositeData = ExpandAnchor(dictionaryValue);
 
             value = CompressedDataConverter.CompressedBinaryToBinary(compositeData,
-                Column.DataType,
-                Column.Precision,
-                Column.Scale);
+                ColumnStructure.DataType,
+                ColumnStructure.Precision,
+                ColumnStructure.Scale);
         }
         else
         {
             value = CompressedDataConverter.CompressedBinaryToBinary(dictionaryValue,
-                Column.DataType,
-                Column.Precision,
-                Column.Scale);
+                ColumnStructure.DataType,
+                ColumnStructure.Precision,
+                ColumnStructure.Scale);
         }
 
         return $"Dictionary Entry {dictionaryEntry} - {value}";

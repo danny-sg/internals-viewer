@@ -14,6 +14,8 @@ internal class SqlCommands
 @"SELECT iau.allocation_unit_id               AS AllocationUnitId
       ,o.object_id                          AS ObjectId
 	  ,iau.first_iam_page                   AS FirstIamPage
+      ,iau.root_page                        AS RootPage
+      ,iau.first_page                       AS FirstPage
       ,s.name                               AS SchemaName
 	  ,o.name                               AS TableName
       ,i.name                               AS IndexName
@@ -34,6 +36,7 @@ FROM   sys.all_objects o
        INNER JOIN sys.indexes i    ON i.object_id = o.object_id AND i.index_id = p.index_id
 	   INNER JOIN sys.system_internals_allocation_units iau 
            ON iau.container_id = p.partition_id
+WHERE is_ms_shipped = 0
 ORDER BY is_ms_shipped DESC
         ,s.name ASC
         ,o.name ASC";
@@ -49,7 +52,11 @@ WHERE  database_id = DB_ID(@DatabaseName)";
 
     public static readonly string CompatibilityLevel = @"SELECT compatibility_level FROM sys.databases WHERE name = @Name";
 
-    public static readonly string Compression = @"SELECT ISNULL(data_compression, 0) FROM sys.partitions WHERE partition_id = @PartitionId";
+    public static readonly string Compression = 
+@"SELECT ISNULL(data_compression, 0) 
+FROM   sys.partitions  p
+       INNER JOIN sys.allocation_units au ON au.container_id = p.partition_id
+WHERE au.allocation_unit_id = @AllocationUnitId";
 
     public static readonly string Database = @"SELECT name FROM sys.databases WHERE database_id = @DatabaseId";
 

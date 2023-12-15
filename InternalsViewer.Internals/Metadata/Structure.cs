@@ -7,7 +7,7 @@ public abstract class Structure(long allocationUnitId)
 {
     public long AllocationUnitId { get; set; } = allocationUnitId;
 
-    public List<Column> Columns { get; set; } = new();
+    public List<ColumnStructure> Columns { get; set; } = new();
 
-    public bool HasSparseColumns => Columns.Any(c => c.Sparse);
+    public bool HasSparseColumns => Columns.Any(c => c.IsSparse);
 }

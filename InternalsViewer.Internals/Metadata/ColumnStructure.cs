@@ -5,25 +5,8 @@ namespace InternalsViewer.Internals.Metadata;
 /// <summary>
 /// Database Index or Table column
 /// </summary>
-public class Column
+public class ColumnStructure
 {
-    public override string ToString()
-    {
-        return string.Format("Column: {0,-40} Column ID: {1,-5} Data Type: {2,-20} Data Length: {3, -5} Leaf Offset {4,-5} Precision {5,-5} Scale {6,-5}",
-            ColumnName,
-            ColumnId,
-            DataType,
-            DataLength,
-            LeafOffset,
-            Precision,
-            Scale);
-    }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether this <see cref="Column"/> is a uniqueifer.
-    /// </summary>
-    public bool Uniqueifer { get; set; }
-
     /// <summary>
     /// Gets or sets the name of the column.
     /// </summary>
@@ -60,14 +43,19 @@ public class Column
     public byte Scale { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether this <see cref="Column"/> is dropped.
+    /// Gets or sets a value indicating whether this <see cref="ColumnStructure"/> is dropped.
     /// </summary>
-    public bool Dropped { get; set; }
+    public bool IsDropped { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether this <see cref="Column"/> is sparse.
+    /// Gets or sets a value indicating whether this <see cref="ColumnStructure"/> is sparse.
     /// </summary>
-    public bool Sparse { get; set; }
+    public bool IsSparse { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this <see cref="ColumnStructure"/> is a uniqueifer.
+    /// </summary>
+    public bool IsUniqueifer { get; set; }
 
     /// <summary>
     /// Gets or sets the index of the null bit.

@@ -76,14 +76,14 @@ public abstract class Record : DataStructure
         return NullBitmap.Get(index - (HasUniqueifier ? 0 : 1));
     }
 
-    public bool NullBitmapValue(Column column)
+    public bool NullBitmapValue(ColumnStructure columnStructure)
     {
-        if (column.NullBit < 1)
+        if (columnStructure.NullBit < 1)
         {
             return false;
         }
 
-        return NullBitmap.Get(column.NullBit - 1);
+        return NullBitmap.Get(columnStructure.NullBit - 1);
     }
 
     internal static string GetStatusBitsDescription(Record record)

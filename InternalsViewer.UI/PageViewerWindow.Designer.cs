@@ -643,7 +643,7 @@ namespace InternalsViewer.UI
             // 
             textBox16.BackColor = System.Drawing.Color.White;
             textBox16.BorderStyle = BorderStyle.None;
-            textBox16.DataBindings.Add(new Binding("Text", pageBindingSource, "PartitionId", true));
+            //textBox16.DataBindings.Add(new Binding("Text", pageBindingSource, "PartitionId", true));
             textBox16.Location = new System.Drawing.Point(9, 157);
             textBox16.Margin = new Padding(4, 4, 4, 4);
             textBox16.Name = "textBox16";

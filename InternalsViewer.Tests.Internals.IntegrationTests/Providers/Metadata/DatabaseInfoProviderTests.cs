@@ -52,6 +52,7 @@ public class DatabaseInfoProviderTests
         Assert.True(first.AllocationUnitId > 0);
         Assert.True(first.ObjectId > 0);
         Assert.NotEqual(new PageAddress(0,0), first.FirstIamPage);
+        Assert.NotEqual(new PageAddress(0, 0), first.FirstPage);
         Assert.NotEmpty(first.SchemaName);
         Assert.NotEmpty(first.TableName);
         Assert.True(first.IsSystem);

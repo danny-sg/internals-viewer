@@ -86,6 +86,14 @@ public class DatabaseInfoProvider(CurrentConnection connection)
 
             allocationUnit.FirstIamPage = PageAddressParser.Parse(firstIamPage);
 
+            var rootPage = reader.GetFieldValue<byte[]>("RootPage");
+
+            allocationUnit.RootPage = PageAddressParser.Parse(rootPage);
+
+            var firstPage = reader.GetFieldValue<byte[]>("FirstPage");
+
+            allocationUnit.FirstPage = PageAddressParser.Parse(firstPage);
+
             allocationUnit.SchemaName = reader.GetFieldValue<string>("SchemaName");
             allocationUnit.TableName = reader.GetFieldValue<string>("TableName");
             allocationUnit.IndexName = reader.GetNullableValue<string?>("IndexName") ?? string.Empty;

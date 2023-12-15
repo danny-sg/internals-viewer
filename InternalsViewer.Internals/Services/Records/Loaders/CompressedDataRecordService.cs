@@ -145,7 +145,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
                 field = new CompressedRecordField(structure.Columns[i], record);
                 field.Compressed = true;
 
-                if (field.Column.DataType == SqlDbType.Bit)
+                if (field.ColumnStructure.DataType == SqlDbType.Bit)
                 {
                     field.Length = 1;
                     field.Compressed = true;
@@ -172,7 +172,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
 
                 if (page.CompressionInfo is { AnchorRecord: not null })
                 {
-                    field.AnchorField = page.CompressionInfo.AnchorRecord.Fields.First(f => f.Column.ColumnId == i + 1);
+                    field.AnchorField = page.CompressionInfo.AnchorRecord.Fields.First(f => f.ColumnStructure.ColumnId == i + 1);
                 }
 
                 field.MarkDataStructure("Value", field.Offset, field.Length);
@@ -208,7 +208,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
 
                 if (page.CompressionInfo is { AnchorRecord: not null })
                 {
-                    field.AnchorField = page.CompressionInfo.AnchorRecord.Fields.First(f => f.Column.ColumnId == i);
+                    field.AnchorField = page.CompressionInfo.AnchorRecord.Fields.First(f => f.ColumnStructure.ColumnId == i);
                 }
 
                 record.Fields.Add(field);

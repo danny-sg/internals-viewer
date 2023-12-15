@@ -25,7 +25,7 @@ public partial class OffsetTable : UserControl
     /// </summary>
     /// <param name="offsetTable">The offset table.</param>
     /// <returns></returns>
-    public static DataTable ConstructOffsetTable(List<short> offsetTable)
+    public static DataTable ConstructOffsetTable(List<ushort> offsetTable)
     {
         var offsetDataTable = new DataTable();
 

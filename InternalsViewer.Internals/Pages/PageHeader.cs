@@ -88,8 +88,6 @@ public class PageHeader : DataStructure
     /// </remarks>
     public short FlagBits { get; set; }
 
-    public long PartitionId { get; set; }
-
     /// <summary>
     /// LSN (Log Sequence Number) of the last change to the page
     /// </summary>

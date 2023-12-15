@@ -118,7 +118,7 @@ internal class IndexRecordLoader : RecordLoader
 
         foreach (var column in structure.Columns)
         {
-            var indexCol = (IndexColumn)column;
+            var indexCol = (IndexColumnStructure)column;
             var processKeyColumn = !indexCol.Key || record.IncludeKey && indexCol.Key;
             var processIncludesColumn = !indexCol.IncludedColumn || indexCol.IncludedColumn && record.IsIndexType(IndexTypes.Leaf);
 

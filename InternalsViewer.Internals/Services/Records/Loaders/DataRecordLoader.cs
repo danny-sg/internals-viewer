@@ -27,7 +27,7 @@ public class DataRecordLoader : RecordLoader
 
         dataRecord.SlotOffset = slotOffset;
 
-        dataRecord.NullBitmapSize = (short)((structure.Columns.Count(column => !column.Sparse) - 1) / 8 + 1);
+        dataRecord.NullBitmapSize = (short)((structure.Columns.Count(column => !column.IsSparse) - 1) / 8 + 1);
 
         if (LoadStatusBits(dataRecord, data) == RecordType.Forwarding)
         {
@@ -60,7 +60,7 @@ public class DataRecordLoader : RecordLoader
         if (dataRecord is { HasVariableLengthColumns: true, Compressed: false })
         {
             if (structure.HasSparseColumns
-                && structure.Columns.Count(column => !column.Sparse) == 0)
+                && structure.Columns.Count(column => !column.IsSparse) == 0)
             {
                 dataRecord.VariableLengthColumnCount = 1;
 
@@ -166,7 +166,7 @@ public class DataRecordLoader : RecordLoader
 
         foreach (var column in structure.Columns)
         {
-            if (!column.Sparse)
+            if (!column.IsSparse)
             {
                 var field = new RecordField(column);
 
@@ -191,7 +191,7 @@ public class DataRecordLoader : RecordLoader
 
                     Array.Copy(page.PageData, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
                 }
-                else if (dataRecord is { HasVariableLengthColumns: true, HasNullBitmap: true } && !column.Dropped
+                else if (dataRecord is { HasVariableLengthColumns: true, HasNullBitmap: true } && !column.IsDropped
                          && (column.ColumnId < 0 || !dataRecord.NullBitmapValue(column)))
                 {
                     // Variable Length fields

@@ -43,7 +43,7 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
                 first = false;
             }
 
-            var currentColumn = new IndexColumn();
+            var currentColumn = new IndexColumnStructure();
 
             var indexId = reader.GetFieldValue<int>("index_id");
 
@@ -60,8 +60,8 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
             currentColumn.DataLength = reader.GetFieldValue<short>("max_length");
 
             currentColumn.Key = reader.GetFieldValue<bool>("IsKey");
-            currentColumn.Uniqueifer = reader.GetFieldValue<bool>("is_uniqueifier");
-            currentColumn.Dropped = reader.GetFieldValue<bool>("is_dropped");
+            currentColumn.IsUniqueifer = reader.GetFieldValue<bool>("is_uniqueifier");
+            currentColumn.IsDropped = reader.GetFieldValue<bool>("is_dropped");
 
             indexStructure.Columns.Add(currentColumn);
         }
@@ -120,11 +120,11 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
         return entryPoints;
     }
 
-    public async Task<CompressionType> GetCompressionType(long partitionId)
+    public async Task<CompressionType> GetCompressionType(long allocationUnitId)
     {
         var parameters = new SqlParameter[]
         {
-            new("@PartitionId", partitionId)
+            new("@AllocationUnitId", allocationUnitId)
         };
 
         return await GetScalar<CompressionType>(SqlCommands.Compression, parameters);
@@ -142,7 +142,7 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
 
     public async Task<TableStructure> GetTableStructure(long allocationUnitId)
     {
-        var columns = new List<Column>();
+        var columns = new List<ColumnStructure>();
 
         await using var connection = new SqlConnection(Connection.ConnectionString);
 
@@ -160,7 +160,7 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
 
         while (await reader.ReadAsync())
         {
-            var currentColumn = new Column();
+            var currentColumn = new ColumnStructure();
 
             currentColumn.ColumnName = reader.GetFieldValue<string>("name");
             currentColumn.ColumnId = reader.GetFieldValue<int>("column_id");
@@ -169,9 +169,9 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
             currentColumn.LeafOffset = reader.GetFieldValue<short>("leaf_offset");
             currentColumn.Precision = reader.GetFieldValue<byte>("precision");
             currentColumn.Scale = reader.GetFieldValue<byte>("scale");
-            currentColumn.Dropped = reader.GetFieldValue<bool>("is_dropped");
-            currentColumn.Uniqueifer = reader.GetFieldValue<bool>("is_uniqueifier");
-            currentColumn.Sparse = reader.GetFieldValue<bool>("is_sparse");
+            currentColumn.IsDropped = reader.GetFieldValue<bool>("is_dropped");
+            currentColumn.IsUniqueifer = reader.GetFieldValue<bool>("is_uniqueifier");
+            currentColumn.IsSparse = reader.GetFieldValue<bool>("is_sparse");
             currentColumn.NullBit = reader.GetFieldValue<short>("leaf_null_bit");
 
             columns.Add(currentColumn);

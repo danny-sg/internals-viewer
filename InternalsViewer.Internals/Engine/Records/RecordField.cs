@@ -7,13 +7,13 @@ namespace InternalsViewer.Internals.Engine.Records;
 /// <summary>
 /// Record field
 /// </summary>
-public class RecordField(Column column) : Field
+public class RecordField(ColumnStructure columnStructure) : Field
 {
     public BlobField BlobInlineRoot { get; set; }
 
-    public Column Column { get; set; } = column;
+    public ColumnStructure ColumnStructure { get; set; } = columnStructure;
 
-    public int LeafOffset => Column.LeafOffset;
+    public int LeafOffset => ColumnStructure.LeafOffset;
 
     public int Length { get; set; }
 
@@ -27,10 +27,10 @@ public class RecordField(Column column) : Field
 
     public bool Sparse { get; set; }
 
-    public string Name => Column.ColumnName;
+    public string Name => ColumnStructure.ColumnName;
 
     [DataStructureItem(DataStructureItemType.Value)]
-    public string Value => DataConverter.BinaryToString(Data, Column.DataType, Column.Precision, Column.Scale);
+    public string Value => DataConverter.BinaryToString(Data, ColumnStructure.DataType, ColumnStructure.Precision, ColumnStructure.Scale);
 
     public override string ToString()
     {
@@ -38,8 +38,8 @@ public class RecordField(Column column) : Field
             Offset,
             LeafOffset,
             Length,
-            Column.ColumnName,
-            Column.DataType,
+            ColumnStructure.ColumnName,
+            ColumnStructure.DataType,
             DataConverter.ToHexString(Data));
     }
 }

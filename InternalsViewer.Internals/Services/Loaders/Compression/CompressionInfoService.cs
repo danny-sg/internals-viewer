@@ -86,7 +86,7 @@ public class CompressionInfoService(IDictionaryService dictionaryService,
 
         for (short i = 0; i < records; i++)
         {
-            var column = new Column();
+            var column = new ColumnStructure();
 
             column.ColumnName = $"Column {i}";
             column.ColumnId = i;

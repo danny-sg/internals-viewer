@@ -25,6 +25,10 @@ public record AllocationUnit
 
     public PageAddress FirstIamPage { get; set; }
 
+    public PageAddress RootPage { get; set; }
+
+    public PageAddress FirstPage { get; set; }
+
     public AllocationChain IamChain { get; set; } = new();
 
     public string SchemaName { get; set; } = string.Empty;

@@ -16,6 +16,7 @@ public class PageAddressParserTests
     [InlineData("2:1000", 2, 1000)]
     [InlineData("0x000000000000", 0, 0)]
     [InlineData("0x521A00000100", 1, 6738)]
+    [InlineData("0x140000000100", 1, 20)]
     [InlineData("0x111111111111", 4369, 286331153)]
     public void Can_Parse_Page_Address(string value, int expectedFileId, int expectedPageId)
     {
