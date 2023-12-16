@@ -31,7 +31,7 @@ public class BlobField : Field
     [DataStructureItem(DataStructureItemType.Timestamp)]
     public int Timestamp { get; set; }
 
-    public List<BlobChildLink> Links { get; set; }
+    public List<BlobChildLink> Links { get; set; } = new();
 
     [DataStructureItem(DataStructureItemType.Rid)]
     public BlobChildLink[] LinksArray => Links.ToArray();

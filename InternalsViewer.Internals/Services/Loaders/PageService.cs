@@ -74,6 +74,6 @@ public class PageService(IPageReader reader,
     /// </summary>
     private async Task LoadCompressionInfo(Page page)
     {
-        page.CompressionInfo = await CompressionInfoService.GetCompressionInfo(page);
+        //page.CompressionInfo = await CompressionInfoService.GetCompressionInfo(page);
     }
 }

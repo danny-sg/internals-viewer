@@ -17,7 +17,7 @@ public class DataRecord : Record
 
     public T? GetValue<T>(string columnName)
     {
-        var field = Fields.FirstOrDefault(f => f.Name == columnName);
+        var field = Fields.FirstOrDefault(f => f.Name.ToLower() == columnName.ToLower());
 
         if (field == null)
         {

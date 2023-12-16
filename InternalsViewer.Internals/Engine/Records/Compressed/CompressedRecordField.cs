@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Records;
 
@@ -14,6 +15,8 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
 
         var compositeData = new byte[AnchorLength + fieldData.Length - dataOffset];
 
+        Debug.Assert(AnchorField != null, nameof(AnchorField) + " != null");
+
         Array.Copy(AnchorField.Data, 0, compositeData, 0, AnchorLength);
         Array.Copy(fieldData, dataOffset, compositeData, AnchorLength, fieldData.Length - dataOffset);
 
@@ -24,7 +27,7 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
 
     public int AnchorLength { get; set; }
 
-    public RecordField AnchorField { get; set; }
+    public RecordField? AnchorField { get; set; }
 
     public CompressedDataRecord Record { get; set; } = parentRecord;
 
@@ -79,7 +82,7 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
 
         string value;
 
-        if (AnchorField != null && AnchorField.Data != null)
+        if (AnchorField is { Data: not null })
         {
             var compositeData = ExpandAnchor(dictionaryValue);
 

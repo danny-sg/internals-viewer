@@ -45,7 +45,7 @@ class SparseVectorLoader
 
             Array.Copy(sparseVector.Data, previousOffset, columnData, 0, sparseVector.Offset[i] - previousOffset);
 
-            var column = sparseVector.Structure.Columns.FirstOrDefault(col => col.ColumnId == sparseVector.Columns[i]);
+            var column = sparseVector.Structure.Columns.First(col => col.ColumnId == sparseVector.Columns[i]);
 
             var field = new RecordField(column);
 

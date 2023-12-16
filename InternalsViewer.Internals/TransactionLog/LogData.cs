@@ -13,7 +13,7 @@ public class LogData
 
     public ushort Slot { get; set; }
 
-    public byte[] Data { get; set; }
+    public byte[] Data { get; set; } = Array.Empty<byte>();
 
     public LogSequenceNumber LogSequenceNumber { get; set; }
 

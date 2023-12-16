@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Records;
+﻿using System;
+using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Services.Records.Loaders;
@@ -33,11 +34,11 @@ public class SparseVector: DataStructure
 
     internal TableStructure Structure { get; set; }
 
-    public byte[] Data { get; set; }
+    public byte[] Data { get; set; } 
 
     internal DataRecord ParentRecord { get; set; }
 
-    public ushort[] Columns { get; set; }
+    public ushort[] Columns { get; set; } = Array.Empty<ushort>();
 
     [DataStructureItem(DataStructureItemType.SparseColumns)]
     public string ColumnsDescription => Record.GetArrayString(Columns);
@@ -45,7 +46,7 @@ public class SparseVector: DataStructure
     [DataStructureItem(DataStructureItemType.SparseColumnOffsets)]
     public string OffsetsDescription => Record.GetArrayString(Offset);
 
-    public ushort[] Offset { get; set; }
+    public ushort[] Offset { get; set; } = Array.Empty<ushort>();
 
     [DataStructureItem(DataStructureItemType.SparseColumnCount)]
     public short ColCount { get; set; }

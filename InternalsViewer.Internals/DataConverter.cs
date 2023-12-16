@@ -146,11 +146,11 @@ public static class DataConverter
 
                 case SqlDbType.DateTime:
 
-                    return DecodeDateTime(data);
+                    return DecodeDateTime(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.SmallDateTime:
 
-                    return DecodeSmallDateTime(data);
+                    return DecodeSmallDateTime(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.VarBinary:
                 case SqlDbType.Binary:
@@ -184,7 +184,7 @@ public static class DataConverter
 
                 case SqlDbType.Date:
 
-                    return DecodeDate(data);
+                    return DecodeDate(data).ToShortDateString(); 
 
                 case SqlDbType.Time:
 
@@ -192,7 +192,7 @@ public static class DataConverter
 
                 case SqlDbType.DateTime2:
 
-                    return DecodeDateTime2(data, scale);
+                    return DecodeDateTime2(data, scale).ToString("yyyy-MM-dd HH:mm:ss.fffffff");
 
                 case SqlDbType.DateTimeOffset:
 
@@ -228,7 +228,7 @@ public static class DataConverter
             {
                 SqlDbType.BigInt => BitConverter.ToInt64(data, 0),
                 SqlDbType.Int => BitConverter.ToInt32(data, 0),
-                SqlDbType.TinyInt => ((int)data[0]),
+                SqlDbType.TinyInt => data[0],
                 SqlDbType.SmallInt => BitConverter.ToInt16(data, 0),
                 SqlDbType.Char => Encoding.UTF8.GetString(data),
                 SqlDbType.VarChar => Encoding.UTF8.GetString(data),
@@ -335,8 +335,6 @@ public static class DataConverter
 
                 offset += 2;
                 break;
-
-
         }
 
         var variantData = new byte[data.Length - offset];
@@ -351,7 +349,7 @@ public static class DataConverter
     /// </summary>
     /// <param name="data">The data.</param>
     /// <returns></returns>
-    public static string DecodeSmallDateTime(byte[] data)
+    public static DateTime DecodeSmallDateTime(byte[] data)
     {
         var returnDate = new DateTime(1900, 1, 1);
 
@@ -360,7 +358,7 @@ public static class DataConverter
 
         returnDate = returnDate.AddDays(datePart).AddMinutes(timePart);
 
-        return returnDate.ToString(CultureInfo.InvariantCulture);
+        return returnDate;
     }
 
     /// <summary>
@@ -368,7 +366,7 @@ public static class DataConverter
     /// </summary>
     /// <param name="data">The data.</param>
     /// <returns></returns>
-    public static string DecodeDateTime(byte[] data)
+    public static DateTime DecodeDateTime(byte[] data)
     {
         var timePart = BitConverter.ToInt32(data, 0);
         var datePart = BitConverter.ToInt32(data, 4);
@@ -382,13 +380,13 @@ public static class DataConverter
     /// <param name="timePart">The time part.</param>
     /// <param name="datePart">The date part.</param>
     /// <returns></returns>
-    public static string DecodeDateTime(int timePart, int datePart)
+    public static DateTime DecodeDateTime(int timePart, int datePart)
     {
         var returnDate = new DateTime(1900, 1, 1);
 
         returnDate = returnDate.AddDays(datePart).AddMilliseconds(3.333333 * timePart);
 
-        return returnDate.ToString(CultureInfo.InvariantCulture);
+        return returnDate;
     }
 
     /// <summary>
@@ -397,7 +395,7 @@ public static class DataConverter
     /// <param name="data">The data.</param>
     /// <param name="scale">The scale.</param>
     /// <returns></returns>
-    private static string DecodeDateTime2(byte[] data, int scale)
+    private static DateTime DecodeDateTime2(byte[] data, int scale)
     {
         var dateData = new byte[4];
         var timeData = new byte[8];
@@ -414,7 +412,7 @@ public static class DataConverter
         returnDate = returnDate.AddDays(datePart);
         returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
 
-        return returnDate.ToString("yyyy-MM-dd HH:mm:ss.fffffff");
+        return returnDate;
     }
 
     /// <summary>
@@ -422,7 +420,7 @@ public static class DataConverter
     /// </summary>
     /// <param name="data">The data.</param>
     /// <returns></returns>
-    private static string DecodeDate(byte[] data)
+    private static DateOnly DecodeDate(byte[] data)
     {
         var dateData = new byte[4];
 
@@ -430,10 +428,11 @@ public static class DataConverter
 
         var date = BitConverter.ToInt32(dateData, 0);
 
-        var returnDate = new DateTime(0001, 01, 01);
+        var returnDate = new DateOnly();
+
         returnDate = returnDate.AddDays(date);
 
-        return returnDate.ToShortDateString();
+        return returnDate;
     }
 
     /// <summary>

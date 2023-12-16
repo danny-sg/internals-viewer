@@ -14,7 +14,7 @@ public class DataStructureItemAttribute(DataStructureItemType dataStructureItemT
     public DataStructureItemType DataStructureItemType { get; set; } = dataStructureItemType;
 
     public DataStructureItemAttribute(DataStructureItemType dataStructureItemType)
-        : this(dataStructureItemType, null)
+        : this(dataStructureItemType, string.Empty)
     {
     }
 

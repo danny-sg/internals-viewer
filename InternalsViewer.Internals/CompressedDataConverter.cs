@@ -6,9 +6,12 @@ namespace InternalsViewer.Internals;
 
 public class CompressedDataConverter
 {
-    public static string CompressedBinaryToBinary(byte[] data, SqlDbType sqlType, byte precision, byte scale)
+    public static string CompressedBinaryToBinary(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
     {
-        if (data == null) return null;
+        if (data == null)
+        {
+            return string.Empty;
+        }
 
         try
         {
@@ -234,9 +237,9 @@ public class CompressedDataConverter
             var numberOfColumnsData = new byte[2];
 
             Array.Copy(data, startPos, numberOfColumnsData, 0, 2);
-                
+
             numberOfColumnsData[0] = Convert.ToByte(numberOfColumnsData[0] ^ 0x80);
-                
+
             Array.Reverse(numberOfColumnsData);
 
             return BitConverter.ToUInt16(numberOfColumnsData, 0);

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
 
 // ReSharper disable IdentifierTypo
@@ -46,7 +47,7 @@ internal record InternalColumn
 
     public short Bitpos { get; set; }
 
-    public byte[] Colguid { get; set; }
+    public byte[] Colguid { get; set; } = Array.Empty<byte>();
 
     public int Ordlock { get; set; }
 

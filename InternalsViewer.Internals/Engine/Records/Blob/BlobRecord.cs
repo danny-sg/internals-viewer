@@ -49,9 +49,9 @@ public class BlobRecord : Record
     public short Size { get; set; }
 
     [DataStructureItem(DataStructureItemType.BlobData)]
-    public byte[] Data { get; set; }
+    public byte[] Data { get; set; } = Array.Empty<byte>(); 
 
-    public List<BlobChildLink> BlobChildren { get; set; }
+    public List<BlobChildLink> BlobChildren { get; set; } = new();
 
     public BlobChildLink[] BlobChildrenArray => BlobChildren.ToArray();
 

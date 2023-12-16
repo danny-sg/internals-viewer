@@ -29,5 +29,5 @@ public class MarkItem(string propertyName, int startPosition, int length)
 
     public int Index { get; set; } = -1;
 
-    public string Prefix { get; set; }
+    public string Prefix { get; set; } = string.Empty;
 }

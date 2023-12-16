@@ -2,8 +2,8 @@
 using System.Linq;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CSharp;
-using System.Collections.Generic;
 using System.Text;
+using System.Data;
 
 namespace InternalsViewer.Internals.Metadata.SourceGenerators;
 
@@ -13,6 +13,11 @@ namespace InternalsViewer.Internals.Metadata.SourceGenerators;
 [Generator]
 public class InternalRecordLoadGenerator : ISourceGenerator
 {
+    public void Initialize(GeneratorInitializationContext context)
+    {
+        context.RegisterForSyntaxNotifications(() => new TypeFinder());
+    }
+
     public void Execute(GeneratorExecutionContext context)
     {
         var types = ((TypeFinder)context.SyntaxReceiver)?.LoadTypes ?? new();
@@ -25,67 +30,109 @@ public class InternalRecordLoadGenerator : ISourceGenerator
 
             var ns = GetNamespace(symbol?.ContainingNamespace);
 
-            context.AddSource($"{type.Identifier.ValueText}Loader.g.cs", GenerateLoader(type, ns));
+            var name = $"{type.Identifier.ValueText}.g.cs";
+
+            context.AddSource(name, GenerateLoader(context, type, ns));
         }
     }
 
-    private string GenerateLoader(RecordDeclarationSyntax source, string ns)
+    private static string GenerateLoader(GeneratorExecutionContext context, TypeDeclarationSyntax source, string ns)
     {
-        var stringBuilder = new StringBuilder();
+        var loaderBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine("using InternalsViewer.Internals.Engine.Records.Data;");
-        
-        stringBuilder.AppendLine();
-        stringBuilder.AppendLine($"namespace {ns};");
-        stringBuilder.AppendLine();
+        var structureBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine($"public static class {source.Identifier.ValueText}Loader");
-        stringBuilder.AppendLine("{");
-        stringBuilder.AppendLine($"    public static {source.Identifier.ValueText} Load(DataRecord record)");
-        stringBuilder.AppendLine("    {");
-        stringBuilder.AppendLine($"        var result = new {source.Identifier.ValueText}();");
-        stringBuilder.AppendLine();
+        structureBuilder.AppendLine($"public static class {source.Identifier.ValueText}Structure");
+        structureBuilder.AppendLine("{");
+        structureBuilder.AppendLine("    public static TableStructure GetStructure(long allocationUnitId)");
+        structureBuilder.AppendLine("    {");
+        structureBuilder.AppendLine("        var structure = new TableStructure(allocationUnitId);");
+        structureBuilder.AppendLine();
+        structureBuilder.AppendLine("        var columns = new List<ColumnStructure>");
+        structureBuilder.AppendLine("        {");
+
+        loaderBuilder.AppendLine("using System;");
+        loaderBuilder.AppendLine("using System.Data;");
+        loaderBuilder.AppendLine("using System.Collections.Generic;");
+        loaderBuilder.AppendLine("using InternalsViewer.Internals.Engine.Records.Data;");
+
+        loaderBuilder.AppendLine();
+        loaderBuilder.AppendLine($"namespace {ns};");
+        loaderBuilder.AppendLine();
+
+        loaderBuilder.AppendLine($"public static class {source.Identifier.ValueText}Loader");
+        loaderBuilder.AppendLine("{");
+        loaderBuilder.AppendLine($"    public static {source.Identifier.ValueText} Load(DataRecord record)");
+        loaderBuilder.AppendLine("    {");
+        loaderBuilder.AppendLine($"        var result = new {source.Identifier.ValueText}();");
+        loaderBuilder.AppendLine();
 
         foreach (var property in source.Members.OfType<PropertyDeclarationSyntax>())
         {
             var propertyName = property.Identifier.ValueText;
 
-            stringBuilder.AppendLine($"        result.{propertyName} = record.GetValue<{property.Type}>(\"{property.Identifier.ValueText}\");");
+            var attribute = property.AttributeLists
+                                    .SelectMany(a => a.Attributes)
+                                    .FirstOrDefault(a => a.Name.ToString() == "InternalsMetadataColumn");
+
+            if (attribute == null)
+            {
+                continue;
+            }
+
+            var arguments = attribute.ArgumentList?.Arguments;
+
+            var name = GetValue<string>(context, arguments?[0].Expression);
+            var columnId = GetValue<int>(context, arguments?[1].Expression);
+            var dataType = GetValue<SqlDbType>(context, arguments?[2].Expression);
+            var dataLength = GetValue<int>(context, arguments?[3].Expression);
+            var leafOffset = GetValue<int>(context, arguments?[4].Expression);
+            var nullBit = GetValue<int>(context, arguments?[5].Expression);
+
+            structureBuilder.AppendLine($"            new()");
+            structureBuilder.AppendLine("            {");
+            structureBuilder.AppendLine($"                ColumnName = \"{name}\",");
+            structureBuilder.AppendLine($"                ColumnId = {columnId},");
+            structureBuilder.AppendLine($"                DataType = SqlDbType.{dataType},");
+            structureBuilder.AppendLine($"                DataLength = {dataLength},");
+            structureBuilder.AppendLine($"                LeafOffset = {leafOffset},");
+            structureBuilder.AppendLine($"                NullBit = {nullBit}");
+            structureBuilder.AppendLine("            },");
+
+            loaderBuilder.Append($"        result.{propertyName} = ");
+            loaderBuilder.AppendLine($"record.GetValue<{property.Type}>(\"{name}\");");
         }
 
-        stringBuilder.AppendLine();
-        stringBuilder.AppendLine("        return result;");
-        stringBuilder.AppendLine("    }");
-        stringBuilder.AppendLine("}");
+        structureBuilder.AppendLine("        };");
+        structureBuilder.AppendLine();
+        structureBuilder.AppendLine("        structure.Columns.AddRange(columns);");
+        structureBuilder.AppendLine();
+        structureBuilder.AppendLine("        return structure;");
+        structureBuilder.AppendLine("    }");
+        structureBuilder.AppendLine("}");
 
-        return stringBuilder.ToString();
+        loaderBuilder.AppendLine();
+        loaderBuilder.AppendLine("        return result;");
+        loaderBuilder.AppendLine("    }");
+        loaderBuilder.AppendLine("}");
+        loaderBuilder.AppendLine();
+        loaderBuilder.AppendLine(structureBuilder.ToString());
+
+        return loaderBuilder.ToString();
     }
 
-    public void Initialize(GeneratorInitializationContext context)
+    private static T GetValue<T>(GeneratorExecutionContext context, SyntaxNode expression)
     {
-        context.RegisterForSyntaxNotifications(() => new TypeFinder());
+        if (expression == null)
+        {
+            return default!;
+        }
+
+        return (T)context.Compilation.GetSemanticModel(expression.SyntaxTree).GetConstantValue(expression).Value;
     }
 
     private static string GetNamespace(ISymbol symbol) =>
-        symbol.ContainingNamespace == null 
-            ? symbol.Name 
+        symbol.ContainingNamespace == null
+            ? symbol.Name
             : (GetNamespace(symbol.ContainingNamespace) + "." + symbol.Name).Trim('.');
-}
-
-public class TypeFinder : ISyntaxReceiver
-{
-    public List<RecordDeclarationSyntax> LoadTypes { get; } = new();
-
-    public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
-    {
-        if (syntaxNode is RecordDeclarationSyntax type)
-        {
-            if (type.AttributeLists
-                    .SelectMany(s=>s.Attributes)
-                    .Any(a => a.GetText().ToString().EndsWith("GenerateRecordLoader")))
-            {
-                LoadTypes.Add(type);
-            }
-        }
-    }
 }
