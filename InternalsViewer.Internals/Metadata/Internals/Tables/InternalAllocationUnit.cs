@@ -1,6 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Data;
-using InternalsViewer.Internals.Engine.Database;
+﻿using System.Data;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Generators;
 
 namespace InternalsViewer.Internals.Metadata.Internals.Tables;
@@ -11,6 +10,8 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 [InternalsMetadata]
 public record InternalAllocationUnit
 {
+    public static PageAddress Location => new(1, 20);
+
     [InternalsMetadataColumn("auid", 1, SqlDbType.BigInt, 8, 4, 1)]
     public long AllocationUnitId { get; set; }
 

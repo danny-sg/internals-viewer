@@ -7,7 +7,6 @@ using InternalsViewer.Internals.Readers.Headers;
 using System;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
-using System.Linq;
 
 namespace InternalsViewer.Internals.Services.Loaders;
 

@@ -1,7 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Pages;
-using InternalsViewer.Tests.Internals.IntegrationTests.Helpers;
+using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
 
 namespace InternalsViewer.Tests.Internals.IntegrationTests.Readers;
 

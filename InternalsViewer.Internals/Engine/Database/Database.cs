@@ -1,11 +1,13 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
 public class Database : DatabaseInfo
 {
+    public BootPage BootPage { get; set; } = null!;
+
     /// <summary>
     /// GAM (Global Allocation Map) chain per database file
     /// </summary>

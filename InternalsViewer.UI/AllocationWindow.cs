@@ -138,7 +138,7 @@ public partial class AllocationWindow : UserControl
 
     private void AllocUnitBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
     {
-        e.Result = AllocationUnitsLayer.GenerateLayers(CurrentDatabase, (BackgroundWorker)sender, true, false);
+        e.Result = AllocationUnitsLayer.GenerateLayers(CurrentDatabase!, (BackgroundWorker)sender, true, true);
     }
 
     private void AllocUnitBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)

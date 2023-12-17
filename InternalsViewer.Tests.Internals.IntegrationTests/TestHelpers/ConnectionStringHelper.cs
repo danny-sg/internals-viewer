@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 
-namespace InternalsViewer.Tests.Internals.IntegrationTests.Helpers;
+namespace InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
 internal class ConnectionStringHelper
 {
     public static string GetConnectionString(string name)

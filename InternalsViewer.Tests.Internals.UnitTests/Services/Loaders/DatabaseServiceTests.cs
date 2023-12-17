@@ -6,6 +6,8 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Services.Loaders;
+using InternalsViewer.Tests.Internals.UnitTests.TestHelpers;
+using Microsoft.IdentityModel.Logging;
 using Moq;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Services.Loaders;
@@ -21,6 +23,8 @@ public class DatabaseServiceTests
         var allocationChainService = new Mock<IAllocationChainService>();
         var iamChainService = new Mock<IIamChainService>();
         var pfsChainService = new Mock<IPfsChainService>();
+
+        var bootPageService = new Mock<IBootPageService>();
 
         var databaseInfo = new DatabaseInfo
         {
@@ -42,8 +46,10 @@ public class DatabaseServiceTests
         databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
                             .ReturnsAsync(databaseInfo);
 
-        var databaseService = new DatabaseService(databaseInfoProvider.Object,
+        var databaseService = new DatabaseService(TestLogHelper.GetLogger<DatabaseService>(),
+                                                  databaseInfoProvider.Object,
                                                   databaseFileInfoProvider.Object,
+                                                  bootPageService.Object,
                                                   allocationChainService.Object,
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
@@ -53,7 +59,7 @@ public class DatabaseServiceTests
         Assert.NotNull(result);
         Assert.Equal("TestDatabase", result.Name);
         Assert.Equal(170, result.CompatibilityLevel);
-        Assert.Equal    (2, result.Files.Count);
+        Assert.Equal(2, result.Files.Count);
         Assert.Equal(DatabaseState.Online, result.State);
     }
 
@@ -66,6 +72,7 @@ public class DatabaseServiceTests
         var allocationChainService = new Mock<IAllocationChainService>();
         var iamChainService = new Mock<IIamChainService>();
         var pfsChainService = new Mock<IPfsChainService>();
+        var bootPageService = new Mock<IBootPageService>();
 
         var databaseInfo = new DatabaseInfo
         {
@@ -90,8 +97,10 @@ public class DatabaseServiceTests
         allocationChainService.Setup(a => a.LoadChain(It.IsAny<Database>(), It.IsAny<short>(), It.IsAny<PageType>()))
             .ReturnsAsync(new AllocationChain());
 
-        var databaseService = new DatabaseService(databaseInfoProvider.Object,
+        var databaseService = new DatabaseService(TestLogHelper.GetLogger<DatabaseService>(),
+                                                  databaseInfoProvider.Object,
                                                   databaseFileInfoProvider.Object,
+                                                  bootPageService.Object,
                                                   allocationChainService.Object,
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
@@ -118,6 +127,8 @@ public class DatabaseServiceTests
         // Create a database service using mocks
         var databaseInfoProvider = new Mock<IDatabaseInfoProvider>();
         var databaseFileInfoProvider = new Mock<IDatabaseFileInfoProvider>();
+
+        var bootPageService = new Mock<IBootPageService>();
         var allocationChainService = new Mock<IAllocationChainService>();
         var iamChainService = new Mock<IIamChainService>();
         var pfsChainService = new Mock<IPfsChainService>();
@@ -145,8 +156,10 @@ public class DatabaseServiceTests
         pfsChainService.Setup(a => a.LoadChain(It.IsAny<Database>(), It.IsAny<short>()))
             .ReturnsAsync(new PfsChain());
 
-        var databaseService = new DatabaseService(databaseInfoProvider.Object,
+        var databaseService = new DatabaseService(TestLogHelper.GetLogger<DatabaseService>(), 
+                                                  databaseInfoProvider.Object,
                                                   databaseFileInfoProvider.Object,
+                                                  bootPageService.Object,
                                                   allocationChainService.Object,
                                                   iamChainService.Object,
                                                   pfsChainService.Object);

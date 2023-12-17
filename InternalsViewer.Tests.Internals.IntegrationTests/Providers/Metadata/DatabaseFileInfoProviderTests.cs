@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Metadata;
-using InternalsViewer.Tests.Internals.IntegrationTests.Helpers;
+using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
 
 namespace InternalsViewer.Tests.Internals.IntegrationTests.Providers.Metadata;
 

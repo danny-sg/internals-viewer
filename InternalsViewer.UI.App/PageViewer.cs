@@ -36,4 +36,11 @@ public partial class PageViewer : Form
 
         ResumeLayout();
     }
+
+    private void PageViewerWindow_OpenDecodeWindow(object? sender, EventArgs e)
+    {
+        var decodeForm = new DecodeForm();
+
+        decodeForm.Show(pageViewerWindow);
+    }
 }

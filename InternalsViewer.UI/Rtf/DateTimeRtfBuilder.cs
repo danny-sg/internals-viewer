@@ -10,7 +10,7 @@ internal class DateTimeRtfBuilder : RtfBuilder
     {
         var rtfColours = new List<Color>
         {
-            Color.Blue, Color.Green, backColour
+            Color.Blue, Color.Green, Color.Black, Color.White, backColour
         };
 
         var rtfHeader = CreateHeader(rtfColours);
@@ -23,7 +23,7 @@ internal class DateTimeRtfBuilder : RtfBuilder
 
         sb.Append(RtfTag(rtfColours, Color.Green.Name, backColour.Name));
         sb.Append(date);
-        sb.Append("}");
+        sb.Append("}}");
 
         return sb.ToString();
     }   

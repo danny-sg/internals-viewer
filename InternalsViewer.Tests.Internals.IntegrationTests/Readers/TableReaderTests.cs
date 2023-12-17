@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Services.Loaders;
-using InternalsViewer.Tests.Internals.IntegrationTests.Helpers;
+using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
 using Moq;
 
 namespace InternalsViewer.Tests.Internals.IntegrationTests.Readers;
@@ -59,6 +59,58 @@ public class TableReaderTests
         var records = await dataReader.Read(database, new InternalsViewer.Internals.Engine.Address.PageAddress(1, 273), tableStructure);
 
         var result = records.Select(InternalObjectLoader.Load).ToList();
+
+        Assert.NotEmpty(result);
+    }
+
+    [Fact]
+    public async Task Can_Read_Columns_Table()
+    {
+        var connectionString = ConnectionStringHelper.GetConnectionString("local");
+
+        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
+
+        var reader = new DatabasePageReader(connection);
+
+        var compressionInfoMock = new Mock<ICompressionInfoService>();
+
+        var service = new PageService(reader, compressionInfoMock.Object);
+
+        var dataReader = new TableReader(service);
+
+        var database = new Database { Name = "AdventureWorks2022" };
+
+        var tableStructure = InternalColumnStructure.GetStructure(72057594040549376);
+
+        var records = await dataReader.Read(database, new InternalsViewer.Internals.Engine.Address.PageAddress(1, 19), tableStructure);
+
+        var result = records.Select(InternalColumnLoader.Load).ToList();
+
+        Assert.NotEmpty(result);
+    }
+
+    [Fact]
+    public async Task Can_Read_RowSet_Table()
+    {
+        var connectionString = ConnectionStringHelper.GetConnectionString("local");
+
+        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
+
+        var reader = new DatabasePageReader(connection);
+
+        var compressionInfoMock = new Mock<ICompressionInfoService>();
+
+        var service = new PageService(reader, compressionInfoMock.Object);
+
+        var dataReader = new TableReader(service);
+
+        var database = new Database { Name = "AdventureWorks2022" };
+
+        var tableStructure = InternalRowSetStructure.GetStructure(72057594040549376);
+
+        var records = await dataReader.Read(database, new InternalsViewer.Internals.Engine.Address.PageAddress(1, 19), tableStructure);
+
+        var result = records.Select(InternalRowSetLoader.Load).ToList();
 
         Assert.NotEmpty(result);
     }

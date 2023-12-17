@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Records;
 

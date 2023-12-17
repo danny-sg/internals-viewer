@@ -3,23 +3,28 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
-using System.Linq;
 
 namespace InternalsViewer.Internals.Services.Loaders;
 
 /// <summary>
 /// Service responsible for loading Database information
 /// </summary>
-public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
+public class DatabaseService(ILogger<DatabaseService> logger,
+                             IDatabaseInfoProvider databaseInfoProvider,
                              IDatabaseFileInfoProvider databaseFileInfoProvider,
+                             IBootPageService bootPageService,
                              IAllocationChainService allocationChainService,
                              IIamChainService iamChainService,
                              IPfsChainService pfsChainService)
     : IDatabaseService
 {
+    public ILogger<DatabaseService> Logger { get; } = logger;
+
     public IDatabaseInfoProvider DatabaseInfoProvider { get; } = databaseInfoProvider;
 
     public IDatabaseFileInfoProvider DatabaseFileInfoProvider { get; } = databaseFileInfoProvider;
+
+    public IBootPageService BootPageService { get; } = bootPageService;
 
     public IAllocationChainService AllocationChainService { get; } = allocationChainService;
 
@@ -32,7 +37,7 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
     /// </summary>
     public async Task<Database> Load(string name)
     {
-        var databaseInfo = await DatabaseInfoProvider.GetDatabase(name) 
+        var databaseInfo = await DatabaseInfoProvider.GetDatabase(name)
                            ?? throw new ArgumentException($"Database {name} not found");
 
         var database = new Database
@@ -42,6 +47,8 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
             State = databaseInfo.State,
             CompatibilityLevel = databaseInfo.CompatibilityLevel
         };
+
+        database.BootPage = await BootPageService.GetBootPage(database);
 
         var files = await DatabaseFileInfoProvider.GetFiles(name);
 
@@ -60,7 +67,7 @@ public class DatabaseService(IDatabaseInfoProvider databaseInfoProvider,
 
     private void AddSystemAllocationUnits(Database database)
     {
-       // database.AllocationUnits.Add(InternalAllocationUnit.GetAllocationUnit());
+        // database.AllocationUnits.Add(InternalAllocationUnit.GetAllocationUnit());
     }
 
     /// <summary>

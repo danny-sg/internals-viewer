@@ -188,7 +188,7 @@ public static class DataConverter
 
                 case SqlDbType.Time:
 
-                    return DecodeTime(data, scale);
+                    return DecodeTime(data, scale).ToString("HH:mm:ss.fffffff");
 
                 case SqlDbType.DateTime2:
 
@@ -379,14 +379,47 @@ public static class DataConverter
     /// </summary>
     /// <param name="timePart">The time part.</param>
     /// <param name="datePart">The date part.</param>
-    /// <returns></returns>
+    /// <remarks>
+    /// SQL Server represents DATETIME as two 4-byte integers.
+    /// 
+    /// The first integer represents the date part, the number of days since 1st Jan 1900
+    /// 
+    /// The second integer represents the time part, the number of milliseconds * 3.333 (represented here as 30 / 9)
+    /// 
+    /// The last oddity is that the time is rounded to the nearest 0, 3 or 7 milliseconds.
+    /// </remarks>
     public static DateTime DecodeDateTime(int timePart, int datePart)
     {
         var returnDate = new DateTime(1900, 1, 1);
 
-        returnDate = returnDate.AddDays(datePart).AddMilliseconds(3.333333 * timePart);
+        var milliseconds = (int)((30f / 9f) * timePart);
+
+        var roundedMilliseconds = milliseconds - milliseconds % 10 + ClosestTo(milliseconds % 10);
+
+        returnDate = returnDate.AddDays(datePart).AddMilliseconds(roundedMilliseconds);
 
         return returnDate;
+    }
+
+    public static int ClosestTo(int number)
+    {
+        var targets = new[] { 0, 3, 7 };
+        var nearest = targets[0];
+
+        var smallestDifference = Math.Abs(number - nearest);
+
+        foreach (var target in targets)
+        {
+            var difference = Math.Abs(number - target);
+
+            if (difference < smallestDifference)
+            {
+                nearest = target;
+                smallestDifference = difference;
+            }
+        }
+
+        return nearest;
     }
 
     /// <summary>
@@ -441,7 +474,7 @@ public static class DataConverter
     /// <param name="data">The data.</param>
     /// <param name="scale">The scale.</param>
     /// <returns></returns>
-    private static string DecodeTime(byte[] data, int scale)
+    private static TimeSpan DecodeTime(byte[] data, int scale)
     {
         var timeData = new byte[8];
 
@@ -454,7 +487,7 @@ public static class DataConverter
         var returnDate = new DateTime();
         returnDate = returnDate.AddMilliseconds(scaleFactor * time);
 
-        return returnDate.ToString("HH:mm:ss.fffffff");
+        return returnDate.TimeOfDay;
     }
 
     /// <summary>

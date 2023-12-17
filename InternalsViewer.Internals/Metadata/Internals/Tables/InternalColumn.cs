@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
+using InternalsViewer.Internals.Generators;
 
 // ReSharper disable IdentifierTypo
 
@@ -21,60 +21,51 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 ///     Is Dropped    - status & 2
 ///     Is Sparse     - status & 0x00000100
 ///     /// </remarks>
-internal record InternalColumn
+[InternalsMetadata]
+public record InternalColumn
 {
-    public long Rsid { get; set; }
+    [InternalsMetadataColumn("rsid", 1, SqlDbType.BigInt, 8, 4, 1)]
+    public long PartitionId { get; set; }
 
-    public int Rscolid { get; set; }
+    [InternalsMetadataColumn("rscolid", 2, SqlDbType.Int, 4, 12, 2)]
+    public int PartitionColumnId { get; set; }
 
+    [InternalsMetadataColumn("bcolid", 3, SqlDbType.Int, 4, 16, 3)]
     public int Bcolid { get; set; }
 
-    public int Rcmodified { get; set; }
+    [InternalsMetadataColumn("rcmodified", 4, SqlDbType.BigInt, 8, 20, 4)]
+    public long Rcmodified { get; set; }
 
-    public int Ti { get; set; }
+    /// <remarks>
+    /// <see href="https://improve.dk/creating-a-type-aware-parser-for-the-sys-system_internals_partition_columns-ti-field/"/>
+    /// </remarks>
+    [InternalsMetadataColumn("ti", 5, SqlDbType.Int, 4, 28, 5)]
+    public int TypeInfo { get; set; }
 
-    public int Cid { get; set; }
+    [InternalsMetadataColumn("cid", 6, SqlDbType.Int, 4, 32, 6)]
+    public int CollationId { get; set; }
 
-    public short Ordkey { get; set; }
+    [InternalsMetadataColumn("ordkey", 7, SqlDbType.SmallInt, 2, 36, 7)]
+    public short KeyOrdinal { get; set; }
 
+    [InternalsMetadataColumn("maxinrowlen", 8, SqlDbType.SmallInt, 2, 38, 8)]
     public short Maxrowinlen { get; set; }
 
+    [InternalsMetadataColumn("status", 9, SqlDbType.Int, 4, 40, 9)]
     public int Status { get; set; }
 
+    [InternalsMetadataColumn("offset", 10, SqlDbType.Int, 4, 44, 10)]
     public int Offset { get; set; }
 
+    [InternalsMetadataColumn("nullbit", 11, SqlDbType.Int, 4, 48, 11)]
     public int Nullbit { get; set; }
 
-    public short Bitpos { get; set; }
+    [InternalsMetadataColumn("bitpos", 12, SqlDbType.SmallInt, 4, 52, 12)]
+    public short BitPosition { get; set; }
 
-    public byte[] Colguid { get; set; } = Array.Empty<byte>();
+    [InternalsMetadataColumn("colguid", 13, SqlDbType.VarBinary, 16, -1, 13)]
+    public byte[] PartitionColumnGuid { get; set; } = Array.Empty<byte>();
 
+    [InternalsMetadataColumn("ordlock", 14, SqlDbType.Int, 4, 54, 14)]
     public int Ordlock { get; set; }
-
-    public static TableStructure GetTableStructure()
-    {
-        var structure = new TableStructure(196608);
-
-        var columns = new List<ColumnStructure>
-        {
-            new() { ColumnName = "rsid", ColumnId = 1, DataType = SqlDbType.BigInt, DataLength = 8, LeafOffset = 4, NullBit = 1 },
-            new() { ColumnName = "rscolid", ColumnId = 2, DataType = SqlDbType.Int, DataLength = 4, LeafOffset = 12, NullBit = 2 },
-            new() { ColumnName = "hbcolid", ColumnId = 3, DataType = SqlDbType.Int, DataLength = 4, LeafOffset = 16, NullBit = 3 },
-            new() { ColumnName = "rcmodified", ColumnId = 4, DataType = SqlDbType.BigInt, DataLength = 8, LeafOffset = 20, NullBit = 4 },
-            new() { ColumnName = "ti", ColumnId = 5, DataType = SqlDbType.Int, DataLength = 4, LeafOffset = 28, NullBit = 5 },
-            new() { ColumnName = "cid", ColumnId = 6, DataType = SqlDbType.Int, DataLength = 4, LeafOffset = 32, NullBit = 6 },
-            new() { ColumnName = "ordkey", ColumnId = 7, DataType = SqlDbType.SmallInt, DataLength = 2, LeafOffset = 36, NullBit = 7 },
-            new() { ColumnName = "maxinrowlen", ColumnId = 8, DataType = SqlDbType.SmallInt, DataLength = 2, LeafOffset = 38, NullBit = 8 },
-            new() { ColumnName = "status", ColumnId = 9, DataType = SqlDbType.Int, DataLength = 4, LeafOffset = 40, NullBit = 9 },
-            new() { ColumnName = "offset", ColumnId = 10, DataType = SqlDbType.Int, DataLength = 4, LeafOffset = 44, NullBit = 10 },
-            new() { ColumnName = "nullbit", ColumnId = 11, DataType = SqlDbType.Int, DataLength = 4, LeafOffset = 48, NullBit = 11 },
-            new() { ColumnName = "bitpos", ColumnId = 12, DataType = SqlDbType.SmallInt, DataLength = 4, LeafOffset = 52, NullBit = 12 },
-            new() { ColumnName = "colguid", ColumnId = 13, DataType = SqlDbType.VarBinary, DataLength = 16, LeafOffset = -1, NullBit = 13 },
-            new() { ColumnName = "ordlock", ColumnId = 14, DataType = SqlDbType.Int, DataLength = 4, LeafOffset = 54, NullBit = 14 }
-        };
-
-        structure.Columns = columns;
-
-        return structure;
-    }
 }

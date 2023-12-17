@@ -35,9 +35,10 @@ namespace InternalsViewer.UI
         {
             components = new Container();
             var dataGridViewCellStyle1 = new DataGridViewCellStyle();
-            var dataGridViewCellStyle3 = new DataGridViewCellStyle();
             var dataGridViewCellStyle4 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle5 = new DataGridViewCellStyle();
             var dataGridViewCellStyle2 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle3 = new DataGridViewCellStyle();
             allocationContainer = new AllocationContainer();
             splitContainer = new SplitContainer();
             flatMenuStrip = new FlatMenuStrip();
@@ -61,12 +62,6 @@ namespace InternalsViewer.UI
             pageToolStripTextBox = new PageAddressTextBox();
             toolStripLabel2 = new ToolStripLabel();
             keysDataGridView = new DataGridView();
-            KeyColumn = new KeyImageColumn();
-            NameColumn = new DataGridViewTextBoxColumn();
-            IndexNameColumn = new DataGridViewTextBoxColumn();
-            IndexTypeColumn = new DataGridViewTextBoxColumn();
-            TotalPagesColumn = new DataGridViewTextBoxColumn();
-            UsedPagesColumn = new DataGridViewTextBoxColumn();
             allocationBindingSource = new BindingSource(components);
             statusStrip = new StatusStrip();
             errorImageToolStripStatusLabel = new ToolStripStatusLabel();
@@ -80,6 +75,13 @@ namespace InternalsViewer.UI
             iconToolStripStatusLabel = new ToolStripStatusLabel();
             allocUnitBackgroundWorker = new BackgroundWorker();
             keyImageColumn1 = new KeyImageColumn();
+            KeyColumn = new KeyImageColumn();
+            NameColumn = new DataGridViewTextBoxColumn();
+            IndexNameColumn = new DataGridViewTextBoxColumn();
+            IndexTypeColumn = new DataGridViewTextBoxColumn();
+            FirstPage = new DataGridViewTextBoxColumn();
+            TotalPagesColumn = new DataGridViewTextBoxColumn();
+            UsedPagesColumn = new DataGridViewTextBoxColumn();
             ((ISupportInitialize)splitContainer).BeginInit();
             splitContainer.Panel1.SuspendLayout();
             splitContainer.Panel2.SuspendLayout();
@@ -101,7 +103,7 @@ namespace InternalsViewer.UI
             allocationContainer.IncludeIam = false;
             allocationContainer.LayoutStyle = LayoutStyle.Horizontal;
             allocationContainer.Location = new System.Drawing.Point(0, 35);
-            allocationContainer.Margin = new Padding(7, 7, 7, 7);
+            allocationContainer.Margin = new Padding(7);
             allocationContainer.Mode = MapMode.Standard;
             allocationContainer.Name = "allocationContainer";
             allocationContainer.ShowFileInformation = false;
@@ -114,7 +116,7 @@ namespace InternalsViewer.UI
             // 
             splitContainer.Dock = DockStyle.Fill;
             splitContainer.Location = new System.Drawing.Point(0, 0);
-            splitContainer.Margin = new Padding(4, 4, 4, 4);
+            splitContainer.Margin = new Padding(4);
             splitContainer.Name = "splitContainer";
             splitContainer.Orientation = Orientation.Horizontal;
             // 
@@ -337,85 +339,36 @@ namespace InternalsViewer.UI
             dataGridViewCellStyle1.WrapMode = DataGridViewTriState.True;
             keysDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
             keysDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            keysDataGridView.Columns.AddRange(new DataGridViewColumn[] { KeyColumn, NameColumn, IndexNameColumn, IndexTypeColumn, TotalPagesColumn, UsedPagesColumn });
+            keysDataGridView.Columns.AddRange(new DataGridViewColumn[] { KeyColumn, NameColumn, IndexNameColumn, IndexTypeColumn, FirstPage, TotalPagesColumn, UsedPagesColumn });
             keysDataGridView.DataSource = allocationBindingSource;
-            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle3.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
-            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.ControlLight;
-            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle3.WrapMode = DataGridViewTriState.False;
-            keysDataGridView.DefaultCellStyle = dataGridViewCellStyle3;
+            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle4.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.ControlLight;
+            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle4.WrapMode = DataGridViewTriState.False;
+            keysDataGridView.DefaultCellStyle = dataGridViewCellStyle4;
             keysDataGridView.Dock = DockStyle.Fill;
             keysDataGridView.GridColor = System.Drawing.Color.White;
             keysDataGridView.Location = new System.Drawing.Point(0, 0);
-            keysDataGridView.Margin = new Padding(4, 4, 4, 4);
+            keysDataGridView.Margin = new Padding(4);
             keysDataGridView.Name = "keysDataGridView";
             keysDataGridView.ReadOnly = true;
-            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle4.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
-            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle4.WrapMode = DataGridViewTriState.True;
-            keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle4;
+            dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle5.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle5.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            dataGridViewCellStyle5.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle5.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle5.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle5.WrapMode = DataGridViewTriState.True;
+            keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle5;
             keysDataGridView.RowHeadersVisible = false;
             keysDataGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             keysDataGridView.Size = new System.Drawing.Size(1102, 138);
             keysDataGridView.TabIndex = 2;
             keysDataGridView.CellClick += KeysDataGridView_CellClick;
             keysDataGridView.SelectionChanged += KeysDataGridView_SelectionChanged;
-            // 
-            // KeyColumn
-            // 
-            KeyColumn.DataPropertyName = "Colour";
-            KeyColumn.HeaderText = "";
-            KeyColumn.Name = "KeyColumn";
-            KeyColumn.ReadOnly = true;
-            KeyColumn.Width = 30;
-            // 
-            // NameColumn
-            // 
-            NameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            NameColumn.DataPropertyName = "ObjectName";
-            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
-            NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
-            NameColumn.HeaderText = "Table";
-            NameColumn.Name = "NameColumn";
-            NameColumn.ReadOnly = true;
-            // 
-            // IndexNameColumn
-            // 
-            IndexNameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            IndexNameColumn.DataPropertyName = "IndexName";
-            IndexNameColumn.HeaderText = "Index";
-            IndexNameColumn.Name = "IndexNameColumn";
-            IndexNameColumn.ReadOnly = true;
-            // 
-            // IndexTypeColumn
-            // 
-            IndexTypeColumn.DataPropertyName = "IndexType";
-            IndexTypeColumn.HeaderText = "Index Type";
-            IndexTypeColumn.Name = "IndexTypeColumn";
-            IndexTypeColumn.ReadOnly = true;
-            // 
-            // TotalPagesColumn
-            // 
-            TotalPagesColumn.DataPropertyName = "TotalPages";
-            TotalPagesColumn.HeaderText = "Total Pages";
-            TotalPagesColumn.Name = "TotalPagesColumn";
-            TotalPagesColumn.ReadOnly = true;
-            TotalPagesColumn.Width = 90;
-            // 
-            // UsedPagesColumn
-            // 
-            UsedPagesColumn.DataPropertyName = "UsedPages";
-            UsedPagesColumn.HeaderText = "Used Pages";
-            UsedPagesColumn.Name = "UsedPagesColumn";
-            UsedPagesColumn.ReadOnly = true;
-            UsedPagesColumn.Width = 90;
             // 
             // statusStrip
             // 
@@ -500,13 +453,71 @@ namespace InternalsViewer.UI
             keyImageColumn1.Name = "keyImageColumn1";
             keyImageColumn1.Width = 30;
             // 
+            // KeyColumn
+            // 
+            KeyColumn.DataPropertyName = "Colour";
+            KeyColumn.HeaderText = "";
+            KeyColumn.Name = "KeyColumn";
+            KeyColumn.ReadOnly = true;
+            KeyColumn.Width = 30;
+            // 
+            // NameColumn
+            // 
+            NameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            NameColumn.DataPropertyName = "ObjectName";
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
+            NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
+            NameColumn.HeaderText = "Table";
+            NameColumn.Name = "NameColumn";
+            NameColumn.ReadOnly = true;
+            // 
+            // IndexNameColumn
+            // 
+            IndexNameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            IndexNameColumn.DataPropertyName = "IndexName";
+            IndexNameColumn.HeaderText = "Index";
+            IndexNameColumn.Name = "IndexNameColumn";
+            IndexNameColumn.ReadOnly = true;
+            // 
+            // IndexTypeColumn
+            // 
+            IndexTypeColumn.DataPropertyName = "IndexType";
+            IndexTypeColumn.HeaderText = "Index Type";
+            IndexTypeColumn.Name = "IndexTypeColumn";
+            IndexTypeColumn.ReadOnly = true;
+            // 
+            // FirstPage
+            // 
+            FirstPage.DataPropertyName = "FirstPage";
+            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.Blue;
+            FirstPage.DefaultCellStyle = dataGridViewCellStyle3;
+            FirstPage.HeaderText = "First Page";
+            FirstPage.Name = "FirstPage";
+            FirstPage.ReadOnly = true;
+            // 
+            // TotalPagesColumn
+            // 
+            TotalPagesColumn.DataPropertyName = "TotalPages";
+            TotalPagesColumn.HeaderText = "Total Pages";
+            TotalPagesColumn.Name = "TotalPagesColumn";
+            TotalPagesColumn.ReadOnly = true;
+            TotalPagesColumn.Width = 90;
+            // 
+            // UsedPagesColumn
+            // 
+            UsedPagesColumn.DataPropertyName = "UsedPages";
+            UsedPagesColumn.HeaderText = "Used Pages";
+            UsedPagesColumn.Name = "UsedPagesColumn";
+            UsedPagesColumn.ReadOnly = true;
+            UsedPagesColumn.Width = 90;
+            // 
             // AllocationWindow
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             Controls.Add(splitContainer);
             Controls.Add(statusStrip);
-            Margin = new Padding(4, 4, 4, 4);
+            Margin = new Padding(4);
             Name = "AllocationWindow";
             Size = new System.Drawing.Size(1102, 668);
             splitContainer.Panel1.ResumeLayout(false);
@@ -549,12 +560,6 @@ namespace InternalsViewer.UI
         private BindingSource allocationBindingSource;
         private DataGridView keysDataGridView;
         private KeyImageColumn keyImageColumn1;
-        private KeyImageColumn KeyColumn;
-        private DataGridViewTextBoxColumn NameColumn;
-        private DataGridViewTextBoxColumn IndexNameColumn;
-        private DataGridViewTextBoxColumn IndexTypeColumn;
-        private DataGridViewTextBoxColumn TotalPagesColumn;
-        private DataGridViewTextBoxColumn UsedPagesColumn;
         private PageAddressTextBox pageToolStripTextBox;
         private ToolStripLabel toolStripLabel2;
         private ToolStripButton showKeyToolStripButton;
@@ -567,5 +572,12 @@ namespace InternalsViewer.UI
         private ToolStripMenuItem bcmToolStripMenuItem;
         private ToolStripMenuItem dcmToolStripMenuItem;
         private ToolStripMenuItem pFSToolStripMenuItem;
+        private KeyImageColumn KeyColumn;
+        private DataGridViewTextBoxColumn NameColumn;
+        private DataGridViewTextBoxColumn IndexNameColumn;
+        private DataGridViewTextBoxColumn IndexTypeColumn;
+        private DataGridViewTextBoxColumn FirstPage;
+        private DataGridViewTextBoxColumn TotalPagesColumn;
+        private DataGridViewTextBoxColumn UsedPagesColumn;
     }
 }

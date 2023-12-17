@@ -72,6 +72,7 @@ public class AllocationUnitsLayer
 
                 layer.Name = currentObjectName;
                 layer.ObjectName = allocationUnit.SchemaName + "." + allocationUnit.TableName;
+                layer.FirstPage = allocationUnit.FirstPage;
 
                 if (!allocationUnit.IsSystem)
                 {

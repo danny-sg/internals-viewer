@@ -2,7 +2,7 @@
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Metadata;
-using InternalsViewer.Tests.Internals.IntegrationTests.Helpers;
+using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
 
 namespace InternalsViewer.Tests.Internals.IntegrationTests.Providers.Metadata;
 
@@ -12,7 +12,7 @@ public class DatabaseInfoProviderTests
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "master" };
+        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
 
         var databaseInfoProvider = new DatabaseInfoProvider(connection);
 
@@ -55,7 +55,7 @@ public class DatabaseInfoProviderTests
         Assert.NotEqual(new PageAddress(0, 0), first.FirstPage);
         Assert.NotEmpty(first.SchemaName);
         Assert.NotEmpty(first.TableName);
-        Assert.True(first.IsSystem);
+        Assert.False(first.IsSystem);
         Assert.True(first.UsedPages > 0);
         Assert.True(first.TotalPages > 0);
     }

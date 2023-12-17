@@ -283,6 +283,7 @@ public partial class DecodeWindow : UserControl
             }
             else
             {
+                findButton.Enabled = true;
                 parentWindow.Disposed += ParentWindow_Disposed;
             }
         }

@@ -36,7 +36,7 @@ FROM   sys.all_objects o
        INNER JOIN sys.indexes i    ON i.object_id = o.object_id AND i.index_id = p.index_id
 	   INNER JOIN sys.system_internals_allocation_units iau 
            ON iau.container_id = p.partition_id
-WHERE is_ms_shipped = 0
+--WHERE is_ms_shipped = 0
 ORDER BY is_ms_shipped DESC
         ,s.name ASC
         ,o.name ASC";

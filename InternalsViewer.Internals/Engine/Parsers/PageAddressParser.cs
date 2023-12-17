@@ -53,4 +53,19 @@ public static class PageAddressParser
 
         return new PageAddress(fileId, pageId);
     }
+
+    public static PageAddress ToPageAddress(this byte[]? address)
+    {
+        if (address == null)
+        {
+            return PageAddress.Empty;
+        }
+
+        if(address.Length != PageAddress.Size)
+        {
+            throw new ArgumentException("Invalid page address format", nameof(address));
+        }
+
+        return Parse(address);
+    }
 }

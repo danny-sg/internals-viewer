@@ -6,5 +6,5 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders;
 
 public interface IBootPageService
 {
-    Task<BootPage> Load(Database database);
+    Task<BootPage> GetBootPage(Database database);
 }

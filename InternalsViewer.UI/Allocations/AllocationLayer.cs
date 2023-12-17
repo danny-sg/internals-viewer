@@ -165,5 +165,7 @@ public class AllocationLayer
 
     public long TotalPages { get; set; }
 
+    public PageAddress FirstPage { get; set; }
+
     public string ObjectName { get; set; } = string.Empty;
 }

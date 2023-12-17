@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Pages;
-using System.Linq;
 
 namespace InternalsViewer.Internals.Engine.Allocation;
 
