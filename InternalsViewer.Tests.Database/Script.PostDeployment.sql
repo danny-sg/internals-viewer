@@ -1,3 +1,0 @@
-﻿/*
-Post-Deployment Scripts
-*/
