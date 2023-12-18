@@ -1,20 +1,32 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Helpers;
 
-namespace InternalsViewer.Internals.Pages;
+namespace InternalsViewer.Internals.Engine.Pages;
 
 /// <summary>
 /// Page Header
 /// </summary>
 public class PageHeader : DataStructure
 {
+    /// <summary>
+    /// Type of page
+    /// </summary>
     public PageType PageType { get; set; }
 
+    /// <summary>
+    /// The page address in the format File Id : Page Id
+    /// </summary>
     public PageAddress PageAddress { get; set; }
 
+    /// <summary>
+    /// The next page if the page is part of a linked list
+    /// </summary>
     public PageAddress NextPage { get; set; }
 
+    /// <summary>
+    /// The previous page if the page is part of a linked list
+    /// </summary>
     public PageAddress PreviousPage { get; set; }
 
     public string PageTypeName => PageHelpers.GetPageTypeName(PageType);

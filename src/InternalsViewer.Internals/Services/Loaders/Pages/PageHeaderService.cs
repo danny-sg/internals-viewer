@@ -1,8 +1,8 @@
 ﻿using System;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Services.Loaders.Pages;
 

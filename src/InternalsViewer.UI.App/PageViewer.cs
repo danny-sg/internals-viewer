@@ -10,9 +10,9 @@ public partial class PageViewer : Form
 
     public IRecordService RecordService { get; }
 
-    public Database Database { get; }
+    public DatabaseDetail DatabaseDetail { get; }
 
-    public PageViewer(IPageService pageService, IRecordService recordService, Database database)
+    public PageViewer(IPageService pageService, IRecordService recordService, DatabaseDetail databaseDetail)
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint |
                  ControlStyles.UserPaint |
@@ -21,7 +21,7 @@ public partial class PageViewer : Form
 
         PageService = pageService;
         RecordService = recordService;
-        Database = database;
+        DatabaseDetail = databaseDetail;
 
         InitializeComponent();
     }
@@ -30,7 +30,7 @@ public partial class PageViewer : Form
     {
         SuspendLayout();
 
-        pageViewerWindow.Database = Database;
+        pageViewerWindow.DatabaseDetail = DatabaseDetail;
 
         await pageViewerWindow.LoadPage(pageAddress);
 

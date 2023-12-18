@@ -7,7 +7,7 @@ using System.Globalization;
 using System.Text;
 using static System.Text.RegularExpressions.Regex;
 
-namespace InternalsViewer.Internals;
+namespace InternalsViewer.Internals.Converters;
 
 /// <summary>
 /// Class for decoding and converting between different SQL Server data types
@@ -84,23 +84,23 @@ public static class DataConverter
         }
 
         return string.Format(CultureInfo.InvariantCulture,
-            "{0}{1}{2}{3}-{4}{5}-{6}{7}-{8}{9}-{10}{11}{12}{13}{14}{15}",
-            ToHexString(data[3]),
-            ToHexString(data[2]),
-            ToHexString(data[1]),
-            ToHexString(data[0]),
-            ToHexString(data[5]),
-            ToHexString(data[4]),
-            ToHexString(data[7]),
-            ToHexString(data[6]),
-            ToHexString(data[8]),
-            ToHexString(data[9]),
-            ToHexString(data[10]),
-            ToHexString(data[11]),
-            ToHexString(data[12]),
-            ToHexString(data[13]),
-            ToHexString(data[14]),
-            ToHexString(data[15]));
+                             "{0}{1}{2}{3}-{4}{5}-{6}{7}-{8}{9}-{10}{11}{12}{13}{14}{15}",
+                             ToHexString(data[3]),
+                             ToHexString(data[2]),
+                             ToHexString(data[1]),
+                             ToHexString(data[0]),
+                             ToHexString(data[5]),
+                             ToHexString(data[4]),
+                             ToHexString(data[7]),
+                             ToHexString(data[6]),
+                             ToHexString(data[8]),
+                             ToHexString(data[9]),
+                             ToHexString(data[10]),
+                             ToHexString(data[11]),
+                             ToHexString(data[12]),
+                             ToHexString(data[13]),
+                             ToHexString(data[14]),
+                             ToHexString(data[15]));
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public static class DataConverter
                 case SqlDbType.Char:
                 case SqlDbType.VarChar:
 
-                    return Replace(Encoding.UTF8.GetString(data), @"[^\t -~]", "");
+                    return Replace(Encoding.UTF8.GetString(data), @"[^\t -~]", string.Empty);
 
                 case SqlDbType.NChar:
                 case SqlDbType.NVarChar:
@@ -149,11 +149,11 @@ public static class DataConverter
 
                 case SqlDbType.DateTime:
 
-                    return DecodeDateTime(data).ToString(CultureInfo.InvariantCulture);
+                    return DateTimeConverters.DecodeDateTime(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.SmallDateTime:
 
-                    return DecodeSmallDateTime(data).ToString(CultureInfo.InvariantCulture);
+                    return DateTimeConverters.DecodeSmallDateTime(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.VarBinary:
                 case SqlDbType.Binary:
@@ -187,19 +187,19 @@ public static class DataConverter
 
                 case SqlDbType.Date:
 
-                    return DecodeDate(data).ToShortDateString();
+                    return DateTimeConverters.DecodeDate(data).ToShortDateString();
 
                 case SqlDbType.Time:
 
-                    return DecodeTime(data, scale).ToString("HH:mm:ss.fffffff");
+                    return DateTimeConverters.DecodeTime(data, scale).ToString("HH:mm:ss.fffffff");
 
                 case SqlDbType.DateTime2:
 
-                    return DecodeDateTime2(data, scale).ToString("yyyy-MM-dd HH:mm:ss.fffffff");
+                    return DateTimeConverters.DecodeDateTime2(data, scale).ToString("yyyy-MM-dd HH:mm:ss.fffffff");
 
                 case SqlDbType.DateTimeOffset:
 
-                    return DecodeDateTimeOffset(data, scale);
+                    return DateTimeConverters.DecodeDateTimeOffset(data, scale);
 
                 default:
                     return string.Format(CultureInfo.CurrentCulture,
@@ -237,8 +237,8 @@ public static class DataConverter
                 SqlDbType.VarChar => Encoding.UTF8.GetString(data),
                 SqlDbType.NChar => Encoding.Unicode.GetString(data),
                 SqlDbType.NVarChar => Encoding.Unicode.GetString(data),
-                SqlDbType.DateTime => DecodeDateTime(data),
-                SqlDbType.SmallDateTime => DecodeSmallDateTime(data),
+                SqlDbType.DateTime => DateTimeConverters.DecodeDateTime(data),
+                SqlDbType.SmallDateTime => DateTimeConverters.DecodeSmallDateTime(data),
                 SqlDbType.VarBinary => data,
                 SqlDbType.Binary => data,
                 SqlDbType.UniqueIdentifier => BinaryToGuidString(data),
@@ -248,10 +248,10 @@ public static class DataConverter
                 SqlDbType.Real => BitConverter.ToSingle(data, 0),
                 SqlDbType.Float => BitConverter.ToDouble(data, 0),
                 SqlDbType.Variant => VariantBinaryToString(data),
-                SqlDbType.Date => DecodeDate(data),
-                SqlDbType.Time => DecodeTime(data, scale),
-                SqlDbType.DateTime2 => DecodeDateTime2(data, scale),
-                SqlDbType.DateTimeOffset => DecodeDateTimeOffset(data, scale),
+                SqlDbType.Date => DateTimeConverters.DecodeDate(data),
+                SqlDbType.Time => DateTimeConverters.DecodeTime(data, scale),
+                SqlDbType.DateTime2 => DateTimeConverters.DecodeDateTime2(data, scale),
+                SqlDbType.DateTimeOffset => DateTimeConverters.DecodeDateTimeOffset(data, scale),
                 _ => string.Format(CultureInfo.CurrentCulture, "not yet supported ({0:G})", sqlType)
             };
         }
@@ -261,48 +261,7 @@ public static class DataConverter
         }
     }
 
-    /// <summary>
-    /// Decodes DATETIMEOFFSET type
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <param name="scale">The scale.</param>
-    /// <returns>
-    /// String representing the value
-    /// </returns>
-    private static string DecodeDateTimeOffset(byte[] data, byte scale)
-    {
-        var dateData = new byte[4];
-        var timeData = new byte[8];
-
-        var scaleFactor = 1000F / (float)Math.Pow(10, scale);
-
-        Array.Copy(data, timeData, data.Length - 5);
-        Array.Copy(data, data.Length - 5, dateData, 0, 3);
-
-        var datePart = BitConverter.ToInt32(dateData, 0);
-        var timePart = BitConverter.ToInt64(timeData, 0);
-        var time = BitConverter.ToInt16(data, data.Length - 2);
-
-        var returnDate = new DateTime(0001, 01, 01);
-
-        returnDate = returnDate.AddDays(datePart);
-        returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
-
-        var offsetTime = new DateTime().AddMinutes(Math.Abs(time));
-
-        string sign;
-
-        if (time >= 0)
-        {
-            sign = "+";
-        }
-        else
-        {
-            sign = "-";
-        }
-
-        return $"{returnDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
-    }
+   
 
     /// <summary>
     /// Returns a string representation of a variant data type
@@ -345,152 +304,6 @@ public static class DataConverter
         Array.Copy(data, offset, variantData, 0, variantData.Length);
 
         return BinaryToString(variantData, ToSqlType(variantType), precision, scale);
-    }
-
-    /// <summary>
-    /// Decodes SMALLDATETIME data type
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <returns></returns>
-    public static DateTime DecodeSmallDateTime(byte[] data)
-    {
-        var returnDate = new DateTime(1900, 1, 1);
-
-        int timePart = BitConverter.ToUInt16(data, 0);
-        int datePart = BitConverter.ToUInt16(data, 2);
-
-        returnDate = returnDate.AddDays(datePart).AddMinutes(timePart);
-
-        return returnDate;
-    }
-
-    /// <summary>
-    /// Decode DATETIME data type
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <returns></returns>
-    public static DateTime DecodeDateTime(byte[] data)
-    {
-        var timePart = BitConverter.ToInt32(data, 0);
-        var datePart = BitConverter.ToInt32(data, 4);
-
-        return DecodeDateTime(timePart, datePart);
-    }
-
-    /// <summary>
-    /// Decodes DATETIME data type from 2 integers representing date and time
-    /// </summary>
-    /// <param name="timePart">The time part.</param>
-    /// <param name="datePart">The date part.</param>
-    /// <remarks>
-    /// SQL Server represents DATETIME as two 4-byte integers.
-    /// 
-    /// The first integer represents the date part, the number of days since 1st Jan 1900
-    /// 
-    /// The second integer represents the time part, the number of milliseconds * 3.333 (represented here as 30 / 9)
-    /// 
-    /// The last oddity is that the time is rounded to the nearest 0, 3 or 7 milliseconds.
-    /// </remarks>
-    public static DateTime DecodeDateTime(int timePart, int datePart)
-    {
-        var returnDate = new DateTime(1900, 1, 1);
-
-        var milliseconds = (int)((30f / 9f) * timePart);
-
-        var roundedMilliseconds = milliseconds - milliseconds % 10 + ClosestTo(milliseconds % 10);
-
-        returnDate = returnDate.AddDays(datePart).AddMilliseconds(roundedMilliseconds);
-
-        return returnDate;
-    }
-
-    public static int ClosestTo(int number)
-    {
-        var targets = new[] { 0, 3, 7 };
-        var nearest = targets[0];
-
-        var smallestDifference = Math.Abs(number - nearest);
-
-        foreach (var target in targets)
-        {
-            var difference = Math.Abs(number - target);
-
-            if (difference < smallestDifference)
-            {
-                nearest = target;
-                smallestDifference = difference;
-            }
-        }
-
-        return nearest;
-    }
-
-    /// <summary>
-    /// Decodes the DATETIME2 data type
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <param name="scale">The scale.</param>
-    /// <returns></returns>
-    private static DateTime DecodeDateTime2(byte[] data, int scale)
-    {
-        var dateData = new byte[4];
-        var timeData = new byte[8];
-
-        var scaleFactor = 1000F / (float)Math.Pow(10, scale);
-
-        Array.Copy(data, timeData, data.Length - 3);
-        Array.Copy(data, data.Length - 3, dateData, 0, 3);
-
-        var datePart = BitConverter.ToInt32(dateData, 0);
-        var timePart = BitConverter.ToInt64(timeData, 0);
-
-        var returnDate = new DateTime(0001, 01, 01);
-        returnDate = returnDate.AddDays(datePart);
-        returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
-
-        return returnDate;
-    }
-
-    /// <summary>
-    /// Decodes the DATE data type
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <returns></returns>
-    private static DateOnly DecodeDate(byte[] data)
-    {
-        var dateData = new byte[4];
-
-        Array.Copy(data, dateData, 3);
-
-        var date = BitConverter.ToInt32(dateData, 0);
-
-        var returnDate = new DateOnly();
-
-        returnDate = returnDate.AddDays(date);
-
-        return returnDate;
-    }
-
-    /// <summary>
-    /// Decodes the TIME datatype
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <param name="scale">The scale.</param>
-    /// <returns></returns>
-    private static TimeSpan DecodeTime(byte[] data, int scale)
-    {
-        var timeData = new byte[8];
-
-        var scaleFactor = 1000F / (float)Math.Pow(10, scale);
-
-        Array.Copy(data, timeData, data.Length);
-
-        var time = BitConverter.ToInt64(timeData, 0);
-
-        var returnDate = new DateTime();
-        returnDate = returnDate.AddMilliseconds(scaleFactor * time);
-
-        return returnDate.TimeOfDay;
     }
 
     /// <summary>
@@ -661,69 +474,4 @@ public static class DataConverter
         }
     }
 
-    public static string EncodeInt32(int value)
-    {
-        return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
-    }
-
-    public static string EncodeInt16(short value)
-    {
-        return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
-    }
-
-    public static string EncodeInt64(long value)
-    {
-        return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
-    }
-
-    public static string[] EncodeDateTime(DateTime value)
-    {
-        var timePart = (int)((value - value.Date).TotalMilliseconds / 3.333333);
-        var datePart = (value - new DateTime(1900, 1, 1)).Days;
-
-        return new[] { EncodeInt32(timePart), EncodeInt32(datePart) };
-    }
-
-    public static string[] EncodeSmallDateTime(DateTime value)
-    {
-
-        var timePart = (ushort)((value - value.Date).TotalMinutes);
-        var datePart = (ushort)(value - new DateTime(1900, 1, 1)).Days;
-
-        return new[] { EncodeUInt16(timePart), EncodeUInt16(datePart) };
-    }
-
-    public static string EncodeUInt16(ushort value)
-    {
-        return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
-    }
-
-    public static string EncodeReal(float value)
-    {
-        return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
-    }
-
-    public static string EncodeFloat(double value)
-    {
-        return BitConverter.ToString(BitConverter.GetBytes(value)).Replace("-", " ");
-    }
-
-    public static string EncodeMoney(decimal value)
-    {
-        return EncodeInt64((long)(value * 10000));
-    }
-
-    public static string EncodeSmallMoney(decimal value)
-    {
-        return EncodeInt32((int)(value * 10000));
-    }
-
-    public static string EncodeDecimal(decimal value)
-    {
-        var sqlValue = new SqlDecimal(value);
-        //sqlValue.Precision = precision;
-        //sqlValue.Scale = scale;
-
-        return BitConverter.ToString(sqlValue.BinData).Replace("-", " ");
-    }
 }

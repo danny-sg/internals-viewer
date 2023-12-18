@@ -5,5 +5,5 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders;
 
 public interface IDatabaseService
 {
-    Task<Database> Load(string name);
+    Task<DatabaseDetail> Load(string name);
 }

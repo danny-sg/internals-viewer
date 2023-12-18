@@ -1,5 +1,6 @@
 ﻿using System;
-using InternalsViewer.Internals.BlobPointers;
+using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Records;
 

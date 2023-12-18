@@ -8,7 +8,7 @@ using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Readers.Internals;
 
-namespace InternalsViewer.Internals.Services.Loaders.Database;
+namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
 /// <summary>
 /// Service responsible for building metadata for a database
@@ -56,26 +56,26 @@ public class MetadataService(ILogger<MetadataService> logger, TableReader tableR
     ///     <see cref="InternalColumn"/>
     ///     --> sys.sysrscols
     /// </remarks>
-    public async Task BuildMetadata(Database database)
+    public async Task BuildMetadata(DatabaseDetail databaseDetail)
     {
-        Logger.LogDebug("Database: {DatabaseName} - Building metadata", database.Name);
+        Logger.LogDebug("Database: {DatabaseName} - Building metadata", databaseDetail.Name);
 
-        AllocationUnits = await GetAllocationUnits(database);
+        AllocationUnits = await GetAllocationUnits(databaseDetail);
 
-        RowSets = await GetRowSets(database);
+        RowSets = await GetRowSets(databaseDetail);
 
-        Objects = await GetObjects(database);
+        Objects = await GetObjects(databaseDetail);
 
-        Columns = await GetColumns(database);
+        Columns = await GetColumns(databaseDetail);
     }
 
-    private async Task<List<InternalObject>> GetObjects(Database database)
+    private async Task<List<InternalObject>> GetObjects(DatabaseDetail databaseDetail)
     {
         Logger.LogDebug("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
 
         var firstPage = GetFirstPage(InternalTableConstants.ObjectsId);
 
-        var records = await TableReader.Read(database,
+        var records = await TableReader.Read(databaseDetail,
                                              firstPage,
                                              InternalObjectStructure.GetStructure(-1));
 
@@ -88,13 +88,13 @@ public class MetadataService(ILogger<MetadataService> logger, TableReader tableR
         return rows;
     }
 
-    private async Task<List<InternalRowSet>> GetRowSets(Database database)
+    private async Task<List<InternalRowSet>> GetRowSets(DatabaseDetail databaseDetail)
     {
         Logger.LogDebug("Getting Row Sets (sys.sysrowsets) using fixed Object Id/Index Id");
 
         var firstPage = GetFirstPage(InternalTableConstants.RowSetId);
 
-        var records = await TableReader.Read(database,
+        var records = await TableReader.Read(databaseDetail,
                                              firstPage,
                                              InternalRowSetStructure.GetStructure(-1));
 
@@ -108,13 +108,13 @@ public class MetadataService(ILogger<MetadataService> logger, TableReader tableR
     }
 
 
-    private async Task<List<InternalColumn>> GetColumns(Database database)
+    private async Task<List<InternalColumn>> GetColumns(DatabaseDetail databaseDetail)
     {
         Logger.LogDebug("Getting Columns (sys.sysrscols) using fixed Object Id/Index Id");
 
         var firstPage = GetFirstPage(InternalTableConstants.ColumnsId);
 
-        var records = await TableReader.Read(database,
+        var records = await TableReader.Read(databaseDetail,
                                              firstPage,
                                              InternalColumnStructure.GetStructure(-1));
 
@@ -127,19 +127,19 @@ public class MetadataService(ILogger<MetadataService> logger, TableReader tableR
         return rows;
     }
 
-    private async Task<List<InternalAllocationUnit>> GetAllocationUnits(Database database)
+    private async Task<List<InternalAllocationUnit>> GetAllocationUnits(DatabaseDetail databaseDetail)
     {
         var (objectId, indexId) = InternalTableConstants.ObjectsId;
 
-        var pageAddress = database.BootPage.FirstAllocationUnitsPage;
+        var pageAddress = databaseDetail.BootPage.FirstAllocationUnitsPage;
 
         Logger.LogDebug("Getting Allocation Units (sys.sysallocunits) using first page specified in Boot Page (1:9): {PageAddress}",
                         pageAddress);
 
         var id = IdHelpers.GetAllocationUnitId(objectId, indexId);
 
-        var records = await TableReader.Read(database,
-                                             database.BootPage.FirstAllocationUnitsPage,
+        var records = await TableReader.Read(databaseDetail,
+                                             databaseDetail.BootPage.FirstAllocationUnitsPage,
                                              InternalAllocationUnitStructure.GetStructure(id));
 
         Logger.LogDebug("Allocation Units: {Count} records found. Parsing records...", records.Count);

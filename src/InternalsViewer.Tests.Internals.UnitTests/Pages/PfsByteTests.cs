@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Pages;
 

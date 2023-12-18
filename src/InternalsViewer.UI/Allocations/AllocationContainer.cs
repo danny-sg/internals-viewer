@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Database;
 
 #pragma warning disable CA1416
@@ -24,7 +25,7 @@ public partial class AllocationContainer : UserControl
     public event EventHandler<PageEventArgs>? PageOver;
     public event EventHandler? RangeSelected;
 
-    public Database? CurrentDatabase { get; set; }
+    public DatabaseDetail? CurrentDatabase { get; set; }
 
     public AllocationContainer()
     {

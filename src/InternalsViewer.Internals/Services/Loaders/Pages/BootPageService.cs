@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Text;
 using System.Threading.Tasks;
+using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
-using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Services.Loaders.Pages;
 
@@ -29,9 +31,9 @@ public class BootPageService(IPageService pageService) : IBootPageService
 
     public IPageService PageService { get; } = pageService;
 
-    public async Task<BootPage> GetBootPage(Engine.Database.Database database)
+    public async Task<BootPage> GetBootPage(DatabaseDetail databaseDetail)
     {
-        var page = await PageService.Load<BootPage>(database, BootPage.BootPageAddress);
+        var page = await PageService.Load<BootPage>(databaseDetail, BootPage.BootPageAddress);
 
         page.CheckpointLsn = GetCheckpointLsn(page.PageData);
 
@@ -58,7 +60,7 @@ public class BootPageService(IPageService pageService) : IBootPageService
         page.CreatedVersion = BitConverter.ToInt16(page.PageData, CreatedVersionOffset);
         page.DatabaseId = BitConverter.ToInt16(page.PageData, DatabaseIdOffset);
         page.DatabaseName = Encoding.Unicode.GetString(page.PageData[DatabaseNameOffset..(DatabaseNameOffset + 128 * 2)]).TrimEnd();
-        page.CreatedDateTime = DataConverter.DecodeDateTime(page.PageData[CreatedDateTimeOffset..(CreatedDateTimeOffset + 8)]);
+        page.CreatedDateTime = DateTimeConverters.DecodeDateTime(page.PageData[CreatedDateTimeOffset..(CreatedDateTimeOffset + 8)]);
         page.CompatibilityLevel = BitConverter.ToInt16(page.PageData, CompatibilityLevelOffset);
         page.MaxLogSpaceUsed = BitConverter.ToInt64(page.PageData, MaxLogSpaceUsed);
 

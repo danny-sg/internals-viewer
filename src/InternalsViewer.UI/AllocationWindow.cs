@@ -7,9 +7,9 @@ using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Allocations;
 
 #pragma warning disable CA1416
@@ -30,7 +30,7 @@ public partial class AllocationWindow : UserControl
     private const string AllocationUnitsText = "Allocation Units";
     private const string PageFreeSpaceText = "PFS";
 
-    public Database? CurrentDatabase { get; set; }
+    public DatabaseDetail? CurrentDatabase { get; set; }
 
     public AllocationWindow(IDatabaseService databaseService)
     {
@@ -44,7 +44,7 @@ public partial class AllocationWindow : UserControl
         extentSizeToolStripComboBox.SelectedIndex = 0;
     }
 
-    public List<DatabaseInfo> Databases { get; set; } = new();
+    public List<DatabaseSummary> Databases { get; set; } = new();
 
     private void EnableToolbar(bool enabled)
     {
@@ -411,7 +411,7 @@ public partial class AllocationWindow : UserControl
 
     private async void DatabaseToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
     {
-        var databaseInfo = (DatabaseInfo)databaseToolStripComboBox.SelectedItem;
+        var databaseInfo = (DatabaseSummary)databaseToolStripComboBox.SelectedItem;
 
         if(databaseInfo==null)
         {

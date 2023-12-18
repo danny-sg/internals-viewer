@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
-using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Services.Loaders.Pages;
 
@@ -21,9 +22,9 @@ public class PfsPageService(IPageService pageService) : IPfsPageService
 
     public IPageService PageService { get; } = pageService;
 
-    public async Task<PfsPage> Load(Database database, PageAddress pageAddress)
+    public async Task<PfsPage> Load(DatabaseDetail databaseDetail, PageAddress pageAddress)
     {
-        var page = await PageService.Load<PfsPage>(database, pageAddress);
+        var page = await PageService.Load<PfsPage>(databaseDetail, pageAddress);
 
         if (page.PageHeader.PageType != PageType.Pfs)
         {

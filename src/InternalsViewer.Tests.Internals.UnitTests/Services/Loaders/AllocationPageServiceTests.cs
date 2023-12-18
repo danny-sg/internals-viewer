@@ -3,10 +3,8 @@ using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Interfaces.MetadataProviders;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
-using InternalsViewer.Internals.Pages;
-using InternalsViewer.Internals.Services.Loaders;
 using InternalsViewer.Internals.Services.Loaders.Pages;
 using InternalsViewer.Tests.Internals.UnitTests.TestHelpers.TestReaders;
 using Moq;
@@ -24,7 +22,7 @@ public class AllocationPageServiceTests
     {
         var service = CreateService();
 
-        var database = new Database { Name = "TestDatabase" };
+        var database = new DatabaseDetail { Name = "TestDatabase" };
 
         var page = await service.Load(database, new PageAddress(1, pageId));
 
@@ -37,7 +35,7 @@ public class AllocationPageServiceTests
     {
         var service = CreateService();
 
-        var database = new Database { Name = "TestDatabase" };
+        var database = new DatabaseDetail { Name = "TestDatabase" };
 
         var page = await service.Load(database, new PageAddress(1, pageId));
 
@@ -59,7 +57,7 @@ public class AllocationPageServiceTests
     {
         var service = CreateService();
 
-        var database = new Database { Name = "TestDatabase" };
+        var database = new DatabaseDetail { Name = "TestDatabase" };
 
         // The boot page (1:9) is not an allocation page
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -71,9 +69,6 @@ public class AllocationPageServiceTests
         var filePath = "./Test Data/Test Pages/";
 
         var reader = new FilePageReader(filePath);
-
-        var databaseInfoProvider = new Mock<IDatabaseInfoProvider>();
-        var structureInfoProvider = new Mock<IStructureInfoProvider>();
 
         var compressionInfoService = new Mock<ICompressionInfoService>();
 

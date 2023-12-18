@@ -6,6 +6,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.UI", "Inter
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{43A61A9A-21FE-418D-8DBC-7C741668B4A6}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -73,7 +74,7 @@ Global
 		{578A3245-72CE-4880-87CF-CDE85E9FA7B7} = {22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {12A1406C-1C68-4A7F-A0FF-E4E7A65AECAE}
 		VisualSVNWorkingCopyRoot = 
+		SolutionGuid = {12A1406C-1C68-4A7F-A0FF-E4E7A65AECAE}
 	EndGlobalSection
 EndGlobal

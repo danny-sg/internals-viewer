@@ -4,8 +4,8 @@ using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.UI.Allocations;
 using InternalsViewer.UI.Markers;
 

@@ -3,10 +3,10 @@ using System.Collections;
 using System.Data;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Metadata;
-using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Services.Loaders.Compression;
 

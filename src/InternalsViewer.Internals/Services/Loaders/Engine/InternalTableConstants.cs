@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Internals.Services.Loaders.Database;
+﻿namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
 public class InternalTableConstants
 {

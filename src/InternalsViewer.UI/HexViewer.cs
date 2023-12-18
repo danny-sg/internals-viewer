@@ -9,7 +9,8 @@ using System.Text;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using InternalsViewer.Internals;
-using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Rtf;
 

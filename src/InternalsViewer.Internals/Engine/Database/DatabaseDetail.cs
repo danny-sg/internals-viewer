@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Allocation;
-using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
-public class Database : DatabaseInfo
+public class DatabaseDetail : DatabaseSummary
 {
     public BootPage BootPage { get; set; } = null!;
 

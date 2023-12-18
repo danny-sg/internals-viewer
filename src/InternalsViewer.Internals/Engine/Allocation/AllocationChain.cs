@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Engine.Allocation;
 
@@ -28,7 +29,7 @@ public class AllocationChain
     /// </summary>
     public static bool GetAllocatedStatus(int targetExtent, short fileId, bool invert, AllocationChain chain)
     {
-        var value = chain.IsAllocated(targetExtent, fileId) && (fileId == chain.FileId || chain.IsMultiFile);
+        var value = chain.IsAllocated(targetExtent, fileId) && (fileId == chain.FileId || chain.ChainType == ChainType.Linked);
 
         return invert ? !value : value;
     }
@@ -40,7 +41,7 @@ public class AllocationChain
     public short FileId { get; set; }
 
     /// <summary>
-    /// Determines if the Allocation spans multiple files
+    /// Determines if the allocation chain is based on intervals (e.g. GAM, SGAM) or linked via the page header (IAM)
     /// </summary>
-    public bool IsMultiFile { get; set; }
+    public ChainType ChainType { get; set; } = ChainType.Interval;
 }

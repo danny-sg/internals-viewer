@@ -2,11 +2,11 @@
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
-using InternalsViewer.Internals.Services.Loaders;
+using InternalsViewer.Internals.Services.Loaders.Pages;
 using InternalsViewer.Tests.Internals.UnitTests.TestHelpers.TestReaders;
 using Moq;
+// ReSharper disable CommentTypo
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Services.Loaders;
 
@@ -24,7 +24,7 @@ public class BootPageServiceTests
         var pageService = new PageService(reader,
                                           compressionInfoService.Object);
 
-        var database = new Database { Name = "TestDatabase" };
+        var database = new DatabaseDetail { Name = "TestDatabase" };
 
         var service = new BootPageService(pageService);
 

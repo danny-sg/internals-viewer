@@ -7,5 +7,5 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders;
 
 public interface IIamChainService
 {
-    Task<IamChain> LoadChain(Database database, PageAddress startPageAddress);
+    Task<IamChain> LoadChain(DatabaseDetail databaseDetail, PageAddress startPageAddress);
 }

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Internals.Pages;
+namespace InternalsViewer.Internals.Engine.Pages;
 
 /// <summary>
 /// Allocation Page containing an allocation bitmap (IAM, GAM, SGAM, DCM, BCM)
@@ -22,9 +22,9 @@ public class AllocationPage : Page
     public const int AllocationInterval = 63904;
 
     public const int AllocationArrayOffset = 194;
-    
+
     public const int SinglePageSlotOffset = 142;
-    
+
     public const int StartPageOffset = 136;
 
     public const int SlotCount = 8;
@@ -33,7 +33,7 @@ public class AllocationPage : Page
 
     public const int FirstSgamPage = 3;
 
-    public const int FirstDcmPage = 6;  
+    public const int FirstDcmPage = 6;
 
     public const int FirstBcmPage = 7;
 

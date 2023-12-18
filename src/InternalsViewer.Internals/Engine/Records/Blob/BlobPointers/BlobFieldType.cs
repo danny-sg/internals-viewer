@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Internals.BlobPointers;
+﻿namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
 public enum BlobFieldType
 {

@@ -1,17 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Readers.Pages;
-using InternalsViewer.Internals.Services.Loaders;
-using InternalsViewer.Internals.Services.Loaders.Database;
+using InternalsViewer.Internals.Services.Loaders.Engine;
+using InternalsViewer.Internals.Services.Loaders.Pages;
 using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
 using Moq;
 
@@ -33,7 +28,7 @@ public class MetadataServiceTests
 
         var dataReader = new TableReader(pageService);
 
-        var database = new Database
+        var database = new DatabaseDetail
         {
             Name = "AdventureWorks2022",
             BootPage = new BootPage { FirstAllocationUnitsPage = new PageAddress(1, 20) }

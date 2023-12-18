@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using InternalsViewer.Internals.BlobPointers;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob;
-using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Services.Records.Loaders;

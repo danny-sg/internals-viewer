@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Records;
 
-namespace InternalsViewer.Internals.BlobPointers;
+namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
 /// <summary>
 /// Row Overflow field

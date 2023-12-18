@@ -1,5 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;

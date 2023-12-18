@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Internals.BlobPointers;
+namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
 public class PointerField : BlobField
 {

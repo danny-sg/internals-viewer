@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
-using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Records.Index;
 
 #pragma warning disable CA1416
 
@@ -19,7 +19,7 @@ public class AllocationUnitsLayer
     /// <summary>
     /// Generates map layers by loading object's allocation structures
     /// </summary>
-    public static List<AllocationLayer>? GenerateLayers(Database database, 
+    public static List<AllocationLayer>? GenerateLayers(DatabaseDetail databaseDetail, 
                                                         BackgroundWorker worker, 
                                                         bool separateIndexes, 
                                                         bool separateSystemObjects)
@@ -32,7 +32,7 @@ public class AllocationUnitsLayer
         var count = 0;
         var previousObjectName = string.Empty;
 
-        var allocationUnits = database.AllocationUnits;
+        var allocationUnits = databaseDetail.AllocationUnits;
 
         var userObjectCount = allocationUnits.Where(u => !u.IsSystem).DistinctBy(t => t.TableName).Count();
 

@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using System;
 
-namespace InternalsViewer.Internals.Pages;
+namespace InternalsViewer.Internals.Engine.Pages;
 
 /// <summary>
 /// Boot Page

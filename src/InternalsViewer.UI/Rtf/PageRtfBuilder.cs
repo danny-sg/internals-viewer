@@ -3,7 +3,8 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using InternalsViewer.Internals;
-using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.MarkStyles;
 

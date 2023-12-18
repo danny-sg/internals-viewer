@@ -9,12 +9,13 @@ using System.Windows.Forms;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.TransactionLog;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Renderers;
@@ -45,7 +46,7 @@ public partial class PageViewerWindow : UserControl
 
     private Dictionary<string, LogData> logData;
 
-    public Database Database { get; set; }
+    public DatabaseDetail DatabaseDetail { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
@@ -137,7 +138,7 @@ public partial class PageViewerWindow : UserControl
 
         if (pageAddress.FileId > 0)
         {
-            Page = await PageService.Load<Page>(Database, pageAddress);
+            Page = await PageService.Load<Page>(DatabaseDetail, pageAddress);
             //Page = new Page(ConnectionString, builder.InitialCatalog, pageAddress);
 
             RefreshAllocationStatus(Page.PageAddress);

@@ -1,9 +1,9 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
-using InternalsViewer.Internals.Pages;
 using System;
 using System.Threading.Tasks;
 
@@ -19,19 +19,19 @@ public class PageService(IPageReader reader,
 
     public ICompressionInfoService CompressionInfoService { get; } = compressionInfoService;
 
-    public async Task<T> Load<T>(Database database, PageAddress pageAddress) where T : Page, new()
+    public async Task<T> Load<T>(DatabaseDetail databaseDetail, PageAddress pageAddress) where T : Page, new()
     {
         var page = new T
         {
-            Database = database,
+            Database = databaseDetail,
             PageAddress = pageAddress
         };
 
-        var data = await Reader.Read(database.Name, pageAddress);
+        var data = await Reader.Read(databaseDetail.Name, pageAddress);
 
         page.PageData = data;
 
-        LoadHeader(data, page, database);
+        LoadHeader(data, page, databaseDetail);
 
         LoadOffsetTable(page);
 
@@ -43,13 +43,13 @@ public class PageService(IPageReader reader,
     /// <summary>
     /// Load the page header from the page data and lookup the allocation unit object
     /// </summary>
-    private static void LoadHeader(byte[] data, Page page, Database database)
+    private static void LoadHeader(byte[] data, Page page, DatabaseDetail databaseDetail)
     {
         var header = PageHeaderService.Read(data);
 
         page.PageHeader = header;
 
-        var allocationUnit = database.AllocationUnits.FirstOrDefault(a => a.AllocationUnitId == header.AllocationUnitId);
+        var allocationUnit = databaseDetail.AllocationUnits.FirstOrDefault(a => a.AllocationUnitId == header.AllocationUnitId);
 
         page.AllocationUnit = allocationUnit ?? AllocationUnit.Unknown;
     }

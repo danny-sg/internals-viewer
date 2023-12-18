@@ -1,5 +1,5 @@
 ﻿using System.Globalization;
-using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Readers.Pages;
 
@@ -20,7 +20,8 @@ public abstract class PageReader
             {
                 if (byte.TryParse(byteString,
                                   NumberStyles.HexNumber,
-                                  CultureInfo.InvariantCulture, out data[offset]))
+                                  CultureInfo.InvariantCulture,
+                                  out data[offset]))
                 {
                     offset++;
                 }

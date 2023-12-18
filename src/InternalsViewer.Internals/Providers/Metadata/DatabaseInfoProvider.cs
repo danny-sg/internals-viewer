@@ -1,9 +1,10 @@
-﻿using System;
-using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using Microsoft.Data.SqlClient;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
@@ -13,9 +14,9 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 public class DatabaseInfoProvider(CurrentConnection connection)
     : ProviderBase(connection), IDatabaseInfoProvider
 {
-    public async Task<List<DatabaseInfo>> GetDatabases()
+    public async Task<List<DatabaseSummary>> GetDatabases()
     {
-        var databases = new List<DatabaseInfo>();
+        var databases = new List<DatabaseSummary>();
 
         await using var connection = new SqlConnection(Connection.ConnectionString);
 
@@ -31,7 +32,7 @@ public class DatabaseInfoProvider(CurrentConnection connection)
 
         while (await reader.ReadAsync())
         {
-            var database = new DatabaseInfo();
+            var database = new DatabaseSummary();
 
             database.Name = reader.GetFieldValue<string>("name");
             database.State = reader.GetFieldValue<DatabaseState>("state");
@@ -44,7 +45,7 @@ public class DatabaseInfoProvider(CurrentConnection connection)
         return databases;
     }
 
-    public async Task<DatabaseInfo?> GetDatabase(string name)
+    public async Task<DatabaseSummary?> GetDatabase(string name)
     {
         var databases = await GetDatabases();
 

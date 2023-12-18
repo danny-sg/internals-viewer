@@ -62,6 +62,13 @@ namespace InternalsViewer.UI
             pageToolStripTextBox = new PageAddressTextBox();
             toolStripLabel2 = new ToolStripLabel();
             keysDataGridView = new DataGridView();
+            KeyColumn = new KeyImageColumn();
+            NameColumn = new DataGridViewTextBoxColumn();
+            IndexNameColumn = new DataGridViewTextBoxColumn();
+            IndexTypeColumn = new DataGridViewTextBoxColumn();
+            FirstPage = new DataGridViewTextBoxColumn();
+            TotalPagesColumn = new DataGridViewTextBoxColumn();
+            UsedPagesColumn = new DataGridViewTextBoxColumn();
             allocationBindingSource = new BindingSource(components);
             statusStrip = new StatusStrip();
             errorImageToolStripStatusLabel = new ToolStripStatusLabel();
@@ -75,13 +82,6 @@ namespace InternalsViewer.UI
             iconToolStripStatusLabel = new ToolStripStatusLabel();
             allocUnitBackgroundWorker = new BackgroundWorker();
             keyImageColumn1 = new KeyImageColumn();
-            KeyColumn = new KeyImageColumn();
-            NameColumn = new DataGridViewTextBoxColumn();
-            IndexNameColumn = new DataGridViewTextBoxColumn();
-            IndexTypeColumn = new DataGridViewTextBoxColumn();
-            FirstPage = new DataGridViewTextBoxColumn();
-            TotalPagesColumn = new DataGridViewTextBoxColumn();
-            UsedPagesColumn = new DataGridViewTextBoxColumn();
             ((ISupportInitialize)splitContainer).BeginInit();
             splitContainer.Panel1.SuspendLayout();
             splitContainer.Panel2.SuspendLayout();
@@ -183,6 +183,7 @@ namespace InternalsViewer.UI
             mapToolStripButton.DropDownItems.AddRange(new ToolStripItem[] { allocationUnitsToolStripMenuItem, allocationMapsToolStripMenuItem, pFSToolStripMenuItem });
             mapToolStripButton.Enabled = false;
             mapToolStripButton.Image = Properties.Resources.allocationMapIcon;
+            mapToolStripButton.ImageScaling = ToolStripItemImageScaling.None;
             mapToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
             mapToolStripButton.Name = "mapToolStripButton";
             mapToolStripButton.Size = new System.Drawing.Size(48, 32);
@@ -193,7 +194,7 @@ namespace InternalsViewer.UI
             allocationUnitsToolStripMenuItem.Image = Properties.Resources.allocationMapIcon;
             allocationUnitsToolStripMenuItem.ImageScaling = ToolStripItemImageScaling.None;
             allocationUnitsToolStripMenuItem.Name = "allocationUnitsToolStripMenuItem";
-            allocationUnitsToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            allocationUnitsToolStripMenuItem.Size = new System.Drawing.Size(205, 38);
             allocationUnitsToolStripMenuItem.Text = "Allocation Units";
             allocationUnitsToolStripMenuItem.Click += AllocationUnitsToolStripMenuItem_Click;
             // 
@@ -202,7 +203,7 @@ namespace InternalsViewer.UI
             allocationMapsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { gamToolStripMenuItem, sgamToolStripMenuItem, bcmToolStripMenuItem, dcmToolStripMenuItem });
             allocationMapsToolStripMenuItem.Image = Properties.Resources.GAMallocationMapIcon;
             allocationMapsToolStripMenuItem.Name = "allocationMapsToolStripMenuItem";
-            allocationMapsToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            allocationMapsToolStripMenuItem.Size = new System.Drawing.Size(205, 38);
             allocationMapsToolStripMenuItem.Text = "Allocation Maps";
             allocationMapsToolStripMenuItem.Click += AllocationMapsToolStripMenuItem_Click;
             // 
@@ -242,7 +243,7 @@ namespace InternalsViewer.UI
             // 
             pFSToolStripMenuItem.Image = Properties.Resources.pfs;
             pFSToolStripMenuItem.Name = "pFSToolStripMenuItem";
-            pFSToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            pFSToolStripMenuItem.Size = new System.Drawing.Size(205, 38);
             pFSToolStripMenuItem.Text = "PFS (Page Free Space)";
             pFSToolStripMenuItem.Click += pFSToolStripMenuItem_Click;
             // 
@@ -251,6 +252,7 @@ namespace InternalsViewer.UI
             bufferPoolToolStripButton.CheckOnClick = true;
             bufferPoolToolStripButton.Enabled = false;
             bufferPoolToolStripButton.Image = Properties.Resources.bufferpool;
+            bufferPoolToolStripButton.ImageScaling = ToolStripItemImageScaling.None;
             bufferPoolToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             bufferPoolToolStripButton.Name = "bufferPoolToolStripButton";
             bufferPoolToolStripButton.Size = new System.Drawing.Size(102, 32);
@@ -370,6 +372,64 @@ namespace InternalsViewer.UI
             keysDataGridView.CellClick += KeysDataGridView_CellClick;
             keysDataGridView.SelectionChanged += KeysDataGridView_SelectionChanged;
             // 
+            // KeyColumn
+            // 
+            KeyColumn.DataPropertyName = "Colour";
+            KeyColumn.HeaderText = "";
+            KeyColumn.Name = "KeyColumn";
+            KeyColumn.ReadOnly = true;
+            KeyColumn.Width = 30;
+            // 
+            // NameColumn
+            // 
+            NameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            NameColumn.DataPropertyName = "ObjectName";
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
+            NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
+            NameColumn.HeaderText = "Table";
+            NameColumn.Name = "NameColumn";
+            NameColumn.ReadOnly = true;
+            // 
+            // IndexNameColumn
+            // 
+            IndexNameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            IndexNameColumn.DataPropertyName = "IndexName";
+            IndexNameColumn.HeaderText = "Index";
+            IndexNameColumn.Name = "IndexNameColumn";
+            IndexNameColumn.ReadOnly = true;
+            // 
+            // IndexTypeColumn
+            // 
+            IndexTypeColumn.DataPropertyName = "IndexType";
+            IndexTypeColumn.HeaderText = "Index Type";
+            IndexTypeColumn.Name = "IndexTypeColumn";
+            IndexTypeColumn.ReadOnly = true;
+            // 
+            // FirstPage
+            // 
+            FirstPage.DataPropertyName = "FirstPage";
+            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.Blue;
+            FirstPage.DefaultCellStyle = dataGridViewCellStyle3;
+            FirstPage.HeaderText = "First Page";
+            FirstPage.Name = "FirstPage";
+            FirstPage.ReadOnly = true;
+            // 
+            // TotalPagesColumn
+            // 
+            TotalPagesColumn.DataPropertyName = "TotalPages";
+            TotalPagesColumn.HeaderText = "Total Pages";
+            TotalPagesColumn.Name = "TotalPagesColumn";
+            TotalPagesColumn.ReadOnly = true;
+            TotalPagesColumn.Width = 90;
+            // 
+            // UsedPagesColumn
+            // 
+            UsedPagesColumn.DataPropertyName = "UsedPages";
+            UsedPagesColumn.HeaderText = "Used Pages";
+            UsedPagesColumn.Name = "UsedPagesColumn";
+            UsedPagesColumn.ReadOnly = true;
+            UsedPagesColumn.Width = 90;
+            // 
             // statusStrip
             // 
             statusStrip.ImageScalingSize = new System.Drawing.Size(32, 32);
@@ -452,64 +512,6 @@ namespace InternalsViewer.UI
             keyImageColumn1.HeaderText = "";
             keyImageColumn1.Name = "keyImageColumn1";
             keyImageColumn1.Width = 30;
-            // 
-            // KeyColumn
-            // 
-            KeyColumn.DataPropertyName = "Colour";
-            KeyColumn.HeaderText = "";
-            KeyColumn.Name = "KeyColumn";
-            KeyColumn.ReadOnly = true;
-            KeyColumn.Width = 30;
-            // 
-            // NameColumn
-            // 
-            NameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            NameColumn.DataPropertyName = "ObjectName";
-            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
-            NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
-            NameColumn.HeaderText = "Table";
-            NameColumn.Name = "NameColumn";
-            NameColumn.ReadOnly = true;
-            // 
-            // IndexNameColumn
-            // 
-            IndexNameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            IndexNameColumn.DataPropertyName = "IndexName";
-            IndexNameColumn.HeaderText = "Index";
-            IndexNameColumn.Name = "IndexNameColumn";
-            IndexNameColumn.ReadOnly = true;
-            // 
-            // IndexTypeColumn
-            // 
-            IndexTypeColumn.DataPropertyName = "IndexType";
-            IndexTypeColumn.HeaderText = "Index Type";
-            IndexTypeColumn.Name = "IndexTypeColumn";
-            IndexTypeColumn.ReadOnly = true;
-            // 
-            // FirstPage
-            // 
-            FirstPage.DataPropertyName = "FirstPage";
-            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.Blue;
-            FirstPage.DefaultCellStyle = dataGridViewCellStyle3;
-            FirstPage.HeaderText = "First Page";
-            FirstPage.Name = "FirstPage";
-            FirstPage.ReadOnly = true;
-            // 
-            // TotalPagesColumn
-            // 
-            TotalPagesColumn.DataPropertyName = "TotalPages";
-            TotalPagesColumn.HeaderText = "Total Pages";
-            TotalPagesColumn.Name = "TotalPagesColumn";
-            TotalPagesColumn.ReadOnly = true;
-            TotalPagesColumn.Width = 90;
-            // 
-            // UsedPagesColumn
-            // 
-            UsedPagesColumn.DataPropertyName = "UsedPages";
-            UsedPagesColumn.HeaderText = "Used Pages";
-            UsedPagesColumn.Name = "UsedPagesColumn";
-            UsedPagesColumn.ReadOnly = true;
-            UsedPagesColumn.Width = 90;
             // 
             // AllocationWindow
             // 

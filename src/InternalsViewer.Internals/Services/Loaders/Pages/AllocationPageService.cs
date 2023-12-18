@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
-using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Services.Loaders.Pages;
 
@@ -15,9 +15,9 @@ public class AllocationPageService(IPageService pageService) : IAllocationPageSe
 {
     public IPageService PageService { get; } = pageService;
 
-    public async Task<AllocationPage> Load(Database database, PageAddress pageAddress)
+    public async Task<AllocationPage> Load(DatabaseDetail databaseDetail, PageAddress pageAddress)
     {
-        var page = await PageService.Load<AllocationPage>(database, pageAddress);
+        var page = await PageService.Load<AllocationPage>(databaseDetail, pageAddress);
 
         switch (page.PageHeader.PageType)
         {

@@ -2,7 +2,7 @@
 using System.Data;
 using System.Globalization;
 
-namespace InternalsViewer.Internals;
+namespace InternalsViewer.Internals.Converters;
 
 public class CompressedDataConverter
 {
@@ -20,37 +20,29 @@ public class CompressedDataConverter
             switch (sqlType)
             {
                 case SqlDbType.BigInt:
-
                     return DecodeBigInt(data, unsigned);
 
                 case SqlDbType.TinyInt:
-
                     return DataConverter.BinaryToString(data, sqlType, precision, scale);
 
                 case SqlDbType.SmallInt:
-
                     return DecodeSmallInt(data, unsigned);
 
                 case SqlDbType.Int:
-
                     return DecodeInt(data, unsigned);
 
                 case SqlDbType.Money:
                 case SqlDbType.SmallMoney:
-
                     return DataConverter.BinaryToString(DecodeInt(data, unsigned, 8), sqlType, precision, scale);
 
                 case SqlDbType.NChar:
                 case SqlDbType.NVarChar:
-
                     return DataConverter.BinaryToString(data, SqlDbType.VarChar, precision, scale);
 
                 case SqlDbType.DateTime:
-
                     return DecodeDateTime(data, unsigned);
 
                 case SqlDbType.SmallDateTime:
-
                     return DecodeSmallDateTime(data);
 
                 //case SqlDbType.VarBinary:

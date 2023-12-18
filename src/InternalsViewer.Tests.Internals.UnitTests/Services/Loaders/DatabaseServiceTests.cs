@@ -2,12 +2,12 @@
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
-using InternalsViewer.Internals.Services.Loaders.Database;
+using InternalsViewer.Internals.Services.Loaders.Engine;
 using InternalsViewer.Tests.Internals.UnitTests.TestHelpers;
-using Microsoft.IdentityModel.Logging;
 using Moq;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Services.Loaders;
@@ -26,7 +26,7 @@ public class DatabaseServiceTests
 
         var bootPageService = new Mock<IBootPageService>();
 
-        var databaseInfo = new DatabaseInfo
+        var databaseInfo = new DatabaseSummary
         {
             DatabaseId = 1,
             Name = "TestDatabase",
@@ -74,7 +74,7 @@ public class DatabaseServiceTests
         var pfsChainService = new Mock<IPfsChainService>();
         var bootPageService = new Mock<IBootPageService>();
 
-        var databaseInfo = new DatabaseInfo
+        var databaseInfo = new DatabaseSummary
         {
             DatabaseId = 1,
             Name = "TestDatabase",
@@ -94,7 +94,7 @@ public class DatabaseServiceTests
         databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
             .ReturnsAsync(databaseInfo);
 
-        allocationChainService.Setup(a => a.LoadChain(It.IsAny<Database>(), It.IsAny<short>(), It.IsAny<PageType>()))
+        allocationChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseDetail>(), It.IsAny<short>(), It.IsAny<PageType>()))
             .ReturnsAsync(new AllocationChain());
 
         var databaseService = new DatabaseService(TestLogHelper.GetLogger<DatabaseService>(),
@@ -133,7 +133,7 @@ public class DatabaseServiceTests
         var iamChainService = new Mock<IIamChainService>();
         var pfsChainService = new Mock<IPfsChainService>();
 
-        var databaseInfo = new DatabaseInfo
+        var databaseInfo = new DatabaseSummary
         {
             DatabaseId = 1,
             Name = "TestDatabase",
@@ -153,7 +153,7 @@ public class DatabaseServiceTests
         databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
             .ReturnsAsync(databaseInfo);
 
-        pfsChainService.Setup(a => a.LoadChain(It.IsAny<Database>(), It.IsAny<short>()))
+        pfsChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseDetail>(), It.IsAny<short>()))
             .ReturnsAsync(new PfsChain());
 
         var databaseService = new DatabaseService(TestLogHelper.GetLogger<DatabaseService>(), 

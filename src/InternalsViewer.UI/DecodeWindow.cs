@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Converters;
 using InternalsViewer.UI.Rtf;
 
 #pragma warning disable CA1416
@@ -104,7 +105,7 @@ public partial class DecodeWindow : UserControl
         if (decimal.TryParse(text, out var value))
         {
             hexTextBox.ForeColor = Color.Black;
-            hexTextBox.Text = DataConverter.EncodeDecimal(value);
+            hexTextBox.Text = DataEncoders.EncodeDecimal(value);
         }
         else
         {
@@ -117,7 +118,7 @@ public partial class DecodeWindow : UserControl
     {
         if (float.TryParse(text, out var value))
         {
-            hexTextBox.Text = DataConverter.EncodeReal(value);
+            hexTextBox.Text = DataEncoders.EncodeReal(value);
         }
         else
         {
@@ -132,11 +133,11 @@ public partial class DecodeWindow : UserControl
         {
             if (small)
             {
-                hexTextBox.Text = DataConverter.EncodeSmallMoney(value);
+                hexTextBox.Text = DataEncoders.EncodeSmallMoney(value);
             }
             else
             {
-                hexTextBox.Text = DataConverter.EncodeMoney(value);
+                hexTextBox.Text = DataEncoders.EncodeMoney(value);
             }
         }
         else
@@ -150,7 +151,7 @@ public partial class DecodeWindow : UserControl
     {
         if (double.TryParse(text, out var value))
         {
-            hexTextBox.Text = DataConverter.EncodeFloat(value);
+            hexTextBox.Text = DataEncoders.EncodeFloat(value);
         }
         else
         {
@@ -178,7 +179,7 @@ public partial class DecodeWindow : UserControl
     {
         if (long.TryParse(text, out var value))
         {
-            hexTextBox.Text = DataConverter.EncodeInt64(value);
+            hexTextBox.Text = DataEncoders.EncodeInt64(value);
         }
         else
         {
@@ -195,11 +196,11 @@ public partial class DecodeWindow : UserControl
 
             if (small)
             {
-                dateValue = DataConverter.EncodeSmallDateTime(value);
+                dateValue = DataEncoders.EncodeSmallDateTime(value);
             }
             else
             {
-                dateValue = DataConverter.EncodeDateTime(value);
+                dateValue = DataEncoders.EncodeDateTime(value);
             }
 
             hexTextBox.Rtf = DateTimeRtfBuilder.BuildRtf(dateValue[0], dateValue[1], Color.White);
@@ -241,7 +242,7 @@ public partial class DecodeWindow : UserControl
     {
         if (short.TryParse(text, out var value))
         {
-            hexTextBox.Text = DataConverter.EncodeInt16(value);
+            hexTextBox.Text = DataEncoders.EncodeInt16(value);
         }
         else
         {
@@ -254,7 +255,7 @@ public partial class DecodeWindow : UserControl
     {
         if (int.TryParse(text, out var value))
         {
-            hexTextBox.Text = DataConverter.EncodeInt32(value);
+            hexTextBox.Text = DataEncoders.EncodeInt32(value);
         }
         else
         {

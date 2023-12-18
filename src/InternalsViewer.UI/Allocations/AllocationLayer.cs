@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using InternalsViewer.Internals;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Internals.Engine.Records.Index;
 
 #pragma warning disable CA1416
 

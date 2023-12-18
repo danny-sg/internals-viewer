@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Records;
 
-namespace InternalsViewer.Internals.BlobPointers;
+namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
 public class RootField : BlobField
 {
@@ -43,18 +43,18 @@ public class RootField : BlobField
         {
             MarkDataStructure("LinksArray", "Child " + i + " - ", i);
 
-            var length = BitConverter.ToInt32(Data, ChildOffset + (i * 12));
+            var length = BitConverter.ToInt32(Data, ChildOffset + i * 12);
 
             var rowIdData = new byte[8];
-            Array.Copy(Data, ChildOffset + (i * 12) + 4, rowIdData, 0, 8);
+            Array.Copy(Data, ChildOffset + i * 12 + 4, rowIdData, 0, 8);
 
             var rowId = new RowIdentifier(rowIdData);
 
             var link = new BlobChildLink(rowId, 0, length);
 
-            link.MarkDataStructure("Length", Offset + ChildOffset + (i * 12), sizeof(int));
+            link.MarkDataStructure("Length", Offset + ChildOffset + i * 12, sizeof(int));
 
-            link.MarkDataStructure("RowIdentifier", Offset + ChildOffset + (i * 12) + sizeof(int), 8);
+            link.MarkDataStructure("RowIdentifier", Offset + ChildOffset + i * 12 + sizeof(int), 8);
 
             Links.Add(link);
         }

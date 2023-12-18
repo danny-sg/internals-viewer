@@ -1,7 +1,7 @@
 ﻿
 using System;
 
-namespace InternalsViewer.Internals;
+namespace InternalsViewer.Internals.Engine.Records.Index;
 
 [Flags]
 public enum IndexTypes

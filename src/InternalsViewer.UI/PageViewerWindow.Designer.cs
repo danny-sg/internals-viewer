@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Windows.Forms;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.UI.Controls;
 
 namespace InternalsViewer.UI
@@ -456,7 +457,7 @@ namespace InternalsViewer.UI
             // 
             // pageBindingSource
             // 
-            pageBindingSource.DataSource = typeof(Internals.Pages.PageHeader);
+            pageBindingSource.DataSource = typeof(PageHeader);
             // 
             // label5
             // 

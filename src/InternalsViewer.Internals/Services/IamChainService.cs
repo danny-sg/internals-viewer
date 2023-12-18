@@ -19,7 +19,7 @@ public class IamChainService(IAllocationPageService pageService) : IIamChainServ
     /// <remarks>
     /// IAM chains are linked lists of pages linked via the Next Page/Previous Page pointers in the page header
     /// </remarks>
-    public async Task<IamChain> LoadChain(Database database, PageAddress startPageAddress)
+    public async Task<IamChain> LoadChain(DatabaseDetail databaseDetail, PageAddress startPageAddress)
     {
         var iam = new IamChain();
 
@@ -27,7 +27,7 @@ public class IamChainService(IAllocationPageService pageService) : IIamChainServ
 
         while (true)
         {
-            var page = await PageService.Load(database, pageAddress);
+            var page = await PageService.Load(databaseDetail, pageAddress);
 
             iam.Pages.Add(page);
 

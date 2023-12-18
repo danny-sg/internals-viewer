@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Readers.Pages;
-using InternalsViewer.Internals.Services.Loaders;
+using InternalsViewer.Internals.Services.Loaders.Pages;
 using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
 using Moq;
 
@@ -26,7 +26,7 @@ public class TableReaderTests
 
         var dataReader = new TableReader(service);
 
-        var database = new Database { Name = "AdventureWorks2022" };
+        var database = new DatabaseDetail { Name = "AdventureWorks2022" };
 
         var tableStructure = InternalAllocationUnitStructure.GetStructure(72057594040549376);
 
@@ -52,7 +52,7 @@ public class TableReaderTests
 
         var dataReader = new TableReader(service);
 
-        var database = new Database { Name = "AdventureWorks2022" };
+        var database = new DatabaseDetail { Name = "AdventureWorks2022" };
 
         var tableStructure = InternalObjectStructure.GetStructure(72057594040549376);
 
@@ -78,7 +78,7 @@ public class TableReaderTests
 
         var dataReader = new TableReader(service);
 
-        var database = new Database { Name = "AdventureWorks2022" };
+        var database = new DatabaseDetail { Name = "AdventureWorks2022" };
 
         var tableStructure = InternalColumnStructure.GetStructure(72057594040549376);
 
@@ -104,7 +104,7 @@ public class TableReaderTests
 
         var dataReader = new TableReader(service);
 
-        var database = new Database { Name = "AdventureWorks2022" };
+        var database = new DatabaseDetail { Name = "AdventureWorks2022" };
 
         var tableStructure = InternalRowSetStructure.GetStructure(72057594040549376);
 

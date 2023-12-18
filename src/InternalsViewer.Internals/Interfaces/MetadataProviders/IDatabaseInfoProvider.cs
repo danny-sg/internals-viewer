@@ -6,9 +6,9 @@ namespace InternalsViewer.Internals.Interfaces.MetadataProviders;
 
 public interface IDatabaseInfoProvider
 {
-    Task<List<DatabaseInfo>> GetDatabases();
+    Task<List<DatabaseSummary>> GetDatabases();
 
-    Task<DatabaseInfo?> GetDatabase(string name);
+    Task<DatabaseSummary?> GetDatabase(string name);
 
     Task<List<AllocationUnit>> GetAllocationUnits();
 

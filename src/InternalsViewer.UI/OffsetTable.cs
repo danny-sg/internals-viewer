@@ -4,7 +4,9 @@ using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals;
-using InternalsViewer.Internals.Pages;
+using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Engine.Pages;
+
 
 #pragma warning disable CA1416
 

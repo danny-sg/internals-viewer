@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Records;
 
@@ -51,9 +52,9 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
             }
 
             return CompressedDataConverter.CompressedBinaryToBinary(Data,
-                ColumnStructure.DataType,
-                ColumnStructure.Precision,
-                ColumnStructure.Scale) ?? string.Empty;
+                                                                    ColumnStructure.DataType,
+                                                                    ColumnStructure.Precision,
+                                                                    ColumnStructure.Scale) ?? string.Empty;
         }
     }
 
@@ -64,15 +65,15 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
             var compositeData = ExpandAnchor(Data);
 
             return CompressedDataConverter.CompressedBinaryToBinary(compositeData,
-                ColumnStructure.DataType,
-                ColumnStructure.Precision,
-                ColumnStructure.Scale);
+                                                                    ColumnStructure.DataType,
+                                                                    ColumnStructure.Precision,
+                                                                    ColumnStructure.Scale);
         }
 
         return CompressedDataConverter.CompressedBinaryToBinary(AnchorField.Data,
-            ColumnStructure.DataType,
-            ColumnStructure.Precision,
-            ColumnStructure.Scale);
+                                                                ColumnStructure.DataType,
+                                                                ColumnStructure.Precision,
+                                                                ColumnStructure.Scale);
     }
 
     private string GetPageSymbolValue()

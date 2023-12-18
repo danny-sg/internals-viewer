@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Pages;
+﻿using InternalsViewer.Internals.Engine.Pages.Enums;
 
 namespace InternalsViewer.Internals.Helpers;
 

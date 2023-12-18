@@ -7,7 +7,7 @@ using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Services;
 using InternalsViewer.Internals.Services.Loaders.Compression;
-using InternalsViewer.Internals.Services.Loaders.Database;
+using InternalsViewer.Internals.Services.Loaders.Engine;
 using InternalsViewer.Internals.Services.Loaders.Pages;
 using InternalsViewer.Internals.Services.Records;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,5 +1,4 @@
-﻿
-namespace InternalsViewer.Internals.Engine.Pages;
+﻿namespace InternalsViewer.Internals.Engine.Pages.Enums;
 
 /// <summary>
 /// Page Type

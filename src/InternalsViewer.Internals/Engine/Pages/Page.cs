@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 
-namespace InternalsViewer.Internals.Pages;
+namespace InternalsViewer.Internals.Engine.Pages;
 
 /// <summary>
 /// Database Page
@@ -23,7 +23,7 @@ public class Page : DataStructure
     /// <summary>
     /// Database the page belongs to
     /// </summary>
-    public Database Database { get; set; } = new();
+    public DatabaseDetail Database { get; set; } = new();
 
     /// <summary>
     /// Page Address in the format File Id : Page Id
@@ -33,7 +33,7 @@ public class Page : DataStructure
     /// <summary>
     /// Raw page data
     /// </summary>
-    public byte[] PageData { get; set; } =  new byte[Size];
+    public byte[] PageData { get; set; } = new byte[Size];
 
     /// <summary>
     /// Page Header
@@ -45,6 +45,9 @@ public class Page : DataStructure
     /// </summary>
     public List<ushort> OffsetTable { get; } = new();
 
+    /// <summary>
+    /// CI (Compression Information) structure for compressed data/index pages
+    /// </summary>
     public CompressionInfo? CompressionInfo { get; set; }
 
     /// <summary>

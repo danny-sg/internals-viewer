@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Allocation;
 using System.Collections;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
 
 namespace InternalsViewer.Internals.Engine.Parsers;
 

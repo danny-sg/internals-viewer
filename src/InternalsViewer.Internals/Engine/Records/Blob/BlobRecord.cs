@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using InternalsViewer.Internals.BlobPointers;
+using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Engine.Records.Blob;

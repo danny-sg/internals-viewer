@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using InternalsViewer.Internals.Generators;
+
 // ReSharper disable StringLiteralTypo
 
 namespace InternalsViewer.Internals.Metadata.Internals.Tables;

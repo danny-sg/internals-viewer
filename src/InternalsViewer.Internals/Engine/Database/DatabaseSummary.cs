@@ -1,6 +1,8 @@
-﻿namespace InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Database.Enums;
 
-public class DatabaseInfo
+namespace InternalsViewer.Internals.Engine.Database;
+
+public class DatabaseSummary
 {
     public int DatabaseId { get; set; }
 

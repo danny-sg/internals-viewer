@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace InternalsViewer.Internals.Engine.Allocation;
+namespace InternalsViewer.Internals.Engine.Allocation.Enums;
 
 /// <summary>
 /// Page Free Space Byte

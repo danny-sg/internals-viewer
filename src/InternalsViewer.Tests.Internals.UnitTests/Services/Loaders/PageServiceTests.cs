@@ -7,9 +7,9 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
-using InternalsViewer.Internals.Pages;
 using Moq;
 using InternalsViewer.Internals.Services.Loaders.Pages;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Services.Loaders;
 
@@ -28,7 +28,7 @@ public class PageServiceTests
         var pageService = new PageService(reader.Object,
                                           compressionInfoService.Object);
 
-        var database = new Database();
+        var database = new DatabaseDetail();
 
         var pageAddress = new PageAddress(1, 1);
 
@@ -60,7 +60,7 @@ public class PageServiceTests
         var pageService = new PageService(reader.Object,
                                           compressionInfoService.Object);
 
-        var database = new Database();
+        var database = new DatabaseDetail();
 
         var pageAddress = new PageAddress(1, 1);
 

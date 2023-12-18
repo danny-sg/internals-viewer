@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Pages;
+﻿using InternalsViewer.Internals.Engine.Allocation.Enums;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Engine.Allocation;
 
@@ -30,7 +31,7 @@ public class IamChain : AllocationChain
 {
     public IamChain()
     {
-        IsMultiFile = true;
+        ChainType = ChainType.Linked;
     }
 
     /// <summary>

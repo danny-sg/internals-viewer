@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Internals.Engine.Allocation;
+﻿namespace InternalsViewer.Internals.Engine.Allocation.Enums;
 
 public enum SpaceFree : byte
 {

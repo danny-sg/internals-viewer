@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Readers.Headers;
+using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Internals.Services.Loaders.Pages;
 using InternalsViewer.Tests.Internals.UnitTests.TestHelpers.TestReaders;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Readers.Headers;
@@ -17,7 +17,7 @@ public class PageHeaderServiceTests
 
         var data = await reader.Read("TestDatabase", new PageAddress(1, 9));
 
-        var header = HeaderService.Read(data);
+        var header = PageHeaderService.Read(data);
 
         Assert.Equal(new PageAddress(1, 9), header.PageAddress);
         Assert.Equal(1, header.HeaderVersion);

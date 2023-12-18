@@ -3,10 +3,10 @@ using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Records.Data;
-using InternalsViewer.Internals.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Services.Records.Loaders;
 using InternalsViewer.Internals.Metadata;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Readers.Internals;
 
@@ -14,9 +14,9 @@ public class TableReader(IPageService pageService)
 {
     public IPageService PageService { get; } = pageService;
 
-    public async Task<List<DataRecord>> Read(Database database, PageAddress startPage, TableStructure structure)
+    public async Task<List<DataRecord>> Read(DatabaseDetail databaseDetail, PageAddress startPage, TableStructure structure)
     {
-        var page = await PageService.Load<Page>(database, startPage);
+        var page = await PageService.Load<Page>(databaseDetail, startPage);
 
         var records = new List<DataRecord>();
 
@@ -34,7 +34,7 @@ public class TableReader(IPageService pageService)
                 break;
             }
 
-            page = await PageService.Load<Page>(database, page.PageHeader.NextPage);
+            page = await PageService.Load<Page>(databaseDetail, page.PageHeader.NextPage);
         }
 
         return records;

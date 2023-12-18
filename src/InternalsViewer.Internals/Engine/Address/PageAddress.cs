@@ -9,7 +9,10 @@ public record struct PageAddress(short FileId, int PageId)
 {
     public static readonly PageAddress Empty = new();
 
-    public const int Size = sizeof(int) + sizeof(short);
+    /// <summary>
+    /// Size of a Page Address is 6 bytes (2 byte File Id + 4 byte Page Id)
+    /// </summary>
+    public const int Size = sizeof(short) + sizeof(int);
 
     /// <summary>
     /// File Id for the Page Address

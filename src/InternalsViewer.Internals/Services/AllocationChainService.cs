@@ -4,8 +4,8 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
-using InternalsViewer.Internals.Pages;
 
 namespace InternalsViewer.Internals.Services;
 
@@ -27,7 +27,7 @@ public class AllocationChainService(IAllocationPageService pageService)
 {
     public IAllocationPageService PageService { get; } = pageService;
 
-    public async Task<AllocationChain> LoadChain(Database database, short fileId, PageType pageType)
+    public async Task<AllocationChain> LoadChain(DatabaseDetail databaseDetail, short fileId, PageType pageType)
     {
         int startPage = pageType switch
         {
@@ -38,20 +38,20 @@ public class AllocationChainService(IAllocationPageService pageService)
             _ => throw new InvalidOperationException("Page type is not a database allocation page")
         };
 
-        return await LoadChain(database, new PageAddress(fileId, startPage));
+        return await LoadChain(databaseDetail, new PageAddress(fileId, startPage));
     }
 
-    public async Task<AllocationChain> LoadChain(Database database, PageAddress startPageAddress)
+    public async Task<AllocationChain> LoadChain(DatabaseDetail databaseDetail, PageAddress startPageAddress)
     {
         var allocation = new AllocationChain();
 
-        var pageCount = (int)Math.Ceiling(database.GetFileSize(startPageAddress.FileId) / (decimal)AllocationPage.AllocationInterval);
+        var pageCount = (int)Math.Ceiling(databaseDetail.GetFileSize(startPageAddress.FileId) / (decimal)AllocationPage.AllocationInterval);
 
         for (var i = 0; i < pageCount; i++)
         {
             var address = new PageAddress(startPageAddress.FileId, startPageAddress.PageId + i * AllocationPage.AllocationInterval);
 
-            var page = await PageService.Load(database, address);
+            var page = await PageService.Load(databaseDetail, address);
 
             allocation.Pages.Add(page);
         }
