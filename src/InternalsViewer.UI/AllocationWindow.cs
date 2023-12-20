@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
@@ -18,10 +19,10 @@ namespace InternalsViewer.UI;
 
 public partial class AllocationWindow : UserControl
 {
-    public IDatabaseService DatabaseService { get; }
+    public IDatabaseLoader DatabaseLoader { get; }
 
-    public event EventHandler Connect;
-    public event EventHandler<PageEventArgs> ViewPage;
+    public event EventHandler? Connect;
+    public event EventHandler<PageEventArgs>? ViewPage;
 
     protected delegate void LoadDatabaseDelegate();
     private readonly BufferPool bufferPool = new(new(), new());
@@ -32,9 +33,9 @@ public partial class AllocationWindow : UserControl
 
     public DatabaseDetail? CurrentDatabase { get; set; }
 
-    public AllocationWindow(IDatabaseService databaseService)
+    public AllocationWindow(IDatabaseLoader databaseLoader)
     {
-        DatabaseService = databaseService;
+        DatabaseLoader = databaseLoader;
         InitializeComponent();
 
         SetStyle(ControlStyles.UserPaint, true);
@@ -138,7 +139,7 @@ public partial class AllocationWindow : UserControl
 
     private void AllocUnitBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
     {
-        e.Result = AllocationUnitsLayer.GenerateLayers(CurrentDatabase!, (BackgroundWorker)sender, true, true);
+        e.Result = AllocationUnitsLayer.GenerateLayers(CurrentDatabase!, (BackgroundWorker)sender, true);
     }
 
     private void AllocUnitBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -187,7 +188,7 @@ public partial class AllocationWindow : UserControl
         NameColumn.HeaderText = "Table";
         IndexNameColumn.HeaderText = "Index";
 
-        allocationBindingSource.DataSource = layers;
+        allocationBindingSource.DataSource = layers.Where(l => !l.IsSystem);
 
         keysDataGridView.ClearSelection();
 
@@ -196,7 +197,7 @@ public partial class AllocationWindow : UserControl
 
     private void ShowPfs(bool show)
     {
-        if(CurrentDatabase==null)
+        if (CurrentDatabase == null)
         {
             return;
         }
@@ -223,7 +224,7 @@ public partial class AllocationWindow : UserControl
 
     private void ChangeExtentSize()
     {
-        switch (extentSizeToolStripComboBox.SelectedItem.ToString())
+        switch (extentSizeToolStripComboBox.SelectedItem?.ToString())
         {
             case "Small":
 
@@ -314,7 +315,7 @@ public partial class AllocationWindow : UserControl
     {
         allocationContainer.ClearMapLayers();
 
-        if(CurrentDatabase==null)
+        if (CurrentDatabase == null)
         {
             return;
         }
@@ -371,7 +372,6 @@ public partial class AllocationWindow : UserControl
     {
         IndexTypeColumn.Visible = visible;
         TotalPagesColumn.Visible = visible;
-        UsedPagesColumn.Visible = visible;
     }
 
     private void AddDatabaseAllocation(string layerName,
@@ -413,12 +413,12 @@ public partial class AllocationWindow : UserControl
     {
         var databaseInfo = (DatabaseSummary)databaseToolStripComboBox.SelectedItem;
 
-        if(databaseInfo==null)
+        if (databaseInfo == null)
         {
             return;
         }
 
-        var database = await DatabaseService.Load(databaseInfo.Name);
+        var database = await DatabaseLoader.Load(databaseInfo.Name);
 
         CurrentDatabase = database;
 
@@ -543,7 +543,7 @@ public partial class AllocationWindow : UserControl
                         var name = (string)keysDataGridView.SelectedRows[0].Cells[1].Value;
                         var indexName = (string)keysDataGridView.SelectedRows[0].Cells[2].Value;
 
-                        layer.IsTransparent = !(layer.Name == name && layer.IndexName == indexName);
+                        layer.IsTransparent = !(layer.ObjectName == name && layer.IndexName == indexName);
                     }
                 }
 
@@ -617,7 +617,7 @@ public partial class AllocationWindow : UserControl
 
     private void AllocationUnitsToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        mapToolStripButton.Image = (sender as ToolStripMenuItem).Image;
+        mapToolStripButton.Image = (sender as ToolStripMenuItem)?.Image;
         mapToolStripButton.Text = AllocationUnitsText;
 
         CancelWorkerAndWait(allocUnitBackgroundWorker);
@@ -634,7 +634,7 @@ public partial class AllocationWindow : UserControl
     {
         CancelWorkerAndWait(allocUnitBackgroundWorker);
 
-        mapToolStripButton.Image = (sender as ToolStripMenuItem).Image;
+        mapToolStripButton.Image = (sender as ToolStripMenuItem)?.Image;
         mapToolStripButton.Text = AllocationMapText;
 
         mapToolStripButton.HideDropDown();
@@ -644,9 +644,22 @@ public partial class AllocationWindow : UserControl
 
     private void pFSToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        mapToolStripButton.Image = (sender as ToolStripMenuItem).Image;
+        mapToolStripButton.Image = (sender as ToolStripMenuItem)?.Image;
         mapToolStripButton.Text = PageFreeSpaceText;
 
         ShowPfs(true);
+    }
+
+    private void keysDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+    {
+        if (e is { RowIndex: >= 0, ColumnIndex: >= 4, ColumnIndex: <= 6 })
+        {
+            var pageAddress = (PageAddress)keysDataGridView.Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
+
+            if (pageAddress != PageAddress.Empty)
+            {
+                OnViewPage(sender, new PageEventArgs(pageAddress, true));
+            }
+        }
     }
 }

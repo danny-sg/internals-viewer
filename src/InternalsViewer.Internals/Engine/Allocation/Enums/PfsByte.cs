@@ -10,6 +10,8 @@ namespace InternalsViewer.Internals.Engine.Allocation.Enums;
 /// </remarks>
 public record PfsByte
 {
+    public static readonly PfsByte Unknown = new() { Byte = 0 };
+
     public byte Byte { get; set; }
 
     public SpaceFree PageSpaceFree { get; set; }

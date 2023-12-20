@@ -442,8 +442,7 @@ public partial class HexViewer : UserControl
         {
             dataRtf = value;
             dataRichTextBox.Rtf = value;
-            //dataRichTextBox.Text = DataText;
-            Debug.Print(value);
+
             UpdateAddressTextBox();
         }
     }

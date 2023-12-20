@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace InternalsViewer.Internals.Converters;
+﻿namespace InternalsViewer.Internals.Converters;
 
 public class DateTimeConverters
 {

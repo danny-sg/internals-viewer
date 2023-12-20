@@ -1,6 +1,4 @@
 ﻿
-using System;
-
 namespace InternalsViewer.Internals.Engine.Records.Index;
 
 [Flags]

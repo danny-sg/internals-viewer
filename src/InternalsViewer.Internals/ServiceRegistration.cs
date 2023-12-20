@@ -1,9 +1,11 @@
 ﻿using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Readers;
+using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Metadata;
+using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Services;
 using InternalsViewer.Internals.Services.Loaders.Compression;
@@ -21,18 +23,20 @@ public static class ServiceRegistration
         services.AddSingleton<CurrentConnection>();
         services.AddTransient<IPageReader, DatabasePageReader>();
 
-        services.AddTransient<IDatabaseInfoProvider, DatabaseInfoProvider>();
-        services.AddTransient<IDatabaseFileInfoProvider, DatabaseFileInfoProvider>();
+        services.AddTransient<IServerInfoProvider, ServerInfoProvider>();
+
         services.AddTransient<IStructureInfoProvider, StructureInfoProvider>();
-//        services.AddTransient<ITransactionLogProvider, TransactionLogProvider>();
+        //        services.AddTransient<ITransactionLogProvider, TransactionLogProvider>();
         services.AddTransient<IBufferPoolInfoProvider, BufferPoolInfoProvider>();
 
-        services.AddTransient<IDatabaseService, DatabaseService>();
+        services.AddTransient<IMetadataLoader, MetadataLoader>();
 
-        services.AddTransient<IPageService, PageService>();
-        services.AddTransient<IAllocationPageService, AllocationPageService>();
-        services.AddTransient<IPfsPageService, PfsPageService>();
-        services.AddTransient<IBootPageService, BootPageService>();
+        services.AddTransient<IDatabaseLoader, DatabaseLoader>();
+
+        services.AddTransient<IPageLoader, PageLoader>();
+        services.AddTransient<IAllocationPageLoader, AllocationPageLoader>();
+        services.AddTransient<IPfsPageLoader, PfsPageLoader>();
+        services.AddTransient<IBootPageLoader, BootPageLoader>();
 
         services.AddTransient<IAllocationChainService, AllocationChainService>();
         services.AddTransient<IPfsChainService, PfsChainService>();
@@ -43,5 +47,7 @@ public static class ServiceRegistration
         services.AddTransient<ICompressedDataRecordService, CompressedDataRecordService>();
 
         services.AddTransient<IRecordService, RecordService>();
+
+        services.AddTransient<ITableReader, TableReader>();
     }
 }

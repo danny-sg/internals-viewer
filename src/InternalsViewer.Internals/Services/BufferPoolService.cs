@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Interfaces.MetadataProviders;
-using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Internals.Services;

@@ -27,7 +27,7 @@ public class AllocationLayer
     public AllocationLayer(AllocationChain allocation)
     {
         Allocations.Add(allocation);
-        Name = allocation.ToString();
+        Name = allocation.ToString() ?? string.Empty;
     }
 
     public AllocationLayer(string name, AllocationChain allocationChain, Color colour)
@@ -40,16 +40,6 @@ public class AllocationLayer
     public AllocationLayer(string name, AllocationPage page, Color colour)
     {
         Name = name;
-
-        if (page.PageHeader.PageType == PageType.Iam)
-        {
-            //allocations.Add(new IamChain(page));
-        }
-        else
-        {
-            // allocations.Add(new AllocationChain(page));
-        }
-
         this.colour = colour;
     }
 
@@ -143,6 +133,8 @@ public class AllocationLayer
 
     public int Order { get; set; }
 
+    public bool IsSystem { get; set; }
+
     public bool IsInverted { get; set; }
 
     public bool UseDefaultSinglePageColour { get; set; }
@@ -166,6 +158,10 @@ public class AllocationLayer
     public long TotalPages { get; set; }
 
     public PageAddress FirstPage { get; set; }
+
+    public PageAddress RootPage { get; set; }
+
+    public PageAddress FirstIamPage { get; set; }
 
     public string ObjectName { get; set; } = string.Empty;
 }

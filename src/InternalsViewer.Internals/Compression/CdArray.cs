@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Records;
+﻿using InternalsViewer.Internals.Engine;
+using InternalsViewer.Internals.Engine.Annotations;
 
 namespace InternalsViewer.Internals.Compression;
 

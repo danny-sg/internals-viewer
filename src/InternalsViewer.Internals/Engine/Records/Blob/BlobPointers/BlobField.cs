@@ -1,6 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Text;
-using InternalsViewer.Internals.Records;
+﻿using System.Text;
+using InternalsViewer.Internals.Engine.Annotations;
 
 namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 

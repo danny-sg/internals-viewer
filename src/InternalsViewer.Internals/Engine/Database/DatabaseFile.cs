@@ -9,9 +9,11 @@ public record DatabaseFile(short FileId)
 {
     public short FileId { get; set; } = FileId;
 
-    public string FileGroup { get; set; } = string.Empty;
+    public short FileGroupId { get; set; }
 
     public string Name { get; set; } = string.Empty;
+
+    public FileType FileType { get; set; }
 
     public string PhysicalName { get; set; } = string.Empty;
 

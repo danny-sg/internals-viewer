@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages.Enums;

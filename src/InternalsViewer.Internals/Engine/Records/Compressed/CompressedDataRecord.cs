@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using InternalsViewer.Internals.Compression;
+﻿using InternalsViewer.Internals.Compression;
 
 namespace InternalsViewer.Internals.Engine.Records.Compressed;
 

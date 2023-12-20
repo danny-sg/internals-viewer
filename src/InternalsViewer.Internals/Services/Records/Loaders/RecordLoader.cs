@@ -1,5 +1,4 @@
-﻿using System;
-using InternalsViewer.Internals.Engine.Records;
+﻿using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
 namespace InternalsViewer.Internals.Services.Records.Loaders;

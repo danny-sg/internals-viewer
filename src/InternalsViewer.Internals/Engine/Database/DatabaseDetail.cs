@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
-using InternalsViewer.Internals.Engine.Allocation;
+﻿using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Metadata.Internals;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
@@ -35,8 +35,6 @@ public class DatabaseDetail : DatabaseSummary
     /// </summary>
     public Dictionary<int, PfsChain> Pfs { get; set; } = new();
 
-    public List<DatabaseFile> Files { get; set; } = new();
-
     public bool IsCompatible => CompatibilityLevel >= 90 && State == 0;
 
     public int GetFileSize(short fileId)
@@ -44,5 +42,9 @@ public class DatabaseDetail : DatabaseSummary
         return Files.FirstOrDefault(file => file.FileId == fileId)?.Size ?? 0;
     }
 
+    public List<DatabaseFile> Files { get; set; } = new();
+
     public List<AllocationUnit> AllocationUnits { get; set; } = new();
+
+    public InternalMetadata Metadata { get; set; } = new();
 }

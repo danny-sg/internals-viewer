@@ -62,8 +62,8 @@ namespace InternalsViewer.UI
             label5 = new Label();
             textBox4 = new TextBox();
             label4 = new Label();
-            textBox3 = new TextBox();
-            textBox2 = new TextBox();
+            ObjectNameTextBox = new TextBox();
+            PageTypeTextBox = new TextBox();
             textBox14 = new TextBox();
             textBox13 = new TextBox();
             textBox12 = new TextBox();
@@ -73,11 +73,11 @@ namespace InternalsViewer.UI
             textBox8 = new TextBox();
             textBox7 = new TextBox();
             textBox6 = new TextBox();
-            textBox17 = new TextBox();
-            textBox16 = new TextBox();
-            textBox5 = new TextBox();
-            previousPageTextBox = new TextBox();
-            nextPageTextBox = new TextBox();
+            AllocationUnitIdTextBox = new TextBox();
+            PartitionIdTextBox = new TextBox();
+            ObjectIdTextBox = new TextBox();
+            PreviousPageTextBox = new TextBox();
+            NextPageTextBox = new TextBox();
             label18 = new Label();
             label16 = new Label();
             label14 = new Label();
@@ -89,7 +89,7 @@ namespace InternalsViewer.UI
             label13 = new Label();
             label9 = new Label();
             label8 = new Label();
-            label7 = new Label();
+            ObjectIdLabel = new Label();
             label3 = new Label();
             label2 = new Label();
             splitContainer1 = new SplitContainer();
@@ -204,8 +204,8 @@ namespace InternalsViewer.UI
             headerBorderPanel.Controls.Add(label5);
             headerBorderPanel.Controls.Add(textBox4);
             headerBorderPanel.Controls.Add(label4);
-            headerBorderPanel.Controls.Add(textBox3);
-            headerBorderPanel.Controls.Add(textBox2);
+            headerBorderPanel.Controls.Add(ObjectNameTextBox);
+            headerBorderPanel.Controls.Add(PageTypeTextBox);
             headerBorderPanel.Controls.Add(textBox14);
             headerBorderPanel.Controls.Add(textBox13);
             headerBorderPanel.Controls.Add(textBox12);
@@ -215,11 +215,11 @@ namespace InternalsViewer.UI
             headerBorderPanel.Controls.Add(textBox8);
             headerBorderPanel.Controls.Add(textBox7);
             headerBorderPanel.Controls.Add(textBox6);
-            headerBorderPanel.Controls.Add(textBox17);
-            headerBorderPanel.Controls.Add(textBox16);
-            headerBorderPanel.Controls.Add(textBox5);
-            headerBorderPanel.Controls.Add(previousPageTextBox);
-            headerBorderPanel.Controls.Add(nextPageTextBox);
+            headerBorderPanel.Controls.Add(AllocationUnitIdTextBox);
+            headerBorderPanel.Controls.Add(PartitionIdTextBox);
+            headerBorderPanel.Controls.Add(ObjectIdTextBox);
+            headerBorderPanel.Controls.Add(PreviousPageTextBox);
+            headerBorderPanel.Controls.Add(NextPageTextBox);
             headerBorderPanel.Controls.Add(label18);
             headerBorderPanel.Controls.Add(label16);
             headerBorderPanel.Controls.Add(label14);
@@ -231,7 +231,7 @@ namespace InternalsViewer.UI
             headerBorderPanel.Controls.Add(label13);
             headerBorderPanel.Controls.Add(label9);
             headerBorderPanel.Controls.Add(label8);
-            headerBorderPanel.Controls.Add(label7);
+            headerBorderPanel.Controls.Add(ObjectIdLabel);
             headerBorderPanel.Controls.Add(label3);
             headerBorderPanel.Controls.Add(label2);
             headerBorderPanel.Dock = DockStyle.Fill;
@@ -248,7 +248,7 @@ namespace InternalsViewer.UI
             pfsTextBox.Cursor = Cursors.Hand;
             pfsTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, 0);
             pfsTextBox.ForeColor = System.Drawing.Color.Blue;
-            pfsTextBox.Location = new System.Drawing.Point(105, 580);
+            pfsTextBox.Location = new System.Drawing.Point(108, 540);
             pfsTextBox.Margin = new Padding(4);
             pfsTextBox.Name = "pfsTextBox";
             pfsTextBox.ReadOnly = true;
@@ -263,7 +263,7 @@ namespace InternalsViewer.UI
             bcmTextBox.Cursor = Cursors.Hand;
             bcmTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, 0);
             bcmTextBox.ForeColor = System.Drawing.Color.Blue;
-            bcmTextBox.Location = new System.Drawing.Point(105, 557);
+            bcmTextBox.Location = new System.Drawing.Point(108, 517);
             bcmTextBox.Margin = new Padding(4);
             bcmTextBox.Name = "bcmTextBox";
             bcmTextBox.ReadOnly = true;
@@ -278,7 +278,7 @@ namespace InternalsViewer.UI
             dcmTextBox.Cursor = Cursors.Hand;
             dcmTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, 0);
             dcmTextBox.ForeColor = System.Drawing.Color.Blue;
-            dcmTextBox.Location = new System.Drawing.Point(105, 534);
+            dcmTextBox.Location = new System.Drawing.Point(108, 494);
             dcmTextBox.Margin = new Padding(4);
             dcmTextBox.Name = "dcmTextBox";
             dcmTextBox.ReadOnly = true;
@@ -293,7 +293,7 @@ namespace InternalsViewer.UI
             sgamTextBox.Cursor = Cursors.Hand;
             sgamTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, 0);
             sgamTextBox.ForeColor = System.Drawing.Color.Blue;
-            sgamTextBox.Location = new System.Drawing.Point(105, 512);
+            sgamTextBox.Location = new System.Drawing.Point(108, 472);
             sgamTextBox.Margin = new Padding(4);
             sgamTextBox.Name = "sgamTextBox";
             sgamTextBox.ReadOnly = true;
@@ -308,7 +308,7 @@ namespace InternalsViewer.UI
             gamTextBox.Cursor = Cursors.Hand;
             gamTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, 0);
             gamTextBox.ForeColor = System.Drawing.Color.Blue;
-            gamTextBox.Location = new System.Drawing.Point(105, 490);
+            gamTextBox.Location = new System.Drawing.Point(108, 450);
             gamTextBox.Margin = new Padding(4);
             gamTextBox.Name = "gamTextBox";
             gamTextBox.ReadOnly = true;
@@ -318,7 +318,7 @@ namespace InternalsViewer.UI
             // 
             // bcmPictureBox
             // 
-            bcmPictureBox.Location = new System.Drawing.Point(56, 555);
+            bcmPictureBox.Location = new System.Drawing.Point(59, 515);
             bcmPictureBox.Margin = new Padding(4);
             bcmPictureBox.Name = "bcmPictureBox";
             bcmPictureBox.Size = new System.Drawing.Size(19, 19);
@@ -327,7 +327,7 @@ namespace InternalsViewer.UI
             // 
             // dcmPictureBox
             // 
-            dcmPictureBox.Location = new System.Drawing.Point(56, 533);
+            dcmPictureBox.Location = new System.Drawing.Point(59, 493);
             dcmPictureBox.Margin = new Padding(4);
             dcmPictureBox.Name = "dcmPictureBox";
             dcmPictureBox.Size = new System.Drawing.Size(19, 19);
@@ -336,7 +336,7 @@ namespace InternalsViewer.UI
             // 
             // sGamPictureBox
             // 
-            sGamPictureBox.Location = new System.Drawing.Point(56, 511);
+            sGamPictureBox.Location = new System.Drawing.Point(59, 471);
             sGamPictureBox.Margin = new Padding(4);
             sGamPictureBox.Name = "sGamPictureBox";
             sGamPictureBox.Size = new System.Drawing.Size(19, 19);
@@ -345,7 +345,7 @@ namespace InternalsViewer.UI
             // 
             // gamPictureBox
             // 
-            gamPictureBox.Location = new System.Drawing.Point(56, 489);
+            gamPictureBox.Location = new System.Drawing.Point(59, 449);
             gamPictureBox.Margin = new Padding(4);
             gamPictureBox.Name = "gamPictureBox";
             gamPictureBox.Size = new System.Drawing.Size(19, 19);
@@ -358,7 +358,7 @@ namespace InternalsViewer.UI
             label1.BackColor = System.Drawing.Color.Transparent;
             label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label1.ForeColor = System.Drawing.Color.Gray;
-            label1.Location = new System.Drawing.Point(6, 514);
+            label1.Location = new System.Drawing.Point(9, 474);
             label1.Margin = new Padding(5);
             label1.Name = "label1";
             label1.Size = new System.Drawing.Size(38, 13);
@@ -371,7 +371,7 @@ namespace InternalsViewer.UI
             label19.BackColor = System.Drawing.Color.Transparent;
             label19.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label19.ForeColor = System.Drawing.Color.Gray;
-            label19.Location = new System.Drawing.Point(6, 557);
+            label19.Location = new System.Drawing.Point(9, 517);
             label19.Margin = new Padding(5);
             label19.Name = "label19";
             label19.Size = new System.Drawing.Size(30, 13);
@@ -384,7 +384,7 @@ namespace InternalsViewer.UI
             label20.BackColor = System.Drawing.Color.Transparent;
             label20.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label20.ForeColor = System.Drawing.Color.Gray;
-            label20.Location = new System.Drawing.Point(6, 491);
+            label20.Location = new System.Drawing.Point(9, 451);
             label20.Margin = new Padding(5);
             label20.Name = "label20";
             label20.Size = new System.Drawing.Size(31, 13);
@@ -397,7 +397,7 @@ namespace InternalsViewer.UI
             label21.BackColor = System.Drawing.Color.Transparent;
             label21.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label21.ForeColor = System.Drawing.Color.Gray;
-            label21.Location = new System.Drawing.Point(6, 535);
+            label21.Location = new System.Drawing.Point(9, 495);
             label21.Margin = new Padding(5);
             label21.Name = "label21";
             label21.Size = new System.Drawing.Size(31, 13);
@@ -410,7 +410,7 @@ namespace InternalsViewer.UI
             label15.BackColor = System.Drawing.Color.Transparent;
             label15.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label15.ForeColor = System.Drawing.Color.Gray;
-            label15.Location = new System.Drawing.Point(6, 580);
+            label15.Location = new System.Drawing.Point(9, 540);
             label15.Margin = new Padding(5);
             label15.Name = "label15";
             label15.Size = new System.Drawing.Size(27, 13);
@@ -423,7 +423,7 @@ namespace InternalsViewer.UI
             pfsPanel.BackColor = System.Drawing.Color.Transparent;
             pfsPanel.BackgroundImageLayout = ImageLayout.Center;
             pfsPanel.Font = new System.Drawing.Font("Microsoft Sans Serif", 6F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
-            pfsPanel.Location = new System.Drawing.Point(56, 580);
+            pfsPanel.Location = new System.Drawing.Point(59, 540);
             pfsPanel.Margin = new Padding(4);
             pfsPanel.Name = "pfsPanel";
             pfsPanel.Size = new System.Drawing.Size(38, 38);
@@ -436,7 +436,7 @@ namespace InternalsViewer.UI
             label6.BackColor = System.Drawing.Color.Transparent;
             label6.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label6.ForeColor = System.Drawing.Color.Gray;
-            label6.Location = new System.Drawing.Point(6, 403);
+            label6.Location = new System.Drawing.Point(9, 363);
             label6.Margin = new Padding(5);
             label6.Name = "label6";
             label6.Size = new System.Drawing.Size(78, 13);
@@ -448,7 +448,7 @@ namespace InternalsViewer.UI
             textBox15.BackColor = System.Drawing.Color.White;
             textBox15.BorderStyle = BorderStyle.None;
             textBox15.DataBindings.Add(new Binding("Text", pageBindingSource, "FreeCount", true));
-            textBox15.Location = new System.Drawing.Point(105, 359);
+            textBox15.Location = new System.Drawing.Point(108, 319);
             textBox15.Margin = new Padding(4);
             textBox15.Name = "textBox15";
             textBox15.ReadOnly = true;
@@ -465,7 +465,7 @@ namespace InternalsViewer.UI
             label5.BackColor = System.Drawing.Color.Transparent;
             label5.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label5.ForeColor = System.Drawing.Color.Gray;
-            label5.Location = new System.Drawing.Point(6, 359);
+            label5.Location = new System.Drawing.Point(9, 319);
             label5.Margin = new Padding(5);
             label5.Name = "label5";
             label5.Size = new System.Drawing.Size(57, 13);
@@ -477,7 +477,7 @@ namespace InternalsViewer.UI
             textBox4.BackColor = System.Drawing.Color.White;
             textBox4.BorderStyle = BorderStyle.None;
             textBox4.DataBindings.Add(new Binding("Text", pageBindingSource, "Lsn", true));
-            textBox4.Location = new System.Drawing.Point(105, 226);
+            textBox4.Location = new System.Drawing.Point(108, 186);
             textBox4.Margin = new Padding(4);
             textBox4.Name = "textBox4";
             textBox4.ReadOnly = true;
@@ -490,42 +490,42 @@ namespace InternalsViewer.UI
             label4.BackColor = System.Drawing.Color.Transparent;
             label4.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label4.ForeColor = System.Drawing.Color.Gray;
-            label4.Location = new System.Drawing.Point(6, 226);
+            label4.Location = new System.Drawing.Point(9, 186);
             label4.Margin = new Padding(5);
             label4.Name = "label4";
             label4.Size = new System.Drawing.Size(28, 13);
             label4.TabIndex = 248;
             label4.Text = "LSN";
             // 
-            // textBox3
+            // ObjectNameTextBox
             // 
-            textBox3.BackColor = System.Drawing.Color.White;
-            textBox3.BorderStyle = BorderStyle.None;
-            textBox3.Location = new System.Drawing.Point(9, 115);
-            textBox3.Margin = new Padding(4);
-            textBox3.Name = "textBox3";
-            textBox3.ReadOnly = true;
-            textBox3.Size = new System.Drawing.Size(327, 16);
-            textBox3.TabIndex = 247;
+            ObjectNameTextBox.BackColor = System.Drawing.Color.GhostWhite;
+            ObjectNameTextBox.BorderStyle = BorderStyle.None;
+            ObjectNameTextBox.Location = new System.Drawing.Point(9, 115);
+            ObjectNameTextBox.Margin = new Padding(4);
+            ObjectNameTextBox.Name = "ObjectNameTextBox";
+            ObjectNameTextBox.ReadOnly = true;
+            ObjectNameTextBox.Size = new System.Drawing.Size(327, 16);
+            ObjectNameTextBox.TabIndex = 247;
             // 
-            // textBox2
+            // PageTypeTextBox
             // 
-            textBox2.BackColor = System.Drawing.Color.White;
-            textBox2.BorderStyle = BorderStyle.None;
-            textBox2.DataBindings.Add(new Binding("Text", pageBindingSource, "PageTypeName", true));
-            textBox2.Location = new System.Drawing.Point(9, 28);
-            textBox2.Margin = new Padding(4);
-            textBox2.Name = "textBox2";
-            textBox2.ReadOnly = true;
-            textBox2.Size = new System.Drawing.Size(327, 16);
-            textBox2.TabIndex = 246;
+            PageTypeTextBox.BackColor = System.Drawing.Color.White;
+            PageTypeTextBox.BorderStyle = BorderStyle.None;
+            PageTypeTextBox.DataBindings.Add(new Binding("Text", pageBindingSource, "PageTypeName", true));
+            PageTypeTextBox.Location = new System.Drawing.Point(9, 28);
+            PageTypeTextBox.Margin = new Padding(4);
+            PageTypeTextBox.Name = "PageTypeTextBox";
+            PageTypeTextBox.ReadOnly = true;
+            PageTypeTextBox.Size = new System.Drawing.Size(327, 16);
+            PageTypeTextBox.TabIndex = 246;
             // 
             // textBox14
             // 
             textBox14.BackColor = System.Drawing.Color.White;
             textBox14.BorderStyle = BorderStyle.None;
             textBox14.DataBindings.Add(new Binding("Text", pageBindingSource, "FlagBits", true));
-            textBox14.Location = new System.Drawing.Point(105, 446);
+            textBox14.Location = new System.Drawing.Point(108, 406);
             textBox14.Margin = new Padding(4);
             textBox14.Name = "textBox14";
             textBox14.ReadOnly = true;
@@ -537,7 +537,7 @@ namespace InternalsViewer.UI
             textBox13.BackColor = System.Drawing.Color.White;
             textBox13.BorderStyle = BorderStyle.None;
             textBox13.DataBindings.Add(new Binding("Text", pageBindingSource, "ReservedCount", true));
-            textBox13.Location = new System.Drawing.Point(105, 381);
+            textBox13.Location = new System.Drawing.Point(108, 341);
             textBox13.Margin = new Padding(4);
             textBox13.Name = "textBox13";
             textBox13.ReadOnly = true;
@@ -548,7 +548,7 @@ namespace InternalsViewer.UI
             // 
             textBox12.BackColor = System.Drawing.Color.White;
             textBox12.BorderStyle = BorderStyle.None;
-            textBox12.Location = new System.Drawing.Point(105, 403);
+            textBox12.Location = new System.Drawing.Point(108, 363);
             textBox12.Margin = new Padding(4);
             textBox12.Name = "textBox12";
             textBox12.ReadOnly = true;
@@ -560,7 +560,7 @@ namespace InternalsViewer.UI
             textBox11.BackColor = System.Drawing.Color.White;
             textBox11.BorderStyle = BorderStyle.None;
             textBox11.DataBindings.Add(new Binding("Text", pageBindingSource, "IndexId", true));
-            textBox11.Location = new System.Drawing.Point(105, 293);
+            textBox11.Location = new System.Drawing.Point(108, 253);
             textBox11.Margin = new Padding(4);
             textBox11.Name = "textBox11";
             textBox11.ReadOnly = true;
@@ -572,7 +572,7 @@ namespace InternalsViewer.UI
             textBox10.BackColor = System.Drawing.Color.White;
             textBox10.BorderStyle = BorderStyle.None;
             textBox10.DataBindings.Add(new Binding("Text", pageBindingSource, "Level", true));
-            textBox10.Location = new System.Drawing.Point(105, 271);
+            textBox10.Location = new System.Drawing.Point(108, 231);
             textBox10.Margin = new Padding(4);
             textBox10.Name = "textBox10";
             textBox10.ReadOnly = true;
@@ -584,7 +584,7 @@ namespace InternalsViewer.UI
             textBox9.BackColor = System.Drawing.Color.White;
             textBox9.BorderStyle = BorderStyle.None;
             textBox9.DataBindings.Add(new Binding("Text", pageBindingSource, "SlotCount", true));
-            textBox9.Location = new System.Drawing.Point(105, 249);
+            textBox9.Location = new System.Drawing.Point(108, 209);
             textBox9.Margin = new Padding(4);
             textBox9.Name = "textBox9";
             textBox9.ReadOnly = true;
@@ -596,7 +596,7 @@ namespace InternalsViewer.UI
             textBox8.BackColor = System.Drawing.Color.White;
             textBox8.BorderStyle = BorderStyle.None;
             textBox8.DataBindings.Add(new Binding("Text", pageBindingSource, "TornBits", true));
-            textBox8.Location = new System.Drawing.Point(105, 425);
+            textBox8.Location = new System.Drawing.Point(108, 385);
             textBox8.Margin = new Padding(4);
             textBox8.Name = "textBox8";
             textBox8.ReadOnly = true;
@@ -607,7 +607,7 @@ namespace InternalsViewer.UI
             // 
             textBox7.BackColor = System.Drawing.Color.White;
             textBox7.BorderStyle = BorderStyle.None;
-            textBox7.Location = new System.Drawing.Point(105, 337);
+            textBox7.Location = new System.Drawing.Point(108, 297);
             textBox7.Margin = new Padding(4);
             textBox7.Name = "textBox7";
             textBox7.ReadOnly = true;
@@ -619,79 +619,79 @@ namespace InternalsViewer.UI
             textBox6.BackColor = System.Drawing.Color.White;
             textBox6.BorderStyle = BorderStyle.None;
             textBox6.DataBindings.Add(new Binding("Text", pageBindingSource, "FreeData", true));
-            textBox6.Location = new System.Drawing.Point(105, 315);
+            textBox6.Location = new System.Drawing.Point(108, 275);
             textBox6.Margin = new Padding(4);
             textBox6.Name = "textBox6";
             textBox6.ReadOnly = true;
             textBox6.Size = new System.Drawing.Size(90, 16);
             textBox6.TabIndex = 237;
             // 
-            // textBox17
+            // AllocationUnitIdTextBox
             // 
-            textBox17.BackColor = System.Drawing.Color.White;
-            textBox17.BorderStyle = BorderStyle.None;
-            textBox17.DataBindings.Add(new Binding("Text", pageBindingSource, "AllocationUnitId", true));
-            textBox17.Location = new System.Drawing.Point(9, 203);
-            textBox17.Margin = new Padding(4);
-            textBox17.Name = "textBox17";
-            textBox17.ReadOnly = true;
-            textBox17.Size = new System.Drawing.Size(327, 16);
-            textBox17.TabIndex = 236;
+            AllocationUnitIdTextBox.BackColor = System.Drawing.Color.White;
+            AllocationUnitIdTextBox.BorderStyle = BorderStyle.None;
+            AllocationUnitIdTextBox.DataBindings.Add(new Binding("Text", pageBindingSource, "AllocationUnitId", true));
+            AllocationUnitIdTextBox.Location = new System.Drawing.Point(105, 160);
+            AllocationUnitIdTextBox.Margin = new Padding(4);
+            AllocationUnitIdTextBox.Name = "AllocationUnitIdTextBox";
+            AllocationUnitIdTextBox.ReadOnly = true;
+            AllocationUnitIdTextBox.Size = new System.Drawing.Size(231, 16);
+            AllocationUnitIdTextBox.TabIndex = 236;
             // 
-            // textBox16
+            // PartitionIdTextBox
             // 
-            textBox16.BackColor = System.Drawing.Color.White;
-            textBox16.BorderStyle = BorderStyle.None;
-            textBox16.Location = new System.Drawing.Point(9, 157);
-            textBox16.Margin = new Padding(4);
-            textBox16.Name = "textBox16";
-            textBox16.ReadOnly = true;
-            textBox16.Size = new System.Drawing.Size(327, 16);
-            textBox16.TabIndex = 235;
+            PartitionIdTextBox.BackColor = System.Drawing.Color.GhostWhite;
+            PartitionIdTextBox.BorderStyle = BorderStyle.None;
+            PartitionIdTextBox.Location = new System.Drawing.Point(105, 136);
+            PartitionIdTextBox.Margin = new Padding(4);
+            PartitionIdTextBox.Name = "PartitionIdTextBox";
+            PartitionIdTextBox.ReadOnly = true;
+            PartitionIdTextBox.Size = new System.Drawing.Size(231, 16);
+            PartitionIdTextBox.TabIndex = 235;
             // 
-            // textBox5
+            // ObjectIdTextBox
             // 
-            textBox5.BackColor = System.Drawing.Color.White;
-            textBox5.BorderStyle = BorderStyle.None;
-            textBox5.DataBindings.Add(new Binding("Text", pageBindingSource, "ObjectId", true));
-            textBox5.Location = new System.Drawing.Point(105, 94);
-            textBox5.Margin = new Padding(4);
-            textBox5.Name = "textBox5";
-            textBox5.ReadOnly = true;
-            textBox5.Size = new System.Drawing.Size(88, 16);
-            textBox5.TabIndex = 234;
+            ObjectIdTextBox.BackColor = System.Drawing.Color.GhostWhite;
+            ObjectIdTextBox.BorderStyle = BorderStyle.None;
+            ObjectIdTextBox.DataBindings.Add(new Binding("Text", pageBindingSource, "ObjectId", true));
+            ObjectIdTextBox.Location = new System.Drawing.Point(105, 94);
+            ObjectIdTextBox.Margin = new Padding(4);
+            ObjectIdTextBox.Name = "ObjectIdTextBox";
+            ObjectIdTextBox.ReadOnly = true;
+            ObjectIdTextBox.Size = new System.Drawing.Size(231, 16);
+            ObjectIdTextBox.TabIndex = 234;
             // 
-            // previousPageTextBox
+            // PreviousPageTextBox
             // 
-            previousPageTextBox.BackColor = System.Drawing.Color.White;
-            previousPageTextBox.BorderStyle = BorderStyle.None;
-            previousPageTextBox.Cursor = Cursors.Hand;
-            previousPageTextBox.DataBindings.Add(new Binding("Text", pageBindingSource, "PreviousPage", true));
-            previousPageTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, 0);
-            previousPageTextBox.ForeColor = System.Drawing.Color.Blue;
-            previousPageTextBox.Location = new System.Drawing.Point(105, 71);
-            previousPageTextBox.Margin = new Padding(4);
-            previousPageTextBox.Name = "previousPageTextBox";
-            previousPageTextBox.ReadOnly = true;
-            previousPageTextBox.Size = new System.Drawing.Size(88, 13);
-            previousPageTextBox.TabIndex = 233;
-            previousPageTextBox.MouseClick += PageTextBox_MouseClick;
+            PreviousPageTextBox.BackColor = System.Drawing.Color.White;
+            PreviousPageTextBox.BorderStyle = BorderStyle.None;
+            PreviousPageTextBox.Cursor = Cursors.Hand;
+            PreviousPageTextBox.DataBindings.Add(new Binding("Text", pageBindingSource, "PreviousPage", true));
+            PreviousPageTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, 0);
+            PreviousPageTextBox.ForeColor = System.Drawing.Color.Blue;
+            PreviousPageTextBox.Location = new System.Drawing.Point(105, 71);
+            PreviousPageTextBox.Margin = new Padding(4);
+            PreviousPageTextBox.Name = "PreviousPageTextBox";
+            PreviousPageTextBox.ReadOnly = true;
+            PreviousPageTextBox.Size = new System.Drawing.Size(88, 13);
+            PreviousPageTextBox.TabIndex = 233;
+            PreviousPageTextBox.MouseClick += PageTextBox_MouseClick;
             // 
-            // nextPageTextBox
+            // NextPageTextBox
             // 
-            nextPageTextBox.BackColor = System.Drawing.Color.White;
-            nextPageTextBox.BorderStyle = BorderStyle.None;
-            nextPageTextBox.Cursor = Cursors.Hand;
-            nextPageTextBox.DataBindings.Add(new Binding("Text", pageBindingSource, "NextPage", true));
-            nextPageTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, 0);
-            nextPageTextBox.ForeColor = System.Drawing.Color.Blue;
-            nextPageTextBox.Location = new System.Drawing.Point(105, 50);
-            nextPageTextBox.Margin = new Padding(4);
-            nextPageTextBox.Name = "nextPageTextBox";
-            nextPageTextBox.ReadOnly = true;
-            nextPageTextBox.Size = new System.Drawing.Size(88, 13);
-            nextPageTextBox.TabIndex = 232;
-            nextPageTextBox.MouseClick += PageTextBox_MouseClick;
+            NextPageTextBox.BackColor = System.Drawing.Color.White;
+            NextPageTextBox.BorderStyle = BorderStyle.None;
+            NextPageTextBox.Cursor = Cursors.Hand;
+            NextPageTextBox.DataBindings.Add(new Binding("Text", pageBindingSource, "NextPage", true));
+            NextPageTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Underline, System.Drawing.GraphicsUnit.Point, 0);
+            NextPageTextBox.ForeColor = System.Drawing.Color.Blue;
+            NextPageTextBox.Location = new System.Drawing.Point(105, 50);
+            NextPageTextBox.Margin = new Padding(4);
+            NextPageTextBox.Name = "NextPageTextBox";
+            NextPageTextBox.ReadOnly = true;
+            NextPageTextBox.Size = new System.Drawing.Size(88, 13);
+            NextPageTextBox.TabIndex = 232;
+            NextPageTextBox.MouseClick += PageTextBox_MouseClick;
             // 
             // label18
             // 
@@ -699,7 +699,7 @@ namespace InternalsViewer.UI
             label18.BackColor = System.Drawing.Color.Transparent;
             label18.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label18.ForeColor = System.Drawing.Color.Gray;
-            label18.Location = new System.Drawing.Point(6, 446);
+            label18.Location = new System.Drawing.Point(9, 406);
             label18.Margin = new Padding(5);
             label18.Name = "label18";
             label18.Size = new System.Drawing.Size(47, 13);
@@ -712,7 +712,7 @@ namespace InternalsViewer.UI
             label16.BackColor = System.Drawing.Color.Transparent;
             label16.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label16.ForeColor = System.Drawing.Color.Gray;
-            label16.Location = new System.Drawing.Point(6, 381);
+            label16.Location = new System.Drawing.Point(9, 341);
             label16.Margin = new Padding(5);
             label16.Name = "label16";
             label16.Size = new System.Drawing.Size(82, 13);
@@ -725,7 +725,7 @@ namespace InternalsViewer.UI
             label14.BackColor = System.Drawing.Color.Transparent;
             label14.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label14.ForeColor = System.Drawing.Color.Gray;
-            label14.Location = new System.Drawing.Point(6, 337);
+            label14.Location = new System.Drawing.Point(9, 297);
             label14.Margin = new Padding(5);
             label14.Name = "label14";
             label14.Size = new System.Drawing.Size(68, 13);
@@ -738,7 +738,7 @@ namespace InternalsViewer.UI
             label12.BackColor = System.Drawing.Color.Transparent;
             label12.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label12.ForeColor = System.Drawing.Color.Gray;
-            label12.Location = new System.Drawing.Point(6, 293);
+            label12.Location = new System.Drawing.Point(9, 253);
             label12.Margin = new Padding(5);
             label12.Name = "label12";
             label12.Size = new System.Drawing.Size(45, 13);
@@ -751,7 +751,7 @@ namespace InternalsViewer.UI
             label11.BackColor = System.Drawing.Color.Transparent;
             label11.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label11.ForeColor = System.Drawing.Color.Gray;
-            label11.Location = new System.Drawing.Point(6, 271);
+            label11.Location = new System.Drawing.Point(9, 231);
             label11.Margin = new Padding(5);
             label11.Name = "label11";
             label11.Size = new System.Drawing.Size(33, 13);
@@ -764,7 +764,7 @@ namespace InternalsViewer.UI
             label10.BackColor = System.Drawing.Color.Transparent;
             label10.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label10.ForeColor = System.Drawing.Color.Gray;
-            label10.Location = new System.Drawing.Point(6, 249);
+            label10.Location = new System.Drawing.Point(9, 209);
             label10.Margin = new Padding(5);
             label10.Name = "label10";
             label10.Size = new System.Drawing.Size(56, 13);
@@ -790,7 +790,7 @@ namespace InternalsViewer.UI
             label17.BackColor = System.Drawing.Color.Transparent;
             label17.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label17.ForeColor = System.Drawing.Color.Gray;
-            label17.Location = new System.Drawing.Point(6, 425);
+            label17.Location = new System.Drawing.Point(9, 385);
             label17.Margin = new Padding(5);
             label17.Name = "label17";
             label17.Size = new System.Drawing.Size(49, 13);
@@ -803,7 +803,7 @@ namespace InternalsViewer.UI
             label13.BackColor = System.Drawing.Color.Transparent;
             label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label13.ForeColor = System.Drawing.Color.Gray;
-            label13.Location = new System.Drawing.Point(6, 315);
+            label13.Location = new System.Drawing.Point(9, 275);
             label13.Margin = new Padding(5);
             label13.Name = "label13";
             label13.Size = new System.Drawing.Size(54, 13);
@@ -816,7 +816,7 @@ namespace InternalsViewer.UI
             label9.BackColor = System.Drawing.Color.Transparent;
             label9.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
             label9.ForeColor = System.Drawing.Color.Gray;
-            label9.Location = new System.Drawing.Point(6, 180);
+            label9.Location = new System.Drawing.Point(6, 163);
             label9.Margin = new Padding(5);
             label9.Name = "label9";
             label9.Size = new System.Drawing.Size(67, 13);
@@ -836,18 +836,18 @@ namespace InternalsViewer.UI
             label8.TabIndex = 221;
             label8.Text = "Partition Id";
             // 
-            // label7
+            // ObjectIdLabel
             // 
-            label7.AutoSize = true;
-            label7.BackColor = System.Drawing.Color.Transparent;
-            label7.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
-            label7.ForeColor = System.Drawing.Color.Gray;
-            label7.Location = new System.Drawing.Point(6, 94);
-            label7.Margin = new Padding(5);
-            label7.Name = "label7";
-            label7.Size = new System.Drawing.Size(52, 13);
-            label7.TabIndex = 220;
-            label7.Text = "Object ID";
+            ObjectIdLabel.AutoSize = true;
+            ObjectIdLabel.BackColor = System.Drawing.Color.Transparent;
+            ObjectIdLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            ObjectIdLabel.ForeColor = System.Drawing.Color.Gray;
+            ObjectIdLabel.Location = new System.Drawing.Point(6, 94);
+            ObjectIdLabel.Margin = new Padding(5);
+            ObjectIdLabel.Name = "ObjectIdLabel";
+            ObjectIdLabel.Size = new System.Drawing.Size(50, 13);
+            ObjectIdLabel.TabIndex = 220;
+            ObjectIdLabel.Text = "Object Id";
             // 
             // label3
             // 
@@ -1233,8 +1233,8 @@ namespace InternalsViewer.UI
         private Label label5;
         private TextBox textBox4;
         private Label label4;
-        private TextBox textBox3;
-        private TextBox textBox2;
+        private TextBox ObjectNameTextBox;
+        private TextBox PageTypeTextBox;
         private TextBox textBox14;
         private TextBox textBox13;
         private TextBox textBox12;
@@ -1244,11 +1244,11 @@ namespace InternalsViewer.UI
         private TextBox textBox8;
         private TextBox textBox7;
         private TextBox textBox6;
-        private TextBox textBox17;
-        private TextBox textBox16;
-        private TextBox textBox5;
-        private TextBox previousPageTextBox;
-        private TextBox nextPageTextBox;
+        private TextBox AllocationUnitIdTextBox;
+        private TextBox PartitionIdTextBox;
+        private TextBox ObjectIdTextBox;
+        private TextBox PreviousPageTextBox;
+        private TextBox NextPageTextBox;
         private Label label18;
         private Label label16;
         private Label label14;
@@ -1260,7 +1260,7 @@ namespace InternalsViewer.UI
         private Label label13;
         private Label label9;
         private Label label8;
-        private Label label7;
+        private Label ObjectIdLabel;
         private Label label3;
         private Label label2;
         private BindingSource pageBindingSource;

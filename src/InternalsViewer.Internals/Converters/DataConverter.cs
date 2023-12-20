@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using System.Data;
 using System.Data.SqlTypes;
 using System.Globalization;
@@ -10,7 +8,7 @@ using static System.Text.RegularExpressions.Regex;
 namespace InternalsViewer.Internals.Converters;
 
 /// <summary>
-/// Class for decoding and converting between different SQL Server data types
+/// Utility methods for converting from raw data to SQL Server/.NET data types
 /// </summary>
 public static class DataConverter
 {
@@ -71,11 +69,11 @@ public static class DataConverter
     /// </summary>
     /// <param name="data">The data.</param>
     /// <returns></returns>
-    public static string BinaryToGuidString(byte[]? data)
+    public static Guid BinaryToGuid(byte[]? data)
     {
         if (data == null)
         {
-            return string.Empty;
+            return Guid.Empty;
         }
 
         if (data.Length != 16)
@@ -83,24 +81,7 @@ public static class DataConverter
             throw new ArgumentException("Invalid GUID");
         }
 
-        return string.Format(CultureInfo.InvariantCulture,
-                             "{0}{1}{2}{3}-{4}{5}-{6}{7}-{8}{9}-{10}{11}{12}{13}{14}{15}",
-                             ToHexString(data[3]),
-                             ToHexString(data[2]),
-                             ToHexString(data[1]),
-                             ToHexString(data[0]),
-                             ToHexString(data[5]),
-                             ToHexString(data[4]),
-                             ToHexString(data[7]),
-                             ToHexString(data[6]),
-                             ToHexString(data[8]),
-                             ToHexString(data[9]),
-                             ToHexString(data[10]),
-                             ToHexString(data[11]),
-                             ToHexString(data[12]),
-                             ToHexString(data[13]),
-                             ToHexString(data[14]),
-                             ToHexString(data[15]));
+        return new Guid(data);
     }
 
     /// <summary>
@@ -108,8 +89,8 @@ public static class DataConverter
     /// </summary>
     /// <param name="data">The data</param>
     /// <param name="sqlType">SQL Server type</param>
-    /// <param name="precision">The precision.</param>
-    /// <param name="scale">The scale.</param>
+    /// <param name="precision">The number precision (if decimal type)</param>
+    /// <param name="scale">The number scale (if decimal type)</param>
     public static string BinaryToString(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
     {
         if (data == null)
@@ -122,83 +103,64 @@ public static class DataConverter
             switch (sqlType)
             {
                 case SqlDbType.BigInt:
-
                     return BitConverter.ToInt64(data, 0).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.Int:
-
                     return BitConverter.ToInt32(data, 0).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.TinyInt:
-
                     return ((int)data[0]).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.SmallInt:
-
                     return BitConverter.ToInt16(data, 0).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.Char:
                 case SqlDbType.VarChar:
-
                     return Replace(Encoding.UTF8.GetString(data), @"[^\t -~]", string.Empty);
 
                 case SqlDbType.NChar:
                 case SqlDbType.NVarChar:
-
                     return Encoding.Unicode.GetString(data);
 
                 case SqlDbType.DateTime:
-
                     return DateTimeConverters.DecodeDateTime(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.SmallDateTime:
-
                     return DateTimeConverters.DecodeSmallDateTime(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.VarBinary:
                 case SqlDbType.Binary:
-
                     return "0x" + ToHexString(data);
 
                 case SqlDbType.UniqueIdentifier:
-
-                    return BinaryToGuidString(data);
+                    return BinaryToGuid(data).ToString();
 
                 case SqlDbType.Decimal:
-
                     return DecodeDecimal(data, precision, scale).ToString();
 
                 case SqlDbType.Money:
                 case SqlDbType.SmallMoney:
-
                     return (BitConverter.ToInt64(data, 0) / 10000.0).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.Real:
-
                     return BitConverter.ToSingle(data, 0).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.Float:
-
                     return BitConverter.ToDouble(data, 0).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.Variant:
-
                     return VariantBinaryToString(data);
 
                 case SqlDbType.Date:
-
                     return DateTimeConverters.DecodeDate(data).ToShortDateString();
 
                 case SqlDbType.Time:
-
                     return DateTimeConverters.DecodeTime(data, scale).ToString("HH:mm:ss.fffffff");
 
                 case SqlDbType.DateTime2:
-
                     return DateTimeConverters.DecodeDateTime2(data, scale).ToString("yyyy-MM-dd HH:mm:ss.fffffff");
 
                 case SqlDbType.DateTimeOffset:
-
                     return DateTimeConverters.DecodeDateTimeOffset(data, scale);
 
                 default:
@@ -241,7 +203,7 @@ public static class DataConverter
                 SqlDbType.SmallDateTime => DateTimeConverters.DecodeSmallDateTime(data),
                 SqlDbType.VarBinary => data,
                 SqlDbType.Binary => data,
-                SqlDbType.UniqueIdentifier => BinaryToGuidString(data),
+                SqlDbType.UniqueIdentifier => BinaryToGuid(data),
                 SqlDbType.Decimal => DecodeDecimal(data, precision, scale),
                 SqlDbType.Money => (BitConverter.ToInt64(data, 0) / 10000.0),
                 SqlDbType.SmallMoney => (BitConverter.ToInt64(data, 0) / 10000.0),

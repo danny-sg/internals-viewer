@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -22,14 +20,14 @@ namespace InternalsViewer.Internals.Services;
 /// - Bitmap size - 7,988 bytes (63,904 bits)
 /// - Unused      - 108 bytes
 /// </remarks>
-public class AllocationChainService(IAllocationPageService pageService) 
+public class AllocationChainService(IAllocationPageLoader pageLoader) 
     : IAllocationChainService
 {
-    public IAllocationPageService PageService { get; } = pageService;
+    public IAllocationPageLoader PageLoader { get; } = pageLoader;
 
     public async Task<AllocationChain> LoadChain(DatabaseDetail databaseDetail, short fileId, PageType pageType)
     {
-        int startPage = pageType switch
+        var startPage = pageType switch
         {
             PageType.Gam => 2,
             PageType.Sgam => 3,
@@ -45,13 +43,14 @@ public class AllocationChainService(IAllocationPageService pageService)
     {
         var allocation = new AllocationChain();
 
-        var pageCount = (int)Math.Ceiling(databaseDetail.GetFileSize(startPageAddress.FileId) / (decimal)AllocationPage.AllocationInterval);
+        var pageCount = (int)Math.Ceiling(databaseDetail.GetFileSize(startPageAddress.FileId) 
+                             / (decimal)AllocationPage.AllocationInterval);
 
         for (var i = 0; i < pageCount; i++)
         {
             var address = new PageAddress(startPageAddress.FileId, startPageAddress.PageId + i * AllocationPage.AllocationInterval);
 
-            var page = await PageService.Load(databaseDetail, address);
+            var page = await PageLoader.Load(databaseDetail, address);
 
             allocation.Pages.Add(page);
         }

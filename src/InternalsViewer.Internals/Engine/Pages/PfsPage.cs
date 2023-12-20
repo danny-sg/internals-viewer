@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation.Enums;
 

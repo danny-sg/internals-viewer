@@ -1,8 +1,7 @@
-﻿using System;
-using InternalsViewer.Internals.Converters;
+﻿using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 using InternalsViewer.Internals.Metadata;
-using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Engine.Records;
 

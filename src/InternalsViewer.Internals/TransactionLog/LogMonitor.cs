@@ -1,5 +1,4 @@
-﻿using System;
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 

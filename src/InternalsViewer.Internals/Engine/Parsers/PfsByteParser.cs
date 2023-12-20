@@ -19,13 +19,13 @@ public class PfsByteParser
     ///     
     ///     Bits 1-3 - Space Free value
     ///         
-    ///                321
-    ///                
-    ///                000 - Empty
-    ///                001 - 50%
-    ///                010 - 80%
-    ///                011 - 95%
-    ///                100 - 100%
+    ///         321
+    ///         ---
+    ///         000 - Empty
+    ///         001 - 50%
+    ///         010 - 80%
+    ///         011 - 95%
+    ///         100 - 100%
     ///         
     ///     Bit 4 - Is Ghost record
     ///     Bit 5 - Is IAM page

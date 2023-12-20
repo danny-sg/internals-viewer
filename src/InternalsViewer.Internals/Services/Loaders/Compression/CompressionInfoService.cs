@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Data;
-using System.Threading.Tasks;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;

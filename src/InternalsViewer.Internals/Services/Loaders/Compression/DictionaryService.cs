@@ -1,5 +1,4 @@
-﻿using System;
-using InternalsViewer.Internals.Compression;
+﻿using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 
 namespace InternalsViewer.Internals.Services.Loaders.Compression;

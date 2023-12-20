@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Data;
-using System.Threading.Tasks;
+﻿using System.Data;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Parsers;

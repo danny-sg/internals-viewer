@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace InternalsViewer.Internals.Compression;
+﻿namespace InternalsViewer.Internals.Compression;
 
 /// <summary>
 /// 2008 Page compression type

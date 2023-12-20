@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using InternalsViewer.Internals.Engine.Allocation.Enums;
+﻿using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Engine.Allocation;
@@ -21,7 +20,7 @@ public class PfsChain
     /// <summary>
     /// Gets the PFS status for a given page
     /// </summary>
-    public PfsByte GetPagePfsStatus(int page)
+    public PfsByte GetPageStatus(int page)
     {
         // How many pages into the PFS chain is the page
         var pfsPageIndex = page / PfsPage.PfsInterval;

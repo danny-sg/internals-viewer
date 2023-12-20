@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
-using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Engine.Annotations;
 
 namespace InternalsViewer.UI.MarkStyles;
 

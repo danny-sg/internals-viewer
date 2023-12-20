@@ -1,7 +1,8 @@
 ﻿using System.Collections;
 using System.Text;
+using InternalsViewer.Internals.Engine;
+using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records.Compressed;
-using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Compression;
 

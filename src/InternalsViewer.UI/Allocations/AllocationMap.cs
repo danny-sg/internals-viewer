@@ -564,7 +564,7 @@ public class AllocationMap : Panel, IDisposable
             {
                 var pageId = i + (WindowPosition * 8);
 
-                pfsRenderer.DrawPfsPage(e.Graphics, PagePosition(i), Pfs.GetPagePfsStatus(pageId));
+                pfsRenderer.DrawPfsPage(e.Graphics, PagePosition(i), Pfs.GetPageStatus(pageId));
             }
         }
     }

@@ -22,7 +22,7 @@ public class TableReaderTests
 
         var compressionInfoMock = new Mock<ICompressionInfoService>();
 
-        var service = new PageService(reader, compressionInfoMock.Object);
+        var service = new PageLoader(reader, compressionInfoMock.Object);
 
         var dataReader = new TableReader(service);
 
@@ -48,7 +48,7 @@ public class TableReaderTests
 
         var compressionInfoMock = new Mock<ICompressionInfoService>();
 
-        var service = new PageService(reader, compressionInfoMock.Object);
+        var service = new PageLoader(reader, compressionInfoMock.Object);
 
         var dataReader = new TableReader(service);
 
@@ -74,7 +74,7 @@ public class TableReaderTests
 
         var compressionInfoMock = new Mock<ICompressionInfoService>();
 
-        var service = new PageService(reader, compressionInfoMock.Object);
+        var service = new PageLoader(reader, compressionInfoMock.Object);
 
         var dataReader = new TableReader(service);
 
@@ -100,7 +100,7 @@ public class TableReaderTests
 
         var compressionInfoMock = new Mock<ICompressionInfoService>();
 
-        var service = new PageService(reader, compressionInfoMock.Object);
+        var service = new PageLoader(reader, compressionInfoMock.Object);
 
         var dataReader = new TableReader(service);
 

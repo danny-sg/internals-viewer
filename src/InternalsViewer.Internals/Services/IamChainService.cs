@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders;
@@ -9,9 +8,9 @@ namespace InternalsViewer.Internals.Services;
 /// <summary>
 /// Service responsible for building IAM chains
 /// </summary>
-public class IamChainService(IAllocationPageService pageService) : IIamChainService
+public class IamChainService(IAllocationPageLoader pageLoader) : IIamChainService
 {
-    public IAllocationPageService PageService { get; } = pageService;
+    public IAllocationPageLoader PageLoader { get; } = pageLoader;
 
     /// <summary>
     /// Loads an IAM chain
@@ -27,7 +26,7 @@ public class IamChainService(IAllocationPageService pageService) : IIamChainServ
 
         while (true)
         {
-            var page = await PageService.Load(databaseDetail, pageAddress);
+            var page = await PageLoader.Load(databaseDetail, pageAddress);
 
             iam.Pages.Add(page);
 

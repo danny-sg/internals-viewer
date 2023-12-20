@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Data;
-using System.Threading.Tasks;
+﻿using System.Data;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using Microsoft.Data.SqlClient;

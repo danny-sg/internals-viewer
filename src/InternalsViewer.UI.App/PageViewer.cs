@@ -6,20 +6,20 @@ namespace InternalsViewer.UI.App;
 
 public partial class PageViewer : Form
 {
-    public IPageService PageService { get; }
+    public IPageLoader PageLoader { get; }
 
     public IRecordService RecordService { get; }
 
     public DatabaseDetail DatabaseDetail { get; }
 
-    public PageViewer(IPageService pageService, IRecordService recordService, DatabaseDetail databaseDetail)
+    public PageViewer(IPageLoader pageLoader, IRecordService recordService, DatabaseDetail databaseDetail)
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint |
                  ControlStyles.UserPaint |
                  ControlStyles.DoubleBuffer,
                  true);
 
-        PageService = pageService;
+        PageLoader = pageLoader;
         RecordService = recordService;
         DatabaseDetail = databaseDetail;
 

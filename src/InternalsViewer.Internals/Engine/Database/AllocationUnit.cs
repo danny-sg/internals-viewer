@@ -49,4 +49,6 @@ public record AllocationUnit
     public long TotalPages { get; set; }
 
     public static readonly AllocationUnit Unknown = new() { AllocationUnitId = -1 };
+
+    public string DisplayName { get; set; } = string.Empty;
 }

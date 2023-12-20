@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace InternalsViewer.Internals.Metadata;
+﻿namespace InternalsViewer.Internals.Metadata;
 
 public abstract class Structure(long allocationUnitId)
 {

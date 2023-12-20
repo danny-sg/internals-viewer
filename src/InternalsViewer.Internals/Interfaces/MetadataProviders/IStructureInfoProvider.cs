@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using InternalsViewer.Internals.Compression;
+﻿using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Metadata;
 
 namespace InternalsViewer.Internals.Interfaces.MetadataProviders;

@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Providers.Metadata;

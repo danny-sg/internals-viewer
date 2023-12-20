@@ -19,16 +19,16 @@ public class AllocationUnitsLayer
     /// <summary>
     /// Generates map layers by loading object's allocation structures
     /// </summary>
-    public static List<AllocationLayer>? GenerateLayers(DatabaseDetail databaseDetail, 
-                                                        BackgroundWorker worker, 
-                                                        bool separateIndexes, 
-                                                        bool separateSystemObjects)
+    public static List<AllocationLayer>? GenerateLayers(DatabaseDetail databaseDetail,
+                                                        BackgroundWorker worker,
+                                                        bool separateIndexes)
     {
         var layers = new List<AllocationLayer>();
-        
+
         AllocationLayer? layer = null;
 
         var colourIndex = 0;
+        
         var count = 0;
         var previousObjectName = string.Empty;
 
@@ -36,9 +36,7 @@ public class AllocationUnitsLayer
 
         var userObjectCount = allocationUnits.Where(u => !u.IsSystem).DistinctBy(t => t.TableName).Count();
 
-        var systemObjectCount = allocationUnits.Where(u => u.IsSystem).DistinctBy(t => t.TableName).Count();
-
-        foreach (var allocationUnit in allocationUnits)
+        foreach (var allocationUnit in allocationUnits.OrderBy(o => o.TableName).ThenBy(o => o.IndexName))
         {
             if (worker.CancellationPending)
             {
@@ -49,87 +47,70 @@ public class AllocationUnitsLayer
 
             string currentObjectName;
 
-            if ((bool)allocationUnit.IsSystem && !separateSystemObjects)
+            if (separateIndexes && !string.IsNullOrEmpty(allocationUnit.IndexName))
             {
-                currentObjectName = "(System object)";
+                currentObjectName = allocationUnit.SchemaName + "." + allocationUnit.TableName + "." + allocationUnit.IndexName;
             }
             else
             {
-                if (separateIndexes && !string.IsNullOrEmpty(allocationUnit.IndexName))
-                {
-
-                    currentObjectName = allocationUnit.SchemaName + "." + allocationUnit.TableName + "." + allocationUnit.IndexName;
-                }
-                else
-                {
-                    currentObjectName = allocationUnit.SchemaName + "." + allocationUnit.TableName;
-                }
+                currentObjectName = allocationUnit.SchemaName + "." + allocationUnit.TableName;
             }
 
             if (currentObjectName != previousObjectName)
             {
+                previousObjectName = currentObjectName;
+
                 layer = new AllocationLayer();
 
                 layer.Name = currentObjectName;
                 layer.ObjectName = allocationUnit.SchemaName + "." + allocationUnit.TableName;
                 layer.FirstPage = allocationUnit.FirstPage;
+                layer.RootPage = allocationUnit.RootPage;
+                layer.FirstIamPage = allocationUnit.FirstIamPage;
 
-                if (!allocationUnit.IsSystem)
-                {
-                    layer.IndexName = allocationUnit.IndexName;
-                    layer.UsedPages = allocationUnit.UsedPages;
-                    layer.TotalPages = allocationUnit.TotalPages;
-                    layer.IndexType = (IndexTypes)allocationUnit.IndexType;
-                }
+                layer.IndexName = allocationUnit.IndexName;
+                layer.UsedPages = allocationUnit.UsedPages;
+                layer.TotalPages = allocationUnit.TotalPages;
+                layer.IndexType = (IndexTypes)allocationUnit.IndexType;
+
+                layer.IsSystem = allocationUnit.IsSystem;
 
                 layer.UseDefaultSinglePageColour = false;
 
-                if (allocationUnit.IsSystem)
+                if(allocationUnit.IsSystem)
                 {
-                    if (layer.Name != previousObjectName)
-                    {
-                        if (colourIndex >= ColourCount)
-                        {
-                            colourIndex = 1;
-                        }
-                    }
-
                     layer.Colour = Color.FromArgb(255, 190, 190, 205);
                 }
                 else
                 {
-                    if (layer.Name != previousObjectName)
+                    if (userObjectCount > ColourCount)
                     {
-                        if (userObjectCount > ColourCount)
-                        {
-                            colourIndex += 1;
-                        }
-                        else
-                        {
-                            colourIndex += (int)Math.Floor(ColourCount / (double)userObjectCount);
-                        }
+                        colourIndex += 1;
+                    }
+                    else
+                    {
+                        colourIndex += (int)Math.Floor(ColourCount / (double)userObjectCount);
                     }
 
                     layer.Colour = HsvColour.HsvToColor(colourIndex, UserSaturation, UserValue);
                 }
 
+                var address = allocationUnit.FirstIamPage;
+
+                if (address.PageId > 0)
+                {
+                    layer.Allocations.Add(allocationUnit.IamChain);
+                }
+
                 layers.Add(layer);
             }
 
-            var address = allocationUnit.FirstIamPage;
-
-            if (address.PageId > 0)
-            {
-                layer?.Allocations.Add(allocationUnit.IamChain);
-            }
-
-            if (layer != null)
-            {
-                previousObjectName = layer.Name;
-            }
+     
 
             worker.ReportProgress((int)(count / (float)allocationUnits.Count * 100), layer.Name);
         }
+
+ 
 
         return layers;
     }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Generators;
 
 // ReSharper disable StringLiteralTypo
@@ -9,13 +8,13 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 /// <summary>
 /// sys.sysrowsets
 /// 
-/// Contains a row for each partition rowset for an index or a heap.
+/// Contains a row for each partition row set for an index or a heap.
 /// </summary>
 [InternalsMetadata]
 public record InternalRowSet
 {
     [InternalsMetadataColumn("rowsetid", 1, SqlDbType.BigInt, 8, 4, 1)]
-    public long PartitionId { get; set; }
+    public long RowSetId { get; set; }
 
     [InternalsMetadataColumn("ownertype", 2, SqlDbType.TinyInt, 1, 12, 2)]
     public byte OwnerType { get; set; }
@@ -27,7 +26,7 @@ public record InternalRowSet
     public int IndexId { get; set; }
 
     [InternalsMetadataColumn("numpart", 5, SqlDbType.Int, 4, 21, 5)]
-    public int PartitionNumber{ get; set; }
+    public int PartitionNumber { get; set; }
 
     [InternalsMetadataColumn("status", 6, SqlDbType.Int, 4, 25, 6)]
     public int Status { get; set; }
@@ -45,7 +44,7 @@ public record InternalRowSet
     public byte FillFactor { get; set; }
 
     [InternalsMetadataColumn("maxnullbit", 11, SqlDbType.SmallInt, 2, 41, 11)]
-    public short Maxnullbit { get; set; }
+    public short MaxNullBit { get; set; }
 
     [InternalsMetadataColumn("maxleaf", 12, SqlDbType.Int, 4, 43, 12)]
     public int MaxLeaf { get; set; }

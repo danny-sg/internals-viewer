@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Engine.Parsers;
@@ -30,12 +29,17 @@ public static class LogSequenceNumberParser
         throw new ArgumentException("Invalid Log Sequence Number format", nameof(value));
     }
 
-    public static LogSequenceNumber Parse(byte[] value)
+    public static LogSequenceNumber Parse(byte[] data, int startIndex)
     {
-        var virtualLogFile = BitConverter.ToInt32(value, 0);
-        var fileOffset = BitConverter.ToInt32(value, 4);
-        var recordSequence = BitConverter.ToInt16(value, 8);
+        var virtualLogFile = BitConverter.ToInt32(data, startIndex);
+        var fileOffset = BitConverter.ToInt32(data, startIndex + 4);
+        var recordSequence = BitConverter.ToInt16(data, startIndex + 8);
 
         return new LogSequenceNumber(virtualLogFile, fileOffset, recordSequence);
+    }
+
+    public static LogSequenceNumber Parse(byte[] value)
+    {
+        return Parse(value, 0);
     }
 }

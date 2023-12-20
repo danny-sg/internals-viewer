@@ -26,7 +26,7 @@ namespace InternalsViewer.UI;
 
 public partial class PageViewerWindow : UserControl
 {
-    public IPageService PageService { get; }
+    public IPageLoader PageLoader { get; }
 
     public IRecordService RecordService { get; set; }
 
@@ -36,7 +36,7 @@ public partial class PageViewerWindow : UserControl
 
     private readonly ProfessionalColorTable colourTable;
 
-    private Page page;
+    private Page? page;
 
     private readonly PfsRenderer pfsRenderer;
 
@@ -51,9 +51,9 @@ public partial class PageViewerWindow : UserControl
     /// <summary>
     /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
     /// </summary>
-    public PageViewerWindow(IPageService pageService, IRecordService recordService)
+    public PageViewerWindow(IPageLoader pageLoader, IRecordService recordService)
     {
-        PageService = pageService;
+        PageLoader = pageLoader;
         RecordService = recordService;
 
         InitializeComponent();
@@ -75,13 +75,23 @@ public partial class PageViewerWindow : UserControl
     /// <summary>
     /// Refreshes the current page in the page viewer
     /// </summary>
-    /// <param name="page">The page.</param>
-    private void RefreshPage(Page page)
+    private void RefreshPage()
     {
-        pageToolStripTextBox.Text = page.PageAddress.ToString() ?? string.Empty;
+        if (Page == null)
+        {
+            return;
+
+        }
+        pageToolStripTextBox.Text = Page.PageAddress.ToString() ?? string.Empty;
         hexViewer.Page = Page;
         pageBindingSource.DataSource = Page.PageHeader;
         offsetTable.Page = Page;
+
+        ObjectIdTextBox.Text = Page.AllocationUnit.ObjectId.ToString();
+
+        ObjectNameTextBox.Text = Page.AllocationUnit.DisplayName;
+
+        PartitionIdTextBox.Text = Page.AllocationUnit.PartitionId.ToString();
 
         if (page.CompressionType == CompressionType.Page && !Page.OffsetTable.Contains(96))
         {
@@ -138,7 +148,7 @@ public partial class PageViewerWindow : UserControl
 
         if (pageAddress.FileId > 0)
         {
-            Page = await PageService.Load<Page>(DatabaseDetail, pageAddress);
+            Page = await PageLoader.Load<Page>(DatabaseDetail, pageAddress);
             //Page = new Page(ConnectionString, builder.InitialCatalog, pageAddress);
 
             RefreshAllocationStatus(Page.PageAddress);
@@ -150,7 +160,7 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    private async  void PageTextBox_MouseClick(object sender, MouseEventArgs e)
+    private async void PageTextBox_MouseClick(object sender, MouseEventArgs e)
     {
         await LoadPage(PageAddressParser.Parse(((TextBox)sender).Text));
     }
@@ -311,13 +321,13 @@ public partial class PageViewerWindow : UserControl
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">The <see cref="System.Windows.Forms.KeyEventArgs"/> instance containing the event data.</param>
-    private void PageToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
+    private async void PageToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.KeyCode == Keys.Return)
         {
             try
             {
-                LoadPage(PageAddressParser.Parse(pageToolStripTextBox.Text));
+                await LoadPage(PageAddressParser.Parse(pageToolStripTextBox.Text));
             }
             catch (Exception ex)
             {
@@ -326,14 +336,20 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    private void PreviousToolStripButton_Click(object sender, EventArgs e)
+    private async void PreviousToolStripButton_Click(object sender, EventArgs e)
     {
-        LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId - 1));
+        if (Page is { PageAddress.PageId: > 1 })
+        {
+            await LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId - 1));
+        }
     }
 
-    private void NextToolStripButton_Click(object sender, EventArgs e)
+    private async void NextToolStripButton_Click(object sender, EventArgs e)
     {
-        LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId + 1));
+        if (Page != null)
+        {
+            await LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId + 1));
+        }
     }
 
     private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
@@ -404,18 +420,18 @@ public partial class PageViewerWindow : UserControl
         {
             case CompressionInfoStructure.Anchor:
 
-                if (Page.CompressionInfo?.AnchorRecord != null)
+                if (Page?.CompressionInfo?.AnchorRecord != null)
                 {
-                   // markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.AnchorRecord);
+                    // markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.AnchorRecord);
                 }
 
                 break;
 
             case CompressionInfoStructure.Dictionary:
 
-                if (Page.CompressionInfo is { HasDictionary: true })
+                if (Page?.CompressionInfo is { HasDictionary: true })
                 {
-                   // markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.CompressionDictionary);
+                    // markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.CompressionDictionary);
                 }
 
                 break;
@@ -433,7 +449,7 @@ public partial class PageViewerWindow : UserControl
 
     private void AllocationViewer_PageOver(object sender, PageEventArgs e)
     {
-        if (Page.PageHeader.PageType == PageType.Pfs)
+        if (Page?.PageHeader.PageType == PageType.Pfs)
         {
             pageAddressToolStripStatusLabel.Text = e.Address.ToString(); //+ " " + this.allocationViewer.allocationContainer.PagePfsByte(e.Address).ToString();
         }
@@ -443,18 +459,16 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    private void AllocationViewer_PageClicked(object sender, PageEventArgs e)
+    private async void AllocationViewer_PageClicked(object sender, PageEventArgs e)
     {
-        LoadPage(e.Address);
+        await LoadPage(e.Address);
     }
 
     private void OffsetTableToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.KeyCode == Keys.Return)
         {
-            ushort offset;
-
-            if (ushort.TryParse(offsetTableToolStripTextBox.Text, out offset) && offset < Page.Size && offset > 0)
+            if (ushort.TryParse(offsetTableToolStripTextBox.Text, out var offset) && offset is < Page.Size and > 0)
             {
                 LoadRecord(offset);
             }
@@ -515,10 +529,7 @@ public partial class PageViewerWindow : UserControl
         {
             page = value;
 
-            if (page != null)
-            {
-                RefreshPage(Page);
-            }
+            RefreshPage();
         }
     }
 

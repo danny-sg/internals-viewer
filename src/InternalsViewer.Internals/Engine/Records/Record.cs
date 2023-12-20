@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using System.Text;
+using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Metadata;
-using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Engine.Records;
 

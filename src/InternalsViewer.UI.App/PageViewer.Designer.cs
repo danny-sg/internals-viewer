@@ -30,7 +30,7 @@ partial class PageViewer
     /// </summary>
     private void InitializeComponent()
     {
-        pageViewerWindow = new PageViewerWindow(PageService, RecordService);
+        pageViewerWindow = new PageViewerWindow(PageLoader, RecordService);
 
         SuspendLayout();
         // 

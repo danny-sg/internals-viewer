@@ -2,6 +2,8 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Generators;
 
+// ReSharper disable StringLiteralTypo
+
 namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 
 /// <summary>
@@ -19,7 +21,7 @@ public record InternalAllocationUnit
     public byte Type { get; set; }
 
     [InternalsMetadataColumn("ownerid", 3, SqlDbType.BigInt, 8, 13, 3)]
-    public long PartitionId { get; set; }
+    public long ContainerId { get; set; }
 
     [InternalsMetadataColumn("status", 4, SqlDbType.Int, 4, 21, 4)]
     public int Status { get; set; }

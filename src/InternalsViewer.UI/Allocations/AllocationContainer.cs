@@ -156,7 +156,7 @@ public partial class AllocationContainer : UserControl
         }
 
         double width = Width;
-        double height = Height / 8;
+        double height = (Height / 8D);
 
         var extentsPerRow = Math.Sqrt(maxExtentCount / 8);
 
@@ -263,9 +263,9 @@ public partial class AllocationContainer : UserControl
         }
     }
 
-    internal PfsByte? PagePfsByte(PageAddress pageAddress)
+    internal PfsByte PagePfsByte(PageAddress pageAddress)
     {
-        return AllocationMaps[pageAddress.FileId].Pfs?.GetPagePfsStatus(pageAddress.PageId);
+        return AllocationMaps[pageAddress.FileId].Pfs?.GetPageStatus(pageAddress.PageId) ?? PfsByte.Unknown;
     }
 
     public List<AllocationLayer> AllocationLayers { get; } = new();

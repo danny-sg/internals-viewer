@@ -35,10 +35,12 @@ namespace InternalsViewer.UI
         {
             components = new Container();
             var dataGridViewCellStyle1 = new DataGridViewCellStyle();
-            var dataGridViewCellStyle4 = new DataGridViewCellStyle();
-            var dataGridViewCellStyle5 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle6 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle7 = new DataGridViewCellStyle();
             var dataGridViewCellStyle2 = new DataGridViewCellStyle();
             var dataGridViewCellStyle3 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle4 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle5 = new DataGridViewCellStyle();
             allocationContainer = new AllocationContainer();
             splitContainer = new SplitContainer();
             flatMenuStrip = new FlatMenuStrip();
@@ -62,13 +64,6 @@ namespace InternalsViewer.UI
             pageToolStripTextBox = new PageAddressTextBox();
             toolStripLabel2 = new ToolStripLabel();
             keysDataGridView = new DataGridView();
-            KeyColumn = new KeyImageColumn();
-            NameColumn = new DataGridViewTextBoxColumn();
-            IndexNameColumn = new DataGridViewTextBoxColumn();
-            IndexTypeColumn = new DataGridViewTextBoxColumn();
-            FirstPage = new DataGridViewTextBoxColumn();
-            TotalPagesColumn = new DataGridViewTextBoxColumn();
-            UsedPagesColumn = new DataGridViewTextBoxColumn();
             allocationBindingSource = new BindingSource(components);
             statusStrip = new StatusStrip();
             errorImageToolStripStatusLabel = new ToolStripStatusLabel();
@@ -82,6 +77,14 @@ namespace InternalsViewer.UI
             iconToolStripStatusLabel = new ToolStripStatusLabel();
             allocUnitBackgroundWorker = new BackgroundWorker();
             keyImageColumn1 = new KeyImageColumn();
+            KeyColumn = new KeyImageColumn();
+            NameColumn = new DataGridViewTextBoxColumn();
+            IndexNameColumn = new DataGridViewTextBoxColumn();
+            IndexTypeColumn = new DataGridViewTextBoxColumn();
+            RootPageColumn = new DataGridViewTextBoxColumn();
+            FirstPageColumn = new DataGridViewTextBoxColumn();
+            FirstIamPageColumn = new DataGridViewTextBoxColumn();
+            TotalPagesColumn = new DataGridViewTextBoxColumn();
             ((ISupportInitialize)splitContainer).BeginInit();
             splitContainer.Panel1.SuspendLayout();
             splitContainer.Panel2.SuspendLayout();
@@ -103,11 +106,11 @@ namespace InternalsViewer.UI
             allocationContainer.IncludeIam = false;
             allocationContainer.LayoutStyle = LayoutStyle.Horizontal;
             allocationContainer.Location = new System.Drawing.Point(0, 35);
-            allocationContainer.Margin = new Padding(7);
+            allocationContainer.Margin = new Padding(7, 7, 7, 7);
             allocationContainer.Mode = MapMode.Standard;
             allocationContainer.Name = "allocationContainer";
             allocationContainer.ShowFileInformation = false;
-            allocationContainer.Size = new System.Drawing.Size(1102, 468);
+            allocationContainer.Size = new System.Drawing.Size(1102, 467);
             allocationContainer.TabIndex = 2;
             allocationContainer.PageClicked += AllocationContainer_PageClicked;
             allocationContainer.PageOver += AllocationContainer_PageOver;
@@ -116,7 +119,7 @@ namespace InternalsViewer.UI
             // 
             splitContainer.Dock = DockStyle.Fill;
             splitContainer.Location = new System.Drawing.Point(0, 0);
-            splitContainer.Margin = new Padding(4);
+            splitContainer.Margin = new Padding(4, 4, 4, 4);
             splitContainer.Name = "splitContainer";
             splitContainer.Orientation = Orientation.Horizontal;
             // 
@@ -129,7 +132,7 @@ namespace InternalsViewer.UI
             // 
             splitContainer.Panel2.Controls.Add(keysDataGridView);
             splitContainer.Size = new System.Drawing.Size(1102, 646);
-            splitContainer.SplitterDistance = 503;
+            splitContainer.SplitterDistance = 502;
             splitContainer.SplitterWidth = 5;
             splitContainer.TabIndex = 0;
             // 
@@ -186,7 +189,7 @@ namespace InternalsViewer.UI
             mapToolStripButton.ImageScaling = ToolStripItemImageScaling.None;
             mapToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
             mapToolStripButton.Name = "mapToolStripButton";
-            mapToolStripButton.Size = new System.Drawing.Size(48, 32);
+            mapToolStripButton.Size = new System.Drawing.Size(32, 32);
             mapToolStripButton.Text = "Allocation Units";
             // 
             // allocationUnitsToolStripMenuItem
@@ -194,7 +197,7 @@ namespace InternalsViewer.UI
             allocationUnitsToolStripMenuItem.Image = Properties.Resources.allocationMapIcon;
             allocationUnitsToolStripMenuItem.ImageScaling = ToolStripItemImageScaling.None;
             allocationUnitsToolStripMenuItem.Name = "allocationUnitsToolStripMenuItem";
-            allocationUnitsToolStripMenuItem.Size = new System.Drawing.Size(205, 38);
+            allocationUnitsToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
             allocationUnitsToolStripMenuItem.Text = "Allocation Units";
             allocationUnitsToolStripMenuItem.Click += AllocationUnitsToolStripMenuItem_Click;
             // 
@@ -202,8 +205,9 @@ namespace InternalsViewer.UI
             // 
             allocationMapsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { gamToolStripMenuItem, sgamToolStripMenuItem, bcmToolStripMenuItem, dcmToolStripMenuItem });
             allocationMapsToolStripMenuItem.Image = Properties.Resources.GAMallocationMapIcon;
+            allocationMapsToolStripMenuItem.ImageScaling = ToolStripItemImageScaling.None;
             allocationMapsToolStripMenuItem.Name = "allocationMapsToolStripMenuItem";
-            allocationMapsToolStripMenuItem.Size = new System.Drawing.Size(205, 38);
+            allocationMapsToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
             allocationMapsToolStripMenuItem.Text = "Allocation Maps";
             allocationMapsToolStripMenuItem.Click += AllocationMapsToolStripMenuItem_Click;
             // 
@@ -242,8 +246,10 @@ namespace InternalsViewer.UI
             // pFSToolStripMenuItem
             // 
             pFSToolStripMenuItem.Image = Properties.Resources.pfs;
+            pFSToolStripMenuItem.ImageAlign = System.Drawing.ContentAlignment.MiddleRight;
+            pFSToolStripMenuItem.ImageScaling = ToolStripItemImageScaling.None;
             pFSToolStripMenuItem.Name = "pFSToolStripMenuItem";
-            pFSToolStripMenuItem.Size = new System.Drawing.Size(205, 38);
+            pFSToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
             pFSToolStripMenuItem.Text = "PFS (Page Free Space)";
             pFSToolStripMenuItem.Click += pFSToolStripMenuItem_Click;
             // 
@@ -255,7 +261,7 @@ namespace InternalsViewer.UI
             bufferPoolToolStripButton.ImageScaling = ToolStripItemImageScaling.None;
             bufferPoolToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             bufferPoolToolStripButton.Name = "bufferPoolToolStripButton";
-            bufferPoolToolStripButton.Size = new System.Drawing.Size(102, 32);
+            bufferPoolToolStripButton.Size = new System.Drawing.Size(86, 32);
             bufferPoolToolStripButton.Text = "Buffer Pool";
             bufferPoolToolStripButton.Click += BufferPoolToolStripButton_Click;
             // 
@@ -266,11 +272,12 @@ namespace InternalsViewer.UI
             showKeyToolStripButton.CheckState = CheckState.Checked;
             showKeyToolStripButton.Enabled = false;
             showKeyToolStripButton.Image = Properties.Resources.WindowSplit;
+            showKeyToolStripButton.ImageScaling = ToolStripItemImageScaling.None;
             showKeyToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
             showKeyToolStripButton.Margin = new Padding(0, 2, 0, 2);
             showKeyToolStripButton.Name = "showKeyToolStripButton";
             showKeyToolStripButton.Padding = new Padding(0, 2, 0, 2);
-            showKeyToolStripButton.Size = new System.Drawing.Size(62, 31);
+            showKeyToolStripButton.Size = new System.Drawing.Size(46, 31);
             showKeyToolStripButton.Text = "Key";
             showKeyToolStripButton.Click += ShowKeyToolStripButton_Click;
             // 
@@ -279,11 +286,12 @@ namespace InternalsViewer.UI
             fileDetailsToolStripButton.CheckOnClick = true;
             fileDetailsToolStripButton.Enabled = false;
             fileDetailsToolStripButton.Image = Properties.Resources.fileinfo1;
+            fileDetailsToolStripButton.ImageScaling = ToolStripItemImageScaling.None;
             fileDetailsToolStripButton.ImageTransparentColor = System.Drawing.Color.Lime;
             fileDetailsToolStripButton.Margin = new Padding(4, 2, 0, 2);
             fileDetailsToolStripButton.Name = "fileDetailsToolStripButton";
             fileDetailsToolStripButton.Padding = new Padding(4, 2, 0, 2);
-            fileDetailsToolStripButton.Size = new System.Drawing.Size(103, 31);
+            fileDetailsToolStripButton.Size = new System.Drawing.Size(87, 31);
             fileDetailsToolStripButton.Text = "File Details";
             fileDetailsToolStripButton.CheckedChanged += FileDetailsToolStripButton_CheckedChanged;
             // 
@@ -310,7 +318,7 @@ namespace InternalsViewer.UI
             pageToolStripTextBox.ForeColor = System.Drawing.SystemColors.InactiveCaption;
             pageToolStripTextBox.Name = "pageToolStripTextBox";
             pageToolStripTextBox.Padding = new Padding(0, 0, 2, 0);
-            pageToolStripTextBox.Size = new System.Drawing.Size(100, 23);
+            pageToolStripTextBox.Size = new System.Drawing.Size(43, 23);
             pageToolStripTextBox.Text = "(File Id:Page Id)";
             pageToolStripTextBox.KeyDown += PageToolStripTextBox_KeyDown;
             // 
@@ -341,94 +349,38 @@ namespace InternalsViewer.UI
             dataGridViewCellStyle1.WrapMode = DataGridViewTriState.True;
             keysDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
             keysDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            keysDataGridView.Columns.AddRange(new DataGridViewColumn[] { KeyColumn, NameColumn, IndexNameColumn, IndexTypeColumn, FirstPage, TotalPagesColumn, UsedPagesColumn });
+            keysDataGridView.Columns.AddRange(new DataGridViewColumn[] { KeyColumn, NameColumn, IndexNameColumn, IndexTypeColumn, RootPageColumn, FirstPageColumn, FirstIamPageColumn, TotalPagesColumn });
             keysDataGridView.DataSource = allocationBindingSource;
-            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle4.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
-            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.ControlLight;
-            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle4.WrapMode = DataGridViewTriState.False;
-            keysDataGridView.DefaultCellStyle = dataGridViewCellStyle4;
+            dataGridViewCellStyle6.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle6.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle6.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            dataGridViewCellStyle6.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle6.SelectionBackColor = System.Drawing.SystemColors.ControlLight;
+            dataGridViewCellStyle6.SelectionForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle6.WrapMode = DataGridViewTriState.False;
+            keysDataGridView.DefaultCellStyle = dataGridViewCellStyle6;
             keysDataGridView.Dock = DockStyle.Fill;
             keysDataGridView.GridColor = System.Drawing.Color.White;
             keysDataGridView.Location = new System.Drawing.Point(0, 0);
-            keysDataGridView.Margin = new Padding(4);
+            keysDataGridView.Margin = new Padding(4, 4, 4, 4);
             keysDataGridView.Name = "keysDataGridView";
             keysDataGridView.ReadOnly = true;
-            dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle5.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle5.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
-            dataGridViewCellStyle5.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle5.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle5.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle5.WrapMode = DataGridViewTriState.True;
-            keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle5;
+            dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle7.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle7.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            dataGridViewCellStyle7.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle7.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle7.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle7.WrapMode = DataGridViewTriState.True;
+            keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle7;
             keysDataGridView.RowHeadersVisible = false;
+            keysDataGridView.RowHeadersWidth = 102;
             keysDataGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            keysDataGridView.Size = new System.Drawing.Size(1102, 138);
+            keysDataGridView.Size = new System.Drawing.Size(1102, 139);
             keysDataGridView.TabIndex = 2;
             keysDataGridView.CellClick += KeysDataGridView_CellClick;
+            keysDataGridView.CellContentClick += keysDataGridView_CellContentClick;
             keysDataGridView.SelectionChanged += KeysDataGridView_SelectionChanged;
-            // 
-            // KeyColumn
-            // 
-            KeyColumn.DataPropertyName = "Colour";
-            KeyColumn.HeaderText = "";
-            KeyColumn.Name = "KeyColumn";
-            KeyColumn.ReadOnly = true;
-            KeyColumn.Width = 30;
-            // 
-            // NameColumn
-            // 
-            NameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            NameColumn.DataPropertyName = "ObjectName";
-            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
-            NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
-            NameColumn.HeaderText = "Table";
-            NameColumn.Name = "NameColumn";
-            NameColumn.ReadOnly = true;
-            // 
-            // IndexNameColumn
-            // 
-            IndexNameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            IndexNameColumn.DataPropertyName = "IndexName";
-            IndexNameColumn.HeaderText = "Index";
-            IndexNameColumn.Name = "IndexNameColumn";
-            IndexNameColumn.ReadOnly = true;
-            // 
-            // IndexTypeColumn
-            // 
-            IndexTypeColumn.DataPropertyName = "IndexType";
-            IndexTypeColumn.HeaderText = "Index Type";
-            IndexTypeColumn.Name = "IndexTypeColumn";
-            IndexTypeColumn.ReadOnly = true;
-            // 
-            // FirstPage
-            // 
-            FirstPage.DataPropertyName = "FirstPage";
-            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.Blue;
-            FirstPage.DefaultCellStyle = dataGridViewCellStyle3;
-            FirstPage.HeaderText = "First Page";
-            FirstPage.Name = "FirstPage";
-            FirstPage.ReadOnly = true;
-            // 
-            // TotalPagesColumn
-            // 
-            TotalPagesColumn.DataPropertyName = "TotalPages";
-            TotalPagesColumn.HeaderText = "Total Pages";
-            TotalPagesColumn.Name = "TotalPagesColumn";
-            TotalPagesColumn.ReadOnly = true;
-            TotalPagesColumn.Width = 90;
-            // 
-            // UsedPagesColumn
-            // 
-            UsedPagesColumn.DataPropertyName = "UsedPages";
-            UsedPagesColumn.HeaderText = "Used Pages";
-            UsedPagesColumn.Name = "UsedPagesColumn";
-            UsedPagesColumn.ReadOnly = true;
-            UsedPagesColumn.Width = 90;
             // 
             // statusStrip
             // 
@@ -510,8 +462,92 @@ namespace InternalsViewer.UI
             // 
             keyImageColumn1.DataPropertyName = "Colour";
             keyImageColumn1.HeaderText = "";
+            keyImageColumn1.MinimumWidth = 12;
             keyImageColumn1.Name = "keyImageColumn1";
             keyImageColumn1.Width = 30;
+            // 
+            // KeyColumn
+            // 
+            KeyColumn.DataPropertyName = "Colour";
+            KeyColumn.HeaderText = "";
+            KeyColumn.MinimumWidth = 12;
+            KeyColumn.Name = "KeyColumn";
+            KeyColumn.ReadOnly = true;
+            KeyColumn.Width = 30;
+            // 
+            // NameColumn
+            // 
+            NameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            NameColumn.DataPropertyName = "ObjectName";
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
+            NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
+            NameColumn.HeaderText = "Table";
+            NameColumn.MinimumWidth = 200;
+            NameColumn.Name = "NameColumn";
+            NameColumn.ReadOnly = true;
+            // 
+            // IndexNameColumn
+            // 
+            IndexNameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            IndexNameColumn.DataPropertyName = "IndexName";
+            IndexNameColumn.HeaderText = "Index";
+            IndexNameColumn.MinimumWidth = 200;
+            IndexNameColumn.Name = "IndexNameColumn";
+            IndexNameColumn.ReadOnly = true;
+            // 
+            // IndexTypeColumn
+            // 
+            IndexTypeColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            IndexTypeColumn.DataPropertyName = "IndexType";
+            IndexTypeColumn.HeaderText = "Index Type";
+            IndexTypeColumn.MinimumWidth = 12;
+            IndexTypeColumn.Name = "IndexTypeColumn";
+            IndexTypeColumn.ReadOnly = true;
+            // 
+            // RootPageColumn
+            // 
+            RootPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            RootPageColumn.DataPropertyName = "RootPage";
+            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
+            RootPageColumn.DefaultCellStyle = dataGridViewCellStyle3;
+            RootPageColumn.HeaderText = "Root Page";
+            RootPageColumn.MinimumWidth = 12;
+            RootPageColumn.Name = "RootPageColumn";
+            RootPageColumn.ReadOnly = true;
+            // 
+            // FirstPageColumn
+            // 
+            FirstPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            FirstPageColumn.DataPropertyName = "FirstPage";
+            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle4.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
+            FirstPageColumn.DefaultCellStyle = dataGridViewCellStyle4;
+            FirstPageColumn.HeaderText = "First Page";
+            FirstPageColumn.MinimumWidth = 12;
+            FirstPageColumn.Name = "FirstPageColumn";
+            FirstPageColumn.ReadOnly = true;
+            // 
+            // FirstIamPageColumn
+            // 
+            FirstIamPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            FirstIamPageColumn.DataPropertyName = "FirstIamPage";
+            dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle5.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
+            FirstIamPageColumn.DefaultCellStyle = dataGridViewCellStyle5;
+            FirstIamPageColumn.HeaderText = "First IAM";
+            FirstIamPageColumn.MinimumWidth = 12;
+            FirstIamPageColumn.Name = "FirstIamPageColumn";
+            FirstIamPageColumn.ReadOnly = true;
+            // 
+            // TotalPagesColumn
+            // 
+            TotalPagesColumn.DataPropertyName = "TotalPages";
+            TotalPagesColumn.HeaderText = "Total Pages";
+            TotalPagesColumn.MinimumWidth = 12;
+            TotalPagesColumn.Name = "TotalPagesColumn";
+            TotalPagesColumn.ReadOnly = true;
+            TotalPagesColumn.Width = 90;
             // 
             // AllocationWindow
             // 
@@ -519,7 +555,7 @@ namespace InternalsViewer.UI
             AutoScaleMode = AutoScaleMode.Font;
             Controls.Add(splitContainer);
             Controls.Add(statusStrip);
-            Margin = new Padding(4);
+            Margin = new Padding(4, 4, 4, 4);
             Name = "AllocationWindow";
             Size = new System.Drawing.Size(1102, 668);
             splitContainer.Panel1.ResumeLayout(false);
@@ -578,8 +614,9 @@ namespace InternalsViewer.UI
         private DataGridViewTextBoxColumn NameColumn;
         private DataGridViewTextBoxColumn IndexNameColumn;
         private DataGridViewTextBoxColumn IndexTypeColumn;
-        private DataGridViewTextBoxColumn FirstPage;
+        private DataGridViewTextBoxColumn RootPageColumn;
+        private DataGridViewTextBoxColumn FirstPageColumn;
+        private DataGridViewTextBoxColumn FirstIamPageColumn;
         private DataGridViewTextBoxColumn TotalPagesColumn;
-        private DataGridViewTextBoxColumn UsedPagesColumn;
     }
 }

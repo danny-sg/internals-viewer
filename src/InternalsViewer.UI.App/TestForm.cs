@@ -6,52 +6,63 @@ namespace InternalsViewer.UI.App;
 
 public partial class TestForm : Form
 {
-    public IDatabaseInfoProvider DatabaseInfoProvider { get; }
+    public IServerInfoProvider ServerInfoProvider { get; }
 
-    public IDatabaseService DatabaseService { get; }
+    public IDatabaseLoader DatabaseLoader { get; }
 
-    public IPageService PageService { get; }
+    public IPageLoader PageLoader { get; }
 
     public IRecordService RecordService { get; }
 
     public CurrentConnection Connection { get; }
 
-    public TestForm(IDatabaseInfoProvider databaseInfoProvider, 
-                    IDatabaseService databaseService, 
-                    IPageService pageService, 
-                    IRecordService recordService, 
+    public TestForm(IServerInfoProvider serverInfoProvider,
+                    IDatabaseLoader databaseLoader,
+                    IPageLoader pageLoader,
+                    IRecordService recordService,
                     CurrentConnection connection)
     {
-        DatabaseInfoProvider = databaseInfoProvider;
-        DatabaseService = databaseService;
-        PageService = pageService;
+        ServerInfoProvider = serverInfoProvider;
+        DatabaseLoader = databaseLoader;
+        PageLoader = pageLoader;
         RecordService = recordService;
         Connection = connection;
 
         InitializeComponent();
     }
 
-    private async void AllocationWindow_Connect(object sender, EventArgs e)
+    private void AllocationWindow_Connect(object sender, EventArgs e)
     {
-        Connection.ConnectionString = @"Data Source=localhost;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True";
-        Connection.DatabaseName = "AdventureWorks2022";
+        var connectionForm = new ConnectionForm();
 
-        var databases = await DatabaseInfoProvider.GetDatabases();
+        connectionForm.FormClosed += async (_, _) =>
+        {
+            if (connectionForm.DialogResult == DialogResult.OK)
+            {
+                Connection.ConnectionString = connectionForm.ConnectionString;
 
-        allocationWindow.Databases = databases;
-        allocationWindow.RefreshDatabases();
+                var databases = await ServerInfoProvider.GetDatabases();
+
+                Connection.DatabaseName =databases.FirstOrDefault()?.Name ?? "master";
+
+                allocationWindow.Databases = databases;
+                
+                allocationWindow.RefreshDatabases();
+            }
+        };
+
+        connectionForm.ShowDialog();
     }
 
     private async void allocationWindow_ViewPage(object? sender, PageEventArgs e)
     {
         if (allocationWindow.CurrentDatabase != null)
         {
-            var window = new PageViewer(PageService, RecordService, allocationWindow.CurrentDatabase);
+            var window = new PageViewer(PageLoader, RecordService, allocationWindow.CurrentDatabase);
 
             window.Show();
 
             await window.LoadPage(e.Address);
         }
-
     }
 }

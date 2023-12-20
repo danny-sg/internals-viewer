@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Data;
-using InternalsViewer.Internals;
 using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Engine;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.UI.MarkStyles;
 
 namespace InternalsViewer.UI.Markers;
@@ -53,7 +53,7 @@ public class MarkerBuilder
                 marker.AlternateBackColour = style.AlternateBackColour;
                 marker.Name = style.Description;
 
-                marker.Visible = attribute.Visible;
+                marker.Visible = attribute.IsVisible;
 
                 if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(attribute?.Description))
                 {
@@ -100,7 +100,7 @@ public class MarkerBuilder
     /// </summary>
     /// <param name="item">The item.</param>
     /// <param name="marker">The marker.</param>
-    private static void SetMarkerPosition(MarkItem item, Marker marker)
+    private static void SetMarkerPosition(DataStructureItem item, Marker marker)
     {
         marker.StartPosition = item.StartPosition;
 

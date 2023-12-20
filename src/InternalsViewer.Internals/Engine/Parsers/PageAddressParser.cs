@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Engine.Parsers;
@@ -45,10 +44,21 @@ public static class PageAddressParser
     /// <remarks>
     /// Page Address is stored in 6 bytes, 4 bytes for the page id and 2 bytes for the file id
     /// </remarks>
-    public static PageAddress Parse(byte[] address)
+    public static PageAddress Parse(byte[] data)
     {
-        var pageId = BitConverter.ToInt32(address, 0);
-        var fileId = BitConverter.ToInt16(address, 4);
+        return Parse(data, 0);
+    }
+
+    /// <summary>
+    /// Parses a page address from a byte array
+    /// </summary>
+    /// <remarks>
+    /// Page Address is stored in 6 bytes, 4 bytes for the page id and 2 bytes for the file id
+    /// </remarks>
+    public static PageAddress Parse(byte[] data, int startAddress)
+    {
+        var pageId = BitConverter.ToInt32(data, startAddress);
+        var fileId = BitConverter.ToInt16(data, startAddress + 4);
 
         return new PageAddress(fileId, pageId);
     }

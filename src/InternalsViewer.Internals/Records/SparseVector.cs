@@ -1,4 +1,5 @@
-﻿using System;
+﻿using InternalsViewer.Internals.Engine;
+using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Metadata;

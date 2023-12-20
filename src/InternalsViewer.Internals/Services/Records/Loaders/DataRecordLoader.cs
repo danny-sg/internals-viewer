@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;

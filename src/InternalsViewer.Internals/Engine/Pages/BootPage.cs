@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
-using System;
 
 namespace InternalsViewer.Internals.Engine.Pages;
 
@@ -36,7 +35,6 @@ public class BootPage : Page
     /// Last checkpoint LSN.
     /// </summary>
     public LogSequenceNumber CheckpointLsn { get; set; }
-
 
     public long MaxLogSpaceUsed { get; set; }
 
