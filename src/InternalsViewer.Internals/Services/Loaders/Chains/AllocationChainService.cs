@@ -24,7 +24,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Chains;
 public class AllocationChainService(IPageService pageService)
     : IAllocationChainService
 {
-    public async Task<AllocationChain> LoadChain(DatabaseDetail databaseDetail, short fileId, PageType pageType)
+    public async Task<AllocationChain> LoadChain(DatabaseDetail database, short fileId, PageType pageType)
     {
         var startPage = pageType switch
         {
@@ -35,21 +35,21 @@ public class AllocationChainService(IPageService pageService)
             _ => throw new InvalidOperationException("Page type is not a database allocation page")
         };
 
-        return await LoadChain(databaseDetail, new PageAddress(fileId, startPage));
+        return await LoadChain(database, new PageAddress(fileId, startPage));
     }
 
-    public async Task<AllocationChain> LoadChain(DatabaseDetail databaseDetail, PageAddress startPageAddress)
+    public async Task<AllocationChain> LoadChain(DatabaseDetail database, PageAddress startPageAddress)
     {
         var allocation = new AllocationChain();
 
-        var pageCount = (int)Math.Ceiling(databaseDetail.GetFileSize(startPageAddress.FileId)
+        var pageCount = (int)Math.Ceiling(database.GetFileSize(startPageAddress.FileId)
                              / (decimal)AllocationPage.AllocationInterval);
 
         for (var i = 0; i < pageCount; i++)
         {
             var address = new PageAddress(startPageAddress.FileId, startPageAddress.PageId + i * AllocationPage.AllocationInterval);
 
-            var page = await pageService.GetPage<AllocationPage>(databaseDetail, address);
+            var page = await pageService.GetPage<AllocationPage>(database, address);
 
             allocation.Pages.Add(page);
         }

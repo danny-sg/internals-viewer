@@ -29,7 +29,6 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
 
         var pageLoader = new PageLoader(reader);
 
-
         var parsers = new IPageParser[] { new DataPageParser(), new IndexPageParser() };
 
         var pageService = new PageService(TestLogger.GetLogger<PageService>(TestOutput), pageLoader, parsers);

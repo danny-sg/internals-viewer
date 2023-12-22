@@ -10,6 +10,8 @@ public class InternalMetadata
 
     public List<InternalObject> Objects { get; set; } = new();
 
+    public List<InternalColumnLayout> ColumnLayouts { get; set; } = new();
+
     public List<InternalColumn> Columns { get; set; } = new();
 
     public List<InternalEntityObject> Entities { get; set; } = new();

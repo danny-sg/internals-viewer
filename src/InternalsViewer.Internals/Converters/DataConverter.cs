@@ -397,7 +397,6 @@ public static class DataConverter
             case 104:
                 return SqlDbType.Bit;
             case 106:
-                return SqlDbType.Decimal;
             case 108:
                 return SqlDbType.Decimal;
             case 122:

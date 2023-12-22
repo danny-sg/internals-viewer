@@ -75,49 +75,4 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
 
         return await GetScalar<CompressionType>(SqlCommands.Compression, parameters);
     }
-
-    public async Task<TableStructure> GetTableStructure(long allocationUnitId)
-    {
-        var columns = new List<ColumnStructure>();
-
-        await using var connection = new SqlConnection(Connection.ConnectionString);
-
-        var command = new SqlCommand(SqlCommands.TableColumns, connection);
-
-        command.CommandType = CommandType.Text;
-
-        command.Parameters.AddWithValue("@AllocationUnitId", allocationUnitId);
-
-        await connection.OpenAsync();
-
-        await connection.ChangeDatabaseAsync(Connection.DatabaseName);
-
-        await using var reader = await command.ExecuteReaderAsync();
-
-        while (await reader.ReadAsync())
-        {
-            var currentColumn = new ColumnStructure();
-
-            currentColumn.ColumnName = reader.GetFieldValue<string>("name");
-            currentColumn.ColumnId = reader.GetFieldValue<int>("column_id");
-            currentColumn.DataType = DataConverter.ToSqlType(reader.GetFieldValue<byte>("system_type_id"));
-            currentColumn.DataLength = reader.GetFieldValue<short>("max_length");
-            currentColumn.LeafOffset = reader.GetFieldValue<short>("leaf_offset");
-            currentColumn.Precision = reader.GetFieldValue<byte>("precision");
-            currentColumn.Scale = reader.GetFieldValue<byte>("scale");
-            currentColumn.IsDropped = reader.GetFieldValue<bool>("is_dropped");
-            currentColumn.IsUniqueifer = reader.GetFieldValue<bool>("is_uniqueifier");
-            currentColumn.IsSparse = reader.GetFieldValue<bool>("is_sparse");
-            currentColumn.NullBit = reader.GetFieldValue<short>("leaf_null_bit");
-
-            columns.Add(currentColumn);
-        }
-
-        var tableStructure = new TableStructure(allocationUnitId)
-        {
-            Columns = columns,
-        };
-
-        return tableStructure;
-    }
 }

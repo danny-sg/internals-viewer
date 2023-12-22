@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Interfaces.Services.Records;
 
 public interface IRecordService
 {
-    Task<DataRecord> GetDataRecord(Page page, ushort offset);
+    DataRecord GetDataRecord(Page page, ushort offset);
 
     Task<IndexRecord> GetIndexRecord(Page page, ushort offset);
 }

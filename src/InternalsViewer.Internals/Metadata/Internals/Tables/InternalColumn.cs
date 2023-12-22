@@ -1,70 +1,56 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Generators;
 
-// ReSharper disable IdentifierTypo
-
 namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 
-/// <summary>
-/// SQL Server Column definitions table - sys.sysrscols
-/// </summary>
-/// <remarks>
-/// Table only accessible via DAC connection (prefix connection with admin:)
-/// 
-/// This table is needed to understand the structure of the row
-/// 
-/// Relevant fields are:
-/// 
-///     Leaf Offset   - offset & 0xffff
-///     Is Uniquifier - status & 16
-///     Is Dropped    - status & 2
-///     Is Sparse     - status & 0x00000100
-///     /// </remarks>
 [InternalsMetadata]
 public record InternalColumn
 {
-    [InternalsMetadataColumn("rsid", 1, SqlDbType.BigInt, 8, 4, 1)]
-    public long PartitionId { get; set; }
+    [InternalsMetadataColumn("id", 1, SqlDbType.Int, 4, 4, 1)]
+    public int ObjectId { get; set; }
 
-    [InternalsMetadataColumn("rscolid", 2, SqlDbType.Int, 4, 12, 2)]
-    public int PartitionColumnId { get; set; }
+    [InternalsMetadataColumn("number", 2, SqlDbType.SmallInt, 2, 8, 2)]
+    public short Number { get; set; }
 
-    [InternalsMetadataColumn("bcolid", 3, SqlDbType.Int, 4, 16, 3)]
-    public int Bcolid { get; set; }
+    [InternalsMetadataColumn("colid", 3, SqlDbType.Int, 4, 10, 3)]
+    public int ColumnId { get; set; }
 
-    [InternalsMetadataColumn("rcmodified", 4, SqlDbType.BigInt, 8, 20, 4)]
-    public long Rcmodified { get; set; }
+    [InternalsMetadataColumn("name", 4, SqlDbType.NVarChar, 256, -1, 4)]
+    public string Name { get; set; } = string.Empty;
 
-    /// <remarks>
-    /// <see href="https://improve.dk/creating-a-type-aware-parser-for-the-sys-system_internals_partition_columns-ti-field/"/>
-    /// </remarks>
-    [InternalsMetadataColumn("ti", 5, SqlDbType.Int, 4, 28, 5)]
-    public int TypeInfo { get; set; }
+    [InternalsMetadataColumn("xtype", 5, SqlDbType.TinyInt, 1, 14, 5)]
+    public byte SystemTypeId { get; set; }
 
-    [InternalsMetadataColumn("cid", 6, SqlDbType.Int, 4, 32, 6)]
+    [InternalsMetadataColumn("utype", 6, SqlDbType.Int, 4, 15, 6)]
+    public int UserTypeId { get; set; }
+
+    [InternalsMetadataColumn("length", 7, SqlDbType.SmallInt, 2, 19, 7)]
+    public short MaxLength { get; set; }
+
+    [InternalsMetadataColumn("prec", 8, SqlDbType.TinyInt, 1, 21, 8)]
+    public byte Precision { get; set; }
+
+    [InternalsMetadataColumn("scale", 9, SqlDbType.TinyInt, 1, 22, 9)]
+    public byte Scale { get; set; }
+
+    [InternalsMetadataColumn("collationid", 10, SqlDbType.Int, 4, 23, 10)]
     public int CollationId { get; set; }
 
-    [InternalsMetadataColumn("ordkey", 7, SqlDbType.SmallInt, 2, 36, 7)]
-    public short KeyOrdinal { get; set; }
-
-    [InternalsMetadataColumn("maxinrowlen", 8, SqlDbType.SmallInt, 2, 38, 8)]
-    public short Maxrowinlen { get; set; }
-
-    [InternalsMetadataColumn("status", 9, SqlDbType.Int, 4, 40, 9)]
+    [InternalsMetadataColumn("status", 11, SqlDbType.Int, 4, 27, 11)]
     public int Status { get; set; }
 
-    [InternalsMetadataColumn("offset", 10, SqlDbType.Int, 4, 44, 10)]
-    public int Offset { get; set; }
+    [InternalsMetadataColumn("maxinrow", 12, SqlDbType.SmallInt, 2, 31, 12)]
+    public short MaxInRow { get; set; }
 
-    [InternalsMetadataColumn("nullbit", 11, SqlDbType.Int, 4, 48, 11)]
-    public int Nullbit { get; set; }
+    [InternalsMetadataColumn("xmlns", 13, SqlDbType.Int, 4, 33, 13)]
+    public int XmlNamespaceId { get; set; }
 
-    [InternalsMetadataColumn("bitpos", 12, SqlDbType.SmallInt, 4, 52, 12)]
-    public short BitPosition { get; set; }
+    [InternalsMetadataColumn("dflt", 14, SqlDbType.Int, 4, 37, 14)]
+    public int Dflt { get; set; }
 
-    [InternalsMetadataColumn("colguid", 13, SqlDbType.VarBinary, 16, -1, 13)]
-    public byte[] PartitionColumnGuid { get; set; } = Array.Empty<byte>();
+    [InternalsMetadataColumn("chk", 15, SqlDbType.Int, 4, 41, 15)]
+    public int Chk { get; set; }
 
-    [InternalsMetadataColumn("ordlock", 14, SqlDbType.Int, 4, 54, 14)]
-    public int Ordlock { get; set; }
+    [InternalsMetadataColumn("idtval", 16, SqlDbType.VarBinary, 64, -2, 16)]
+    public byte[] IdtVal { get; set; } = Array.Empty<byte>();
 }

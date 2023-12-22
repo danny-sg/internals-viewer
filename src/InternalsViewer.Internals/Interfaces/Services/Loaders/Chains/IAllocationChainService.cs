@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 
 public interface IAllocationChainService
 {
-    Task<AllocationChain> LoadChain(DatabaseDetail databaseDetail, short fileId, PageType pageType);
+    Task<AllocationChain> LoadChain(DatabaseDetail database, short fileId, PageType pageType);
 
-    Task<AllocationChain> LoadChain(DatabaseDetail databaseDetail, PageAddress startPageAddress);
+    Task<AllocationChain> LoadChain(DatabaseDetail database, PageAddress startPageAddress);
 }

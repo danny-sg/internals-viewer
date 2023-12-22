@@ -45,6 +45,8 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
     ///     --> sys.sysrowsets
     ///     <see cref="InternalObject"/>
     ///     --> sys.sysrscols 
+    ///     <see cref="InternalColumnLayout"/>
+    ///     --> sys.sysrscols
     ///     <see cref="InternalColumn"/>
     ///     --> sys.sysrscols
     ///     <see cref="InternalEntityObject"/>
@@ -70,9 +72,13 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
 
         result.Objects = await GetObjects(objectsFirstPage, database);
 
-        var columnsFirstPage = GetFirstPage(InternalTableConstants.ColumnsId, result.AllocationUnits);
+        var columnLayouts = GetFirstPage(InternalTableConstants.ColumnLayoutsId, result.AllocationUnits);
 
-        result.Columns = await GetColumns(columnsFirstPage, database);
+        result.ColumnLayouts = await GetColumnLayouts(columnLayouts, database);
+
+        var columns = GetFirstPage(InternalTableConstants.ColumnsId, result.AllocationUnits);
+
+        result.Columns = await GetColumns(columns, database);
 
         var entitiesFirstPage = GetFirstPage(InternalTableConstants.EntitiesId, result.AllocationUnits);
 
@@ -175,9 +181,26 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
         return rows;
     }
 
+    private async Task<List<InternalColumnLayout>> GetColumnLayouts(PageAddress pageAddress, DatabaseDetail database)
+    {
+        Logger.LogDebug("Getting Column Layouts (sys.sysrscols) using fixed Object Id/Index Id");
+
+        var records = await TableReader.Read(database,
+                                             pageAddress,
+                                             InternalColumnLayoutStructure.GetStructure(-1));
+
+        Logger.LogDebug("Columns: {Count} records found. Parsing records...", records.Count);
+
+        var rows = records.Select(InternalColumnLayoutLoader.Load).ToList();
+
+        Logger.LogDebug("Columns: {Count} records parsed.", rows.Count);
+
+        return rows;
+    }
+
     private async Task<List<InternalColumn>> GetColumns(PageAddress pageAddress, DatabaseDetail database)
     {
-        Logger.LogDebug("Getting Columns (sys.sysrscols) using fixed Object Id/Index Id");
+        Logger.LogDebug("Getting Columns (sys.syscolpars) using fixed Object Id/Index Id");
 
         var records = await TableReader.Read(database,
                                              pageAddress,

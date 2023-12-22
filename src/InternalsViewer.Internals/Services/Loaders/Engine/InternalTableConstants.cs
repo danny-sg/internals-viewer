@@ -2,7 +2,9 @@
 
 public class InternalTableConstants
 {
-    public static readonly (int ObjectId, int IndexId) ColumnsId = (3, 0);
+    public static readonly (int ObjectId, int IndexId) ColumnLayoutsId = (3, 0);
+
+    public static readonly (int ObjectId, int IndexId) ColumnsId = (41, 1);
 
     public static readonly (int ObjectId, int IndexId) RowSetId = (5, 0);
 

@@ -214,7 +214,7 @@ public partial class PageViewerWindow : UserControl
         {
             case PageType.Data:
 
-                record = await RecordService.GetDataRecord(Page, offset);
+                record = RecordService.GetDataRecord(Page, offset);
 
                 allocationViewer.Visible = false;
                 markerKeyTable.Visible = true;

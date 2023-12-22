@@ -2,45 +2,6 @@
 
 internal class SqlCommands
 {
-    public static readonly string AllocationUnitName =
-@"SELECT CONCAT(s.name, '.', o.name) AS Alloc_Unit
-  FROM   sys.allocation_units au
-         INNER JOIN sys.partitions p ON au.container_id = p.partition_id
-         INNER JOIN sys.objects o ON p.object_id = o.object_id
-         INNER JOIN sys.schemas s ON s.schema_id = o.schema_id
-  WHERE  au.allocation_unit_id = @AllocationUnitId";
-
-    public static readonly string AllocationUnits =
-@"SELECT iau.allocation_unit_id               AS AllocationUnitId
-      ,o.object_id                          AS ObjectId
-	  ,iau.first_iam_page                   AS FirstIamPage
-      ,iau.root_page                        AS RootPage
-      ,iau.first_page                       AS FirstPage
-      ,s.name                               AS SchemaName
-	  ,o.name                               AS TableName
-      ,i.name                               AS IndexName
-	  ,is_ms_shipped                        AS IsSystem
-      ,p.index_id                           AS IndexId
-      ,i.type                               AS IndexType
-      ,iau.type                             AS AllocationUnitType
-	  ,CASE iau.type
-			WHEN 1 THEN 'Row Data'
-			WHEN 2 THEN 'LOB Data'
-			WHEN 3 THEN 'Row Overflow Data'
-	   END                                  AS TypeDescription
-      ,iau.used_pages                       AS UsedPages    
-      ,iau.total_pages                      AS TotalPages    
-FROM   sys.all_objects o
-	   INNER JOIN sys.schemas s    ON o.schema_id = s.schema_id 
-	   INNER JOIN sys.partitions p ON p.object_id = o.object_id
-       INNER JOIN sys.indexes i    ON i.object_id = o.object_id AND i.index_id = p.index_id
-	   INNER JOIN sys.system_internals_allocation_units iau 
-           ON iau.container_id = p.partition_id
---WHERE is_ms_shipped = 0
-ORDER BY is_ms_shipped DESC
-        ,s.name ASC
-        ,o.name ASC";
-
     public static readonly string BufferPool =
 @"SELECT CONVERT(SMALLINT, file_id) AS FileId
       ,page_id                    AS PageId
@@ -50,27 +11,11 @@ WHERE  database_id = DB_ID(@DatabaseName)";
 
     public static readonly string Checkpoint = @"CHECKPOINT";
 
-    public static readonly string CompatibilityLevel = @"SELECT compatibility_level FROM sys.databases WHERE name = @Name";
-
     public static readonly string Compression = 
 @"SELECT ISNULL(data_compression, 0) 
 FROM   sys.partitions  p
        INNER JOIN sys.allocation_units au ON au.container_id = p.partition_id
 WHERE au.allocation_unit_id = @AllocationUnitId";
-
-    public static readonly string Database = @"SELECT name FROM sys.databases WHERE database_id = @DatabaseId";
-
-    public static readonly string DatabaseTables =
-@"SELECT o.object_id
-	  ,s.name AS schema_name
-	  ,o.name AS table_name
-	  ,is_ms_shipped AS system 
-FROM   sys.objects o 
-	   INNER JOIN sys.schemas s ON o.schema_id = s.schema_id 
-WHERE  type IN ('U','S')
-ORDER BY is_ms_shipped desc, s.name asc , o.name asc";
-
-    public static readonly string DatabaseId = @"SELECT DB_ID(@DatabaseName)";
 
     public static readonly string Databases = 
 @"SELECT   d.database_id
@@ -87,37 +32,6 @@ GROUP BY d.database_id
 		,d.state 
         ,compatibility_level   
 ORDER BY d.name";
-
-    public static readonly string EntryPoints = 
-@"SELECT DISTINCT first_page   
-      ,root_page
-      ,first_iam_page
-      ,partition_number
-FROM   sys.system_internals_allocation_units iau
-       INNER JOIN sys.partitions p ON iau.container_id = p.partition_id
-       INNER JOIN sys.indexes    i ON p.object_id = i.object_id
-                                      AND
-                                      i.index_id   = p.index_id
-WHERE p.object_id = OBJECT_ID(@ObjectName) AND ISNULL(i.name, '') = @IndexName AND iau.type = 1
-ORDER BY partition_number";
-
-    public static readonly string FileSize = @"SELECT size FROM sys.database_files WHERE file_id = @FileId";
-
-    public static readonly string Files =
-@"
-SELECT f.file_id                        AS FileId
-      ,f.file_guid                      AS FileGuid
-      ,fg.name                          AS FileGroupName
-      ,f.name                           AS [Name]
-      ,f.physical_name                  AS PhysicalName
-      ,f.size                           AS FileSize
-      ,su.total_page_count              AS TotalPageCount
-      ,su.allocated_extent_page_count   AS AllocatedExtentPageCount
-      ,su.unallocated_extent_page_count AS UnallocatedExtentPageCount
-FROM   sys.database_files f
-       INNER JOIN sys.dm_db_file_space_usage su ON f.file_id = su.file_id
-       INNER JOIN sys.filegroups fg ON f.data_space_id = fg.data_space_id
-WHERE  f.type = 0";
 
     public static readonly string IndexColumns = @"-- The reason this is necessary is that the key columns are in sys.system_internals_partition_columns
 -- but there doesn''''t seem to be a link to which column they are. 
@@ -241,34 +155,6 @@ FROM   sys.allocation_units au
        INNER JOIN sys.all_objects o ON p.object_id = o.object_id
        LEFT JOIN sys.all_columns c ON column_id = partition_column_id AND c.object_id = p.object_id
 WHERE  au.allocation_unit_id  = @AllocationUnitId";
-
-    public static readonly string TableInfo = @"SELECT o.object_id
-      ,s.name AS schema_name
-      ,CASE WHEN i.name IS NULL 
-            THEN o.name
-            ELSE o.name + '.' + i.name 
-       END AS object_name
-      ,o.type AS object_type
-      ,i.type_desc
-      ,i.type AS index_type
-      ,i.index_id AS index_id
-      ,iau.first_iam_page
-      ,iau.root_page
-      ,iau.first_page
-      ,iau.total_pages
-      ,iau.used_pages
-      ,iau.data_pages
-      ,iau.type AS alloc_unit_type
-      ,iau.type_desc
-      ,partition_number
-      ,COUNT(*) OVER (PARTITION BY i.index_id) AS partition_count
-FROM   sys.system_internals_allocation_units iau
-       INNER JOIN sys.partitions p ON iau.container_id = p.partition_id
-       INNER JOIN sys.objects o ON p.object_id = o.object_id
-       INNER JOIN sys.indexes i ON p.index_id = i.index_id AND i.object_id = p.object_id
-       INNER JOIN sys.schemas s ON s.schema_id = o.schema_id
-WHERE  p.object_id = @ObjectId
-ORDER BY index_id, iau.type ASC";
 
     public static readonly string TransactionLog = 
 @"SELECT [Current LSN] AS LSN
