@@ -1,5 +1,6 @@
-﻿using InternalsViewer.Internals.Engine.Allocation.Enums;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Internals.Engine.Allocation;
 
@@ -27,17 +28,26 @@ namespace InternalsViewer.Internals.Engine.Allocation;
 /// If the allocation unit spans more than 64,000 extents additional IAM pages are linked via the page header Next Page and Previous Page 
 /// pointers to create a chain.
 /// </remarks>
-public class IamChain : AllocationChain
+public class IamChain : IAllocationChain
 {
-    public IamChain()
+    public List<AllocationPage> Pages { get; } = new();
+
+    public PageAddress[] SinglePageSlots { get; set; } = Array.Empty<PageAddress>();
+
+    /// <summary>
+    /// Checks the allocation status or an extent
+    /// </summary>
+    public bool IsExtentAllocated(int targetExtent, short fileId, bool invert)
     {
-        ChainType = ChainType.Linked;
+        var value = IsExtentAllocated(targetExtent, fileId);
+
+        return invert ? !value : value;
     }
 
     /// <summary>
     /// Check is a specific extent is allocated
     /// </summary>
-    public override bool IsAllocated(int extent, short fileId)
+    public bool IsExtentAllocated(int extent, short fileId)
     {
         var page = Pages.FirstOrDefault(p => p.StartPage.FileId == fileId &&
                                              extent >= p.StartPage.PageId / 8 &&
@@ -48,6 +58,8 @@ public class IamChain : AllocationChain
             return false;
         }
 
-        return page.AllocationMap[extent - page.StartPage.Extent];
+        var isAllocated = page.AllocationMap[extent - page.StartPage.Extent];
+
+        return isAllocated;
     }
 }

@@ -59,7 +59,7 @@ public partial class AllocationViewer : UserControl
     /// Sets the IAM header information.
     /// </summary>
     /// <param name="page">The page.</param>
-    private void SetIamInformation(AllocationPage page)
+    private void SetIamInformation(IamPage page)
     {
         if (page.SinglePageSlots.Count == 8)
         {
@@ -95,16 +95,36 @@ public partial class AllocationViewer : UserControl
     /// <summary>
     /// Sets an allocation page to be displayed
     /// </summary>
-    /// <param name="pageAddress">The page address.</param>
-    /// <param name="databaseName">Name of the database.</param>
-    /// <param name="connectionString">The connection string.</param>
-    /// <param name="showHeader">if set to <c>true</c> [show header].</param>
-    /// <returns></returns>
-    public List<Marker> SetAllocationPage(PageAddress pageAddress, string databaseName, string connectionString, bool showHeader)
+    public List<Marker> SetAllocationPage(AllocationPage allocationPage, bool showHeader)
     {
         topPanel.Visible = showHeader;
 
-        var allocationPage = new AllocationPage();
+        allocationMap.Mode = MapMode.Standard;
+        allocationMap.ExtentCount = 63903;
+        allocationMap.ExtentSize = AllocationMap.Small;
+
+        var layer = new AllocationLayer(allocationPage.PageAddress.ToString(),
+                                        allocationPage,
+                                        Color.Brown);
+
+        layer.SingleSlotsOnly = false;
+
+        allocationMap.MapLayers.Clear();
+        allocationMap.MapLayers.Add(layer);
+
+        allocationMap.Invalidate();
+
+        var markers = MarkerBuilder.BuildMarkers(allocationPage, string.Empty);
+
+        return markers;
+    }
+
+    /// <summary>
+    /// Sets an allocation page to be displayed
+    /// </summary>
+    public List<Marker> SetIamPage(IamPage allocationPage, bool showHeader)
+    {
+        topPanel.Visible = showHeader;
 
         allocationMap.Mode = MapMode.Standard;
         allocationMap.ExtentCount = 63903;
@@ -114,8 +134,8 @@ public partial class AllocationViewer : UserControl
         allocationMap.FileId = allocationPage.StartPage.FileId;
 
         var layer = new AllocationLayer(allocationPage.PageAddress.ToString(),
-            allocationPage,
-            Color.Brown);
+                                        allocationPage,
+                                        Color.Brown);
 
         layer.SingleSlotsOnly = false;
 
@@ -137,14 +157,9 @@ public partial class AllocationViewer : UserControl
     /// <summary>
     /// Sets the PFS page to be displayed
     /// </summary>
-    /// <param name="pageAddress">The page address.</param>
-    /// <param name="databaseName">Name of the database.</param>
-    /// <param name="connectionString">The connection string.</param>
-    public void SetPfsPage(PageAddress pageAddress, string databaseName, string connectionString)
+    public void SetPfsPage(PfsPage pfsPage)
     {
         topPanel.Visible = false;
-
-        var pfsPage = new PfsPage();
 
         allocationMap.Mode = MapMode.Pfs;
 
@@ -152,14 +167,7 @@ public partial class AllocationViewer : UserControl
         allocationMap.ExtentCount = 1011;
         allocationMap.ExtentSize = AllocationMap.Large;
 
-        if (pfsPage.PageAddress.PageId > 1)
-        {
-            allocationMap.StartPage = pfsPage.PageAddress;
-        }
-        else
-        {
-            allocationMap.StartPage = new PageAddress(pfsPage.PageAddress.FileId, 0);
-        }
+        allocationMap.StartPage = pfsPage.PageAddress;
 
         allocationMap.Invalidate();
     }

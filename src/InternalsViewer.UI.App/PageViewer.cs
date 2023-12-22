@@ -1,27 +1,28 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 
 namespace InternalsViewer.UI.App;
 
 public partial class PageViewer : Form
 {
-    public IPageLoader PageLoader { get; }
+    public IPageService PageService { get; }
 
     public IRecordService RecordService { get; }
 
-    public DatabaseDetail DatabaseDetail { get; }
+    public DatabaseDetail Database { get; }
 
-    public PageViewer(IPageLoader pageLoader, IRecordService recordService, DatabaseDetail databaseDetail)
+    public PageViewer(IPageService pageService, IRecordService recordService, DatabaseDetail database)
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint |
                  ControlStyles.UserPaint |
                  ControlStyles.DoubleBuffer,
                  true);
 
-        PageLoader = pageLoader;
+        PageService = pageService;
         RecordService = recordService;
-        DatabaseDetail = databaseDetail;
+        Database = database;
 
         InitializeComponent();
     }
@@ -29,8 +30,9 @@ public partial class PageViewer : Form
     public async Task LoadPage(PageAddress pageAddress)
     {
         SuspendLayout();
-
-        pageViewerWindow.DatabaseDetail = DatabaseDetail;
+      
+        pageViewerWindow.Database = Database;
+        pageViewerWindow.PageService = PageService;
 
         await pageViewerWindow.LoadPage(pageAddress);
 

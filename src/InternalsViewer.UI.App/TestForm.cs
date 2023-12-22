@@ -1,5 +1,7 @@
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers;
 
 namespace InternalsViewer.UI.App;
@@ -10,7 +12,7 @@ public partial class TestForm : Form
 
     public IDatabaseLoader DatabaseLoader { get; }
 
-    public IPageLoader PageLoader { get; }
+    public IPageService PageService { get; }
 
     public IRecordService RecordService { get; }
 
@@ -18,13 +20,13 @@ public partial class TestForm : Form
 
     public TestForm(IServerInfoProvider serverInfoProvider,
                     IDatabaseLoader databaseLoader,
-                    IPageLoader pageLoader,
+                    IPageService pageService,
                     IRecordService recordService,
                     CurrentConnection connection)
     {
         ServerInfoProvider = serverInfoProvider;
         DatabaseLoader = databaseLoader;
-        PageLoader = pageLoader;
+        PageService = pageService;
         RecordService = recordService;
         Connection = connection;
 
@@ -58,7 +60,7 @@ public partial class TestForm : Form
     {
         if (allocationWindow.CurrentDatabase != null)
         {
-            var window = new PageViewer(PageLoader, RecordService, allocationWindow.CurrentDatabase);
+            var window = new PageViewer(PageService, RecordService, allocationWindow.CurrentDatabase);
 
             window.Show();
 

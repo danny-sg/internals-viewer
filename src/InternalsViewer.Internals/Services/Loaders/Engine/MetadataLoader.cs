@@ -4,10 +4,9 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
-using InternalsViewer.Internals.Readers.Internals;
 
 namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
@@ -28,7 +27,8 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
     /// SQL Server has a set of base tables that store internal metadata about the database. All sys/DMVs etc are derived from these 
     /// tables.
     /// 
-    /// <see href="https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/system-base-tables"/>
+    /// <see href="https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/system-base-tables"/> 
+    /// (not all tables are mentioned in the article)
     /// 
     /// The first table to read is sys.sysallocunits. This defines the first page location for each allocation unit in the database. 
     /// 
@@ -78,7 +78,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
 
         result.Entities = await GetEntities(entitiesFirstPage, database);
 
-        var indexesFirstPage = GetFirstPage(InternalTableConstants.IndexesId, result.AllocationUnits);  
+        var indexesFirstPage = GetFirstPage(InternalTableConstants.IndexesId, result.AllocationUnits);
 
         result.Indexes = await GetIndexes(indexesFirstPage, database);
 
@@ -104,6 +104,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
         Logger.LogDebug("Objects: {Count} records parsed.", rows.Count);
 
         return rows;
+
     }
 
     private async Task<List<InternalEntityObject>> GetEntities(PageAddress pageAddress, DatabaseDetail database)

@@ -16,7 +16,7 @@ public abstract class PageReader
         {
             var byteString = currentData.Substring(i, 2);
 
-            if (!byteString.Contains("†") && !byteString.Contains(".") && offset < Page.Size)
+            if (!byteString.Contains("†") && !byteString.Contains(".") && offset < PageData.Size)
             {
                 if (byte.TryParse(byteString,
                                   NumberStyles.HexNumber,

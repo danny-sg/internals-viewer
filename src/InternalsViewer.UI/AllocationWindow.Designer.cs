@@ -64,6 +64,14 @@ namespace InternalsViewer.UI
             pageToolStripTextBox = new PageAddressTextBox();
             toolStripLabel2 = new ToolStripLabel();
             keysDataGridView = new DataGridView();
+            KeyColumn = new KeyImageColumn();
+            NameColumn = new DataGridViewTextBoxColumn();
+            IndexNameColumn = new DataGridViewTextBoxColumn();
+            IndexTypeColumn = new DataGridViewTextBoxColumn();
+            RootPageColumn = new DataGridViewTextBoxColumn();
+            FirstPageColumn = new DataGridViewTextBoxColumn();
+            FirstIamPageColumn = new DataGridViewTextBoxColumn();
+            TotalPagesColumn = new DataGridViewTextBoxColumn();
             allocationBindingSource = new BindingSource(components);
             statusStrip = new StatusStrip();
             errorImageToolStripStatusLabel = new ToolStripStatusLabel();
@@ -77,14 +85,6 @@ namespace InternalsViewer.UI
             iconToolStripStatusLabel = new ToolStripStatusLabel();
             allocUnitBackgroundWorker = new BackgroundWorker();
             keyImageColumn1 = new KeyImageColumn();
-            KeyColumn = new KeyImageColumn();
-            NameColumn = new DataGridViewTextBoxColumn();
-            IndexNameColumn = new DataGridViewTextBoxColumn();
-            IndexTypeColumn = new DataGridViewTextBoxColumn();
-            RootPageColumn = new DataGridViewTextBoxColumn();
-            FirstPageColumn = new DataGridViewTextBoxColumn();
-            FirstIamPageColumn = new DataGridViewTextBoxColumn();
-            TotalPagesColumn = new DataGridViewTextBoxColumn();
             ((ISupportInitialize)splitContainer).BeginInit();
             splitContainer.Panel1.SuspendLayout();
             splitContainer.Panel2.SuspendLayout();
@@ -106,7 +106,7 @@ namespace InternalsViewer.UI
             allocationContainer.IncludeIam = false;
             allocationContainer.LayoutStyle = LayoutStyle.Horizontal;
             allocationContainer.Location = new System.Drawing.Point(0, 35);
-            allocationContainer.Margin = new Padding(7, 7, 7, 7);
+            allocationContainer.Margin = new Padding(7);
             allocationContainer.Mode = MapMode.Standard;
             allocationContainer.Name = "allocationContainer";
             allocationContainer.ShowFileInformation = false;
@@ -119,7 +119,7 @@ namespace InternalsViewer.UI
             // 
             splitContainer.Dock = DockStyle.Fill;
             splitContainer.Location = new System.Drawing.Point(0, 0);
-            splitContainer.Margin = new Padding(4, 4, 4, 4);
+            splitContainer.Margin = new Padding(4);
             splitContainer.Name = "splitContainer";
             splitContainer.Orientation = Orientation.Horizontal;
             // 
@@ -334,7 +334,6 @@ namespace InternalsViewer.UI
             keysDataGridView.AllowUserToAddRows = false;
             keysDataGridView.AllowUserToDeleteRows = false;
             keysDataGridView.AllowUserToOrderColumns = true;
-            keysDataGridView.AllowUserToResizeColumns = false;
             keysDataGridView.AllowUserToResizeRows = false;
             keysDataGridView.AutoGenerateColumns = false;
             keysDataGridView.BackgroundColor = System.Drawing.Color.White;
@@ -362,7 +361,7 @@ namespace InternalsViewer.UI
             keysDataGridView.Dock = DockStyle.Fill;
             keysDataGridView.GridColor = System.Drawing.Color.White;
             keysDataGridView.Location = new System.Drawing.Point(0, 0);
-            keysDataGridView.Margin = new Padding(4, 4, 4, 4);
+            keysDataGridView.Margin = new Padding(4);
             keysDataGridView.Name = "keysDataGridView";
             keysDataGridView.ReadOnly = true;
             dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleLeft;
@@ -381,6 +380,89 @@ namespace InternalsViewer.UI
             keysDataGridView.CellClick += KeysDataGridView_CellClick;
             keysDataGridView.CellContentClick += keysDataGridView_CellContentClick;
             keysDataGridView.SelectionChanged += KeysDataGridView_SelectionChanged;
+            // 
+            // KeyColumn
+            // 
+            KeyColumn.DataPropertyName = "Colour";
+            KeyColumn.HeaderText = "";
+            KeyColumn.MinimumWidth = 12;
+            KeyColumn.Name = "KeyColumn";
+            KeyColumn.ReadOnly = true;
+            KeyColumn.Width = 30;
+            // 
+            // NameColumn
+            // 
+            NameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            NameColumn.DataPropertyName = "ObjectName";
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
+            NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
+            NameColumn.HeaderText = "Table";
+            NameColumn.MinimumWidth = 200;
+            NameColumn.Name = "NameColumn";
+            NameColumn.ReadOnly = true;
+            // 
+            // IndexNameColumn
+            // 
+            IndexNameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            IndexNameColumn.DataPropertyName = "IndexName";
+            IndexNameColumn.HeaderText = "Index";
+            IndexNameColumn.MinimumWidth = 200;
+            IndexNameColumn.Name = "IndexNameColumn";
+            IndexNameColumn.ReadOnly = true;
+            // 
+            // IndexTypeColumn
+            // 
+            IndexTypeColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            IndexTypeColumn.DataPropertyName = "IndexType";
+            IndexTypeColumn.HeaderText = "Index Type";
+            IndexTypeColumn.MinimumWidth = 12;
+            IndexTypeColumn.Name = "IndexTypeColumn";
+            IndexTypeColumn.ReadOnly = true;
+            // 
+            // RootPageColumn
+            // 
+            RootPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            RootPageColumn.DataPropertyName = "RootPage";
+            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
+            RootPageColumn.DefaultCellStyle = dataGridViewCellStyle3;
+            RootPageColumn.HeaderText = "Root Page";
+            RootPageColumn.MinimumWidth = 12;
+            RootPageColumn.Name = "RootPageColumn";
+            RootPageColumn.ReadOnly = true;
+            // 
+            // FirstPageColumn
+            // 
+            FirstPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            FirstPageColumn.DataPropertyName = "FirstPage";
+            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle4.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
+            FirstPageColumn.DefaultCellStyle = dataGridViewCellStyle4;
+            FirstPageColumn.HeaderText = "First Page";
+            FirstPageColumn.MinimumWidth = 12;
+            FirstPageColumn.Name = "FirstPageColumn";
+            FirstPageColumn.ReadOnly = true;
+            // 
+            // FirstIamPageColumn
+            // 
+            FirstIamPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            FirstIamPageColumn.DataPropertyName = "FirstIamPage";
+            dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle5.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
+            FirstIamPageColumn.DefaultCellStyle = dataGridViewCellStyle5;
+            FirstIamPageColumn.HeaderText = "First IAM";
+            FirstIamPageColumn.MinimumWidth = 12;
+            FirstIamPageColumn.Name = "FirstIamPageColumn";
+            FirstIamPageColumn.ReadOnly = true;
+            // 
+            // TotalPagesColumn
+            // 
+            TotalPagesColumn.DataPropertyName = "TotalPages";
+            TotalPagesColumn.HeaderText = "Total Pages";
+            TotalPagesColumn.MinimumWidth = 12;
+            TotalPagesColumn.Name = "TotalPagesColumn";
+            TotalPagesColumn.ReadOnly = true;
+            TotalPagesColumn.Width = 90;
             // 
             // statusStrip
             // 
@@ -466,96 +548,13 @@ namespace InternalsViewer.UI
             keyImageColumn1.Name = "keyImageColumn1";
             keyImageColumn1.Width = 30;
             // 
-            // KeyColumn
-            // 
-            KeyColumn.DataPropertyName = "Colour";
-            KeyColumn.HeaderText = "";
-            KeyColumn.MinimumWidth = 12;
-            KeyColumn.Name = "KeyColumn";
-            KeyColumn.ReadOnly = true;
-            KeyColumn.Width = 30;
-            // 
-            // NameColumn
-            // 
-            NameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            NameColumn.DataPropertyName = "ObjectName";
-            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
-            NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
-            NameColumn.HeaderText = "Table";
-            NameColumn.MinimumWidth = 200;
-            NameColumn.Name = "NameColumn";
-            NameColumn.ReadOnly = true;
-            // 
-            // IndexNameColumn
-            // 
-            IndexNameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            IndexNameColumn.DataPropertyName = "IndexName";
-            IndexNameColumn.HeaderText = "Index";
-            IndexNameColumn.MinimumWidth = 200;
-            IndexNameColumn.Name = "IndexNameColumn";
-            IndexNameColumn.ReadOnly = true;
-            // 
-            // IndexTypeColumn
-            // 
-            IndexTypeColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-            IndexTypeColumn.DataPropertyName = "IndexType";
-            IndexTypeColumn.HeaderText = "Index Type";
-            IndexTypeColumn.MinimumWidth = 12;
-            IndexTypeColumn.Name = "IndexTypeColumn";
-            IndexTypeColumn.ReadOnly = true;
-            // 
-            // RootPageColumn
-            // 
-            RootPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-            RootPageColumn.DataPropertyName = "RootPage";
-            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
-            RootPageColumn.DefaultCellStyle = dataGridViewCellStyle3;
-            RootPageColumn.HeaderText = "Root Page";
-            RootPageColumn.MinimumWidth = 12;
-            RootPageColumn.Name = "RootPageColumn";
-            RootPageColumn.ReadOnly = true;
-            // 
-            // FirstPageColumn
-            // 
-            FirstPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-            FirstPageColumn.DataPropertyName = "FirstPage";
-            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle4.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
-            FirstPageColumn.DefaultCellStyle = dataGridViewCellStyle4;
-            FirstPageColumn.HeaderText = "First Page";
-            FirstPageColumn.MinimumWidth = 12;
-            FirstPageColumn.Name = "FirstPageColumn";
-            FirstPageColumn.ReadOnly = true;
-            // 
-            // FirstIamPageColumn
-            // 
-            FirstIamPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-            FirstIamPageColumn.DataPropertyName = "FirstIamPage";
-            dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle5.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
-            FirstIamPageColumn.DefaultCellStyle = dataGridViewCellStyle5;
-            FirstIamPageColumn.HeaderText = "First IAM";
-            FirstIamPageColumn.MinimumWidth = 12;
-            FirstIamPageColumn.Name = "FirstIamPageColumn";
-            FirstIamPageColumn.ReadOnly = true;
-            // 
-            // TotalPagesColumn
-            // 
-            TotalPagesColumn.DataPropertyName = "TotalPages";
-            TotalPagesColumn.HeaderText = "Total Pages";
-            TotalPagesColumn.MinimumWidth = 12;
-            TotalPagesColumn.Name = "TotalPagesColumn";
-            TotalPagesColumn.ReadOnly = true;
-            TotalPagesColumn.Width = 90;
-            // 
             // AllocationWindow
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             Controls.Add(splitContainer);
             Controls.Add(statusStrip);
-            Margin = new Padding(4, 4, 4, 4);
+            Margin = new Padding(4);
             Name = "AllocationWindow";
             Size = new System.Drawing.Size(1102, 668);
             splitContainer.Panel1.ResumeLayout(false);

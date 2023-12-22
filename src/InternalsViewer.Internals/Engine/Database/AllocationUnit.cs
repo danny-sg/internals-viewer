@@ -30,7 +30,7 @@ public record AllocationUnit
 
     public PageAddress FirstPage { get; set; }
 
-    public AllocationChain IamChain { get; set; } = new();
+    public IamChain IamChain { get; set; } = new();
 
     public string SchemaName { get; set; } = string.Empty;
 

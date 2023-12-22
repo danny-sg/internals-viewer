@@ -25,28 +25,28 @@ public class CompressionInfoService(IDictionaryService dictionaryService,
     public static byte CiSize = 7;
     public static short Offset = 96;
 
-    public CompressionInfo Load(Page page)
+    public CompressionInfo Load(AllocationUnitPage page)
     {
         var ci = new CompressionInfo();
 
-        ci.StatusBits = new BitArray(new[] { page.PageData[ci.SlotOffset] });
+        ci.StatusBits = new BitArray(new[] { page.Data[ci.SlotOffset] });
 
         ci.MarkDataStructure("StatusDescription", ci.SlotOffset, 1);
 
         ci.HasAnchorRecord = ci.StatusBits[1];
         ci.HasDictionary = ci.StatusBits[2];
 
-        ci.PageModCount = BitConverter.ToInt16(page.PageData, ci.SlotOffset + 1);
+        ci.PageModCount = BitConverter.ToInt16(page.Data, ci.SlotOffset + 1);
 
         ci.MarkDataStructure("PageModCount", ci.SlotOffset + sizeof(byte), sizeof(short));
 
-        ci.Length = BitConverter.ToInt16(page.PageData, ci.SlotOffset + 3);
+        ci.Length = BitConverter.ToInt16(page.Data, ci.SlotOffset + 3);
 
         ci.MarkDataStructure("Length", ci.SlotOffset + sizeof(byte) + sizeof(short), sizeof(short));
 
         if (ci.HasDictionary)
         {
-            ci.Size = BitConverter.ToInt16(page.PageData, ci.SlotOffset + 5);
+            ci.Size = BitConverter.ToInt16(page.Data, ci.SlotOffset + 5);
 
             ci.MarkDataStructure("Size", ci.SlotOffset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
         }
@@ -64,16 +64,16 @@ public class CompressionInfoService(IDictionaryService dictionaryService,
         return ci;
     }
 
-    private void LoadDictionary(CompressionInfo ci, Page page)
+    private void LoadDictionary(CompressionInfo ci, AllocationUnitPage page)
     {
-        ci.CompressionDictionary = DictionaryService.Load(page.PageData, Offset + ci.Length);
+        ci.CompressionDictionary = DictionaryService.Load(page.Data, Offset + ci.Length);
     }
 
-    private void LoadAnchor(CompressionInfo ci, Page page)
+    private void LoadAnchor(CompressionInfo ci, AllocationUnitPage page)
     {
         var startOffset = (ci.HasDictionary ? 7 : 5) + ci.SlotOffset;
 
-        int records = page.PageData[startOffset + 1];
+        int records = page.Data[startOffset + 1];
 
         var structure = CreateTableStructure(records, ci, page);
 

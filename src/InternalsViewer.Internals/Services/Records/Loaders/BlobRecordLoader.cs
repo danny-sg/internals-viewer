@@ -17,9 +17,9 @@ internal class BlobRecordLoader : RecordLoader
     {
         record.SlotOffset = offset;
 
-        var statusByte = page.PageData[record.SlotOffset];
+        var statusByte = page.Data[record.SlotOffset];
 
-        var data = page.PageData;
+        var data = page.Data;
 
         record.MarkDataStructure("StatusBitsADescription", record.SlotOffset, sizeof(byte));
 
@@ -31,15 +31,15 @@ internal class BlobRecordLoader : RecordLoader
 
         record.MarkDataStructure("Length", record.SlotOffset + BlobRecord.LengthOffset, sizeof(short));
 
-        record.Length = BitConverter.ToInt16(page.PageData, record.SlotOffset + BlobRecord.LengthOffset);
+        record.Length = BitConverter.ToInt16(data, record.SlotOffset + BlobRecord.LengthOffset);
 
         record.MarkDataStructure("BlobId", record.SlotOffset + BlobRecord.IdOffset, sizeof(long));
 
-        record.BlobId = BitConverter.ToInt64(page.PageData, record.SlotOffset + BlobRecord.IdOffset);
+        record.BlobId = BitConverter.ToInt64(data, record.SlotOffset + BlobRecord.IdOffset);
 
         record.MarkDataStructure("BlobTypeDescription", record.SlotOffset + BlobRecord.TypeOffset, sizeof(short));
 
-        record.BlobType = (BlobType)page.PageData[record.SlotOffset + BlobRecord.TypeOffset];
+        record.BlobType = (BlobType)data[record.SlotOffset + BlobRecord.TypeOffset];
 
         switch (record.BlobType)
         {

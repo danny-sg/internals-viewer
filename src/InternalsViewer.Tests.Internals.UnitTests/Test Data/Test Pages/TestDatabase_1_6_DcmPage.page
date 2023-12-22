@@ -457,8 +457,3 @@ Memory Dump @0x00000007407F6000
 00000007407F7FCC:   00000000 00000000 00000000 00000000 00000000  ....................
 00000007407F7FE0:   00000000 00000000 00000000 00000000 00000000  ....................
 00000007407F7FF4:   00000000 00000000 be006000                    ........¾.`.
-
-
-DBCC execution completed. If DBCC printed error messages, contact your system administrator.
-
-Completion time: 2023-12-13T17:01:04.9366808+00:00

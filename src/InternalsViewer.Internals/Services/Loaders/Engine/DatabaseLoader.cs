@@ -1,8 +1,11 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Providers.Metadata;
 using System.Diagnostics;
 
@@ -14,7 +17,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Engine;
 public class DatabaseLoader(ILogger<DatabaseLoader> logger,
                             IServerInfoProvider serverInfoProvider,
                             IMetadataLoader metadataLoader,
-                            IBootPageLoader bootPageLoader,
+                            IPageService pageService,
                             IAllocationChainService allocationChainService,
                             IIamChainService iamChainService,
                             IPfsChainService pfsChainService)
@@ -26,7 +29,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
 
     public IMetadataLoader MetadataLoader { get; } = metadataLoader;
 
-    public IBootPageLoader BootPageLoader { get; } = bootPageLoader;
+    public IPageService PageService { get; } = pageService;
 
     public IAllocationChainService AllocationChainService { get; } = allocationChainService;
 
@@ -58,7 +61,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
 
         Logger.LogDebug("Loading Boot Page");
 
-        database.BootPage = await BootPageLoader.GetBootPage(database);
+        database.BootPage = await PageService.GetPage<BootPage>(database, BootPage.BootPageAddress);
 
         Logger.LogDebug("Reading database internal tables/metadata");
 
@@ -87,20 +90,20 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
     }
 
     /// <summary>
-    /// Refresh the allocation chains/bitmaps for each file and allocation type (GAM/SGAM/DCM/BCM)
+    /// Refresh the allocation chains/bitmaps for files and allocation units
     /// </summary>
     public async Task RefreshAllocations(DatabaseDetail database)
     {
         await RefreshFileAllocations(database);
 
-        await RefreshAllocationUnitAllocations(database);
-
         await RefreshPfs(database);
+
+        await RefreshAllocationUnitAllocations(database);
     }
 
     private async Task RefreshFileAllocations(DatabaseDetail databaseDetail)
     {
-        Logger.LogDebug("Refreshing file allocations");
+        Logger.LogDebug("Refreshing file allocations (GAM/SGAM/DCM/BCM)");
 
         Debug.Assert(databaseDetail.Files.Count > 0);
 
@@ -127,11 +130,11 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
         }
     }
 
-    private async Task RefreshAllocationUnitAllocations(DatabaseDetail databaseDetail)
+    private async Task RefreshAllocationUnitAllocations(DatabaseDetail database)
     {
         Logger.LogDebug("Refreshing allocation unit allocations (via IAMs)");
 
-        foreach (var allocationUnit in databaseDetail.AllocationUnits)
+        foreach (var allocationUnit in database.AllocationUnits)
         {
             Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - Refreshing", allocationUnit.AllocationUnitId);
 
@@ -147,7 +150,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
                             allocationUnit.AllocationUnitId,
                             allocationUnit.FirstIamPage);
 
-            allocationUnit.IamChain = await IamChainService.LoadChain(databaseDetail, allocationUnit.FirstIamPage);
+            allocationUnit.IamChain = await IamChainService.LoadChain(database, allocationUnit.FirstIamPage);
         }
     }
 

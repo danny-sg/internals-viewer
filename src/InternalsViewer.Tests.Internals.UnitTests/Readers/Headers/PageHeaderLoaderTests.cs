@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages.Enums;
-using InternalsViewer.Internals.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Pages.Loaders;
 using InternalsViewer.Tests.Internals.UnitTests.TestHelpers.TestReaders;
 
 namespace InternalsViewer.Tests.Internals.UnitTests.Readers.Headers;

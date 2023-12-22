@@ -8,53 +8,51 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.TransactionLog;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Renderers;
-
-#pragma warning disable CA1416
 
 namespace InternalsViewer.UI;
 
 public partial class PageViewerWindow : UserControl
 {
-    public IPageLoader PageLoader { get; }
-
     public IRecordService RecordService { get; set; }
 
     public event EventHandler<PageEventArgs>? PageChanged;
 
-    public event EventHandler OpenDecodeWindow;
+    public event EventHandler? OpenDecodeWindow;
 
     private readonly ProfessionalColorTable colourTable;
 
-    private Page? page;
-
     private readonly PfsRenderer pfsRenderer;
 
-    private PfsByte pfsByte;
+    public int SearchPosition { get; private set; }
 
-    int searchPosition;
+    public Dictionary<string, LogData> Data { get; private set; } = new();
 
-    private Dictionary<string, LogData> logData;
+    public PfsByte? PfsByte { get; set; }
 
-    public DatabaseDetail DatabaseDetail { get; set; }
+    public DatabaseDetail Database { get; set; } = new();
+
+    public Page? Page { get; set; }
+
+    public IPageService PageService { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
     /// </summary>
-    public PageViewerWindow(IPageLoader pageLoader, IRecordService recordService)
+    public PageViewerWindow(IPageService pageService, IRecordService recordService)
     {
-        PageLoader = pageLoader;
         RecordService = recordService;
+        PageService = pageService;
 
         InitializeComponent();
 
@@ -65,44 +63,40 @@ public partial class PageViewerWindow : UserControl
     }
 
     /// <summary>
-    /// Create the key images for the allocation pages
-    /// </summary>
-    private void CreateKeyImages()
-    {
-        new ImageList();
-    }
-
-    /// <summary>
     /// Refreshes the current page in the page viewer
     /// </summary>
     private void RefreshPage()
     {
-        if (Page == null)
+        if(Page == null)
         {
             return;
-
         }
-        pageToolStripTextBox.Text = Page.PageAddress.ToString() ?? string.Empty;
+
+        pageToolStripTextBox.Text = Page.PageAddress.ToString();
         hexViewer.Page = Page;
         pageBindingSource.DataSource = Page.PageHeader;
         offsetTable.Page = Page;
 
-        ObjectIdTextBox.Text = Page.AllocationUnit.ObjectId.ToString();
-
-        ObjectNameTextBox.Text = Page.AllocationUnit.DisplayName;
-
-        PartitionIdTextBox.Text = Page.AllocationUnit.PartitionId.ToString();
-
-        if (page.CompressionType == CompressionType.Page && !Page.OffsetTable.Contains(96))
+        if (Page is AllocationUnitPage allocationUnitPage)
         {
-            compressionInfoPanel.Visible = true;
-        }
-        else
-        {
-            compressionInfoPanel.Visible = false;
+            ObjectIdTextBox.Text = allocationUnitPage.AllocationUnit.ObjectId.ToString();
+
+            ObjectNameTextBox.Text = allocationUnitPage.AllocationUnit.DisplayName;
+
+            PartitionIdTextBox.Text = allocationUnitPage.AllocationUnit.PartitionId.ToString();
+
+            if (allocationUnitPage.CompressionType == CompressionType.Page && !Page.OffsetTable.Contains(96))
+            {
+                compressionInfoPanel.Visible = true;
+            }
+            else
+            {
+                compressionInfoPanel.Visible = false;
+            }
         }
 
-        OnPageChanged(this, new PageEventArgs(page.PageAddress, false));
+
+        OnPageChanged(this, new PageEventArgs(Page.PageAddress, false));
     }
 
     /// <summary>
@@ -111,6 +105,11 @@ public partial class PageViewerWindow : UserControl
     /// <param name="pageAddress">The page address.</param>
     private void RefreshAllocationStatus(PageAddress pageAddress)
     {
+        if(Page==null)
+        {
+            return;
+        }
+
         Image unallocated = ExtentColour.KeyImage(Color.Gainsboro);
         Image gamAllocated = ExtentColour.KeyImage(Color.FromArgb(172, 186, 214));
         Image sGamAllocated = ExtentColour.KeyImage(Color.FromArgb(168, 204, 162));
@@ -118,10 +117,11 @@ public partial class PageViewerWindow : UserControl
         Image bcmAllocated = ExtentColour.KeyImage(Color.FromArgb(150, 120, 150));
 
         var fileId = pageAddress.FileId;
-        gamPictureBox.Image = Page.Database.Gam[fileId].IsAllocated(pageAddress.Extent, fileId) ? unallocated : gamAllocated;
-        sGamPictureBox.Image = Page.Database.SGam[fileId].IsAllocated(pageAddress.Extent, fileId) ? unallocated : sGamAllocated;
-        dcmPictureBox.Image = Page.Database.Dcm[fileId].IsAllocated(pageAddress.Extent, fileId) ? unallocated : dcmAllocated;
-        bcmPictureBox.Image = Page.Database.Bcm[fileId].IsAllocated(pageAddress.Extent, fileId) ? unallocated : bcmAllocated;
+
+        gamPictureBox.Image = Page.Database.Gam[fileId].IsExtentAllocated(pageAddress.Extent, fileId, false) ? unallocated : gamAllocated;
+        sGamPictureBox.Image = Page.Database.SGam[fileId].IsExtentAllocated(pageAddress.Extent, fileId, false) ? unallocated : sGamAllocated;
+        dcmPictureBox.Image = Page.Database.Dcm[fileId].IsExtentAllocated(pageAddress.Extent, fileId, false) ? unallocated : dcmAllocated;
+        bcmPictureBox.Image = Page.Database.Bcm[fileId].IsExtentAllocated(pageAddress.Extent, fileId, false) ? unallocated : bcmAllocated;
 
         //gamTextBox.Text = page.AllocationStatus.GamPageAddress.ToString();
         //sgamTextBox.Text = page.AllocationStatus.SgamPageAddress.ToString();
@@ -136,28 +136,59 @@ public partial class PageViewerWindow : UserControl
 
     public void LoadPage(RowIdentifier rowIdentifier)
     {
-        // LoadPage(connectionString, rowIdentifier.PageAddress);
-
         offsetTable.SelectedSlot = rowIdentifier.SlotId;
     }
 
     public async Task LoadPage(PageAddress pageAddress)
     {
+        if (pageAddress.FileId == 0)
+        {
+            return;
+        }
+
         pageAddressToolStripStatusLabel.Text = string.Empty;
         offsetToolStripStatusLabel.Text = string.Empty;
 
-        if (pageAddress.FileId > 0)
+        Page = await PageService.GetPage(Database, pageAddress);
+
+        RefreshAllocationStatus(Page.PageAddress);
+
+        pageToolStripTextBox.DatabaseId = Page.Database!.DatabaseId;
+
+        serverToolStripStatusLabel.Text = Page.Database.Name;
+
+        switch (Page.PageHeader.PageType)
         {
-            Page = await PageLoader.Load<Page>(DatabaseDetail, pageAddress);
-            //Page = new Page(ConnectionString, builder.InitialCatalog, pageAddress);
+            case PageType.Data:
+            case PageType.Index:
+                markerKeyTable.Visible = true;
+                allocationViewer.Visible = false;
+                break;
+            case PageType.Iam:
+            case PageType.Gam:
+            case PageType.Sgam:
+            case PageType.Bcm:
+            case PageType.Dcm:
 
-            RefreshAllocationStatus(Page.PageAddress);
+                allocationViewer.SetAllocationPage((Page as AllocationPage)!, Page.PageHeader.PageType == PageType.Iam);
 
-            pageToolStripTextBox.DatabaseId = Page.Database!.DatabaseId;
+                markerKeyTable.Visible = false;
+                allocationViewer.Visible = true;
+                break;
 
-            serverToolStripStatusLabel.Text = Page.Database.Name;
-            //dataaseToolStripStatusLabel.Text = builder.InitialCatalog;
+            case PageType.Pfs:
+                allocationViewer.SetPfsPage((Page as PfsPage)!);
+
+                markerKeyTable.Visible = false;
+                allocationViewer.Visible = true;
+                break;
+            case PageType.None:
+                markerKeyTable.Visible = false;
+                allocationViewer.Visible = false;
+                break;
         }
+
+        RefreshPage();
     }
 
     private async void PageTextBox_MouseClick(object sender, MouseEventArgs e)
@@ -177,28 +208,13 @@ public partial class PageViewerWindow : UserControl
 
     private async void LoadRecord(ushort offset)
     {
-        if (Page == null)
-        {
-            return;
-        }
-
         Record? record = null;
 
-        switch (Page.PageHeader.PageType)
+        switch (Page?.PageHeader.PageType)
         {
             case PageType.Data:
 
                 record = await RecordService.GetDataRecord(Page, offset);
-                //Structure tableStructure = new TableStructure(Page.PageHeader.AllocationUnitId);
-
-                //if (Page.CompressionType == CompressionType.None)
-                //{
-                //    record = new DataRecord();
-                //}
-                //else
-                //{
-                //   // record = new CompressedDataRecord(Page, offset, tableStructure);
-                //}
 
                 allocationViewer.Visible = false;
                 markerKeyTable.Visible = true;
@@ -217,21 +233,7 @@ public partial class PageViewerWindow : UserControl
             case PageType.Sgam:
             case PageType.Bcm:
             case PageType.Dcm:
-
-                allocationViewer.SetAllocationPage(Page.PageHeader.PageAddress,
-                    Page.Database.Name,
-                    ConnectionString,
-                    (Page.PageHeader.PageType == PageType.Iam));
-
-                markerKeyTable.Visible = false;
-                allocationViewer.Visible = true;
-                break;
-
             case PageType.Pfs:
-
-                allocationViewer.SetPfsPage(Page.PageHeader.PageAddress,
-                    Page.Database.Name,
-                    ConnectionString);
 
                 markerKeyTable.Visible = false;
                 allocationViewer.Visible = true;
@@ -294,14 +296,14 @@ public partial class PageViewerWindow : UserControl
     {
         var hexString = hexViewer.Text.Replace(" ", string.Empty).Replace("\n", string.Empty);
 
-        var startPosition = hexString.IndexOf(findHex, searchPosition + 1, StringComparison.Ordinal);
+        var startPosition = hexString.IndexOf(findHex, SearchPosition + 1, StringComparison.Ordinal);
 
         if (startPosition > 0)
         {
             if (startPosition % 2 == 0)
             {
                 var endPosition = startPosition + findHex.Length - 1;
-                searchPosition = endPosition;
+                SearchPosition = endPosition;
 
                 hexViewer.SetSelection(startPosition / 2, endPosition / 2);
             }
@@ -312,15 +314,11 @@ public partial class PageViewerWindow : UserControl
         }
         else
         {
-            searchPosition = 0;
+            SearchPosition = 0;
             MessageBox.Show("Search hex not found", "Find", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
         }
     }
-    /// <summary>
-    /// Handles the KeyDown event of the PageToolStripTextBox control.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.Windows.Forms.KeyEventArgs"/> instance containing the event data.</param>
+
     private async void PageToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.KeyCode == Keys.Return)
@@ -346,10 +344,7 @@ public partial class PageViewerWindow : UserControl
 
     private async void NextToolStripButton_Click(object sender, EventArgs e)
     {
-        if (Page != null)
-        {
-            await LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId + 1));
-        }
+        await LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId + 1));
     }
 
     private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
@@ -369,7 +364,7 @@ public partial class PageViewerWindow : UserControl
 
     private void HexViewer_OffsetOver(object sender, OffsetEventArgs e)
     {
-        if (Page == null)
+        if(Page == null)
         {
             return;
         }
@@ -387,11 +382,8 @@ public partial class PageViewerWindow : UserControl
                     var startExtent = (e.Offset - AllocationPage.AllocationArrayOffset) * 8;
                     var endExtent = startExtent + 7;
 
-                    markerDescriptionToolStripStatusLabel.Text = string.Format("Extents {0} - {1} | Pages {2} - {3}",
-                        startExtent,
-                        endExtent,
-                        startExtent * 8,
-                        (endExtent * 8) + 7);
+                    markerDescriptionToolStripStatusLabel.Text =
+                        $"Extents {startExtent} - {endExtent} | Pages {startExtent * 8} - {(endExtent * 8) + 7}";
                 }
                 else
                 {
@@ -414,13 +406,18 @@ public partial class PageViewerWindow : UserControl
 
     private void DisplayCompressionInfoStructure(CompressionInfoStructure compressionInfoStructure)
     {
+        if (Page is not AllocationUnitPage allocationUnitPage || allocationUnitPage.CompressionInfo == null)
+        {
+            return;
+        }
+
         var markers = new List<Marker>();
 
         switch (compressionInfoStructure)
         {
             case CompressionInfoStructure.Anchor:
 
-                if (Page?.CompressionInfo?.AnchorRecord != null)
+                if (allocationUnitPage.CompressionInfo?.AnchorRecord != null)
                 {
                     // markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.AnchorRecord);
                 }
@@ -429,7 +426,7 @@ public partial class PageViewerWindow : UserControl
 
             case CompressionInfoStructure.Dictionary:
 
-                if (Page?.CompressionInfo is { HasDictionary: true })
+                if (allocationUnitPage.CompressionInfo is { HasDictionary: true })
                 {
                     // markers = MarkerBuilder.BuildMarkers(Page.CompressionInfo.CompressionDictionary);
                 }
@@ -438,7 +435,7 @@ public partial class PageViewerWindow : UserControl
 
             case CompressionInfoStructure.Header:
 
-                markers = MarkerBuilder.BuildMarkers(Page?.CompressionInfo);
+                markers = MarkerBuilder.BuildMarkers(allocationUnitPage.CompressionInfo);
                 break;
         }
 
@@ -468,7 +465,7 @@ public partial class PageViewerWindow : UserControl
     {
         if (e.KeyCode == Keys.Return)
         {
-            if (ushort.TryParse(offsetTableToolStripTextBox.Text, out var offset) && offset is < Page.Size and > 0)
+            if (ushort.TryParse(offsetTableToolStripTextBox.Text, out var offset) && offset is < PageData.Size and > 0)
             {
                 LoadRecord(offset);
             }
@@ -477,9 +474,9 @@ public partial class PageViewerWindow : UserControl
 
     private void PfsPanel_Paint(object sender, PaintEventArgs e)
     {
-        if (pfsByte != null)
+        if (PfsByte != null)
         {
-            pfsRenderer.DrawPfsPage(e.Graphics, new Rectangle(0, 0, 32, 32), pfsByte);
+            pfsRenderer.DrawPfsPage(e.Graphics, new Rectangle(0, 0, 32, 32), PfsByte);
         }
     }
 
@@ -500,44 +497,22 @@ public partial class PageViewerWindow : UserControl
         base.OnPaint(e);
 
         using var brush = new LinearGradientBrush(ClientRectangle,
-            colourTable.ToolStripGradientBegin,
-            colourTable.ToolStripGradientEnd,
-            LinearGradientMode.Horizontal);
+                                                  colourTable.ToolStripGradientBegin,
+                                                  colourTable.ToolStripGradientEnd,
+                                                  LinearGradientMode.Horizontal);
+
         e.Graphics.FillRectangle(brush, ClientRectangle);
     }
 
     internal virtual void OnPageChanged(object sender, PageEventArgs e)
     {
-        if (PageChanged != null)
-        {
-            PageChanged(sender, e);
-        }
+        PageChanged?.Invoke(sender, e);
     }
 
     internal virtual void OnOpenDecodeWindow(object sender, PageEventArgs e)
     {
-        if (OpenDecodeWindow != null)
-        {
-            OpenDecodeWindow(sender, e);
-        }
+        OpenDecodeWindow?.Invoke(sender, e);
     }
-
-    public Page? Page
-    {
-        get => page;
-        set
-        {
-            page = value;
-
-            RefreshPage();
-        }
-    }
-
-    /// <summary>
-    /// Gets or sets the connection string.
-    /// </summary>
-    /// <value>The connection string.</value>
-    public string ConnectionString { get; set; }
 
     private void CompressionInfoTable_PropertyChanged(object sender, PropertyChangedEventArgs e)
     {
@@ -556,9 +531,9 @@ public partial class PageViewerWindow : UserControl
         FindNext(hexString, false);
     }
 
-    public void SetLogData(Dictionary<string, LogData> logData)
+    public void SetLogData(Dictionary<string, LogData> data)
     {
-        this.logData = logData;
+        Data = data;
         logToolStripComboBox.Visible = true;
         logToolStripLabel.Visible = true;
     }
@@ -577,7 +552,7 @@ public partial class PageViewerWindow : UserControl
 
             case "Before":
 
-                if (this.logData.TryGetValue("Before", out var before))
+                if (Data.TryGetValue("Before", out var before))
                 {
                     logData = before;
                     colour = Color.Blue;
@@ -586,7 +561,7 @@ public partial class PageViewerWindow : UserControl
 
             case "After":
 
-                if (this.logData.TryGetValue("After", out var after))
+                if (this.Data.TryGetValue("After", out var after))
                 {
                     logData = after;
                     colour = Color.OrangeRed;

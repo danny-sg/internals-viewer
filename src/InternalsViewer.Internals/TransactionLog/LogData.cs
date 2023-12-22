@@ -36,11 +36,11 @@ public class LogData
 
         var pageData = new byte[Page.Size];
 
-        Array.Copy(page.PageData, pageData, Page.Size);
+        Array.Copy(page.Data, pageData, Page.Size);
 
         Array.Copy(Data, 0, pageData, dataOffset, Data.Length);
 
-        page.PageData = pageData;
+        page.Data = pageData;
 
         return page;
     }

@@ -1,8 +1,9 @@
 ﻿using InternalsViewer.Internals.Providers.Metadata;
+using Xunit.Abstractions;
 
 namespace InternalsViewer.Tests.Internals.IntegrationTests.Services;
 
-public class AllocationUnitProviderTests: ProviderTestBase
+public class AllocationUnitProviderTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [Fact]
     public async Task Can_Get_AllocationUnits()

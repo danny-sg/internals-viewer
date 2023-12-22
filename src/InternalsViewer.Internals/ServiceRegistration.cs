@@ -1,16 +1,21 @@
 ﻿using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Readers.Pages;
-using InternalsViewer.Internals.Services;
+using InternalsViewer.Internals.Services.Loaders.Chains;
 using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders.Engine;
-using InternalsViewer.Internals.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Pages;
+using InternalsViewer.Internals.Services.Pages.Loaders;
+using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Internals.Services.Records;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -33,10 +38,9 @@ public static class ServiceRegistration
 
         services.AddTransient<IDatabaseLoader, DatabaseLoader>();
 
+        services.AddTransient<ITableReader, TableReader>();
+
         services.AddTransient<IPageLoader, PageLoader>();
-        services.AddTransient<IAllocationPageLoader, AllocationPageLoader>();
-        services.AddTransient<IPfsPageLoader, PfsPageLoader>();
-        services.AddTransient<IBootPageLoader, BootPageLoader>();
 
         services.AddTransient<IAllocationChainService, AllocationChainService>();
         services.AddTransient<IPfsChainService, PfsChainService>();
@@ -48,6 +52,19 @@ public static class ServiceRegistration
 
         services.AddTransient<IRecordService, RecordService>();
 
-        services.AddTransient<ITableReader, TableReader>();
+        services.AddTransient<IPageService, PageService>();
+
+        RegisterPageParsers(services);
+    }
+
+    private static void RegisterPageParsers(IServiceCollection services)
+    {
+        services.AddTransient<IPageParser, AllocationPageParser>();
+        services.AddTransient<IPageParser, BootPageParser>();
+        services.AddTransient<IPageParser, DataPageParser>();
+        services.AddTransient<IPageParser, IamPageParser>();
+        services.AddTransient<IPageParser, IndexPageParser>();
+        services.AddTransient<IPageParser, LobPageParser>();
+        services.AddTransient<IPageParser, PfsPageParser>();
     }
 }

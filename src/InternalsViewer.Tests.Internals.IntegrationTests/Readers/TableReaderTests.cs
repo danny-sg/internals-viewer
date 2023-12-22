@@ -1,28 +1,18 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
-using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Internals;
-using InternalsViewer.Internals.Readers.Pages;
-using InternalsViewer.Internals.Services.Loaders.Pages;
 using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
-using Moq;
+using Xunit.Abstractions;
 
 namespace InternalsViewer.Tests.Internals.IntegrationTests.Readers;
-public class TableReaderTests
+public class TableReaderTests(ITestOutputHelper testOutput)
 {
+    public ITestOutputHelper TestOutput { get; } = testOutput;
+
     [Fact]
-    public async  Task Can_Read_AllocationUnits_Table()
+    public async Task Can_Read_AllocationUnits_Table()
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("local");
-
-        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
-
-        var reader = new DatabasePageReader(connection);
-
-        var compressionInfoMock = new Mock<ICompressionInfoService>();
-
-        var service = new PageLoader(reader, compressionInfoMock.Object);
+        var service = ServiceHelper.CreatePageService(TestOutput);
 
         var dataReader = new TableReader(service);
 
@@ -40,15 +30,7 @@ public class TableReaderTests
     [Fact]
     public async Task Can_Read_Objects_Table()
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("local");
-
-        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
-
-        var reader = new DatabasePageReader(connection);
-
-        var compressionInfoMock = new Mock<ICompressionInfoService>();
-
-        var service = new PageLoader(reader, compressionInfoMock.Object);
+        var service = ServiceHelper.CreatePageService(TestOutput);
 
         var dataReader = new TableReader(service);
 
@@ -66,15 +48,7 @@ public class TableReaderTests
     [Fact]
     public async Task Can_Read_Columns_Table()
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("local");
-
-        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
-
-        var reader = new DatabasePageReader(connection);
-
-        var compressionInfoMock = new Mock<ICompressionInfoService>();
-
-        var service = new PageLoader(reader, compressionInfoMock.Object);
+        var service = ServiceHelper.CreatePageService(TestOutput);
 
         var dataReader = new TableReader(service);
 
@@ -92,15 +66,7 @@ public class TableReaderTests
     [Fact]
     public async Task Can_Read_RowSet_Table()
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("local");
-
-        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
-
-        var reader = new DatabasePageReader(connection);
-
-        var compressionInfoMock = new Mock<ICompressionInfoService>();
-
-        var service = new PageLoader(reader, compressionInfoMock.Object);
+        var service = ServiceHelper.CreatePageService(TestOutput);
 
         var dataReader = new TableReader(service);
 

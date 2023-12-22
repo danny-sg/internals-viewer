@@ -14,9 +14,9 @@ namespace InternalsViewer.Internals.Services.Records.Loaders;
 /// </summary>
 public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordService
 {
-    public CompressedDataRecord Load(Page page, ushort slotOffset, Structure structure)
+    public CompressedDataRecord Load(AllocationUnitPage page, ushort slotOffset, Structure structure)
     {
-        var data = page.PageData;
+        var data = page.Data;
 
         var record = new CompressedDataRecord();
 
@@ -120,14 +120,14 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
         return columns;
     }
 
-    public static void LoadShortFields(CompressedDataRecord record, Page page, Structure structure)
+    public static void LoadShortFields(CompressedDataRecord record, AllocationUnitPage page, Structure structure)
     {
         LoadShortFields(record, false, page, structure);
     }
 
     public static void LoadShortFields(CompressedDataRecord record, 
-                                       bool hasDownPagePointer, 
-                                       Page page,
+                                       bool hasDownPagePointer,
+                                       AllocationUnitPage page,
                                        Structure structure)
     {
         var index = 0;
@@ -161,7 +161,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
                     if (size > 0)
                     {
                         field.Data = new byte[size];
-                        Array.Copy(page.PageData, offset, field.Data, 0, size);
+                        Array.Copy(page.Data, offset, field.Data, 0, size);
 
                         field.Offset = offset;
                         offset += size;
@@ -186,7 +186,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
 
     public static void LoadLongFields(int startPosition, 
                                       CompressedDataRecord record,
-                                      Page page,
+                                      AllocationUnitPage page,
                                       Structure structure)
     {
         var longColIndex = 0;
@@ -204,7 +204,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
 
                 var isLob = (record.ColOffsetArray[longColIndex] & 0x8000) == 0x8000;
 
-                Array.Copy(page.PageData, field.Offset, field.Data, 0, field.Length);
+                Array.Copy(page.Data, field.Offset, field.Data, 0, field.Length);
 
                 if (page.CompressionInfo is { AnchorRecord: not null })
                 {

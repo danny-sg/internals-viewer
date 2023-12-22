@@ -27,6 +27,9 @@
     <None Update="Test Data\Test Pages\TestDatabase_1_100_IamPage.page">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Test Data\Test Pages\TestDatabase_1_25520_DataPage.page">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Test Data\Test Pages\TestDatabase_1_7_BcmPage.page">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

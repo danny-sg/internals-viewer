@@ -6,5 +6,5 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 
 public interface ICompressedDataRecordService
 {
-    CompressedDataRecord Load(Page page, ushort slotOffset, Structure structure);
+    CompressedDataRecord Load(AllocationUnitPage page, ushort slotOffset, Structure structure);
 }

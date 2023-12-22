@@ -4,7 +4,7 @@ namespace InternalsViewer.Internals.Engine.Database;
 
 public class DatabaseSummary
 {
-    public int DatabaseId { get; set; }
+    public short DatabaseId { get; set; }
 
     public string Name { get; set; } = string.Empty;
 

@@ -2,7 +2,7 @@
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Services.Records.Loaders;
 
 namespace InternalsViewer.Internals.Services.Records;

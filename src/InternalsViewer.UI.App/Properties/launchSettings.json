@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "InternalsViewer.UI.App": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "Logging__LogLevel__Microsoft": "Trace"
+      }
+    }
+  }
+}

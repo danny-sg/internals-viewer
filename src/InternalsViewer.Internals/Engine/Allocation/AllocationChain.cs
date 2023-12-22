@@ -1,18 +1,37 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Internals.Engine.Allocation;
 
 /// <summary>
 /// An Allocation structure represented by a collection of allocation pages
 /// </summary>
-public class AllocationChain
+public class AllocationChain : IAllocationChain
 {
+    public List<AllocationPage> Pages { get; } = new();
+
+    /// <remarks>
+    /// Allocation chains do not use the single page slots
+    /// </remarks>
+    public PageAddress[] SinglePageSlots => Array.Empty<PageAddress>();
+
+    public short FileId { get; set; }
+
+    /// <summary>
+    /// Checks the allocation status or an extent
+    /// </summary>
+    public bool IsExtentAllocated(int targetExtent, short fileId, bool invert)
+    {
+        var value = IsExtentAllocated(targetExtent) && fileId == FileId;
+
+        return invert ? !value : value;
+    }
+
     /// <summary>
     /// Check if a specific extent is allocated
     /// </summary>
-    public virtual bool IsAllocated(int extent, short fileId)
+    private bool IsExtentAllocated(int extent)
     {
         // How many pages into the chain is the extent
         var pageIndex = extent / AllocationPage.AllocationInterval;
@@ -20,27 +39,11 @@ public class AllocationChain
         // Bit index of the extent in the allocation (bit) map
         var extentIndex = extent % (AllocationPage.AllocationInterval + 1);
 
+        if (pageIndex < 0 || pageIndex >= Pages.Count || extentIndex < 0 || extentIndex >= Pages[pageIndex].AllocationMap.Length)
+        {
+            throw new IndexOutOfRangeException("The extent is out of the range of the allocation chain.");
+        }
+
         return Pages[pageIndex].AllocationMap[extentIndex];
     }
-
-    /// <summary>
-    /// Checks the allocation status or an extent
-    /// </summary>
-    public static bool GetAllocatedStatus(int targetExtent, short fileId, bool invert, AllocationChain chain)
-    {
-        var value = chain.IsAllocated(targetExtent, fileId) && (fileId == chain.FileId || chain.ChainType == ChainType.Linked);
-
-        return invert ? !value : value;
-    }
-
-    public List<AllocationPage> Pages { get; } = new();
-
-    public List<PageAddress> SinglePageSlots { get; set; } = new();
-
-    public short FileId { get; set; }
-
-    /// <summary>
-    /// Determines if the allocation chain is based on intervals (e.g. GAM, SGAM) or linked via the page header (IAM)
-    /// </summary>
-    public ChainType ChainType { get; set; } = ChainType.Interval;
 }

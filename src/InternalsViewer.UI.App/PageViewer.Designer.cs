@@ -30,13 +30,12 @@ partial class PageViewer
     /// </summary>
     private void InitializeComponent()
     {
-        pageViewerWindow = new PageViewerWindow(PageLoader, RecordService);
+        pageViewerWindow = new PageViewerWindow(PageService, RecordService);
 
         SuspendLayout();
         // 
         // pageViewerWindow1
         // 
-        pageViewerWindow.ConnectionString = null;
         pageViewerWindow.Dock = DockStyle.Fill;
         pageViewerWindow.Location = new Point(0, 0);
         pageViewerWindow.Margin = new Padding(4, 4, 4, 4);

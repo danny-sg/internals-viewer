@@ -29,6 +29,5 @@ public class DataStructure
         MarkItems.Add(new DataStructureItem(propertyName, string.Empty, -1));
     }
 
-
     public List<DataStructureItem> MarkItems { get; } = new();
 }

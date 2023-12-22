@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
-using InternalsViewer.Internals;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Pages;
 

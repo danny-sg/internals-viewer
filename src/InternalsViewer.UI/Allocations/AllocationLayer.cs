@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Engine.Pages.Enums;
-using InternalsViewer.Internals.Engine.Records.Index;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 #pragma warning disable CA1416
 
@@ -24,23 +25,29 @@ public class AllocationLayer
     {
     }
 
-    public AllocationLayer(AllocationChain allocation)
+    public AllocationLayer(IAllocationChain allocation)
     {
         Allocations.Add(allocation);
         Name = allocation.ToString() ?? string.Empty;
     }
 
-    public AllocationLayer(string name, AllocationChain allocationChain, Color colour)
-    {
-        Name = name;
-        Allocations.Add(allocationChain);
-        this.colour = colour;
-    }
+    //public AllocationLayer(string name, AllocationChain allocationChain, Color colour)
+    //{
+    //    Name = name;
+    //    Allocations.Add(allocationChain);
+    //    this.colour = colour;
+    //}
 
     public AllocationLayer(string name, AllocationPage page, Color colour)
     {
         Name = name;
         this.colour = colour;
+
+        var chain = new AllocationChain();
+
+        chain.Pages.Add(page);
+
+        Allocations.Add(chain);
     }
 
     public static List<string> FindPage(PageAddress page, List<AllocationLayer> layers)
@@ -71,9 +78,9 @@ public class AllocationLayer
 
     public AllocationLayer? FindExtent(int extent, short fileId, bool findInverted)
     {
-        foreach (var alloc in Allocations)
+        foreach (var chain in Allocations)
         {
-            if (AllocationChain.GetAllocatedStatus(extent, fileId, findInverted, alloc))
+            if (chain.IsExtentAllocated(extent, fileId, findInverted))
             {
                 return this;
             }
@@ -86,20 +93,20 @@ public class AllocationLayer
     {
         var extentAddress = pageAddress.PageId / 8;
 
-        foreach (var alloc in Allocations)
+        foreach (var chain in Allocations)
         {
             // Check if it's the actual IAM
-            if (alloc.Pages.Exists(p => p.PageAddress == pageAddress))
+            if (chain.Pages.Any(p => p.PageAddress == pageAddress))
             {
                 return this;
             }
 
-            if (AllocationChain.GetAllocatedStatus(extentAddress, pageAddress.FileId, findInverted, alloc))
+            if (chain.IsExtentAllocated(extentAddress, pageAddress.FileId, findInverted))
             {
                 return this;
             }
 
-            if (alloc.SinglePageSlots.Contains(pageAddress))
+            if (chain.SinglePageSlots.Contains(pageAddress))
             {
                 return this;
             }
@@ -129,7 +136,7 @@ public class AllocationLayer
 
     public string Name { get; set; } = string.Empty;
 
-    public List<AllocationChain> Allocations { get; set; } = new();
+    public List<IAllocationChain> Allocations { get; set; } = new();
 
     public int Order { get; set; }
 
@@ -151,7 +158,7 @@ public class AllocationLayer
 
     public string IndexName { get; set; } = string.Empty;
 
-    public IndexTypes IndexType { get; set; }
+    public IndexType IndexType { get; set; }
 
     public long UsedPages { get; set; }
 

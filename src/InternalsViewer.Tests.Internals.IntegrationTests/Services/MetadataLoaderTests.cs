@@ -1,34 +1,21 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
-using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Internals;
-using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Services.Loaders.Engine;
-using InternalsViewer.Internals.Services.Loaders.Pages;
 using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
-using Moq;
+using Xunit.Abstractions;
 
 namespace InternalsViewer.Tests.Internals.IntegrationTests.Services;
-public class MetadataLoaderTests
+
+public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
 {
+    public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;
+
     [Fact]
     public async Task Can_Load_Metadata()
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("local");
-
-        var connection = new CurrentConnection
-        {
-            ConnectionString = connectionString,
-            DatabaseName = "AdventureWorks2022"
-        };
-
-        var reader = new DatabasePageReader(connection);
-
-        var compressionInfoMock = new Mock<ICompressionInfoService>();
-
-        var pageService = new PageLoader(reader, compressionInfoMock.Object);
+        var pageService = ServiceHelper.CreatePageService(TestOutputHelper);
 
         var dataReader = new TableReader(pageService);
 
@@ -38,7 +25,7 @@ public class MetadataLoaderTests
             BootPage = new BootPage { FirstAllocationUnitsPage = new PageAddress(1, 20) }
         };
 
-        var service = new MetadataLoader(TestLogHelper.GetLogger<MetadataLoader>(), dataReader);
+        var service = new MetadataLoader(TestLogger.GetLogger<MetadataLoader>(TestOutputHelper), dataReader);
 
         var results = await service.Load(database);
 

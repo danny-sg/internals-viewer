@@ -1,7 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
-using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using Microsoft.Data.SqlClient;
 using System.Data;
@@ -34,7 +32,7 @@ public class ServerInfoProvider(CurrentConnection connection)
             database.Name = reader.GetFieldValue<string>("name");
             database.State = reader.GetFieldValue<DatabaseState>("state");
             database.CompatibilityLevel = reader.GetFieldValue<byte>("compatibility_Level");
-            database.DatabaseId = reader.GetFieldValue<int>("database_id");
+            database.DatabaseId =(short)reader.GetFieldValue<int>("database_id");
 
             databases.Add(database);
         }

@@ -12,7 +12,7 @@ public class PageHeader : DataStructure
     /// <summary>
     /// Type of page
     /// </summary>
-    public PageType PageType { get; set; }
+    public PageType PageType { get; set; } = PageType.None;
 
     /// <summary>
     /// The page address in the format File Id : Page Id

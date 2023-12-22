@@ -4,7 +4,6 @@ using System.Drawing;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
-using InternalsViewer.Internals;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.UI.Rtf;
 

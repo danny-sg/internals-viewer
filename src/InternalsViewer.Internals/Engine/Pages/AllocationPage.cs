@@ -24,8 +24,6 @@ public class AllocationPage : Page
 
     public const int SinglePageSlotOffset = 142;
 
-    public const int StartPageOffset = 136;
-
     public const int SlotCount = 8;
 
     public const int FirstGamPage = 2;

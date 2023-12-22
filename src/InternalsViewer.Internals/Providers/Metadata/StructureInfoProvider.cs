@@ -1,7 +1,6 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Converters;
-using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Metadata;
 using Microsoft.Data.SqlClient;
@@ -67,57 +66,6 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
         return indexStructure;
     }
 
-    public async Task<StructureType> GetStructureType(string name)
-    {
-        var parameters = new SqlParameter[]
-        {
-            new("@TableName", name)
-        };
-
-        var hasClusteredIndex = await GetScalar<int>(SqlCommands.ObjectHasClusteredIndex, parameters);
-
-        if (hasClusteredIndex > 0)
-        {
-            return StructureType.BTree;
-        }
-
-        return StructureType.Heap;
-    }
-
-    public async Task<List<HobtEntryPoint>> GetEntryPoints(string objectName, string indexName)
-    {
-        var entryPoints = new List<HobtEntryPoint>();
-
-        await using var connection = new SqlConnection(Connection.ConnectionString);
-
-        await connection.OpenAsync();
-
-        await connection.ChangeDatabaseAsync(Connection.DatabaseName);
-
-        var command = new SqlCommand(SqlCommands.EntryPoints, connection);
-
-        command.CommandType = CommandType.Text;
-
-        command.Parameters.AddWithValue("@ObjectName", objectName);
-        command.Parameters.AddWithValue("@IndexName", indexName);
-
-        await using var reader = await command.ExecuteReaderAsync();
-
-        while (await reader.ReadAsync())
-        {
-            var firstIam = PageAddressParser.Parse(reader.GetFieldValue<byte[]>("first_iam_page"));
-
-            var rootPage = PageAddressParser.Parse(reader.GetFieldValue<byte[]>("root_page"));
-            var firstPage = PageAddressParser.Parse(reader.GetFieldValue<byte[]>("first_page"));
-
-            var partitionNumber = reader.GetInt32("partition_number");
-
-            entryPoints.Add(new HobtEntryPoint(firstIam, rootPage, firstPage, partitionNumber));
-        }
-
-        return entryPoints;
-    }
-
     public async Task<CompressionType> GetCompressionType(long allocationUnitId)
     {
         var parameters = new SqlParameter[]
@@ -126,16 +74,6 @@ public class StructureInfoProvider(CurrentConnection connection) : ProviderBase(
         };
 
         return await GetScalar<CompressionType>(SqlCommands.Compression, parameters);
-    }
-
-    public async Task<string?> GetName(long allocationUnitId)
-    {
-        var parameters = new SqlParameter[]
-        {
-            new("@AllocationUnitId", allocationUnitId)
-        };
-
-        return await GetScalar<string>(SqlCommands.AllocationUnitName, parameters);
     }
 
     public async Task<TableStructure> GetTableStructure(long allocationUnitId)

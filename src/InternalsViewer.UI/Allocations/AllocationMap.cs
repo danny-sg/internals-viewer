@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
@@ -173,12 +174,12 @@ public class AllocationMap : Panel, IDisposable
 
                     if (IncludeIam)
                     {
-                        foreach (var page in allocation.Pages)
+                        foreach (var page in allocation.Pages.Select(s => s.PageAddress))
                         {
-                            if (CheckPageVisible(page.PageAddress.PageId))
+                            if (CheckPageVisible(page.PageId))
                             {
                                 pageExtentRenderer.DrawPage(e.Graphics,
-                                                            PagePosition(page.PageAddress.PageId - (WindowPosition * 8)),
+                                                            PagePosition(page.PageId - (WindowPosition * 8)),
                                                             AllocationLayerType.Standard);
                             }
                         }
@@ -201,16 +202,16 @@ public class AllocationMap : Panel, IDisposable
         {
             foreach (var layer in MapLayers)
             {
-                if (layer.IsVisible && !layer.SingleSlotsOnly)
+                if (layer is { IsVisible: true, SingleSlotsOnly: false })
                 {
                     foreach (var chain in layer.Allocations)
                     {
                         var targetExtent = extent + (StartPage.PageId / 8);
 
-                        if (AllocationChain.GetAllocatedStatus(targetExtent, FileId, layer.IsInverted, chain))
+                        if (chain.IsExtentAllocated(targetExtent, FileId, layer.IsInverted))
                         {
                             pageExtentRenderer.SetExtentBrushColour(layer.Colour,
-                                                                 ExtentColour.BackgroundColour(layer.Colour));
+                                                                    ExtentColour.BackgroundColour(layer.Colour));
 
                             pageExtentRenderer.DrawExtent(e.Graphics, ExtentPosition(extent - WindowPosition));
                         }

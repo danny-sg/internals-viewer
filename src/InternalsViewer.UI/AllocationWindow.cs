@@ -10,7 +10,7 @@ using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.UI.Allocations;
 
 #pragma warning disable CA1416
@@ -19,6 +19,8 @@ namespace InternalsViewer.UI;
 
 public partial class AllocationWindow : UserControl
 {
+    private const string BufferPool = "Buffer Pool";
+
     public IDatabaseLoader DatabaseLoader { get; }
 
     public event EventHandler? Connect;
@@ -139,7 +141,7 @@ public partial class AllocationWindow : UserControl
 
     private void AllocUnitBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
     {
-        e.Result = AllocationUnitsLayer.GenerateLayers(CurrentDatabase!, (BackgroundWorker)sender, true);
+        e.Result = AllocationUnitsLayerBuilder.GenerateLayers(CurrentDatabase!, true);
     }
 
     private void AllocUnitBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -265,7 +267,7 @@ public partial class AllocationWindow : UserControl
 
         clean.SinglePageSlots.AddRange(bufferPool.CleanPages);
 
-        var bufferPoolLayer = new AllocationLayer("Buffer Pool", clean, Color.Black)
+        var bufferPoolLayer = new AllocationLayer(BufferPool, clean, Color.Black)
         {
             SingleSlotsOnly = true,
             Transparency = 80,
@@ -279,7 +281,7 @@ public partial class AllocationWindow : UserControl
 
         dirty.SinglePageSlots.AddRange(bufferPool.DirtyPages);
 
-        var bufferPoolDirtyLayer = new AllocationLayer("Buffer Pool (Dirty)", dirty, Color.IndianRed)
+        var bufferPoolDirtyLayer = new AllocationLayer($"{BufferPool} (Dirty)", dirty, Color.IndianRed)
         {
             SingleSlotsOnly = true,
             IsTransparent = false,
@@ -301,8 +303,8 @@ public partial class AllocationWindow : UserControl
         }
         else
         {
-            allocationContainer.RemoveLayer("Buffer Pool");
-            allocationContainer.RemoveLayer("Buffer Pool (Dirty)");
+            allocationContainer.RemoveLayer(BufferPool);
+            allocationContainer.RemoveLayer($"{BufferPool} (Dirty)");
 
             allocationContainer.Invalidate();
         }
@@ -323,37 +325,37 @@ public partial class AllocationWindow : UserControl
         if (gamToolStripMenuItem.Checked)
         {
             AddDatabaseAllocation("GAM (Inverted)",
-                "Unavailable - (Uniform extent/full mixed extent)",
-                Color.FromArgb(172, 186, 214),
-                true,
-                CurrentDatabase.Gam);
+                                   "Unavailable - (Uniform extent/full mixed extent)",
+                                   Color.FromArgb(172, 186, 214),
+                                   true,
+                                   CurrentDatabase.Gam);
         }
 
         if (sgamToolStripMenuItem.Checked)
         {
             AddDatabaseAllocation("SGAM",
-                "Partially Unavailable - (Mixed extent with free pages)",
-                Color.FromArgb(168, 204, 162),
-                false,
-                CurrentDatabase.SGam);
+                                  "Partially Unavailable - (Mixed extent with free pages)",
+                                  Color.FromArgb(168, 204, 162),
+                                  false,
+                                  CurrentDatabase.SGam);
         }
 
         if (dcmToolStripMenuItem.Checked)
         {
             AddDatabaseAllocation("DCM",
-                "Differential Change Map",
-                Color.FromArgb(120, 150, 150),
-                false,
-                CurrentDatabase.Dcm);
+                                  "Differential Change Map",
+                                  Color.FromArgb(120, 150, 150),
+                                  false,
+                                  CurrentDatabase.Dcm);
         }
 
         if (bcmToolStripMenuItem.Checked)
         {
             AddDatabaseAllocation("BCM Allocated",
-                "Bulk Change Map",
-                Color.FromArgb(150, 120, 150),
-                false,
-                CurrentDatabase.Bcm);
+                                  "Bulk Change Map",
+                                  Color.FromArgb(150, 120, 150),
+                                  false,
+                                  CurrentDatabase.Bcm);
         }
 
         ShowExtendedColumns(false);
@@ -538,7 +540,7 @@ public partial class AllocationWindow : UserControl
             {
                 foreach (var layer in map.MapLayers)
                 {
-                    if (layer.Name != "Buffer Pool")
+                    if (layer.Name != BufferPool)
                     {
                         var name = (string)keysDataGridView.SelectedRows[0].Cells[1].Value;
                         var indexName = (string)keysDataGridView.SelectedRows[0].Cells[2].Value;
@@ -556,7 +558,7 @@ public partial class AllocationWindow : UserControl
             {
                 foreach (var layer in map.MapLayers)
                 {
-                    if (layer.Name != "Buffer Pool")
+                    if (layer.Name != BufferPool)
                     {
                         layer.IsTransparent = false;
                     }

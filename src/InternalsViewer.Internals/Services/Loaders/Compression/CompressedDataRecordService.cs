@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Compression;
 
 public class CompressedDataRecordService: ICompressedDataRecordService
 {
-    public CompressedDataRecord Load(Page page, ushort slotOffset, Structure structure)
+    public CompressedDataRecord Load(AllocationUnitPage page, ushort slotOffset, Structure structure)
     {
         throw new System.NotImplementedException();
     }

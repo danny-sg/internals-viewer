@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
@@ -8,7 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
-using InternalsViewer.Internals;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.UI.Markers;

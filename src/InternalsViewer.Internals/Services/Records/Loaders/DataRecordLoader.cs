@@ -18,7 +18,7 @@ public class DataRecordLoader : RecordLoader
     /// </summary>
     internal static DataRecord Load(Page page, ushort slotOffset, TableStructure structure)
     {
-        var data = page.PageData;
+        var data = page.Data;
 
         var dataRecord = new DataRecord();
 
@@ -186,7 +186,7 @@ public class DataRecordLoader : RecordLoader
 
                     data = new byte[length];
 
-                    Array.Copy(page.PageData, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
+                    Array.Copy(page.Data, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
                 }
                 else if (dataRecord is { HasVariableLengthColumns: true, HasNullBitmap: true } && !column.IsDropped
                          && (column.ColumnId < 0 || !dataRecord.NullBitmapValue(column)))
@@ -220,7 +220,7 @@ public class DataRecordLoader : RecordLoader
 
                     data = new byte[length];
 
-                    Array.Copy(page.PageData, dataRecord.SlotOffset + offset, data, 0, length);
+                    Array.Copy(page.Data, dataRecord.SlotOffset + offset, data, 0, length);
                 }
 
                 field.Offset = offset;

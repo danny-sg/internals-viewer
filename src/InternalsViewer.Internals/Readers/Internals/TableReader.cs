@@ -1,21 +1,21 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Records.Data;
-using InternalsViewer.Internals.Interfaces.Services.Loaders;
 using InternalsViewer.Internals.Services.Records.Loaders;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 namespace InternalsViewer.Internals.Readers.Internals;
 
-public class TableReader(IPageLoader pageLoader): ITableReader
+public class TableReader(IPageService pageService): ITableReader
 {
-    public IPageLoader PageLoader { get; } = pageLoader;
+    public IPageService PageService { get; } = pageService;
 
-    public async Task<List<DataRecord>> Read(DatabaseDetail databaseDetail, PageAddress startPage, TableStructure structure)
+    public async Task<List<DataRecord>> Read(DatabaseDetail database, PageAddress startPage, TableStructure structure)
     {
-        var page = await PageLoader.Load<Page>(databaseDetail, startPage);
+        var page = await PageService.GetPage<DataPage>(database, startPage);
 
         var records = new List<DataRecord>();
 
@@ -33,7 +33,7 @@ public class TableReader(IPageLoader pageLoader): ITableReader
                 break;
             }
 
-            page = await PageLoader.Load<Page>(databaseDetail, page.PageHeader.NextPage);
+            page = await PageService.GetPage<DataPage>(database, page.PageHeader.NextPage);
         }
 
         return records;

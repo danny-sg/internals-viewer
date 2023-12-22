@@ -62,7 +62,7 @@ internal class IndexRecordLoader : RecordLoader
 
         var downPagePointerOffset = record.SlotOffset + page.PageHeader.MinLen - PageAddress.Size;
 
-        Array.Copy(page.PageData, downPagePointerOffset, address, 0, PageAddress.Size);
+        Array.Copy(page.Data, downPagePointerOffset, address, 0, PageAddress.Size);
 
         record.DownPagePointer = PageAddressParser.Parse(address);
 
@@ -83,7 +83,7 @@ internal class IndexRecordLoader : RecordLoader
             ridOffset = record.SlotOffset + page.PageHeader.MinLen - 14;
         }
 
-        Array.Copy(page.PageData, ridOffset, ridAddress, 0, RowIdentifier.Size);
+        Array.Copy(page.Data, ridOffset, ridAddress, 0, RowIdentifier.Size);
 
         record.Rid = new RowIdentifier(ridAddress);
 
@@ -94,12 +94,12 @@ internal class IndexRecordLoader : RecordLoader
     {
         var varColCountOffset = record.SlotOffset + page.PageHeader.MinLen + varColStartIndex;
 
-        record.VariableLengthColumnCount = BitConverter.ToUInt16(page.PageData, varColCountOffset);
+        record.VariableLengthColumnCount = BitConverter.ToUInt16(page.Data, varColCountOffset);
 
         record.MarkDataStructure("VariableLengthColumnCount", varColCountOffset, sizeof(short));
 
         // Load offset array of 2-byte ints indicating the end offset of each variable length field
-        record.ColOffsetArray = GetOffsetArray(page.PageData,
+        record.ColOffsetArray = GetOffsetArray(page.Data,
                                                record.VariableLengthColumnCount,
                                                record.SlotOffset + page.PageHeader.MinLen + sizeof(short) + varColStartIndex);
 
@@ -135,7 +135,7 @@ internal class IndexRecordLoader : RecordLoader
                     length = indexCol.DataLength;
                     data = new byte[length];
 
-                    Array.Copy(page.PageData, indexCol.LeafOffset + record.SlotOffset, data, 0, length);
+                    Array.Copy(page.Data, indexCol.LeafOffset + record.SlotOffset, data, 0, length);
                 }
                 else if (record.HasVariableLengthColumns)
                 {
@@ -162,7 +162,7 @@ internal class IndexRecordLoader : RecordLoader
 
                     data = new byte[length];
 
-                    Array.Copy(page.PageData, offset + record.SlotOffset, data, 0, length);
+                    Array.Copy(page.Data, offset + record.SlotOffset, data, 0, length);
                 }
 
                 field.Offset = offset;
@@ -190,7 +190,7 @@ internal class IndexRecordLoader : RecordLoader
 
         var columnCountPosition = record.SlotOffset + page.PageHeader.MinLen;
 
-        record.ColumnCount = BitConverter.ToInt16(page.PageData, columnCountPosition);
+        record.ColumnCount = BitConverter.ToInt16(page.Data, columnCountPosition);
 
         record.MarkDataStructure("ColumnCount", columnCountPosition, sizeof(short));
 
@@ -198,7 +198,7 @@ internal class IndexRecordLoader : RecordLoader
 
         var nullBitmapPosition = record.SlotOffset + page.PageHeader.MinLen + sizeof(short);
 
-        Array.Copy(page.PageData,
+        Array.Copy(page.Data,
             nullBitmapPosition,
             nullBitmapBytes,
             0,
@@ -211,7 +211,7 @@ internal class IndexRecordLoader : RecordLoader
 
     private static void LoadStatusBits(IndexRecord record, Page page)
     {
-        var statusA = page.PageData[record.SlotOffset];
+        var statusA = page.Data[record.SlotOffset];
 
         record.StatusBitsA = new BitArray(new[] { statusA });
 

@@ -7,5 +7,5 @@ namespace InternalsViewer.Internals.Interfaces.Readers.Internals;
 
 public interface ITableReader
 {
-    Task<List<DataRecord>> Read(DatabaseDetail databaseDetail, PageAddress startPage, TableStructure structure);
+    Task<List<DataRecord>> Read(DatabaseDetail database, PageAddress startPage, TableStructure structure);
 }

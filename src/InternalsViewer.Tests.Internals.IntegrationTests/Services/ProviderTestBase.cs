@@ -1,20 +1,24 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Services.Loaders.Engine;
-using InternalsViewer.Internals.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Pages;
+using InternalsViewer.Internals.Services.Pages.Loaders;
+using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Tests.Internals.IntegrationTests.TestHelpers;
-using Moq;
+using Xunit.Abstractions;
 
 namespace InternalsViewer.Tests.Internals.IntegrationTests.Services;
 
-public class ProviderTestBase
+public class ProviderTestBase(ITestOutputHelper testOutput)
 {
+    public ITestOutputHelper TestOutput { get; } = testOutput;
+
     protected async Task<InternalMetadata> GetMetadata()
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
@@ -23,9 +27,12 @@ public class ProviderTestBase
 
         var reader = new DatabasePageReader(connection);
 
-        var compressionInfoMock = new Mock<ICompressionInfoService>();
+        var pageLoader = new PageLoader(reader);
 
-        var pageService = new PageLoader(reader, compressionInfoMock.Object);
+
+        var parsers = new IPageParser[] { new DataPageParser(), new IndexPageParser() };
+
+        var pageService = new PageService(TestLogger.GetLogger<PageService>(TestOutput), pageLoader, parsers);
 
         var dataReader = new TableReader(pageService);
 
@@ -35,7 +42,7 @@ public class ProviderTestBase
             BootPage = new BootPage { FirstAllocationUnitsPage = new PageAddress(1, 20) }
         };
 
-        var service = new MetadataLoader(TestLogHelper.GetLogger<MetadataLoader>(), dataReader);
+        var service = new MetadataLoader(TestLogger.GetLogger<MetadataLoader>(TestOutput), dataReader);
 
         var metadata = await service.Load(database);
 

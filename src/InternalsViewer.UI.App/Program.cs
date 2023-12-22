@@ -1,6 +1,7 @@
 using InternalsViewer.Internals;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App;
 
@@ -26,6 +27,7 @@ internal static class Program
         return Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) => {
                 
+                services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
                 services.AddTransient<TestForm>();
                 services.RegisterServices();
             });
