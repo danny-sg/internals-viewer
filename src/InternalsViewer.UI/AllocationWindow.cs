@@ -190,7 +190,7 @@ public partial class AllocationWindow : UserControl
         NameColumn.HeaderText = "Table";
         IndexNameColumn.HeaderText = "Index";
 
-        allocationBindingSource.DataSource = layers.Where(l => !l.IsSystem);
+        AllocationBindingSource.DataSource = layers.Where(l => !l.IsSystem);
 
         keysDataGridView.ClearSelection();
 
@@ -363,7 +363,7 @@ public partial class AllocationWindow : UserControl
         NameColumn.HeaderText = "Layer";
         IndexNameColumn.HeaderText = "Description";
 
-        allocationBindingSource.DataSource = allocationContainer.AllocationLayers;
+        AllocationBindingSource.DataSource = allocationContainer.AllocationLayers;
 
         keysDataGridView.ClearSelection();
 

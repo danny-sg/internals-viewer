@@ -29,7 +29,7 @@ public class FilePageReader(string path) : PageReader, IPageReader
                 dumpFound = true;
                 continue;
             }
-            if (dumpFound && !string.IsNullOrEmpty(line))
+            if (dumpFound && !string.IsNullOrEmpty(line) && line.Length >= 64)
             {
                 offset = ReadData(line, offset, data);
             }

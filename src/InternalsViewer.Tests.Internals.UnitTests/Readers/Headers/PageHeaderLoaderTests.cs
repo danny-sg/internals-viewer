@@ -34,7 +34,7 @@ public class PageHeaderLoaderTests
         Assert.Equal(6308, header.FreeCount);
         Assert.Equal(1882, header.FreeData);
         Assert.Equal(0, header.ReservedCount);
-        Assert.Equal(new LogSequenceNumber(53, 29995, 3), header.Lsn);
+        Assert.Equal(new LogSequenceNumber(53, 31289, 3), header.Lsn);
         Assert.Equal(0, header.TransactionReservedCount);
         Assert.Equal(0, header.GhostRecordCount);
     }
