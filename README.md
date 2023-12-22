@@ -32,9 +32,15 @@ Pages are identified with a page address in the format File Id:Page Id. This is 
 
 # Allocations
 
-The first thing you see when you open Internals Viewer is an allocation map. This is a visualisation of the internal structures SQL Server uses to track the physical location of objects.
+![Extents and oages on the Allocation Map](/docs/images/readme/allocation-map-pages-and-extents.png)
+
+The first thing you see when you open Internals Viewer is the Allocation Map. This is a visualisation of the internal structures SQL Server uses to track the physical location of objects.
 
 Each block represents a page. Pages are tracked in groups of 8 pages called extents. An extent covers 64 KB in the file.
+
+The different colours in the Allocation Map represent different objects.
+
+Clicking on a page will open it in the Page Viewer.
 
 ## Resources
 
