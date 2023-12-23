@@ -1,0 +1,14 @@
+name: Release Internals Viewer App Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        default: '1.0.0'
+        required: true
+        type: string
+
+jobs:
+  run-build:
+    uses: ./.github/workflows/build-app.yml
