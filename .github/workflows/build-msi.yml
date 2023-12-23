@@ -21,7 +21,7 @@ jobs:
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
       with:
-        vswhere-path: C:\Program Files (x86)\Microsoft Visual Studio\Installer
+        vswhere-path: C:\Program Files (x64)\Microsoft Visual Studio\Installer
         vs-version: "[17.8]"
         
     - name: Restore dependencies
@@ -32,4 +32,4 @@ jobs:
       
     - name: Build MSI
       run: .\DevEnv.com "InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj" /rebuild "Release|x64"
-      working-directory: C:\Program Files (x86)\Microsoft Visual Studio\2022\Professional\Common7\IDE
+      working-directory: C:\Program Files (x64)\Microsoft Visual Studio\2022\Professional\Common7\IDE
