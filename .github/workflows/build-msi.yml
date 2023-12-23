@@ -33,9 +33,6 @@ jobs:
         
     - name: Restore dependencies
       run: dotnet restore
-      
-    - name: Build
-      run: dotnet build --no-restore
 
     - name: Build MSI
       shell: cmd
@@ -46,4 +43,4 @@ jobs:
       with:
         name: internals-viewer-msi.1.0.${{ github.run_id }}
         if-no-files-found: error
-        path: src\InternalsViewer.UI.App.Installer\Installer\InternalsViewer.msi'
+        path: InternalsViewer.UI.App.Installer\Installer\InternalsViewer.msi'
