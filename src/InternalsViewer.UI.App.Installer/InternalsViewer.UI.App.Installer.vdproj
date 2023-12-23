@@ -65,6 +65,22 @@
                 }
             }
         }
+        "Installer"
+        {
+        "DisplayName" = "8:Installer"
+        "IsDebugOnly" = "11:FALSE"
+        "IsReleaseOnly" = "11:FALSE"
+        "OutputFilename" = "8:Installer\\InternalsViewer.UI.App.Installer.msi"
+        "PackageFilesAs" = "3:2"
+        "PackageFileSize" = "3:-2147483648"
+        "CabType" = "3:1"
+        "Compression" = "3:2"
+        "SignOutput" = "11:FALSE"
+        "CertificateFile" = "8:"
+        "PrivateKeyFile" = "8:"
+        "TimeStampServer" = "8:"
+        "InstallerBootstrapper" = "3:2"
+        }
         "Release"
         {
         "DisplayName" = "8:Release"
@@ -188,7 +204,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Internals Viewer"
         "ProductCode" = "8:{38B13C0C-0FF9-41A5-924C-9BB262FE35B2}"
-        "PackageCode" = "8:{763346E1-067F-4965-9C17-08FFE709DEB3}"
+        "PackageCode" = "8:{F7DB31AA-2615-4F4B-94E1-1F23AEDE049B}"
         "UpgradeCode" = "8:{C6268E17-E679-4AEE-A56E-9EBFD70EE237}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"

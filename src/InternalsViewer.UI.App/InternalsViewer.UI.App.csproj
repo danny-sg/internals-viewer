@@ -9,6 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
       <PlatformName>windows</PlatformName>
       <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+      <Configurations>Debug;Release;Installer</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

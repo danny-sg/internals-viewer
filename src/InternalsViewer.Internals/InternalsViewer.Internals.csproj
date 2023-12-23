@@ -26,6 +26,7 @@
         <Nullable>enable</Nullable>
         <EmitCompilerGeneratedFiles>True</EmitCompilerGeneratedFiles>
         <Platforms>AnyCPU</Platforms>
+        <Configurations>Debug;Release;Installer</Configurations>
     </PropertyGroup>
     <ItemGroup>
       <None Include="..\.editorconfig" Link=".editorconfig" />
