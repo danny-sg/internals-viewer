@@ -1,4 +1,4 @@
-name: Build and create Github release
+name: Build application and create GitHub release
 on:
   workflow_dispatch:
     inputs:
