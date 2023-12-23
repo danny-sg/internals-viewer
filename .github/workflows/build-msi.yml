@@ -23,11 +23,8 @@ jobs:
       with:
         vs-version: latest
         
-    - name: Restore dependencies
-      run: dotnet restore
-      
-    - name: Build
-      run: dotnet build --no-restore
+
       
     - name: Build MSI
       run: .\DevEnv.com "InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj" /rebuild "Release|x64"
+      working-directory: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE
