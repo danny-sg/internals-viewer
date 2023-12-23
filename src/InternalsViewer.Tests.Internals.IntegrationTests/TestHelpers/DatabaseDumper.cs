@@ -89,7 +89,7 @@ public class DatabaseDumper(ITestOutputHelper testOutputHelper)
 
         var reader = await command.ExecuteReaderAsync();
 
-        PageType pageType = PageType.None;
+        var pageType = PageType.None;
 
         if (reader.HasRows)
         {
