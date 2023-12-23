@@ -33,6 +33,6 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: internals-viewer-app=1.0.${{ github.run_id }}
+        name: internals-viewer-app.1.0.${{ github.run_id }}
         if-no-files-found: error
         path: src/InternalsViewer.UI.App/bin/windows/Release/net8.0-windows/win-x64/publish/
