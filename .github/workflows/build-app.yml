@@ -1,4 +1,4 @@
-name: Build Internals Viewer App
+name: Build application
 
 on:
   pull_request:
