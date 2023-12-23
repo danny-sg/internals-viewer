@@ -21,4 +21,11 @@ jobs:
       - name: Zip release files
         run: |
           rm -rf *.zip
-          zip -r internals-viewer-{{ github.event.inputs.version }}.zip internals-viewer-app.1.0.${{ github.run_id }}/
+          zip -r internals-viewer-${{ github.event.inputs.version }}.zip internals-viewer-app.1.0.${{ github.run_id }}/
+      - run: |
+          gh release create ${{ github.event.inputs.version }} internals-viewer-${{ github.event.inputs.version }}.zip
+        name: Create Github release
+        env:
+          GITHUB_TOKEN: ${{ github.TOKEN }}
+        shell: bash
+        
