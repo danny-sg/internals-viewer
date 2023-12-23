@@ -11,7 +11,7 @@ jobs:
         working-directory: src
     env:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\DevEnv.com
-      PROJECT_PATH: InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj
+      PROJECT_PATH: InternalsViewer.sln
         
     steps:
     - uses: actions/checkout@v3
