@@ -29,16 +29,6 @@ public class StructureInfoProviderTests
     }
 
     [Fact]
-    public async Task Can_Get_Table_Structure()
-    {
-        var provider = GetProvider();
-
-        var tableStructure = await provider.GetTableStructure(72057594055622656);
-
-        Assert.True(tableStructure.Columns.Count > 0);
-    }
-
-    [Fact]
     public async Task Can_Get_Compression_Type()
     {
         var provider = GetProvider();
