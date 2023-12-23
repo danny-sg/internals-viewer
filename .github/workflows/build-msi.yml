@@ -28,4 +28,4 @@ jobs:
 
     - name: Build MSI
       run: |
-        "%MSBUILD_PATH%" "%PROJECT_PATH%" /rebuild "Release|x64"
+        "$env:MSBUILD_PATH" "$env:PROJECT_PATH" /rebuild "Release|x64"
