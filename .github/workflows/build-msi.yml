@@ -24,8 +24,14 @@ jobs:
       uses: microsoft/setup-msbuild@v1.1
       with:
         vs-version: latest
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore
 
     - name: Build MSI
       shell: cmd
       run: |
-        "%MSBUILD_PATH%" "%PROJECT_PATH%" /build release
+        "%MSBUILD_PATH%" "%PROJECT_PATH%" /build Installer
