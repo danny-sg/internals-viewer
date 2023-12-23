@@ -18,5 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
-      - name: Display structure of downloaded files
-        run: ls -R
+      - name: Zip release files
+        run: |
+          rm -rf *.zip
+          zip -r internals-viewer-{{ github.event.inputs.version }}.zip internals-viewer-app.1.0.${{ github.run_id }}/
