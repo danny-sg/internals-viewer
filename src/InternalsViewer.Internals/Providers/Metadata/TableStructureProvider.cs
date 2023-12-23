@@ -10,10 +10,20 @@ public class TableStructureProvider
         var structure = new TableStructure(allocationUnitId);
 
         var allocationUnit = metadata.AllocationUnits
-                                     .First(a => a.AllocationUnitId == allocationUnitId);
+                                     .FirstOrDefault(a => a.AllocationUnitId == allocationUnitId);
+
+        if(allocationUnit == null)
+        {
+            throw new ArgumentException($"Allocation unit {allocationUnitId} not found");
+        }
 
         var rowSet = metadata.RowSets
-                             .First(p => p.RowSetId == allocationUnit.ContainerId);
+                             .FirstOrDefault(p => p.RowSetId == allocationUnit.ContainerId);
+
+        if(rowSet == null)
+        {
+            throw new ArgumentException($"Row set {allocationUnit.ContainerId} not found");
+        }
 
         var columnLayouts = metadata.ColumnLayouts.Where(c => c.PartitionId == rowSet.RowSetId).ToList();
 
