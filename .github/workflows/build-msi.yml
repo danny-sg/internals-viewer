@@ -10,6 +10,8 @@ jobs:
     defaults:
       run:
         working-directory: src
+    env:
+      MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\DevEnv.com
         
     steps:
     - uses: actions/checkout@v3
@@ -26,4 +28,5 @@ jobs:
 
       
     - name: Build MSI
-      run: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\DevEnv.com "InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj" /rebuild "Release|x64"
+      run: |
+        "%MSBUILD_PATH% "InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj" /rebuild "Release|x64"
