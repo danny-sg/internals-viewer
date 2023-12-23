@@ -21,7 +21,7 @@ jobs:
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
       with:
-        vs-version: "[17.8,17.8)"
+        vs-version: latest
         
     - name: Restore dependencies
       run: dotnet restore
