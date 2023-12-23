@@ -1,0 +1,34 @@
+name: Build MSI installer
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src
+        
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+    - name: Setup msbuild
+      uses: microsoft/setup-msbuild@v1
+      with:
+        vswhere-path: C:\Program Files (x86)\Microsoft Visual Studio\Installer
+        vs-version: "[17.8]"
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore
+      
+    - name: Build MSI
+      run: .\DevEnv.com "InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj" /rebuild "Release|x64"
+      working-directory: C:\Program Files (x86)\Microsoft Visual Studio\2022\Professional\Common7\IDE
