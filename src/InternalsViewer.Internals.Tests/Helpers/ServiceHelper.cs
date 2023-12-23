@@ -11,8 +11,6 @@ internal class ServiceHelper
 {
     internal static PageService CreateFilePageService(ITestOutputHelper testOutput)
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("local");
-
         var reader = new FilePageReader("");
 
         var loader = new PageLoader(reader);
@@ -27,6 +25,26 @@ internal class ServiceHelper
 
         return service;
     }
+
+    internal static PageService CreateMdfPageService(ITestOutputHelper testOutput)
+    {
+        var reader = new MdfPageReader("./IntegrationTests/Test Data/TestDatabase/TestDatabase.mdf");
+
+        var loader = new PageLoader(reader);
+
+        var parsers = new IPageParser[]
+        {
+            new DataPageParser(),
+            new IndexPageParser(),
+            new PfsPageParser(),
+            new BootPageParser()
+        };
+
+        var service = new PageService(TestLogger.GetLogger<PageService>(testOutput), loader, parsers);
+
+        return service;
+    }
+
 
     internal static PageService CreateDatabasePageService(ITestOutputHelper testOutput)
     {

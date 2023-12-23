@@ -4,8 +4,10 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Readers;
 
-public class DatabasePageReaderTests
+public class DatabasePageReaderTests(ITestOutputHelper testOutputHelper)
 {
+    public ITestOutputHelper TestOutputHelper { get; set; } = testOutputHelper;
+
     [Fact]
     public async Task Can_Read_Database_Page()
     {
@@ -19,4 +21,14 @@ public class DatabasePageReaderTests
 
         Assert.NotNull(result);
     }
+
+    [Fact]
+    public async Task Can_Read_Mdf_Page()
+    {
+        var service = ServiceHelper.CreateMdfPageService(TestOutputHelper);
+
+        var result = await service.GetPage(new Engine.Database.DatabaseDetail { Name = "TestDatabase" }, 
+                                           new PageAddress(1, 9));
+    }
+
 }

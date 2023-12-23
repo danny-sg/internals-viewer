@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
@@ -30,6 +30,9 @@
     </ItemGroup>
 
     <ItemGroup>
+        <None Update="IntegrationTests\Test Data\TestDatabase\TestDatabase.mdf">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
         <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_100_IamPage.page">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>

@@ -24,7 +24,7 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
     /// <summary>
     /// Loads the database page using DBCC PAGE (hex dump)
     /// </summary>
-    public async Task<byte[]>  Read(string databaseName, PageAddress pageAddress)
+    public async Task<byte[]> Read(string databaseName, PageAddress pageAddress)
     {
         var pageCommand = string.Format(SqlCommands.Page,
                                         databaseName,
@@ -44,8 +44,6 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
         {
             await connection.OpenAsync();
 
-            await connection.ChangeDatabaseAsync(Connection.DatabaseName!);  
-
             var reader = await command.ExecuteReaderAsync();
 
             if (reader.HasRows)
@@ -56,7 +54,7 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
                     var objectName = reader.GetString(ObjectIndex);
                     var value = reader.GetString(ValueIndex);
 
-                    if (parentObject == "DATA:" 
+                    if (parentObject == "DATA:"
                         && objectName.StartsWith("Memory Dump"))
                     {
                         offset = ReadData(value, offset, data);
