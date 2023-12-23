@@ -21,7 +21,7 @@ public class Marker
             ForeColour.Name);
     }
 
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     public int StartPosition { get; set; }
 
@@ -33,7 +33,7 @@ public class Marker
 
     public Color ForeColour { get; set; }
 
-    public string Value { get; set; }
+    public string Value { get; set; } = string.Empty;
 
     public MarkerType DataType { get; set; }
 

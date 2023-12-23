@@ -24,20 +24,20 @@ public partial class HexViewer : UserControl
     private readonly bool hexMode = false;
 
     private ushort currentOffset;
-    private string dataRtf;
-    private string dataText;
+    private string dataRtf = string.Empty;
+    private string dataText = string.Empty;
 
     private readonly List<Marker> markers = new();
     private Page? page;
-    private readonly VisualStyleRenderer renderer;
+    private readonly VisualStyleRenderer? renderer;
 
     private int selectedOffset = -1;
     private int selectedRecord = -1;
     private bool suppressTooltip;
 
-    public event EventHandler<OffsetEventArgs> OffsetOver;
-    public event EventHandler<OffsetEventArgs> OffsetSet;
-    public event EventHandler<OffsetEventArgs> RecordFind;
+    public event EventHandler<OffsetEventArgs>? OffsetOver;
+    public event EventHandler<OffsetEventArgs>? OffsetSet;
+    public event EventHandler<OffsetEventArgs>? RecordFind;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="HexViewer"/> class.
@@ -59,8 +59,6 @@ public partial class HexViewer : UserControl
     /// <summary>
     /// Creates RTF output for the page
     /// </summary>
-    /// <param name="targetPage">The target page.</param>
-    /// <returns></returns>
     private string FormatPageDetails(Page targetPage)
     {
         return PageRtfBuilder.BuildRtf(targetPage, markers, Colourise, selectedOffset);
@@ -120,11 +118,6 @@ public partial class HexViewer : UserControl
     /// </summary>
     private void UpdateAddressTextBox()
     {
-        if (Page == null)
-        {
-            return;
-        }
-
         var addressText = new StringBuilder();
 
         var topPos = new Point(0, 0);
@@ -262,8 +255,8 @@ public partial class HexViewer : UserControl
 
         if (VisualStyleRenderer.IsSupported)
         {
-            renderer.DrawBackground(e.Graphics, addressRectangle);
-            renderer.DrawBackground(e.Graphics, dataRectangle);
+            renderer?.DrawBackground(e.Graphics, addressRectangle);
+            renderer?.DrawBackground(e.Graphics, dataRectangle);
         }
         else
         {
@@ -322,7 +315,7 @@ public partial class HexViewer : UserControl
     {
         addressLabel.Height = dataRichTextBox.Height + 40;
 
-        DataRichTextBox_VScroll(null, null);
+        DataRichTextBox_VScroll(sender, e);
     }
 
     /// <summary>
@@ -371,7 +364,7 @@ public partial class HexViewer : UserControl
 
         setOffsetToolStripMenuItem.Text = $"Set offset to: {offset}";
 
-        OffsetOver(this, new OffsetEventArgs(offset, markerDescription, foreColour, backColour));
+        OffsetOver?.Invoke(this, new OffsetEventArgs(offset, markerDescription, foreColour, backColour));
     }
 
     /// <summary>
@@ -411,7 +404,7 @@ public partial class HexViewer : UserControl
     /// Gets or sets the colour and offset dictionary.
     /// </summary>
     /// <value>The colour and offset dictionary.</value>
-    public Dictionary<int, Color> ColourAndOffsetDictionary { get; set; }
+    public Dictionary<int, Color> ColourAndOffsetDictionary { get; set; } = new();
 
     /// <summary>
     /// Gets or sets the data text.
@@ -451,17 +444,14 @@ public partial class HexViewer : UserControl
     /// <value>The page.</value>
     public Page Page
     {
-        get => page;
+        get => page ?? new EmptyPage();
 
         set
         {
             page = value;
 
-            if (null != page)
-            {
-                markers.Clear();
-                Refresh();
-            }
+            markers.Clear();
+            Refresh();
         }
     }
 
@@ -483,10 +473,7 @@ public partial class HexViewer : UserControl
         {
             selectedRecord = value;
 
-            if (null != Page)
-            {
-                DataRtf = FormatPageDetails(Page);
-            }
+            DataRtf = FormatPageDetails(Page);
         }
     }
 

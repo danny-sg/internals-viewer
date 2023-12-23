@@ -20,7 +20,7 @@ public partial class CompressionInfoTable : UserControl
 
         private CompressionInfoStructure Structure { get; set; }
 
-        public string Description => Enum.GetName(typeof(CompressionInfoStructure), Structure);
+        public string Description => Enum.GetName(typeof(CompressionInfoStructure), Structure) ?? "Unknown";
     }
 
     public CompressionInfoTable()
@@ -99,7 +99,7 @@ public partial class CompressionInfoTable : UserControl
         remove => Changed -= value;
     }
 
-    private event PropertyChangedEventHandler Changed;
+    private event PropertyChangedEventHandler? Changed;
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -112,10 +112,7 @@ public partial class CompressionInfoTable : UserControl
 
     protected void OnPropertyChanged(string prop)
     {
-        if (null != Changed)
-        {
-            Changed(this, new PropertyChangedEventArgs(prop));
-        }
+        Changed?.Invoke(this, new PropertyChangedEventArgs(prop));
     }
 
     private void OffsetDataGridView_SelectionChanged(object sender, EventArgs e)

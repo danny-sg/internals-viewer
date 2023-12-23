@@ -18,8 +18,8 @@ namespace InternalsViewer.UI;
 /// </summary>
 public partial class AllocationViewer : UserControl
 {
-    public event EventHandler<PageEventArgs> PageOver;
-    public event EventHandler<PageEventArgs> PageClicked;
+    public event EventHandler<PageEventArgs>? PageOver;
+    public event EventHandler<PageEventArgs>? PageClicked;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AllocationViewer"/> class.
@@ -177,12 +177,9 @@ public partial class AllocationViewer : UserControl
     /// </summary>
     /// <param name="sender">The sender.</param>
     /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
-    internal virtual void OnPageOver(object sender, PageEventArgs e)
+    internal virtual void OnPageOver(object? sender, PageEventArgs e)
     {
-        if (PageOver != null)
-        {
-            PageOver(sender, e);
-        }
+        PageOver?.Invoke(sender, e);
     }
 
     /// <summary>
@@ -190,7 +187,7 @@ public partial class AllocationViewer : UserControl
     /// </summary>
     /// <param name="sender">The sender.</param>
     /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
-    internal virtual void OnPageClicked(object sender, PageEventArgs e)
+    internal virtual void OnPageClicked(object? sender, PageEventArgs e)
     {
         PageClicked?.Invoke(sender, e);
     }
@@ -198,11 +195,9 @@ public partial class AllocationViewer : UserControl
     /// <summary>
     /// Handles the Click event of various text boxes with page addresses
     /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
-    private void PageAddressTextBox_Click(object sender, EventArgs e)
+    private void PageAddressTextBox_Click(object? sender, EventArgs e)
     {
-        var pageAddress = PageAddressParser.Parse((sender as TextBox).Text);
+        var pageAddress = PageAddressParser.Parse((sender as TextBox)?.Text ?? string.Empty);
 
         OnPageClicked(sender, new PageEventArgs(new RowIdentifier(pageAddress, 0), false));
     }

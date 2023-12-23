@@ -36,7 +36,7 @@ public class MarkStyle
     /// Gets or sets the mark display description.
     /// </summary>
     /// <value>The description.</value>
-    public string Description { get; set; }
+    public string Description { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the fore colour.

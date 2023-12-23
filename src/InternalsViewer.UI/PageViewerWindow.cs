@@ -67,7 +67,7 @@ public partial class PageViewerWindow : UserControl
     /// </summary>
     private void RefreshPage()
     {
-        if(Page == null)
+        if (Page == null)
         {
             return;
         }
@@ -105,7 +105,7 @@ public partial class PageViewerWindow : UserControl
     /// <param name="pageAddress">The page address.</param>
     private void RefreshAllocationStatus(PageAddress pageAddress)
     {
-        if(Page==null)
+        if (Page == null)
         {
             return;
         }
@@ -270,6 +270,11 @@ public partial class PageViewerWindow : UserControl
 
     private void FindRecord(int offset)
     {
+        if (Page == null)
+        {
+            return;
+        }
+
         var sortedOffsetTable = new List<ushort>(Page.OffsetTable.ToArray());
 
         sortedOffsetTable.Sort();
@@ -344,7 +349,10 @@ public partial class PageViewerWindow : UserControl
 
     private async void NextToolStripButton_Click(object sender, EventArgs e)
     {
-        await LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId + 1));
+        if (Page != null)
+        {
+            await LoadPage(new PageAddress(Page.PageAddress.FileId, Page.PageAddress.PageId + 1));
+        }
     }
 
     private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
@@ -364,7 +372,7 @@ public partial class PageViewerWindow : UserControl
 
     private void HexViewer_OffsetOver(object sender, OffsetEventArgs e)
     {
-        if(Page == null)
+        if (Page == null)
         {
             return;
         }
@@ -541,7 +549,7 @@ public partial class PageViewerWindow : UserControl
     private void LogToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
     {
         var colour = Color.Black;
-        LogData logData = null;
+        LogData? logData = null;
 
         switch (logToolStripComboBox.SelectedItem?.ToString())
         {
@@ -568,7 +576,7 @@ public partial class PageViewerWindow : UserControl
                 }
                 break;
         }
-        if (logData != null)
+        if (logData != null && Page != null)
         {
             logData.MergeData(Page);
 

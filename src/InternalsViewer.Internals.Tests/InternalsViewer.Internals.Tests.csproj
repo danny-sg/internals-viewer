@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+        <UserSecretsId>84aabdef-755e-4080-9be4-a0483df133da</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
+        <PackageReference Include="Moq" Version="4.20.70" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+        <PackageReference Include="xunit" Version="2.6.4" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.5.6">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="coverlet.collector" Version="6.0.0">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_100_IamPage.page">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_1_PfsPage.page">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_25520_DataPage.page">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_2_GamPage.page">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_3_SGamPage.page">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_6_DcmPage.page">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_7_BcmPage.page">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_9_BootPage.page">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+</Project>

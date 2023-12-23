@@ -15,18 +15,18 @@ namespace InternalsViewer.UI;
 
 public class TransactionLogTabPage : TabPage
 {
-    private DataGridView dataGridView;
-    private DataGridViewTextBoxColumn lsnColumn;
-    private DataGridViewTextBoxColumn operationColumn;
-    private DataGridViewTextBoxColumn contextColumn;
-    private DataGridViewLinkColumn pageAddressColumn;
-    private DataGridViewLinkColumn slotColumn;
-    private DataGridViewTextBoxColumn allocUnitNameColumn;
-    private DataGridViewTextBoxColumn descriptionColumn;
-    private DataGridViewTextBoxColumn isSystemColumn;
-    private DataGridViewTextBoxColumn isAllocationColumn;
+    private DataGridView dataGridView = null!;
+    private DataGridViewTextBoxColumn lsnColumn = null!;
+    private DataGridViewTextBoxColumn operationColumn = null!;
+    private DataGridViewTextBoxColumn contextColumn = null!;
+    private DataGridViewLinkColumn pageAddressColumn = null!;
+    private DataGridViewLinkColumn slotColumn = null!;
+    private DataGridViewTextBoxColumn allocUnitNameColumn = null!;
+    private DataGridViewTextBoxColumn descriptionColumn = null!;
+    private DataGridViewTextBoxColumn isSystemColumn = null!;
+    private DataGridViewTextBoxColumn isAllocationColumn = null!;
 
-    public event EventHandler<PageEventArgs> PageClicked;
+    public event EventHandler<PageEventArgs>? PageClicked;
 
     public TransactionLogTabPage()
     {
@@ -176,8 +176,13 @@ public class TransactionLogTabPage : TabPage
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">The <see cref="System.Windows.Forms.DataGridViewCellFormattingEventArgs"/> instance containing the event data.</param>
-    void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+    void DataGridView_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
     {
+        if (e.CellStyle == null)
+        {
+            return;
+        }
+
         var isSystem = (bool)dataGridView["isSystemColumn", e.RowIndex].Value;
         var isAllocation = (bool)dataGridView["isAllocationColumn", e.RowIndex].Value;
 
@@ -198,12 +203,12 @@ public class TransactionLogTabPage : TabPage
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">The <see cref="System.Windows.Forms.DataGridViewCellEventArgs"/> instance containing the event data.</param>
-    private void DataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+    private void DataGridView_CellContentClick(object? sender, DataGridViewCellEventArgs e)
     {
         if (dataGridView.Columns[e.ColumnIndex].DataPropertyName == "PageAddress" ||
             dataGridView.Columns[e.ColumnIndex].DataPropertyName == "SlotId")
         {
-            var pageAddress = PageAddressParser.Parse(dataGridView[3, e.RowIndex].Value.ToString());
+            var pageAddress = PageAddressParser.Parse(dataGridView[3, e.RowIndex].Value.ToString() ?? string.Empty);
 
             var slot = (int)dataGridView[4, e.RowIndex].Value;
 
@@ -215,7 +220,7 @@ public class TransactionLogTabPage : TabPage
 
     private void SetSelectedLogContents(int rowId)
     {
-        GetLogData(dataGridView.Rows[rowId].Cells["OperationColumn"].Value.ToString(), dataGridView.Rows[rowId]);
+        GetLogData(dataGridView.Rows[rowId].Cells["OperationColumn"].Value.ToString() ?? string.Empty, dataGridView.Rows[rowId]);
     }
 
     /// <summary>
@@ -223,7 +228,7 @@ public class TransactionLogTabPage : TabPage
     /// </summary>
     /// <param name="sender">The sender.</param>
     /// <param name="e">The <see cref="PageEventArgs"/> instance containing the event data.</param>
-    internal virtual void OnPageClicked(object sender, PageEventArgs e)
+    internal virtual void OnPageClicked(object? sender, PageEventArgs e)
     {
         if (PageClicked != null)
         {
@@ -240,7 +245,7 @@ public class TransactionLogTabPage : TabPage
         {
             if (row.Cells["PageAddressColumn"].Value != DBNull.Value && (PageAddress)row.Cells["PageAddressColumn"].Value == address)
             {
-                GetLogData(row.Cells["OperationColumn"].Value.ToString(), row);
+                GetLogData(row.Cells["OperationColumn"].Value.ToString() ?? string.Empty, row);
             }
         }
     }
@@ -268,10 +273,17 @@ public class TransactionLogTabPage : TabPage
     {
         var logData = new LogData();
 
-        logData.Slot = Convert.ToUInt16((row.DataBoundItem as DataRowView)["SlotId"]);
-        logData.Offset = Convert.ToUInt16((row.DataBoundItem as DataRowView)["OffsetInRow"]);
+        var item = (row.DataBoundItem as DataRowView);
+
+        if (item == null)
+        {
+            return logData;
+        }
+
+        logData.Slot = Convert.ToUInt16(item["SlotId"]);
+        logData.Offset = Convert.ToUInt16(item["OffsetInRow"]);
         // logData.LogSequenceNumber = new LogSequenceNumber((row.DataBoundItem as DataRowView)["LSN"].ToString());
-        logData.Data = (byte[])(row.DataBoundItem as DataRowView)["Contents" + contentsIndex];
+        logData.Data = (byte[])item["Contents" + contentsIndex];
 
         Debug.Print(logData.ToString());
 

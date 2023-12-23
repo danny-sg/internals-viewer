@@ -147,7 +147,7 @@ public partial class AllocationWindow : UserControl
     private void AllocUnitBackgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
     {
         allocUnitProgressBar.Value = e.ProgressPercentage;
-        allocUnitToolStripStatusLabel.Text = "Loading " + (string)e.UserState;
+        allocUnitToolStripStatusLabel.Text = "Loading " + (string)e.UserState!;
     }
 
     private void AllocUnitBackgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -413,7 +413,7 @@ public partial class AllocationWindow : UserControl
 
     private async void DatabaseToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
     {
-        var databaseInfo = (DatabaseSummary)databaseToolStripComboBox.SelectedItem;
+        var databaseInfo = (DatabaseSummary?)databaseToolStripComboBox.SelectedItem;
 
         if (databaseInfo == null)
         {

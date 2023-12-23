@@ -351,7 +351,7 @@ public class AllocationMap : Panel, IDisposable
     {
         Invalidate();
 
-        e.Result = FullMapRenderer.RenderMapLayers(MapLayers, Bounds, FileId, File.Size);
+        e.Result = FullMapRenderer.RenderMapLayers(MapLayers, Bounds, FileId, File?.Size ?? 0);
     }
 
     /// <summary>
@@ -643,7 +643,7 @@ public class AllocationMap : Panel, IDisposable
 
     public PageAddress StartPage { get; set; } = new(1, 0);
 
-    public DatabaseFile File { get; set; }
+    public DatabaseFile? File { get; set; }
 
     public bool DrawBorder
     {
@@ -653,7 +653,7 @@ public class AllocationMap : Panel, IDisposable
 
     public bool Holding { get; set; }
 
-    public string HoldingMessage { get; set; }
+    public string HoldingMessage { get; set; } = string.Empty;
 
     public PfsChain? Pfs { get; set; }
 

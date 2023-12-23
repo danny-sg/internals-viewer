@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine;
@@ -40,11 +41,18 @@ public class MarkerBuilder
 
             var property = markedObject.GetType().GetProperty(item.PropertyName);
 
+
+
             var markAttribute = property?.GetCustomAttributes(typeof(DataStructureItemAttribute), false);
 
-            if (markAttribute != null && markAttribute.Length > 0)
+            if (markAttribute is { Length: > 0 })
             {
                 var attribute = (markAttribute[0] as DataStructureItemAttribute);
+
+                if(attribute==null)
+                {
+                    continue;
+                }
                     
                 var style = styleProvider.GetMarkStyle(attribute.DataStructureItemType);
                     
@@ -55,7 +63,7 @@ public class MarkerBuilder
 
                 marker.Visible = attribute.IsVisible;
 
-                if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(attribute?.Description))
+                if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(attribute.Description))
                 {
 
                     marker.Name = prefix + style.Description;
@@ -70,16 +78,21 @@ public class MarkerBuilder
                 marker.Name = item.PropertyName;
             }
 
+            if (property == null)
+            {
+                continue;
+            }
+
             // Check if there is an index, if there is it indicates the property is an array
             if (item.Index < 0)
             {
-                var value = property.GetValue(markedObject, null);
+                var value = property.GetValue(markedObject, null) ?? string.Empty;
 
                 SetValue(markers, marker, value, prefix + item.Prefix);
             }
             else
             {
-                var array = (object[])property.GetValue(markedObject, null);
+                var array = (object[])property.GetValue(markedObject, null)!;
 
                 SetValue(markers, marker, array[item.Index], prefix + item.Prefix);
             }
@@ -132,9 +145,9 @@ public class MarkerBuilder
         }
         else
         {
-            marker.Value = value.ToString();
+            marker.Value = value.ToString() ?? string.Empty;
 
-            if (value is PageAddress || value is RowIdentifier)
+            if (value is PageAddress or RowIdentifier)
             {
                 marker.DataType = MarkerType.PageAddress;
             }

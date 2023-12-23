@@ -178,7 +178,7 @@ partial class ConnectionForm
     private ComboBox AuthenticationTypeComboBox;
     private Label UserNameLabel;
     private Label PasswordLabel;
-    private Button CancelButton;
+    private new Button CancelButton;
     private Button ConnectButton;
     private TextBox ServerNameTextBox;
     private TextBox UserNametextBox;

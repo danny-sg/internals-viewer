@@ -904,7 +904,7 @@ namespace InternalsViewer.UI
             // 
             hexViewer.AddressHex = false;
             hexViewer.BackColor = System.Drawing.Color.White;
-            hexViewer.ColourAndOffsetDictionary = null;
+            hexViewer.ColourAndOffsetDictionary = new();
             hexViewer.Colourise = true;
             hexViewer.DataRtf = "";
             hexViewer.DataText = null;
