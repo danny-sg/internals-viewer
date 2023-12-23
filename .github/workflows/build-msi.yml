@@ -28,4 +28,4 @@ jobs:
 
     - name: Build MSI
       run: |
-        "$env:MSBUILD_PATH" "$env:PROJECT_PATH" /rebuild "Release|x64"
+        "$env:MSBUILD_PATH" "InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj" /rebuild "Release|x64"
