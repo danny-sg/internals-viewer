@@ -5,7 +5,6 @@ on:
 
 jobs:
   build:
-
     runs-on: windows-latest
     defaults:
       run:
@@ -27,6 +26,6 @@ jobs:
         vs-version: latest
 
     - name: Build MSI
-     shell: cmd
+      shell: cmd
       run: |
         "%MSBUILD_PATH%" "%PROJECT_PATH%" /build release
