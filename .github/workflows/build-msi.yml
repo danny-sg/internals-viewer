@@ -27,5 +27,6 @@ jobs:
         vs-version: latest
 
     - name: Build MSI
+     shell: cmd
       run: |
-        "$env:MSBUILD_PATH" "InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj" /rebuild "Release|x64"
+        "%MSBUILD_PATH%" "%PROJECT_PATH%" /build release
