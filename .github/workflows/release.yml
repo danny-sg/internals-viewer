@@ -10,14 +10,13 @@ on:
         type: string
 
 jobs:
-  run-build:
-    uses: ./.github/workflows/build-app.yml
-
-  zip-files:
+  run-build-and-zip:
     runs-on: ubuntu-latest
-    name: Zip files
+    
     steps:
-      - name: Zip build output
+      - uses: ./.github/workflows/build-app.yml
+      
+      - name: Zip files
         run: |
           cd src/InternalsViewer.UI.App/bin/windows/Release/net8.0-windows/win-x64/publish/
           rm -rf internals-viewer.zip
