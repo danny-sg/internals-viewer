@@ -13,13 +13,9 @@ jobs:
   build:
     uses: ./.github/workflows/build-app.yml
 
-  zip-files:
-    needs: build
+  release:
     runs-on: ubuntu-latest
-    name: Zip files
     steps:
-      - name: Zip build output
-        run: |
-          cd src/InternalsViewer.UI.App/bin/windows/Release/net8.0-windows/win-x64/publish/
-          rm -rf internals-viewer.zip
-          zip -r internals-viewer.zip /
+      - uses: actions/download-artifact@v4
+      - name: Display structure of downloaded files
+        run: ls
