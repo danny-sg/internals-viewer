@@ -26,4 +26,4 @@ jobs:
 
       
     - name: Build MSI
-      run: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\DevEnv.com "src\InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj" /rebuild "Release|x64"
+      run: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\DevEnv.com "InternalsViewer.UI.App.Installer\InternalsViewer.UI.App.Installer.vdproj" /rebuild "Release|x64"
