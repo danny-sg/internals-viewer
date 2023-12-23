@@ -24,7 +24,7 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
     /// <summary>
     /// Loads the database page using DBCC PAGE (hex dump)
     /// </summary>
-    public async Task<byte[]> Read(string databaseName, PageAddress pageAddress)
+    public async Task<byte[]>  Read(string databaseName, PageAddress pageAddress)
     {
         var pageCommand = string.Format(SqlCommands.Page,
                                         databaseName,
@@ -32,7 +32,7 @@ public class DatabasePageReader(CurrentConnection connection) : PageReader, IPag
                                         pageAddress.PageId,
                                         DbccPageHexDumpOption);
         var offset = 0;
-        var data = new byte[Page.Size];
+        var data = new byte[PageData.Size];
 
         await using var connection = new SqlConnection(Connection.ConnectionString);
 

@@ -3,6 +3,9 @@
 DROP DATABASE IF EXISTS TestDatabase
 GO
 
+CREATE DATABASE TestDatabase
+GO
+
 USE TestDatabase
 GO
 
