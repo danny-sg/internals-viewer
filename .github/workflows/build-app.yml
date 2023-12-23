@@ -23,8 +23,7 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 8.0.x
-
-      
+        
     - name: Restore dependencies
       run: dotnet restore
       
@@ -32,4 +31,9 @@ jobs:
       run: dotnet build --no-restore
       
     - name: Publish
-      run: dotnet publish -c Release -r win-x64 --self-contained true
+      run: dotnet publish InternalsViewer.UI.App -c Release -r win-x64 -p:PublishSingleFile=true --self-contained false
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: internals-viewer-app=1.0.${{ github.run_id }}
+        path: /src/InternalsViewer.UI.App/bin/windows/Release/net8.0-windows/win-x64/publish/
