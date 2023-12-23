@@ -25,6 +25,7 @@
         <FileVersion>1.0.0.0</FileVersion>
         <Nullable>enable</Nullable>
         <EmitCompilerGeneratedFiles>True</EmitCompilerGeneratedFiles>
+        <Platforms>AnyCPU</Platforms>
     </PropertyGroup>
     <ItemGroup>
       <None Include="..\.editorconfig" Link=".editorconfig" />
