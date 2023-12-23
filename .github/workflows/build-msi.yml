@@ -22,7 +22,7 @@ jobs:
       uses: microsoft/setup-msbuild@v1.1
       with:
         vswhere-path: C:\Program Files (x86)\Microsoft Visual Studio\Installer
-        vs-version: "[17.8]"
+        vs-version: "[17.8,17.8)"
         
     - name: Restore dependencies
       run: dotnet restore
