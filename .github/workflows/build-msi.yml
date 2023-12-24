@@ -2,6 +2,12 @@ name: Build MSI installer
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        default: '1.0.0'
+        required: true
+        type: string
 
 jobs:
   build:
@@ -27,11 +33,14 @@ jobs:
         
     - name: Restore dependencies
       run: dotnet restore
-      
-    - name: Build
-      run: dotnet build --no-restore
 
     - name: Build MSI
       shell: cmd
       run: |
         "%MSBUILD_PATH%" "%PROJECT_PATH%" /build Installer
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: internals-viewer-msi.1.0.${{ github.run_id }}
+        if-no-files-found: error
+        path: InternalsViewer.UI.App.Installer\Installer\InternalsViewer.msi
