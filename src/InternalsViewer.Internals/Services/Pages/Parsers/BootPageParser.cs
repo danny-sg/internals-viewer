@@ -9,7 +9,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
 /// <summary>
-/// Service responsible for parsing the boot page
+/// Parser for Boot pages
 /// </summary>
 public class BootPageParser : PageParser, IPageParser<BootPage>
 {

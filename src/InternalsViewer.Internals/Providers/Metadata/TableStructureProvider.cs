@@ -3,8 +3,14 @@ using InternalsViewer.Internals.Metadata.Internals;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
 
+/// <summary>
+/// Provider responsible for providing table structure information from the metadata collection
+/// </summary>
 public class TableStructureProvider
 {
+    /// <summary>
+    /// Gets the table structure for the specified allocation unit
+    /// </summary>
     public static TableStructure GetTableStructure(InternalMetadata metadata, long allocationUnitId)
     {
         var structure = new TableStructure(allocationUnitId);
@@ -65,7 +71,8 @@ public class TableStructureProvider
                 IsDropped = isDropped,
                 IsUniqueifer = isUniqueifer,
                 IsSparse = (s.Status & 256) != 0,
-                NullBit = (short)(s.NullBit & 0xffff)
+                NullBit = (short)(s.NullBit & 0xffff),
+                BitPosition = s.BitPosition
             };
 
             return result;

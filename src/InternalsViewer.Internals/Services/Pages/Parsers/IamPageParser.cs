@@ -7,6 +7,9 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
+/// <summary>
+/// Parser for IAM (Index Allocation Map) pages
+/// </summary>
 public class IamPageParser : PageParser, IPageParser<IamPage>
 {
     public PageType[] SupportedPageTypes => new[] { PageType.Iam };

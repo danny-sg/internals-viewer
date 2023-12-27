@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.MarkStyles;
 
@@ -72,7 +73,7 @@ internal class PageRtfBuilder: RtfBuilder
                 }
 
                 // Add the byte
-                sb.Append(DataConverter.ToHexString(targetPage.Data[currentPos]));
+                sb.Append(StringHelpers.ToHexString(targetPage.Data[currentPos]));
 
                 // End marker/close colour tag
                 if (colourise)

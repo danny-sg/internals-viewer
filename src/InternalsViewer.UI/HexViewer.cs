@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Rtf;
 
@@ -186,8 +187,8 @@ public partial class HexViewer : UserControl
                 "Offset {0} - {1} (0x{2} - 0x{3})",
                 startOffset,
                 endOffset,
-                DataConverter.ToHexString((byte)startOffset),
-                DataConverter.ToHexString((byte)endOffset));
+                StringHelpers.ToHexString((byte)startOffset),
+                StringHelpers.ToHexString((byte)endOffset));
 
             var decodedData = DataConverter.DecodeDataString(dataString);
             var decodedDataStringBuilder = new StringBuilder();

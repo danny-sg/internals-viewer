@@ -38,6 +38,9 @@ public class AllocationChainService(IPageService pageService)
         return await LoadChain(database, new PageAddress(fileId, startPage));
     }
 
+    /// <summary>
+    /// Load a Chain from a start page address
+    /// </summary>
     public async Task<AllocationChain> LoadChain(DatabaseDetail database, PageAddress startPageAddress)
     {
         var allocation = new AllocationChain();

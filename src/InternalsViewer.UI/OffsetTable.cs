@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Helpers;
 
 
 #pragma warning disable CA1416
@@ -48,7 +49,7 @@ public partial class OffsetTable : UserControl
 
                 offsetRow["Slot"] = slotPosition;
                 offsetRow["Offset"] = i;
-                offsetRow["Hex"] = string.Concat("0x", DataConverter.ToHexString(BitConverter.GetBytes((short)i)));
+                offsetRow["Hex"] = string.Concat("0x", StringHelpers.ToHexString(BitConverter.GetBytes((short)i)));
 
                 offsetDataTable.Rows.Add(offsetRow);
 

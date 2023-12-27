@@ -1,10 +1,14 @@
-﻿using System.Collections;
+﻿using InternalsViewer.Internals.Helpers;
+using System.Collections;
 using System.Text;
 
 namespace InternalsViewer.Internals.Extensions;
 
 public static class ByteExtensions
 {
+    /// <summary>
+    /// Extension method to return a binary/bitmap string for a given byte
+    /// </summary>
     public static string ToBinaryString(this byte input)
     {
         var bitArray = new BitArray(new[] { input });
@@ -17,5 +21,21 @@ public static class ByteExtensions
         }
 
         return stringBuilder.ToString();
+    }
+
+    /// <summary>
+    /// Extension method to return a hex string for a given byte
+    /// </summary>
+    public static string ToHexString(this byte input)
+    {
+        return StringHelpers.ToHexString(input);
+    }
+
+    /// <summary>
+    /// Extension method to return a hex string for a given array of bytes
+    /// </summary>
+    public static string ToHexString(this byte[] input)
+    {
+        return StringHelpers.ToHexString(input);
     }
 }

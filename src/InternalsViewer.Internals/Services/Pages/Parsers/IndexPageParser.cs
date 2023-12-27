@@ -5,6 +5,9 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
+/// <summary>
+/// Parser for Index pages
+/// </summary>
 public class IndexPageParser : PageParser, IPageParser<IndexPage>
 {
     public PageType[] SupportedPageTypes => new[] { PageType.Index };

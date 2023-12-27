@@ -11,7 +11,7 @@ public static class TypeInfoExtensions
     /// </remarks>
     public static TypeInfo ToTypeInfo(this int value)
     {
-        var sqlType = DataConverter.ToSqlType((byte) (value & 0xFF));
+        var sqlType = SqlTypeConverter.ToSqlType((byte) (value & 0xFF));
 
         return sqlType switch
         {

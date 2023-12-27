@@ -11,7 +11,7 @@ public abstract class RecordLoader
     /// <summary>
     /// Gets the variable offset array.
     /// </summary>
-    /// <returns>An array of 2-byte integers</returns>
+    /// <returns>An array of 2-byte integers representing a start offset in the page</returns>
     public static ushort[] GetOffsetArray(byte[] record, int size, int offset)
     {
         var offsetArray = new ushort[size];

@@ -10,7 +10,7 @@ public class DatabaseDumper(ITestOutputHelper testOutputHelper)
 
     public static readonly string DbccPageCommand = @"DBCC PAGE({0}, {1}, {2}, {3}) WITH TABLERESULTS";
 
-    [Theory]
+    // [Theory]
     [InlineData("TestDatabase", @"./Test Data")]
     public async Task DumpDatabase(string databaseName, string outputFolder)
     {

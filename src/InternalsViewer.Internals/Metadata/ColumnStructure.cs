@@ -61,4 +61,9 @@ public class ColumnStructure
     /// Gets or sets the index of the null bit.
     /// </summary>
     public short NullBit { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bit position for a BIT column as bits are stored in bytes
+    /// </summary>
+    public short BitPosition { get; set; }
 }

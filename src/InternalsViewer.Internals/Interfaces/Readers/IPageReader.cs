@@ -4,5 +4,5 @@ namespace InternalsViewer.Internals.Interfaces.Readers;
 
 public interface IPageReader
 {
-    Task<byte[]> Read(string databaseName, PageAddress pageAddress);
+    Task<byte[]> Read(string name, PageAddress pageAddress);
 }

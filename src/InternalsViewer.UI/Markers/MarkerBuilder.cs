@@ -141,7 +141,7 @@ public class MarkerBuilder
         }
         else if (value is byte[])
         {
-            marker.Value = DataConverter.BinaryToString((byte[])value, SqlDbType.VarChar, 0, 0);
+            marker.Value = DataConverter.BinaryToString((byte[])value, SqlDbType.VarChar);
         }
         else
         {

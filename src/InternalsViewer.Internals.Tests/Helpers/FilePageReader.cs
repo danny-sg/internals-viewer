@@ -33,9 +33,9 @@ public class FilePageReader(string path) : PageReader, IPageReader
         return data;
     }
 
-    public async Task<byte[]> Read(string databaseName, PageAddress pageAddress)
+    public async Task<byte[]> Read(string name, PageAddress pageAddress)
     {
-        var pattern = $"{databaseName}_{pageAddress.FileId}_{pageAddress.PageId}_*.page";
+        var pattern = $"{name}_{pageAddress.FileId}_{pageAddress.PageId}_*.page";
 
         var files = Directory.GetFiles(path, pattern);
 

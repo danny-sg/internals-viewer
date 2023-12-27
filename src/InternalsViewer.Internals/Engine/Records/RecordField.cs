@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Metadata;
 
 namespace InternalsViewer.Internals.Engine.Records;
@@ -31,7 +32,11 @@ public class RecordField(ColumnStructure columnStructure) : Field
     public string Name => ColumnStructure.ColumnName;
 
     [DataStructureItem(DataStructureItemType.Value)]
-    public string Value => DataConverter.BinaryToString(Data, ColumnStructure.DataType, ColumnStructure.Precision, ColumnStructure.Scale);
+    public string Value => DataConverter.BinaryToString(Data, 
+                                                        ColumnStructure.DataType, 
+                                                        ColumnStructure.Precision, 
+                                                        ColumnStructure.Scale,
+                                                        ColumnStructure.BitPosition);
 
     public override string ToString()
     {
@@ -41,6 +46,6 @@ public class RecordField(ColumnStructure columnStructure) : Field
                              Length,
                              ColumnStructure.ColumnName,
                              ColumnStructure.DataType,
-                             DataConverter.ToHexString(Data));
+                             StringHelpers.ToHexString(Data));
     }
 }

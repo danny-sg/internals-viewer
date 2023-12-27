@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Services.Loaders.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
 using Moq;
@@ -87,7 +88,12 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
             new(2) { Name = "File 2.mdf", PhysicalName = @"C:\TestDatabase_2.mdf", Size = 8192 },
         };
 
+        var metadata = new InternalMetadata();
+
         var metadataProvider = new Mock<IMetadataLoader>();
+
+        metadataProvider.Setup(m => m.Load(It.IsAny<DatabaseDetail>()))
+                        .ReturnsAsync(metadata);
 
         databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
             .ReturnsAsync(databaseInfo);

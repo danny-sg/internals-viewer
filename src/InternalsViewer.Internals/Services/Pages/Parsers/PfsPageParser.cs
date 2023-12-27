@@ -6,6 +6,9 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
+/// <summary>
+/// Parser for PFS (Page Free Space) pages
+/// </summary>
 public class PfsPageParser: PageParser, IPageParser<PfsPage>
 {
     private const int PfsOffset = 100; // PFS byte array starts at offset 100

@@ -11,7 +11,7 @@ namespace InternalsViewer.Internals.Services.Records.Loaders;
 internal class BlobRecordLoader : RecordLoader
 {
     /// <summary>
-    /// Loads the specified record.
+    /// Loads a record at the specified offset
     /// </summary>
     internal static void Load(BlobRecord record, Page page, ushort offset)
     {

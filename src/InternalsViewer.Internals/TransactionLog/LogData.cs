@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.TransactionLog;
 
@@ -23,7 +24,7 @@ public class LogData
                              LogSequenceNumber,
                              Slot,
                              Offset,
-                             DataConverter.ToHexString(Data));
+                             StringHelpers.ToHexString(Data));
     }
 
     /// <summary>

@@ -160,10 +160,10 @@ public class CompressedDataConverter
 
             Array.Copy(data, 0, expandedDate, 2, 2);
 
-            return DataConverter.BinaryToString(expandedDate, SqlDbType.SmallDateTime, 0, 0);
+            return DataConverter.BinaryToString(expandedDate, SqlDbType.SmallDateTime);
         }
 
-        return DataConverter.BinaryToString(data, SqlDbType.SmallDateTime, 0, 0);
+        return DataConverter.BinaryToString(data, SqlDbType.SmallDateTime);
     }
 
     private static string DecodeDateTime(byte[] data, bool unsigned)
@@ -195,7 +195,7 @@ public class CompressedDataConverter
             Array.Copy(DecodeInt(datePart, unsigned, 4), 0, expandedDateTime, 4, 4);
         }
 
-        return DataConverter.BinaryToString(expandedDateTime, SqlDbType.DateTime, 0, 0);
+        return DataConverter.BinaryToString(expandedDateTime, SqlDbType.DateTime);
     }
 
     private static byte[] DecodeInt(byte[] data, bool unsigned, int size)

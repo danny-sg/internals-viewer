@@ -100,6 +100,7 @@ public class DateTimeConverters
         var timePart = BitConverter.ToInt64(timeData, 0);
 
         var returnDate = new DateTime(0001, 01, 01);
+
         returnDate = returnDate.AddDays(datePart);
         returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
 
@@ -179,14 +180,7 @@ public class DateTimeConverters
 
         string sign;
 
-        if (time >= 0)
-        {
-            sign = "+";
-        }
-        else
-        {
-            sign = "-";
-        }
+        sign = time >= 0 ? "+" : "-";
 
         return $"{returnDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
     }

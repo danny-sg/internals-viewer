@@ -3,6 +3,7 @@ using System.Data;
 using System.Data.SqlTypes;
 using System.Globalization;
 using System.Text;
+using InternalsViewer.Internals.Extensions;
 using static System.Text.RegularExpressions.Regex;
 
 namespace InternalsViewer.Internals.Converters;
@@ -12,58 +13,6 @@ namespace InternalsViewer.Internals.Converters;
 /// </summary>
 public static class DataConverter
 {
-    private static readonly char[] HexDigits =
-        {
-            '0', '1', '2', '3', '4', '5', '6', '7',
-            '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-        };
-
-    /// <summary>
-    /// Returns a hex string for a given array of bytes
-    /// </summary>
-    /// <param name="bytes">The bytes.</param>
-    /// <returns></returns>
-    public static string ToHexString(byte[]? bytes)
-    {
-        if (bytes == null)
-        {
-            return string.Empty;
-        }
-
-        var chars = new char[bytes.Length * 2];
-
-        for (var i = 0; i < bytes.Length; i++)
-        {
-            int b = bytes[i];
-
-            chars[i * 2] = HexDigits[b >> 4];
-            chars[i * 2 + 1] = HexDigits[b & 0xF];
-        }
-
-        return new string(chars);
-    }
-
-    /// <summary>
-    /// Returns a hex string for a given byte
-    /// </summary>
-    /// <param name="bytes">The bytes.</param>
-    /// <returns></returns>
-    public static string ToHexString(byte bytes)
-    {
-        return ToHexString(new byte[1] { bytes });
-    }
-
-    /// <summary>
-    /// Converts a bit at a given index of a byte array
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <param name="index">The index.</param>
-    /// <returns></returns>
-    public static string BinaryToString(byte[] data, int index)
-    {
-        return new BitArray(data).Get(index).ToString();
-    }
-
     /// <summary>
     /// Converts a binary GUID to string
     /// </summary>
@@ -87,11 +36,11 @@ public static class DataConverter
     /// <summary>
     /// Converts a byte array to a value
     /// </summary>
-    /// <param name="data">The data</param>
-    /// <param name="sqlType">SQL Server type</param>
-    /// <param name="precision">The number precision (if decimal type)</param>
-    /// <param name="scale">The number scale (if decimal type)</param>
-    public static string BinaryToString(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
+    public static string BinaryToString(byte[]? data,
+                                        SqlDbType sqlType,
+                                        byte precision = 0,
+                                        byte scale = 0,
+                                        short bitPosition = 0)
     {
         if (data == null)
         {
@@ -102,18 +51,43 @@ public static class DataConverter
         {
             switch (sqlType)
             {
-                case SqlDbType.BigInt:
-                    return BitConverter.ToInt64(data, 0).ToString(CultureInfo.CurrentCulture);
-
-                case SqlDbType.Int:
-                    return BitConverter.ToInt32(data, 0).ToString(CultureInfo.CurrentCulture);
-
+                // Number types
                 case SqlDbType.TinyInt:
+                    //tinyint is one byte
                     return ((int)data[0]).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.SmallInt:
+                    //smallint is a two byte (16 bit) integer    
                     return BitConverter.ToInt16(data, 0).ToString(CultureInfo.CurrentCulture);
 
+                case SqlDbType.Int:
+                    //int is a four byte (32 bit) integer  
+                    return BitConverter.ToInt32(data, 0).ToString(CultureInfo.CurrentCulture);
+
+                case SqlDbType.BigInt:
+                    //bigint is an eight byte (64 bit) integer  
+                    return BitConverter.ToInt64(data, 0).ToString(CultureInfo.CurrentCulture);
+
+                case SqlDbType.Decimal:
+                    return DecodeDecimal(data, precision, scale).ToString();
+
+                case SqlDbType.SmallMoney:
+                    // smallmoney is a four byte (32 bit) integer with a precision of 4 decimal places, i.e. divided by 10,000
+                    return (BitConverter.ToInt32(data, 0) / 10000M).ToString(CultureInfo.InvariantCulture);
+
+                case SqlDbType.Money:
+                    // money is an eight byte (64 bit) integer with a precision of 4 decimal places, i.e. divided by 10,000
+                    return (BitConverter.ToInt64(data, 0) / 10000M).ToString(CultureInfo.InvariantCulture);
+
+                case SqlDbType.Real:
+                    // Real is a four byte (32 bit) floating point number
+                    return BitConverter.ToSingle(data, 0).ToString(CultureInfo.InvariantCulture);
+
+                case SqlDbType.Float:
+                    // Float is an eight byte (64 bit) floating point number
+                    return BitConverter.ToDouble(data, 0).ToString(CultureInfo.InvariantCulture);
+
+                // String types
                 case SqlDbType.Char:
                 case SqlDbType.VarChar:
                     return Replace(Encoding.UTF8.GetString(data), @"[^\t -~]", string.Empty);
@@ -122,64 +96,82 @@ public static class DataConverter
                 case SqlDbType.NVarChar:
                     return Encoding.Unicode.GetString(data);
 
+                // Date types
                 case SqlDbType.DateTime:
                     return DateTimeConverters.DecodeDateTime(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.SmallDateTime:
                     return DateTimeConverters.DecodeSmallDateTime(data).ToString(CultureInfo.InvariantCulture);
 
-                case SqlDbType.VarBinary:
-                case SqlDbType.Binary:
-                    return "0x" + ToHexString(data);
-
-                case SqlDbType.UniqueIdentifier:
-                    return BinaryToGuid(data).ToString();
-
-                case SqlDbType.Decimal:
-                    return DecodeDecimal(data, precision, scale).ToString();
-
-                case SqlDbType.Money:
-                case SqlDbType.SmallMoney:
-                    return (BitConverter.ToInt64(data, 0) / 10000.0).ToString(CultureInfo.InvariantCulture);
-
-                case SqlDbType.Real:
-                    return BitConverter.ToSingle(data, 0).ToString(CultureInfo.InvariantCulture);
-
-                case SqlDbType.Float:
-                    return BitConverter.ToDouble(data, 0).ToString(CultureInfo.InvariantCulture);
-
-                case SqlDbType.Variant:
-                    return VariantBinaryToString(data);
-
                 case SqlDbType.Date:
                     return DateTimeConverters.DecodeDate(data).ToShortDateString();
 
                 case SqlDbType.Time:
-                    return DateTimeConverters.DecodeTime(data, scale).ToString("HH:mm:ss.fffffff");
+                    {
+                        var format = scale == 0 ? @"hh\:mm\:ss" : @"hh\:mm\:ss\." + new string('f', scale);
 
+                        return DateTimeConverters.DecodeTime(data, scale).ToString(format);
+                    }
                 case SqlDbType.DateTime2:
-                    return DateTimeConverters.DecodeDateTime2(data, scale).ToString("yyyy-MM-dd HH:mm:ss.fffffff");
+                    {
+                        var format = scale == 0
+                                     ? @"yyyy-MM-dd HH\:mm\:ss"
+                                     : @"yyyy-MM-dd HH\:mm\:ss\." + new string('f', scale);
 
+                        return DateTimeConverters.DecodeDateTime2(data, scale).ToString(format);
+                    }
                 case SqlDbType.DateTimeOffset:
                     return DateTimeConverters.DecodeDateTimeOffset(data, scale);
 
+                // Binary types
+                case SqlDbType.VarBinary:
+                case SqlDbType.Binary:
+                    return "0x" + data.ToHexString();
+
+                case SqlDbType.UniqueIdentifier:
+                    return BinaryToGuid(data).ToString().ToUpper();
+
+                // SQL Variant
+                case SqlDbType.Variant:
+                    return VariantBinaryToString(data);
+
+                case SqlDbType.Bit:
+                    return GetBit(data[0], bitPosition);
+
                 default:
                     return string.Format(CultureInfo.CurrentCulture,
-                        "not yet supported ({0:G})",
-                        sqlType);
+                                         "not yet supported ({0:G})",
+                                         sqlType);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            return "Error converting data";
+            return $"Error converting data - {ex.Message}";
         }
     }
 
+    /// <summary>
+    /// Gets a bit from a byte
+    /// </summary>
+    /// <remarks>
+    /// Bit Position is the zero based bit position of the field. Bits are stored in bytes, up to 8 per byte
+    /// </remarks>
+    private static string GetBit(byte data, short bitPosition)
+    {
+        return ((data & (1 << bitPosition)) != 0).ToString();
+    }
+
+    /// <summary>
+    /// Gets the value of a byte array in terms of a typed object (T) based on the SQL type
+    /// </summary>
     public static T? GetValue<T>(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
     {
         return (T?)GetValue(data, sqlType, precision, scale);
     }
 
+    /// <summary>
+    /// Gets the value of a byte array in terms of an untyped object based on the SQL type
+    /// </summary>
     public static object? GetValue(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
     {
         if (data == null)
@@ -223,13 +215,9 @@ public static class DataConverter
         }
     }
 
-   
-
     /// <summary>
     /// Returns a string representation of a variant data type
     /// </summary>
-    /// <param name="data">The data.</param>
-    /// <returns></returns>
     private static string VariantBinaryToString(byte[] data)
     {
         var variantType = data[0];
@@ -237,7 +225,7 @@ public static class DataConverter
         byte precision = 0;
         byte scale = 0;
 
-        switch (ToSqlType(variantType))
+        switch (SqlTypeConverter.ToSqlType(variantType))
         {
             case SqlDbType.Decimal:
 
@@ -259,22 +247,31 @@ public static class DataConverter
 
                 offset += 2;
                 break;
+
+            case SqlDbType.Time:
+            case SqlDbType.DateTime2:
+            case SqlDbType.DateTimeOffset:
+                scale = data[2];
+                offset += 1;
+                break;
         }
 
         var variantData = new byte[data.Length - offset];
 
         Array.Copy(data, offset, variantData, 0, variantData.Length);
 
-        return BinaryToString(variantData, ToSqlType(variantType), precision, scale);
+        return BinaryToString(variantData, SqlTypeConverter.ToSqlType(variantType), precision, scale);
     }
 
     /// <summary>
-    /// Decodes the DECIMAL data type
+    /// Decodes the DECIMAL/NUMERIC data type
     /// </summary>
-    /// <param name="data">The data.</param>
-    /// <param name="precision">The precision.</param>
-    /// <param name="scale">The scale.</param>
-    /// <returns></returns>
+    /// <remarks>
+    /// - Precision determines the maximum number of digits that can be stored
+    /// - Scale determines the number of digits that can be stored to the right of the decimal point
+    /// 
+    /// This uses System.Data.SqlTypes.SqlDecimal to get the value
+    /// </remarks>
     private static SqlDecimal DecodeDecimal(byte[] data, byte precision, byte scale)
     {
         int index;
@@ -354,7 +351,7 @@ public static class DataConverter
         stringBuilder.Append(": ");
         try
         {
-            stringBuilder.Append(BinaryToString(data, sqlType, 0, 0));
+            stringBuilder.Append(BinaryToString(data, sqlType));
         }
         catch
         {
@@ -363,76 +360,4 @@ public static class DataConverter
 
         return stringBuilder.ToString();
     }
-
-    internal static SqlDbType ToSqlType(byte value)
-    {
-        switch (value)
-        {
-            case 34:
-                return SqlDbType.Image;
-            case 35:
-                return SqlDbType.Text;
-            case 36:
-                return SqlDbType.UniqueIdentifier;
-            case 48:
-                return SqlDbType.TinyInt;
-            case 52:
-                return SqlDbType.SmallInt;
-            case 56:
-                return SqlDbType.Int;
-            case 58:
-                return SqlDbType.SmallDateTime;
-            case 59:
-                return SqlDbType.Real;
-            case 60:
-                return SqlDbType.Money;
-            case 61:
-                return SqlDbType.DateTime;
-            case 62:
-                return SqlDbType.Float;
-            case 98:
-                return SqlDbType.Variant;
-            case 99:
-                return SqlDbType.NText;
-            case 104:
-                return SqlDbType.Bit;
-            case 106:
-            case 108:
-                return SqlDbType.Decimal;
-            case 122:
-                return SqlDbType.SmallMoney;
-            case 127:
-                return SqlDbType.BigInt;
-            case 165:
-                return SqlDbType.VarBinary;
-            case 167:
-                return SqlDbType.VarChar;
-            case 173:
-                return SqlDbType.Binary;
-            case 175:
-                return SqlDbType.Char;
-            case 189:
-                return SqlDbType.Timestamp;
-            case 231:
-                return SqlDbType.NVarChar;
-            case 239:
-                return SqlDbType.NChar;
-            case 241:
-                return SqlDbType.Xml;
-
-            //New 2008 Types
-            case 40:
-                return SqlDbType.Date;
-            case 41:
-                return SqlDbType.Time;
-            case 42:
-                return SqlDbType.DateTime2;
-            case 43:
-                return SqlDbType.DateTimeOffset;
-
-            default:
-                return SqlDbType.Variant;
-        }
-    }
-
 }

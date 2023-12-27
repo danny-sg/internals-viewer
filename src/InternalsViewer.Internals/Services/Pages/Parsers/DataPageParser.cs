@@ -5,6 +5,9 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
+/// <summary>
+/// Parser for Data pages
+/// </summary>
 public class DataPageParser : PageParser, IPageParser<DataPage>
 {
     public PageType[] SupportedPageTypes => new[] { PageType.Data };

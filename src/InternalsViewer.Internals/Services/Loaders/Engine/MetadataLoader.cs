@@ -13,12 +13,12 @@ namespace InternalsViewer.Internals.Services.Loaders.Engine;
 /// <summary>
 /// Service responsible for loading metadata for a database
 /// </summary>
-public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableReader)
+public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader recordReader)
     : IMetadataLoader
 {
     public ILogger<MetadataLoader> Logger { get; } = logger;
 
-    public ITableReader TableReader { get; } = tableReader;
+    public IRecordReader RecordReader { get; } = recordReader;
 
     /// <summary>
     /// Builds the metadata for database from the raw page data
@@ -99,7 +99,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
     {
         Logger.LogDebug("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
 
-        var records = await TableReader.Read(database,
+        var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalFileStructure.GetStructure(-1));
 
@@ -117,7 +117,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
     {
         Logger.LogDebug("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
 
-        var records = await TableReader.Read(database,
+        var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalEntityObjectStructure.GetStructure(-1));
 
@@ -134,7 +134,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
     {
         Logger.LogDebug("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
 
-        var records = await TableReader.Read(database,
+        var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalObjectStructure.GetStructure(-1));
 
@@ -151,7 +151,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
     {
         Logger.LogDebug("Getting Indexes (sys.sysidxstats) using fixed Object Id/Index Id");
 
-        var records = await TableReader.Read(database,
+        var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalIndexStructure.GetStructure(-1));
 
@@ -168,7 +168,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
     {
         Logger.LogDebug("Getting Row Sets (sys.sysrowsets) using fixed Object Id/Index Id");
 
-        var records = await TableReader.Read(database,
+        var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalRowSetStructure.GetStructure(-1));
 
@@ -185,7 +185,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
     {
         Logger.LogDebug("Getting Column Layouts (sys.sysrscols) using fixed Object Id/Index Id");
 
-        var records = await TableReader.Read(database,
+        var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalColumnLayoutStructure.GetStructure(-1));
 
@@ -202,7 +202,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
     {
         Logger.LogDebug("Getting Columns (sys.syscolpars) using fixed Object Id/Index Id");
 
-        var records = await TableReader.Read(database,
+        var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalColumnStructure.GetStructure(-1));
 
@@ -226,7 +226,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, ITableReader tableRe
 
         var id = IdHelpers.GetAllocationUnitId(objectId, indexId);
 
-        var records = await TableReader.Read(databaseDetail,
+        var records = await RecordReader.Read(databaseDetail,
                                              databaseDetail.BootPage.FirstAllocationUnitsPage,
                                              InternalAllocationUnitStructure.GetStructure(id));
 

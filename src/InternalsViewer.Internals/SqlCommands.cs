@@ -2,12 +2,7 @@
 
 internal class SqlCommands
 {
-    public static readonly string BufferPool =
-@"SELECT CONVERT(SMALLINT, file_id) AS FileId
-      ,page_id                    AS PageId
-      ,is_modified                AS IsModified
-FROM   sys.dm_os_buffer_descriptors WITH (NOLOCK)
-WHERE  database_id = DB_ID(@DatabaseName)";
+
 
     public static readonly string Checkpoint = @"CHECKPOINT";
 
@@ -17,21 +12,6 @@ FROM   sys.partitions  p
        INNER JOIN sys.allocation_units au ON au.container_id = p.partition_id
 WHERE au.allocation_unit_id = @AllocationUnitId";
 
-    public static readonly string Databases = 
-@"SELECT   d.database_id
-	    ,d.name
-        ,SUM(size) AS Size
-        ,d.state 
-	    ,COUNT(*) AS DataFiles
-       ,d.compatibility_level
-FROM     sys.databases d  
-	     INNER JOIN sys.master_files mf ON d.database_id = mf.database_id 
-WHERE    type = 0
-GROUP BY d.database_id
-		,d.name
-		,d.state 
-        ,compatibility_level   
-ORDER BY d.name";
 
     public static readonly string IndexColumns = @"-- The reason this is necessary is that the key columns are in sys.system_internals_partition_columns
 -- but there doesn''''t seem to be a link to which column they are. 
@@ -128,34 +108,6 @@ FROM   IndexColumns ic
        LEFT JOIN KeyColumns kc ON kc.RowId + ColumnId = ic.partition_column_id
 WHERE  ISNULL(ic.name, kc.name) IS NOT NULL";
 
-    public static readonly string ObjectHasClusteredIndex = @"SELECT ISNULL(OBJECTPROPERTY(OBJECT_ID(@TableName), 'TableHasClustIndex'), 0)";
-
-    public static readonly string Page = @"DBCC PAGE({0}, {1}, {2}, {3}) WITH TABLERESULTS";
-
-    public static readonly string SysAdminCheck = @"SELECT CONVERT(BIT, IS_SRVROLEMEMBER('sysadmin'))";
-
-    public static readonly string TableColumns = 
-@"SELECT CASE WHEN is_uniqueifier = 1 THEN 'Uniqueifier'
-            WHEN is_dropped     = 1 THEN '(Dropped)'
-            ELSE c.name END AS name,
-       ISNULL(c.column_id,-1) AS column_id,
-       TYPE_NAME(pc.system_type_id) as type_name,
-       pc.system_type_id,
-       pc.max_length,
-       pc.precision,
-       pc.scale,
-       pc.leaf_offset,
-       pc.is_uniqueifier,
-       pc.is_dropped,
-       ISNULL(c.is_sparse, 0) AS is_sparse,
-       pc.leaf_null_bit
-FROM   sys.allocation_units au
-       INNER JOIN sys.partitions p ON au.container_id = p.partition_id
-       INNER JOIN sys.system_internals_partition_columns pc ON p.partition_id = pc.partition_id
-       INNER JOIN sys.all_objects o ON p.object_id = o.object_id
-       LEFT JOIN sys.all_columns c ON column_id = partition_column_id AND c.object_id = p.object_id
-WHERE  au.allocation_unit_id  = @AllocationUnitId";
-
     public static readonly string TransactionLog = 
 @"SELECT [Current LSN] AS LSN
       ,REPLACE(SUBSTRING(Operation, 5, LEN(Operation)),'_',' ') AS Operation
@@ -194,9 +146,4 @@ FROM  ::fn_dblog(@begin,null) l
 WHERE Operation NOT LIKE '%XACT%' 
       AND 
       Operation NOT LIKE '%CKPT%'";
-
-    public static readonly string Version = @"SELECT SERVERPROPERTY('productversion'), size FROM sysfiles WHERE fileid = 1";
-
-
-
 }

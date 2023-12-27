@@ -4,6 +4,9 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
+/// <summary>
+/// Parser for LOB (Large Object Data) pages
+/// </summary>
 public class LobPageParser : PageParser, IPageParser<LobPage>
 {
     public PageType[] SupportedPageTypes => new[] { PageType.Lob3, PageType.Lob4 };
