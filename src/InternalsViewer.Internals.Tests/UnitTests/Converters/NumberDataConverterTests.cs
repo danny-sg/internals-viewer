@@ -1,9 +1,10 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Converters;
 
-public class NumberDataConverterTests : ConverterTestsBase
+public class NumberDataConverterTests
 {
     [Theory]
     [InlineData("38", SqlDbType.TinyInt, "56")]
@@ -23,7 +24,7 @@ public class NumberDataConverterTests : ConverterTestsBase
     public void Can_Convert_Int_Type_Number_From_Binary_To_String(string bytesString, SqlDbType dataType, string expected)
     {
         // Arrange
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray();
 
         // Act
         var result = DataConverter.BinaryToString(bytes, dataType);
@@ -65,7 +66,7 @@ public class NumberDataConverterTests : ConverterTestsBase
     public void Can_Convert_Decimal_Type_Number_From_Binary_To_String(string bytesString, byte precision, byte scale, string expected)
     {
         // Arrange
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray(); ;
 
         // Act
         var result = DataConverter.BinaryToString(bytes, SqlDbType.Decimal, precision, scale);
@@ -80,7 +81,7 @@ public class NumberDataConverterTests : ConverterTestsBase
     public void Can_Convert_Float_Type_Number_From_Binary_To_String(string bytesString, SqlDbType dataType, string expected)
     {
         // Arrange
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray(); 
 
         // Act
         var result = DataConverter.BinaryToString(bytes, dataType);
@@ -96,7 +97,7 @@ public class NumberDataConverterTests : ConverterTestsBase
     public void Can_Convert_Money_Type_Number_From_Binary_To_String(string bytesString, SqlDbType dataType, string expected)
     {
         // Arrange
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray();
 
         // Act
         var result = DataConverter.BinaryToString(bytes, dataType);

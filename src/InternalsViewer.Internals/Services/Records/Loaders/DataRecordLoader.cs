@@ -20,31 +20,31 @@ public class DataRecordLoader : RecordLoader
     /// Loads the data record at the given offset
     /// </summary>
     /// 
-    internal static DataRecord Load(Page page, ushort slotOffset, TableStructure structure)
+    public static DataRecord Load(byte[] data, ushort slotOffset, TableStructure structure)
     {
         var record = new DataRecord
         {
             SlotOffset = slotOffset
         };
 
-        LoadStatusBitsA(record, page.Data);
+        LoadStatusBitsA(record, data);
 
         if (record.RecordType == RecordType.ForwardingStub)
         {
-            LoadForwardingStub(record, page.Data);
+            LoadForwardingStub(record, data);
 
             return record;
         }
 
-        LoadStatusBitsB(record, page.Data);
+        LoadStatusBitsB(record, data);
 
-        LoadRecordStructure(record, page.Data, slotOffset, structure);
+        LoadRecordStructure(record, data, slotOffset, structure);
 
-        LoadValues(record, structure, page.Data);
+        LoadValues(record, structure, data);
 
         if (structure.HasSparseColumns)
         {
-            LoadSparseVector(record, structure, page.Data);
+            LoadSparseVector(record, structure, data);
         }
 
         return record;
@@ -320,8 +320,6 @@ public class DataRecordLoader : RecordLoader
     /// </summary>
     private static void LoadStatusBitsB(Record record, byte[] data)
     {
-        LoadStatusBitsA(record, data);
-
         record.StatusBitsB = new BitArray(new[] { data[record.SlotOffset + 1] });
 
         record.MarkDataStructure("StatusBitsBDescription", record.SlotOffset + sizeof(byte), sizeof(byte));

@@ -32,6 +32,9 @@ partial class TestForm
     {
         allocationWindow = new AllocationWindow(DatabaseLoader);
         SuspendLayout();
+
+        var resources = new ComponentResourceManager(typeof(TestForm));
+        Icon = (Icon)resources.GetObject("$this.Icon");
         // 
         // allocationWindow
         // 
@@ -39,7 +42,7 @@ partial class TestForm
         allocationWindow.Location = new Point(0, 0);
         allocationWindow.Margin = new Padding(4, 4, 4, 4);
         allocationWindow.Name = "allocationWindow";
-        allocationWindow.Size = new Size(800, 450);
+        allocationWindow.Size = new Size(1024, 768);
         allocationWindow.TabIndex = 1;
         allocationWindow.OnConnect += AllocationWindowOnConnect;
         allocationWindow.ViewPage += this.allocationWindow_ViewPage;
@@ -48,7 +51,7 @@ partial class TestForm
         // 
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
-        ClientSize = new Size(800, 450);
+        ClientSize = new Size(1024, 768);
         Controls.Add(allocationWindow);
         Name = "TestForm";
         Text = "Internals Viewer Test App";

@@ -1,14 +1,15 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Converters;
 
-public class DataConverterTests : ConverterTestsBase
+public class DataConverterTests
 {
     [Fact]
     public void Can_Convert_Varbinary_To_String()
     {
-        var bytes = StringToByteArray("98 53 F4 00 E5 B0 00 00");
+        var bytes = "98 53 F4 00 E5 B0 00 00".ToByteArray();
 
         var result = DataConverter.BinaryToString(bytes, SqlDbType.VarBinary);
 
@@ -18,7 +19,7 @@ public class DataConverterTests : ConverterTestsBase
     [Fact]
     public void Can_Convert_Binary_To_String()
     {
-        var bytes = StringToByteArray("98 53 F4 00 E5 B0 00 00");
+        var bytes = "98 53 F4 00 E5 B0 00 00".ToByteArray();
 
         var result = DataConverter.BinaryToString(bytes, SqlDbType.Binary);
 
@@ -28,7 +29,7 @@ public class DataConverterTests : ConverterTestsBase
     [Fact]
     public void Can_Convert_UniqueIdentifier_To_String()
     {
-        var bytes = StringToByteArray("98 41 25 75 8E EC 43 4E B7 B3 26 E6 3C 6E 50 9C");
+        var bytes = "98 41 25 75 8E EC 43 4E B7 B3 26 E6 3C 6E 50 9C".ToByteArray();
 
         var result = DataConverter.BinaryToString(bytes, SqlDbType.UniqueIdentifier);
 
@@ -58,7 +59,7 @@ public class DataConverterTests : ConverterTestsBase
     [InlineData("02", "True", 1)]
     public void Can_Convert_Bit_To_String(string bytesString, string expected, short bitPosition)
     {
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray();
 
         var result = DataConverter.BinaryToString(bytes, SqlDbType.Bit, 0, 0, bitPosition);
 
@@ -86,7 +87,7 @@ public class DataConverterTests : ConverterTestsBase
     [InlineData("68 01 01", "True", "bit")]
     public void Can_Convert_SqlVariant_To_String(string bytesString, string expected, string type)
     {
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray();
 
         var result = DataConverter.BinaryToString(bytes, SqlDbType.Variant);
 

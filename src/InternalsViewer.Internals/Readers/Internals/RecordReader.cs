@@ -21,7 +21,7 @@ public class RecordReader(IPageService pageService): IRecordReader
 
         while (true)
         {
-            records.AddRange(page.OffsetTable.Select(offset => DataRecordLoader.Load(page, offset, structure)));
+            records.AddRange(page.OffsetTable.Select(offset => DataRecordLoader.Load(page.Data, offset, structure)));
 
             if(page.PageHeader.NextPage == PageAddress.Empty)
             {

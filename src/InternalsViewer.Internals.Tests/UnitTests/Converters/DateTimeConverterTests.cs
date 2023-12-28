@@ -1,15 +1,16 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Converters;
 
-public class DateTimeConverterTests : ConverterTestsBase
+public class DateTimeConverterTests
 {
     [Fact]
     public void Can_Convert_DateTime_To_String()
     {
         // Arrange
-        var bytes = StringToByteArray("98 53 F4 00 E5 B0 00 00");
+        var bytes = "98 53 F4 00 E5 B0 00 00".ToByteArray();
 
         // Act
         var result = DataConverter.BinaryToString(bytes, SqlDbType.DateTime);
@@ -22,7 +23,7 @@ public class DateTimeConverterTests : ConverterTestsBase
     public void Can_Convert_SmallDateTime_To_String()
     {
         // Arrange
-        var bytes = StringToByteArray("7A 03 E5 B0");
+        var bytes = "7A 03 E5 B0".ToByteArray();
 
         // Act
         var result = DataConverter.BinaryToString(bytes, SqlDbType.SmallDateTime);
@@ -35,7 +36,7 @@ public class DateTimeConverterTests : ConverterTestsBase
     public void Can_Convert_Date_To_String()
     {
         // Arrange
-        var bytes = StringToByteArray("40 46 0B");
+        var bytes = "40 46 0B".ToByteArray();
 
         // Act
         var result = DataConverter.BinaryToString(bytes, SqlDbType.Date);
@@ -56,7 +57,7 @@ public class DateTimeConverterTests : ConverterTestsBase
     public void Can_Convert_Time_To_String(string bytesString, byte scale, string expected)
     {
         // Arrange
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray();
 
         // Act
         var result = DataConverter.BinaryToString(bytes, SqlDbType.Time, 0, scale);
@@ -77,7 +78,7 @@ public class DateTimeConverterTests : ConverterTestsBase
     public void Can_Convert_DateTime2_To_String(string bytesString, byte scale, string expected)
     {
         // Arrange
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray();
 
         // Act
         var result = DataConverter.BinaryToString(bytes, SqlDbType.DateTime2, 0, scale);
@@ -91,7 +92,7 @@ public class DateTimeConverterTests : ConverterTestsBase
     public void Can_Convert_DateTimeOffset_To_String(string bytesString, byte scale, string expected)
     {
         // Arrange
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray();
 
         // Act
         var result = DataConverter.BinaryToString(bytes, SqlDbType.DateTimeOffset, 0, scale);

@@ -14,7 +14,7 @@ public class RecordService() : IRecordService
         var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata, 
                                                                  page.PageHeader.AllocationUnitId);
 
-        return DataRecordLoader.Load(page, offset, structure);
+        return DataRecordLoader.Load(page.Data, offset, structure);
     }
 
     public IndexRecord GetIndexRecord(Page page, ushort offset)

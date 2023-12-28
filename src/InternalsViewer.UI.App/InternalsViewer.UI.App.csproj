@@ -10,7 +10,12 @@
       <PlatformName>windows</PlatformName>
       <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
       <Configurations>Debug;Release;Installer</Configurations>
+      <ApplicationIcon>InternalsViewer.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="InternalsViewer.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />

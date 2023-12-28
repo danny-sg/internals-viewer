@@ -1,10 +1,15 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace InternalsViewer.Internals.Tests.UnitTests.Converters;
+namespace InternalsViewer.Internals.Tests.Helpers;
 
-public abstract class ConverterTestsBase
+public static class TestHelpers
 {
-    protected static byte[] StringToByteArray(string value)
+    public static byte[] ToByteArray(this string value)
     {
         value = value.Replace(" ", string.Empty);
 

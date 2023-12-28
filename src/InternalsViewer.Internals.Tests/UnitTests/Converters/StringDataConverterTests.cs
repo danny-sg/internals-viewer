@@ -1,9 +1,10 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Converters;
 
-public class StringDataConverterTests: ConverterTestsBase
+public class StringDataConverterTests
 {
     [Theory]
     [InlineData("41", SqlDbType.Char, "A")]
@@ -25,7 +26,7 @@ public class StringDataConverterTests: ConverterTestsBase
     public void Can_Convert_Binary_To_String(string bytesString, SqlDbType dataType, string expected)
     {
         // Arrange
-        var bytes = StringToByteArray(bytesString);
+        var bytes = bytesString.ToByteArray();
 
         var result = DataConverter.BinaryToString(bytes, dataType);
 
