@@ -76,7 +76,7 @@ public class DataRecordLoader : RecordLoader
                 offsetStart = (short)(varColCountOffset + sizeof(short));
             }
 
-            // Load offset array of 2-byte ints indicating the end offset of each variable length field
+            // Load offset array of 2-byte integers indicating the end offset of each variable length field
             dataRecord.ColOffsetArray = GetOffsetArray(data,
                                                        dataRecord.VariableLengthColumnCount,
                                                        dataRecord.SlotOffset + offsetStart);
@@ -91,7 +91,7 @@ public class DataRecordLoader : RecordLoader
             dataRecord.ColOffsetArray = Array.Empty<ushort>();
         }
 
-        // Variable length data starts after the offset array length (2 byte ints * number of variable length columns)
+        // Variable length data starts after the offset array length (2 byte integers * number of variable length columns)
         dataRecord.VariableLengthDataOffset = (ushort)(offsetStart + sizeof(ushort) * dataRecord.VariableLengthColumnCount);
 
         LoadValues(page, dataRecord, structure);
@@ -155,7 +155,7 @@ public class DataRecordLoader : RecordLoader
     /// <summary>
     /// Loads the column values.
     /// </summary>
-    private static void LoadValues(Page page, DataRecord dataRecord, TableStructure structure)
+    private static void LoadValues(PageData page, DataRecord dataRecord, Structure structure)
     {
         var columnValues = new List<RecordField>();
 
@@ -174,7 +174,7 @@ public class DataRecordLoader : RecordLoader
 
                 ushort variableIndex = 0;
 
-                if (column.LeafOffset is >= 0 and < Page.Size)
+                if (column.LeafOffset is >= 0 and < PageData.Size)
                 {
                     // Fixed length field
 
@@ -188,8 +188,9 @@ public class DataRecordLoader : RecordLoader
 
                     Array.Copy(page.Data, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
                 }
-                else if (dataRecord is { HasVariableLengthColumns: true, HasNullBitmap: true } && !column.IsDropped
-                         && (column.ColumnId < 0 || !dataRecord.NullBitmapValue(column)))
+                else if (dataRecord is { HasVariableLengthColumns: true, HasNullBitmap: true } 
+                         && !column.IsDropped
+                         && (column.ColumnId < 0 || !dataRecord.IsNullBitmapSet(column)))
                 {
                     // Variable Length fields
 
@@ -253,23 +254,9 @@ public class DataRecordLoader : RecordLoader
     /// </summary>
     private static RecordType LoadStatusBits(Record record, byte[] data)
     {
-        var statusA = data[record.SlotOffset];
+        LoadStatusBitsA(record, data);
 
-        // bytes 0 and 1 are Status Bits A and B
-        record.StatusBitsA = new BitArray(new[] { statusA });
         record.StatusBitsB = new BitArray(new[] { data[record.SlotOffset + 1] });
-
-        record.MarkDataStructure("StatusBitsADescription", record.SlotOffset, sizeof(byte));
-
-        record.RecordType = (RecordType)(statusA >> 1 & 7);
-
-        if (record.RecordType == RecordType.Forwarding)
-        {
-            return record.RecordType;
-        }
-
-        record.HasNullBitmap = record.StatusBitsA[4];
-        record.HasVariableLengthColumns = record.StatusBitsA[5];
 
         record.MarkDataStructure("StatusBitsBDescription", record.SlotOffset + sizeof(byte), sizeof(byte));
 

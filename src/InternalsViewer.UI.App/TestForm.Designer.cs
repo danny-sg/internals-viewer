@@ -41,7 +41,7 @@ partial class TestForm
         allocationWindow.Name = "allocationWindow";
         allocationWindow.Size = new Size(800, 450);
         allocationWindow.TabIndex = 1;
-        allocationWindow.Connect += AllocationWindow_Connect;
+        allocationWindow.OnConnect += AllocationWindowOnConnect;
         allocationWindow.ViewPage += this.allocationWindow_ViewPage;
         // 
         // TestForm

@@ -206,7 +206,7 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    private async void LoadRecord(ushort offset)
+    private void LoadRecord(ushort offset)
     {
         Record? record = null;
 
@@ -222,7 +222,7 @@ public partial class PageViewerWindow : UserControl
 
             case PageType.Index:
 
-                record = await RecordService.GetIndexRecord(Page, offset);
+                record = RecordService.GetIndexRecord(Page, offset);
 
                 allocationViewer.Visible = false;
                 markerKeyTable.Visible = true;

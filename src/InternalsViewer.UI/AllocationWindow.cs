@@ -23,7 +23,7 @@ public partial class AllocationWindow : UserControl
 
     public IDatabaseLoader DatabaseLoader { get; }
 
-    public event EventHandler? Connect;
+    public event EventHandler? OnConnect;
     public event EventHandler<PageEventArgs>? ViewPage;
 
     protected delegate void LoadDatabaseDelegate();
@@ -395,12 +395,9 @@ public partial class AllocationWindow : UserControl
         }
     }
 
-    internal virtual void OnConnect(object sender, EventArgs e)
+    internal virtual void ConnectToolStripButton_Click(object sender, EventArgs e)
     {
-        if (Connect != null)
-        {
-            Connect(sender, e);
-        }
+        OnConnect?.Invoke(sender, e);
     }
 
     internal virtual void OnViewPage(object sender, PageEventArgs e)
@@ -663,5 +660,21 @@ public partial class AllocationWindow : UserControl
                 OnViewPage(sender, new PageEventArgs(pageAddress, true));
             }
         }
+    }
+
+    private async void RefreshToolStripButton_Click(object sender, EventArgs e)
+    {
+        var databaseInfo = (DatabaseSummary?)databaseToolStripComboBox.SelectedItem;
+
+        if (databaseInfo == null)
+        {
+            return;
+        }
+
+        var database = await DatabaseLoader.Load(databaseInfo.Name);
+
+        CurrentDatabase = database;
+
+        LoadDatabase();
     }
 }

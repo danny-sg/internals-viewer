@@ -34,19 +34,20 @@ namespace InternalsViewer.UI
         private void InitializeComponent()
         {
             components = new Container();
-            var dataGridViewCellStyle8 = new DataGridViewCellStyle();
-            var dataGridViewCellStyle13 = new DataGridViewCellStyle();
-            var dataGridViewCellStyle14 = new DataGridViewCellStyle();
-            var dataGridViewCellStyle9 = new DataGridViewCellStyle();
-            var dataGridViewCellStyle10 = new DataGridViewCellStyle();
-            var dataGridViewCellStyle11 = new DataGridViewCellStyle();
-            var dataGridViewCellStyle12 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle1 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle6 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle7 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle2 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle3 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle4 = new DataGridViewCellStyle();
+            var dataGridViewCellStyle5 = new DataGridViewCellStyle();
             allocationContainer = new AllocationContainer();
             splitContainer = new SplitContainer();
             flatMenuStrip = new FlatMenuStrip();
             toolStripLabel1 = new ToolStripLabel();
             databaseToolStripComboBox = new ToolStripComboBox();
             connectToolStripButton = new ToolStripButton();
+            RefreshToolStripButton = new ToolStripButton();
             toolStripSeparator1 = new ToolStripSeparator();
             mapToolStripButton = new ToolStripSplitButton();
             allocationUnitsToolStripMenuItem = new ToolStripMenuItem();
@@ -142,7 +143,7 @@ namespace InternalsViewer.UI
             flatMenuStrip.BackColor = System.Drawing.SystemColors.Control;
             flatMenuStrip.GripStyle = ToolStripGripStyle.Hidden;
             flatMenuStrip.ImageScalingSize = new System.Drawing.Size(32, 32);
-            flatMenuStrip.Items.AddRange(new ToolStripItem[] { toolStripLabel1, databaseToolStripComboBox, connectToolStripButton, toolStripSeparator1, mapToolStripButton, bufferPoolToolStripButton, showKeyToolStripButton, fileDetailsToolStripButton, toolStripSeparator2, extentSizeToolStripComboBox, pageToolStripTextBox, toolStripLabel2 });
+            flatMenuStrip.Items.AddRange(new ToolStripItem[] { toolStripLabel1, databaseToolStripComboBox, connectToolStripButton, RefreshToolStripButton, toolStripSeparator1, mapToolStripButton, bufferPoolToolStripButton, showKeyToolStripButton, fileDetailsToolStripButton, toolStripSeparator2, extentSizeToolStripComboBox, pageToolStripTextBox, toolStripLabel2 });
             flatMenuStrip.Location = new System.Drawing.Point(0, 0);
             flatMenuStrip.Name = "flatMenuStrip";
             flatMenuStrip.Padding = new Padding(5, 0, 1, 0);
@@ -173,7 +174,18 @@ namespace InternalsViewer.UI
             connectToolStripButton.Name = "connectToolStripButton";
             connectToolStripButton.Size = new System.Drawing.Size(23, 32);
             connectToolStripButton.Text = "Connect to database";
-            connectToolStripButton.Click += OnConnect;
+            connectToolStripButton.Click += ConnectToolStripButton_Click;
+            // 
+            // RefreshToolStripButton
+            // 
+            RefreshToolStripButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            RefreshToolStripButton.Image = Properties.Resources.Refresh1;
+            RefreshToolStripButton.ImageScaling = ToolStripItemImageScaling.None;
+            RefreshToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            RefreshToolStripButton.Name = "RefreshToolStripButton";
+            RefreshToolStripButton.Size = new System.Drawing.Size(23, 32);
+            RefreshToolStripButton.Text = "Refresh";
+            RefreshToolStripButton.Click += RefreshToolStripButton_Click;
             // 
             // toolStripSeparator1
             // 
@@ -339,39 +351,39 @@ namespace InternalsViewer.UI
             keysDataGridView.BackgroundColor = System.Drawing.Color.White;
             keysDataGridView.BorderStyle = BorderStyle.None;
             keysDataGridView.CellBorderStyle = DataGridViewCellBorderStyle.None;
-            dataGridViewCellStyle8.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle8.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle8.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
-            dataGridViewCellStyle8.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle8.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle8.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle8.WrapMode = DataGridViewTriState.True;
-            keysDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle8;
+            dataGridViewCellStyle1.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle1.WrapMode = DataGridViewTriState.True;
+            keysDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
             keysDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             keysDataGridView.Columns.AddRange(new DataGridViewColumn[] { KeyColumn, NameColumn, IndexNameColumn, IndexTypeColumn, RootPageColumn, FirstPageColumn, FirstIamPageColumn, TotalPagesColumn });
             keysDataGridView.DataSource = AllocationBindingSource;
-            dataGridViewCellStyle13.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle13.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle13.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
-            dataGridViewCellStyle13.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle13.SelectionBackColor = System.Drawing.SystemColors.ControlLight;
-            dataGridViewCellStyle13.SelectionForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle13.WrapMode = DataGridViewTriState.False;
-            keysDataGridView.DefaultCellStyle = dataGridViewCellStyle13;
+            dataGridViewCellStyle6.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle6.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle6.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            dataGridViewCellStyle6.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle6.SelectionBackColor = System.Drawing.SystemColors.ControlLight;
+            dataGridViewCellStyle6.SelectionForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle6.WrapMode = DataGridViewTriState.False;
+            keysDataGridView.DefaultCellStyle = dataGridViewCellStyle6;
             keysDataGridView.Dock = DockStyle.Fill;
             keysDataGridView.GridColor = System.Drawing.Color.White;
             keysDataGridView.Location = new System.Drawing.Point(0, 0);
             keysDataGridView.Margin = new Padding(4);
             keysDataGridView.Name = "keysDataGridView";
             keysDataGridView.ReadOnly = true;
-            dataGridViewCellStyle14.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle14.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle14.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
-            dataGridViewCellStyle14.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle14.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle14.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle14.WrapMode = DataGridViewTriState.True;
-            keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle14;
+            dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle7.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle7.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            dataGridViewCellStyle7.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle7.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle7.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle7.WrapMode = DataGridViewTriState.True;
+            keysDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle7;
             keysDataGridView.RowHeadersVisible = false;
             keysDataGridView.RowHeadersWidth = 102;
             keysDataGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
@@ -394,8 +406,8 @@ namespace InternalsViewer.UI
             // 
             NameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             NameColumn.DataPropertyName = "ObjectName";
-            dataGridViewCellStyle9.BackColor = System.Drawing.Color.WhiteSmoke;
-            NameColumn.DefaultCellStyle = dataGridViewCellStyle9;
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.WhiteSmoke;
+            NameColumn.DefaultCellStyle = dataGridViewCellStyle2;
             NameColumn.HeaderText = "Table";
             NameColumn.MinimumWidth = 200;
             NameColumn.Name = "NameColumn";
@@ -423,9 +435,9 @@ namespace InternalsViewer.UI
             // 
             RootPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             RootPageColumn.DataPropertyName = "RootPage";
-            dataGridViewCellStyle10.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle10.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
-            RootPageColumn.DefaultCellStyle = dataGridViewCellStyle10;
+            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
+            RootPageColumn.DefaultCellStyle = dataGridViewCellStyle3;
             RootPageColumn.HeaderText = "Root Page";
             RootPageColumn.MinimumWidth = 12;
             RootPageColumn.Name = "RootPageColumn";
@@ -435,9 +447,9 @@ namespace InternalsViewer.UI
             // 
             FirstPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             FirstPageColumn.DataPropertyName = "FirstPage";
-            dataGridViewCellStyle11.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle11.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
-            FirstPageColumn.DefaultCellStyle = dataGridViewCellStyle11;
+            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle4.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
+            FirstPageColumn.DefaultCellStyle = dataGridViewCellStyle4;
             FirstPageColumn.HeaderText = "First Page";
             FirstPageColumn.MinimumWidth = 12;
             FirstPageColumn.Name = "FirstPageColumn";
@@ -447,9 +459,9 @@ namespace InternalsViewer.UI
             // 
             FirstIamPageColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             FirstIamPageColumn.DataPropertyName = "FirstIamPage";
-            dataGridViewCellStyle12.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle12.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
-            FirstIamPageColumn.DefaultCellStyle = dataGridViewCellStyle12;
+            dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle5.ForeColor = System.Drawing.Color.FromArgb(0, 0, 192);
+            FirstIamPageColumn.DefaultCellStyle = dataGridViewCellStyle5;
             FirstIamPageColumn.HeaderText = "First IAM";
             FirstIamPageColumn.MinimumWidth = 12;
             FirstIamPageColumn.Name = "FirstIamPageColumn";
@@ -621,5 +633,6 @@ namespace InternalsViewer.UI
         private DataGridViewTextBoxColumn FirstPageColumn;
         private DataGridViewTextBoxColumn FirstIamPageColumn;
         private DataGridViewTextBoxColumn TotalPagesColumn;
+        private ToolStripButton RefreshToolStripButton;
     }
 }

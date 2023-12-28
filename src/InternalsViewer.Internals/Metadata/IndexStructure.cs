@@ -1,4 +1,6 @@
-﻿namespace InternalsViewer.Internals.Metadata;
+﻿using InternalsViewer.Internals.Engine.Database.Enums;
+
+namespace InternalsViewer.Internals.Metadata;
 
 public class IndexStructure(long allocationUnitId) : Structure(allocationUnitId)
 {
@@ -6,5 +8,7 @@ public class IndexStructure(long allocationUnitId) : Structure(allocationUnitId)
 
     public bool IsUnique { get; set; }
 
-    public byte IndexType { get; set; }
+    public IndexType IndexType { get; set; }
+    
+    public bool HasFilter { get; set; }
 }

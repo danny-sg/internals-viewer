@@ -1,4 +1,13 @@
-﻿-- Create a test database 
+﻿USE master;  
+GO  
+EXEC sp_detach_db @dbname = N'TestDatabase';  
+GO  
+
+EXEC sp_attach_db @dbname = N'TestDatabase', @filename1 = 'C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER\MSSQL\DATA\TestDatabase.mdf'
+GO  
+CHECKPOINT
+DBCC SHRINKFILE (1, 1)
+-- Create a test database 
 
 DROP DATABASE IF EXISTS TestDatabase
 GO
@@ -196,7 +205,12 @@ INSERT INTO Testing.SqlVariantTable_Clustered VALUES
    ,(CONVERT(SQL_VARIANT, CONVERT(SMALLINT, 9999)), 'SMALLINT', NULL, NULL)
    ,(CONVERT(SQL_VARIANT, CONVERT(SMALLINT, 99)), 'TINYINT', NULL, NULL)
    ,(CONVERT(SQL_VARIANT, CONVERT(BIT, 1)), 'BIT', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(DATETIME2(0), GETDATE())), 'DATETIME2(0)', NULL, 0)
+   ,(CONVERT(SQL_VARIANT, CONVERT(DATETIME2(1), GETDATE())), 'DATETIME2(1)', NULL, 1)
 
+   -- 2A 01 07 F5 BA E7 B9 97 40 46 0B 
+   -- 2A 01 01 8B F1 09 40 46 0B 
+   -- 2A 00 00 8E FE 00 40 46 0B 
    DROP TABLE Testing.BitTable_Clustered
 CREATE TABLE Testing.BitTable_Clustered
     (
@@ -243,4 +257,24 @@ CREATE TABLE Testing.BitTable_Clustered
    ,('Null 8',     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0)
    ,('Null 9',     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
 
-   SELECT * FROM sys.column_
+   DROP TABLE Testing.NonClusteredUniquifier
+CREATE TABLE Testing.NonClusteredUniquifier
+    (
+    IdValue      INT
+   ,VarcharValue VARCHAR(100)
+    )
+GO
+CREATE CLUSTERED INDEX clx_Testing_NonClusteredUniqifier ON Testing.NonClusteredUniquifier(IdValue)
+
+CREATE NONCLUSTERED INDEX ix_Testing_NonClusteredUniquifier ON Testing.NonClusteredUniquifier (VarcharValue)
+
+DECLARE @i INT = 0
+
+WHILE @i < 1000
+BEGIN
+    INSERT INTO Testing.NonClusteredUniquifier VALUES (1, 'Test Value')
+
+    SET @i+=1 
+END
+
+select * from sys.system_internals_partition_columns 

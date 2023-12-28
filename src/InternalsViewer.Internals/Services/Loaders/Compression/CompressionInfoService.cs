@@ -12,15 +12,12 @@ namespace InternalsViewer.Internals.Services.Loaders.Compression;
 /// Service responsible for loading CI (Compression Information) data structures
 /// </summary>
 public class CompressionInfoService(IDictionaryService dictionaryService,
-                                    IStructureInfoProvider structureInfoProvider,
                                     ICompressedDataRecordService compressedDataRecordService)
     : ICompressionInfoService
 {
     public IDictionaryService DictionaryService { get; } = dictionaryService;
 
-    public IStructureInfoProvider StructureInfoProvider { get; } = structureInfoProvider;
-
-    public ICompressedDataRecordService CompressedDataRecordService { get; } = compressedDataRecordService;                                
+    public ICompressedDataRecordService CompressedDataRecordService { get; } = compressedDataRecordService;
 
     public static byte CiSize = 7;
     public static short Offset = 96;
@@ -102,15 +99,13 @@ public class CompressionInfoService(IDictionaryService dictionaryService,
         return structure;
     }
 
-    public async Task<CompressionInfo?> GetCompressionInfo(Page page)
+    public CompressionInfo? GetCompressionInfo(AllocationUnitPage page)
     {
-        var compressionType = await StructureInfoProvider.GetCompressionType(page.PageHeader.AllocationUnitId);
-
-        if (compressionType == CompressionType.None)
+        if (page.AllocationUnit.CompressionType == CompressionType.None)
         {
             return null;
         }
 
-        return await GetCompressionInfo(page);
+        return Load(page);
     }
 }

@@ -1,5 +1,7 @@
-﻿using InternalsViewer.Internals.Metadata.Internals;
+﻿using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Engine.Parsers;
 
@@ -43,7 +45,7 @@ public class AllocationUnitProvider
             SchemaName = schema.Name,
             TableName = internalObject.Name,
             IndexName = index?.Name ?? string.Empty,
-            IndexType = index?.IndexType ?? 0,
+            IndexType = (IndexType)(index?.IndexType ?? 0),
             IsSystem = (internalObject.Status & 1) != 0,
             PartitionId = source.ContainerId,
             FirstPage = PageAddressParser.Parse(source.FirstPage!),
@@ -51,7 +53,8 @@ public class AllocationUnitProvider
             FirstIamPage = PageAddressParser.Parse(source.FirstIamPage!),
             UsedPages = source.UsedPages,
             TotalPages = source.TotalPages,
-            DisplayName = displayName
+            DisplayName = displayName,
+            CompressionType = (CompressionType)rowSet.CompressionLevel
         };
 
         return allocationUnit;

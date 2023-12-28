@@ -6,7 +6,7 @@ public class IdHelpers
     /// Gets the Allocation Unit Id from the Object Id and Index Id
     /// </summary>
     /// <remarks>
-    /// Taken from: <see href="https://www.sqlskills.com/blogs/paul/inside-the-storage-engine-how-are-allocation-unit-ids-calculated/"/>
+    /// Taken from <see href="https://www.sqlskills.com/blogs/paul/inside-the-storage-engine-how-are-allocation-unit-ids-calculated/"/>
     /// </remarks>
     public static long GetAllocationUnitId(int objectId, int indexId)
     {

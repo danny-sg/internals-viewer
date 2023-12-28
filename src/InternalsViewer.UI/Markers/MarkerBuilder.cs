@@ -24,11 +24,6 @@ public class MarkerBuilder
     /// </summary>
     public static List<Marker> BuildMarkers(DataStructure markedObject, string prefix)
     {
-        if (markedObject == null)
-        {
-            return new List<Marker>();
-        }
-
         var styleProvider = new MarkStyleProvider();
 
         var markers = new List<Marker>();
@@ -42,20 +37,19 @@ public class MarkerBuilder
             var property = markedObject.GetType().GetProperty(item.PropertyName);
 
 
-
             var markAttribute = property?.GetCustomAttributes(typeof(DataStructureItemAttribute), false);
 
             if (markAttribute is { Length: > 0 })
             {
                 var attribute = (markAttribute[0] as DataStructureItemAttribute);
 
-                if(attribute==null)
+                if (attribute == null)
                 {
                     continue;
                 }
-                    
+
                 var style = styleProvider.GetMarkStyle(attribute.DataStructureItemType);
-                    
+
                 marker.ForeColour = style.ForeColour;
                 marker.BackColour = style.BackColour;
                 marker.AlternateBackColour = style.AlternateBackColour;

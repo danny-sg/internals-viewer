@@ -54,7 +54,7 @@ public partial class HexViewer : UserControl
 
         dataRichTextBox.TextSize = TextRenderer.MeasureText("00", new Font("Courier New", 8.25F));
         dataRichTextBox.TextLineSize = TextRenderer.MeasureText("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-            new Font("Courier New", 8.25F));
+                                                                new Font("Courier New", 8.25F));
     }
 
     /// <summary>

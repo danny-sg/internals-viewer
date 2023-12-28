@@ -33,7 +33,7 @@ public partial class TestForm : Form
         InitializeComponent();
     }
 
-    private void AllocationWindow_Connect(object sender, EventArgs e)
+    private void AllocationWindowOnConnect(object sender, EventArgs e)
     {
         var connectionForm = new ConnectionForm();
 

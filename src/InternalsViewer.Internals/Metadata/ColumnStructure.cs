@@ -3,7 +3,7 @@
 namespace InternalsViewer.Internals.Metadata;
 
 /// <summary>
-/// Database Index or Table column
+/// Database Index or Table column physical structure
 /// </summary>
 public class ColumnStructure
 {
@@ -55,10 +55,10 @@ public class ColumnStructure
     /// <summary>
     /// Gets or sets a value indicating whether this <see cref="ColumnStructure"/> is a uniqueifer.
     /// </summary>
-    public bool IsUniqueifer { get; set; }
+    public bool IsUniqueifier { get; set; }
 
     /// <summary>
-    /// Gets or sets the index of the null bit.
+    /// Gets or sets the index in the null bitmap
     /// </summary>
     public short NullBit { get; set; }
 

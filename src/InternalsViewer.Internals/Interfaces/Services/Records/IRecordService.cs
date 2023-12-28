@@ -8,5 +8,5 @@ public interface IRecordService
 {
     DataRecord GetDataRecord(Page page, ushort offset);
 
-    Task<IndexRecord> GetIndexRecord(Page page, ushort offset);
+    IndexRecord GetIndexRecord(Page page, ushort offset);
 }

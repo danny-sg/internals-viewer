@@ -23,7 +23,7 @@ public class MarkStyleProvider
         { DataStructureItemType.BlobData, new MarkStyle(Color.Gray, Color.PaleGoldenrod,  "Data")},
         { DataStructureItemType.CompressedValue, new MarkStyle(Color.Black, Color.PaleGreen, Color.LightGreen ,"Data")},
         { DataStructureItemType.ForwardingRecord, new MarkStyle(Color.DarkBlue, Color.Gainsboro,  "Forwarding Record")},
-        { DataStructureItemType.DownPagePointer, new MarkStyle(Color.Navy, Color.Gainsboro,  "Down Page Pointer")},
+        { DataStructureItemType.DownPagePointer, new MarkStyle(Color.White, Color.Navy,  "Down Page Pointer")},
         { DataStructureItemType.ColumnOffsetArray, new MarkStyle(Color.Blue, Color.AliceBlue,  "Column Offset Array")},
         { DataStructureItemType.ColumnCount, new MarkStyle(Color.DarkGreen, Color.Gainsboro,  "Column Count")},
         { DataStructureItemType.ColumnCountOffset, new MarkStyle(Color.Blue, Color.Gainsboro,  "Column Count Offset")},

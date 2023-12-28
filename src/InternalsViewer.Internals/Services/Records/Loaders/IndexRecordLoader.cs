@@ -21,7 +21,7 @@ internal class IndexRecordLoader : RecordLoader
 
         LoadIndexType(record, page, structure);
 
-        LoadStatusBits(record, page);
+        LoadStatusBitsA(record, page.Data);
 
         if (record.HasNullBitmap)
         {
@@ -98,7 +98,7 @@ internal class IndexRecordLoader : RecordLoader
 
         record.MarkDataStructure("VariableLengthColumnCount", varColCountOffset, sizeof(short));
 
-        // Load offset array of 2-byte ints indicating the end offset of each variable length field
+        // Load offset array of 2-byte integers indicating the end offset of each variable length field
         record.ColOffsetArray = GetOffsetArray(page.Data,
                                                record.VariableLengthColumnCount,
                                                record.SlotOffset + page.PageHeader.MinLen + sizeof(short) + varColStartIndex);
@@ -116,8 +116,8 @@ internal class IndexRecordLoader : RecordLoader
         foreach (var column in structure.Columns)
         {
             var indexCol = (IndexColumnStructure)column;
-            var processKeyColumn = !indexCol.Key || record.IncludeKey && indexCol.Key;
-            var processIncludesColumn = !indexCol.IncludedColumn || indexCol.IncludedColumn && record.IsIndexType(IndexTypes.Leaf);
+            var processKeyColumn = !indexCol.IsKey || record.IncludeKey && indexCol.IsKey;
+            var processIncludesColumn = !indexCol.IsIncludeColumn || indexCol.IsIncludeColumn && record.IsIndexType(IndexTypes.Leaf);
 
             if (processKeyColumn & processIncludesColumn)
             {
@@ -184,7 +184,7 @@ internal class IndexRecordLoader : RecordLoader
         record.Fields.AddRange(columnValues);
     }
 
-    private static void LoadNullBitmap(IndexRecord record, Page page, IndexStructure structure)
+    private static void LoadNullBitmap(Record record, PageData page, Structure structure)
     {
         record.NullBitmapSize = (short)((structure.Columns.Count - 1) / 8 + 1);
 
@@ -199,28 +199,14 @@ internal class IndexRecordLoader : RecordLoader
         var nullBitmapPosition = record.SlotOffset + page.PageHeader.MinLen + sizeof(short);
 
         Array.Copy(page.Data,
-            nullBitmapPosition,
-            nullBitmapBytes,
-            0,
-            record.NullBitmapSize);
+                   nullBitmapPosition,
+                   nullBitmapBytes,
+                   0,
+                   record.NullBitmapSize);
 
         record.NullBitmap = new BitArray(nullBitmapBytes);
 
         record.MarkDataStructure("NullBitmapDescription", nullBitmapPosition, record.NullBitmapSize);
-    }
-
-    private static void LoadStatusBits(IndexRecord record, Page page)
-    {
-        var statusA = page.Data[record.SlotOffset];
-
-        record.StatusBitsA = new BitArray(new[] { statusA });
-
-        record.MarkDataStructure("StatusBitsADescription", record.SlotOffset, 1);
-
-        record.RecordType = (RecordType)(statusA >> 1 & 7);
-
-        record.HasNullBitmap = record.StatusBitsA[4];
-        record.HasVariableLengthColumns = record.StatusBitsA[5];
     }
 
     private static void LoadIndexType(IndexRecord record, Page page, IndexStructure structure)

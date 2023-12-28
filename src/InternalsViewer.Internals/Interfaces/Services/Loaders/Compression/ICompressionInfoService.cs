@@ -5,5 +5,5 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 
 public interface ICompressionInfoService
 {
-    Task<CompressionInfo?> GetCompressionInfo(Page page);
+    CompressionInfo? GetCompressionInfo(AllocationUnitPage page);
 }

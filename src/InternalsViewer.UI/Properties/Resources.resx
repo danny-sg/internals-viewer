@@ -121,14 +121,14 @@
   <data name="bufferpool" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\bufferpool11.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Search_16x" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Search_16x.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="allocationWindowSplit" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\allocationWindowSplit.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Collapse_large" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Collapse_large.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="pfs" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\pfs.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="TransactionLogIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\TransactionLogIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="Backward_16xMD" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Backward_16xMD.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="allocationWindowSplit1" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\allocationWindowSplit1.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -139,29 +139,32 @@
   <data name="WindowSplit" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\WindowSplit.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="fileinfo1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\fileinfo1.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="Search_16x" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Search_16x.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="FindHS" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\FindHS.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Backward_16xMD" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Backward_16xMD.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="Backward_16x" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Backward_16x.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="TransactionLogIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\TransactionLogIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="connect1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\connect1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="showhidedetailstoolbarbutton" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\showhidedetailstoolbarbutton.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Refresh" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Refresh.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="fileinfo1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\fileinfo1.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="connect" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\connect.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="allocationMapIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\allocationMapIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="Collapse_large" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Collapse_large.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="LeftToRightDoucmentHS1" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\LeftToRightDoucmentHS1.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -169,14 +172,14 @@
   <data name="GAMallocationMapIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\GAMallocationMapIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="pfs" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\pfs.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="allocationMapIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\allocationMapIcon.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="RightToLeftDoucmentHS" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\RightToLeftDoucmentHS.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="allocationWindowSplit" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\allocationWindowSplit.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="Refresh" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Refresh.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="SQL_CopyDbccPage" xml:space="preserve">
     <value>-- Generated by Internals Viewer
@@ -184,7 +187,7 @@ DBCC TRACEON(3604)
 DBCC PAGE({0},{1},{2},{3})
 GO</value>
   </data>
-  <data name="connect1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\connect1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="Refresh1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Refresh.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

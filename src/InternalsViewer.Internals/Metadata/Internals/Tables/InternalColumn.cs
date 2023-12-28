@@ -3,6 +3,9 @@ using InternalsViewer.Internals.Generators;
 
 namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 
+/// <summary>
+/// Columns - sys.syscolpars
+/// </summary>
 [InternalsMetadata]
 public record InternalColumn
 {

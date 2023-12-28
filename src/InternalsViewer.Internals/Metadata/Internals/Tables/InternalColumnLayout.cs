@@ -16,7 +16,7 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 /// Relevant fields are:
 /// 
 ///     Leaf Offset   - offset & 0xffff
-///     Is Uniquifier - status & 16
+///     Is Uniqueifier - status & 16
 ///     Is Dropped    - status & 2
 ///     Is Sparse     - status & 0x00000100
 ///     /// </remarks>
@@ -48,7 +48,7 @@ public record InternalColumnLayout
     public short KeyOrdinal { get; set; }
 
     [InternalsMetadataColumn("maxinrowlen", 8, SqlDbType.SmallInt, 2, 38, 8)]
-    public short Maxrowinlen { get; set; }
+    public short MaxInRowLength { get; set; }
 
     [InternalsMetadataColumn("status", 9, SqlDbType.Int, 4, 40, 9)]
     public int Status { get; set; }

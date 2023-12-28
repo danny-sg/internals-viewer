@@ -17,4 +17,6 @@ public class InternalTableConstants
     public static readonly (int ObjectId, int IndexId) EntitiesId = (64, 1);
 
     public static readonly (int ObjectId, int IndexId) IndexesId = (54, 1);
+
+    public static readonly (int ObjectId, int IndexId) IndexColumnsId = (55, 1);
 }

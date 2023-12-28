@@ -71,7 +71,7 @@ public abstract class Record : DataStructure
         return NullBitmap.Get(index - (HasUniqueifier ? 0 : 1));
     }
 
-    public bool NullBitmapValue(ColumnStructure columnStructure)
+    public bool IsNullBitmapSet(ColumnStructure columnStructure)
     {
         if (columnStructure.NullBit < 1)
         {

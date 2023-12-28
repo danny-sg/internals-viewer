@@ -29,6 +29,7 @@ public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
         Assert.NotEmpty(results.AllocationUnits);
         Assert.NotEmpty(results.RowSets);
         Assert.NotEmpty(results.Indexes);
+        Assert.NotEmpty(results.IndexColumns);
         Assert.NotEmpty(results.ColumnLayouts);
         Assert.NotEmpty(results.Columns);
         Assert.NotEmpty(results.Files);

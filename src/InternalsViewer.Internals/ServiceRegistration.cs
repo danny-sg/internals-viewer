@@ -32,7 +32,6 @@ public static class ServiceRegistration
 
         services.AddTransient<IServerInfoProvider, ServerInfoProvider>();
 
-        services.AddTransient<IStructureInfoProvider, StructureInfoProvider>();
         //        services.AddTransient<ITransactionLogProvider, TransactionLogProvider>();
         services.AddTransient<IBufferPoolInfoProvider, BufferPoolInfoProvider>();
 

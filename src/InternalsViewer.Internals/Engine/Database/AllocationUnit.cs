@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database.Enums;
 
@@ -40,7 +41,7 @@ public record AllocationUnit
 
     public bool IsSystem { get; set; }
 
-    public byte IndexType { get; set; }
+    public IndexType IndexType { get; set; }
 
     public AllocationUnitType AllocationUnitType { get; set; }
 
@@ -51,4 +52,6 @@ public record AllocationUnit
     public static readonly AllocationUnit Unknown = new() { AllocationUnitId = -1 };
 
     public string DisplayName { get; set; } = string.Empty;
+    
+    public CompressionType CompressionType { get; set; }
 }

@@ -69,7 +69,7 @@ public class TableStructureProvider
                 DataLength = typeInfo.MaxLength,
                 Scale = typeInfo.Scale,
                 IsDropped = isDropped,
-                IsUniqueifer = isUniqueifer,
+                IsUniqueifier = isUniqueifer,
                 IsSparse = (s.Status & 256) != 0,
                 NullBit = (short)(s.NullBit & 0xffff),
                 BitPosition = s.BitPosition

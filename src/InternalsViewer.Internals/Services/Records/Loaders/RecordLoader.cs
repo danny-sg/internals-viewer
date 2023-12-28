@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
+using System.Collections;
 
 namespace InternalsViewer.Internals.Services.Records.Loaders;
 
@@ -24,6 +25,23 @@ public abstract class RecordLoader
         }
 
         return offsetArray;
+    }
+
+    /// <summary>
+    /// Loads Status Bits A, part of the two byte record header
+    /// </summary>
+    protected static void LoadStatusBitsA(Record record, byte[] data)
+    {
+        var statusA = data[record.SlotOffset];
+
+        record.StatusBitsA = new BitArray(new[] { statusA });
+
+        record.MarkDataStructure("StatusBitsADescription", record.SlotOffset, 1);
+
+        record.RecordType = (RecordType)(statusA >> 1 & 7);
+
+        record.HasNullBitmap = record.StatusBitsA[4];
+        record.HasVariableLengthColumns = record.StatusBitsA[5];
     }
 
     /// <summary>

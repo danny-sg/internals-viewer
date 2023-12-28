@@ -39,23 +39,24 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
     /// 
     /// Object Id/Index Id are constant for the tables - see sys.objects and <see cref="InternalTableConstants"/>."
     /// 
-    /// <see cref="InternalAllocationUnit"/>
-    /// sys.sysallocunits 
-    ///     <see cref="InternalRowSet"/>
-    ///     --> sys.sysrowsets
-    ///     <see cref="InternalObject"/>
-    ///     --> sys.sysrscols 
-    ///     <see cref="InternalColumnLayout"/>
-    ///     --> sys.sysrscols
-    ///     <see cref="InternalColumn"/>
-    ///     --> sys.sysrscols
-    ///     <see cref="InternalEntityObject"/>
-    ///     --> sys.sysclsobjs
-    ///     <see cref="InternalIndex"/>
-    ///     --> sys.sysidxstats
-    ///     <see cref="InternalFile"/>
-    ///     --> sys.sysprufiles
-    /// </remarks>
+    /// sys.sysallocunits  - <see cref="InternalAllocationUnit"/>
+    ///
+    ///     --> sys.sysrowsets  - <see cref="InternalRowSet"/>
+    ///                         
+    ///     --> sys.sysschobjs  - <see cref="InternalObject"/>
+    ///                         
+    ///     --> sys.sysrscols   - <see cref="InternalColumnLayout"/>
+    ///                         
+    ///     --> sys.syscolpars  - <see cref="InternalColumn"/>
+    ///     
+    ///     --> sys.sysclsobjs  - <see cref="InternalEntityObject"/>
+    ///                         
+    ///     --> sys.sysidxstats - <see cref="InternalIndex"/>
+    ///                         
+    ///     --> sys.sysiscols   - <see cref="InternalIndexColumn"/>
+    ///                         
+    ///     --> sys.sysprufiles - <see cref="InternalFile"/>
+    /// </remarks>              
     public async Task<InternalMetadata> Load(DatabaseDetail database)
     {
         var result = new InternalMetadata();
@@ -87,6 +88,10 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         var indexesFirstPage = GetFirstPage(InternalTableConstants.IndexesId, result.AllocationUnits);
 
         result.Indexes = await GetIndexes(indexesFirstPage, database);
+
+        var indexColumnsFirstPage = GetFirstPage(InternalTableConstants.IndexColumnsId, result.AllocationUnits);
+
+        result.IndexColumns = await GetIndexColumns(indexColumnsFirstPage, database);
 
         var filesFirstPage = GetFirstPage(InternalTableConstants.FilesId, result.AllocationUnits);
 
@@ -158,6 +163,23 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         Logger.LogDebug("Objects: {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalIndexLoader.Load).ToList();
+
+        Logger.LogDebug("Objects: {Count} records parsed.", rows.Count);
+
+        return rows;
+    }
+
+    private async Task<List<InternalIndexColumn>> GetIndexColumns(PageAddress pageAddress, DatabaseDetail database)
+    {
+        Logger.LogDebug("Getting Index Columns (sys.sysiscols) using fixed Object Id/Index Id");
+
+        var records = await RecordReader.Read(database,
+                                              pageAddress,
+                                              InternalIndexColumnStructure.GetStructure(-1));
+
+        Logger.LogDebug("Objects: {Count} records found. Parsing records...", records.Count);
+
+        var rows = records.Select(InternalIndexColumnLoader.Load).ToList();
 
         Logger.LogDebug("Objects: {Count} records parsed.", rows.Count);
 
