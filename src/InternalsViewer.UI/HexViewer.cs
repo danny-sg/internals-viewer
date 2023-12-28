@@ -13,8 +13,6 @@ using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Rtf;
 
-#pragma warning disable CA1416
-
 namespace InternalsViewer.UI;
 
 /// <summary>

@@ -238,6 +238,12 @@ public class DataRecordLoader : RecordLoader
         return new RecordField(column);
     }
 
+    /// <summary>
+    /// Loads Fixed Length Fields into a new Record Field
+    /// </summary>
+    /// <remarks>
+    /// Fixed length fields are based on the length of the field defined in the table structure.
+    /// </remarks>
     private static RecordField LoadFixedLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
     {
         var field = new RecordField(column);
@@ -261,6 +267,12 @@ public class DataRecordLoader : RecordLoader
         return field;
     }
 
+    /// <summary>
+    /// Loads Variable Length Fields into a new Record Field
+    /// </summary>
+    /// <remarks>
+    /// Variable length fields are based on the offset array in the record structure.
+    /// </remarks>
     private static RecordField LoadVariableLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
     {
         var field = new RecordField(column);

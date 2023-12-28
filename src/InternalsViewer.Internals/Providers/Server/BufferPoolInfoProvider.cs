@@ -5,8 +5,10 @@ using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Providers.Server;
 
-public class BufferPoolInfoProvider(CurrentConnection connection): ProviderBase(connection), IBufferPoolInfoProvider
+public class BufferPoolInfoProvider(CurrentConnection connection): IBufferPoolInfoProvider
 {
+    public CurrentConnection Connection { get; } = connection;
+
     public static readonly string BufferPoolCommand =
         @" -- Query Buffer Pool
         SELECT CONVERT(SMALLINT, file_id) AS FileId

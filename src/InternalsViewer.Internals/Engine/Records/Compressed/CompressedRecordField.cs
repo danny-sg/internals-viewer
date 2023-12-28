@@ -45,7 +45,7 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
                 return GetPageSymbolValue();
             }
 
-            if (AnchorField != null && AnchorField.Data != null)
+            if (AnchorField is { Data: not null })
             {
                 return GetValueWithAnchor();
             }
@@ -69,7 +69,7 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
                                                                     ColumnStructure.Scale);
         }
 
-        return CompressedDataConverter.CompressedBinaryToBinary(AnchorField.Data,
+        return CompressedDataConverter.CompressedBinaryToBinary(AnchorField!.Data,
                                                                 ColumnStructure.DataType,
                                                                 ColumnStructure.Precision,
                                                                 ColumnStructure.Scale);

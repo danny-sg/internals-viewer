@@ -7,8 +7,10 @@ using System.Data;
 namespace InternalsViewer.Internals.Providers.Server;
 
 public class ServerInfoProvider(CurrentConnection connection)
-    : ProviderBase(connection), IServerInfoProvider
+    : IServerInfoProvider
 {
+    public CurrentConnection Connection { get; } = connection;
+
     public static readonly string DatabasesCommand =
         @"-- Query Databases
         SELECT d.database_id
