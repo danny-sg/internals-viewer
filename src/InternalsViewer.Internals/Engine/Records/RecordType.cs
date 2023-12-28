@@ -5,7 +5,7 @@ public enum RecordType
 {
     Primary = 0,
     Forwarded = 1,
-    Forwarding = 2,
+    ForwardingStub = 2,
     Index = 3,
     Blob = 4,
     GhostIndex = 5,

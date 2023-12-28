@@ -12,8 +12,8 @@ public class DataRecord : Record
     [DataStructureItem(DataStructureItemType.StatusBitsB)]
     public string StatusBitsBDescription => "";
 
-    [DataStructureItem(DataStructureItemType.ForwardingRecord)]
-    public RowIdentifier ForwardingRecord { get; set; }
+    [DataStructureItem(DataStructureItemType.ForwardingStub)]
+    public RowIdentifier ForwardingStub { get; set; }
 
     public T? GetValue<T>(string columnName)
     {
@@ -21,7 +21,7 @@ public class DataRecord : Record
 
         if (field == null)
         {
-            throw new ArgumentException($"Column {columnName} not found", nameof(columnName));
+            throw new ArgumentException($"Column {columnName} not found");
         }
 
         return DataConverter.GetValue<T>(field.Data,

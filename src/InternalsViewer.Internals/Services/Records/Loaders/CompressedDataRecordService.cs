@@ -24,7 +24,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
 
         LoadStatus(record, data);
 
-        if (record.RecordType == RecordType.Forwarding)
+        if (record.RecordType == RecordType.ForwardingStub)
         {
             return LoadForwardingRecord(record);
         }

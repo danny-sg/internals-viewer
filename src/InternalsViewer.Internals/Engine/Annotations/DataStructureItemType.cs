@@ -9,7 +9,7 @@ public enum DataStructureItemType
     ColumnCountOffset,
     VariableLengthColumnCount,
     NullBitmap,
-    ForwardingRecord,
+    ForwardingStub,
     DownPagePointer,
     Rid,
     SparseColumns,

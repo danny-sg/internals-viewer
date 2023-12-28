@@ -19,7 +19,7 @@ public abstract class Record : DataStructure
         {
             RecordType.Primary => "Primary Record",
             RecordType.Forwarded => "Forwarded Record",
-            RecordType.Forwarding => "Forwarding Record",
+            RecordType.ForwardingStub => "Forwarding Stub",
             RecordType.Index => "Index Record",
             RecordType.Blob => "BLOB Fragment",
             RecordType.GhostIndex => "Ghost Index Record",
@@ -150,4 +150,6 @@ public abstract class Record : DataStructure
     public List<RecordField> Fields { get; set; } = new();
 
     public RecordField[] FieldsArray => Fields.ToArray();
+    
+    public bool HasRowVersioning { get; set; }
 }

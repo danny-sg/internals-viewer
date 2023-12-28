@@ -42,6 +42,7 @@ public abstract class RecordLoader
 
         record.HasNullBitmap = record.StatusBitsA[4];
         record.HasVariableLengthColumns = record.StatusBitsA[5];
+        record.HasRowVersioning = record.StatusBitsA[6];
     }
 
     /// <summary>
