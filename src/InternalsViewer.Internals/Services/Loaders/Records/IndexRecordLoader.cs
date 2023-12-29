@@ -6,7 +6,7 @@ using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Metadata;
 
-namespace InternalsViewer.Internals.Services.Records.Loaders;
+namespace InternalsViewer.Internals.Services.Loaders.Records;
 
 internal class IndexRecordLoader : RecordLoader
 {

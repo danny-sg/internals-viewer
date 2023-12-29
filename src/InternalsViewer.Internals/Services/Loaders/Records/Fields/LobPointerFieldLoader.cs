@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
-namespace InternalsViewer.Internals.Services.Records.Loaders.Fields;
+namespace InternalsViewer.Internals.Services.Loaders.Records.Fields;
 
 public class LobPointerFieldLoader
 {

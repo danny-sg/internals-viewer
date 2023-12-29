@@ -1,8 +1,8 @@
 ﻿using InternalsViewer.Internals.Metadata;
-using InternalsViewer.Internals.Services.Records.Loaders;
 using InternalsViewer.Internals.Tests.Helpers;
 using System.Data;
 using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Services.Loaders.Records;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Records;
 

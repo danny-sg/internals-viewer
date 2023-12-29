@@ -1,9 +1,9 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
-using InternalsViewer.Internals.Services.Records.Loaders.Fields;
+using InternalsViewer.Internals.Services.Loaders.Records.Fields;
 using System.Collections;
 
-namespace InternalsViewer.Internals.Services.Records.Loaders;
+namespace InternalsViewer.Internals.Services.Loaders.Records;
 
 /// <summary>
 /// Loads a record

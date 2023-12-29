@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Records;
 
-namespace InternalsViewer.Internals.Services.Records.Loaders;
+namespace InternalsViewer.Internals.Services.Loaders.Records;
 
 class SparseVectorLoader
 {

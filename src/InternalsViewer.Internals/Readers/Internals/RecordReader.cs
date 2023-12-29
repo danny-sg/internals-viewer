@@ -1,11 +1,11 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Records.Data;
-using InternalsViewer.Internals.Services.Records.Loaders;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Loaders.Records;
 
 namespace InternalsViewer.Internals.Readers.Internals;
 

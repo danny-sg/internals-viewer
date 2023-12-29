@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Metadata;
-using InternalsViewer.Internals.Services.Records.Loaders;
+using InternalsViewer.Internals.Services.Loaders.Records;
 
 namespace InternalsViewer.Internals.Records;
 

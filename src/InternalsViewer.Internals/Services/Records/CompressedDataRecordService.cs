@@ -7,7 +7,7 @@ using InternalsViewer.Internals.Engine.Records.Compressed;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Metadata;
 
-namespace InternalsViewer.Internals.Services.Records.Loaders;
+namespace InternalsViewer.Internals.Services.Loaders.Records;
 
 /// <summary>
 /// Loads a Compressed Data Record
@@ -125,7 +125,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
         LoadShortFields(record, false, page, structure);
     }
 
-    public static void LoadShortFields(CompressedDataRecord record, 
+    public static void LoadShortFields(CompressedDataRecord record,
                                        bool hasDownPagePointer,
                                        AllocationUnitPage page,
                                        Structure structure)
@@ -184,7 +184,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
         }
     }
 
-    public static void LoadLongFields(int startPosition, 
+    public static void LoadLongFields(int startPosition,
                                       CompressedDataRecord record,
                                       AllocationUnitPage page,
                                       Structure structure)

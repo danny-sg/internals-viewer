@@ -6,7 +6,7 @@ using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Metadata;
 using InternalsViewer.Internals.Records;
 
-namespace InternalsViewer.Internals.Services.Records.Loaders;
+namespace InternalsViewer.Internals.Services.Loaders.Records;
 
 /// <summary>
 /// Loads a Data Record using a combination of the table structure and the record structure
