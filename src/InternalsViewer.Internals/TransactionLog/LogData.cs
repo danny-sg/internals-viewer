@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Converters;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
 

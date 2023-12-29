@@ -4,6 +4,12 @@ using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.Fields;
 
+/// <summary>
+/// Loads a LOB Overflow pointer field
+/// </summary>
+/// <remarks>
+/// 
+/// </remarks>
 public class LobOverflowFieldLoader
 {
     private const int ChildOffset = 12;
@@ -32,7 +38,7 @@ public class LobOverflowFieldLoader
 
         field.MarkDataStructure("Timestamp", offset + TimestampOffset, sizeof(int));
 
-        field.Timestamp = BitConverter.ToInt32(data, TimestampOffset);
+        field.Timestamp = BitConverter.ToUInt32(data, TimestampOffset);
 
         field.MarkDataStructure("UpdateSeq", offset + UpdateSeqOffset, sizeof(short));
 

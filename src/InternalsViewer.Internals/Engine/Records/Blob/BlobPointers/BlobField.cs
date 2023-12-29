@@ -12,7 +12,7 @@ public class BlobField : Field
     /// Timestamp used by DBCC CHECKTABLE
     /// </summary>
     [DataStructureItem(DataStructureItemType.Timestamp)]
-    public int Timestamp { get; set; }
+    public uint Timestamp { get; set; }
 
     public List<BlobChildLink> Links { get; set; } = new();
 

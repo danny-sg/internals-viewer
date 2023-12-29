@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine;

@@ -17,7 +17,7 @@ public class LobPointerFieldLoader
 
         field.MarkDataStructure("Timestamp", offset + sizeof(byte), sizeof(int));
 
-        field.Timestamp = BitConverter.ToInt32(data, 0);
+        field.Timestamp = BitConverter.ToUInt32(data, 0);
 
         LoadLinks(field, data, offset);
 

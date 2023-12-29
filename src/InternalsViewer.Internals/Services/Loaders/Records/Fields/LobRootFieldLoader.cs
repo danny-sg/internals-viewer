@@ -27,7 +27,7 @@ public class LobRootFieldLoader
 
         field.MarkDataStructure("Level", offset + LevelOffset, sizeof(byte));
 
-        field.Timestamp = BitConverter.ToInt32(data, TimestampOffset);
+        field.Timestamp = BitConverter.ToUInt32(data, TimestampOffset);
 
         field.MarkDataStructure("Timestamp", offset + TimestampOffset, sizeof(int));
 
