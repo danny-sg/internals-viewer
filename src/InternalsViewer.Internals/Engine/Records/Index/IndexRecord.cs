@@ -5,11 +5,6 @@ namespace InternalsViewer.Internals.Engine.Records.Index;
 
 public class IndexRecord : Record
 {
-    public bool IsIndexType(IndexTypes index)
-    {
-        return (IndexType & index) == index;
-    }
-
     /// <summary>
     /// Down page pointer to the next page in the index
     /// </summary>
@@ -22,7 +17,7 @@ public class IndexRecord : Record
     [DataStructureItem(DataStructureItemType.Rid)]
     public RowIdentifier Rid { get; set; }
 
-    public IndexTypes IndexType { get; set; }
-
     public bool IncludeKey { get; set; }
+    
+    public NodeType NodeType { get; set; }
 }

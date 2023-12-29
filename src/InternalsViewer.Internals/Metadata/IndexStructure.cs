@@ -2,13 +2,12 @@
 
 namespace InternalsViewer.Internals.Metadata;
 
-public class IndexStructure(long allocationUnitId) : Structure(allocationUnitId)
+public class IndexStructure(long allocationUnitId)
+    : Structure<IndexColumnStructure>(allocationUnitId)
 {
-    public bool IsHeap { get; set; }
-
     public bool IsUnique { get; set; }
 
     public IndexType IndexType { get; set; }
-    
+
     public bool HasFilter { get; set; }
 }

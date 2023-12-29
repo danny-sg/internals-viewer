@@ -14,7 +14,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 /// </summary>
 public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordService
 {
-    public CompressedDataRecord Load(AllocationUnitPage page, ushort slotOffset, Structure structure)
+    public CompressedDataRecord Load(AllocationUnitPage page, ushort slotOffset, TableStructure structure)
     {
         var data = page.Data;
 
@@ -120,7 +120,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
         return columns;
     }
 
-    public static void LoadShortFields(CompressedDataRecord record, AllocationUnitPage page, Structure structure)
+    public static void LoadShortFields(CompressedDataRecord record, AllocationUnitPage page, TableStructure structure)
     {
         LoadShortFields(record, false, page, structure);
     }
@@ -128,7 +128,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
     public static void LoadShortFields(CompressedDataRecord record,
                                        bool hasDownPagePointer,
                                        AllocationUnitPage page,
-                                       Structure structure)
+                                       TableStructure structure)
     {
         var index = 0;
 
@@ -187,7 +187,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
     public static void LoadLongFields(int startPosition,
                                       CompressedDataRecord record,
                                       AllocationUnitPage page,
-                                      Structure structure)
+                                      TableStructure structure)
     {
         var longColIndex = 0;
         var prevLength = 0;

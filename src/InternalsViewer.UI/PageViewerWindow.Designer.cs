@@ -559,7 +559,7 @@ namespace InternalsViewer.UI
             // 
             textBox11.BackColor = System.Drawing.Color.White;
             textBox11.BorderStyle = BorderStyle.None;
-            textBox11.DataBindings.Add(new Binding("Text", pageBindingSource, "IndexId", true));
+            textBox11.DataBindings.Add(new Binding("Text", pageBindingSource, "InternalIndexId", true));
             textBox11.Location = new System.Drawing.Point(108, 253);
             textBox11.Margin = new Padding(4);
             textBox11.Name = "textBox11";
@@ -653,7 +653,7 @@ namespace InternalsViewer.UI
             // 
             ObjectIdTextBox.BackColor = System.Drawing.Color.GhostWhite;
             ObjectIdTextBox.BorderStyle = BorderStyle.None;
-            ObjectIdTextBox.DataBindings.Add(new Binding("Text", pageBindingSource, "ObjectId", true));
+            ObjectIdTextBox.DataBindings.Add(new Binding("Text", pageBindingSource, "InternalObjectId", true));
             ObjectIdTextBox.Location = new System.Drawing.Point(105, 94);
             ObjectIdTextBox.Margin = new Padding(4);
             ObjectIdTextBox.Name = "ObjectIdTextBox";

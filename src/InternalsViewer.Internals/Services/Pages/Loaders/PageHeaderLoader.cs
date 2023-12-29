@@ -51,8 +51,8 @@ public class PageHeaderLoader
         pageHeader.PreviousPage = PageAddressParser.Parse(data, PreviousPageOffset);
         pageHeader.NextPage = PageAddressParser.Parse(data, NextPageOffset);
 
-        pageHeader.ObjectId = BitConverter.ToInt32(data, ObjectIdOffset);
-        pageHeader.IndexId = BitConverter.ToInt16(data, IndexIdOffset);
+        pageHeader.InternalObjectId = BitConverter.ToInt32(data, ObjectIdOffset);
+        pageHeader.InternalIndexId = BitConverter.ToInt16(data, IndexIdOffset);
 
         pageHeader.Level = data[LevelOffset];
 

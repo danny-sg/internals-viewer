@@ -192,7 +192,7 @@ public class DataRecordLoader : RecordLoader
     /// <summary>
     /// Loads the column values.
     /// </summary>
-    private static void LoadValues(DataRecord dataRecord, Structure structure, byte[] pageData)
+    private static void LoadValues(DataRecord dataRecord, TableStructure structure, byte[] pageData)
     {
         var columnValues = new List<RecordField>();
 

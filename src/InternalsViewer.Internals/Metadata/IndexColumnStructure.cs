@@ -7,4 +7,6 @@ public class IndexColumnStructure : ColumnStructure
     public bool IsIncludeColumn { get; set; }
 
     public int IndexColumnId { get; set; }
+
+    public short NodeOffset { get; set; }
 }

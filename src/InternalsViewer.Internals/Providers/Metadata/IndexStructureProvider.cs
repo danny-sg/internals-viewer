@@ -11,7 +11,29 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 /// <remarks>
 /// Equivalent to the following query:
 /// 
-/// 
+///     <code>
+///         SELECT au.auid                                          AS AllocationUnitId
+///               ,p.rowsetid                                       AS PartitionId
+///               ,p.idmajor                                        AS ObjectId
+///               ,p.idminor                                        AS IndexId
+///               ,c.name                                           AS ColumnName
+///               ,rsc.status
+///               ,rsc.ti
+///               ,CONVERT(SMALLINT
+///                       ,CONVERT(BINARY(2), rsc.offset & 0xffff)) AS LeafOffset
+///               ,rsc.status & 2                                   AS IsDropped
+///               ,rsc.status & 16                                  AS IsUniqeifier
+///         FROM   sys.sysallocunits au
+///                INNER JOIN sys.sysrowsets p  ON au.ownerid = p.rowsetid
+///                INNER JOIN sys.sysrscols rsc ON rsc.rsid = p.rowsetid
+///                LEFT JOIN sys.sysiscols isc  ON isc.idmajor = p.idmajor
+///                                                AND isc.idminor = p.idminor
+///                                                AND isc.intprop = rsc.rscolid
+///                LEFT JOIN sys.syscolpars c ON c.id = p.idmajor
+///                                              AND c.colid = rsc.rscolid
+///         WHERE  au.auid = 72057594059096064
+///     </code>
+///     
 /// </remarks>
 public class IndexStructureProvider
 {
@@ -51,7 +73,7 @@ public class IndexStructureProvider
 
         structure.IsUnique = Convert.ToBoolean(index.Status & 0x8);
         structure.HasFilter = Convert.ToBoolean(index.Status & 0x20000);
-        structure.IndexType = (IndexType)index.IndexType;
+        structure.IndexType = index.IndexType;
 
         var columnLayouts = metadata.ColumnLayouts.Where(c => c.PartitionId == rowSet.RowSetId).ToList();
 
@@ -63,17 +85,22 @@ public class IndexStructureProvider
 
             var indexColumn = metadata.IndexColumns
                                       .FirstOrDefault(c => c.ObjectId == rowSet.ObjectId
-                                                      && c.IndexId == rowSet.IndexId
-                                                      && c.ColumnId == s.ColumnId);
+                                                           && c.IndexId == rowSet.IndexId
+                                                           && c.ColumnId == s.ColumnId);
 
+            // The 2nd bit of the status field indicates if the column has been dropped
             var isDropped = Convert.ToBoolean(s.Status & 2);
 
-            var leafOffset = (short)s.Offset;
+            // The Offset field is a 4 byte integer, the first 2 bytes represent the leaf offset (offset in a leaf index page), the second
+            // 2 bytes represent the node offset (offset in a node/non-leaf index page).
+            var leafOffset = (short)(s.Offset & 0xffff);
+            var nodeOffset = (short)(s.Offset >> 16);
 
             var typeInfo = s.TypeInfo.ToTypeInfo();
 
             var isUniqueifier = IsUniqueifier(s.Status, structure.IndexType, typeInfo.DataType, leafOffset);
 
+            // The 5th bit of the status field indicates if the column is an include column
             var isIncludeColumn = Convert.ToBoolean(indexColumn?.Status & 0x10);
 
             string name;
@@ -91,14 +118,15 @@ public class IndexStructureProvider
                 name = column?.Name ?? "Unknown";
             }
 
-            var isKey = indexColumn == null && !isIncludeColumn && !isUniqueifier;
+            var isKey = indexColumn != null && !isIncludeColumn && !isUniqueifier;
 
             var result = new IndexColumnStructure
             {
                 ColumnId = s.ColumnId,
                 ColumnName = name,
                 DataType = typeInfo.DataType,
-                LeafOffset = (short)s.Offset,
+                LeafOffset = leafOffset,
+                NodeOffset = nodeOffset,
                 Precision = typeInfo.Precision,
                 DataLength = typeInfo.MaxLength,
                 Scale = typeInfo.Scale,
@@ -133,7 +161,7 @@ public class IndexStructureProvider
     /// </remarks>
     private static bool IsUniqueifier(int status, IndexType indexType, SqlDbType dataType, short leafOffset)
     {
-        return Convert.ToBoolean(status & 16) 
+        return Convert.ToBoolean(status & 16)
                || (indexType == IndexType.NonClustered && dataType == SqlDbType.Int && leafOffset < 0);
     }
 }

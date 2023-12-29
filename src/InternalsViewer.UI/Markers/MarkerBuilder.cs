@@ -39,9 +39,7 @@ public class MarkerBuilder
 
             if (markAttribute is { Length: > 0 })
             {
-                var attribute = (markAttribute[0] as DataStructureItemAttribute);
-
-                if (attribute == null)
+                if (markAttribute[0] is not DataStructureItemAttribute attribute)
                 {
                     continue;
                 }
@@ -85,7 +83,18 @@ public class MarkerBuilder
             {
                 var array = (object[])property.GetValue(markedObject, null)!;
 
-                SetValue(markers, marker, array[item.Index], prefix + item.Prefix);
+                string value;
+
+                if(string.IsNullOrEmpty(prefix) || string.IsNullOrEmpty(item.Prefix))
+                {
+                    value = $"{prefix}{item.Prefix}";
+                }
+                else
+                {
+                    value = $"{prefix} - {item.Prefix}";
+                }
+
+                SetValue(markers, marker, array[item.Index], value);
             }
 
             if (item.StartPosition > 0)
@@ -124,23 +133,24 @@ public class MarkerBuilder
     /// </summary>
     private static void SetValue(List<Marker> markers, Marker marker, object value, string prefix)
     {
-        var markable = value as DataStructure;
-
-        if (markable != null)
+        switch (value)
         {
-            markers.AddRange(BuildMarkers(markable, prefix));
-        }
-        else if (value is byte[])
-        {
-            marker.Value = DataConverter.BinaryToString((byte[])value, SqlDbType.VarChar);
-        }
-        else
-        {
-            marker.Value = value.ToString() ?? string.Empty;
-
-            if (value is PageAddress or RowIdentifier)
+            case DataStructure dataStructure:
+                markers.AddRange(BuildMarkers(dataStructure, prefix));
+                break;
+            case byte[] bytes:
+                marker.Value = DataConverter.BinaryToString(bytes, SqlDbType.VarChar);
+                break;
+            default:
             {
-                marker.DataType = MarkerType.PageAddress;
+                marker.Value = value.ToString() ?? string.Empty;
+
+                if (value is PageAddress or RowIdentifier)
+                {
+                    marker.DataType = MarkerType.PageAddress;
+                }
+
+                break;
             }
         }
     }

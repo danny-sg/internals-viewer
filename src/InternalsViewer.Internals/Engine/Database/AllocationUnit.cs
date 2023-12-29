@@ -54,4 +54,6 @@ public record AllocationUnit
     public string DisplayName { get; set; } = string.Empty;
     
     public CompressionType CompressionType { get; set; }
+
+    public IndexType? ParentIndexType { get; set; }
 }

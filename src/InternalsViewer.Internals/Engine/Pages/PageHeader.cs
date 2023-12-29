@@ -31,7 +31,7 @@ public class PageHeader : DataStructure
 
     public string PageTypeName => PageHelpers.GetPageTypeName(PageType);
 
-    public long AllocationUnitId => IdHelpers.GetAllocationUnitId(ObjectId, IndexId);
+    public long AllocationUnitId => IdHelpers.GetAllocationUnitId(InternalObjectId, InternalIndexId);
 
     /// <summary>
     /// Object Id used to derive the Allocation Unit Id
@@ -39,7 +39,7 @@ public class PageHeader : DataStructure
     /// <remarks>
     /// Not necessarily the same as the object id of the table/index
     /// </remarks>
-    public int ObjectId { get; set; }
+    public int InternalObjectId { get; set; }
 
     /// <summary>
     /// Index Id used to derive the Allocation Unit Id
@@ -47,7 +47,7 @@ public class PageHeader : DataStructure
     /// <remarks>
     /// Not necessarily the same as the index id in sys.indexes
     /// </remarks>
-    public int IndexId { get; set; }
+    public int InternalIndexId { get; set; }
 
     /// <summary>
     /// Index Level

@@ -4,7 +4,7 @@ using System.Data;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Services.Loaders.Records;
 
-namespace InternalsViewer.Internals.Tests.UnitTests.Services.Records;
+namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records;
 
 /// <summary>
 /// Data Record Loader Tests

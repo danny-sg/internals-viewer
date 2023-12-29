@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Metadata;
 
-public abstract class Structure(long allocationUnitId)
+public abstract class Structure<T>(long allocationUnitId) where T : ColumnStructure
 {
     public int ObjectId { get; set; }
 
@@ -8,7 +8,7 @@ public abstract class Structure(long allocationUnitId)
 
     public long AllocationUnitId { get; set; } = allocationUnitId;
 
-    public List<ColumnStructure> Columns { get; set; } = new();
+    public List<T> Columns { get; set; } = new();
 
     public bool HasSparseColumns => Columns.Any(c => c.IsSparse);
 }

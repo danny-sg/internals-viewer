@@ -1,7 +1,6 @@
 ﻿using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Engine.Parsers;
 
@@ -33,6 +32,10 @@ public class AllocationUnitProvider
         var index = metadata.Indexes
                             .FirstOrDefault(i => i.ObjectId == rowSet.ObjectId && i.IndexId == rowSet.IndexId);
 
+        var parentIndex = metadata.Indexes
+                                  .FirstOrDefault(i => i.ObjectId == internalObject.ParentObjectId 
+                                                       && i.IndexId <= 1);
+
         var displayName = !string.IsNullOrEmpty(index?.Name)
             ? $"{schema.Name}.{internalObject.Name}.{index.Name}"
             : $"{schema.Name}.{internalObject.Name}";
@@ -45,7 +48,7 @@ public class AllocationUnitProvider
             SchemaName = schema.Name,
             TableName = internalObject.Name,
             IndexName = index?.Name ?? string.Empty,
-            IndexType = (IndexType)(index?.IndexType ?? 0),
+            IndexType = index?.IndexType ?? 0,
             IsSystem = (internalObject.Status & 1) != 0,
             PartitionId = source.ContainerId,
             FirstPage = PageAddressParser.Parse(source.FirstPage!),
@@ -54,7 +57,8 @@ public class AllocationUnitProvider
             UsedPages = source.UsedPages,
             TotalPages = source.TotalPages,
             DisplayName = displayName,
-            CompressionType = (CompressionType)rowSet.CompressionLevel
+            CompressionType = (CompressionType)rowSet.CompressionLevel,
+            ParentIndexType = parentIndex?.IndexType
         };
 
         return allocationUnit;

@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Generators;
 
 // ReSharper disable StringLiteralTypo
@@ -30,7 +31,7 @@ public record InternalIndex
     public byte FillFactor { get; set; }
 
     [InternalsMetadataColumn("type", 7, SqlDbType.TinyInt, 1, 21, 7)]
-    public byte IndexType { get; set; }
+    public IndexType IndexType { get; set; }
 
     [InternalsMetadataColumn("tinyprop", 8, SqlDbType.TinyInt, 1, 22, 8)]
     public byte TinyProp { get; set; }
