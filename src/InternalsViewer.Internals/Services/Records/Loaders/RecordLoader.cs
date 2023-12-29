@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
+using InternalsViewer.Internals.Services.Records.Loaders.Fields;
 using System.Collections;
 
 namespace InternalsViewer.Internals.Services.Records.Loaders;
@@ -56,15 +57,15 @@ public abstract class RecordLoader
         switch ((BlobFieldType)data[0])
         {
             case BlobFieldType.LobPointer:
-                field.BlobInlineRoot = new PointerField(data, offset);
+                field.BlobInlineRoot = LobPointerFieldLoader.Load(data, offset);
                 break;
 
             case BlobFieldType.LobRoot:
-                field.BlobInlineRoot = new RootField(data, offset);
+                field.BlobInlineRoot = LobRootFieldLoader.Load(data, offset);
                 break;
 
             case BlobFieldType.RowOverflow:
-                field.BlobInlineRoot = new OverflowField(data, offset);
+                field.BlobInlineRoot = LobOverflowFieldLoader.Load(data, offset);
                 break;
         }
     }

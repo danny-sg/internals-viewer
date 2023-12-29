@@ -272,6 +272,11 @@ public class DataRecordLoader : RecordLoader
     /// </summary>
     /// <remarks>
     /// Variable length fields are based on the offset array in the record structure.
+    /// 
+    /// The offset array is used to work out the start and end of each variable length field.
+    /// 
+    /// If the first bit is set in the offset array entry, the field is a LOB field. Instead of the value the data will be a pointer to 
+    /// the LOB root.
     /// </remarks>
     private static RecordField LoadVariableLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
     {
@@ -297,7 +302,9 @@ public class DataRecordLoader : RecordLoader
 
         if (variableIndex < dataRecord.ColOffsetArray.Length)
         {
+            // LOB field is indicated by the first/high bit being set in the offset entry (0x8000 = 32768 = 0b1000000000000000)
             isLob = (dataRecord.ColOffsetArray[variableIndex] & 0x8000) == 0x8000;
+
             length = (short)(DecodeOffset(dataRecord.ColOffsetArray[variableIndex]) - offset);
         }
         else

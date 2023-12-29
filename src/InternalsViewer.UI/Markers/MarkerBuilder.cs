@@ -36,7 +36,6 @@ public class MarkerBuilder
 
             var property = markedObject.GetType().GetProperty(item.PropertyName);
 
-
             var markAttribute = property?.GetCustomAttributes(typeof(DataStructureItemAttribute), false);
 
             if (markAttribute is { Length: > 0 })
@@ -57,9 +56,8 @@ public class MarkerBuilder
 
                 marker.Visible = attribute.IsVisible;
 
-                if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(attribute.Description))
+                if (string.IsNullOrEmpty(prefix) | string.IsNullOrEmpty(style.Description))
                 {
-
                     marker.Name = prefix + style.Description;
                 }
                 else

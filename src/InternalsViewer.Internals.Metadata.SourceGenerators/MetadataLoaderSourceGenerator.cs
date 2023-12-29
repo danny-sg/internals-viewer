@@ -99,7 +99,7 @@ public class InternalRecordLoadGenerator : ISourceGenerator
             structureBuilder.AppendLine($"                DataType = SqlDbType.{dataType},");
             structureBuilder.AppendLine($"                DataLength = {dataLength},");
             structureBuilder.AppendLine($"                LeafOffset = {leafOffset},");
-            structureBuilder.AppendLine($"                NullBit = {nullBit}");
+            structureBuilder.AppendLine($"                NullBitIndex = {nullBit}");
             structureBuilder.AppendLine("            },");
 
             loaderBuilder.Append($"        result.{propertyName} = ");

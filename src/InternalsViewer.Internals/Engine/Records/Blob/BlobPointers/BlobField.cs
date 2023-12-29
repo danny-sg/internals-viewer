@@ -9,20 +9,6 @@ namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 public class BlobField : Field
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="BlobField"/> class.
-    /// </summary>
-    public BlobField(byte[] data, int offset)
-    {
-        Data = data;
-        PointerType = (BlobFieldType)data[0];
-        Offset = offset;
-
-        MarkDataStructure("PointerType", offset, sizeof(byte));
-
-        LoadLinks();
-    }
-
-    /// <summary>
     /// Timestamp used by DBCC CHECKTABLE
     /// </summary>
     [DataStructureItem(DataStructureItemType.Timestamp)]
@@ -32,8 +18,6 @@ public class BlobField : Field
 
     [DataStructureItem(DataStructureItemType.Rid)]
     public BlobChildLink[] LinksArray => Links.ToArray();
-
-    public byte[] Data { get; set; }
 
     [DataStructureItem(DataStructureItemType.PointerType)]
     public BlobFieldType PointerType { get; set; }
@@ -52,9 +36,5 @@ public class BlobField : Field
         }
 
         return sb.ToString();
-    }
-
-    protected virtual void LoadLinks()
-    {
     }
 }
