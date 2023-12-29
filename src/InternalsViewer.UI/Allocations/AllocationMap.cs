@@ -622,7 +622,7 @@ public class AllocationMap : Panel, IDisposable
     }
 
     /// <summary>
-    /// Gets or sets a value indicating whether IAMs are included.
+    /// Indicates if IAMs are included.
     /// </summary>
     public bool IncludeIam { get; set; }
 

@@ -106,7 +106,7 @@ public class IndexStructureProvider
                 IsDropped = isDropped,
                 IsUniqueifier = isUniqueifier,
                 IsSparse = (s.Status & 256) != 0,
-                NullBit = (short)(s.NullBit & 0xffff),
+                NullBitIndex = (short)(s.NullBit & 0xffff),
                 BitPosition = s.BitPosition,
                 IsIncludeColumn = isIncludeColumn,
                 IndexColumnId = indexColumn?.IndexColumnId ?? 0,

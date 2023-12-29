@@ -21,7 +21,7 @@ public struct HobtEntryPoint
     }
 
     /// <summary>
-    /// Gets or sets the first IAM page address.
+    /// First IAM page address.
     /// </summary>
     /// <remarks>
     /// The first page in the HOBTs allocation IAM chain
@@ -29,7 +29,7 @@ public struct HobtEntryPoint
     public PageAddress FirstIam { get; set; }
 
     /// <summary>
-    /// Gets or sets the root page address.
+    /// Index root page address.
     /// </summary>
     /// <remarks>
     /// The root page of the b-tree (index)
@@ -37,7 +37,7 @@ public struct HobtEntryPoint
     public PageAddress RootPage { get; set; }
 
     /// <summary>
-    /// Gets or sets the first page address;
+    /// First page address
     /// </summary>
     /// <remarks>
     /// The first page at the leaf/heap level
@@ -45,7 +45,7 @@ public struct HobtEntryPoint
     public PageAddress FirstPage { get; set; }
 
     /// <summary>
-    /// Gets or sets the partition number.
+    /// Partition number.
     /// </summary>
     public int PartitionNumber { get; set; }
 }

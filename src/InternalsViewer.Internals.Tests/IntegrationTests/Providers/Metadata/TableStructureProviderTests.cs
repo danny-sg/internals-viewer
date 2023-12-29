@@ -31,7 +31,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.BigInt, tableStructure.Columns[0].DataType);
         Assert.Equal(1, tableStructure.Columns[0].ColumnId);
         Assert.Equal(4, tableStructure.Columns[0].LeafOffset);
-        Assert.Equal(1, tableStructure.Columns[0].NullBit);
+        Assert.Equal(1, tableStructure.Columns[0].NullBitIndex);
         Assert.False(tableStructure.Columns[0].IsDropped);
         Assert.False(tableStructure.Columns[0].IsUniqueifier);
 
@@ -41,7 +41,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.TinyInt, tableStructure.Columns[1].DataType);
         Assert.Equal(2, tableStructure.Columns[1].ColumnId);
         Assert.Equal(12, tableStructure.Columns[1].LeafOffset);
-        Assert.Equal(2, tableStructure.Columns[1].NullBit);
+        Assert.Equal(2, tableStructure.Columns[1].NullBitIndex);
         Assert.False(tableStructure.Columns[1].IsDropped);
         Assert.False(tableStructure.Columns[1].IsUniqueifier);
 
@@ -51,7 +51,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.BigInt, tableStructure.Columns[2].DataType);
         Assert.Equal(3, tableStructure.Columns[2].ColumnId);
         Assert.Equal(13, tableStructure.Columns[2].LeafOffset);
-        Assert.Equal(3, tableStructure.Columns[2].NullBit);
+        Assert.Equal(3, tableStructure.Columns[2].NullBitIndex);
         Assert.False(tableStructure.Columns[2].IsDropped);
         Assert.False(tableStructure.Columns[2].IsUniqueifier);
 
@@ -62,7 +62,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.Int, tableStructure.Columns[3].DataType);
         Assert.Equal(4, tableStructure.Columns[3].ColumnId);
         Assert.Equal(21, tableStructure.Columns[3].LeafOffset);
-        Assert.Equal(4, tableStructure.Columns[3].NullBit);
+        Assert.Equal(4, tableStructure.Columns[3].NullBitIndex);
         Assert.False(tableStructure.Columns[3].IsDropped);
         Assert.False(tableStructure.Columns[3].IsUniqueifier);
 
@@ -72,7 +72,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.SmallInt, tableStructure.Columns[4].DataType);
         Assert.Equal(5, tableStructure.Columns[4].ColumnId);
         Assert.Equal(25, tableStructure.Columns[4].LeafOffset);
-        Assert.Equal(5, tableStructure.Columns[4].NullBit);
+        Assert.Equal(5, tableStructure.Columns[4].NullBitIndex);
         Assert.False(tableStructure.Columns[4].IsDropped);
         Assert.False(tableStructure.Columns[4].IsUniqueifier);
 
@@ -82,7 +82,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.Binary, tableStructure.Columns[5].DataType);
         Assert.Equal(6, tableStructure.Columns[5].ColumnId);
         Assert.Equal(27, tableStructure.Columns[5].LeafOffset);
-        Assert.Equal(6, tableStructure.Columns[5].NullBit);
+        Assert.Equal(6, tableStructure.Columns[5].NullBitIndex);
         Assert.False(tableStructure.Columns[5].IsDropped);
         Assert.False(tableStructure.Columns[5].IsUniqueifier);
 
@@ -92,7 +92,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.Binary, tableStructure.Columns[6].DataType);
         Assert.Equal(7, tableStructure.Columns[6].ColumnId);
         Assert.Equal(33, tableStructure.Columns[6].LeafOffset);
-        Assert.Equal(7, tableStructure.Columns[6].NullBit);
+        Assert.Equal(7, tableStructure.Columns[6].NullBitIndex);
         Assert.False(tableStructure.Columns[6].IsDropped);
         Assert.False(tableStructure.Columns[6].IsUniqueifier);
 
@@ -103,7 +103,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.Binary, tableStructure.Columns[7].DataType);
         Assert.Equal(8, tableStructure.Columns[7].ColumnId);
         Assert.Equal(39, tableStructure.Columns[7].LeafOffset);
-        Assert.Equal(8, tableStructure.Columns[7].NullBit);
+        Assert.Equal(8, tableStructure.Columns[7].NullBitIndex);
         Assert.False(tableStructure.Columns[7].IsDropped);
         Assert.False(tableStructure.Columns[7].IsUniqueifier);
 
@@ -113,7 +113,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.BigInt, tableStructure.Columns[8].DataType);
         Assert.Equal(9, tableStructure.Columns[8].ColumnId);
         Assert.Equal(45, tableStructure.Columns[8].LeafOffset);
-        Assert.Equal(9, tableStructure.Columns[8].NullBit);
+        Assert.Equal(9, tableStructure.Columns[8].NullBitIndex);
         Assert.False(tableStructure.Columns[8].IsDropped);
 
         Assert.False(tableStructure.Columns[8].IsUniqueifier);
@@ -124,7 +124,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.BigInt, tableStructure.Columns[9].DataType);
         Assert.Equal(10, tableStructure.Columns[9].ColumnId);
         Assert.Equal(53, tableStructure.Columns[9].LeafOffset);
-        Assert.Equal(10, tableStructure.Columns[9].NullBit);
+        Assert.Equal(10, tableStructure.Columns[9].NullBitIndex);
         Assert.False(tableStructure.Columns[9].IsDropped);
         Assert.False(tableStructure.Columns[9].IsUniqueifier);
 
@@ -134,7 +134,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.Equal(System.Data.SqlDbType.BigInt, tableStructure.Columns[10].DataType);
         Assert.Equal(11, tableStructure.Columns[10].ColumnId);
         Assert.Equal(61, tableStructure.Columns[10].LeafOffset);
-        Assert.Equal(11, tableStructure.Columns[10].NullBit);
+        Assert.Equal(11, tableStructure.Columns[10].NullBitIndex);
         Assert.False(tableStructure.Columns[10].IsDropped);
         Assert.False(tableStructure.Columns[10].IsUniqueifier);
 

@@ -60,7 +60,7 @@ public class DataRecordLoaderTests
             DataLength = 4,
             LeafOffset = 4,
             Precision = 10,
-            NullBit = 1
+            NullBitIndex = 1
         });
 
         structure.Columns.Add(new ColumnStructure
@@ -71,7 +71,7 @@ public class DataRecordLoaderTests
             DataLength = 8,
             LeafOffset = 8,
             Precision = 19,
-            NullBit = 2
+            NullBitIndex = 2
         });
 
         structure.Columns.Add(new ColumnStructure
@@ -82,7 +82,7 @@ public class DataRecordLoaderTests
             DataLength = 10,
             LeafOffset = 16,
             Precision = 0,
-            NullBit = 3
+            NullBitIndex = 3
         });
 
         var record = DataRecordLoader.Load(data, 0, structure);
@@ -125,7 +125,7 @@ public class DataRecordLoaderTests
             DataLength = 100,
             LeafOffset = -1,
             Precision = 0,
-            NullBit = 1
+            NullBitIndex = 1
         });
 
         structure.Columns.Add(new ColumnStructure
@@ -136,7 +136,7 @@ public class DataRecordLoaderTests
             DataLength = 100,
             LeafOffset = -2,
             Precision = 0,
-            NullBit = 2
+            NullBitIndex = 2
         });
 
         var record = DataRecordLoader.Load(data, 0, structure);
@@ -182,7 +182,7 @@ public class DataRecordLoaderTests
             DataLength = 4,
             LeafOffset = 4,
             Precision = 10,
-            NullBit = 1
+            NullBitIndex = 1
         });
 
         structure.Columns.Add(new ColumnStructure
@@ -193,7 +193,7 @@ public class DataRecordLoaderTests
             DataLength = 10,
             LeafOffset = 8,
             Precision = 19,
-            NullBit = 2
+            NullBitIndex = 2
         });
 
         structure.Columns.Add(new ColumnStructure
@@ -204,7 +204,7 @@ public class DataRecordLoaderTests
             DataLength = 100,
             LeafOffset = -1,
             Precision = 0,
-            NullBit = 3
+            NullBitIndex = 3
         });
 
         structure.Columns.Add(new ColumnStructure
@@ -215,7 +215,7 @@ public class DataRecordLoaderTests
             DataLength = 50,
             LeafOffset = -2,
             Precision = 0,
-            NullBit = 4
+            NullBitIndex = 4
         });
 
         var record = DataRecordLoader.Load(data, 0, structure);

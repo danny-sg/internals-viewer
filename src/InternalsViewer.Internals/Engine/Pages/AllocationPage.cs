@@ -45,7 +45,7 @@ public class AllocationPage : Page
     public List<PageAddress> SinglePageSlots { get; set; } = new();
 
     /// <summary>
-    /// Gets or sets the start page.
+    /// Start page for the allocation
     /// </summary>
     public PageAddress StartPage { get; set; }
 }

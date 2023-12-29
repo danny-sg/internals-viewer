@@ -71,7 +71,7 @@ public class TableStructureProvider
                 IsDropped = isDropped,
                 IsUniqueifier = isUniqueifer,
                 IsSparse = (s.Status & 256) != 0,
-                NullBit = (short)(s.NullBit & 0xffff),
+                NullBitIndex = (short)(s.NullBit & 0xffff),
                 BitPosition = s.BitPosition
             };
 

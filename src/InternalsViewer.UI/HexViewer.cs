@@ -400,15 +400,13 @@ public partial class HexViewer : UserControl
     }
 
     /// <summary>
-    /// Gets or sets the colour and offset dictionary.
+    /// Colour and offset dictionary
     /// </summary>
-    /// <value>The colour and offset dictionary.</value>
     public Dictionary<int, Color> ColourAndOffsetDictionary { get; set; } = new();
 
     /// <summary>
-    /// Gets or sets the data text.
+    /// Data text
     /// </summary>
-    /// <value>The data text.</value>
     public string DataText
     {
         get => dataText;
@@ -421,9 +419,8 @@ public partial class HexViewer : UserControl
     }
 
     /// <summary>
-    /// Gets or sets the data RTF.
+    /// Data RTF
     /// </summary>
-    /// <value>The data RTF.</value>
     public string DataRtf
     {
         get => dataRtf;
@@ -438,9 +435,8 @@ public partial class HexViewer : UserControl
     }
 
     /// <summary>
-    /// Gets or sets the page.
+    /// Current page
     /// </summary>
-    /// <value>The page.</value>
     public Page Page
     {
         get => page ?? new EmptyPage();
@@ -455,15 +451,13 @@ public partial class HexViewer : UserControl
     }
 
     /// <summary>
-    /// Gets or sets a value indicating whether to use hex or integer numbers for the address
+    /// Value indicating whether to use hex or integer numbers for the address
     /// </summary>
-    /// <value><c>true</c> if [address hex]; otherwise, <c>false</c>.</value>
     public bool AddressHex { get; set; }
 
     /// <summary>
-    /// Gets or sets the selected record.
+    /// Selected record
     /// </summary>
-    /// <value>The selected record.</value>
     public int SelectedRecord
     {
         get => selectedRecord;
@@ -477,9 +471,8 @@ public partial class HexViewer : UserControl
     }
 
     /// <summary>
-    /// Gets or sets the selected offset.
+    /// Selected offset
     /// </summary>
-    /// <value>The selected offset.</value>
     public int SelectedOffset
     {
         get => selectedOffset;
@@ -492,15 +485,13 @@ public partial class HexViewer : UserControl
     }
 
     /// <summary>
-    /// Gets the index of the selection char.
+    /// Gets the index of the selection character
     /// </summary>
-    /// <value>The index of the selection char.</value>
     public int SelectionCharIndex => dataRichTextBox.SelectionStart / 3;
 
     /// <summary>
-    /// Gets the length of the selection.
+    /// Length of the selection
     /// </summary>
-    /// <value>The length of the selection.</value>
     public int SelectionLength => dataRichTextBox.SelectionLength / 3;
 
     /// <summary>

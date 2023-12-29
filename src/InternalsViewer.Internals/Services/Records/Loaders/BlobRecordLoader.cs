@@ -107,10 +107,10 @@ internal class BlobRecordLoader : RecordLoader
         record.MarkDataStructure("Data", record.SlotOffset + BlobRecord.SmallDataOffset, record.Size);
 
         Array.Copy(data,
-            record.SlotOffset + BlobRecord.SmallDataOffset,
-            record.Data,
-            0,
-            record.Size);
+                   record.SlotOffset + BlobRecord.SmallDataOffset,
+                   record.Data,
+                   0,
+                   record.Size);
     }
 
     private static void LoadData(BlobRecord blobRecord, byte[] data)
@@ -120,10 +120,10 @@ internal class BlobRecordLoader : RecordLoader
         blobRecord.Data = new byte[blobRecord.Length];
 
         Array.Copy(data,
-            blobRecord.SlotOffset + BlobRecord.DataOffset,
-            blobRecord.Data,
-            0,
-            blobRecord.Length);
+                   blobRecord.SlotOffset + BlobRecord.DataOffset,
+                   blobRecord.Data,
+                   0,
+                   blobRecord.Length);
     }
 
     private static BlobChildLink LoadInternalBlobChild(BlobRecord blobRecord, int index, byte[] data)

@@ -66,7 +66,7 @@ public class OverflowField : BlobField
     public byte Unused { get; set; }
 
     /// <summary>
-    /// Gets or sets the update seq (used by optimistic concurrency control for cursors)
+    /// Update seq (used by optimistic concurrency control for cursors)
     /// </summary>
     [DataStructureItem(DataStructureItemType.UpdateSeq)]
     public short UpdateSeq { get; set; }

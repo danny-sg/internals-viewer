@@ -8,62 +8,62 @@ namespace InternalsViewer.Internals.Metadata;
 public class ColumnStructure
 {
     /// <summary>
-    /// Gets or sets the name of the column.
+    ///Name of the column.
     /// </summary>
     public string ColumnName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the column id.
+    /// Column id.
     /// </summary>
     public int ColumnId { get; set; }
 
     /// <summary>
-    /// Gets or sets the data type
+    /// Data type
     /// </summary>
     public SqlDbType DataType { get; set; }
 
     /// <summary>
-    /// Gets or sets the data length
+    /// Data length if fixed length
     /// </summary>
     public short DataLength { get; set; } = 0;
 
     /// <summary>
-    /// Gets or sets the leaf offset.
+    /// Leaf offset for fixed length fields
     /// </summary>
     public short LeafOffset { get; set; }
 
     /// <summary>
-    /// Gets or sets the precision.
+    /// Precision (used for decimal/date/time types)
     /// </summary>
     public byte Precision { get; set; }
 
     /// <summary>
-    /// Gets or sets the scale.
+    /// Scale (used for decimal/date/time types)
     /// </summary>
     public byte Scale { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether this <see cref="ColumnStructure"/> is dropped.
+    /// If the column has been dropped
     /// </summary>
     public bool IsDropped { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether this <see cref="ColumnStructure"/> is sparse.
+    /// If the column is sparse
     /// </summary>
     public bool IsSparse { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether this <see cref="ColumnStructure"/> is a uniqueifer.
+    /// If the column is a uniqueifier (special hidden column to ensure clustered index rows are unique)
     /// </summary>
     public bool IsUniqueifier { get; set; }
 
     /// <summary>
-    /// Gets or sets the index in the null bitmap
+    /// 1-based index for the column in the null bitmap.
     /// </summary>
-    public short NullBit { get; set; }
+    public short NullBitIndex { get; set; }
 
     /// <summary>
-    /// Gets or sets the bit position for a BIT column as bits are stored in bytes
+    /// Bit position for a BIT column as bits are stored in bytes, up to 8 bits/columns per byte.
     /// </summary>
     public short BitPosition { get; set; }
 }

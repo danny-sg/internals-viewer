@@ -11,13 +11,13 @@ public class IndexRecord : Record
     }
 
     /// <summary>
-    /// Gets or sets down page pointer to the next page in the index
+    /// Down page pointer to the next page in the index
     /// </summary>
     [DataStructureItem(DataStructureItemType.DownPagePointer)]
     public PageAddress DownPagePointer { get; set; }
 
     /// <summary>
-    /// Gets or sets the RID (Row Identifier) the index is pointing to
+    /// RID (Row Identifier) the index is pointing to
     /// </summary>
     [DataStructureItem(DataStructureItemType.Rid)]
     public RowIdentifier Rid { get; set; }

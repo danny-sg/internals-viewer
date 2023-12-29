@@ -18,7 +18,7 @@ public class PfsPage : Page
     public const int PfsInterval = 8088;
 
     /// <summary>
-    /// Gets or sets the PFS bytes collection.
+    /// PFS bytes collection
     /// </summary>
     public List<PfsByte> PfsBytes { get; set; } = new();
 

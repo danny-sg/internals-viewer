@@ -73,12 +73,12 @@ public abstract class Record : DataStructure
 
     public bool IsNullBitmapSet(ColumnStructure columnStructure)
     {
-        if (columnStructure.NullBit < 1)
+        if (columnStructure.NullBitIndex < 1)
         {
             return false;
         }
 
-        return NullBitmap.Get(columnStructure.NullBit - 1);
+        return NullBitmap.Get(columnStructure.NullBitIndex - 1);
     }
 
     internal static string GetStatusBitsDescription(Record record)

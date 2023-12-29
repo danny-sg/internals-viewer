@@ -6,32 +6,32 @@ namespace InternalsViewer.Internals.Metadata;
 public class ColumnAttribute : Attribute
 {
     /// <summary>
-    /// Gets or sets the name of the column.
+    /// Name of the column.
     /// </summary>
     public string ColumnName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the column id.
+    /// Column id.
     /// </summary>
     public int ColumnId { get; set; }
 
     /// <summary>
-    /// Gets or sets the data type
+    /// Data type
     /// </summary>
     public SqlDbType DataType { get; set; }
 
     /// <summary>
-    /// Gets or sets the data length
+    /// Data length
     /// </summary>
     public short DataLength { get; set; } = 0;
 
     /// <summary>
-    /// Gets or sets the leaf offset.
+    /// Leaf offset for fixed length fields
     /// </summary>
     public short LeafOffset { get; set; }
 
     /// <summary>
-    /// Gets or sets the index of the null bit.
+    /// 1-based index for the column in the null bitmap.
     /// </summary>
-    public short NullBit { get; set; }
+    public short NullBitIndex { get; set; }
 }

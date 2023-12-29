@@ -23,9 +23,8 @@ public class BlobField : Field
     }
 
     /// <summary>
-    /// Gets or sets the timestamp used by DBCC CHECKTABLE
+    /// Timestamp used by DBCC CHECKTABLE
     /// </summary>
-    /// <value>The timestamp.</value>
     [DataStructureItem(DataStructureItemType.Timestamp)]
     public int Timestamp { get; set; }
 
