@@ -13,6 +13,7 @@ using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Services.Loaders.Chains;
 using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders.Engine;
+using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Pages;
 using InternalsViewer.Internals.Services.Pages.Loaders;
 using InternalsViewer.Internals.Services.Pages.Parsers;
@@ -54,6 +55,8 @@ public static class ServiceRegistration
         services.AddTransient<IRecordService, RecordService>();
 
         services.AddTransient<IPageService, PageService>();
+
+        services.AddTransient<IndexRecordLoader>();
 
         RegisterPageParsers(services);
     }

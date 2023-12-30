@@ -60,6 +60,10 @@ public class IndexStructureProvider
             throw new ArgumentException($"Row set {allocationUnit.ContainerId} not found");
         }
 
+        var parentIndex = metadata.Indexes
+                                  .FirstOrDefault(i => i.ObjectId == rowSet.ObjectId
+                                                  && i.IndexId <= 1);
+
         var index = metadata.Indexes.FirstOrDefault(i => i.ObjectId == rowSet.ObjectId
                                                          && i.IndexId == rowSet.IndexId);
 
@@ -75,6 +79,8 @@ public class IndexStructureProvider
         structure.HasFilter = Convert.ToBoolean(index.Status & 0x20000);
         structure.IndexType = index.IndexType;
 
+        structure.ParentIndexType = parentIndex?.IndexType ?? index.IndexType;
+
         var columnLayouts = metadata.ColumnLayouts.Where(c => c.PartitionId == rowSet.RowSetId).ToList();
 
         var columns = metadata.Columns.Where(c => c.ObjectId == rowSet.ObjectId).ToList();
@@ -83,9 +89,14 @@ public class IndexStructureProvider
         {
             var column = columns.FirstOrDefault(c => c.ColumnId == s.ColumnId);
 
+            // Get the index column for the column, or if that is not found get the clustered index column
             var indexColumn = metadata.IndexColumns
                                       .FirstOrDefault(c => c.ObjectId == rowSet.ObjectId
                                                            && c.IndexId == rowSet.IndexId
+                                                           && c.ColumnId == s.ColumnId)
+                           ?? metadata.IndexColumns
+                                      .FirstOrDefault(c => c.ObjectId == rowSet.ObjectId
+                                                           && c.IndexId == 1
                                                            && c.ColumnId == s.ColumnId);
 
             // The 2nd bit of the status field indicates if the column has been dropped

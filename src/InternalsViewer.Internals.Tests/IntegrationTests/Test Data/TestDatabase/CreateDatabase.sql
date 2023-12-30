@@ -169,49 +169,46 @@ VALUES
     ,GETDATE()
     ,GETDATE()
     ,GETDATE()
-
     ,GETDATE()
     ,GETDATE()
     ,GETDATE()
     ,GETDATE()
     ,GETDATE()
     ,GETDATE()
-        ,GETDATE()
+    ,GETDATE()
     )
-
+GO
 
 CREATE TABLE Testing.SqlVariantTable_Clustered
     (
     VariantValue SQL_VARIANT NOT NULL
-   ,DataType     VARCHAR(50)
-   ,[Precision]  TINYINT NULL
-   ,[Scale]      TINYINT NULL
+   ,DataType     VARCHAR(50) NULL
+   ,[Precision]  TINYINT     NULL
+   ,[Scale]      TINYINT     NULL
     )
+GO
 
 INSERT INTO Testing.SqlVariantTable_Clustered VALUES
-    (CONVERT(SQL_VARIANT, CONVERT(DATETIME2(7), GETDATE())), 'DATETIME2', NULL, 7)
+    (CONVERT(SQL_VARIANT, CONVERT(DATETIME2(7), GETDATE())),      'DATETIME2', NULL, 7)
    ,(CONVERT(SQL_VARIANT, CONVERT(datetimeoffset(7), GETDATE())), 'datetimeoffset', NULL, 7)
-   ,(CONVERT(SQL_VARIANT, CONVERT(datetime, GETDATE())), 'datetime', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(smalldatetime, GETDATE())), 'smalldatetime', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(date, GETDATE())), 'date', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(time, GETDATE())), 'time', NULL, 7)
-   ,(CONVERT(SQL_VARIANT, CONVERT(FLOAT, 1000 / 3)), 'FLOAT', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(REAL, 1000 / 3)), 'REAL', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(DECIMAL, 1000 / 3)), 'DECIMAL', 5, 2)
-   ,(CONVERT(SQL_VARIANT, CONVERT(MONEY, 1000 / 3)), 'MONEY', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(SMALLMONEY, 1000 / 3)), 'SMALLMONEY', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(BIGINT, 9999)), 'BIGINT', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(INT, 9999)), 'INT', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(SMALLINT, 9999)), 'SMALLINT', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(SMALLINT, 99)), 'TINYINT', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(BIT, 1)), 'BIT', NULL, NULL)
-   ,(CONVERT(SQL_VARIANT, CONVERT(DATETIME2(0), GETDATE())), 'DATETIME2(0)', NULL, 0)
-   ,(CONVERT(SQL_VARIANT, CONVERT(DATETIME2(1), GETDATE())), 'DATETIME2(1)', NULL, 1)
+   ,(CONVERT(SQL_VARIANT, CONVERT(datetime, GETDATE())),          'datetime', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(smalldatetime, GETDATE())),     'smalldatetime', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(date, GETDATE())),              'date', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(time, GETDATE())),              'time', NULL, 7)
+   ,(CONVERT(SQL_VARIANT, CONVERT(FLOAT, 1000 / 3)),              'FLOAT', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(REAL, 1000 / 3)),               'REAL', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(DECIMAL, 1000 / 3)),            'DECIMAL', 5, 2)
+   ,(CONVERT(SQL_VARIANT, CONVERT(MONEY, 1000 / 3)),              'MONEY', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(SMALLMONEY, 1000 / 3)),         'SMALLMONEY', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(BIGINT, 9999)),                 'BIGINT', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(INT, 9999)),                    'INT', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(SMALLINT, 9999)),               'SMALLINT', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(SMALLINT, 99)),                 'TINYINT', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(BIT, 1)),                       'BIT', NULL, NULL)
+   ,(CONVERT(SQL_VARIANT, CONVERT(DATETIME2(0), GETDATE())),      'DATETIME2(0)', NULL, 0)
+   ,(CONVERT(SQL_VARIANT, CONVERT(DATETIME2(1), GETDATE())),      'DATETIME2(1)', NULL, 1)
+GO
 
-   -- 2A 01 07 F5 BA E7 B9 97 40 46 0B 
-   -- 2A 01 01 8B F1 09 40 46 0B 
-   -- 2A 00 00 8E FE 00 40 46 0B 
-   DROP TABLE Testing.BitTable_Clustered
 CREATE TABLE Testing.BitTable_Clustered
     (
     Description     VARCHAR(50)
@@ -256,8 +253,8 @@ CREATE TABLE Testing.BitTable_Clustered
    ,('Null 7',     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0)
    ,('Null 8',     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0)
    ,('Null 9',     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
+GO
 
-   DROP TABLE Testing.NonClusteredUniquifier
 CREATE TABLE Testing.NonClusteredUniquifier
     (
     IdValue      INT
@@ -276,5 +273,96 @@ BEGIN
 
     SET @i+=1 
 END
+GO
 
-select * from sys.system_internals_partition_columns 
+CREATE TABLE Testing.DataRecordLoaderTests_FixedLengthOnly
+(
+    Column1 INT      NOT NULL
+   ,Column1 BIGINT   NOT NULL
+   ,Column3 CHAR(10) NOT NULL
+)
+
+INSERT INTO Testing.DataRecordLoaderTests VALUES (123, 66665555444, 'Test Col 3')
+GO
+
+CREATE TABLE Testing.DataRecordLoaderTests_VariableLengthOnly
+(
+    Column1 VARCHAR(100) NOT NULL
+   ,Column2 NVARCHAR(50) NOT NULL
+)
+
+INSERT INTO Testing.DataRecordLoaderTests_VariableLengthOnly VALUES ('Value 1', 'Different Value 2')
+GO
+
+CREATE TABLE Testing.DataRecordLoaderTests_VariableFixed_NotNull
+(
+    Column1 INT          NOT NULL
+   ,Column2 CHAR(10)     NOT NULL
+   ,Column3 VARCHAR(100) NOT NULL
+   ,Column4 NVARCHAR(50) NOT NULL
+)
+
+INSERT INTO Testing.DataRecordLoaderTests_VariableFixed_NotNull VALUES (1, 'ABC', 'Variable A', 'Variable B')
+GO
+
+CREATE TABLE Testing.DataRecordLoaderTests_Lob_RowOverflow
+( 
+    Column1 INT           NOT NULL
+   ,Column2 VARCHAR(8000) NULL 
+   ,Column3 VARCHAR(8000) NULL 
+   ,Column4 VARCHAR(MAX)  NULL 
+);
+
+INSERT INTO Testing.DataRecordLoaderTests_Lob_RowOverflow
+VALUES (1, replicate('a',8000), replicate('b',8000), NULL);
+INSERT INTO Testing.DataRecordLoaderTests_Lob_RowOverflow
+    VALUES (2,replicate('a',8000),NULL, NULL);
+INSERT INTO Testing.DataRecordLoaderTests_Lob_RowOverflow
+    VALUES (3,replicate('a',8000),NULL, CONVERT(VARCHAR(MAX), replicate('A',8000)) + CONVERT(VARCHAR(MAX), replicate('A',8000)) + CONVERT(VARCHAR(MAX), replicate('A',8000)))
+GO
+
+-- Clustered index with fixed length columns
+CREATE TABLE Testing.IndexRecordLoaderTests_Clustered_Fixed
+(
+    KeyColumn1 INT          NOT NULL
+   ,KeyColumn2 INT          NOT NULL
+   ,Column3    VARCHAR(100) NOT NULL
+)
+GO
+
+CREATE CLUSTERED INDEX clx_Testing_IndexRecordLoaderTests_Clustered_Fixed 
+    ON Testing.IndexRecordLoaderTests_Clustered_Fixed (KeyColumn1, KeyColumn2)
+GO
+
+DECLARE @i INT = 1
+
+WHILE @i < 10000
+BEGIN
+    INSERT INTO Testing.IndexRecordLoaderTests_Clustered_Fixed VALUES (@i, @i, CONCAT('Test Value: ', 100000 - @i, 100000 - @i))
+
+    SET @i+=1
+END
+
+-- Clustered index with fixed and variable length columns
+CREATE TABLE Testing.IndexRecordLoaderTests_Clustered_Mixed
+(
+    KeyColumn1 INT          NOT NULL
+   ,KeyColumn2 VARCHAR(100) NOT NULL
+   ,Column3    VARCHAR(100) NOT NULL
+)
+GO
+
+
+CREATE CLUSTERED INDEX clx_Testing_IndexRecordLoaderTests_Clustered_Mixed
+    ON Testing.IndexRecordLoaderTests_Clustered_Mixed (KeyColumn1, KeyColumn2)
+GO
+
+DECLARE @i INT = 1
+
+WHILE @i < 10000
+BEGIN
+    INSERT INTO Testing.IndexRecordLoaderTests_Clustered_Mixed VALUES (@i, CONCAT('Test Value: ', 100000 - @i, 100000 - @i), @i)
+
+    SET @i+=1
+END
+

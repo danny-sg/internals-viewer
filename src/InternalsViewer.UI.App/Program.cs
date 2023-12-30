@@ -17,6 +17,7 @@ internal static class Program
         Application.SetCompatibleTextRenderingDefault(false);
 
         var host = CreateHostBuilder().Build();
+
         ServiceProvider = host.Services;
 
         Application.Run(ServiceProvider.GetRequiredService<TestForm>());

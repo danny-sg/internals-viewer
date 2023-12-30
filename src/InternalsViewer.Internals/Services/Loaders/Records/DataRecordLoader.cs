@@ -249,7 +249,7 @@ public class DataRecordLoader : RecordLoader
         var field = new RecordField(column);
 
         // Fixed offset given by the column leaf offset field in sys.columns
-        var offset = (ushort)column.LeafOffset;
+        var offset = column.LeafOffset;
 
         // Length fixed from data type/data length
         var length = column.DataLength;
@@ -287,25 +287,25 @@ public class DataRecordLoader : RecordLoader
         bool isLob;
 
         // Use the leaf offset to get the variable length column ordinal
-        var variableIndex = (ushort)(column.LeafOffset * -1 - 1);
+        var fieldIndex = Math.Abs(column.LeafOffset) - 1;
 
-        if (variableIndex == 0)
+        if (fieldIndex == 0)
         {
-            // If it's position 0 the start of the data will be at the variable length data offset...
+            // If position 0 the start of the data will be at the variable length data offset...
             offset = dataRecord.VariableLengthDataOffset;
         }
         else
         {
             // ...else use the end offset of the previous column as the start of this one
-            offset = DecodeOffset(dataRecord.ColOffsetArray[variableIndex - 1]);
+            offset = DecodeOffset(dataRecord.ColOffsetArray[fieldIndex - 1]);
         }
 
-        if (variableIndex < dataRecord.ColOffsetArray.Length)
+        if (fieldIndex < dataRecord.ColOffsetArray.Length)
         {
             // LOB field is indicated by the first/high bit being set in the offset entry (0x8000 = 32768 = 0b1000000000000000)
-            isLob = (dataRecord.ColOffsetArray[variableIndex] & 0x8000) == 0x8000;
+            isLob = (dataRecord.ColOffsetArray[fieldIndex] & 0x8000) == 0x8000;
 
-            length = (short)(DecodeOffset(dataRecord.ColOffsetArray[variableIndex]) - offset);
+            length = (short)(DecodeOffset(dataRecord.ColOffsetArray[fieldIndex]) - offset);
         }
         else
         {
@@ -320,7 +320,7 @@ public class DataRecordLoader : RecordLoader
         field.Offset = offset;
         field.Length = length;
         field.Data = data;
-        field.VariableOffset = variableIndex;
+        field.VariableOffset = fieldIndex;
 
         if (isLob)
         {
@@ -335,7 +335,7 @@ public class DataRecordLoader : RecordLoader
     }
 
     /// <summary>
-    /// Loads the status bits A and B
+    /// Loads Status bits B
     /// </summary>
     private static void LoadStatusBitsB(Record record, byte[] data)
     {

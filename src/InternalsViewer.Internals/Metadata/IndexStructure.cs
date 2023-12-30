@@ -9,5 +9,7 @@ public class IndexStructure(long allocationUnitId)
 
     public IndexType IndexType { get; set; }
 
+    public IndexType ParentIndexType { get; set; }
+
     public bool HasFilter { get; set; }
 }

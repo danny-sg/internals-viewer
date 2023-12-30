@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Runtime.CompilerServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
@@ -23,7 +24,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 ///     - Unique / Non-Unique (Uniqueifier)
 ///     
 /// - Non-Clustered Index
-///     - Based on a Heap/based on a Clustered Index
+///     - Based on a Heap or based on a Clustered Index
 ///     - Node records
 ///     - Leaf records
 ///     - Unique / Non-Unique
@@ -31,8 +32,10 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 ///     
 /// This is in addition to the variable/fixed length record fields.
 /// </remarks>
-public class IndexRecordLoader : RecordLoader
+public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 {
+    public ILogger<IndexRecordLoader> Logger { get; } = logger;
+
     /// <summary>
     /// Load an Index record at the specified offset
     /// </summary>
@@ -42,35 +45,53 @@ public class IndexRecordLoader : RecordLoader
     ///     Status Bits A                              - 1 byte
     /// 
     /// </remarks>
-    public static IndexRecord Load(IndexPage page, ushort offset, IndexStructure structure)
+    public IndexRecord Load(IndexPage page, ushort offset, IndexStructure structure)
     {
+        Logger.BeginScope("Index Record Loader: {Page}:{Offset}", page, offset);
+
+        var nodeType = page.PageHeader.Level > 0 ? NodeType.Node : NodeType.Leaf;
+
         var record = new IndexRecord
         {
             SlotOffset = offset,
-            NodeType = page.PageHeader.Level > 0 ? NodeType.Node : NodeType.Leaf
+            NodeType = nodeType
         };
+
+        Logger.LogDebug("Loading Index Record ({nodeType}) at offset {offset}", nodeType, offset);
 
         // Indexes should always have a Status Bits A
         LoadStatusBitsA(record, page.Data);
 
+        Logger.LogTrace("Status Bits A: {StatusBitsA}", record.StatusBitsADescription);
+
         // Load the null bitmap if necessary
         if (record.HasNullBitmap)
         {
+            Logger.LogTrace("Has Null Bitmap flag set, loading null bitmap");
+
             LoadNullBitmap(record, page, structure);
         }
 
         // Load the variable length column offset array if necessary
         if (record.HasVariableLengthColumns)
         {
+            Logger.LogTrace("Has Variable Length Columns flag set, loading offset array");
+
             var startIndex = record.HasNullBitmap ? 2 + record.NullBitmapSize : 0;
 
             LoadColumnOffsetArray(record, startIndex, page);
 
+            // Calculate the offset of the variable length data
             record.VariableLengthDataOffset = (ushort)(page.PageHeader.MinLen
                                                        + sizeof(short)
                                                        + startIndex
                                                        + sizeof(short) * record.VariableLengthColumnCount);
         }
+
+        Logger.LogDebug("Node Type: {NodeType}, Index Type: {IndexType}, Underlying Index Type: {ParentIndexType}",
+                        record.NodeType,
+                        page.AllocationUnit.IndexType,
+                        structure.ParentIndexType);
 
         switch (record.NodeType)
         {
@@ -78,10 +99,10 @@ public class IndexRecordLoader : RecordLoader
                 LoadClusteredNode(record, page, structure);
                 break;
             case NodeType.Node when page.AllocationUnit.IndexType == IndexType.NonClustered:
-                LoadNonClusteredNode(record, page);
+                LoadNonClusteredNode(record, page, structure);
                 break;
             case NodeType.Leaf when page.AllocationUnit.IndexType == IndexType.NonClustered:
-                LoadNonClusteredLeaf(record, page);
+                LoadNonClusteredLeaf(record, page, structure);
                 break;
             default:
                 throw new ArgumentOutOfRangeException($"Unrecognised type - {page.AllocationUnit.ParentIndexType}");
@@ -90,33 +111,10 @@ public class IndexRecordLoader : RecordLoader
 
         return record;
 
-        //if (record.HasNullBitmap)
-        //{
-        //    LoadNullBitmap(record, page, structure);
-
-        //    varColStartIndex = 2 + record.NullBitmapSize;
-        //}
-
-        //if (record.HasVariableLengthColumns)
-        //{
-        //    LoadColumnOffsetArray(record, varColStartIndex, page);
-        //}
-
-
-
-        //LoadColumnValues(record, page, structure);
-
-        //if (record.IsIndexType(IndexTypes.Node) | page.AllocationUnit.IndexId == 1)
-        //{
-        //    LoadDownPagePointer(record, page);
-        //}
-
         //if (record.IsIndexType(IndexTypes.Heap) && !structure.IsUnique | record.IsIndexType(IndexTypes.Leaf))
         //{
         //    LoadRid(record, page);
         //}
-
-        //return record;
     }
 
     /// <summary>
@@ -125,25 +123,47 @@ public class IndexRecordLoader : RecordLoader
     /// <remarks>
     /// A clustered index node will contain the clustered key columns and a down page pointer
     /// </remarks>
-    private static void LoadClusteredNode(IndexRecord record, PageData page, IndexStructure structure)
+    private void LoadClusteredNode(IndexRecord record, PageData page, IndexStructure structure)
     {
-        var columns = structure.Columns.Where(c => c.IsKey).ToList();
+        var columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
 
-        LoadColumnValues(record, page, columns, NodeType.Node);    
+        LoadColumnValues(record, page, columns, NodeType.Node);
 
         LoadDownPagePointer(record, page);
     }
 
-    private static void LoadNonClusteredNode(IndexRecord record, PageData page)
+    private void LoadNonClusteredNode(IndexRecord record, AllocationUnitPage page, IndexStructure structure)
     {
+        var columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
 
+        LoadColumnValues(record, page, columns, NodeType.Node);
+
+        if(structure.ParentIndexType == IndexType.Clustered)
+        {
+            LoadDownPagePointer(record, page);
+        }
+        else
+        {
+            LoadRid(record, page);
+        }
     }
 
-    private static void LoadNonClusteredLeaf(IndexRecord record, PageData page)
+    private void LoadNonClusteredLeaf(IndexRecord record, PageData page, IndexStructure structure)
     {
+        var columns = structure.Columns;
 
+        LoadColumnValues(record, page, columns, NodeType.Leaf);
+
+        // A heap has a RID to point to the record. The row for a clustered table will be accessible via the key values at the leaf level
+        if (structure.ParentIndexType == IndexType.Heap)
+        {
+            LoadRid(record, page);
+        }
     }
 
+    /// <summary>
+    /// Load a down page pointer (page address) pointing to the next level in the b-tree
+    /// </summary>
     private static void LoadDownPagePointer(IndexRecord record, PageData page)
     {
         //Last 6 bytes of the fixed slot
@@ -158,7 +178,10 @@ public class IndexRecordLoader : RecordLoader
         record.MarkDataStructure("DownPagePointer", downPagePointerOffset, PageAddress.Size);
     }
 
-    private static void LoadRid(IndexRecord record, PageData page)
+    /// <summary>
+    /// Load a RID (Row Identifier) for a heap record pointing to a specific page and slot
+    /// </summary>
+    private void LoadRid(IndexRecord record, PageData page)
     {
         int ridOffset;
         var ridAddress = new byte[8];
@@ -179,7 +202,7 @@ public class IndexRecordLoader : RecordLoader
         record.MarkDataStructure("Rid", ridOffset, RowIdentifier.Size);
     }
 
-    private static void LoadColumnOffsetArray(IndexRecord record, int varColStartIndex, Page page)
+    private void LoadColumnOffsetArray(IndexRecord record, int varColStartIndex, Page page)
     {
         var variableColumnCountOffset = record.SlotOffset + page.PageHeader.MinLen + varColStartIndex;
 
@@ -196,7 +219,7 @@ public class IndexRecordLoader : RecordLoader
                                  variableColumnCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));
     }
 
-    private static void LoadColumnValues(IndexRecord record, PageData page, List<IndexColumnStructure> columns, NodeType nodeType)
+    private void LoadColumnValues(IndexRecord record, PageData page, List<IndexColumnStructure> columns, NodeType nodeType)
     {
         var columnValues = new List<RecordField>();
 
@@ -217,23 +240,47 @@ public class IndexRecordLoader : RecordLoader
             if (columnOffset >= 0)
             {
                 // Fixed length field
+
+                data = new byte[column.DataLength];
+
+                Array.Copy(page.Data, columnOffset + record.SlotOffset, data, 0, column.DataLength);
+
                 offset = columnOffset;
                 length = column.DataLength;
+            }
+            else if(column.IsUniqueifier)
+            {
+                var uniqueifierIndex = Math.Abs(columnOffset) - 1;
+
+                if (uniqueifierIndex >= record.VariableLengthColumnCount)
+                {
+                    // If there is no slot for the uniqueifier it can be taken as zero
+                    continue;
+                }
+
+                offset = record.ColOffsetArray[uniqueifierIndex - 1];
+
+                // Uniqueifier is always a 4-byte integer
+                length = sizeof(int);
+
                 data = new byte[length];
 
                 Array.Copy(page.Data, offset + record.SlotOffset, data, 0, length);
             }
             else if (record.HasVariableLengthColumns)
             {
-                //Variable length field
-                variableIndex = column.LeafOffset * -1 - 1;
+                // Variable length field
+
+                variableIndex = Math.Abs(columnOffset) - 1;
 
                 if (variableIndex == 0)
                 {
+                    // If position 0 the start of the data will be at the variable length data offset...
                     offset = record.VariableLengthDataOffset;
                 }
                 else
                 {
+                    // ...else use the end offset of the previous column as the start of this one
                     offset = record.ColOffsetArray[variableIndex - 1];
                 }
 
@@ -268,7 +315,7 @@ public class IndexRecordLoader : RecordLoader
         record.Fields.AddRange(columnValues);
     }
 
-    private static void LoadNullBitmap(Record record, PageData page, IndexStructure structure)
+    private void LoadNullBitmap(Record record, PageData page, IndexStructure structure)
     {
         record.NullBitmapSize = (short)((structure.Columns.Count - 1) / 8 + 1);
 
@@ -291,16 +338,5 @@ public class IndexRecordLoader : RecordLoader
         record.NullBitmap = new BitArray(nullBitmapBytes);
 
         record.MarkDataStructure("NullBitmapDescription", nullBitmapPosition, record.NullBitmapSize);
-    }
-
-    private static void LoadIndexType(IndexRecord record, AllocationUnitPage page, IndexStructure structure)
-    {
-
-
-        //TODO: Remember what this is for
-        record.IncludeKey = !structure.IsUnique;
-        //
-        //                     && record.IsIndexType(IndexTypes.NonClustered);
-        //                    || record.IsIndexType(IndexTypes.NonClusteredLeaf);
     }
 }
