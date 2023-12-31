@@ -2,7 +2,7 @@
 using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 using InternalsViewer.Internals.Helpers;
-using InternalsViewer.Internals.Metadata;
+using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records;
 

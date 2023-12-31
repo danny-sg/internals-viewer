@@ -55,6 +55,7 @@ public class InternalRecordLoadGenerator : ISourceGenerator
         loaderBuilder.AppendLine("using System;");
         loaderBuilder.AppendLine("using System.Data;");
         loaderBuilder.AppendLine("using System.Collections.Generic;");
+        loaderBuilder.AppendLine("using InternalsViewer.Internals.Metadata.Structures;");
         loaderBuilder.AppendLine("using InternalsViewer.Internals.Engine.Records.Data;");
         loaderBuilder.AppendLine("using InternalsViewer.Internals.Engine.Database.Enums;");
 

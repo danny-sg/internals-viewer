@@ -2,6 +2,7 @@
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
+using Xunit.Sdk;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Loaders.Engine;
 
@@ -14,7 +15,7 @@ public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
     {
         var pageService = ServiceHelper.CreateDataFilePageService(TestOutputHelper);
 
-        var dataReader = new RecordReader(pageService);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutputHelper), pageService);
 
         var database = new DatabaseDetail
         {

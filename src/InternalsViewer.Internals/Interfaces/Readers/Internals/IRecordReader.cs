@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Records.Data;
-using InternalsViewer.Internals.Metadata;
+using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Interfaces.Readers.Internals;
 

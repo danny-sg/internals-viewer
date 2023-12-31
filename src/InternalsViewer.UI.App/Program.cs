@@ -20,16 +20,20 @@ internal static class Program
 
         ServiceProvider = host.Services;
 
-        Application.Run(ServiceProvider.GetRequiredService<TestForm>());
+        Application.Run(ServiceProvider.GetRequiredService<MainForm>());
     }
 
     private static IHostBuilder CreateHostBuilder()
     {
         return Host.CreateDefaultBuilder()
-            .ConfigureServices((context, services) => {
-                
-                services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
-                services.AddTransient<TestForm>();
+            .ConfigureServices((context, services) =>
+            {
+                services.AddLogging(builder =>
+                {
+                    builder.AddConsole().SetMinimumLevel(LogLevel.Debug);
+
+                });
+                services.AddTransient<MainForm>();
                 services.RegisterServices();
             });
     }

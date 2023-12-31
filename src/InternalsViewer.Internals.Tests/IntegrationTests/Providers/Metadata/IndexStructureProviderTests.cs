@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Providers.Metadata;
+﻿using InternalsViewer.Internals.Metadata.Helpers;
+using InternalsViewer.Internals.Providers.Metadata;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Providers.Metadata;
 
@@ -12,6 +13,8 @@ public class IndexStructureProviderTests(ITestOutputHelper testOutput) : Provide
         var metadata = await GetMetadata();
 
         var structure = IndexStructureProvider.GetIndexStructure(metadata, allocationUnitId);
+
+        TestOutput.WriteLine(structure.ToDetailString());   
 
         Assert.NotEmpty(structure.Columns);
     }

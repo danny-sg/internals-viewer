@@ -3,7 +3,7 @@ using System.Data;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
-using InternalsViewer.Internals.Metadata;
+using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Services.Loaders.Compression;
 

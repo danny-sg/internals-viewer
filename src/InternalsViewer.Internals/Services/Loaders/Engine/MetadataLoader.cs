@@ -7,6 +7,7 @@ using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
@@ -102,17 +103,17 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
 
     private async Task<List<InternalFile>> GetFiles(PageAddress pageAddress, DatabaseDetail database)
     {
-        Logger.LogDebug("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
+        Logger.LogTrace("Getting Files (sys.sysprufiles) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalFileStructure.GetStructure(-1));
 
-        Logger.LogDebug("Objects: {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Files (sys.sysprufiles): {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalFileLoader.Load).ToList();
 
-        Logger.LogDebug("Objects: {Count} records parsed.", rows.Count);
+        Logger.LogDebug("Files (sys.sysprufiles): {Count} records parsed.", rows.Count);
 
         return rows;
 
@@ -120,119 +121,119 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
 
     private async Task<List<InternalEntityObject>> GetEntities(PageAddress pageAddress, DatabaseDetail database)
     {
-        Logger.LogDebug("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
+        Logger.LogTrace("Getting Entities (sys.sysclsobjs) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalEntityObjectStructure.GetStructure(-1));
 
-        Logger.LogDebug("Objects: {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Entities (sys.sysclsobjs): {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalEntityObjectLoader.Load).ToList();
 
-        Logger.LogDebug("Objects: {Count} records parsed.", rows.Count);
+        Logger.LogDebug("Entities (sys.sysclsobjs): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
     private async Task<List<InternalObject>> GetObjects(PageAddress pageAddress, DatabaseDetail database)
     {
-        Logger.LogDebug("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
+        Logger.LogTrace("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalObjectStructure.GetStructure(-1));
 
-        Logger.LogDebug("Objects: {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Objects (sys.sysschobjs): {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalObjectLoader.Load).ToList();
 
-        Logger.LogDebug("Objects: {Count} records parsed.", rows.Count);
+        Logger.LogDebug("Objects (sys.sysschobjs): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
     private async Task<List<InternalIndex>> GetIndexes(PageAddress pageAddress, DatabaseDetail database)
     {
-        Logger.LogDebug("Getting Indexes (sys.sysidxstats) using fixed Object Id/Index Id");
+        Logger.LogTrace("Getting Indexes (sys.sysidxstats) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalIndexStructure.GetStructure(-1));
 
-        Logger.LogDebug("Objects: {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Indexes (sys.sysidxstats): {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalIndexLoader.Load).ToList();
 
-        Logger.LogDebug("Objects: {Count} records parsed.", rows.Count);
+        Logger.LogDebug("Indexes (sys.sysidxstats): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
     private async Task<List<InternalIndexColumn>> GetIndexColumns(PageAddress pageAddress, DatabaseDetail database)
     {
-        Logger.LogDebug("Getting Index Columns (sys.sysiscols) using fixed Object Id/Index Id");
+        Logger.LogTrace("Getting Index Columns (sys.sysiscols) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                               pageAddress,
                                               InternalIndexColumnStructure.GetStructure(-1));
 
-        Logger.LogDebug("Objects: {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Index Columns (sys.sysiscols): {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalIndexColumnLoader.Load).ToList();
 
-        Logger.LogDebug("Objects: {Count} records parsed.", rows.Count);
+        Logger.LogDebug("Index Columns (sys.sysiscols): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
     private async Task<List<InternalRowSet>> GetRowSets(PageAddress pageAddress, DatabaseDetail database)
     {
-        Logger.LogDebug("Getting Row Sets (sys.sysrowsets) using fixed Object Id/Index Id");
+        Logger.LogTrace("Getting Row Sets (sys.sysrowsets) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalRowSetStructure.GetStructure(-1));
 
-        Logger.LogDebug("Row Sets: {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Row Sets (sys.sysrowsets): {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalRowSetLoader.Load).ToList();
 
-        Logger.LogDebug("Row Sets: {Count} records parsed.", rows.Count);
+        Logger.LogDebug("Row Sets (sys.sysrowsets): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
     private async Task<List<InternalColumnLayout>> GetColumnLayouts(PageAddress pageAddress, DatabaseDetail database)
     {
-        Logger.LogDebug("Getting Column Layouts (sys.sysrscols) using fixed Object Id/Index Id");
+        Logger.LogTrace("Getting Column Layouts (sys.sysrscols) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalColumnLayoutStructure.GetStructure(-1));
 
-        Logger.LogDebug("Columns: {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Column Layouts (sys.sysrscols): {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalColumnLayoutLoader.Load).ToList();
 
-        Logger.LogDebug("Columns: {Count} records parsed.", rows.Count);
+        Logger.LogDebug("Column Layouts (sys.sysrscols): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
     private async Task<List<InternalColumn>> GetColumns(PageAddress pageAddress, DatabaseDetail database)
     {
-        Logger.LogDebug("Getting Columns (sys.syscolpars) using fixed Object Id/Index Id");
+        Logger.LogTrace("Getting Columns (sys.syscolpars) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
                                              InternalColumnStructure.GetStructure(-1));
 
-        Logger.LogDebug("Columns: {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Columns (sys.syscolpars): {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalColumnLoader.Load).ToList();
 
-        Logger.LogDebug("Columns: {Count} records parsed.", rows.Count);
+        Logger.LogDebug("Columns (sys.syscolpars): {Count} records parsed.", rows.Count);
 
         return rows;
     }
@@ -243,7 +244,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
 
         var pageAddress = databaseDetail.BootPage.FirstAllocationUnitsPage;
 
-        Logger.LogDebug("Getting Allocation Units (sys.sysallocunits) using first page specified in Boot Page (1:9): {PageAddress}",
+        Logger.LogTrace("Getting Allocation Units (sys.sysallocunits) using first page specified in Boot Page (1:9): {PageAddress}",
                         pageAddress);
 
         var id = IdHelpers.GetAllocationUnitId(objectId, indexId);
@@ -252,11 +253,11 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
                                              databaseDetail.BootPage.FirstAllocationUnitsPage,
                                              InternalAllocationUnitStructure.GetStructure(id));
 
-        Logger.LogDebug("Allocation Units: {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Allocation Units (sys.sysallocunits): {Count} records found. Parsing records...", records.Count);
 
         var rows = records.Select(InternalAllocationUnitLoader.Load).ToList();
 
-        Logger.LogDebug("Allocation Units: {Count} records parsed.", rows.Count);
+        Logger.LogDebug("Allocation Units (sys.sysallocunits): {Count} records parsed.", rows.Count);
 
         return rows;
     }

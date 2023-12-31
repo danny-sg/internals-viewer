@@ -1,5 +1,6 @@
-﻿using InternalsViewer.Internals.Metadata;
+﻿using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Metadata.Internals;
+using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
 
@@ -30,6 +31,8 @@ public class TableStructureProvider
         {
             throw new ArgumentException($"Row set {allocationUnit.ContainerId} not found");
         }
+
+        structure.IndexType = rowSet.IndexId == 0 ? IndexType.Heap : IndexType.Clustered;
 
         var columnLayouts = metadata.ColumnLayouts.Where(c => c.PartitionId == rowSet.RowSetId).ToList();
 

@@ -114,7 +114,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
 
         foreach (var file in databaseDetail.Files.Where(f => f.FileType == FileType.Rows))
         {
-            Logger.LogDebug("File Allocations: Refreshing File Id {FileId}", file.FileId);
+            Logger.LogTrace("File Allocations: Refreshing File Id {FileId}", file.FileId);
 
             databaseDetail.Gam.Add(file.FileId,
                 await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Gam));
@@ -136,17 +136,17 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
 
         foreach (var allocationUnit in database.AllocationUnits)
         {
-            Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - Refreshing", allocationUnit.AllocationUnitId);
+            Logger.LogTrace("Allocation Unit Id: {AllocationUnitId} - Refreshing", allocationUnit.AllocationUnitId);
 
             if (allocationUnit.FirstIamPage == PageAddress.Empty)
             {
-                Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - No First IAM page", 
+                Logger.LogTrace("Allocation Unit Id: {AllocationUnitId} - No First IAM page", 
                                 allocationUnit.AllocationUnitId);
 
                 continue;
             }
 
-            Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - Loading from First IAM page: {FirstIamPage}", 
+            Logger.LogTrace("Allocation Unit Id: {AllocationUnitId} - Loading from First IAM page: {FirstIamPage}", 
                             allocationUnit.AllocationUnitId,
                             allocationUnit.FirstIamPage);
 
@@ -165,7 +165,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
 
         foreach (var file in databaseDetail.Files.Where(f => f.FileType == FileType.Rows))
         {
-            Logger.LogDebug("PFS: Refreshing File Id {FileId}", file.FileId);
+            Logger.LogTrace("PFS: Refreshing File Id {FileId}", file.FileId);
 
             databaseDetail.Pfs.Add(file.FileId, await PfsChainService.LoadChain(databaseDetail, file.FileId));
         }

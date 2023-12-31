@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Compressed;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
-using InternalsViewer.Internals.Metadata;
+using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Services.Loaders.Records;
 
 namespace InternalsViewer.Internals.Services.Records;

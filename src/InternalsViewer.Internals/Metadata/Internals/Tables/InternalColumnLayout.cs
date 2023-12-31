@@ -29,8 +29,8 @@ public record InternalColumnLayout
     [InternalsMetadataColumn("rscolid", 2, SqlDbType.Int, 4, 12, 2)]
     public int ColumnId { get; set; }
 
-    [InternalsMetadataColumn("bcolid", 3, SqlDbType.Int, 4, 16, 3)]
-    public int Bcolid { get; set; }
+    [InternalsMetadataColumn("hbcolid", 3, SqlDbType.Int, 4, 16, 3)]
+    public int TableColumnId { get; set; }
 
     [InternalsMetadataColumn("rcmodified", 4, SqlDbType.BigInt, 8, 20, 4)]
     public long Rcmodified { get; set; }

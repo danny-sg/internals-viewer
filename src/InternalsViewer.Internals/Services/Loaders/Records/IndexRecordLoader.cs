@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -6,7 +7,8 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Index;
-using InternalsViewer.Internals.Metadata;
+using InternalsViewer.Internals.Metadata.Helpers;
+using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records;
 
@@ -48,6 +50,8 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     public IndexRecord Load(IndexPage page, ushort offset, IndexStructure structure)
     {
         Logger.BeginScope("Index Record Loader: {Page}:{Offset}", page, offset);
+
+        Logger.LogDebug(structure.ToDetailString());
 
         var nodeType = page.PageHeader.Level > 0 ? NodeType.Node : NodeType.Leaf;
 
@@ -91,23 +95,32 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         Logger.LogDebug("Node Type: {NodeType}, Index Type: {IndexType}, Underlying Index Type: {ParentIndexType}",
                         record.NodeType,
                         page.AllocationUnit.IndexType,
-                        structure.ParentIndexType);
+                        structure.BaseIndexStructure?.IndexType ?? structure.IndexType);
 
-        switch (record.NodeType)
+        if(nodeType == NodeType.Node)
         {
-            case NodeType.Node when page.AllocationUnit.IndexType == IndexType.Clustered:
-                LoadClusteredNode(record, page, structure);
-                break;
-            case NodeType.Node when page.AllocationUnit.IndexType == IndexType.NonClustered:
-                LoadNonClusteredNode(record, page, structure);
-                break;
-            case NodeType.Leaf when page.AllocationUnit.IndexType == IndexType.NonClustered:
-                LoadNonClusteredLeaf(record, page, structure);
-                break;
-            default:
-                throw new ArgumentOutOfRangeException($"Unrecognised type - {page.AllocationUnit.ParentIndexType}");
-        }
+            Logger.LogDebug("Loading Node Record");
 
+            // A node will have a down page pointer to the next level in the b-tree
+            LoadDownPagePointer(record, page);
+
+            if(structure.IndexType == IndexType.Clustered)
+            {
+                LoadClusteredNode(record, page, structure);
+            }
+            else
+            {
+                LoadNonClusteredNode(record, page, structure);
+            }
+        }
+        else
+        {
+            Logger.LogDebug("Loading Leaf Record");
+
+            Debug.Assert(structure.IndexType == IndexType.NonClustered, "Leaf level on Index type pages should always be non-clustered");
+
+            LoadNonClusteredLeaf(record, page, structure);
+        }   
 
         return record;
 
@@ -128,34 +141,37 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         var columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
 
         LoadColumnValues(record, page, columns, NodeType.Node);
-
-        LoadDownPagePointer(record, page);
     }
 
-    private void LoadNonClusteredNode(IndexRecord record, AllocationUnitPage page, IndexStructure structure)
+    private void LoadNonClusteredNode(IndexRecord record, PageData page, IndexStructure structure)
     {
         var columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
 
-        LoadColumnValues(record, page, columns, NodeType.Node);
-
-        if(structure.ParentIndexType == IndexType.Clustered)
+        if (structure.BaseIndexStructure?.IndexType == IndexType.Clustered)
         {
-            LoadDownPagePointer(record, page);
+            // Add the underlying clustered index key columns (not already included) as a non-clustered index based on a clustered index
+            // will have the clustered key columns
+            columns.AddRange(structure.BaseIndexStructure
+                                      .Columns
+                                      .Where(c => (c.IsKey || c.IsUniqueifier) && columns.All(e => e.ColumnName != c.ColumnName)));
         }
         else
         {
+            // A non-clustered index based on a heap will have a RID to point to the record
             LoadRid(record, page);
         }
+
+        LoadColumnValues(record, page, columns, NodeType.Node);
     }
 
     private void LoadNonClusteredLeaf(IndexRecord record, PageData page, IndexStructure structure)
     {
-        var columns = structure.Columns;
+        var columns = structure.Columns.Where(c => c.IsKey || !structure.IsUnique || c.IsIncludeColumn).ToList();
 
         LoadColumnValues(record, page, columns, NodeType.Leaf);
 
         // A heap has a RID to point to the record. The row for a clustered table will be accessible via the key values at the leaf level
-        if (structure.ParentIndexType == IndexType.Heap)
+        if (structure.BaseIndexStructure?.IndexType == IndexType.Heap)
         {
             LoadRid(record, page);
         }
@@ -248,7 +264,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
                 offset = columnOffset;
                 length = column.DataLength;
             }
-            else if(column.IsUniqueifier)
+            else if (column.IsUniqueifier)
             {
                 var uniqueifierIndex = Math.Abs(columnOffset) - 1;
 

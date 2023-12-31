@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Readers.Internals;
+using InternalsViewer.Internals.Services.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Readers;
@@ -14,7 +15,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreateDataFilePageService(TestOutput);
 
-        var dataReader = new RecordReader(service);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service);
 
         var database = new DatabaseDetail { Name = "TestDatabase" };
 
@@ -32,7 +33,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreateDataFilePageService(TestOutput);
 
-        var dataReader = new RecordReader(service);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service);
 
         var database = new DatabaseDetail { Name = "TestDatabase" };
 
@@ -50,7 +51,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreateDataFilePageService(TestOutput);
 
-        var dataReader = new RecordReader(service);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service);
 
         var database = new DatabaseDetail { Name = "TestDatabase" };
 
@@ -68,7 +69,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreateDataFilePageService(TestOutput);
 
-        var dataReader = new RecordReader(service);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service);
 
         var database = new DatabaseDetail { Name = "TestDatabase" };
 

@@ -15,7 +15,7 @@ public class PageService(ILogger<PageService> logger,
     {
         using var _ = Logger.BeginScope($"PageService.GetPage: {pageAddress}");
 
-        Logger.LogDebug($"Loading page {pageAddress}");
+        Logger.LogTrace($"Loading page {pageAddress}");
 
         var page = await loader.Load(database, pageAddress);
 
@@ -26,7 +26,7 @@ public class PageService(ILogger<PageService> logger,
             throw new ArgumentException($"No parser found for page type {page.PageHeader.PageType}");
         }
 
-        Logger.LogDebug($"Using Parser: {parser.GetType()}");
+        Logger.LogTrace($"Using Parser: {parser.GetType()}");
 
         return parser.Parse(page);
     }

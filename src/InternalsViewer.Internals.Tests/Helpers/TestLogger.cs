@@ -9,8 +9,12 @@ public class TestLogger
     {
         return new TestLogger<T>(testOutput);
     }
-}
 
+    public static ILogger<T> GetLogger<T>(ITestOutputHelper testOutput, LogLevel logLevel)
+    {
+        return new TestLogger<T>(testOutput) { LogLevel = logLevel };
+    }
+}
 
 /// <summary>
 /// 
@@ -19,6 +23,8 @@ public class TestLogger
 public class TestLogger<T>(ITestOutputHelper testOutput) : ILogger<T>
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
+
+    public LogLevel LogLevel { get; set; } = LogLevel.Trace;
 
     LoggerExternalScopeProvider ScopeProvider { get; } = new();
 
@@ -35,6 +41,11 @@ public class TestLogger<T>(ITestOutputHelper testOutput) : ILogger<T>
                             Exception? exception,
                             Func<TState, Exception?, string> formatter)
     {
+        if (logLevel < LogLevel)
+        {
+            return;
+        }
+
         var stringBuilder = new StringBuilder();
 
         stringBuilder.Append(GetLogLevelPrefix(logLevel));

@@ -42,7 +42,7 @@ public static class DataConverter
                                         byte scale = 0,
                                         short bitPosition = 0)
     {
-        if (data == null)
+        if (data == null || data.Length == 0)
         {
             return string.Empty;
         }
