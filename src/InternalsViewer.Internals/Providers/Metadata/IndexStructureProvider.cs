@@ -2,6 +2,7 @@
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Structures;
 using System.Data;
+using System.Diagnostics;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
 
@@ -14,39 +15,32 @@ public class IndexStructureProvider
     /// Gets the index structure for the specified allocation unit
     /// </summary>
     /// <remarks>
-    /// The index structure will also include the underlying clustered index structure if the index is non-clustered and not based on a 
-    /// heap.
+    /// Index structures are more complicated than the table structures as the metadata isn't as clear.
     /// 
-    /// Equivalent to the following query:
+    /// The physical structure of an index is defined in sys.sysrscols (rowset columns). sys.sysiscols (index columns) maps between the 
+    /// index column and the table column, but there can be several other 'hidden' columns:
+    ///
+    ///     - Clustered indexes will include a uniqueifier column if required
+    ///     - Non-clustered indexes on a clustered table will include the clustered index key columns (and the uniqueifier column if 
+    ///       required)
+    ///     - Non-clustered indexes on a heap will include a row identifier (RID)
+    ///     
+    /// The hidden columns are defined in the physical structure, but not in the logical structure so they have to be identified via 
+    /// assumptions and patterns.
+    ///     
+    /// The method <see cref="IsUniqueifier(int, IndexType, SqlDbType, short)"/> identifies if a column is a uniqueifier.
     /// 
-    /// <code>
-    ///    SELECT au.auid                                          AS AllocationUnitId
-    ///          ,p.rowsetid                                       AS PartitionId
-    ///          ,p.idmajor                                        AS ObjectId
-    ///          ,p.idminor                                        AS IndexId
-    ///          ,isc.intprop                                      AS ColumnId
-    ///          ,isc.tinyprop1                                    AS KeyOrdinal
-    ///          ,c.name                                           AS ColumnName
-    ///          ,rsc.status
-    ///          ,rsc.ti                                           
-    ///          ,CONVERT(SMALLINT
-    ///                  ,CONVERT(BINARY(2), rsc.offset & 0xffff)) AS LeafOffset
-    ///          ,CONVERT(SMALLINT
-    ///                  ,SUBSTRING(CONVERT(BINARY(4), rsc.offset)
-    ///                            ,1
-    ///                            ,2))                            AS NodeOffset
-    ///          ,rsc.status & 2                                   AS IsDropped
-    ///          ,rsc.status & 16                                  AS IsUniqeifier
-    ///    FROM   sys.sysallocunits au
-    ///           INNER JOIN sys.sysrowsets p  ON au.ownerid = p.rowsetid
-    ///           INNER JOIN sys.sysrscols rsc ON rsc.rsid = p.rowsetid
-    ///           INNER JOIN sys.sysiscols isc  ON isc.idmajor = p.idmajor
-    ///                                           AND isc.idminor = p.idminor
-    ///                                           AND isc.intprop = rsc.rscolid
-    ///           LEFT JOIN sys.syscolpars c ON c.id = p.idmajor
-    ///                                         AND c.colid = rsc.rscolid
-    ///    WHERE  au.auid = @AllocationUnitId
-    /// </code>
+    /// RID columns will be a binary(8) column and are located in a row as the first fixed length column. This can only be confirmed when
+    /// the record is decoded as the pminlen (fixed length data size) is only available in a page header.
+    /// 
+    /// Mapping from the metadata is as follows:
+    /// 
+    /// Allocation Unit Id --> Allocation Unit (Partition Id) 
+    ///                          -> Partition 
+    ///                                  -> Index (via Object Id, Index Id) 
+    ///                                      -> Index Columns (via Object Id, Index Id)
+    ///                                  -> Columns (via Object Id)
+    ///                          -> Layout (via Partition Id)
     /// </remarks>
     public static IndexStructure GetIndexStructure(InternalMetadata metadata, long allocationUnitId)
     {
@@ -68,8 +62,6 @@ public class IndexStructureProvider
             throw new ArgumentException($"Row set {allocationUnit.ContainerId} not found");
         }
 
-        var parentAllocationUnitId = GetParentAllocationUnitId(rowSet.ObjectId, rowSet.PartitionNumber, metadata);
-
         var index = metadata.Indexes.FirstOrDefault(i => i.ObjectId == rowSet.ObjectId
                                                          && i.IndexId == rowSet.IndexId);
 
@@ -78,15 +70,15 @@ public class IndexStructureProvider
             throw new ArgumentException($"Index - Object Id: {rowSet.ObjectId}/ Index Id: {rowSet.IndexId} not found");
         }
 
-        if (index.IndexType != IndexType.Clustered 
-            && parentAllocationUnitId.HasValue
-            && allocationUnitId != parentAllocationUnitId)
+        var parentAllocationUnitId = GetParentAllocationUnitId(rowSet.ObjectId, rowSet.PartitionNumber, metadata);
+        
+        if (parentAllocationUnitId.HasValue)
         {
-            var baseStructure = GetIndexStructure(metadata, parentAllocationUnitId.Value);
+            var baseStructure = TableStructureProvider.GetTableStructure(metadata, parentAllocationUnitId.Value);
 
-            if(baseStructure.IndexType != IndexType.Heap)
+            if (baseStructure.IndexType != IndexType.Heap)
             {
-                structure.BaseIndexStructure = baseStructure;
+                structure.TableStructure = baseStructure;
             }
         }
 
@@ -98,23 +90,83 @@ public class IndexStructureProvider
         structure.HasFilter = Convert.ToBoolean(index.Status & 0x20000);
         structure.IndexType = index.IndexType;
 
-        var columnLayouts = metadata.ColumnLayouts.Where(c => c.PartitionId == rowSet.RowSetId).ToList();
+        if (structure.IndexType == IndexType.Clustered)
+        {
+            structure.Columns = GetClusteredIndexColumns(structure);
+        }
+        else
+        {
+            structure.Columns = GetNonClusteredIndexColumns(structure, metadata);
+        }
 
-        var columns = metadata.Columns.Where(c => c.ObjectId == rowSet.ObjectId).ToList();
+        return structure;
+    }
 
+    /// <summary>
+    /// Gets the clustered index columns
+    /// </summary>
+    /// <remarks>
+    /// The clustered index structure is pretty straight forward as the table structure and index structure are defined in the same place.
+    /// 
+    /// The underlying table structure is used as the source.
+    /// 
+    /// The b-tree structure is defined in node offset, the data structure is defined in leaf offset although this is not relevant to 
+    /// indexes as the data will be on data pages rather than index pages.
+    /// </remarks>
+    private static List<IndexColumnStructure> GetClusteredIndexColumns(IndexStructure structure)
+    {
+        if (structure.TableStructure == null)
+        {
+            return new List<IndexColumnStructure>();
+        }
+
+        return structure.TableStructure
+                        .Columns
+                        .Where(c => c.IsKey || c.IsUniqueifier)
+                        .Select(s => new IndexColumnStructure
+                                {
+                                    ColumnId = s.ColumnId,
+                                    ColumnName = s.ColumnName,
+                                    DataType = s.DataType,
+                                    LeafOffset = s.LeafOffset,
+                                    NodeOffset = s.NodeOffset,
+                                    Precision = s.Precision,
+                                    DataLength = s.DataLength,
+                                    Scale = s.Scale,
+                                    IsDropped = s.IsDropped,
+                                    IsUniqueifier = s.IsUniqueifier,
+                                    IsSparse = s.IsSparse,
+                                    NullBitIndex = s.NullBitIndex,
+                                    BitPosition = s.BitPosition,
+                                    IsIncludeColumn = false,
+                                    IndexColumnId = 0,
+                                    IsKey = s.IsKey
+                                })
+                        .ToList();
+    }
+
+    /// <summary>
+    /// Gets the non-clustered index columns
+    /// </summary>
+    /// <remarks>
+    /// Non-clustered indexes will be on a clustered table or a heap.
+    /// </remarks>
+    private static List<IndexColumnStructure> GetNonClusteredIndexColumns(IndexStructure structure, InternalMetadata metadata)
+    {
+        // Index physical structure
+        var columnLayouts = metadata.ColumnLayouts.Where(c => c.PartitionId == structure.PartitionId).ToList();
+
+        // Table columns
+        var columns = metadata.Columns.Where(c => c.ObjectId == structure.ObjectId).ToList();
+
+        // Index columns
         var indexColumns = metadata.IndexColumns
-                                   .Where(c => c.ObjectId == rowSet.ObjectId
-                                               && c.IndexId == rowSet.IndexId)
+                                   .Where(c => c.ObjectId == structure.ObjectId
+                                               && c.IndexId == structure.IndexId)
                                    .ToList();
 
-        structure.Columns.AddRange(indexColumns.Select(indexColumn =>
+        var result = columnLayouts.Select(layout =>
         {
-            var column = columns.First(c => c.ColumnId == indexColumn.ColumnId);
-            var layout = columnLayouts.First(c => c.ColumnId == indexColumn.IndexColumnId);
-
-            // The 2nd bit of the status field indicates if the column has been dropped
-            var isDropped = Convert.ToBoolean(layout.Status & 2);
-
             /*
                 The Offset field is a 4 byte integer, the first 2 bytes represent the leaf offset (offset in a leaf index page), the second
                 2 bytes represent the node offset (offset in a node/non-leaf index page).
@@ -124,29 +176,45 @@ public class IndexStructureProvider
 
             var typeInfo = layout.TypeInfo.ToTypeInfo();
 
+            // If the index is explicitly defined on a column there should be a matching index column mapped via Index Column Id
+            var indexColumn = indexColumns.FirstOrDefault(c => c.IndexColumnId == layout.ColumnId);
+
+            // An index column will map to a table column
+            var column = columns.FirstOrDefault(c => c.ColumnId == indexColumn?.ColumnId);
+
+            // As an alternative to the index column mapping, the column seems to be mappable via the Ordlock field (needs confirming)
+            var tableColumn = structure.TableStructure?.Columns.FirstOrDefault(c => c.ColumnId == layout.Ordlock);
+
+            // The 2nd bit of the status field indicates if the column has been dropped
+            var isDropped = Convert.ToBoolean(layout.Status & 2);
+
             var isUniqueifier = IsUniqueifier(layout.Status, structure.IndexType, typeInfo.DataType, leafOffset);
 
             // The 5th bit of the status field indicates if the column is an include column
-            var isIncludeColumn = Convert.ToBoolean(column.Status & 0x10);
+            var isIncludeColumn = Convert.ToBoolean(indexColumn?.Status & 0x10);
 
             string name;
 
             if (isDropped)
             {
-                name = "(Dropped)";
+                name = "(DROPPED)";
             }
             else if (isUniqueifier)
             {
-                name = "(Uniqueifer)";
+                name = "(UNIQUEIFER)";
             }
             else
             {
-                name = column.Name;
+                // First choice is the mapped index column, then the table column, then "Unknown"
+                name = column?.Name ?? tableColumn?.ColumnName ?? $"Unknown column: {layout.ColumnId}";
             }
 
-            var result = new IndexColumnStructure
+            // Is Key is defined by if the column has been found IN the index columns list or if the table column is a key column
+            var isKey = indexColumn?.KeyOrdinal > 0 || tableColumn?.IsKey == true;
+
+            var columnStructure = new IndexColumnStructure
             {
-                ColumnId = indexColumn.ColumnId,
+                ColumnId = layout.ColumnId,
                 ColumnName = name,
                 DataType = typeInfo.DataType,
                 LeafOffset = leafOffset,
@@ -160,23 +228,26 @@ public class IndexStructureProvider
                 NullBitIndex = (short)(layout.NullBit & 0xffff),
                 BitPosition = layout.BitPosition,
                 IsIncludeColumn = isIncludeColumn,
-                IndexColumnId = indexColumn.IndexColumnId,
-                IsKey = indexColumn.KeyOrdinal > 0
+                IndexColumnId = indexColumn?.IndexColumnId ?? 0,
+                IsKey = isKey
             };
 
-            return result;
-        }));
+            return columnStructure;
+        }).ToList();
 
-        return structure;
+        return result;
     }
 
+    /// <summary>
+    /// Get the parent allocation unit id based on an Object Id/Partition Number
+    /// </summary>
     private static long? GetParentAllocationUnitId(int objectId, int partitionNumber, InternalMetadata metadata)
     {
         var rowSet = metadata.RowSets.FirstOrDefault(p => p.ObjectId == objectId
                                                      && p.PartitionNumber == partitionNumber
                                                      && p.IndexId <= 1);
 
-        var allocationUnit = metadata.AllocationUnits.FirstOrDefault(a => a.ContainerId == rowSet?.RowSetId);    
+        var allocationUnit = metadata.AllocationUnits.FirstOrDefault(a => a.ContainerId == rowSet?.RowSetId);
 
         return allocationUnit?.AllocationUnitId;
     }

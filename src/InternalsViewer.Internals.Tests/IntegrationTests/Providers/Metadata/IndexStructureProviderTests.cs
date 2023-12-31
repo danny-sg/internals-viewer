@@ -8,7 +8,7 @@ public class IndexStructureProviderTests(ITestOutputHelper testOutput) : Provide
     [Theory]
     //[InlineData(72057594054049792)]
     //[InlineData(72057594054115328)]
-    [InlineData(72057594055098368)]
+    [InlineData(72057594054049792)]
     public async Task Can_Get_IndexStructure(long allocationUnitId)
     {
         var metadata = await GetMetadata();

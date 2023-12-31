@@ -53,6 +53,7 @@ public class TableStructureProvider
             var isKey = indexColumns.Any(c => c.ColumnId == s.ColumnId);
 
             structure.ObjectId = rowSet.ObjectId;
+            structure.IndexId = rowSet.IndexId;
             structure.PartitionId = rowSet.RowSetId;
 
             /*

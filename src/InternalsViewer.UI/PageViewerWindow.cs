@@ -17,6 +17,7 @@ using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.TransactionLog;
+using InternalsViewer.UI.Controls;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Renderers;
 
@@ -134,8 +135,10 @@ public partial class PageViewerWindow : UserControl
         pfsPanel.Invalidate();
     }
 
-    public void LoadPage(RowIdentifier rowIdentifier)
+    public async Task LoadPage(RowIdentifier rowIdentifier)
     {
+        await LoadPage(rowIdentifier.PageAddress);
+
         offsetTable.SelectedSlot = rowIdentifier.SlotId;
     }
 
@@ -153,7 +156,7 @@ public partial class PageViewerWindow : UserControl
 
         RefreshAllocationStatus(Page.PageAddress);
 
-        pageToolStripTextBox.DatabaseId = Page.Database!.DatabaseId;
+        pageToolStripTextBox.DatabaseId = Page.Database.DatabaseId;
 
         serverToolStripStatusLabel.Text = Page.Database.Name;
 
@@ -355,9 +358,9 @@ public partial class PageViewerWindow : UserControl
         }
     }
 
-    private void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
+    private async void MarkerKeyTable_PageNavigated(object sender, PageEventArgs e)
     {
-        LoadPage(e.RowId);
+        await LoadPage(e.RowId);
     }
 
     private void MarkerKeyTable_SelectionChanged(object sender, EventArgs e)

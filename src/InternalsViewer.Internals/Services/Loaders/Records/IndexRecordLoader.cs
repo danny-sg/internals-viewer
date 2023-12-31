@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Diagnostics;
+using System.Net;
 using System.Runtime.CompilerServices;
+using Azure;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
@@ -41,12 +43,6 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     /// <summary>
     /// Load an Index record at the specified offset
     /// </summary>
-    /// <remarks>
-    /// An Index record will have the following structure:
-    /// 
-    ///     Status Bits A                              - 1 byte
-    /// 
-    /// </remarks>
     public IndexRecord Load(IndexPage page, ushort offset, IndexStructure structure)
     {
         Logger.BeginScope("Index Record Loader: {Page}:{Offset}", page, offset);
@@ -123,11 +119,6 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         }
 
         return record;
-
-        //if (record.IsIndexType(IndexTypes.Heap) && !structure.IsUnique | record.IsIndexType(IndexTypes.Leaf))
-        //{
-        //    LoadRid(record, page);
-        //}
     }
 
     /// <summary>
@@ -145,37 +136,15 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
     private void LoadNonClusteredNode(IndexRecord record, PageData page, IndexStructure structure)
     {
-        var columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
+        List<IndexColumnStructure> columns;
 
         if (structure.TableStructure?.IndexType == IndexType.Clustered)
         {
-            // Add the underlying clustered index key columns (not already included) as a non-clustered index based on a clustered index
-            // will have the clustered key columns
-            columns.AddRange(structure.TableStructure
-                                      .Columns
-                                      .Where(c => (c.IsKey || c.IsUniqueifier) && columns.All(e => e.ColumnName != c.ColumnName))
-                                      .Select(s=> new IndexColumnStructure
-                                      {
-                                          ColumnId = s.ColumnId,
-                                          ColumnName = s.ColumnName,
-                                          DataType = s.DataType,
-                                          DataLength = s.DataLength,
-                                          LeafOffset = s.LeafOffset,
-                                          NodeOffset = s.NodeOffset,
-                                          Precision = s.Precision,
-                                          Scale = s.Scale,
-                                          IsDropped = s.IsDropped,
-                                          IsUniqueifier = s.IsUniqueifier,
-                                          IsSparse = s.IsSparse,
-                                          NullBitIndex = s.NullBitIndex,
-                                          BitPosition = s.BitPosition,
-                                          IsKey = s.IsKey,
-                                      }));
+            columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
         }
         else
         {
-            // A non-clustered index based on a heap will have a RID to point to the record
-            LoadRid(record, page);
+            columns = structure.Columns;
         }
 
         LoadColumnValues(record, page, columns, NodeType.Node);
@@ -186,12 +155,6 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         var columns = structure.Columns.Where(c => c.IsKey || !structure.IsUnique || c.IsIncludeColumn).ToList();
 
         LoadColumnValues(record, page, columns, NodeType.Leaf);
-
-        // A heap has a RID to point to the record. The row for a clustered table will be accessible via the key values at the leaf level
-        if (structure.TableStructure?.IndexType == IndexType.Heap)
-        {
-            LoadRid(record, page);
-        }
     }
 
     /// <summary>
@@ -212,30 +175,19 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     }
 
     /// <summary>
-    /// Load a RID (Row Identifier) for a heap record pointing to a specific page and slot
+    /// Check if a column is a Row Identifier by looking for a specific data type/length and offset
     /// </summary>
-    private void LoadRid(IndexRecord record, PageData page)
+    private static bool IsRowIdentifier(ColumnStructure indexColumn, NodeType nodeType, int fixedLengthSize)
     {
-        int ridOffset;
-        var ridAddress = new byte[8];
+        var isBinaryDataType = indexColumn.DataType == System.Data.SqlDbType.Binary;
+        var hasCorrectDataLength = indexColumn.DataLength == RowIdentifier.Size;
+        var hasCorrectLeafOffset = nodeType == NodeType.Leaf && indexColumn.LeafOffset == fixedLengthSize - 8;
+        var hasCorrectNodeOffset = nodeType == NodeType.Node && indexColumn.NodeOffset == fixedLengthSize - 14;
 
-        if (record.NodeType == NodeType.Leaf)
-        {
-            ridOffset = record.SlotOffset + page.PageHeader.MinLen - 8;
-        }
-        else
-        {
-            ridOffset = record.SlotOffset + page.PageHeader.MinLen - 14;
-        }
-
-        Array.Copy(page.Data, ridOffset, ridAddress, 0, RowIdentifier.Size);
-
-        record.Rid = new RowIdentifier(ridAddress);
-
-        record.MarkDataStructure("Rid", ridOffset, RowIdentifier.Size);
+        return isBinaryDataType && hasCorrectDataLength && (hasCorrectLeafOffset || hasCorrectNodeOffset);
     }
 
-    private void LoadColumnOffsetArray(IndexRecord record, int varColStartIndex, Page page)
+    private void LoadColumnOffsetArray(Record record, int varColStartIndex, Page page)
     {
         var variableColumnCountOffset = record.SlotOffset + page.PageHeader.MinLen + varColStartIndex;
 
@@ -264,79 +216,27 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
             var field = new RecordField(column);
 
-            var length = 0;
-            var offset = 0;
-            var data = Array.Empty<byte>();
-
-            var variableIndex = 0;
-
             if (columnOffset >= 0)
             {
-                // Fixed length field
-
-                data = new byte[column.DataLength];
-
-                Array.Copy(page.Data, columnOffset + record.SlotOffset, data, 0, column.DataLength);
-
-                offset = columnOffset;
-                length = column.DataLength;
+                if (IsRowIdentifier(column, nodeType, page.PageHeader.MinLen))
+                {
+                    LoadRidField(columnOffset, record, page.Data);
+                }
+                else
+                {
+                    // Fixed length field
+                    field = LoadFixedLengthField(columnOffset, column, record, page.Data);
+                }
             }
             else if (column.IsUniqueifier)
             {
-                var uniqueifierIndex = Math.Abs(columnOffset) - 1;
-
-                if (uniqueifierIndex >= record.VariableLengthColumnCount)
-                {
-                    // If there is no slot for the uniqueifier it can be taken as zero
-                    continue;
-                }
-
-                offset = record.ColOffsetArray[uniqueifierIndex - 1];
-
-                // Uniqueifier is always a 4-byte integer
-                length = sizeof(int);
-
-                data = new byte[length];
-
-                Array.Copy(page.Data, offset + record.SlotOffset, data, 0, length);
+                field = LoadUniqueifier(columnOffset, column, record, page.Data);
             }
             else if (record.HasVariableLengthColumns)
             {
                 // Variable length field
-
-                variableIndex = Math.Abs(columnOffset) - 1;
-
-                if (variableIndex == 0)
-                {
-                    // If position 0 the start of the data will be at the variable length data offset...
-                    offset = record.VariableLengthDataOffset;
-                }
-                else
-                {
-                    // ...else use the end offset of the previous column as the start of this one
-                    offset = record.ColOffsetArray[variableIndex - 1];
-                }
-
-                if (variableIndex >= record.ColOffsetArray.Length)
-                {
-                    length = 0;
-                }
-                else
-                {
-                    length = record.ColOffsetArray[variableIndex] - offset;
-                }
-
-                data = new byte[length];
-
-                Array.Copy(page.Data, offset + record.SlotOffset, data, 0, length);
+                field = LoadVariableLengthField(columnOffset, column, record, page.Data);
             }
-
-            field.Offset = offset;
-            field.Length = length;
-            field.Data = data;
-            field.VariableOffset = variableIndex;
-
-            field.MarkDataStructure("Value", record.SlotOffset + field.Offset, field.Length);
 
             record.MarkDataStructure("FieldsArray", field.Name, index);
 
@@ -346,6 +246,138 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         }
 
         record.Fields.AddRange(columnValues);
+    }
+
+    private static void LoadRidField(int offset, IndexRecord record, byte[] pageData)
+    {
+        var ridAddress = new byte[8];
+
+        Array.Copy(pageData, record.SlotOffset + offset, ridAddress, 0, RowIdentifier.Size);
+
+        record.Rid = new RowIdentifier(ridAddress);
+
+        record.MarkDataStructure("Rid", record.SlotOffset + offset, RowIdentifier.Size);
+    }
+
+    private RecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, Record record, byte[] pageData)
+    {
+        int length;
+        ushort offset;
+
+        var field = new RecordField(column);
+
+        var variableIndex = Math.Abs(columnOffset) - 1;
+
+        offset = GetVariableLengthOffset(record, variableIndex);
+
+        if (variableIndex >= record.ColOffsetArray.Length)
+        {
+            length = 0;
+        }
+        else
+        {
+            length = record.ColOffsetArray[variableIndex] - offset;
+        }
+
+        var data = new byte[length];
+
+        Array.Copy(pageData, offset + record.SlotOffset, data, 0, length);
+
+        field.Offset = offset;
+        field.Length = length;
+        field.Data = data;
+        field.VariableOffset = variableIndex;
+
+        field.MarkDataStructure("Value", record.SlotOffset + field.Offset, field.Length);
+
+        return field;
+    }
+
+    private static ushort GetVariableLengthOffset(Record record, int variableIndex)
+    {
+        ushort offset;
+        if (variableIndex == 0)
+        {
+            // If position 0 the start of the data will be at the variable length data offset...
+            offset = record.VariableLengthDataOffset;
+        }
+        else
+        {
+            // ...else use the end offset of the previous column as the start of this one
+            offset = record.ColOffsetArray[variableIndex - 1];
+        }
+
+        return offset;
+    }
+
+    private RecordField LoadUniqueifier(short columnOffset, IndexColumnStructure column, IndexRecord record, byte[] pageData)
+    {
+        var field = new RecordField(column);
+
+        ushort offset;
+
+        var uniqueifierIndex = Math.Abs(columnOffset) - 1;
+
+        //offset = GetVariableLengthOffset(record, uniqueifierIndex);
+
+        if (uniqueifierIndex >= record.VariableLengthColumnCount)
+        {
+            // If there is no slot for the uniqueifier it can be taken as zero
+            return field;
+        }
+
+        if (uniqueifierIndex == 0)
+        {
+            // If position 0 the start of the data will be at the variable length data offset...
+            offset = record.VariableLengthDataOffset;
+        }
+        else
+        {
+            // ...else use the end offset of the previous column as the start of this one
+            offset = record.ColOffsetArray[uniqueifierIndex - 1];
+        }
+
+        // Uniqueifier is always a 4-byte integer
+        var length = sizeof(int);
+
+        var data = new byte[length];
+
+        Array.Copy(pageData, offset + record.SlotOffset, data, 0, length);
+
+        field.Offset = offset;
+        field.Length = length;
+        field.Data = data;
+
+        //TODO: change to uniqueifier
+        field.MarkDataStructure("Value", record.SlotOffset + field.Offset, field.Length);
+
+        return field;
+    }
+
+    /// <summary>
+    /// Loads Fixed Length Fields into a new Record Field
+    /// </summary>
+    /// <remarks>
+    /// Fixed length fields are based on the length of the field defined in the table structure.
+    /// </remarks>
+    private static RecordField LoadFixedLengthField(short offset, ColumnStructure column, Record dataRecord, byte[] pageData)
+    {
+        var field = new RecordField(column);
+
+        // Length fixed from data type/data length
+        var length = column.DataLength;
+
+        var data = new byte[length];
+
+        Array.Copy(pageData, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
+
+        field.Offset = offset;
+        field.Length = length;
+        field.Data = data;
+
+        field.MarkDataStructure("Value", dataRecord.SlotOffset + field.Offset, field.Length);
+
+        return field;
     }
 
     private void LoadNullBitmap(Record record, PageData page, IndexStructure structure)
