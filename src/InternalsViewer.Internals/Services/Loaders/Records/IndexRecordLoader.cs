@@ -95,16 +95,16 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         Logger.LogDebug("Node Type: {NodeType}, Index Type: {IndexType}, Underlying Index Type: {ParentIndexType}",
                         record.NodeType,
                         page.AllocationUnit.IndexType,
-                        structure.BaseIndexStructure?.IndexType ?? structure.IndexType);
+                        structure.TableStructure?.IndexType ?? structure.IndexType);
 
-        if(nodeType == NodeType.Node)
+        if (nodeType == NodeType.Node)
         {
             Logger.LogDebug("Loading Node Record");
 
             // A node will have a down page pointer to the next level in the b-tree
             LoadDownPagePointer(record, page);
 
-            if(structure.IndexType == IndexType.Clustered)
+            if (structure.IndexType == IndexType.Clustered)
             {
                 LoadClusteredNode(record, page, structure);
             }
@@ -120,7 +120,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
             Debug.Assert(structure.IndexType == IndexType.NonClustered, "Leaf level on Index type pages should always be non-clustered");
 
             LoadNonClusteredLeaf(record, page, structure);
-        }   
+        }
 
         return record;
 
@@ -147,13 +147,30 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     {
         var columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
 
-        if (structure.BaseIndexStructure?.IndexType == IndexType.Clustered)
+        if (structure.TableStructure?.IndexType == IndexType.Clustered)
         {
             // Add the underlying clustered index key columns (not already included) as a non-clustered index based on a clustered index
             // will have the clustered key columns
-            columns.AddRange(structure.BaseIndexStructure
+            columns.AddRange(structure.TableStructure
                                       .Columns
-                                      .Where(c => (c.IsKey || c.IsUniqueifier) && columns.All(e => e.ColumnName != c.ColumnName)));
+                                      .Where(c => (c.IsKey || c.IsUniqueifier) && columns.All(e => e.ColumnName != c.ColumnName))
+                                      .Select(s=> new IndexColumnStructure
+                                      {
+                                          ColumnId = s.ColumnId,
+                                          ColumnName = s.ColumnName,
+                                          DataType = s.DataType,
+                                          DataLength = s.DataLength,
+                                          LeafOffset = s.LeafOffset,
+                                          NodeOffset = s.NodeOffset,
+                                          Precision = s.Precision,
+                                          Scale = s.Scale,
+                                          IsDropped = s.IsDropped,
+                                          IsUniqueifier = s.IsUniqueifier,
+                                          IsSparse = s.IsSparse,
+                                          NullBitIndex = s.NullBitIndex,
+                                          BitPosition = s.BitPosition,
+                                          IsKey = s.IsKey,
+                                      }));
         }
         else
         {
@@ -171,7 +188,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         LoadColumnValues(record, page, columns, NodeType.Leaf);
 
         // A heap has a RID to point to the record. The row for a clustered table will be accessible via the key values at the leaf level
-        if (structure.BaseIndexStructure?.IndexType == IndexType.Heap)
+        if (structure.TableStructure?.IndexType == IndexType.Heap)
         {
             LoadRid(record, page);
         }

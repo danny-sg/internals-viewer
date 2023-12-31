@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Structures;
+using System;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
 
@@ -38,12 +39,28 @@ public class TableStructureProvider
 
         var columns = metadata.Columns.Where(c => c.ObjectId == rowSet.ObjectId).ToList();
 
+        var indexColumns = metadata.IndexColumns
+                                   .Where(c => c.ObjectId == rowSet.ObjectId
+                                               && c.IndexId == rowSet.IndexId)
+                                   .ToList();
+
         structure.Columns.AddRange(columnLayouts.Select(s =>
         {
             var column = columns.FirstOrDefault(c => c.ColumnId == s.ColumnId);
 
             var isDropped = Convert.ToBoolean(s.Status & 2);
             var isUniqueifer = Convert.ToBoolean(s.Status & 16);   
+            var isKey = indexColumns.Any(c => c.ColumnId == s.ColumnId);
+
+            structure.ObjectId = rowSet.ObjectId;
+            structure.PartitionId = rowSet.RowSetId;
+
+            /*
+                The Offset field is a 4 byte integer, the first 2 bytes represent the leaf offset (offset in a leaf index page), the second
+                2 bytes represent the node offset (offset in a node/non-leaf index page).
+            */
+            var leafOffset = (short)(s.Offset & 0xffff);
+            var nodeOffset = (short)(s.Offset >> 16);
 
             string name;
 
@@ -67,7 +84,8 @@ public class TableStructureProvider
                 ColumnId = s.ColumnId,
                 ColumnName = name,
                 DataType = typeInfo.DataType,
-                LeafOffset = (short)(s.Offset & 0xffff),
+                LeafOffset = leafOffset,
+                NodeOffset = nodeOffset,
                 Precision = typeInfo.Precision,
                 DataLength = typeInfo.MaxLength,
                 Scale = typeInfo.Scale,
@@ -75,7 +93,8 @@ public class TableStructureProvider
                 IsUniqueifier = isUniqueifer,
                 IsSparse = (s.Status & 256) != 0,
                 NullBitIndex = (short)(s.NullBit & 0xffff),
-                BitPosition = s.BitPosition
+                BitPosition = s.BitPosition,
+                IsKey = isKey
             };
 
             return result;

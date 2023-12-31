@@ -28,9 +28,14 @@ public record ColumnStructure
     public short DataLength { get; set; } = 0;
 
     /// <summary>
-    /// Leaf offset for fixed length fields
+    /// Leaf offset for fixed length fields (+ve), or variable length offset (-ve)
     /// </summary>
     public short LeafOffset { get; set; }
+
+    /// <summary>
+    /// Node offset for fixed length fields (+ve), or variable length offset (-ve)
+    /// </summary>
+    public short NodeOffset { get; set; }
 
     /// <summary>
     /// Precision (used for decimal/date/time types)
@@ -66,4 +71,6 @@ public record ColumnStructure
     /// Bit position for a BIT column as bits are stored in bytes, up to 8 bits/columns per byte.
     /// </summary>
     public short BitPosition { get; set; }
+
+    public bool IsKey { get; set; }
 }

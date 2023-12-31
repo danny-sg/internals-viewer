@@ -1,6 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Database.Enums;
-
-namespace InternalsViewer.Internals.Metadata.Structures;
+﻿namespace InternalsViewer.Internals.Metadata.Structures;
 
 public record IndexStructure(long AllocationUnitId)
     : Structure<IndexColumnStructure>(AllocationUnitId)
@@ -9,5 +7,5 @@ public record IndexStructure(long AllocationUnitId)
 
     public bool HasFilter { get; set; }
 
-    public IndexStructure? BaseIndexStructure { get; set; }
+    public TableStructure? TableStructure { get; set; }
 }
