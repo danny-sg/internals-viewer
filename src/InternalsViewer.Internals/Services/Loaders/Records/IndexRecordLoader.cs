@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Xml.Schema;
 using Azure;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -45,7 +46,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     /// </summary>
     public IndexRecord Load(IndexPage page, ushort offset, IndexStructure structure)
     {
-        Logger.BeginScope("Index Record Loader: {Page}:{Offset}", page, offset);
+        Logger.BeginScope("Index Record Loader: {FileId}:{PageId}:{Offset}", page.PageAddress.FileId, page.PageAddress.PageId, offset);
 
         Logger.LogDebug(structure.ToDetailString());
 
@@ -152,7 +153,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
     private void LoadNonClusteredLeaf(IndexRecord record, PageData page, IndexStructure structure)
     {
-        var columns = structure.Columns.Where(c => c.IsKey || !structure.IsUnique || c.IsIncludeColumn).ToList();
+        var columns = structure.Columns;
 
         LoadColumnValues(record, page, columns, NodeType.Leaf);
     }
@@ -262,13 +263,12 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     private RecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, Record record, byte[] pageData)
     {
         int length;
-        ushort offset;
 
         var field = new RecordField(column);
 
         var variableIndex = Math.Abs(columnOffset) - 1;
 
-        offset = GetVariableLengthOffset(record, variableIndex);
+        var offset = GetVariableLengthOffset(record, variableIndex);
 
         if (variableIndex >= record.ColOffsetArray.Length)
         {
@@ -296,6 +296,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     private static ushort GetVariableLengthOffset(Record record, int variableIndex)
     {
         ushort offset;
+
         if (variableIndex == 0)
         {
             // If position 0 the start of the data will be at the variable length data offset...
@@ -314,11 +315,9 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     {
         var field = new RecordField(column);
 
-        ushort offset;
-
         var uniqueifierIndex = Math.Abs(columnOffset) - 1;
 
-        //offset = GetVariableLengthOffset(record, uniqueifierIndex);
+        //
 
         if (uniqueifierIndex >= record.VariableLengthColumnCount)
         {
@@ -326,16 +325,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
             return field;
         }
 
-        if (uniqueifierIndex == 0)
-        {
-            // If position 0 the start of the data will be at the variable length data offset...
-            offset = record.VariableLengthDataOffset;
-        }
-        else
-        {
-            // ...else use the end offset of the previous column as the start of this one
-            offset = record.ColOffsetArray[uniqueifierIndex - 1];
-        }
+        var offset = GetVariableLengthOffset(record, uniqueifierIndex);
 
         // Uniqueifier is always a 4-byte integer
         var length = sizeof(int);
@@ -350,6 +340,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
         //TODO: change to uniqueifier
         field.MarkDataStructure("Value", record.SlotOffset + field.Offset, field.Length);
+        //record.MarkDataStructure("Uniqueifier", record.SlotOffset + field.Offset, field.Length);
 
         return field;
     }

@@ -39,5 +39,6 @@ public enum DataStructureItemType
     Unused,
     UpdateSeq,
     CdArrayItem,
-    SlotCount
+    SlotCount,
+    Uniqueifier
 }

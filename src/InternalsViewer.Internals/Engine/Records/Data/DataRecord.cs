@@ -24,6 +24,11 @@ public class DataRecord : Record
             throw new ArgumentException($"Column {columnName} not found");
         }
 
+        if(field.Data.Length == 0)
+        {
+            return default;
+        }
+
         return DataConverter.GetValue<T>(field.Data,
                                          field.ColumnStructure.DataType,
                                          field.ColumnStructure.Precision,

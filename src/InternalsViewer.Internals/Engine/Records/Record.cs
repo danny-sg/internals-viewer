@@ -61,16 +61,6 @@ public abstract class Record : DataStructure
         return sb.ToString();
     }
 
-    public bool NullBitmapValue(short index)
-    {
-        if (false) // TODO: has sparse column...
-        {
-            return false;
-        }
-
-        return NullBitmap.Get(index - (HasUniqueifier ? 0 : 1));
-    }
-
     public bool IsNullBitmapSet(ColumnStructure columnStructure)
     {
         if (columnStructure.NullBitIndex < 1)

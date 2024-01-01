@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Readers.Internals;
+using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 
@@ -15,7 +16,9 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreateDataFilePageService(TestOutput);
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
         var database = new DatabaseDetail { Name = "TestDatabase" };
 
@@ -33,7 +36,9 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreateDataFilePageService(TestOutput);
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
         var database = new DatabaseDetail { Name = "TestDatabase" };
 
@@ -51,7 +56,9 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreateDataFilePageService(TestOutput);
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
         var database = new DatabaseDetail { Name = "TestDatabase" };
 
@@ -69,7 +76,9 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreateDataFilePageService(TestOutput);
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
         var database = new DatabaseDetail { Name = "TestDatabase" };
 

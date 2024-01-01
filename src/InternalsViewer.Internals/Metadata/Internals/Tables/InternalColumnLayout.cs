@@ -63,8 +63,8 @@ public record InternalColumnLayout
     public short BitPosition { get; set; }
 
     [InternalsMetadataColumn("colguid", 13, SqlDbType.VarBinary, 16, -1, 13)]
-    public byte[] PartitionColumnGuid { get; set; } = Array.Empty<byte>();
+    public byte[]? PartitionColumnGuid { get; set; } = Array.Empty<byte>();
 
     [InternalsMetadataColumn("ordlock", 14, SqlDbType.Int, 4, 54, 14)]
-    public int Ordlock { get; set; }
+    public int? Ordlock { get; set; }
 }

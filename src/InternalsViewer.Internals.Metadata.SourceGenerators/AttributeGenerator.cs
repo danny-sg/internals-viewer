@@ -17,6 +17,8 @@ using System;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
 
+#pragma warning disable CS9113
+
 namespace InternalsViewer.Internals.Generators;
 
 [ExcludeFromCodeCoverage]

@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Tests.Helpers;
 using System.Data;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Services.Loaders.Records;
+using Xunit.Sdk;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records;
 
@@ -26,8 +27,10 @@ namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records;
 ///                LEFT JOIN sys.all_columns c ON column_id = partition_column_id AND c.object_id = p.object_id
 ///         WHERE  o.name = 'DataRecordLoaderTests_VariableFixed_NotNull'
 /// </remarks>
-public class DataRecordLoaderTests
+public class DataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 {
+    public ITestOutputHelper TestOutput { get; set; } = testOutputHelper;
+
     /// <summary>
     /// Parse a fixed length only record
     /// </summary>
@@ -107,7 +110,9 @@ public class DataRecordLoaderTests
             NullBitIndex = 3
         });
 
-        var record = DataRecordLoader.Load(data, 0, structure);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
         Assert.Equal(RecordType.Primary, record.RecordType);
         Assert.Equal(false, record.HasVariableLengthColumns);
@@ -180,7 +185,9 @@ public class DataRecordLoaderTests
             NullBitIndex = 2
         });
 
-        var record = DataRecordLoader.Load(data, 0, structure);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
         Assert.Equal(RecordType.Primary, record.RecordType);
         Assert.Equal(true, record.HasVariableLengthColumns);
@@ -287,7 +294,9 @@ public class DataRecordLoaderTests
             NullBitIndex = 4
         });
 
-        var record = DataRecordLoader.Load(data, 0, structure);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
         Assert.Equal(RecordType.Primary, record.RecordType);
         Assert.Equal(true, record.HasVariableLengthColumns);
@@ -312,7 +321,9 @@ public class DataRecordLoaderTests
 
         var structure = new TableStructure(100);
 
-        var record = DataRecordLoader.Load(data, 0, structure);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
         Assert.Equal(RecordType.ForwardingStub, record.RecordType);
         Assert.Equal(new RowIdentifier(1, 19602, 0), record.ForwardingStub);
@@ -381,7 +392,8 @@ public class DataRecordLoaderTests
         structure.Columns.Add(new ColumnStructure { ColumnName = "Column3", ColumnId = 3, DataType = SqlDbType.VarChar, LeafOffset = -2, Precision = 0, NullBitIndex = 3 });
         structure.Columns.Add(new ColumnStructure { ColumnName = "Column4", ColumnId = 4, DataType = SqlDbType.VarChar, LeafOffset = -3, Precision = 0, NullBitIndex = 4 });
 
-        var record = DataRecordLoader.Load(data, 0, structure);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
 
+        var record = loader.Load(new DataPage { Data = data }, 0, structure);
     }
 }

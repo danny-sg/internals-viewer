@@ -56,6 +56,7 @@ public static class ServiceRegistration
 
         services.AddTransient<IPageService, PageService>();
 
+        services.AddTransient<DataRecordLoader>();
         services.AddTransient<IndexRecordLoader>();
 
         RegisterPageParsers(services);

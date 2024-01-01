@@ -9,11 +9,13 @@ using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Readers.Internals;
 
-public class RecordReader(ILogger<RecordReader> logger, IPageService pageService) : IRecordReader
+public class RecordReader(ILogger<RecordReader> logger, IPageService pageService, DataRecordLoader dataRecordLoader) : IRecordReader
 {
     public ILogger<RecordReader> Logger { get; } = logger;
 
     public IPageService PageService { get; } = pageService;
+
+    public DataRecordLoader DataRecordLoader { get; } = dataRecordLoader;
 
     public async Task<List<DataRecord>> Read(DatabaseDetail database, PageAddress startPage, TableStructure structure)
     {
@@ -32,7 +34,7 @@ public class RecordReader(ILogger<RecordReader> logger, IPageService pageService
                                 page.PageHeader.PageAddress.PageId, 
                                 offset);
 
-                return DataRecordLoader.Load(page.Data, offset, structure);
+                return DataRecordLoader.Load(page, offset, structure);
             }));
             
             var nextPage = page.PageHeader.NextPage;

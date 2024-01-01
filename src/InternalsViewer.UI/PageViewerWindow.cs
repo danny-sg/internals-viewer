@@ -156,7 +156,7 @@ public partial class PageViewerWindow : UserControl
 
         RefreshAllocationStatus(Page.PageAddress);
 
-        pageToolStripTextBox.DatabaseId = Page.Database.DatabaseId;
+        pageToolStripTextBox.Text = Page.PageAddress.ToString();
 
         serverToolStripStatusLabel.Text = Page.Database.Name;
 

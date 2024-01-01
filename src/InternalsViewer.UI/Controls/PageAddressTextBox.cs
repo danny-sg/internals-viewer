@@ -5,8 +5,6 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.UI.Properties;
 
-#pragma warning disable CA1416
-
 namespace InternalsViewer.UI.Controls;
 
 public sealed class PageAddressTextBox : ToolStripTextBox

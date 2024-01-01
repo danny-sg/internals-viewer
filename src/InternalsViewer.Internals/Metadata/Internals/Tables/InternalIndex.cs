@@ -19,7 +19,7 @@ public record InternalIndex
     public int IndexId { get; set; }
 
     [InternalsMetadataColumn("name", 3, SqlDbType.NVarChar, 256, -1, 3)]
-    public string Name { get; set; } = string.Empty;
+    public string? Name { get; set; } = string.Empty;
 
     [InternalsMetadataColumn("status", 4, SqlDbType.Int, 4, 12, 4)]
     public int Status { get; set; }

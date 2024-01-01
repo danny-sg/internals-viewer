@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Engine;
+using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Tests.Helpers;
 using Microsoft.Extensions.Logging;
 
@@ -18,7 +19,9 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
     {
         var pageService = ServiceHelper.CreateDataFilePageService(TestOutput, LogLevel);
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput, LogLevel), pageService);
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput, LogLevel), pageService, loader);
 
         var database = new DatabaseDetail
         {

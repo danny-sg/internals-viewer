@@ -9,6 +9,8 @@ public class MarkStyleProvider
     public Dictionary<DataStructureItemType, MarkStyle> Styles = new()
     {
         { DataStructureItemType.Rid, new MarkStyle(Color.DarkMagenta, Color.Thistle, "Row Identifier")},
+        { DataStructureItemType.Uniqueifier, new MarkStyle(Color.SteelBlue, Color.AliceBlue, "Uniqueifier")},
+
         { DataStructureItemType.BlobChildOffset, new MarkStyle(Color.Blue, Color.Thistle, "Offset")},
         { DataStructureItemType.BlobChildLength, new MarkStyle(Color.Red, Color.Thistle, "Length")},
         { DataStructureItemType.StatusBitsA, new MarkStyle(Color.Red, Color.Gainsboro, "Status Bits A")},

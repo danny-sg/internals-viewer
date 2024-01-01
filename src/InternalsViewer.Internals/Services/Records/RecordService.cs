@@ -7,16 +7,18 @@ using InternalsViewer.Internals.Services.Loaders.Records;
 
 namespace InternalsViewer.Internals.Services.Records;
 
-public class RecordService(IndexRecordLoader indexRecordLoader) : IRecordService
+public class RecordService(IndexRecordLoader indexRecordLoader, DataRecordLoader dataRecordLoader) : IRecordService
 {
     public IndexRecordLoader IndexRecordLoader { get; } = indexRecordLoader;
-    
+
+    public DataRecordLoader DataRecordLoader { get; } = dataRecordLoader;
+
     public DataRecord GetDataRecord(DataPage page, ushort offset)
     {
         var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata, 
                                                                  page.PageHeader.AllocationUnitId);
 
-        return DataRecordLoader.Load(page.Data, offset, structure);
+        return DataRecordLoader.Load(page, offset, structure);
     }
 
     public IndexRecord GetIndexRecord(IndexPage page, ushort offset)

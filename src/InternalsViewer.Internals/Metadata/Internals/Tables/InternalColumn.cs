@@ -19,7 +19,7 @@ public record InternalColumn
     public int ColumnId { get; set; }
 
     [InternalsMetadataColumn("name", 4, SqlDbType.NVarChar, 256, -1, 4)]
-    public string Name { get; set; } = string.Empty;
+    public string? Name { get; set; } = string.Empty;
 
     [InternalsMetadataColumn("xtype", 5, SqlDbType.TinyInt, 1, 14, 5)]
     public byte SystemTypeId { get; set; }
@@ -55,5 +55,5 @@ public record InternalColumn
     public int Chk { get; set; }
 
     [InternalsMetadataColumn("idtval", 16, SqlDbType.VarBinary, 64, -2, 16)]
-    public byte[] IdtVal { get; set; } = Array.Empty<byte>();
+    public byte[]? IdtVal { get; set; } = Array.Empty<byte>();
 }

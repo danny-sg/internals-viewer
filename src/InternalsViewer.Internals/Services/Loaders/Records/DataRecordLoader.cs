@@ -1,8 +1,10 @@
 ﻿using System.Collections;
+using Azure;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
+using InternalsViewer.Internals.Metadata.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Records;
 
@@ -14,21 +16,31 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 /// <remarks>
 /// Microsoft SQL Server 2012 Internals by Kalen Delaney et al. has a good description of the data record structure in Chapter 6.
 /// </remarks>
-public class DataRecordLoader : RecordLoader
+public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
 {
+    public ILogger<DataRecordLoader> Logger { get; } = logger;
+
     /// <summary>
     /// Loads the data record at the given offset
     /// </summary>
     /// 
-    public static DataRecord Load(byte[] data, ushort slotOffset, TableStructure structure)
+    public DataRecord Load(DataPage page, ushort slotOffset, TableStructure structure)
     {
+        var data = page.Data;
+
+        Logger.BeginScope("Index Record Loader: {FileId}{PageId}:{Offset}", page.PageAddress.FileId, page.PageAddress.PageId, slotOffset);
+
+        Logger.LogTrace(structure.ToDetailString());
+
         var record = new DataRecord
         {
             SlotOffset = slotOffset
         };
 
+        // Records will always have Status Bits A
         LoadStatusBitsA(record, data);
 
+        // If the Record Type defined in status Bits A is a forwarding stub the rest of the record is the stub
         if (record.RecordType == RecordType.ForwardingStub)
         {
             LoadForwardingStub(record, data);
@@ -36,8 +48,10 @@ public class DataRecordLoader : RecordLoader
             return record;
         }
 
+        // Non-forwarding stub records will always have Status Bits B
         LoadStatusBitsB(record, data);
 
+        // The record structure gives information about the structure of the record to decode the values
         LoadRecordStructure(record, data, slotOffset, structure);
 
         LoadValues(record, structure, data);
@@ -69,7 +83,7 @@ public class DataRecordLoader : RecordLoader
     ///     Column offset array                        - 2 bytes * Number of variable length columns
     ///     Variable length data                       - defined by Column offset array
     /// </remarks>
-    internal static void LoadRecordStructure(DataRecord dataRecord, byte[] data, ushort slotOffset, TableStructure structure)
+    internal void LoadRecordStructure(DataRecord dataRecord, byte[] data, ushort slotOffset, TableStructure structure)
     {
         // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
         var columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);
@@ -192,7 +206,7 @@ public class DataRecordLoader : RecordLoader
     /// <summary>
     /// Loads the column values.
     /// </summary>
-    private static void LoadValues(DataRecord dataRecord, TableStructure structure, byte[] pageData)
+    private void LoadValues(DataRecord dataRecord, TableStructure structure, byte[] pageData)
     {
         var columnValues = new List<RecordField>();
 
@@ -204,7 +218,7 @@ public class DataRecordLoader : RecordLoader
             {
                 RecordField field;
 
-                if (column.LeafOffset is >= 0 and < PageData.Size)
+                if (column.LeafOffset is >= 0 and < PageData.Size && !dataRecord.IsNullBitmapSet(column))
                 {
                     // Fixed length field
                     field = LoadFixedLengthField(column, dataRecord, pageData);
@@ -244,7 +258,7 @@ public class DataRecordLoader : RecordLoader
     /// <remarks>
     /// Fixed length fields are based on the length of the field defined in the table structure.
     /// </remarks>
-    private static RecordField LoadFixedLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
+    private RecordField LoadFixedLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
     {
         var field = new RecordField(column);
 
@@ -278,7 +292,7 @@ public class DataRecordLoader : RecordLoader
     /// If the first bit is set in the offset array entry, the field is a LOB field. Instead of the value the data will be a pointer to 
     /// the LOB root.
     /// </remarks>
-    private static RecordField LoadVariableLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
+    private RecordField LoadVariableLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
     {
         var field = new RecordField(column);
 
@@ -337,7 +351,7 @@ public class DataRecordLoader : RecordLoader
     /// <summary>
     /// Loads Status bits B
     /// </summary>
-    private static void LoadStatusBitsB(Record record, byte[] data)
+    private void LoadStatusBitsB(Record record, byte[] data)
     {
         record.StatusBitsB = new BitArray(new[] { data[record.SlotOffset + 1] });
 
@@ -356,7 +370,7 @@ public class DataRecordLoader : RecordLoader
     /// 
     /// Record stubs are RID/Row Identifier structures that point to the new location of the record via File Id:Page Id:Slot Id.
     /// </remarks>
-    private static void LoadForwardingStub(DataRecord dataRecord, byte[] data)
+    private void LoadForwardingStub(DataRecord dataRecord, byte[] data)
     {
         var forwardingRecord = new byte[8];
 

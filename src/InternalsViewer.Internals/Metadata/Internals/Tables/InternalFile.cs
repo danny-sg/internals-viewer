@@ -45,62 +45,62 @@ public record InternalFile
     public string PhysicalName { get; set; } = string.Empty;
 
     [InternalsMetadataColumn("createlsn", 12, SqlDbType.Binary, 10, 34, 12)]
-    public byte[] CreateLsn { get; set; } = new byte[10];
+    public byte[]? CreateLsn { get; set; }
 
     [InternalsMetadataColumn("droplsn", 13, SqlDbType.Binary, 10, 44, 13)]
-    public byte[] DropLsn { get; set; } = new byte[10];
+    public byte[]? DropLsn { get; set; }
 
     [InternalsMetadataColumn("fileguid", 14, SqlDbType.UniqueIdentifier, 16, 54, 14)]
-    public Guid FileGuid { get; set; }
+    public Guid? FileGuid { get; set; }
 
     [InternalsMetadataColumn("internalstatus", 15, SqlDbType.Int, 4, 70, 15)]
     public int InternalStatus { get; set; }
 
     [InternalsMetadataColumn("readonlylsn", 16, SqlDbType.Binary, 10, 74, 16)]
-    public byte[] ReadOnlyLsn { get; set; } = new byte[10];
+    public byte[]? ReadOnlyLsn { get; set; }
 
     [InternalsMetadataColumn("readwritelsn", 17, SqlDbType.Binary, 10, 84, 17)]
-    public byte[] ReadWriteLsn { get; set; } = new byte[10];
+    public byte[]? ReadWriteLsn { get; set; }
 
     [InternalsMetadataColumn("readonlybaselsn", 18, SqlDbType.Binary, 10, 94, 18)]
-    public byte[] ReadOnlyBaseLsn { get; set; } = new byte[10];
+    public byte[]? ReadOnlyBaseLsn { get; set; }
 
     [InternalsMetadataColumn("firstupdatelsn", 19, SqlDbType.Binary, 10, 104, 19)]
-    public byte[] FirstUpdateLsn { get; set; } = new byte[10];
+    public byte[]? FirstUpdateLsn { get; set; }
 
     [InternalsMetadataColumn("lastupdatelsn", 20, SqlDbType.Binary, 10, 114, 20)]
-    public byte[] LastUpdateLsn { get; set; } = new byte[10];
+    public byte[]? LastUpdateLsn { get; set; }
 
     [InternalsMetadataColumn("backuplsn", 21, SqlDbType.Binary, 10, 124, 21)]
-    public byte[] BackupLsn { get; set; } = new byte[10];
+    public byte[]? BackupLsn { get; set; }
 
     [InternalsMetadataColumn("diffbaselsn", 22, SqlDbType.Binary, 10, 134, 22)]
-    public byte[] DiffBaseLsn { get; set; } = new byte[10];
+    public byte[]? DiffBaseLsn { get; set; }
 
     [InternalsMetadataColumn("diffbaseguid", 23, SqlDbType.UniqueIdentifier, 16, 144, 23)]
-    public Guid DiffBaseGuid { get; set; }
+    public Guid? DiffBaseGuid { get; set; }
 
     [InternalsMetadataColumn("diffbasetime", 24, SqlDbType.DateTime, 8, 160, 24)]
     public DateTime DiffBaseTime { get; set; }
 
     [InternalsMetadataColumn("diffbaseseclsn", 25, SqlDbType.Binary, 10, 168, 25)]
-    public byte[] DiffBaseSecLsn { get; set; } = new byte[10];
+    public byte[]? DiffBaseSecLsn { get; set; }
 
     [InternalsMetadataColumn("redostartlsn", 26, SqlDbType.Binary, 10, 178, 26)]
-    public byte[] RedoStartLsn { get; set; } = new byte[10];
+    public byte[]? RedoStartLsn { get; set; }
 
     [InternalsMetadataColumn("redotargetlsn", 27, SqlDbType.Binary, 10, 188, 27)]
-    public byte[] RedoTargetLsn { get; set; } = new byte[10];
+    public byte[]? RedoTargetLsn { get; set; }
 
     [InternalsMetadataColumn("forkguid", 28, SqlDbType.UniqueIdentifier, 16, 198, 28)]
-    public Guid ForkGuid { get; set; }
+    public Guid? ForkGuid { get; set; }
 
     [InternalsMetadataColumn("forklsn", 29, SqlDbType.Binary, 10, 214, 29)]
-    public byte[] ForkLsn { get; set; } = new byte[10];
+    public byte[]? ForkLsn { get; set; } = new byte[10];
 
     [InternalsMetadataColumn("forkvc", 30, SqlDbType.BigInt, 8, 224, 30)]
     public long ForkVc { get; set; }
 
     [InternalsMetadataColumn("redostartforkguid", 31, SqlDbType.UniqueIdentifier, 16, 232, 31)]
-    public Guid RedoStartForkGuid { get; set; }
+    public Guid? RedoStartForkGuid { get; set; }
 }
