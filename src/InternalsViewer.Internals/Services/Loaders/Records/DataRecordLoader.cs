@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Metadata.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Records;
@@ -34,7 +35,8 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
 
         var record = new DataRecord
         {
-            SlotOffset = slotOffset
+            SlotOffset = slotOffset,
+            RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset)
         };
 
         // Records will always have Status Bits A
@@ -212,26 +214,35 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
 
         var index = 0;
 
+        var nullBitmapOffset = 0;
+
         foreach (var column in structure.Columns)
         {
             if (!column.IsSparse)
             {
                 RecordField field;
 
-                if (column.LeafOffset is >= 0 and < PageData.Size && !dataRecord.IsNullBitmapSet(column))
+                if (column.LeafOffset is >= 0 and < PageData.Size && !dataRecord.IsNullBitmapSet(column, nullBitmapOffset))
                 {
                     // Fixed length field
                     field = LoadFixedLengthField(column, dataRecord, pageData);
                 }
                 else if (dataRecord is { HasVariableLengthColumns: true, HasNullBitmap: true }
                          && !column.IsDropped
-                         && (column.ColumnId < 0 || !dataRecord.IsNullBitmapSet(column)))
+                         && (column.ColumnId < 0 || !dataRecord.IsNullBitmapSet(column, nullBitmapOffset)))
                 {
                     // Variable length field
                     field = LoadVariableLengthField(column, dataRecord, pageData);
                 }
                 else
                 {
+                    if (SqlTypeHelpers.IsVariableLength(column.DataType) && !dataRecord.HasVariableLengthColumns)
+                    {
+                        // Sees to be a case where instead of the null bitmap a field is null via the existence of a variable length column
+                        // with the absence of a variable length record flag. In this case the null bitmap needs offsetting.
+                        nullBitmapOffset -= 1;
+                    }
+
                     // Null bitmap set
                     field = LoadNullField(column);
                 }
@@ -249,7 +260,11 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
 
     private static RecordField LoadNullField(ColumnStructure column)
     {
-        return new RecordField(column);
+        var nullField = new RecordField(column);
+
+        nullField.MarkDataStructure("Value");
+
+        return nullField;
     }
 
     /// <summary>

@@ -1,5 +1,5 @@
 ﻿using System.Data;
-using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Metadata.Internals;
 
@@ -11,7 +11,7 @@ public static class TypeInfoExtensions
     /// </remarks>
     public static TypeInfo ToTypeInfo(this int value)
     {
-        var sqlType = SqlTypeConverter.ToSqlType((byte) (value & 0xFF));
+        var sqlType = SqlTypeHelpers.ToSqlType((byte) (value & 0xFF));
 
         return sqlType switch
         {

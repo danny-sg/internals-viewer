@@ -15,6 +15,8 @@ public class DataRecord : Record
     [DataStructureItem(DataStructureItemType.ForwardingStub)]
     public RowIdentifier ForwardingStub { get; set; }
 
+    public RowIdentifier RowIdentifier { get; set; }
+
     public T? GetValue<T>(string columnName)
     {
         var field = Fields.FirstOrDefault(f => f.Name.ToLower() == columnName.ToLower());

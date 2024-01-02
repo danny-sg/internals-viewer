@@ -4,6 +4,7 @@ using System.Data.SqlTypes;
 using System.Globalization;
 using System.Text;
 using InternalsViewer.Internals.Extensions;
+using InternalsViewer.Internals.Helpers;
 using static System.Text.RegularExpressions.Regex;
 
 namespace InternalsViewer.Internals.Converters;
@@ -225,7 +226,7 @@ public static class DataConverter
         byte precision = 0;
         byte scale = 0;
 
-        switch (SqlTypeConverter.ToSqlType(variantType))
+        switch (SqlTypeHelpers.ToSqlType(variantType))
         {
             case SqlDbType.Decimal:
 
@@ -260,7 +261,7 @@ public static class DataConverter
 
         Array.Copy(data, offset, variantData, 0, variantData.Length);
 
-        return BinaryToString(variantData, SqlTypeConverter.ToSqlType(variantType), precision, scale);
+        return BinaryToString(variantData, SqlTypeHelpers.ToSqlType(variantType), precision, scale);
     }
 
     /// <summary>

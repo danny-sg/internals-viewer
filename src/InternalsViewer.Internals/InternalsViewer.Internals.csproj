@@ -28,6 +28,7 @@
         <Platforms>AnyCPU</Platforms>
         <Configurations>Debug;Release;Installer</Configurations>
         <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+        <SignAssembly>True</SignAssembly>
     </PropertyGroup>
     <ItemGroup>
       <None Include="..\.editorconfig" Link=".editorconfig" />

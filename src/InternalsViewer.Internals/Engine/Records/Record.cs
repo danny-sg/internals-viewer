@@ -61,14 +61,14 @@ public abstract class Record : DataStructure
         return sb.ToString();
     }
 
-    public bool IsNullBitmapSet(ColumnStructure columnStructure)
+    public bool IsNullBitmapSet(ColumnStructure columnStructure, int offset)
     {
         if (columnStructure.NullBitIndex < 1)
         {
             return false;
         }
 
-        return NullBitmap.Get(columnStructure.NullBitIndex - 1);
+        return NullBitmap.Get(columnStructure.NullBitIndex - 1 + offset);
     }
 
     internal static string GetStatusBitsDescription(Record record)
