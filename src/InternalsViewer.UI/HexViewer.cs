@@ -132,7 +132,7 @@ public partial class HexViewer : UserControl
 
         for (var i = firstLine; i <= lastLine + 1; i++)
         {
-            if ((i * 16) < Page.Size)
+            if ((i * 16) < PageData.Size)
             {
                 if (hexMode)
                 {

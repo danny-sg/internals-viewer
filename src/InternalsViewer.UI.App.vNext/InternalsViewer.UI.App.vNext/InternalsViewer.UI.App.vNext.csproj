@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+        <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+        <RootNamespace>InternalsViewer.UI.App.vNext</RootNamespace>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <Platforms>x86;x64</Platforms>
+        <RuntimeIdentifiers>win-x86;win-x64</RuntimeIdentifiers>
+        <UseWinUI>true</UseWinUI>
+        <UserSecretsId>fca01508-87d8-47e7-9683-c1f91185a04d</UserSecretsId>
+        <AccelerateBuildsInVisualStudio>True</AccelerateBuildsInVisualStudio>
+        
+        <!-- Use our own Main entry point so we can control the HostBuilder -->
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+        <StartupObject>InternalsViewer.UI.App.vNext.Program</StartupObject>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    <ItemGroup>
+        <None Remove="Controls\AllocationControl.xaml" />
+        <None Remove="Controls\LabelTextBox.xaml" />
+        <None Remove="Controls\PageHeader.xaml" />
+        <None Remove="Styles\CommonStyles.xaml" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231115000" />
+        <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.2428" />
+        <PackageReference Include="SkiaSharp" Version="2.88.6" />
+        <PackageReference Include="SkiaSharp.Views.WinUI" Version="2.88.6" />
+        <Manifest Include="$(ApplicationManifest)" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Assets\" />
+        <Folder Include="Views\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Page Update="Controls\AllocationControl.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </Page>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Page Update="Controls\LabelTextBox.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </Page>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Page Update="Controls\PageHeader.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </Page>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Page Update="Styles\CommonStyles.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </Page>
+    </ItemGroup>
+</Project>

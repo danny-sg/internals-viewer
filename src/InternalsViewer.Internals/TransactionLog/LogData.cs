@@ -34,9 +34,9 @@ public class LogData
     {
         var dataOffset = page.OffsetTable[Slot] + Offset;
 
-        var pageData = new byte[Page.Size];
+        var pageData = new byte[PageData.Size];
 
-        Array.Copy(page.Data, pageData, Page.Size);
+        Array.Copy(page.Data, pageData, PageData.Size);
 
         Array.Copy(Data, 0, pageData, dataOffset, Data.Length);
 

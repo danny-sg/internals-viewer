@@ -31,13 +31,6 @@ public class AllocationLayer
         Name = allocation.ToString() ?? string.Empty;
     }
 
-    //public AllocationLayer(string name, AllocationChain allocationChain, Color colour)
-    //{
-    //    Name = name;
-    //    Allocations.Add(allocationChain);
-    //    this.colour = colour;
-    //}
-
     public AllocationLayer(string name, AllocationPage page, Color colour)
     {
         Name = name;
@@ -63,17 +56,6 @@ public class AllocationLayer
         }
 
         return layerNames;
-    }
-
-    public static void RefreshLayers(List<AllocationLayer> layers)
-    {
-        foreach (var layer in layers)
-        {
-            foreach (var page in layer.Allocations)
-            {
-                // page.Refresh();
-            }
-        }
     }
 
     public AllocationLayer? FindExtent(int extent, short fileId, bool findInverted)

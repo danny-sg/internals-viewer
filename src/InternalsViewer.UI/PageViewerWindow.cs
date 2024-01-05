@@ -572,7 +572,7 @@ public partial class PageViewerWindow : UserControl
 
             case "After":
 
-                if (this.Data.TryGetValue("After", out var after))
+                if (Data.TryGetValue("After", out var after))
                 {
                     logData = after;
                     colour = Color.OrangeRed;
