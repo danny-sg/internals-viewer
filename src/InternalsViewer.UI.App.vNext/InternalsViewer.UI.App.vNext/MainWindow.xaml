@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls"
+    xmlns:views="using:InternalsViewer.UI.App.vNext.Views"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop Kind="Base"/>
@@ -18,9 +19,7 @@
                  IsAddTabButtonVisible="False"
 >
             <TabViewItem Header="Allocations" IsClosable="False">
-                <Grid>
-                    <controls:AllocationControl/>
-                </Grid>
+                <views:DatabaseView x:Name="DatabaseView"/>
             </TabViewItem>
             <TabViewItem Header="Document 0">
 

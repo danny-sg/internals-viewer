@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
@@ -22,9 +22,12 @@
         <None Remove="Controls\LabelTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
+        <None Remove="Views\DatabaseView.xaml" />
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+        <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
         <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
         <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231115000" />
@@ -36,11 +39,16 @@
 
     <ItemGroup>
         <Folder Include="Assets\" />
-        <Folder Include="Views\" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Page Update="Views\DatabaseView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
     </ItemGroup>
 
     <ItemGroup>

@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using InternalsViewer.UI.App.vNext.Helpers;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.vNext.Controls.Renderers;
@@ -13,11 +14,14 @@ public class ExtentRenderer : IDisposable
         BorderColour = borderColour;
         ExtentSize = extentSize;
 
-        ExtentPaint = GetExtentPaint();
+        BackgroundPaint = GetExtentPaint(SystemColors.Control, SystemColors.ControlLightLight);
+        ExtentPaint = GetExtentPaint(Color.Black, Color.Black);
         BorderPaint = GetBorderPaint();
     }
 
     public bool IsDrawBorder { get; set; }
+
+    public SKPaint BackgroundPaint { get; set; }
 
     public Color BackgroundColour { get; set; }
 
@@ -27,9 +31,22 @@ public class ExtentRenderer : IDisposable
 
     public Size ExtentSize { get; }
 
-    public SKPaint ExtentPaint { get; init; }
+    public SKPaint ExtentPaint { get; set; }
 
     public SKPaint BorderPaint { get; init; }
+
+    public void SetExtentColour(Color colourFrom, Color colourTo)
+    {
+        var rect = new SKRect(0, 0, ExtentSize.Width, ExtentSize.Height);
+
+        var shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
+            new SKPoint(rect.Right, rect.Top),
+            new[] { colourFrom.ToSkColor(), colourTo.ToSkColor() },
+            null,
+            SKShaderTileMode.Repeat);
+
+        ExtentPaint.Shader = shader;
+    }
 
     private SKPaint GetBorderPaint()
     {
@@ -45,21 +62,17 @@ public class ExtentRenderer : IDisposable
     }
 
 
-    private SKPaint GetExtentPaint()
+    private SKPaint GetExtentPaint(Color colourFrom, Color colourTo)
     {
         var rect = new SKRect(0, 0, ExtentSize.Width, ExtentSize.Height);
-
-        var c = SystemColors.Control;
-        var c2 = SystemColors.ControlLightLight;
-
+        
         var paint = new SKPaint
         {
-            Shader = SKShader.CreateLinearGradient(
-                new SKPoint(rect.Left, rect.Top),
-                new SKPoint(rect.Right, rect.Top),
-                new[] { new SKColor(c.R, c.G, c.B), new SKColor(c2.R, c2.G, c2.B) },
-                null,
-                SKShaderTileMode.Repeat)
+            Shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
+                                                   new SKPoint(rect.Right, rect.Top),
+                                                   new[] { colourFrom.ToSkColor(), colourTo.ToSkColor() },
+                                                   null,
+                                                   SKShaderTileMode.Repeat)
         };
 
         return paint;
@@ -67,18 +80,18 @@ public class ExtentRenderer : IDisposable
 
     internal void DrawExtent(SKCanvas g, SKRect rect)
     {
-        g.DrawRect(rect, ExtentPaint);
-
         if (IsDrawBorder)
         {
             g.DrawRect(rect, BorderPaint);
         }
+
+        g.DrawRect(rect, ExtentPaint);
     }
 
     internal void DrawBackgroundExtents(SKCanvas g,
-        int extentsHorizontal,
-        int extentsVertical,
-        int extentsRemaining)
+                                        int extentsHorizontal,
+                                        int extentsVertical,
+                                        int extentsRemaining)
     {
         // Extents are drawn as columns
         for (var extentColumn = 0; extentColumn < extentsHorizontal; extentColumn++)
@@ -88,15 +101,20 @@ public class ExtentRenderer : IDisposable
                 ? (extentsVertical + 1) * ExtentSize.Height
                 : extentsVertical * ExtentSize.Height;
 
-
             var extentRectangle = new SKRect(extentColumn * ExtentSize.Width,
-                0,
-                ExtentSize.Width,
-                extentHeight);
+                                             0,
+                                             ExtentSize.Width,
+                                             extentHeight);
 
-            g.DrawRect(extentRectangle, ExtentPaint);
+            g.DrawRect(extentRectangle, BackgroundPaint);
         }
+    }
 
+    internal void DrawPageLines(SKCanvas g,
+                                int extentsHorizontal,
+                                int extentsVertical,
+                                int extentsRemaining)
+    {
         if (IsDrawBorder)
         {
             var pageWidth = ExtentSize.Width / 8F;
@@ -125,11 +143,10 @@ public class ExtentRenderer : IDisposable
 
                 // Draw horizontal lines to separate the extents
                 g.DrawLine(new SKPoint(0, k * ExtentSize.Height),
-                           new SKPoint(width, k * ExtentSize.Height),
-                           BorderPaint);
+                    new SKPoint(width, k * ExtentSize.Height),
+                    BorderPaint);
             }
         }
-
     }
 
     public void Dispose()

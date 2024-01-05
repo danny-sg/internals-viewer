@@ -26,6 +26,7 @@
                    Orientation="Vertical" 
                    Name="ScrollBar" 
                    Width="22" 
+                   ValueChanged="ScrollBar_ValueChanged"
                    IndicatorMode="MouseIndicator"/>
     </Grid>
 </UserControl>
