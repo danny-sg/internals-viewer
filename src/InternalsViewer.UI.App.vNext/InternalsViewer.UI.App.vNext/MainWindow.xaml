@@ -8,6 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls"
     xmlns:views="using:InternalsViewer.UI.App.vNext.Views"
+    
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop Kind="Base"/>
@@ -16,24 +17,43 @@
         <TabView HorizontalAlignment="Stretch" 
                  VerticalAlignment="Stretch" 
                  Background="Transparent" 
-                 IsAddTabButtonVisible="False"
->
-            <TabViewItem Header="Allocations" IsClosable="False">
-                <views:DatabaseView x:Name="DatabaseView"/>
+                 IsAddTabButtonVisible="False">
+            <TabView.Resources>
+                <ResourceDictionary>
+                    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" 
+                                     Color="{ThemeResource LayerFillColorDefault}"/>
+                </ResourceDictionary>
+            </TabView.Resources>
+            
+            <TabViewItem Header="Database" IsClosable="False" >
+                <views:DatabaseView x:Name="DatabaseView" />
             </TabViewItem>
-            <TabViewItem Header="Document 0">
+            <TabViewItem Header="Page (1:0)">
 
             </TabViewItem>
-            <TabViewItem Header="Document 1">
-
-            </TabViewItem>
-            <TabViewItem Header="Document 2">
-
-            </TabViewItem>
-
             <TabView.TabStripHeader>
-                <Grid x:Name="ShellTitlebarInset" Background="Transparent" />
+
+                <Grid x:Name="AppTitleBar"  
+                      Height="32">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="LeftPaddingColumn" Width="0"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition x:Name="RightPaddingColumn" Width="0"/>
+                    </Grid.ColumnDefinitions>
+                    <Image x:Name="TitleBarIcon" Source="ms-appx:///Assets/AppIcon16.png"
+                           Grid.Column="1"
+                           HorizontalAlignment="Left"
+                           Width="16" Height="16"
+                           Margin="8,0,0,0"/>
+                    <TextBlock x:Name="TitleBarTextBlock" 
+                               Text="Internals Viewer" 
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Grid.Column="1"
+                               VerticalAlignment="Center"
+                               Margin="34,0,28,0"/>
+                </Grid>
             </TabView.TabStripHeader>
+
             <TabView.TabStripFooter>
                 <Grid x:Name="CustomDragRegion" Background="Transparent" />
             </TabView.TabStripFooter>

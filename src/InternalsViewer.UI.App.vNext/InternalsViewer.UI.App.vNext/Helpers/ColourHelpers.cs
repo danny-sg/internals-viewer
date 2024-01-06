@@ -21,4 +21,9 @@ internal static class ColourHelpers
 
         return Color.FromArgb(color.A, red, green, blue);
     }
+
+    public static Color SetTransparency(this Color color, int alpha)
+    {
+        return Color.FromArgb(alpha, color);
+    }
 }

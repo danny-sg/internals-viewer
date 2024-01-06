@@ -3,14 +3,18 @@
     x:Class="InternalsViewer.UI.App.vNext.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:InternalsViewer.UI.App.vNext">
+    xmlns:local="using:InternalsViewer.UI.App.vNext"
+    xmlns:converters="using:InternalsViewer.UI.App.vNext.Helpers.Converters">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <ResourceDictionary Source="ms-appx:///Styles/CommonStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+            <SolidColorBrush x:Key="WindowCaptionBackground">Transparent</SolidColorBrush>
+            <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled">Transparent</SolidColorBrush>
+            <Thickness x:Key="NavigationViewContentMargin">0,48,0,0</Thickness>
+            <converters:ColorToSolidColorBrushValueConverter x:Key="ColorToSolidColorBrushValueConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

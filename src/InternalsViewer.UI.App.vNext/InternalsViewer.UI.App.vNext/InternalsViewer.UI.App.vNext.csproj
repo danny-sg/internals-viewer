@@ -19,6 +19,7 @@
     </PropertyGroup>
     <ItemGroup>
         <None Remove="Controls\AllocationControl.xaml" />
+        <None Remove="Controls\AllocationDataGridView.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
@@ -27,7 +28,9 @@
 
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+        <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.0.230907" />
         <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
+        <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.Layout" Version="7.1.2" />
         <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
         <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231115000" />
@@ -38,11 +41,22 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Assets\" />
+        <ProjectReference Include="..\..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
+      <Content Update="Assets\AppIcon16.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+      <Content Update="Assets\AppLogo.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Page Update="Controls\AllocationDataGridView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
     </ItemGroup>
 
     <ItemGroup>

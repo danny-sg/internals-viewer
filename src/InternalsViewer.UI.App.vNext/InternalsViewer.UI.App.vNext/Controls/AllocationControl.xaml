@@ -8,8 +8,10 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:skia="using:SkiaSharp.Views.Windows"
     mc:Ignorable="d">
-
-    <Grid>
+    <UserControl.Resources>
+        
+    </UserControl.Resources>
+    <Grid BorderBrush="{ThemeResource ControlElevationBorderBrush}" BorderThickness="1">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
@@ -17,7 +19,7 @@
 
         <skia:SKXamlCanvas Name="AllocationCanvas"
                            Grid.Column="0"                       
-                           PaintSurface="OnPaintSurface" 
+                           PaintSurface="AllocationCanvas_PaintSurface" 
                            IgnorePixelScaling="True"
                            PointerMoved="AllocationCanvas_PointerMoved" 
                            />
@@ -25,7 +27,8 @@
         <ScrollBar Grid.Column="1" 
                    Orientation="Vertical" 
                    Name="ScrollBar" 
-                   Width="22" 
+                   Width="16" 
+                   Visibility="Visible"
                    ValueChanged="ScrollBar_ValueChanged"
                    IndicatorMode="MouseIndicator"/>
     </Grid>
