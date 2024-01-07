@@ -1,17 +1,15 @@
-﻿using InternalsViewer.Internals.Engine.Database.Enums;
-using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Database;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using InternalsViewer.UI.App.vNext.Helpers;
 using InternalsViewer.UI.App.vNext.Models;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 using InternalsViewer.Internals.Engine.Allocation;
 
 namespace InternalsViewer.UI.App.vNext.Services;
+
 internal class AllocationLayerBuilder
 {
     private const int ColourCount = 360;

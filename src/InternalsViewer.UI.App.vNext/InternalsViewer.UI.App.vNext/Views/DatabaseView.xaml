@@ -11,39 +11,31 @@
     xmlns:toolkit2="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:drawing="using:System.Drawing"
     xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
-
+    xmlns:tabs="using:InternalsViewer.UI.App.vNext.ViewModels.Tabs"
     mc:Ignorable="d">
-
-    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" >
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Orientation="Horizontal" >
-        <CommandBar 
+            <CommandBar 
                     Background="Transparent" 
                     IsOpen="False" 
                     DefaultLabelPosition="Right" 
-                    HorizontalAlignment="Left"
-             
-                    >
-      
-            <AppBarButton Icon="Add" Label="Connect..." Click="AppBarButton_Click"/>
+                    HorizontalAlignment="Left">
 
-        </CommandBar>
+                <AppBarButton Icon="Add" Label="Connect..."/>
+
+            </CommandBar>
             <CommandBar 
                 Background="Transparent" 
                 IsOpen="False" 
-                DefaultLabelPosition="Right" 
-             
-         
-            >
+                DefaultLabelPosition="Right" >
                 <CommandBar.Content>
-                    <TextBlock Text="{x:Bind ViewModel.AllocationOver.LayerName, Mode=OneWay}" Margin="12,14"/>
+                    <TextBlock Text="{x:Bind Path=ViewModel.AllocationOver.LayerName, Mode=OneWay}" Margin="12,14"/>
                 </CommandBar.Content>
-         
-
             </CommandBar>
         </StackPanel>
         <Grid Grid.Row="1" >
@@ -56,26 +48,23 @@
 
             <controls:AllocationControl Grid.Row="0"
                                         MinHeight="200"
-                                        Size="{x:Bind ViewModel.Size, Mode=OneWay}" 
+                                        ExtentCount="{x:Bind ViewModel.Size, Mode=OneWay}" 
                                         Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
                                         SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=OneWay}"
                                         AllocationOver="{x:Bind ViewModel.AllocationOver,Mode=TwoWay}"
+                                        PageClicked="Allocations_OnPageClicked"
                                         x:Name="Allocations"/>
-            
+
             <toolkit1:ContentSizer Grid.Row="1"
                                   Cursor="Hand"
                                   Orientation="Horizontal"
                                   TargetControl="{x:Bind Allocations}" />
-            <CommandBar
-              
-                Grid.Row="2"
-                Margin="0" 
-                IsOpen="True"
-                IsSticky="True" 
-                Background="Transparent"
-                DefaultLabelPosition="Right"
->
-
+            <CommandBar Grid.Row="2"
+                        Margin="0" 
+                        IsOpen="True"
+                        IsSticky="True" 
+                        Background="Transparent"
+                        DefaultLabelPosition="Right">
                 <AppBarElementContainer>
                     <TextBox Width="200" Margin="0 8 10 0"  PlaceholderText="Filter" />
                 </AppBarElementContainer>
@@ -99,7 +88,7 @@
                                     <Rectangle Width="16" 
                                                Height="16" 
                                                Fill="{x:Bind Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
-                                      
+
                                     </Rectangle>
                                 </Grid>
                             </DataTemplate>

@@ -24,6 +24,8 @@
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Views\DatabaseView.xaml" />
+        <None Remove="Views\GetStarted.xaml" />
+        <None Remove="Views\PageView.xaml" />
     </ItemGroup>
 
     <ItemGroup>
@@ -51,6 +53,18 @@
       <Content Update="Assets\AppLogo.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Page Update="Views\GetStarted.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Page Update="Views\PageView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
     </ItemGroup>
 
     <ItemGroup>

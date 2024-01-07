@@ -1,4 +1,3 @@
-using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 using System;
@@ -14,14 +13,17 @@ using System.Linq;
 using AllocationOverViewModel = InternalsViewer.UI.App.vNext.ViewModels.AllocationOverViewModel;
 
 namespace InternalsViewer.UI.App.vNext.Controls;
-public sealed partial class AllocationControl : UserControl
+
+public sealed partial class AllocationControl
 {
     private static readonly Size ExtentSize = new(80, 10);
 
     public ExtentLayout Layout { get; set; } = new();
 
-    public static readonly DependencyProperty SizeProperty
-        = DependencyProperty.Register(nameof(Size),
+    public event EventHandler<PageClickedEventArgs>? PageClicked;
+
+    public static readonly DependencyProperty ExtentCountProperty
+        = DependencyProperty.Register(nameof(ExtentCount),
                                      typeof(int),
                                      typeof(AllocationControl),
                                      new PropertyMetadata(default, OnPropertyChanged));
@@ -44,11 +46,13 @@ public sealed partial class AllocationControl : UserControl
             typeof(AllocationControl),
             new PropertyMetadata(default));
 
-    public int Size
+    public int ExtentCount
     {
-        get => (int)GetValue(SizeProperty);
-        set => SetValue(SizeProperty, value);
+        get => (int)GetValue(ExtentCountProperty);
+        set => SetValue(ExtentCountProperty, value);
     }
+
+    public int PageCount => ExtentCount * 8;
 
     public AllocationLayer? SelectedLayer
     {
@@ -82,7 +86,7 @@ public sealed partial class AllocationControl : UserControl
 
     public void Refresh()
     {
-        Layout = GetExtentLayout(Size, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
+        Layout = GetExtentLayout(ExtentCount, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
 
         SetScrollBarValues();
 
@@ -110,7 +114,7 @@ public sealed partial class AllocationControl : UserControl
 
     private void AllocationCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        Layout = GetExtentLayout(Size, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
+        Layout = GetExtentLayout(ExtentCount, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
 
         SetScrollBarValues();
     }
@@ -122,10 +126,10 @@ public sealed partial class AllocationControl : UserControl
             return;
         }
 
-        ScrollBar.IsEnabled = Size > Layout.VisibleCount;
+        ScrollBar.IsEnabled = ExtentCount > Layout.VisibleCount;
         ScrollBar.SmallChange = Layout.HorizontalCount;
         ScrollBar.LargeChange = (Layout.VerticalCount - 1) * Layout.HorizontalCount;
-        ScrollBar.Maximum = Size + Size % Layout.HorizontalCount;
+        ScrollBar.Maximum = ExtentCount + ExtentCount % Layout.HorizontalCount;
     }
 
     private void AllocationCanvas_PaintSurface(object sender, SKPaintSurfaceEventArgs e)
@@ -170,14 +174,14 @@ public sealed partial class AllocationControl : UserControl
         // The number of 5 pixel block in the allocation map
         var renderLines = (height - offset * 2) / 5;
 
-        var extentLines = Size / layout.HorizontalCount;
+        var extentLines = ExtentCount / layout.HorizontalCount;
 
         var extentLinePerRenderLine = extentLines / renderLines;
 
         var extentPerRenderLine = extentLinePerRenderLine * layout.HorizontalCount;
 
-
         using var paint = new SKPaint();
+
         paint.Color = layer.Colour.ToSkColor();
 
         for (var i = 0; i < extentLines; i++)
@@ -204,7 +208,7 @@ public sealed partial class AllocationControl : UserControl
         {
             var isSelected = layer == SelectedLayer;
 
-            var alpha = !hasSelected || isSelected ? 255 : 50;
+            var alpha = !hasSelected || isSelected ? 255 : 25;
 
             if (layer is { IsVisible: true })
             {
@@ -322,6 +326,23 @@ public sealed partial class AllocationControl : UserControl
 
         AllocationCanvas.Invalidate();
     }
+
+    private void AllocationCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var position = e.GetCurrentPoint(this).Position;
+
+        var pageId = GetPageAtPosition((int)position.X, (int)position.Y);
+
+        if (pageId <= PageCount)
+        {
+            PageClicked?.Invoke(this, new PageClickedEventArgs(pageId));
+        }
+    }
+}
+
+public class PageClickedEventArgs(int pageId) : EventArgs
+{
+    public int PageId { get; set;} = pageId;
 }
 
 public class ExtentLayout

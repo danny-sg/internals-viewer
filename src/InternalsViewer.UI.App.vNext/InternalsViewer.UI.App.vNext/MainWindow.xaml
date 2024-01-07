@@ -8,35 +8,76 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls"
     xmlns:views="using:InternalsViewer.UI.App.vNext.Views"
-    
+    xmlns:tabs="using:InternalsViewer.UI.App.vNext.ViewModels.Tabs"
+    xmlns:selectors="using:InternalsViewer.UI.App.vNext.Helpers.Selectors"
+    xmlns:system="using:System"
+    xmlns:viewModels="using:InternalsViewer.UI.App.vNext.ViewModels"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop Kind="Base"/>
     </Window.SystemBackdrop>
-    <Grid>
+    <Grid x:Name="RootGrid">
+        <Grid.Resources>
+            <DataTemplate x:Key="DatabaseTemplate" x:DataType="tabs:DatabaseViewModel">
+                <Grid>
+                    <views:DatabaseView x:Name="DatabaseView" DataContext="{x:Bind}" />
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="PageTemplate"  x:DataType="tabs:PageViewModel">
+                <Grid>
+                    <views:PageView x:Name="PageView" DataContext="{x:Bind}"  />
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="GetStartedTemplate"  x:DataType="tabs:GetStartedViewModel">
+                <Grid>
+                    <views:GetStarted x:Name="GetStartedView" DataContext="{x:Bind}"  />
+                </Grid>
+            </DataTemplate>
+            
+            <selectors:TabTemplateSelector x:Key="TabTemplateSelector" 
+                                           DatabaseTemplate="{StaticResource DatabaseTemplate}" 
+                                           PageTemplate="{StaticResource PageTemplate}"
+                                           GetStartedTemplate="{StaticResource GetStartedTemplate}"/>
+
+            <DataTemplate x:Key="SelectorWrapper"
+                          x:DataType="tabs:TabViewModel">
+                <TabViewItem>
+                    <TabViewItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{x:Bind Name}" />
+                        </StackPanel>
+                    </TabViewItem.Header>
+
+                    <ContentControl Content="{x:Bind}"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch"
+                                        ContentTemplateSelector="{StaticResource TabTemplateSelector}"/>
+
+                </TabViewItem>
+            </DataTemplate>
+        </Grid.Resources>
         <TabView HorizontalAlignment="Stretch" 
                  VerticalAlignment="Stretch" 
                  Background="Transparent" 
-                 IsAddTabButtonVisible="False">
+                 IsAddTabButtonVisible="False"
+                 TabCloseRequested="TabView_OnTabCloseRequested"
+                 TabItemsSource="{x:Bind ViewModel.Tabs, Mode=OneWay}"
+                 SelectedItem="{x:Bind ViewModel.SelectedTab, Mode=TwoWay}"
+                 TabItemTemplate="{StaticResource SelectorWrapper}">
             <TabView.Resources>
                 <ResourceDictionary>
                     <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" 
                                      Color="{ThemeResource LayerFillColorDefault}"/>
                 </ResourceDictionary>
             </TabView.Resources>
-            
-            <TabViewItem Header="Database" IsClosable="False" >
-                <views:DatabaseView x:Name="DatabaseView" />
-            </TabViewItem>
-            <TabViewItem Header="Page (1:0)">
 
-            </TabViewItem>
             <TabView.TabStripHeader>
-
                 <Grid x:Name="AppTitleBar"  
                       Height="32">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition x:Name="LeftPaddingColumn" Width="0"/>
+                        <ColumnDefinition x:Name="LeftPaddingColumn" Width="8"/>
                         <ColumnDefinition/>
                         <ColumnDefinition x:Name="RightPaddingColumn" Width="0"/>
                     </Grid.ColumnDefinitions>
