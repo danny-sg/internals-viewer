@@ -16,16 +16,26 @@
         <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
         <StartupObject>InternalsViewer.UI.App.vNext.Program</StartupObject>
         <Nullable>enable</Nullable>
+        <ApplicationIcon>InternalsViewer.ico</ApplicationIcon>
     </PropertyGroup>
+    <ItemGroup>
+      <Content Remove="Assets\Database.svg" />
+      <Content Remove="Assets\DatabaseFile.svg" />
+    </ItemGroup>
     <ItemGroup>
         <None Remove="Controls\AllocationControl.xaml" />
         <None Remove="Controls\AllocationDataGridView.xaml" />
+        <None Remove="Controls\ConnectTile.xaml" />
+        <None Remove="Controls\HeaderTile.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Views\DatabaseView.xaml" />
         <None Remove="Views\GetStarted.xaml" />
         <None Remove="Views\PageView.xaml" />
+    </ItemGroup>
+    <ItemGroup>
+      <Content Include="InternalsViewer.ico" />
     </ItemGroup>
 
     <ItemGroup>
@@ -50,9 +60,33 @@
       <Content Update="Assets\AppIcon16.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
+      <Content Update="Assets\AppLogo-256-database.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+      <Content Update="Assets\AppLogo-256.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+      <Content Update="Assets\AppLogo-512.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
       <Content Update="Assets\AppLogo.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Assets\Database.svg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Assets\DatabaseFile.svg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <Page Update="Controls\HeaderTile.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Controls\ConnectTile.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
     </ItemGroup>
 
     <ItemGroup>
@@ -101,5 +135,9 @@
         <Page Update="Styles\CommonStyles.xaml">
             <Generator>MSBuild:Compile</Generator>
         </Page>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Services\" />
     </ItemGroup>
 </Project>

@@ -19,6 +19,7 @@
                            PaintSurface="AllocationCanvas_PaintSurface" 
                            IgnorePixelScaling="True"
                            PointerMoved="AllocationCanvas_PointerMoved" 
+                           PointerExited="AllocationCanvas_PointerExited"
                            PointerPressed="AllocationCanvas_PointerPressed"
                            />
         

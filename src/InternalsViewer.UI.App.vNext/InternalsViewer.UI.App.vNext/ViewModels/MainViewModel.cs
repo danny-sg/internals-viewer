@@ -8,7 +8,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.UI.App.vNext.Models;
-using InternalsViewer.UI.App.vNext.Services;
+using InternalsViewer.UI.App.vNext.ViewModels.Allocation;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels;
@@ -16,6 +16,7 @@ namespace InternalsViewer.UI.App.vNext.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     public IDatabaseLoader DatabaseLoader { get; }
+
     public CurrentConnection Connection { get; }
 
     [ObservableProperty]
@@ -55,9 +56,9 @@ public partial class MainViewModel : ObservableObject
     public async Task AddDatabase(string name)
     {
         Connection.ConnectionString = "Server=.;Database=master;Integrated Security=true;TrustServerCertificate=True";
-        Connection.DatabaseName = "AdventureWorks2022";
+        Connection.DatabaseName = "TestDatabase";
 
-        var database = await DatabaseLoader.Load("AdventureWorks2022");
+        var database = await DatabaseLoader.Load("TestDatabase");
 
         var viewModel = new DatabaseViewModel(this, database);
 
@@ -67,6 +68,25 @@ public partial class MainViewModel : ObservableObject
 
         viewModel.Database = database;
         viewModel.Size = database.GetFileSize(1);
+        viewModel.AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
+
+        Tabs.Add(viewModel);
+
+        SelectedTab = viewModel;
+    }
+
+    public void Calibrate()
+    {
+        var database = new DatabaseDetail();
+
+        var viewModel = new DatabaseViewModel(this, database);  
+
+        viewModel.Name = "Calibration";
+
+        var layers = CalibrationBuilder.GenerateLayers();
+
+        viewModel.Database = database;
+        viewModel.Size = 1000;
         viewModel.AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
 
         Tabs.Add(viewModel);

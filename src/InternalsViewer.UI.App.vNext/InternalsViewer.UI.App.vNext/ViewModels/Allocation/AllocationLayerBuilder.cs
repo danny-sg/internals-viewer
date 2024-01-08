@@ -7,8 +7,9 @@ using InternalsViewer.UI.App.vNext.Helpers;
 using InternalsViewer.UI.App.vNext.Models;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.UI.App.vNext.Services;
+namespace InternalsViewer.UI.App.vNext.ViewModels.Allocation;
 
 internal class AllocationLayerBuilder
 {
@@ -38,6 +39,13 @@ internal class AllocationLayerBuilder
             }
 
             layers.Last().Allocations.AddRange(GetExtentAllocations(allocationUnit.IamChain));
+
+            layers.Last()
+                  .SinglePages
+                  .AddRange(allocationUnit.IamChain
+                                          .Pages
+                                          .SelectMany(s => s.SinglePageSlots)
+                                          .Where(s => s != PageAddress.Empty));
         }
 
         return layers;
@@ -49,10 +57,10 @@ internal class AllocationLayerBuilder
 
         result.AddRange(chain.Pages
                              .SelectMany(s => s.AllocationMap
-                                               .Select((isAllocated, index) => new 
-                                               { 
-                                                   isAllocated, 
-                                                   Extent = index + (s.StartPage.PageId * 8)
+                                               .Select((isAllocated, index) => new
+                                               {
+                                                   isAllocated,
+                                                   Extent = index + s.StartPage.PageId * 8
                                                }))
                              .Where(w => w.isAllocated)
                              .Select(s => s.Extent));

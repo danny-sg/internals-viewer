@@ -45,5 +45,8 @@ public partial class AllocationLayer : ObservableObject
     private List<int> allocations = new();
 
     [ObservableProperty]
+    private List<PageAddress> singlePages = new();
+
+    [ObservableProperty]
     private bool isVisible;
 }

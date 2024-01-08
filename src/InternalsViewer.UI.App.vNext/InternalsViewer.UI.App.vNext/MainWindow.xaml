@@ -46,6 +46,7 @@
                 <TabViewItem>
                     <TabViewItem.Header>
                         <StackPanel Orientation="Horizontal">
+                            <Image Source="{x:Bind ImageSource}" Height="16" Width="16" Stretch="Fill"/>
                             <TextBlock Text="{x:Bind Name}" />
                         </StackPanel>
                     </TabViewItem.Header>
@@ -75,7 +76,7 @@
 
             <TabView.TabStripHeader>
                 <Grid x:Name="AppTitleBar"  
-                      Height="32">
+                      Height="34">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition x:Name="LeftPaddingColumn" Width="8"/>
                         <ColumnDefinition/>
@@ -91,7 +92,7 @@
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Grid.Column="1"
                                VerticalAlignment="Center"
-                               Margin="34,0,28,0"/>
+                               Margin="34,0,32,0"/>
                 </Grid>
             </TabView.TabStripHeader>
 

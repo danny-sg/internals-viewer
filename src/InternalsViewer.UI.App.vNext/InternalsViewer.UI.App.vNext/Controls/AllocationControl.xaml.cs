@@ -10,7 +10,10 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using System.Linq;
-using AllocationOverViewModel = InternalsViewer.UI.App.vNext.ViewModels.AllocationOverViewModel;
+using AllocationOverViewModel = InternalsViewer.UI.App.vNext.ViewModels.Allocation.AllocationOverViewModel;
+using System.Xml.Linq;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.vNext.Controls;
 
@@ -140,13 +143,13 @@ public sealed partial class AllocationControl
         canvas.Clear();
         canvas.Clear(SKColors.Transparent);
 
-        using var extentRenderer = new ExtentRenderer(Color.Red, Color.Blue, Color.White, ExtentSize);
+        using var extentRenderer = new AllocationRenderer(Color.Red, Color.Blue, Color.White, ExtentSize);
 
         extentRenderer.IsDrawBorder = true;
 
         extentRenderer.DrawBackgroundExtents(canvas, Layout.HorizontalCount, Layout.VerticalCount, Layout.RemainingCount);
 
-        var width = (Layout.HorizontalCount - 1) * ExtentSize.Width;
+        var width = Layout.HorizontalCount * ExtentSize.Width;
 
         DrawExtents(canvas, extentRenderer, Layout);
 
@@ -169,10 +172,14 @@ public sealed partial class AllocationControl
 
     private void DrawScrollbarMarkers(SKCanvas canvas, ExtentLayout layout, AllocationLayer layer, int width, int height)
     {
+        // Offset accounting for the scrollbar buttons
         var offset = 18;
 
-        // The number of 5 pixel block in the allocation map
-        var renderLines = (height - offset * 2) / 5;
+        // Size of each block next to the scrollbar
+        var blockSize = 4;
+
+        // The number of [Block Size] pixel block in the allocation map
+        var renderLines = (height - (offset)) / blockSize;
 
         var extentLines = ExtentCount / layout.HorizontalCount;
 
@@ -184,23 +191,26 @@ public sealed partial class AllocationControl
 
         paint.Color = layer.Colour.ToSkColor();
 
-        for (var i = 0; i < extentLines; i++)
+        for (var i = 0; i < renderLines; i++)
         {
             var extentsFrom = i * extentPerRenderLine;
             var extentsTo = (i + 1) * extentPerRenderLine;
+            var pagesFrom = extentsFrom * 8;
+            var pagesTo = extentsTo * 8;
 
-            if (layer.Allocations.Any(a => a > extentsFrom && a <= i + extentsTo))
+            if (layer.Allocations.Any(a => a > extentsFrom && a <= i + extentsTo)
+                                      || layer.SinglePages.Any(a => a.PageId > pagesFrom && a.PageId <= pagesTo))
             {
-                var top = offset + i * 5;
-                var bottom = offset + (i + 1) * 5;
-                var position = new SKRect(width - 10, top, width, bottom);
+                var top = offset + i * blockSize;
+                var bottom = offset + (i + 1) * blockSize;
+                var position = new SKRect(width - blockSize * 2, top, width, bottom);
 
                 canvas.DrawRect(position, paint);
             }
         }
     }
 
-    private void DrawExtents(SKCanvas canvas, ExtentRenderer renderer, ExtentLayout layout)
+    private void DrawExtents(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
     {
         var hasSelected = SelectedLayer is not null;
 
@@ -215,29 +225,61 @@ public sealed partial class AllocationControl
                 var colour = layer.Colour.SetTransparency(alpha);
                 var backgroundColour = ColourHelpers.ToBackgroundColour(colour);
 
-                renderer.SetExtentColour(colour, backgroundColour);
+                renderer.SetAllocationColour(colour, backgroundColour);
 
                 foreach (var extent in layer.Allocations)
                 {
                     renderer.DrawExtent(canvas, GetExtentPosition(extent - ScrollPosition, layout));
                 }
+
+                foreach (var page in layer.SinglePages)
+                {
+                    renderer.DrawPage(canvas, GetPagePosition(page.PageId - ScrollPosition * 8, layout));
+
+                }
             }
         }
+    }
+
+    private SKRect GetPagePosition(int pageId, ExtentLayout layout)
+    {
+        // Number of pages horizontally
+        var horizontalCount = layout.HorizontalCount * 8;
+
+        var row = (pageId - 1) / horizontalCount;
+        var column = (pageId - 1) % horizontalCount;
+
+        var pageWidth = ExtentSize.Width / 8F;
+
+        var left = column * pageWidth;
+        var top = row * ExtentSize.Height;
+
+        var right = left + pageWidth;
+        var bottom = top + ExtentSize.Height;
+
+        if (horizontalCount > 1)
+        {
+            return new SKRect(left, top, right, bottom);
+        }
+
+        return new SKRect(0, 0, pageWidth, ExtentSize.Height);
     }
 
     /// <summary>
     /// Get Rectangle for a particular extent
     /// </summary>
-    private SKRect GetExtentPosition(int extent, ExtentLayout layout)
+    private SKRect GetExtentPosition(int extentId, ExtentLayout layout)
     {
         var horizontalCount = layout.HorizontalCount;
 
-        var left = extent * ExtentSize.Width % ((horizontalCount - 1) * ExtentSize.Width);
-        var top = (int)Math.Floor((decimal)extent / horizontalCount) * ExtentSize.Height;
+        var row = (extentId - 1) / horizontalCount;
+        var column = (extentId - 1) % horizontalCount;
+
+        var left = column * ExtentSize.Width;
+        var top = row * ExtentSize.Height;
 
         var right = left + ExtentSize.Width;
         var bottom = top + ExtentSize.Height;
-
 
         if (horizontalCount > 1)
         {
@@ -249,7 +291,7 @@ public sealed partial class AllocationControl
 
     public ExtentLayout GetExtentLayout(int extentCount, Size extentSize, decimal width, decimal height)
     {
-        var extentsHorizontal = (int)Math.Ceiling(width / extentSize.Width);
+        var extentsHorizontal = (int)Math.Floor(width / extentSize.Width);
         var extentsVertical = (int)Math.Ceiling(height / extentSize.Height);
 
         var visibleCount = extentsHorizontal * extentsVertical;
@@ -290,7 +332,7 @@ public sealed partial class AllocationControl
     /// </summary>
     private int GetExtentAtPosition(int x, int y)
     {
-        return 1 + y / ExtentSize.Height * Layout.HorizontalCount + x / ExtentSize.Width;
+        return 1 + y / ExtentSize.Height * Layout.HorizontalCount + x / ExtentSize.Width + ScrollPosition;
     }
 
     /// <summary>
@@ -298,7 +340,7 @@ public sealed partial class AllocationControl
     /// </summary>
     private int GetPageAtPosition(int x, int y)
     {
-        return y / ExtentSize.Height * Layout.HorizontalCount * 8 + x / (ExtentSize.Width / 8);
+        return y / ExtentSize.Height * Layout.HorizontalCount * 8 + x / (ExtentSize.Width / 8) + 1 + ScrollPosition * 8;
     }
 
     private void AllocationCanvas_PointerMoved(object sender, PointerRoutedEventArgs e)
@@ -322,7 +364,7 @@ public sealed partial class AllocationControl
     {
         var scrollExtent = (int)ScrollBar.Value;
 
-        ScrollPosition = scrollExtent - scrollExtent % (Layout.HorizontalCount - 1);
+        ScrollPosition = scrollExtent - scrollExtent % Layout.HorizontalCount;
 
         AllocationCanvas.Invalidate();
     }
@@ -338,11 +380,16 @@ public sealed partial class AllocationControl
             PageClicked?.Invoke(this, new PageClickedEventArgs(pageId));
         }
     }
+
+    private void AllocationCanvas_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        AllocationOver = new AllocationOverViewModel();
+    }
 }
 
 public class PageClickedEventArgs(int pageId) : EventArgs
 {
-    public int PageId { get; set;} = pageId;
+    public int PageId { get; set; } = pageId;
 }
 
 public class ExtentLayout

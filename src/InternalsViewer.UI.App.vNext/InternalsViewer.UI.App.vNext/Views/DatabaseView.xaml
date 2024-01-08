@@ -13,11 +13,11 @@
     xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
     xmlns:tabs="using:InternalsViewer.UI.App.vNext.ViewModels.Tabs"
     mc:Ignorable="d">
-    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" x:Name="LayoutGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"  MaxHeight="300"/>
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Orientation="Horizontal" >
             <CommandBar 
@@ -33,17 +33,14 @@
                 Background="Transparent" 
                 IsOpen="False" 
                 DefaultLabelPosition="Right" >
-                <CommandBar.Content>
-                    <TextBlock Text="{x:Bind Path=ViewModel.AllocationOver.LayerName, Mode=OneWay}" Margin="12,14"/>
-                </CommandBar.Content>
+         
             </CommandBar>
         </StackPanel>
-        <Grid Grid.Row="1" >
+        <Grid Grid.Row="1" x:Name="ContentGrid">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <controls:AllocationControl Grid.Row="0"
@@ -54,62 +51,76 @@
                                         AllocationOver="{x:Bind ViewModel.AllocationOver,Mode=TwoWay}"
                                         PageClicked="Allocations_OnPageClicked"
                                         x:Name="Allocations"/>
-
             <toolkit1:ContentSizer Grid.Row="1"
-                                  Cursor="Hand"
-                                  Orientation="Horizontal"
-                                  TargetControl="{x:Bind Allocations}" />
-            <CommandBar Grid.Row="2"
+                                   Cursor="Hand"
+                                   Orientation="Horizontal"
+                                   TargetControl="{x:Bind Allocations}" />
+            <Grid Grid.Row="2" x:Name="DetailGrid">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <CommandBar Grid.Row="0"
                         Margin="0" 
                         IsOpen="True"
                         IsSticky="True" 
                         Background="Transparent"
                         DefaultLabelPosition="Right">
-                <AppBarElementContainer>
-                    <TextBox Width="200" Margin="0 8 10 0"  PlaceholderText="Filter" />
-                </AppBarElementContainer>
-            </CommandBar>
-            <toolkit2:DataGrid x:Name="DataGrid"
+                    <AppBarElementContainer>
+                        <TextBox Width="200" Margin="0 8 10 0"  
+                             PlaceholderText="Filter" 
+                            
+                             Text="{x:Bind ViewModel.Filter, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+                    </AppBarElementContainer>
+                    <CommandBar.Content>
+                        <TextBlock Text="{x:Bind Path=ViewModel.AllocationOver.LayerName, Mode=OneWay}" 
+                                   Margin="12,14"/>
+                    </CommandBar.Content>
+                </CommandBar>
+
+                <toolkit2:DataGrid x:Name="DataGrid"
+                                   Grid.Row="1"
                                AutoGenerateColumns="False"
                                CanUserSortColumns="True"
                                SelectionMode="Single"
+                                   Height="Auto"
+                                   MaxHeight="300"
                                PointerPressed="DataGrid_OnPointerPressed"
                                IsReadOnly="True"
-                               MaxHeight="200"
                                GridLinesVisibility="Vertical"
-                               ItemsSource="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
-                               Grid.Row="3">
-                <toolkit2:DataGrid.Columns>
-                    <toolkit2:DataGridTemplateColumn Header="Key"
+                               ItemsSource="{x:Bind ViewModel.GridAllocationLayers, Mode=OneWay}">
+                    <toolkit2:DataGrid.Columns>
+                        <toolkit2:DataGridTemplateColumn Header="Key"
                                                      Tag="Key">
-                        <toolkit2:DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate x:DataType="models:AllocationLayer">
-                                <Grid>
-                                    <Rectangle Width="16" 
+                            <toolkit2:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="models:AllocationLayer">
+                                    <Grid>
+                                        <Rectangle Width="16" 
                                                Height="16" 
                                                Fill="{x:Bind Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
-
-                                    </Rectangle>
-                                </Grid>
-                            </DataTemplate>
-                        </toolkit2:DataGridTemplateColumn.CellTemplate>
-                    </toolkit2:DataGridTemplateColumn>
-                    <toolkit2:DataGridTextColumn Header="Object Name"
+                                        </Rectangle>
+                                    </Grid>
+                                </DataTemplate>
+                            </toolkit2:DataGridTemplateColumn.CellTemplate>
+                        </toolkit2:DataGridTemplateColumn>
+                        <toolkit2:DataGridTextColumn Header="Object Name"
                                                  Binding="{Binding ObjectName}"/>
-                    <toolkit2:DataGridTextColumn Header="Index Name"
+                        <toolkit2:DataGridTextColumn Header="Index Name"
                                                  Binding="{Binding IndexName}"/>
-                    <toolkit2:DataGridTextColumn Header="Index Type"
+                        <toolkit2:DataGridTextColumn Header="Index Type"
                                                  Binding="{Binding IndexType}"/>
-                    <toolkit2:DataGridTextColumn Header="Root Page"
+                        <toolkit2:DataGridTextColumn Header="Root Page"
                                                  Binding="{Binding RootPage}"/>
-                    <toolkit2:DataGridTextColumn Header="First Page"
+                        <toolkit2:DataGridTextColumn Header="First Page"
                                                  Binding="{Binding FirstPage}"/>
-                    <toolkit2:DataGridTextColumn Header="First IAM"
+                        <toolkit2:DataGridTextColumn Header="First IAM"
                                                  Binding="{Binding FirstIamPage}"/>
-                    <toolkit2:DataGridTextColumn Header="Page Count"
+                        <toolkit2:DataGridTextColumn Header="Page Count"
                                                  Binding="{Binding TotalPages}"/>
-                </toolkit2:DataGrid.Columns>
-            </toolkit2:DataGrid>
+                    </toolkit2:DataGrid.Columns>
+                </toolkit2:DataGrid>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>
