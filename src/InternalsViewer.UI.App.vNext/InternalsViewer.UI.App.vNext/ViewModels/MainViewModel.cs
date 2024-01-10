@@ -39,7 +39,8 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ConnectServer(string databaseName)
     {
-        await AddDatabase(databaseName);
+        //await AddDatabase(databaseName);
+        Calibrate();
     }
 
     [RelayCommand]

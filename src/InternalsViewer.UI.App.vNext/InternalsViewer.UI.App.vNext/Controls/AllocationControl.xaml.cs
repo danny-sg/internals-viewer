@@ -246,8 +246,8 @@ public sealed partial class AllocationControl
         // Number of pages horizontally
         var horizontalCount = layout.HorizontalCount * 8;
 
-        var row = (pageId - 1) / horizontalCount;
-        var column = (pageId - 1) % horizontalCount;
+        var row = (pageId) / horizontalCount;
+        var column = (pageId) % horizontalCount;
 
         var pageWidth = ExtentSize.Width / 8F;
 
@@ -340,7 +340,7 @@ public sealed partial class AllocationControl
     /// </summary>
     private int GetPageAtPosition(int x, int y)
     {
-        return y / ExtentSize.Height * Layout.HorizontalCount * 8 + x / (ExtentSize.Width / 8) + 1 + ScrollPosition * 8;
+        return y / ExtentSize.Height * Layout.HorizontalCount * 8 + x / (ExtentSize.Width / 8) + ScrollPosition * 8;
     }
 
     private void AllocationCanvas_PointerMoved(object sender, PointerRoutedEventArgs e)
@@ -352,11 +352,44 @@ public sealed partial class AllocationControl
 
         var layer = Layers.FirstOrDefault(l => l.Allocations.Contains(extentId));
 
+        string layerName;
+
+        switch (pageId)
+        {
+            case 0:
+                layerName = "File Header";
+                break;
+            case 1:
+                layerName = "PFS";
+                break;
+            case 2:
+                layerName = "GAM";
+                break;
+            case 3:
+                layerName = "SGAM";
+                break;
+            case 4:
+                layerName = "DCM";
+                break;
+            case 5:
+                layerName = "BCM";
+                break;
+            case 6:
+                layerName = "Differential Change Map";
+                break;
+            case 7:
+                layerName = "Bulk Change Map";
+                break;
+            default:
+                layerName = $"Page 1:{pageId}, Extent: {extentId} - {layer?.Name ?? "Unallocated"}";
+                break;
+        }
+
         AllocationOver = new AllocationOverViewModel
         {
             ExtentId = extentId,
             PageId = pageId,
-            LayerName = $"Page 1:{pageId}, Extent: {extentId} - {layer?.Name ?? "Unallocated"}",
+            LayerName = layerName
         };
     }
 

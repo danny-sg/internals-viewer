@@ -284,6 +284,11 @@ public class AllocationMap : Panel, IDisposable
     /// </summary>
     internal void CalculateVisibleExtents()
     {
+        if(!Visible)
+        {
+            return;
+        }
+
         extentsHorizontal = (int)Math.Floor((decimal)(Width - scrollBar.Width) / extentSize.Width);
         extentsVertical = (int)Math.Ceiling((decimal)Height / extentSize.Height);
 

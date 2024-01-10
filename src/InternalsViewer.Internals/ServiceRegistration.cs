@@ -72,5 +72,6 @@ public static class ServiceRegistration
         services.AddTransient<IPageParser, IndexPageParser>();
         services.AddTransient<IPageParser, LobPageParser>();
         services.AddTransient<IPageParser, PfsPageParser>();
+        services.AddTransient<IPageParser, FileHeaderPageParser>();
     }
 }
