@@ -17,7 +17,7 @@ public class PfsChainService(IPageService pageService) : IPfsChainService
     /// <summary>
     /// Load all PFS pages for a file
     /// </summary>
-    public async Task<PfsChain> LoadChain(DatabaseDetail databaseDetail, short fileId)
+    public async Task<PfsChain> LoadChain(DatabaseSource databaseDetail, short fileId)
     {
         // Calculate the number of PFS pages in the file
         var pfsCount = (int)Math.Ceiling(databaseDetail.GetFileSize(fileId) / (decimal)PfsPage.PfsInterval);

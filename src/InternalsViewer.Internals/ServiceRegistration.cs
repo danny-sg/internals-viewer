@@ -28,7 +28,6 @@ public static class ServiceRegistration
 {
     public static void RegisterServices(this IServiceCollection services)
     {
-        services.AddSingleton<CurrentConnection>();
         services.AddTransient<IPageReader, QueryPageReader>();
 
         services.AddTransient<IServerInfoProvider, ServerInfoProvider>();

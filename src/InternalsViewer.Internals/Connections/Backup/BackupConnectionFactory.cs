@@ -2,12 +2,16 @@
 
 namespace InternalsViewer.Internals.Connections.Backup;
 
-public class BackupConnectionFactory : IConnectionFactory<BackupConnectionType, BackupConnectionTypeConfig>
+public class BackupConnectionFactory : IConnectionTypeFactory<BackupConnectionTypeConfig>
 {
     public string Identifier => "Backup";
 
-    public BackupConnectionType GetConnection(BackupConnectionTypeConfig config)
+    public static IConnectionType Create(Action<BackupConnectionTypeConfig> configDelegate)
     {
+        var config = new BackupConnectionTypeConfig();
+
+        configDelegate(config);
+
         throw new NotImplementedException();
     }
 }

@@ -33,7 +33,7 @@ public partial class AllocationWindow : UserControl
     private const string AllocationUnitsText = "Allocation Units";
     private const string PageFreeSpaceText = "PFS";
 
-    public DatabaseDetail? CurrentDatabase { get; set; }
+    public DatabaseSource? CurrentDatabase { get; set; }
 
     public AllocationWindow(IDatabaseLoader databaseLoader)
     {
@@ -410,6 +410,11 @@ public partial class AllocationWindow : UserControl
 
     private async void DatabaseToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
     {
+        if(CurrentDatabase == null)
+        {
+            return;
+        }
+
         var databaseInfo = (DatabaseSummary?)databaseToolStripComboBox.SelectedItem;
 
         if (databaseInfo == null)
@@ -417,7 +422,7 @@ public partial class AllocationWindow : UserControl
             return;
         }
 
-        var database = await DatabaseLoader.Load(databaseInfo.Name);
+        var database = await DatabaseLoader.Load(databaseInfo.Name, CurrentDatabase.Connection);
 
         CurrentDatabase = database;
 
@@ -671,7 +676,7 @@ public partial class AllocationWindow : UserControl
             return;
         }
 
-        var database = await DatabaseLoader.Load(databaseInfo.Name);
+        var database = await DatabaseLoader.Load(databaseInfo.Name, CurrentDatabase.Connection);
 
         CurrentDatabase = database;
 

@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Pages;
@@ -14,11 +15,9 @@ public class QueryPageReaderTests(ITestOutputHelper testOutputHelper)
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
+        var reader = new QueryPageReader(connectionString);
 
-        var reader = new QueryPageReader(connection);
-
-        var result = await reader.Read(connection.DatabaseName, new PageAddress(1, 1));
+        var result = await reader.Read("TestDatabase", new PageAddress(1, 1));
 
         Assert.NotNull(result);
     }
@@ -28,7 +27,7 @@ public class QueryPageReaderTests(ITestOutputHelper testOutputHelper)
     {
         var service = ServiceHelper.CreateDataFilePageService(TestOutputHelper);
 
-        var result = await service.GetPage(new Engine.Database.DatabaseDetail { Name = "TestDatabase" }, 
+        var result = await service.GetPage(new DatabaseSource(null!) { Name = "TestDatabase" }, 
                                            new PageAddress(1, 9));
 
         Assert.Equal(PageType.Boot, result.PageHeader.PageType);  

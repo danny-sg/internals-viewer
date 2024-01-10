@@ -11,9 +11,9 @@ public partial class PageViewer : Form
 
     public IRecordService RecordService { get; }
 
-    public DatabaseDetail Database { get; }
+    public DatabaseSource Database { get; }
 
-    public PageViewer(IPageService pageService, IRecordService recordService, DatabaseDetail database)
+    public PageViewer(IPageService pageService, IRecordService recordService, DatabaseSource database)
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint |
                  ControlStyles.UserPaint |
@@ -31,7 +31,6 @@ public partial class PageViewer : Form
     {
         SuspendLayout();
       
-        pageViewerWindow.Database = Database;
         pageViewerWindow.PageService = PageService;
 
         await pageViewerWindow.LoadPage(pageAddress);

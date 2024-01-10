@@ -58,7 +58,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
     ///                         
     ///     --> sys.sysprufiles - <see cref="InternalFile"/>
     /// </remarks>              
-    public async Task<InternalMetadata> Load(DatabaseDetail database)
+    public async Task<InternalMetadata> Load(DatabaseSource database)
     {
         var result = new InternalMetadata();
 
@@ -101,7 +101,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         return result;
     }
 
-    private async Task<List<InternalFile>> GetFiles(PageAddress pageAddress, DatabaseDetail database)
+    private async Task<List<InternalFile>> GetFiles(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Files (sys.sysprufiles) using fixed Object Id/Index Id");
 
@@ -119,7 +119,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
 
     }
 
-    private async Task<List<InternalEntityObject>> GetEntities(PageAddress pageAddress, DatabaseDetail database)
+    private async Task<List<InternalEntityObject>> GetEntities(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Entities (sys.sysclsobjs) using fixed Object Id/Index Id");
 
@@ -136,7 +136,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         return rows;
     }
 
-    private async Task<List<InternalObject>> GetObjects(PageAddress pageAddress, DatabaseDetail database)
+    private async Task<List<InternalObject>> GetObjects(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
 
@@ -153,7 +153,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         return rows;
     }
 
-    private async Task<List<InternalIndex>> GetIndexes(PageAddress pageAddress, DatabaseDetail database)
+    private async Task<List<InternalIndex>> GetIndexes(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Indexes (sys.sysidxstats) using fixed Object Id/Index Id");
 
@@ -170,7 +170,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         return rows;
     }
 
-    private async Task<List<InternalIndexColumn>> GetIndexColumns(PageAddress pageAddress, DatabaseDetail database)
+    private async Task<List<InternalIndexColumn>> GetIndexColumns(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Index Columns (sys.sysiscols) using fixed Object Id/Index Id");
 
@@ -187,7 +187,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         return rows;
     }
 
-    private async Task<List<InternalRowSet>> GetRowSets(PageAddress pageAddress, DatabaseDetail database)
+    private async Task<List<InternalRowSet>> GetRowSets(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Row Sets (sys.sysrowsets) using fixed Object Id/Index Id");
 
@@ -204,7 +204,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         return rows;
     }
 
-    private async Task<List<InternalColumnLayout>> GetColumnLayouts(PageAddress pageAddress, DatabaseDetail database)
+    private async Task<List<InternalColumnLayout>> GetColumnLayouts(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Column Layouts (sys.sysrscols) using fixed Object Id/Index Id");
 
@@ -221,7 +221,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         return rows;
     }
 
-    private async Task<List<InternalColumn>> GetColumns(PageAddress pageAddress, DatabaseDetail database)
+    private async Task<List<InternalColumn>> GetColumns(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Columns (sys.syscolpars) using fixed Object Id/Index Id");
 
@@ -238,7 +238,7 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         return rows;
     }
 
-    private async Task<List<InternalAllocationUnit>> GetAllocationUnits(DatabaseDetail databaseDetail)
+    private async Task<List<InternalAllocationUnit>> GetAllocationUnits(DatabaseSource databaseDetail)
     {
         var (objectId, indexId) = InternalTableConstants.ObjectsId;
 

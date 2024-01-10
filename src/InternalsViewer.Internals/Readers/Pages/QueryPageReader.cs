@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Readers.Pages;
 /// <summary>
 /// Page Reader for reading a page using a online database with DBCC PAGE
 /// </summary>
-public class QueryPageReader(CurrentConnection connection) : PageReader, IPageReader
+public class QueryPageReader(string connectionString) : PageReader, IPageReader
 {
     private const int ParentObjectIndex = 0;
     private const int ObjectIndex = 1;
@@ -20,8 +20,6 @@ public class QueryPageReader(CurrentConnection connection) : PageReader, IPageRe
     private const int DbccPageHexDumpOption = 2;
 
     private const string DbccPageCommand = @"DBCC PAGE({0}, {1}, {2}, {3}) WITH TABLERESULTS";
-
-    public CurrentConnection Connection { get; } = connection;
 
     /// <summary>
     /// Loads the database page using DBCC PAGE (hex dump)
@@ -36,7 +34,7 @@ public class QueryPageReader(CurrentConnection connection) : PageReader, IPageRe
         var offset = 0;
         var data = new byte[PageData.Size];
 
-        await using var connection = new SqlConnection(Connection.ConnectionString);
+        await using var connection = new SqlConnection(connectionString);
 
         await using var command = new SqlCommand(pageCommand, connection);
 

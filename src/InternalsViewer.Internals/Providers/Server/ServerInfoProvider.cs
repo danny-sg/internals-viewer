@@ -6,11 +6,9 @@ using System.Data;
 
 namespace InternalsViewer.Internals.Providers.Server;
 
-public class ServerInfoProvider(CurrentConnection connection)
+public class ServerInfoProvider
     : IServerInfoProvider
 {
-    public CurrentConnection Connection { get; } = connection;
-
     public static readonly string DatabasesCommand =
         @"-- Query Databases
         SELECT d.database_id
@@ -20,11 +18,11 @@ public class ServerInfoProvider(CurrentConnection connection)
         FROM   sys.databases d  
         ORDER BY d.name";
 
-    public async Task<List<DatabaseSummary>> GetDatabases()
+    public async Task<List<DatabaseSummary>> GetDatabases(string connectionString)
     {
         var databases = new List<DatabaseSummary>();
 
-        await using var connection = new SqlConnection(Connection.ConnectionString);
+        await using var connection = new SqlConnection(connectionString);
 
         var command = new SqlCommand(DatabasesCommand, connection);
 
@@ -49,12 +47,5 @@ public class ServerInfoProvider(CurrentConnection connection)
         }
 
         return databases;
-    }
-
-    public async Task<DatabaseSummary?> GetDatabase(string name)
-    {
-        var databases = await GetDatabases();
-
-        return databases.FirstOrDefault(d => d.Name == name);
     }
 }

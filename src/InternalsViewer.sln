@@ -24,7 +24,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.Internals.T
 EndProject
 Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "InternalsViewer.UI.App.vNext (Package)", "InternalsViewer.UI.App.vNext\InternalsViewer.UI.App.vNext (Package)\InternalsViewer.UI.App.vNext (Package).wapproj", "{B8210ADF-C6E2-4789-AE46-3E8D4D56FEB5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.UI.App.vNext", "InternalsViewer.UI.App.vNext\InternalsViewer.UI.App.vNext\InternalsViewer.UI.App.vNext.csproj", "{4D5D80E1-031D-454E-94D0-F5C1309A1F4E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.UI.App.vNext", "InternalsViewer.UI.App.vNext\InternalsViewer.UI.App.vNext\InternalsViewer.UI.App.vNext.csproj", "{4D5D80E1-031D-454E-94D0-F5C1309A1F4E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -208,7 +208,6 @@ Global
 		{6287614D-C687-4E85-A883-921761ED700B}.Debug|ARM64.ActiveCfg = Debug|Any CPU
 		{6287614D-C687-4E85-A883-921761ED700B}.Debug|ARM64.Build.0 = Debug|Any CPU
 		{6287614D-C687-4E85-A883-921761ED700B}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{6287614D-C687-4E85-A883-921761ED700B}.Debug|x64.Build.0 = Debug|Any CPU
 		{6287614D-C687-4E85-A883-921761ED700B}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{6287614D-C687-4E85-A883-921761ED700B}.Debug|x86.Build.0 = Debug|Any CPU
 		{6287614D-C687-4E85-A883-921761ED700B}.Installer|Any CPU.ActiveCfg = Debug|Any CPU
@@ -315,7 +314,7 @@ Global
 		{6287614D-C687-4E85-A883-921761ED700B} = {22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		VisualSVNWorkingCopyRoot = 
 		SolutionGuid = {12A1406C-1C68-4A7F-A0FF-E4E7A65AECAE}
+		VisualSVNWorkingCopyRoot = 
 	EndGlobalSection
 EndGlobal

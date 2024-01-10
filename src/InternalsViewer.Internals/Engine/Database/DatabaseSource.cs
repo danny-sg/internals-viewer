@@ -1,11 +1,15 @@
-﻿using InternalsViewer.Internals.Engine.Allocation;
+﻿using InternalsViewer.Internals.Connections;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Metadata.Internals;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
-public class DatabaseDetail : DatabaseSummary
+public class DatabaseSource(IConnectionType connection) : DatabaseSummary
 {
+    public IConnectionType Connection { get; set; } = connection;
+
     public BootPage BootPage { get; set; } = null!;
 
     /// <summary>

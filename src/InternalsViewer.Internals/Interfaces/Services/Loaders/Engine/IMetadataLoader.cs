@@ -5,5 +5,5 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 
 public interface IMetadataLoader
 {
-    Task<InternalMetadata> Load(DatabaseDetail database);
+    Task<InternalMetadata> Load(DatabaseSource database);
 }

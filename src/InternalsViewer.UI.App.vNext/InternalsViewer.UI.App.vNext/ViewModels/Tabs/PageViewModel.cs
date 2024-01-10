@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
-public partial class PageViewModel(MainViewModel parent, DatabaseDetail database) : TabViewModel(parent)
+public partial class PageViewModel(MainViewModel parent, DatabaseSource database) : TabViewModel(parent)
 {
     public override TabType TabType => TabType.Page;
 
@@ -13,7 +13,7 @@ public partial class PageViewModel(MainViewModel parent, DatabaseDetail database
     private PageAddress pageAddress;
 
     [ObservableProperty]
-    private DatabaseDetail database = database;
+    private DatabaseSource database = database;
 
     public async Task LoadPage(PageAddress address)
     {

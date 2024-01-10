@@ -5,5 +5,5 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 
 public interface IPfsChainService
 {
-    Task<PfsChain> LoadChain(DatabaseDetail databaseDetail, short fileId);
+    Task<PfsChain> LoadChain(DatabaseSource databaseDetail, short fileId);
 }

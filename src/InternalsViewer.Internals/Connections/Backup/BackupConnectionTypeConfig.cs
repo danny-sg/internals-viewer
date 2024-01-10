@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Connections.Backup;
 
-public class BackupConnectionTypeConfig(string filename) : ConnectionTypeConfig
+public class BackupConnectionTypeConfig() : ConnectionTypeConfig
 {
-    public string Filename { get; set; } = filename;
+    public string Filename { get; set; } = string.Empty;
 }

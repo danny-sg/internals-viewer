@@ -92,13 +92,13 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
 
         var metadataProvider = new Mock<IMetadataLoader>();
 
-        metadataProvider.Setup(m => m.Load(It.IsAny<DatabaseDetail>()))
+        metadataProvider.Setup(m => m.Load(It.IsAny<DatabaseSource>()))
                         .ReturnsAsync(metadata);
 
         databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
             .ReturnsAsync(databaseInfo);
 
-        allocationChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseDetail>(), It.IsAny<short>(), It.IsAny<PageType>()))
+        allocationChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>(), It.IsAny<PageType>()))
             .ReturnsAsync(new AllocationChain());
 
         var databaseService = new DatabaseLoader(TestLogger.GetLogger<DatabaseLoader>(TestOutputHelper),
@@ -148,7 +148,7 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
         databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
             .ReturnsAsync(databaseInfo);
 
-        pfsChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseDetail>(), It.IsAny<short>()))
+        pfsChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>()))
             .ReturnsAsync(new PfsChain());
 
         var databaseService = new DatabaseLoader(TestLogger.GetLogger<DatabaseLoader>(testOutput),

@@ -5,9 +5,9 @@ using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Providers.Server;
 
-public class BufferPoolInfoProvider(CurrentConnection connection): IBufferPoolInfoProvider
+public class BufferPoolInfoProvider(string connectionString): IBufferPoolInfoProvider
 {
-    public CurrentConnection Connection { get; } = connection;
+    public string ConnectionString { get; } = connectionString;
 
     public static readonly string BufferPoolCommand =
         @" -- Query Buffer Pool
@@ -22,7 +22,7 @@ public class BufferPoolInfoProvider(CurrentConnection connection): IBufferPoolIn
         var dirtyPages = new List<PageAddress>();
         var cleanPages = new List<PageAddress>();
 
-        await using var connection = new SqlConnection(Connection.ConnectionString);
+        await using var connection = new SqlConnection(ConnectionString);
 
         var command = new SqlCommand(BufferPoolCommand, connection);
 

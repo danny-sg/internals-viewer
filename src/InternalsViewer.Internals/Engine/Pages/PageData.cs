@@ -16,7 +16,7 @@ public class PageData : DataStructure
     /// <summary>
     /// Database the page belongs to
     /// </summary>
-    public DatabaseDetail Database { get; init; } = null!;
+    public DatabaseSource Database { get; init; } = null!;
 
     /// <summary>
     /// Page Address in the format File Id : Page Id

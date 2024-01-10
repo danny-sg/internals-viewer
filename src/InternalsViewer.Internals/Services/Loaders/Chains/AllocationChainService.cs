@@ -24,7 +24,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Chains;
 public class AllocationChainService(IPageService pageService)
     : IAllocationChainService
 {
-    public async Task<AllocationChain> LoadChain(DatabaseDetail database, short fileId, PageType pageType)
+    public async Task<AllocationChain> LoadChain(DatabaseSource database, short fileId, PageType pageType)
     {
         var startPage = pageType switch
         {
@@ -41,7 +41,7 @@ public class AllocationChainService(IPageService pageService)
     /// <summary>
     /// Load a Chain from a start page address
     /// </summary>
-    public async Task<AllocationChain> LoadChain(DatabaseDetail database, PageAddress startPageAddress)
+    public async Task<AllocationChain> LoadChain(DatabaseSource database, PageAddress startPageAddress)
     {
         var allocation = new AllocationChain();
 

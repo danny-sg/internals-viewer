@@ -16,14 +16,11 @@ public sealed partial class MainWindow
 {
     public IDatabaseLoader DatabaseLoader { get; }
 
-    public CurrentConnection Connection { get; }
-
     public required MainViewModel ViewModel { get; set; }
 
-    public MainWindow(IDatabaseLoader databaseLoader, CurrentConnection connection)
+    public MainWindow(IDatabaseLoader databaseLoader)
     {
         DatabaseLoader = databaseLoader;
-        Connection = connection;
 
         InitializeComponent();
 
@@ -33,7 +30,7 @@ public sealed partial class MainWindow
         
         SetTitleBar(CustomDragRegion);
 
-        ViewModel = new MainViewModel(databaseLoader, Connection);
+        ViewModel = new MainViewModel(databaseLoader);
     }
 
     private void TabView_OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)

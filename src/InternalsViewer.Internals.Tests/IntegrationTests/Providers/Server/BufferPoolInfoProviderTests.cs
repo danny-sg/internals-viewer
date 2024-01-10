@@ -10,9 +10,7 @@ public class BufferPoolInfoProviderTests
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
-
-        var provider = new BufferPoolInfoProvider(connection);
+        var provider = new BufferPoolInfoProvider(connectionString);
 
         return provider;
     }

@@ -11,7 +11,7 @@ public class PageService(ILogger<PageService> logger,
 {
     public ILogger<PageService> Logger { get; } = logger;
 
-    public async Task<Page> GetPage(DatabaseDetail database, PageAddress pageAddress)
+    public async Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress)
     {
         using var _ = Logger.BeginScope($"PageService.GetPage: {pageAddress}");
 
@@ -31,7 +31,7 @@ public class PageService(ILogger<PageService> logger,
         return parser.Parse(page);
     }
 
-    public async Task<T> GetPage<T>(DatabaseDetail database, PageAddress pageAddress) where T : Page
+    public async Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress) where T : Page
     {
         var page = await GetPage(database, pageAddress);
 

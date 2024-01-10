@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
@@ -16,19 +17,15 @@ public partial class MainForm : Form
 
     public IRecordService RecordService { get; }
 
-    public CurrentConnection Connection { get; }
-
     public MainForm(IServerInfoProvider serverInfoProvider,
                     IDatabaseLoader databaseLoader,
                     IPageService pageService,
-                    IRecordService recordService,
-                    CurrentConnection connection)
+                    IRecordService recordService)
     {
         ServerInfoProvider = serverInfoProvider;
         DatabaseLoader = databaseLoader;
         PageService = pageService;
         RecordService = recordService;
-        Connection = connection;
 
         InitializeComponent();
     }
@@ -41,14 +38,15 @@ public partial class MainForm : Form
         {
             if (connectionForm.DialogResult == DialogResult.OK)
             {
-                Connection.ConnectionString = connectionForm.ConnectionString;
+                var connectionString = connectionForm.ConnectionString;
 
-                var databases = await ServerInfoProvider.GetDatabases();
-
-                Connection.DatabaseName =databases.FirstOrDefault()?.Name ?? "master";
+                var databases = await ServerInfoProvider.GetDatabases(connectionString);
 
                 allocationWindow.Databases = databases;
-                
+
+                var connection = ServerConnectionFactory.Create(c => c.ConnectionString = connectionString);
+
+                allocationWindow.CurrentDatabase = new Internals.Engine.Database.DatabaseSource(connection);
                 allocationWindow.RefreshDatabases();
             }
         };

@@ -12,9 +12,7 @@ internal class ServiceHelper
 {
     internal static PageService CreateFilePageService(ITestOutputHelper testOutput, LogLevel logLevel = LogLevel.Debug)
     {
-        var reader = new FilePageReader("");
-
-        var loader = new PageLoader(reader);
+        var loader = new PageLoader();
 
         var parsers = new IPageParser[]
         {
@@ -29,9 +27,9 @@ internal class ServiceHelper
 
     internal static PageService CreateDataFilePageService(ITestOutputHelper testOutput, LogLevel logLevel = LogLevel.Debug)
     {
-        var reader = new DataFilePageReader("./IntegrationTests/Test Data/TestDatabase");
+        
 
-        var loader = new PageLoader(reader);
+        var loader = new PageLoader();
 
         var parsers = new IPageParser[]
         {
@@ -51,9 +49,9 @@ internal class ServiceHelper
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var reader = new QueryPageReader(new CurrentConnection { ConnectionString = connectionString });
+        var reader = new QueryPageReader(connectionString);
 
-        var loader = new PageLoader(reader);
+        var loader = new PageLoader();
 
         var parsers = new IPageParser[]
         {

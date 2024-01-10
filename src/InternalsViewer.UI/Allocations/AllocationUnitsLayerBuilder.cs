@@ -13,7 +13,7 @@ public class AllocationUnitsLayerBuilder
     private const int UserSaturation = 150;
     private const int UserValue = 220;
 
-    public static List<AllocationLayer> GenerateLayers(DatabaseDetail database, bool separateIndexes)
+    public static List<AllocationLayer> GenerateLayers(DatabaseSource database, bool separateIndexes)
     {
         var layers = new List<AllocationLayer>();
 

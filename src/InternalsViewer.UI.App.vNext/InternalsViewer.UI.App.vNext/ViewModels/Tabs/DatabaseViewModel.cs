@@ -8,12 +8,12 @@ using InternalsViewer.UI.App.vNext.Models;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
-public partial class DatabaseViewModel(MainViewModel parent, DatabaseDetail database) : TabViewModel(parent)
+public partial class DatabaseViewModel(MainViewModel parent, DatabaseSource database) : TabViewModel(parent)
 {
     public override TabType TabType => TabType.Database;
 
     [ObservableProperty]
-    private DatabaseDetail database = database;
+    private DatabaseSource database = database;
 
     [ObservableProperty]
     private ObservableCollection<AllocationLayer> allocationLayers = new();

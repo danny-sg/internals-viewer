@@ -17,7 +17,7 @@ public class RecordReader(ILogger<RecordReader> logger, IPageService pageService
 
     public DataRecordLoader DataRecordLoader { get; } = dataRecordLoader;
 
-    public async Task<List<DataRecord>> Read(DatabaseDetail database, PageAddress startPage, TableStructure structure)
+    public async Task<List<DataRecord>> Read(DatabaseSource database, PageAddress startPage, TableStructure structure)
     {
         Logger.LogTrace("Reading records from {StartPage} - {@Structure}", startPage, structure);
 

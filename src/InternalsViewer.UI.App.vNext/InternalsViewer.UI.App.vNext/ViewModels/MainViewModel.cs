@@ -3,6 +3,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Internals.Connections;
+using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
@@ -17,8 +19,6 @@ public partial class MainViewModel : ObservableObject
 {
     public IDatabaseLoader DatabaseLoader { get; }
 
-    public CurrentConnection Connection { get; }
-
     [ObservableProperty]
     private TabViewModel selectedTab;
 
@@ -26,10 +26,9 @@ public partial class MainViewModel : ObservableObject
     private ObservableCollection<TabViewModel> tabs = new();
 
     /// <inheritdoc/>
-    public MainViewModel(IDatabaseLoader databaseLoader, CurrentConnection connection)
+    public MainViewModel(IDatabaseLoader databaseLoader)
     {
         DatabaseLoader = databaseLoader;
-        Connection = connection;
 
         Tabs.Add(new GetStartedViewModel(this) { Name = "Get Started"});
 
@@ -39,8 +38,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ConnectServer(string databaseName)
     {
-        //await AddDatabase(databaseName);
-        Calibrate();
+        await AddDatabase(databaseName);
+
+        //Calibrate();
     }
 
     [RelayCommand]
@@ -56,10 +56,11 @@ public partial class MainViewModel : ObservableObject
 
     public async Task AddDatabase(string name)
     {
-        Connection.ConnectionString = "Server=.;Database=master;Integrated Security=true;TrustServerCertificate=True";
-        Connection.DatabaseName = "TestDatabase";
+       var connectionString = "Server=.;Database=master;Integrated Security=true;TrustServerCertificate=True";
 
-        var database = await DatabaseLoader.Load("TestDatabase");
+        var connection = ServerConnectionFactory.Create(c => c.ConnectionString = connectionString);
+
+        var database = await DatabaseLoader.Load("TestDatabase", connection);
 
         var viewModel = new DatabaseViewModel(this, database);
 
@@ -78,7 +79,7 @@ public partial class MainViewModel : ObservableObject
 
     public void Calibrate()
     {
-        var database = new DatabaseDetail();
+        var database = new DatabaseSource(null!);
 
         var viewModel = new DatabaseViewModel(this, database);  
 
@@ -95,7 +96,7 @@ public partial class MainViewModel : ObservableObject
         SelectedTab = viewModel;
     }
 
-    public async Task OpenPage(DatabaseDetail database, PageAddress pageAddress)
+    public async Task OpenPage(DatabaseSource database, PageAddress pageAddress)
     {
         var viewModel = new PageViewModel(this, database);
 

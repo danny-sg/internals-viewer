@@ -1,7 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 namespace InternalsViewer.Internals.Services.Pages.Loaders;
@@ -13,13 +12,11 @@ namespace InternalsViewer.Internals.Services.Pages.Loaders;
 /// Page Data is the raw data from the page plus a parsed paged header. These elements are common to all pages. Once the data has been 
 /// loaded further parsing can be performed for specific page types.
 /// </remarks>
-public class PageLoader(IPageReader reader) : IPageLoader
+public class PageLoader : IPageLoader
 {
-    public IPageReader Reader { get; } = reader;
-
-    public async Task<PageData> Load(DatabaseDetail database, PageAddress pageAddress)
+    public async Task<PageData> Load(DatabaseSource database, PageAddress pageAddress)
     {
-        var data = await Reader.Read(database.Name, pageAddress);
+        var data = await database.Connection.PageReader.Read(database.Name, pageAddress);
 
         var header = PageHeaderLoader.Read(data);
 

@@ -23,7 +23,7 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput, LogLevel), pageService, loader);
 
-        var database = new DatabaseDetail
+        var database = new DatabaseSource
         {
             Name = "TestDatabase",
             BootPage = new BootPage { FirstAllocationUnitsPage = new PageAddress(1, 20) }

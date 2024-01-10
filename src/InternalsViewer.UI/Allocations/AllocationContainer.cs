@@ -25,7 +25,7 @@ public partial class AllocationContainer : UserControl
     public event EventHandler<PageEventArgs>? PageOver;
     public event EventHandler? RangeSelected;
 
-    public DatabaseDetail? CurrentDatabase { get; set; }
+    public DatabaseSource? CurrentDatabase { get; set; }
 
     public AllocationContainer()
     {

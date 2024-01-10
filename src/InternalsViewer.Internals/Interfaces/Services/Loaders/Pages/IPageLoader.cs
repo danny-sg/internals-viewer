@@ -6,5 +6,5 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 public interface IPageLoader
 {
-    Task<PageData> Load(DatabaseDetail database, PageAddress pageAddress);
+    Task<PageData> Load(DatabaseSource database, PageAddress pageAddress);
 }

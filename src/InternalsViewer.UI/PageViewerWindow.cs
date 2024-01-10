@@ -41,17 +41,19 @@ public partial class PageViewerWindow : UserControl
 
     public PfsByte? PfsByte { get; set; }
 
-    public DatabaseDetail Database { get; set; } = new();
-
     public Page? Page { get; set; }
 
     public IPageService PageService { get; set; }
 
+    public DatabaseSource Database { get;  }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="PageViewerWindow"/> class.
     /// </summary>
-    public PageViewerWindow(IPageService pageService, IRecordService recordService)
+    public PageViewerWindow(IPageService pageService, IRecordService recordService, DatabaseSource database)
     {
+        Database = database;
+
         RecordService = recordService;
         PageService = pageService;
 

@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 public interface IPageService
 {
-    Task<Page> GetPage(DatabaseDetail database, PageAddress pageAddress);
+    Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress);
 
-    Task<T> GetPage<T>(DatabaseDetail database, PageAddress pageAddress) where T : Page;
+    Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress) where T : Page;
 }

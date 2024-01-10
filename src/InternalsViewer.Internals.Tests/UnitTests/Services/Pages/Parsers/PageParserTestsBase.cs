@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Connections.File;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Services.Pages.Loaders;
 using InternalsViewer.Internals.Tests.Helpers;
 
@@ -8,7 +9,7 @@ public abstract class PageParserTestsBase(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
 
-    protected DatabaseDetail Database { get; set; } = new() { Name = "TestDatabase" };
+    protected DatabaseSource Database { get; set; } = new(FileConnectionFactory.GetConnection(new ("./UnitTests/Test Data/Test Pages/")));
 
     protected async Task<PageData> GetPageData(PageAddress pageAddress)
     {
@@ -16,7 +17,7 @@ public abstract class PageParserTestsBase(ITestOutputHelper testOutput)
 
         var reader = new FilePageReader(filePath);
 
-        var pageLoader = new PageLoader(reader);
+        var pageLoader = new PageLoader();
 
         return await pageLoader.Load(Database, pageAddress);
     }

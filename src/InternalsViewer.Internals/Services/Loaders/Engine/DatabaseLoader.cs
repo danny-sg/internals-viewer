@@ -8,6 +8,8 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Providers.Metadata;
 using System.Diagnostics;
+using InternalsViewer.Internals.Connections;
+using InternalsViewer.Internals.Interfaces.Connections;
 
 namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
@@ -40,24 +42,17 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
     /// <summary>
     /// Create and load a Database object for the given database name
     /// </summary>
-    public async Task<DatabaseDetail> Load(string name)
+    public async Task<DatabaseSource> Load(string name, IConnectionType connection)
     {
         Logger.LogInformation($"Loading database {name}");
 
         Logger.LogDebug("Getting database information");
 
-        var databaseInfo = await ServerInfoProvider.GetDatabase(name)
-                           ?? throw new ArgumentException($"Database {name} not found");
-
-        var database = new DatabaseDetail
+        var database = new DatabaseSource(connection)
         {
-            DatabaseId = databaseInfo.DatabaseId,
-            Name = databaseInfo.Name,
-            State = databaseInfo.State,
-            CompatibilityLevel = databaseInfo.CompatibilityLevel
+            DatabaseId = 1,
+            Name = name
         };
-
-        Logger.LogDebug("--> {DatabaseInfo}", databaseInfo);
 
         Logger.LogDebug("Loading Boot Page");
 
@@ -82,7 +77,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
         return database;
     }
 
-    private async Task RefreshMetadata(DatabaseDetail database)
+    private async Task RefreshMetadata(DatabaseSource database)
     {
         var metadata = await MetadataLoader.Load(database);
 
@@ -92,7 +87,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
     /// <summary>
     /// Refresh the allocation chains/bitmaps for files and allocation units
     /// </summary>
-    public async Task RefreshAllocations(DatabaseDetail database)
+    public async Task RefreshAllocations(DatabaseSource database)
     {
         await RefreshFileAllocations(database);
 
@@ -101,7 +96,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
         await RefreshAllocationUnitAllocations(database);
     }
 
-    private async Task RefreshFileAllocations(DatabaseDetail databaseDetail)
+    private async Task RefreshFileAllocations(DatabaseSource databaseDetail)
     {
         Logger.LogDebug("Refreshing file allocations (GAM/SGAM/DCM/BCM)");
 
@@ -130,7 +125,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
         }
     }
 
-    private async Task RefreshAllocationUnitAllocations(DatabaseDetail database)
+    private async Task RefreshAllocationUnitAllocations(DatabaseSource database)
     {
         Logger.LogDebug("Refreshing allocation unit allocations (via IAMs)");
 
@@ -157,7 +152,7 @@ public class DatabaseLoader(ILogger<DatabaseLoader> logger,
     /// <summary>
     /// Refresh the PFS chains for each file
     /// </summary>
-    private async Task RefreshPfs(DatabaseDetail databaseDetail)
+    private async Task RefreshPfs(DatabaseSource databaseDetail)
     {
         Logger.LogDebug("Refreshing PFS allocations");
 

@@ -9,11 +9,7 @@ public class ServerInfoProviderTests
 {
     private ServerInfoProvider GetProvider()
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("local");
-
-        var connection = new CurrentConnection { ConnectionString = connectionString, DatabaseName = "AdventureWorks2022" };
-
-        var databaseInfoProvider = new ServerInfoProvider(connection);
+        var databaseInfoProvider = new ServerInfoProvider();
 
         return databaseInfoProvider;
     }
@@ -21,9 +17,11 @@ public class ServerInfoProviderTests
     [Fact]
     public async Task Can_Get_Databases()
     {
+        var connectionString = ConnectionStringHelper.GetConnectionString("local");
+
         var databaseInfoProvider = GetProvider();
 
-        var databases = await databaseInfoProvider.GetDatabases();
+        var databases = await databaseInfoProvider.GetDatabases(connectionString);
 
         Assert.True(databases.Count > 1);
 
