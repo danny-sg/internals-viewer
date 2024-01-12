@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.vNext.Controls.ConnectTile"
+    x:Class="InternalsViewer.UI.App.vNext.Controls.Connections.ConnectTile"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -119,29 +119,8 @@
             VerticalScrollMode="Disabled"
             ViewChanging="ScrollViewer_ViewChanging">
             <Grid x:Name="ContentGrid" Margin="36,0,36,0">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <local:HeaderTile
-                        Title="Connect to SQL Server"
-                        Description="Connect Internals Viewer to a SQL Server instance">
-                        <local:HeaderTile.Source>
-                            <Image Source="/Assets/AppLogo-512.png"/>
-                        </local:HeaderTile.Source>
-                    </local:HeaderTile>
-                    <local:HeaderTile
-                        Title="Data file"
-                        Description="Open an MDF data file for a database that has been taken offline">
-                        <local:HeaderTile.Source>
-                            <Image Source="/Assets/AppLogo-512.png" />
-                        </local:HeaderTile.Source>
-                    </local:HeaderTile>
-                    <local:HeaderTile
-                        Title="Backup file"
-                        Description="Open a database from a full database backup.">
-                        <local:HeaderTile.Source>
-                            <Image Source="/Assets/AppLogo-512.png" />
-                        </local:HeaderTile.Source>
-                    </local:HeaderTile>
-                </StackPanel>
+                <ContentPresenter Content="{Binding Content}"/>
+                
             </Grid>
         </ScrollViewer>
         <Button

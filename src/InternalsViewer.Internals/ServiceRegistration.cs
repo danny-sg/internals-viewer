@@ -6,7 +6,6 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
-using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Server;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Readers.Pages;

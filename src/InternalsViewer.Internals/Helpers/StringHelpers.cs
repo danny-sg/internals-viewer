@@ -1,6 +1,8 @@
-﻿namespace InternalsViewer.Internals.Helpers;
+﻿using System.Text.RegularExpressions;
 
-public class StringHelpers
+namespace InternalsViewer.Internals.Helpers;
+
+public static class StringHelpers
 {
     private static readonly char[] HexDigits =
     {
@@ -41,5 +43,10 @@ public class StringHelpers
     public static string ToHexString(byte bytes)
     {
         return ToHexString(new byte[1] { bytes });
+    }
+
+    public static string SplitCamelCase(this string value)
+    {
+        return Regex.Replace(value, "([A-Z])", " $1", RegexOptions.Compiled).Trim();
     }
 }

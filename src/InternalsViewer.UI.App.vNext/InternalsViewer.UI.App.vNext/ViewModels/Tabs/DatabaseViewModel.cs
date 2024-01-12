@@ -3,15 +3,12 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.UI.App.vNext.Helpers;
 using InternalsViewer.UI.App.vNext.Models;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
-public partial class DatabaseViewModel(MainViewModel parent, DatabaseSource database) : TabViewModel(parent)
+public partial class DatabaseViewModel(MainViewModel parent, DatabaseSource database) : TabViewModel(parent, TabType.Database)
 {
-    public override TabType TabType => TabType.Database;
-
     [ObservableProperty]
     private DatabaseSource database = database;
 
@@ -31,6 +28,9 @@ public partial class DatabaseViewModel(MainViewModel parent, DatabaseSource data
     [NotifyPropertyChangedFor(nameof(GridAllocationLayers))]
     private string filter = string.Empty;
 
-    public List<AllocationLayer> GridAllocationLayers 
+    [ObservableProperty]
+    private bool isLayerDetailVisible;
+
+    public List<AllocationLayer> GridAllocationLayers
         => allocationLayers.Where(w => string.IsNullOrEmpty(Filter) || w.Name.ToLower().Contains(filter.ToLower())).ToList();
 }

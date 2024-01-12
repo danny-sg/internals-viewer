@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
-public partial class PageViewModel(MainViewModel parent, DatabaseSource database) : TabViewModel(parent)
+public partial class PageViewModel(MainViewModel parent, DatabaseSource database) : TabViewModel(parent, TabType.Page)
 {
     public override TabType TabType => TabType.Page;
 

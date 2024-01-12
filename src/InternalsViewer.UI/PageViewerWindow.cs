@@ -17,7 +17,6 @@ using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.TransactionLog;
-using InternalsViewer.UI.Controls;
 using InternalsViewer.UI.Markers;
 using InternalsViewer.UI.Renderers;
 

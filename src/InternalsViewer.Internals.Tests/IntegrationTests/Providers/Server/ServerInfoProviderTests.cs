@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Engine.Database.Enums;
-using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Providers.Server;
 using InternalsViewer.Internals.Tests.Helpers;
 

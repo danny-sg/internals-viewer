@@ -1,4 +1,7 @@
-namespace InternalsViewer.UI.App.vNext.Controls;
+using System;
+using Microsoft.UI.Xaml.Controls.Primitives;
+
+namespace InternalsViewer.UI.App.vNext.Controls.Connections;
 
 public sealed partial class HeaderTile
 {
@@ -10,6 +13,9 @@ public sealed partial class HeaderTile
 
     public static readonly DependencyProperty TitleProperty =
         DependencyProperty.Register(nameof(Title), typeof(string), typeof(HeaderTile), new PropertyMetadata(null));
+
+    public static readonly DependencyProperty FlyoutProperty =
+        DependencyProperty.Register(nameof(Flyout), typeof(FlyoutBase), typeof(HeaderTile), new PropertyMetadata(null));
 
     public string Description
     {
@@ -29,8 +35,22 @@ public sealed partial class HeaderTile
     public static readonly DependencyProperty SourceProperty =
         DependencyProperty.Register(nameof(Source), typeof(object), typeof(HeaderTile), new PropertyMetadata(null));
 
+
+    public FlyoutBase Flyout
+    {
+        get { return (FlyoutBase)GetValue(FlyoutProperty); }
+        set { SetValue(FlyoutProperty, value); }
+    }
+
     public HeaderTile()
     {
-        this.InitializeComponent();
+        InitializeComponent();
     }
+
+    private void Button_Click(object sender, RoutedEventArgs e)
+    {
+        Click?.Invoke(this, e);
+    }
+
+    public event EventHandler<RoutedEventArgs> Click;
 }

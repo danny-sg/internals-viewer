@@ -1,6 +1,6 @@
+using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages.Enums;
-using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 
@@ -25,9 +25,11 @@ public class QueryPageReaderTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public async Task Can_Read_Mdf_Page()
     {
-        var service = ServiceHelper.CreateDataFilePageService(TestOutputHelper);
+        var service = ServiceHelper.CreatePageService(TestOutputHelper);
 
-        var result = await service.GetPage(new DatabaseSource(null!) { Name = "TestDatabase" }, 
+        var connection = FileConnectionFactory.Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase.mdf");
+
+        var result = await service.GetPage(new DatabaseSource(connection), 
                                            new PageAddress(1, 9));
 
         Assert.Equal(PageType.Boot, result.PageHeader.PageType);  

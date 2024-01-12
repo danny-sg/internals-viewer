@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.UI.Xaml.Controls;
+﻿using Microsoft.UI.Xaml.Controls;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
 namespace InternalsViewer.UI.App.vNext.Helpers.Selectors;
@@ -20,7 +19,7 @@ public class TabTemplateSelector : DataTemplateSelector
         {
             TabType.Page => PageTemplate,
             TabType.Database => DatabaseTemplate,
-            TabType.GetStarted => GetStartedTemplate,
+            TabType.Connect => GetStartedTemplate,
             _ => null
         };
     }

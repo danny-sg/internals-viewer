@@ -28,7 +28,7 @@ public class DataFilePageReader(string path) : PageReader, IPageReader
 
         var data = new byte[PageData.Size];
 
-        await using var file = File.OpenRead(Path.Combine(FilePath, $"{name}.mdf"));
+        await using var file = File.OpenRead(FilePath);
 
         file.Seek(offset, SeekOrigin.Begin);
 

@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using InternalsViewer.UI.App.vNext.Models;
 using CommunityToolkit.WinUI.UI.Controls;
-using InternalsViewer.UI.App.vNext.Controls;
+using InternalsViewer.UI.App.vNext.Controls.Allocation;
 using DatabaseViewModel = InternalsViewer.UI.App.vNext.ViewModels.Tabs.DatabaseViewModel;
 
 namespace InternalsViewer.UI.App.vNext.Views;

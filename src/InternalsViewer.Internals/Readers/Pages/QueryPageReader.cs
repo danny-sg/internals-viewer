@@ -2,7 +2,6 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers;
-using InternalsViewer.Internals.Providers;
 using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Readers.Pages;

@@ -25,13 +25,15 @@
     <ItemGroup>
         <None Remove="Controls\AllocationControl.xaml" />
         <None Remove="Controls\AllocationDataGridView.xaml" />
+        <None Remove="Controls\Connections\BackupFileConnectionControl.xaml" />
         <None Remove="Controls\ConnectTile.xaml" />
         <None Remove="Controls\HeaderTile.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
+        <None Remove="Controls\ServerConnectionControl.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
+        <None Remove="Views\ConnectView.xaml" />
         <None Remove="Views\DatabaseView.xaml" />
-        <None Remove="Views\GetStarted.xaml" />
         <None Remove="Views\PageView.xaml" />
     </ItemGroup>
     <ItemGroup>
@@ -39,16 +41,20 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-        <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.0.230907" />
+        <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.0.240109" />
         <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
-        <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.Layout" Version="7.1.2" />
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+        <PackageReference Include="CommunityToolkit.WinUI.Behaviors" Version="8.0.240109" />
+        <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.0.240109" />
+        <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.0.240109" />
+     
         <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-        <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231115000" />
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231219000" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.2428" />
-        <PackageReference Include="SkiaSharp" Version="2.88.6" />
-        <PackageReference Include="SkiaSharp.Views.WinUI" Version="2.88.6" />
+        <PackageReference Include="SkiaSharp" Version="2.88.7" />
+        <PackageReference Include="SkiaSharp.Views.WinUI" Version="2.88.7" />
+        <PackageReference Include="System.Text.Json" Version="8.0.1" />
         <Manifest Include="$(ApplicationManifest)" />
     </ItemGroup>
 
@@ -72,6 +78,9 @@
       <Content Update="Assets\AppLogo.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
+      <Content Update="Assets\ConnectHeaderImage.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
 
     <ItemGroup>
@@ -81,6 +90,12 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\Connections\BackupFileConnectionControl.xaml">
+        <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+      </Page>
+      <Page Update="Controls\ServerConnectionControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\HeaderTile.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
@@ -90,7 +105,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Page Update="Views\GetStarted.xaml">
+      <Page Update="Views\ConnectView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
     </ItemGroup>
@@ -138,6 +153,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Services\" />
+      <Folder Include="Controls\Allocation\" />
+      <Folder Include="Controls\Page\" />
     </ItemGroup>
 </Project>

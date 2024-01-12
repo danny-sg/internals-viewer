@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using Azure;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;

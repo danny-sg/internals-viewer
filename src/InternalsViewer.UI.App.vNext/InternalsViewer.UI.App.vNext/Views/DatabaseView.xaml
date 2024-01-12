@@ -12,6 +12,7 @@
     xmlns:drawing="using:System.Drawing"
     xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
     xmlns:tabs="using:InternalsViewer.UI.App.vNext.ViewModels.Tabs"
+    xmlns:allocation="using:InternalsViewer.UI.App.vNext.Controls.Allocation"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" x:Name="LayoutGrid">
         <Grid.RowDefinitions>
@@ -26,7 +27,7 @@
                     DefaultLabelPosition="Right" 
                     HorizontalAlignment="Left">
 
-                <AppBarButton Icon="Add" Label="Connect..."/>
+                <AppBarButton  Label="Details"/>
 
             </CommandBar>
             <CommandBar 
@@ -43,7 +44,7 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <controls:AllocationControl Grid.Row="0"
+            <allocation:AllocationControl Grid.Row="0"
                                         MinHeight="200"
                                         ExtentCount="{x:Bind ViewModel.Size, Mode=OneWay}" 
                                         Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"

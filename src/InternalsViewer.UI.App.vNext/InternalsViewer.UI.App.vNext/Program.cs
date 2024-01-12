@@ -2,6 +2,9 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Internals;
 using InternalsViewer.UI.App.vNext.Hosting;
+using InternalsViewer.UI.App.vNext.Models;
+using InternalsViewer.UI.App.vNext.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 #if !DISABLE_XAML_GENERATED_MAIN
@@ -12,10 +15,6 @@ namespace InternalsViewer.UI.App.vNext;
 
 public static partial class Program
 {
-    /// <summary>
-    /// Ensures that the process can run XAML, and provides a deterministic error if a
-    /// check fails. Otherwise, it quietly does nothing.
-    /// </summary>
     [LibraryImport("Microsoft.ui.xaml.dll")]
     private static partial void XamlCheckProcessRequirements();
 
@@ -30,7 +29,11 @@ public static partial class Program
             HostingExtensions.HostingContextKey,
             new HostingContext { IsLifetimeLinked = true });
 
+        builder.Services.AddSingleton<SettingsService>();
+
         builder.Services.RegisterServices();
+
+        builder.Services.Configure<SettingsOptions>(builder.Configuration.GetSection(nameof(SettingsOptions)));
 
         var host = builder.ConfigureWinUi<App>().Build();
 

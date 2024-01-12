@@ -1,9 +1,9 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Connections.File;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Engine;
 using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Tests.Helpers;
-using Xunit.Sdk;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Loaders.Engine;
 
@@ -14,17 +14,17 @@ public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public async Task Can_Load_Metadata()
     {
-        var pageService = ServiceHelper.CreateDataFilePageService(TestOutput);
-
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
-
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(TestOutput), pageService, loader);
-
-        var database = new DatabaseSource
+        var database = new DatabaseSource(FileConnectionFactory.Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase.mdf"))
         {
             Name = "TestDatabase",
             BootPage = new BootPage { FirstAllocationUnitsPage = new PageAddress(1, 20) }
         };
+
+        var pageService = ServiceHelper.CreatePageService(TestOutput);
+
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(TestOutput), pageService, loader);
 
         var service = new MetadataLoader(TestLogger.GetLogger<MetadataLoader>(TestOutput), dataReader);
 

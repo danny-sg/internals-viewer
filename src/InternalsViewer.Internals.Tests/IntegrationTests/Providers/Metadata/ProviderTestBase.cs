@@ -1,6 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Internals;
-using InternalsViewer.Internals.Providers;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Engine;
 using InternalsViewer.Internals.Services.Loaders.Records;
@@ -17,7 +16,7 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
 
     protected async Task<InternalMetadata> GetMetadata()
     {
-        var pageService = ServiceHelper.CreateDataFilePageService(TestOutput, LogLevel);
+        var pageService = ServiceHelper.CreatePageService(TestOutput, LogLevel);
 
         var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
 

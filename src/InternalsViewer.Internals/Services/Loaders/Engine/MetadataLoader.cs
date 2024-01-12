@@ -7,7 +7,6 @@ using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
-using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Internals.Services.Loaders.Engine;
 

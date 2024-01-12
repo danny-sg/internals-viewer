@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace InternalsViewer.UI.App.vNext.Controls;
+namespace InternalsViewer.UI.App.vNext.Controls.Page;
 public sealed partial class LabelTextBox : UserControl
 {
     public LabelTextBox()

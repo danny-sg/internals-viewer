@@ -8,7 +8,6 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Providers.Metadata;
 using System.Diagnostics;
-using InternalsViewer.Internals.Connections;
 using InternalsViewer.Internals.Interfaces.Connections;
 
 namespace InternalsViewer.Internals.Services.Loaders.Engine;

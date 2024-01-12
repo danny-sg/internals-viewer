@@ -7,4 +7,6 @@ public interface IConnectionType
     IPageReader PageReader { get; }
 
     string Identifier { get; }
+    
+    string Name { get; set; }
 }

@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Providers;
-using InternalsViewer.Internals.Providers.Server;
+﻿using InternalsViewer.Internals.Providers.Server;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Providers.Server;

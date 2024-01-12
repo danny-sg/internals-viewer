@@ -1,7 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Structures;
-using System;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
 

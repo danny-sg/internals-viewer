@@ -30,9 +30,9 @@
                 </Grid>
             </DataTemplate>
 
-            <DataTemplate x:Key="GetStartedTemplate"  x:DataType="tabs:GetStartedViewModel">
+            <DataTemplate x:Key="GetStartedTemplate"  x:DataType="tabs:ConnectViewModel">
                 <Grid>
-                    <views:GetStarted x:Name="GetStartedView" DataContext="{x:Bind}"  />
+                    <views:ConnectView x:Name="GetStartedView" DataContext="{x:Bind}"  />
                 </Grid>
             </DataTemplate>
             
@@ -76,7 +76,7 @@
 
             <TabView.TabStripHeader>
                 <Grid x:Name="AppTitleBar"  
-                      Height="34">
+                      Height="38">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition x:Name="LeftPaddingColumn" Width="8"/>
                         <ColumnDefinition/>

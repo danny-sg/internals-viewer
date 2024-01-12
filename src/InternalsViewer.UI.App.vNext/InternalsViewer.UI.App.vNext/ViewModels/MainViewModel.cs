@@ -3,13 +3,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using InternalsViewer.Internals.Connections;
+using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
-using InternalsViewer.Internals.Providers;
 using InternalsViewer.UI.App.vNext.Models;
+using InternalsViewer.UI.App.vNext.Services;
 using InternalsViewer.UI.App.vNext.ViewModels.Allocation;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
@@ -18,29 +19,51 @@ namespace InternalsViewer.UI.App.vNext.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     public IDatabaseLoader DatabaseLoader { get; }
+    public SettingsService SettingsService { get; }
 
     [ObservableProperty]
-    private TabViewModel selectedTab;
+    private TabViewModel? selectedTab;
 
     [ObservableProperty]
     private ObservableCollection<TabViewModel> tabs = new();
 
     /// <inheritdoc/>
-    public MainViewModel(IDatabaseLoader databaseLoader)
+    public MainViewModel(IDatabaseLoader databaseLoader, SettingsService settingsService)
     {
         DatabaseLoader = databaseLoader;
+        SettingsService = settingsService;
+    }
 
-        Tabs.Add(new GetStartedViewModel(this) { Name = "Get Started"});
+    public async Task InitializeAsync()
+    {
+        var connectViewModel = await ConnectViewModel.CreateAsync(this, SettingsService);
+
+        Tabs.Add(connectViewModel);
 
         SelectedTab = Tabs[0];
     }
 
     [RelayCommand]
-    private async Task ConnectServer(string databaseName)
+    private async Task ConnectServer(string connectionString)
     {
-        await AddDatabase(databaseName);
+        await AddDatabase(connectionString);
 
         //Calibrate();
+    }
+
+    [RelayCommand]
+    private async Task ConnectFile(string filename)
+    {
+        await AddFile(filename);
+
+        //Calibrate();
+    }
+
+    private async Task AddFile(string filename)
+    {
+        var connection = FileConnectionFactory.Create(c => c.Filename = filename);
+
+        await AddConnection(connection);
     }
 
     [RelayCommand]
@@ -54,17 +77,26 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    public async Task AddDatabase(string name)
+    public async Task AddDatabase(string connectionString)
     {
-       var connectionString = "Server=.;Database=master;Integrated Security=true;TrustServerCertificate=True";
-
         var connection = ServerConnectionFactory.Create(c => c.ConnectionString = connectionString);
 
-        var database = await DatabaseLoader.Load("TestDatabase", connection);
+        await AddConnection(connection);
+    }
+
+    private async Task AddConnection(IConnectionType connection)
+    {
+        var database = await DatabaseLoader.Load(connection.Name, connection);
 
         var viewModel = new DatabaseViewModel(this, database);
 
-        viewModel.Name = name;
+        viewModel.Name = connection.Name;
+
+        Tabs.Add(viewModel);
+
+        SelectedTab = viewModel;
+
+        viewModel.IsLoading = true;
 
         var layers = AllocationLayerBuilder.GenerateLayers(database, true);
 
@@ -72,9 +104,7 @@ public partial class MainViewModel : ObservableObject
         viewModel.Size = database.GetFileSize(1);
         viewModel.AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
 
-        Tabs.Add(viewModel);
-
-        SelectedTab = viewModel;
+        viewModel.IsLoading = false;
     }
 
     public void Calibrate()

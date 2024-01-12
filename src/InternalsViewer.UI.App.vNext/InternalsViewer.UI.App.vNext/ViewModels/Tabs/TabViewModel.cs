@@ -1,6 +1,5 @@
 ﻿using System;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -24,9 +23,10 @@ public partial class TabViewModel : ObservableObject
     [ObservableProperty]
     private ImageSource imageSource = new BitmapImage(new Uri("ms-appx:///Assets/Database.png"));
 
-    public TabViewModel(MainViewModel parent)
+    public TabViewModel(MainViewModel parent, TabType tabType)
     {
         Parent = parent;
+        TabType = tabType;
         TabId = Guid.NewGuid().ToString();
     }
 }

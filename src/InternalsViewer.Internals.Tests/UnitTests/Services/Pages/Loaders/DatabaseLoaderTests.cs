@@ -137,17 +137,6 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
         var pfsChainService = new Mock<IPfsChainService>();
         var metadataLoader = new Mock<IMetadataLoader>();
 
-        var databaseInfo = new DatabaseSummary
-        {
-            DatabaseId = 1,
-            Name = "TestDatabase",
-            State = DatabaseState.Online,
-            CompatibilityLevel = 170,
-        };
-
-        databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
-            .ReturnsAsync(databaseInfo);
-
         pfsChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>()))
             .ReturnsAsync(new PfsChain());
 

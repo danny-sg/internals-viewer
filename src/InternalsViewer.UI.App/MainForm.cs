@@ -3,7 +3,6 @@ using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
-using InternalsViewer.Internals.Providers;
 
 namespace InternalsViewer.UI.App;
 

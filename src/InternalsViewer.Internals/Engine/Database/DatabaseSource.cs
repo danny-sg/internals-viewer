@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Connections;
-using InternalsViewer.Internals.Engine.Allocation;
+﻿using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Metadata.Internals;

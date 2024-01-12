@@ -9,7 +9,7 @@ public abstract class PageParserTestsBase(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
 
-    protected DatabaseSource Database { get; set; } = new(FileConnectionFactory.GetConnection(new ("./UnitTests/Test Data/Test Pages/")));
+    protected DatabaseSource Database { get; set; }
 
     protected async Task<PageData> GetPageData(PageAddress pageAddress)
     {

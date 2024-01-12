@@ -1,15 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System;
-using System.IO;
-using System.Text;
-using Castle.Core.Logging;
+﻿using System.Text;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Internals.Tests.Helpers;
-using Newtonsoft.Json.Linq;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Readers;
 

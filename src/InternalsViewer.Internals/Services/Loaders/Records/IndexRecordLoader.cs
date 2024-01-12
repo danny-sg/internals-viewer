@@ -1,9 +1,5 @@
 ﻿using System.Collections;
 using System.Diagnostics;
-using System.Net;
-using System.Runtime.CompilerServices;
-using System.Xml.Schema;
-using Azure;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;

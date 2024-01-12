@@ -4,5 +4,5 @@ public enum TabType
 {
     Database, 
     Page,
-    GetStarted
+    Connect
 }

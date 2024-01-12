@@ -1,21 +1,18 @@
-using SkiaSharp;
-using SkiaSharp.Views.Windows;
 using System;
 using System.Collections.ObjectModel;
 using System.Drawing;
+using System.Linq;
 using InternalsViewer.UI.App.vNext.Controls.Renderers;
-using InternalsViewer.UI.App.vNext.Models;
 using InternalsViewer.UI.App.vNext.Helpers;
+using InternalsViewer.UI.App.vNext.Models;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using System.Linq;
+using SkiaSharp;
+using SkiaSharp.Views.Windows;
 using AllocationOverViewModel = InternalsViewer.UI.App.vNext.ViewModels.Allocation.AllocationOverViewModel;
-using System.Xml.Linq;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.Extensions.Logging;
 
-namespace InternalsViewer.UI.App.vNext.Controls;
+namespace InternalsViewer.UI.App.vNext.Controls.Allocation;
 
 public sealed partial class AllocationControl
 {
@@ -25,43 +22,17 @@ public sealed partial class AllocationControl
 
     public event EventHandler<PageClickedEventArgs>? PageClicked;
 
-    public static readonly DependencyProperty ExtentCountProperty
-        = DependencyProperty.Register(nameof(ExtentCount),
-                                     typeof(int),
-                                     typeof(AllocationControl),
-                                     new PropertyMetadata(default, OnPropertyChanged));
-
-    public static readonly DependencyProperty LayersProperty
-        = DependencyProperty.Register(nameof(Layers),
-                                      typeof(ObservableCollection<AllocationLayer>),
-                                      typeof(AllocationControl),
-                                      new PropertyMetadata(default, OnPropertyChanged));
-
-    public static readonly DependencyProperty SelectedLayerProperty
-        = DependencyProperty.Register(nameof(SelectedLayer),
-                                      typeof(AllocationLayer),
-                                      typeof(AllocationControl),
-                                      new PropertyMetadata(null, OnPropertyChanged));
-
-    public static readonly DependencyProperty AllocationOverProperty
-        = DependencyProperty.Register(nameof(AllocationOver),
-            typeof(AllocationOverViewModel),
-            typeof(AllocationControl),
-            new PropertyMetadata(default));
-
     public int ExtentCount
     {
         get => (int)GetValue(ExtentCountProperty);
         set => SetValue(ExtentCountProperty, value);
     }
 
-    public int PageCount => ExtentCount * 8;
-
-    public AllocationLayer? SelectedLayer
-    {
-        get => (AllocationLayer?)GetValue(SelectedLayerProperty);
-        set => SetValue(SelectedLayerProperty, value);
-    }
+    public static readonly DependencyProperty ExtentCountProperty
+        = DependencyProperty.Register(nameof(ExtentCount),
+                                     typeof(int),
+                                     typeof(AllocationControl),
+                                     new PropertyMetadata(default, OnPropertyChanged));
 
     public ObservableCollection<AllocationLayer> Layers
     {
@@ -69,11 +40,39 @@ public sealed partial class AllocationControl
         set => SetValue(LayersProperty, value);
     }
 
+    public static readonly DependencyProperty LayersProperty
+        = DependencyProperty.Register(nameof(Layers),
+                                      typeof(ObservableCollection<AllocationLayer>),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(default, OnPropertyChanged));
+    
+    public AllocationLayer? SelectedLayer
+    {
+        get => (AllocationLayer?)GetValue(SelectedLayerProperty);
+        set => SetValue(SelectedLayerProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedLayerProperty
+        = DependencyProperty.Register(nameof(SelectedLayer),
+                                      typeof(AllocationLayer),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
+
     public AllocationOverViewModel AllocationOver
     {
         get => (AllocationOverViewModel)GetValue(AllocationOverProperty);
         set => SetValue(AllocationOverProperty, value);
     }
+
+    public static readonly DependencyProperty AllocationOverProperty
+        = DependencyProperty.Register(nameof(AllocationOver),
+            typeof(AllocationOverViewModel),
+            typeof(AllocationControl),
+            new PropertyMetadata(default));
+
+
+
+    public int PageCount => ExtentCount * 8;
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

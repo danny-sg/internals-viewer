@@ -1,5 +1,4 @@
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
-using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.vNext.Views;
 

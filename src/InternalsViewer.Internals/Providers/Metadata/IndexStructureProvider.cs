@@ -2,7 +2,6 @@
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Structures;
 using System.Data;
-using System.Diagnostics;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
 
