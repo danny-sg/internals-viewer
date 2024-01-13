@@ -52,5 +52,5 @@ public sealed partial class HeaderTile
         Click?.Invoke(this, e);
     }
 
-    public event EventHandler<RoutedEventArgs> Click;
+    public event EventHandler<RoutedEventArgs>? Click;
 }

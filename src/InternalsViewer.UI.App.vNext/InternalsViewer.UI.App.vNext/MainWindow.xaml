@@ -20,19 +20,19 @@
         <Grid.Resources>
             <DataTemplate x:Key="DatabaseTemplate" x:DataType="tabs:DatabaseViewModel">
                 <Grid>
-                    <views:DatabaseView x:Name="DatabaseView" DataContext="{x:Bind}" />
+                    <views:DatabaseView x:Name="DatabaseView" DataContext="{x:Bind Mode=OneWay}" />
                 </Grid>
             </DataTemplate>
 
-            <DataTemplate x:Key="PageTemplate"  x:DataType="tabs:PageViewModel">
+            <DataTemplate x:Key="PageTemplate" x:DataType="tabs:PageViewModel">
                 <Grid>
-                    <views:PageView x:Name="PageView" DataContext="{x:Bind}"  />
+                    <views:PageView x:Name="PageView" DataContext="{x:Bind Mode=OneWay}"  />
                 </Grid>
             </DataTemplate>
 
             <DataTemplate x:Key="GetStartedTemplate"  x:DataType="tabs:ConnectViewModel">
                 <Grid>
-                    <views:ConnectView x:Name="GetStartedView" DataContext="{x:Bind}"  />
+                    <views:ConnectView x:Name="GetStartedView" DataContext="{x:Bind Mode=OneWay}"  />
                 </Grid>
             </DataTemplate>
             
@@ -47,7 +47,7 @@
                     <TabViewItem.Header>
                         <StackPanel Orientation="Horizontal">
                             <Image Source="{x:Bind ImageSource}" Height="16" Width="16" Stretch="Fill"/>
-                            <TextBlock Text="{x:Bind Name}" />
+                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" />
                         </StackPanel>
                     </TabViewItem.Header>
 
@@ -97,7 +97,7 @@
             </TabView.TabStripHeader>
 
             <TabView.TabStripFooter>
-                <Grid x:Name="CustomDragRegion" Background="Transparent" />
+                <Grid x:Name="CustomDragRegion" Background="Transparent" MinWidth="200" />
             </TabView.TabStripFooter>
         </TabView>
     </Grid>

@@ -28,7 +28,7 @@
                       SelectedValuePath="Key"
                       DisplayMemberPath="Value"
                       SelectedValue="{x:Bind ViewModel.AuthenticationType, Mode=TwoWay}"
-                  MinWidth="200" />
+                      MinWidth="200" />
         </controls:SettingsCard>
 
         <controls:SettingsCard x:Name="UserIdSettingsCard"

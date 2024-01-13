@@ -10,22 +10,16 @@ using Microsoft.UI.Xaml.Media;
 using InternalsViewer.UI.App.vNext.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using InternalsViewer.UI.App.vNext.Services;
+using System;
 
 namespace InternalsViewer.UI.App.vNext;
 
 public sealed partial class MainWindow: Window
 {
-    public IDatabaseLoader DatabaseLoader { get; }
-    
-    public SettingsService SettingsService { get; }
-
     public required MainViewModel ViewModel { get; set; }
 
-    public MainWindow(IDatabaseLoader databaseLoader, SettingsService settingsService)
+    public MainWindow(IServiceProvider serviceProvider)
     {
-        DatabaseLoader = databaseLoader;
-        SettingsService = settingsService;
-
         InitializeComponent();
 
         SystemBackdrop = new MicaBackdrop { Kind = MicaKind.Base };
@@ -34,7 +28,7 @@ public sealed partial class MainWindow: Window
         
         SetTitleBar(CustomDragRegion);
 
-        ViewModel = new MainViewModel(DatabaseLoader, SettingsService);
+        ViewModel = new MainViewModel(serviceProvider);
     }
 
     public async Task InitializeAsync()

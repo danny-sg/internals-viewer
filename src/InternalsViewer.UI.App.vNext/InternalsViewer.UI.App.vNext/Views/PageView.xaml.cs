@@ -4,7 +4,7 @@ namespace InternalsViewer.UI.App.vNext.Views;
 
 public sealed partial class PageView
 {
-    public DatabaseViewModel ViewModel => (DatabaseViewModel)DataContext;
+    public PageViewModel ViewModel => (PageViewModel)DataContext;
 
     public PageView()
     {

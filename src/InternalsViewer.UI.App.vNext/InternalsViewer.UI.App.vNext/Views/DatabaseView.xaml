@@ -3,15 +3,11 @@
     x:Class="InternalsViewer.UI.App.vNext.Views.DatabaseView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:InternalsViewer.UI.App.vNext.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls"
     xmlns:toolkit1="using:CommunityToolkit.WinUI.Controls"
     xmlns:toolkit2="using:CommunityToolkit.WinUI.UI.Controls"
-    xmlns:drawing="using:System.Drawing"
     xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
-    xmlns:tabs="using:InternalsViewer.UI.App.vNext.ViewModels.Tabs"
     xmlns:allocation="using:InternalsViewer.UI.App.vNext.Controls.Allocation"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" x:Name="LayoutGrid">

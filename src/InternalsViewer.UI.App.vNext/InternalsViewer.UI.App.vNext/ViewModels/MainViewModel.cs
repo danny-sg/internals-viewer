@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,16 +11,15 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.UI.App.vNext.Models;
-using InternalsViewer.UI.App.vNext.Services;
 using InternalsViewer.UI.App.vNext.ViewModels.Allocation;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
-    public IDatabaseLoader DatabaseLoader { get; }
-    public SettingsService SettingsService { get; }
+    public IServiceProvider ServiceProvider { get; }
 
     [ObservableProperty]
     private TabViewModel? selectedTab;
@@ -28,15 +28,14 @@ public partial class MainViewModel : ObservableObject
     private ObservableCollection<TabViewModel> tabs = new();
 
     /// <inheritdoc/>
-    public MainViewModel(IDatabaseLoader databaseLoader, SettingsService settingsService)
+    public MainViewModel(IServiceProvider serviceProvider)
     {
-        DatabaseLoader = databaseLoader;
-        SettingsService = settingsService;
+        ServiceProvider = serviceProvider;
     }
 
     public async Task InitializeAsync()
     {
-        var connectViewModel = await ConnectViewModel.CreateAsync(this, SettingsService);
+        var connectViewModel = await ConnectViewModel.CreateAsync(this);
 
         Tabs.Add(connectViewModel);
 
@@ -86,7 +85,14 @@ public partial class MainViewModel : ObservableObject
 
     private async Task AddConnection(IConnectionType connection)
     {
-        var database = await DatabaseLoader.Load(connection.Name, connection);
+        var databaseLoader = ServiceProvider.GetService<IDatabaseLoader>();
+
+        if(databaseLoader == null)
+        {
+            throw new InvalidOperationException("Database loader not found");
+        }
+
+        var database = await databaseLoader.Load(connection.Name, connection);
 
         var viewModel = new DatabaseViewModel(this, database);
 

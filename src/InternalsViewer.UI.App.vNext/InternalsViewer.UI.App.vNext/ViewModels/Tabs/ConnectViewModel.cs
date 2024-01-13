@@ -1,17 +1,17 @@
-﻿using InternalsViewer.UI.App.vNext.Services;
+﻿using System;
+using InternalsViewer.UI.App.vNext.Services;
 using System.Threading.Tasks;
 using InternalsViewer.UI.App.vNext.Models.Connections;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
-public partial class ConnectViewModel(MainViewModel parent, SettingsService settingsService) : TabViewModel(parent, TabType.Connect)
+public partial class ConnectViewModel(MainViewModel parent) : TabViewModel(parent, TabType.Connect)
 {
-    protected SettingsService SettingsService { get; } = settingsService;
-
-    public static async Task<ConnectViewModel> CreateAsync(MainViewModel parent, SettingsService settingsService)
+    public static async Task<ConnectViewModel> CreateAsync(MainViewModel parent)
     {
-        var viewModel = new ConnectViewModel(parent, settingsService);
+        var viewModel = new ConnectViewModel(parent);
         
         await viewModel.Initialize();
         viewModel.Name = "Connect";
@@ -21,12 +21,28 @@ public partial class ConnectViewModel(MainViewModel parent, SettingsService sett
 
     private async Task Initialize()
     {
-        ServerConnectionSettings = await SettingsService.ReadSettingAsync<ServerConnectionSettings>("CurrentServerConnection");
+        var settingsService = GetSettingsService();
+
+        ServerConnectionSettings = await settingsService.ReadSettingAsync<ServerConnectionSettings>("CurrentServerConnection");
     }
 
     public async Task SaveSettings(ServerConnectionSettings? connectionSettings)
     {
-        await SettingsService.SaveSettingAsync("CurrentServerConnection", connectionSettings);
+        var settingsService = GetSettingsService();
+
+        await settingsService.SaveSettingAsync("CurrentServerConnection", connectionSettings);
+    }
+
+    private SettingsService GetSettingsService()
+    {
+        var settingsService = Parent.ServiceProvider.GetService<SettingsService>();
+
+        if(settingsService is null)
+        {
+            throw new InvalidOperationException("Settings service not found");
+        }   
+
+        return settingsService;
     }
 
     [ObservableProperty]

@@ -30,6 +30,7 @@
         <None Remove="Controls\HeaderTile.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
+        <None Remove="Controls\Page\HexViewControl.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Views\ConnectView.xaml" />
@@ -90,6 +91,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\Page\HexViewControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\Connections\BackupFileConnectionControl.xaml">
         <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
       </Page>
@@ -154,6 +158,5 @@
 
     <ItemGroup>
       <Folder Include="Controls\Allocation\" />
-      <Folder Include="Controls\Page\" />
     </ItemGroup>
 </Project>
