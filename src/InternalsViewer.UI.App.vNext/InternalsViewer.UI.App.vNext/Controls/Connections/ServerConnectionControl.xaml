@@ -3,12 +3,10 @@
     x:Class="InternalsViewer.UI.App.vNext.Controls.Connections.ServerConnectionControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:InternalsViewer.UI.App.vNext.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:winUi="using:CommunityToolkit.WinUI"
-    xmlns:connections="using:InternalsViewer.UI.App.vNext.ViewModels.Connections"
     xmlns:converters="using:CommunityToolkit.WinUI.Converters"
     mc:Ignorable="d">
     <Control.Resources>
@@ -17,12 +15,15 @@
     <StackPanel Spacing="6" Background="Transparent" >
         <controls:SettingsCard Description="Name or network address of the SQL Server instance"
                                Header="Instance Name"
-                               HeaderIcon="{winUi:FontIcon Glyph=e770}">
+                               HeaderIcon="{winUi:FontIcon Glyph=e770}"
+                               CornerRadius="4,4,0,0">
             <TextBox Text="{x:Bind ViewModel.InstanceName, Mode=TwoWay}" MinWidth="200" />
         </controls:SettingsCard>
 
         <controls:SettingsCard Header="Authentication"
-                               Description="Authentication method">
+                               Description="Authentication method"
+                               Margin="0,-8,0,0"
+                               CornerRadius="0">
             <ComboBox x:Name="AuthenticationProtocolsComboBox"
                       ItemsSource="{x:Bind ViewModel.AuthenticationTypes, Mode=OneWay}"
                       SelectedValuePath="Key"
@@ -33,8 +34,9 @@
 
         <controls:SettingsCard x:Name="UserIdSettingsCard"
                        Header="User Id"
-                       IsEnabled="{x:Bind ViewModel.IsUserIdEnabled, Mode=OneWay}"
-                  >
+                       Margin="0,-8,0,0"
+                       CornerRadius="0"
+                       IsEnabled="{x:Bind ViewModel.IsUserIdEnabled, Mode=OneWay}">
 
             <TextBox Text="{x:Bind ViewModel.UserId, Mode=TwoWay}"
                  MinWidth="200" />
@@ -42,6 +44,8 @@
 
         <controls:SettingsCard x:Name="PasswordSettingsCard"
                        Header="Password"
+                       Margin="0,-8,0,0"
+                       CornerRadius="0"
                        IsEnabled="{x:Bind ViewModel.IsPasswordEnabled, Mode=OneWay}"
                      >
 
@@ -49,7 +53,10 @@
                          MinWidth="200" />
         </controls:SettingsCard>
 
-        <controls:SettingsCard Description="Name of the database" Header="Database">
+        <controls:SettingsCard Description="Name of the database" 
+                               Header="Database" 
+                               Margin="0,-8,0,0"
+                               CornerRadius="0">
             <StackPanel>
                 <ComboBox DropDownOpened="DatabaseComboBox_DropDownOpened"
                           ItemsSource="{x:Bind ViewModel.Databases, Mode=OneWay}"
@@ -59,10 +66,13 @@
             </StackPanel>
         </controls:SettingsCard>
 
-        <controls:SettingsCard Header="Connect to a server instance">
+        <controls:SettingsCard Header="Connect to a server instance"
+                               Margin="0,-8,0,0"
+                               CornerRadius="0,0,4,4">
             <Button Content="Connect"
                     Name="ConnectButton"
                     MinWidth="200"
+                   
                     IsEnabled="{x:Bind ViewModel.HasErrors, Mode=OneWay,Converter={StaticResource BoolNegationConverter}}"
                     Click="ConnectButton_Click"
                 Style="{StaticResource AccentButtonStyle}">

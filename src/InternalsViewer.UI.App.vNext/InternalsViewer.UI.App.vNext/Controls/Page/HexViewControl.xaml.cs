@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Text;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
-using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.UI.App.vNext.Helpers;
+using InternalsViewer.UI.App.vNext.Models;
 using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.vNext.Controls.Page
 {
@@ -21,7 +24,7 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
         {
             var stringBuilder = new StringBuilder();
 
-            for (var i = 0; i <= (PageData.Size / 16); i++)
+            for (var i = 0; i < PageData.Size / 16; i++)
             {
                 stringBuilder.AppendLine($"{i * 16:X8}");
             }
@@ -41,7 +44,25 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
                 typeof(HexViewControl),
                 new PropertyMetadata(default, OnDataChanged));
 
+
+        public ObservableCollection<Marker>? Markers
+        {
+            get { return (ObservableCollection<Marker>)GetValue(MarkersProperty); }
+            set { SetValue(MarkersProperty, value); }
+        }
+
+        public static readonly DependencyProperty MarkersProperty = DependencyProperty
+            .Register(nameof(Data),
+                typeof(ObservableCollection<Marker>),
+                typeof(HexViewControl),
+                new PropertyMetadata(default, OnMarkersChanged));
+
         private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            SetHexData(e.NewValue as byte[] ?? Array.Empty<byte>(), (HexViewControl)d);
+        }
+
+        private static void OnMarkersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             SetHexData(e.NewValue as byte[] ?? Array.Empty<byte>(), (HexViewControl)d);
         }
@@ -77,6 +98,41 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
             paragraph.Inlines.Add(run);
 
             target.HexRichTextBlock.Blocks.Add(paragraph);
+
+            HighlightMarkers(target);
+        }
+
+        private static void HighlightMarkers(HexViewControl target)
+        {
+            target.HexRichTextBlock.TextHighlighters.Clear();
+
+            if (target.Markers != null)
+            {
+                foreach (var marker in target.Markers)
+                {
+                    var start = ToRunPosition(marker.StartPosition);
+                    var end = ToRunPosition(marker.EndPosition);
+
+                    var length = end - start;
+
+                    var highlighter = new TextHighlighter
+                    {
+                        Foreground = new SolidColorBrush(marker.ForeColour.ToWindowsColor()),
+                        Background = new SolidColorBrush(marker.BackColour.ToWindowsColor()),
+                        Ranges = { new TextRange(start, length) }
+                    };
+
+                    target.HexRichTextBlock.TextHighlighters.Add(highlighter);
+                }
+            }
+        }
+
+        private static int ToRunPosition(int position)
+        {
+            var lineNumber = position / 16;
+
+            return position * 3 + lineNumber * (Environment.NewLine.Length - 1);
         }
     }
+
 }

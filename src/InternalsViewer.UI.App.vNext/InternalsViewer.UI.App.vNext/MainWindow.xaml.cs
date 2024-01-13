@@ -5,11 +5,9 @@
 
 using System.Threading.Tasks;
 using Microsoft.UI.Composition.SystemBackdrops;
-using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using Microsoft.UI.Xaml.Media;
 using InternalsViewer.UI.App.vNext.ViewModels;
 using Microsoft.UI.Xaml.Controls;
-using InternalsViewer.UI.App.vNext.Services;
 using System;
 
 namespace InternalsViewer.UI.App.vNext;

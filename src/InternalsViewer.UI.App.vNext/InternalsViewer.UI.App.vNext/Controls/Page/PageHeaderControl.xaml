@@ -51,10 +51,6 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TextBlock Grid.Row="0" 
-                   Grid.Column="0"
-                   Style="{StaticResource BodyStrongTextBlockStyle}">Page Header</TextBlock>
-
         <TextBlock Grid.Row="1" Grid.Column="0">Page Type</TextBlock>
         <TextBox Grid.Row ="1" 
                  Grid.Column="1" 

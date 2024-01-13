@@ -31,6 +31,7 @@
         <None Remove="Controls\LabelTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Controls\Page\HexViewControl.xaml" />
+        <None Remove="Controls\Page\MarkerKeyControl.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Views\ConnectView.xaml" />
@@ -42,6 +43,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.0.240109" />
         <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.0.240109" />
         <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
@@ -91,6 +93,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\Page\MarkerKeyControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\Page\HexViewControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>

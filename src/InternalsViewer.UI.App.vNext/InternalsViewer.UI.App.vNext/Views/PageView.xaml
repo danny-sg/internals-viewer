@@ -7,9 +7,26 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:page="using:InternalsViewer.UI.App.vNext.Controls.Page"
     xmlns:sys="using:System"
+    xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
+    xmlns:interactivity="using:Microsoft.Xaml.Interactivity"
+    xmlns:behaviors="using:CommunityToolkit.WinUI.Behaviors"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:drawing="using:System.Drawing"
     mc:Ignorable="d">
-    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" 
-         >
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid.Resources>
+
+            <Style x:Key="TitleStyle" BasedOn="{StaticResource BodyStrongTextBlockStyle}" TargetType="TextBlock" >
+
+            </Style>
+            <Style TargetType="ListViewItem">
+                <Setter Property="Height" Value="22" />
+                <Setter Property="MinHeight" Value="22" />
+                <Setter Property="Padding" Value="4" />
+                <Setter Property="BorderBrush" Value="{StaticResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+            </Style>
+        </Grid.Resources>
         <Grid x:Name="LoadingGrid"  
               Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
             <TextBlock>Loading...</TextBlock>
@@ -23,28 +40,97 @@
                           }">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" >
+            <StackPanel Grid.Row="0" 
+                        Grid.Column="0" 
+                        Grid.ColumnSpan="4"
+                        Orientation="Horizontal"  
+                        BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1">
                 <CommandBar 
                     Background="Transparent" 
-                    IsOpen="False"                 
+                    IsOpen="False"       
+               
                     DefaultLabelPosition="Right" 
                     HorizontalAlignment="Left">
                     <AppBarButton Label="Previous Page"/>
                     <AppBarButton Label="Next Page"/>
                 </CommandBar>
             </StackPanel>
-            <page:PageHeaderControl Grid.Row="1" Grid.Column="0" Page="{x:Bind ViewModel.Page, Mode=OneWay}"/>
-            <page:HexViewControl Grid.Row="1"
+
+            <TextBlock Style="{StaticResource TitleStyle}" Margin="10,12,10,12" Grid.Row="1" Grid.Column="0">Header</TextBlock>
+            <TextBlock Style="{StaticResource TitleStyle}" Margin="0,12,0,12" Grid.Row="1" Grid.Column="1">Data</TextBlock>
+            <TextBlock Style="{StaticResource TitleStyle}" Margin="0,12,0,12" Grid.Row="1" Grid.Column="2">Slot Offset Table</TextBlock>
+            <TextBlock Style="{StaticResource TitleStyle}" Margin="12,12,0,12" Grid.Row="1" Grid.Column="3">Key</TextBlock>
+
+            <page:PageHeaderControl Grid.Row="2" Grid.Column="0" Page="{x:Bind ViewModel.Page, Mode=OneWay}"/>
+            <page:HexViewControl Grid.Row="2"
                                  Grid.Column="1"    
-                                 CornerRadius="8,0,0,0"
+                                 CornerRadius="8,0,8,0"
                                  Background="White"
-                                 Data="{x:Bind ViewModel.Page.Data, Mode=OneWay}"/>
+                                 Width="460"
+                                 Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                 Data="{x:Bind ViewModel.PageData, Mode=OneWay}"/>
+            <ListView Grid.Column="2" 
+                     Grid.Row="2" 
+                     Background="{ThemeResource LayerFillColorDefaultBrush}"
+                     BorderThickness="0,1,1,1"
+                     BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
+                     ItemsSource="{x:Bind ViewModel.Offsets, Mode=OneWay}"
+                     Width="180" 
+                     HorizontalAlignment="Left">
+
+                <ListView.Header>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="50"/>
+                            <ColumnDefinition Width="50"/>
+                            <ColumnDefinition Width="50"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Slot"/>
+                        <TextBlock Grid.Column="1" Text="Offset"/>
+                    </Grid>
+                </ListView.Header>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="models:OffsetSlot">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="60"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="{x:Bind Index}"
+                                       Style="{StaticResource ListTextBlock}"
+                                       x:Phase="1"/>
+                            <TextBlock Grid.Column="1"                  
+                                       Text="{x:Bind Offset}"
+                                       Style="{StaticResource ListTextBlock}"
+                                       x:Phase="2"/>
+                            <TextBlock Grid.Column="2"                  
+                                       Text="{x:Bind Description}"
+                                       Style="{StaticResource ListTextBlock}"
+                                       x:Phase="3"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <ListView Grid.Column="3" 
+                      Grid.Row="2" 
+                      Background="{ThemeResource LayerFillColorDefaultBrush}"
+                      BorderThickness="1,1,0,0"
+                      Margin="10,0,0,0"
+                      BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
+                      HorizontalAlignment="Stretch">
+            </ListView>
         </Grid>
     </Grid>
 </UserControl>

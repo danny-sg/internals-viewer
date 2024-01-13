@@ -21,26 +21,25 @@
     </Control.Resources>
     <ScrollViewer Name="ScrollViewer"
                   BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1,1,0,0"
+                  BorderThickness="1,1,1,0"
                   Background="{x:Bind Background}"
                   CornerRadius="{x:Bind CornerRadius}"
                   VerticalScrollBarVisibility="Visible"
                   VerticalAlignment="Stretch"
                   HorizontalScrollBarVisibility="Hidden">
-        <Grid VerticalAlignment="Stretch">
+        <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Column="0" 
-                       
                        x:Name="AddressTextBlock" 
                        Style="{StaticResource AddressStyle}" 
-                       Margin="8,8,8,0"
-                       VerticalAlignment="Top">Test</TextBlock>
+                       Margin="8,0,8,0"
+                       VerticalAlignment="Stretch"/>
             <RichTextBlock Grid.Column="1" 
-                           Margin="0,8,10,0"
                            x:Name="HexRichTextBlock" 
+                           VerticalAlignment="Stretch"
                            Style="{StaticResource HexStyle}"/>
         </Grid>
     </ScrollViewer>
