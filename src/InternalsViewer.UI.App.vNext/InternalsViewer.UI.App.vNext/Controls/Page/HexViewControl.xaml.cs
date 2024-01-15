@@ -64,7 +64,7 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
 
         private static void OnMarkersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            SetHexData(e.NewValue as byte[] ?? Array.Empty<byte>(), (HexViewControl)d);
+            HighlightMarkers((HexViewControl)d, (ObservableCollection<Marker>)e.NewValue);
         }
 
         private static void SetHexData(IReadOnlyList<byte> data, HexViewControl target)
@@ -97,21 +97,22 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
             run.Text = stringBuilder.ToString();
             paragraph.Inlines.Add(run);
 
+            target.HexRichTextBlock.Blocks.Clear();
             target.HexRichTextBlock.Blocks.Add(paragraph);
 
-            HighlightMarkers(target);
+            HighlightMarkers(target, target.Markers);
         }
 
-        private static void HighlightMarkers(HexViewControl target)
+        private static void HighlightMarkers(HexViewControl target, ObservableCollection<Marker>? markers)
         {
             target.HexRichTextBlock.TextHighlighters.Clear();
 
-            if (target.Markers != null)
+            if (markers != null)
             {
-                foreach (var marker in target.Markers)
+                foreach (var marker in markers)
                 {
                     var start = ToRunPosition(marker.StartPosition);
-                    var end = ToRunPosition(marker.EndPosition);
+                    var end = ToRunPosition(marker.EndPosition + 1) - 1;
 
                     var length = end - start;
 

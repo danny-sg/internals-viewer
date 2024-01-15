@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using InternalsViewer.UI.App.vNext.Helpers;
 
 namespace InternalsViewer.UI.App.vNext.Models
 {
@@ -25,6 +26,8 @@ namespace InternalsViewer.UI.App.vNext.Models
         public bool IsNull { get; set; }
 
         public bool IsVisible { get; set; }
+        
+        public MarkerType MarkerType { get; set; }
 
         public static Marker? GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
         {

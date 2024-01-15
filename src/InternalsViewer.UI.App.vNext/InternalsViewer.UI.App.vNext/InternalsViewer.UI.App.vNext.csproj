@@ -27,6 +27,7 @@
         <None Remove="Controls\AllocationDataGridView.xaml" />
         <None Remove="Controls\Connections\BackupFileConnectionControl.xaml" />
         <None Remove="Controls\ConnectTile.xaml" />
+        <None Remove="Controls\CopyButton.xaml" />
         <None Remove="Controls\HeaderTile.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
@@ -84,6 +85,12 @@
       <Content Update="Assets\ConnectHeaderImage.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
+      <Content Update="Assets\TabIcons\Database.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+      <Content Update="Assets\TabIcons\Page.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
 
     <ItemGroup>
@@ -93,6 +100,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\CopyButton.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\Page\MarkerKeyControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>

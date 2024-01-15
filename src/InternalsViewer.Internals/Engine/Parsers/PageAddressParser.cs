@@ -25,6 +25,22 @@ public static class PageAddressParser
         throw new ArgumentException("Invalid page address format", nameof(address));
     }
 
+    public static bool TryParse(string address, out PageAddress pageAddress)
+    {
+        try
+        {
+            pageAddress = Parse(address);
+
+            return true;
+        }
+        catch
+        {
+            pageAddress = PageAddress.Empty;
+
+            return false;
+        }
+    }   
+
     /// <summary>
     /// Parses a page address from a hex string
     /// </summary>

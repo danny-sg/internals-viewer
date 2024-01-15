@@ -3,15 +3,11 @@
     x:Class="InternalsViewer.UI.App.vNext.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:InternalsViewer.UI.App.vNext"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls"
     xmlns:views="using:InternalsViewer.UI.App.vNext.Views"
     xmlns:tabs="using:InternalsViewer.UI.App.vNext.ViewModels.Tabs"
     xmlns:selectors="using:InternalsViewer.UI.App.vNext.Helpers.Selectors"
-    xmlns:system="using:System"
-    xmlns:viewModels="using:InternalsViewer.UI.App.vNext.ViewModels"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop Kind="Base"/>
@@ -45,9 +41,9 @@
                           x:DataType="tabs:TabViewModel">
                 <TabViewItem>
                     <TabViewItem.Header>
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
                             <Image Source="{x:Bind ImageSource}" Height="16" Width="16" Stretch="Fill"/>
-                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" />
+                            <TextBlock Padding="6,0,0,0" Text="{x:Bind Name, Mode=OneWay}" />
                         </StackPanel>
                     </TabViewItem.Header>
 
@@ -63,6 +59,7 @@
                  VerticalAlignment="Stretch" 
                  Background="Transparent" 
                  IsAddTabButtonVisible="False"
+                 Margin="0,8,0,0"
                  TabCloseRequested="TabView_OnTabCloseRequested"
                  TabItemsSource="{x:Bind ViewModel.Tabs, Mode=OneWay}"
                  SelectedItem="{x:Bind ViewModel.SelectedTab, Mode=TwoWay}"
@@ -76,7 +73,7 @@
 
             <TabView.TabStripHeader>
                 <Grid x:Name="AppTitleBar"  
-                      Height="38">
+                      Height="34">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition x:Name="LeftPaddingColumn" Width="8"/>
                         <ColumnDefinition/>

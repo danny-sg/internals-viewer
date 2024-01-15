@@ -11,6 +11,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <ResourceDictionary Source="ms-appx:///Styles/CommonStyles.xaml" />
+                <!--<ResourceDictionary Source="/Controls/CopyButton.xaml"/>-->
             </ResourceDictionary.MergedDictionaries>
             <SolidColorBrush x:Key="WindowCaptionBackground">Transparent</SolidColorBrush>
             <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled">Transparent</SolidColorBrush>
@@ -18,6 +19,7 @@
             <converters1:BoolNegationConverter x:Key="BoolNegationConverter" />
             <converters1:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:ColorToSolidColorBrushValueConverter x:Key="ColorToSolidColorBrushValueConverter"/>
+            <converters:PageAddressToStringConverter x:Key="StringToPageAddressConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

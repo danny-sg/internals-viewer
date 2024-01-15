@@ -20,8 +20,7 @@ public partial class TabViewModel : ObservableObject
     [ObservableProperty]
     private bool isLoading = true;
 
-    [ObservableProperty]
-    private ImageSource imageSource = new BitmapImage(new Uri("ms-appx:///Assets/Database.png"));
+    public virtual ImageSource ImageSource => new BitmapImage(new Uri("ms-appx:///Assets/TabIcons/Database16.png"));
 
     public TabViewModel(MainViewModel parent, TabType tabType)
     {

@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:system="using:System"
     mc:Ignorable="d">
     <Control.Resources>
         <Style x:Key="AddressStyle" TargetType="TextBlock">
@@ -18,10 +19,15 @@
             <Setter Property="FontFamily" Value="Consolas"/>
         </Style>
 
+        <Style TargetType="Paragraph">
+            <Setter Property="Margin"
+                    Value="0" />
+        </Style>
+
     </Control.Resources>
     <ScrollViewer Name="ScrollViewer"
                   BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1,1,1,0"
+                  BorderThickness="1"
                   Background="{x:Bind Background}"
                   CornerRadius="{x:Bind CornerRadius}"
                   VerticalScrollBarVisibility="Visible"

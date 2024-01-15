@@ -14,12 +14,13 @@ using InternalsViewer.UI.App.vNext.Models;
 using InternalsViewer.UI.App.vNext.ViewModels.Allocation;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
-    public IServiceProvider ServiceProvider { get; }
+    private IServiceProvider ServiceProvider { get; }
 
     [ObservableProperty]
     private TabViewModel? selectedTab;
@@ -40,6 +41,18 @@ public partial class MainViewModel : ObservableObject
         Tabs.Add(connectViewModel);
 
         SelectedTab = Tabs[0];
+    }
+
+    public T GetService<T>()
+    {
+        var service =  ServiceProvider.GetService<T>();
+
+        if(service is null)
+        {
+            throw new InvalidOperationException($"Service {typeof(T).Name} not found");
+        }
+
+        return service;
     }
 
     [RelayCommand]
@@ -134,7 +147,9 @@ public partial class MainViewModel : ObservableObject
 
     public async Task OpenPage(DatabaseSource database, PageAddress pageAddress)
     {
-        var viewModel = new PageViewModel(this, database);
+        var logger = ServiceProvider.GetService<ILogger<PageViewModel>>();
+
+        var viewModel = new PageViewModel(this, database, logger);
 
         Tabs.Add(viewModel);
 

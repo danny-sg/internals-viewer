@@ -35,12 +35,7 @@ public partial class ConnectViewModel(MainViewModel parent) : TabViewModel(paren
 
     private SettingsService GetSettingsService()
     {
-        var settingsService = Parent.ServiceProvider.GetService<SettingsService>();
-
-        if(settingsService is null)
-        {
-            throw new InvalidOperationException("Settings service not found");
-        }   
+        var settingsService = Parent.GetService<SettingsService>();
 
         return settingsService;
     }
