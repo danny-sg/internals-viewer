@@ -143,7 +143,9 @@ public class MarkerBuilder
 
         var markers = new List<Marker>();
 
-        foreach (var item in markedObject.MarkItems)
+        var index = 0;
+
+        foreach (var item in markedObject.MarkItems.OrderBy(o => o.StartPosition))
         {
             var marker = new Marker();
 
@@ -163,8 +165,16 @@ public class MarkerBuilder
                 var style = styleProvider.GetMarkStyle(attribute.DataStructureItemType);
 
                 marker.ForeColour = style.ForeColour;
-                marker.BackColour = style.BackColour;
-                marker.AlternateBackColour = style.AlternateBackColour;
+
+                if (style.BackColour != style.AlternateBackColour && index % 2 == 0)
+                {
+                    marker.BackColour = style.AlternateBackColour;
+                }
+                else
+                {
+                    marker.BackColour = style.BackColour;
+                }
+
                 marker.Name = style.Description;
 
                 marker.IsVisible = attribute.IsVisible;
@@ -215,11 +225,10 @@ public class MarkerBuilder
 
             if (item.StartPosition > 0)
             {
+                index += 1;
                 markers.Add(marker);
             }
         }
-        // Sort the markers in order of their positions
-        markers.Sort((marker1, marker2) => marker1.StartPosition.CompareTo(marker2.StartPosition));
 
         return markers;
     }

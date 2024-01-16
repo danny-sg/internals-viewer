@@ -8,59 +8,77 @@
     xmlns:page="using:InternalsViewer.UI.App.vNext.Controls.Page"
     xmlns:pages="using:InternalsViewer.Internals.Engine.Pages"
     xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls"
+    xmlns:selectors="using:InternalsViewer.UI.App.vNext.Helpers.Selectors"
     d:DataContext="{d:DesignInstance Type=pages:Page, IsDesignTimeCreatable=True}"
     mc:Ignorable="d">
-    <UserControl.Resources>
-        <DataTemplate x:DataType="page:PageHeaderValue" x:Key="HeaderValueTemplate">
-            <Grid Background="Blue">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="120" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="30" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="400"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="{x:Bind Label}"
-                           FontSize="12"
-                           x:Phase="1"/>
-                <TextBlock  Grid.Column="1"
-                            Text="{x:Bind Value}"
-                            x:Phase="2"/>
-                <controls:CopyButton Grid.Column="2"    
-                                     Content="&#xE8C8;" 
-                                     ToolTipService.ToolTip="Copy to clipboard"/>
+    <Control.Resources>
+        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="10,4,0,0" />
+        </Style>
 
-            </Grid>
-        </DataTemplate>
+        <Style TargetType="TextBlock" x:Key="LabelStyle">
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <Setter Property="FontSize" Value="12" />
+        </Style>
 
-        <DataTemplate x:DataType="page:PageAddressHeaderValue" x:Key="HeaderPageAddressTemplate">
+        <Style TargetType="TextBlock" x:Key="ValueStyle">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <Style TargetType="HyperlinkButton" x:Key="PageAddressStyle">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
+        <selectors:PageHeaderTemplateSelector 
+              x:Key="PageHeaderTemplateSelector"
+              ValueTemplate="{StaticResource PageHeaderValueTemplate}"
+              PageAddressTemplate="{StaticResource PageAddressHeaderValueTemplate}"/>
+
+        <DataTemplate x:DataType="page:PageHeaderValue" x:Key="PageHeaderValueTemplate" >
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="120" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="30" />
                 </Grid.ColumnDefinitions>
-
                 <TextBlock Grid.Column="0"
-                           Text="{x:Bind Label}"
-                       
-                           Margin="12,6,0,0"/>
-                <TextBlock  Grid.Column="1"
-                            Text="{x:Bind Value}"
-                            Foreground="Red"
-                            Margin="12,0,0,6"/>
+                               Style="{StaticResource LabelStyle}"
+                               Text="{x:Bind Label}"/>
+                <TextBlock Grid.Column="1"
+                               Style="{StaticResource ValueStyle}"
+                               Text="{x:Bind Value}"/>
                 <controls:CopyButton Grid.Column="2"    
-                                     Content="&#xE8C8;" 
-                                     ToolTipService.ToolTip="Copy to clipboard"/>
+                                         Content="&#xE8C8;" 
+                                         ToolTipService.ToolTip="Copy to clipboard" />
+            </Grid>
 
+        </DataTemplate>
+        
+        <DataTemplate x:DataType="page:PageAddressHeaderValue" 
+                      x:Key="PageAddressHeaderValueTemplate" >
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="30" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{x:Bind Label}" Style="{StaticResource LabelStyle}"/>
+                <HyperlinkButton Grid.Column="1" 
+                                 Content="{x:Bind Value}" 
+                                 Style="{StaticResource PageAddressStyle}"/>
+                <controls:CopyButton Grid.Column="2"    
+                                       Content="&#xE8C8;" 
+                                       ToolTipService.ToolTip="Copy to clipboard"/>
             </Grid>
         </DataTemplate>
-    </UserControl.Resources>
+    </Control.Resources>
 
     <ListView ItemsSource="{x:Bind Values, Mode=OneWay}" 
-              SelectionMode="None" 
-              VerticalAlignment="Stretch"
-              ItemTemplate="{StaticResource HeaderValueTemplate}"/>
+               SelectionMode="None" 
+               VerticalAlignment="Stretch"
+               ItemTemplateSelector="{StaticResource PageHeaderTemplateSelector}"/>
 </UserControl>

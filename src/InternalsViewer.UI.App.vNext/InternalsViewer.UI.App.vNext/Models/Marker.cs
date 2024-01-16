@@ -17,8 +17,6 @@ namespace InternalsViewer.UI.App.vNext.Models
 
         public Color BackColour { get; set; }
 
-        public Color AlternateBackColour { get; set; }
-
         public Color ForeColour { get; set; }
 
         public string Value { get; set; } = string.Empty;

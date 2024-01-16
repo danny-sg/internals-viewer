@@ -22,8 +22,8 @@ using CommunityToolkit.Mvvm.Input;
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
 public partial class PageViewModel(MainViewModel parent,
-        DatabaseSource database,
-        ILogger<PageViewModel> logger)
+                                   DatabaseSource database,
+                                   ILogger<PageViewModel> logger)
     : TabViewModel(parent, TabType.Page)
 {
     public ILogger<PageViewModel> Logger { get; } = logger;
@@ -31,6 +31,18 @@ public partial class PageViewModel(MainViewModel parent,
     public override TabType TabType => TabType.Page;
 
     public override ImageSource ImageSource => new BitmapImage(new Uri("ms-appx:///Assets/TabIcons/Page32.png"));
+
+    [ObservableProperty]
+    private string objectName = string.Empty;
+
+    [ObservableProperty]
+    private string indexName = string.Empty;
+
+    [ObservableProperty]
+    private string objectIndexType = string.Empty;
+
+    [ObservableProperty]
+    private string indexType = string.Empty;
 
     [ObservableProperty]
     private bool isLoading;
@@ -45,29 +57,30 @@ public partial class PageViewModel(MainViewModel parent,
     private PageAddress previousPage;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PageData))]
-    [NotifyPropertyChangedFor(nameof(Offsets))]
-    private Internals.Engine.Pages.Page? page;
+    private Internals.Engine.Pages.Page page = new EmptyPage();
 
     [ObservableProperty]
     private DatabaseSource database = database;
 
     [ObservableProperty]
-    private List<OffsetSlot> offsets = new();
+    private ObservableCollection<OffsetSlot> offsets = new();
 
     [ObservableProperty]
-    private ushort selectedOffset;
-
-    public byte[] PageData => Page?.Data ?? Array.Empty<byte>();
+    private ushort? selectedOffset;
 
     [ObservableProperty]
     private ObservableCollection<Marker> markers = new();
 
     public List<Record> Records { get; set; } = new();
 
-    partial void OnSelectedOffsetChanged(ushort value)
+    partial void OnSelectedOffsetChanged(ushort? value)
     {
-        AddRecordMarkers(value);
+        if (value == null)
+        {
+            Markers.Clear();
+            return;
+        }
+        AddRecordMarkers(value.Value);
     }
 
     private void AddRecordMarkers(ushort value)
@@ -102,22 +115,27 @@ public partial class PageViewModel(MainViewModel parent,
 
         Logger.LogDebug("Building Offset Table");
 
-        Offsets = resultPage.OffsetTable.Select((s, i) => new OffsetSlot
+        var slots = resultPage.OffsetTable.Select((s, i) => new OffsetSlot
         {
             Index = (ushort)i,
             Offset = s,
             Description = $"0x{s:X}"
-        }).ToList();
+        });
+
+        SelectedOffset = null;
+
+        Offsets = new ObservableCollection<OffsetSlot>(slots);
 
         Logger.LogDebug("Adding Page Markers");
 
         AddPageMarkers(resultPage.PageHeader.SlotCount);
 
-        switch (resultPage.PageHeader)
+        switch (resultPage)
         {
-            case { PageType: PageType.Data }:
-            case { PageType: PageType.Index }:
-                LoadRecords(resultPage);
+            case AllocationUnitPage dataPage:
+                SetAllocationUnitDescription(dataPage);
+
+                LoadRecords(dataPage);
                 break;
         }
 
@@ -125,12 +143,42 @@ public partial class PageViewModel(MainViewModel parent,
 
         NextPage = new PageAddress(pageAddress.FileId, pageAddress.PageId + 1);
 
-        if(pageAddress.PageId > 0)
+        if (pageAddress.PageId > 0)
         {
             PreviousPage = new PageAddress(pageAddress.FileId, pageAddress.PageId - 1);
         }
 
         IsLoading = false;
+    }
+
+    private void SetAllocationUnitDescription(AllocationUnitPage dataPage)
+    {
+        ObjectName = $"{dataPage.AllocationUnit.SchemaName}.{dataPage.AllocationUnit.TableName}";
+
+        IndexName = dataPage.AllocationUnit.IndexName;
+        IndexType = dataPage.AllocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
+                                                         ? "Non-Clustered"
+                                                         : string.Empty;
+        ObjectIndexType = dataPage.AllocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
+                                                         ? "Clustered"
+                                                         : "Heap";
+
+        switch (dataPage.AllocationUnit)
+        {
+            case { IndexType: Internals.Engine.Database.Enums.IndexType.Clustered }:
+                ObjectIndexType = "Clustered";
+                IndexType = string.Empty;
+                break;
+            case { ParentIndexType: Internals.Engine.Database.Enums.IndexType.Heap }:
+                ObjectIndexType = dataPage.AllocationUnit.IndexType.ToString();
+                IndexType = "Heap";
+                break;
+            default:
+                ObjectIndexType = dataPage.AllocationUnit.IndexType.ToString();
+                IndexType = dataPage.AllocationUnit.ParentIndexType?.ToString() ?? string.Empty;
+                break;
+
+        }
     }
 
     private void LoadRecords(Internals.Engine.Pages.Page target)
@@ -191,13 +239,13 @@ public partial class PageViewModel(MainViewModel parent,
             BackColour = Color.FromArgb(245, 245, 250)
         });
 
-        var offsetTableStart = PageData.Length - slotCount * 2;
+        var offsetTableStart = PageData.Size - slotCount * 2;
 
         m.Add(new Marker
         {
             Name = "Offset Table",
             StartPosition = offsetTableStart,
-            EndPosition = PageData.Length,
+            EndPosition = PageData.Size,
             ForeColour = Color.Green,
             BackColour = Color.FromArgb(245, 250, 245)
         });

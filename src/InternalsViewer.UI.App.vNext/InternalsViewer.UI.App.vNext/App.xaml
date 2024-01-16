@@ -11,7 +11,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <ResourceDictionary Source="ms-appx:///Styles/CommonStyles.xaml" />
-                <!--<ResourceDictionary Source="/Controls/CopyButton.xaml"/>-->
+                <ResourceDictionary Source="/Controls/CopyButton.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <SolidColorBrush x:Key="WindowCaptionBackground">Transparent</SolidColorBrush>
             <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled">Transparent</SolidColorBrush>

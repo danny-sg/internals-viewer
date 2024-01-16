@@ -12,16 +12,40 @@
     xmlns:converters="using:InternalsViewer.UI.App.vNext.Helpers.Converters"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
-        <Grid.Resources>
+        <VisualStateManager.VisualStateGroups>
 
-            <Style x:Key="TitleStyle" BasedOn="{StaticResource BodyStrongTextBlockStyle}" TargetType="TextBlock" >
+
+            <VisualStateGroup x:Name="WideView">
+                <VisualState>
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1400" x:Name="WideAdaptiveTrigger"/>
+                    </VisualState.StateTriggers>
+
+                    <VisualState.Setters>
+
+                        <Setter Target="MarkerContainerGrid.(Grid.Row)" Value="2"/>
+                        <Setter Target="MarkerContainerGrid.(Grid.Column)" Value="3"/>
+                        <Setter Target="BottomLayoutRow.Height" Value="Auto"/>
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <Grid.Resources>
+            <Style x:Key="TitleStyle" 
+                   BasedOn="{StaticResource BodyStrongTextBlockStyle}" 
+                   TargetType="TextBlock" >
 
             </Style>
-            <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+            <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}" x:Key="ListViewItemSlotStyle">
                 <Setter Property="Height" Value="30" />
                 <Setter Property="MinHeight" Value="30" />
                 <Setter Property="Padding" Value="10" />
+            </Style>
 
+            <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}" x:Key="ListViewItemMarkerStyle">
+                <Setter Property="Height" Value="38" />
+                <Setter Property="MinHeight" Value="38" />
+                <Setter Property="Padding" Value="10,0,0,0" />
             </Style>
 
             <Style x:Key="SlotHeader" TargetType="Grid" >
@@ -32,30 +56,26 @@
                 <Setter Property="BorderBrush" Value="{StaticResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1,1,1,0" />
             </Style>
+            <Style x:Key="HexStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontFamily" Value="Consolas"/>
+            </Style>
         </Grid.Resources>
-        <Grid x:Name="LoadingGrid"  
-              Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-            <TextBlock>Loading...</TextBlock>
-        </Grid>
-        <Grid x:Name="ContentGrid" 
-              Visibility="{
-                           x:Bind ViewModel.IsLoading, 
-                                  Mode=OneWay, 
-                                  Converter={StaticResource BoolToVisibilityConverter},
-                                  ConverterParameter=True
-                          }">
+        <Grid x:Name="ContentGrid">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto" x:Name="HeaderColumn"/>
+                <ColumnDefinition Width="Auto" x:Name="DataColumn"/>
+                <ColumnDefinition Width="Auto" x:Name="SlotColumn"/>
+                <ColumnDefinition Width="*" x:Name="WideLayoutColumn"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto" x:Name="MenuRow"/>
+                <RowDefinition Height="Auto" x:Name="TitleRow"/>
+                <RowDefinition Height="50*" x:Name="ContentRow"/>
+                <RowDefinition Height="50*" x:Name="BottomLayoutRow"/>
             </Grid.RowDefinitions>
             <StackPanel Grid.Row="0" 
+                        x:Name="MenuStackPanel"
                         Grid.Column="0" 
                         Grid.ColumnSpan="4"
                         Orientation="Horizontal"  
@@ -83,54 +103,105 @@
                                   Icon="Next" 
                                   Command="{x:Bind ViewModel.LoadPageCommand}"
                                   CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
+                    <AppBarSeparator />
+                    <AppBarElementContainer>
+                        <Grid Margin="8" Padding="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="ObjectName"
+                                       Grid.Row="0"
+                                       Grid.Column="0"
+                                       Margin="0"  
+                                       Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}">
+                            </TextBlock>
+                            <Grid Grid.Row="0"
+                                  Grid.Column="1"
+                                  Margin="4,0,0,0"
+                                  Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                                <TextBlock x:Name="ObjectIndexType"
+                                           Margin="0"  
+                                           Foreground="BlueViolet"
+                                           Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}">
+                                </TextBlock>
+                            </Grid >
+                            
+                            <TextBlock x:Name="IndexName"
+                                       Grid.Row="1"
+                                       Grid.Column="0"
+                                       Margin="0"  
+                                       Text="{x:Bind ViewModel.IndexName, Mode=OneWay}">
+                            </TextBlock>
+                            <Grid Grid.Row="1"
+                                  Grid.Column="1"
+                                  Margin="4,0,0,0"
+                                  Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                                <TextBlock x:Name="IndexType"
+                                           Margin="0"  
+                                           Foreground="BlueViolet"
+                                           Text="{x:Bind ViewModel.IndexType, Mode=OneWay}">
+                                </TextBlock>
+                            </Grid >
+
+                        </Grid>
+                    </AppBarElementContainer>
+                </CommandBar>
+                <CommandBar
+                    HorizontalAlignment="Right">
+
                 </CommandBar>
             </StackPanel>
 
             <TextBlock Style="{StaticResource TitleStyle}" 
-                       Margin="10,12,10,12" Grid.Row="1" 
-                       Grid.Column="0">
+                       Grid.Row="1"
+                       Grid.Column="0"
+                       Margin="10,12,10,12">
                 Header
             </TextBlock>
+
             <TextBlock Style="{StaticResource TitleStyle}" 
-                       Margin="0,12,0,12" 
-                       Grid.Row="1" 
-                       Grid.Column="1">
+                       Grid.Row="1"
+                       Grid.Column="1"
+                       Margin="0,12,0,12">
                 Data
             </TextBlock>
-            <TextBlock Style="{StaticResource TitleStyle}"
-                       Margin="12,12,0,12" 
-                       Grid.Row="1" 
-                       Grid.Column="2">
+
+            <TextBlock Style="{StaticResource TitleStyle}" 
+                       Grid.Row="1"
+                       Grid.Column="2"
+                       Margin="12,12,0,12">
                 Slot Offset Table
             </TextBlock>
-            <TextBlock Style="{StaticResource TitleStyle}" 
-                       Margin="12,12,0,12" 
-                       Grid.Row="1" 
-                       Grid.Column="3">
-                Key
-            </TextBlock>
 
-            <page:PageHeaderControl Grid.Row="2" Grid.Column="0" Page="{x:Bind ViewModel.Page, Mode=OneWay}"/>
+
+            <page:PageHeaderControl Page="{x:Bind ViewModel.Page, Mode=OneWay}"
+                                    Grid.Row="2"
+                                    Grid.Column="0"/>
 
             <page:HexViewControl Grid.Row="2"
-                                 Grid.Column="1"    
+                                 Grid.Column="1"
                                  CornerRadius="8,0,0,0"
                                  Background="White"
-                                 Width="460"
+                                 Width="460" 
+                                 VerticalContentAlignment="Stretch"
                                  Margin="0,0,0,14"
                                  Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
-                                 Data="{x:Bind ViewModel.PageData, Mode=OneWay}"/>
+                                 Data="{x:Bind ViewModel.Page.Data, Mode=OneWay}"/>
+
             <Grid x:Name="OffsetTableContainerGrid"
-                  Grid.Column="2" 
-                  Grid.Row="2" 
-                  Margin="10,0,0,14">
+                      Grid.Row="2"
+                      Grid.Column="2"
+                      Margin="10,0,14,14" >
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <Grid x:Name="OffsetTableHeaderGrid"
-                      Style="{StaticResource SlotHeader}"
-                      Grid.Row="0">
+                <Grid x:Name="OffsetTableHeaderGrid" Style="{StaticResource SlotHeader}" Grid.Row="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="50"/>
                         <ColumnDefinition Width="50"/>
@@ -140,15 +211,16 @@
                     <TextBlock Grid.Column="1" Text="Offset"/>
                 </Grid>
                 <ListView x:Name="OffsetTableListView"
-                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                          BorderThickness="1"
-                          Grid.Row="1"
-                          SelectedValue="{x:Bind ViewModel.SelectedOffset, Mode=TwoWay}"
-                          SelectedValuePath="Offset"
-                          BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
-                          ItemsSource="{x:Bind ViewModel.Offsets, Mode=OneWay}"
-                          Width="180" 
-                          HorizontalAlignment="Left">
+                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                              BorderThickness="1"
+                              Grid.Row="1"
+                              SelectedValue="{x:Bind ViewModel.SelectedOffset, Mode=TwoWay}"
+                              SelectedValuePath="Offset"
+                              BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
+                              ItemsSource="{x:Bind ViewModel.Offsets, Mode=OneWay}"
+                              Width="180" 
+                              ItemContainerStyle="{StaticResource ListViewItemSlotStyle}"
+                              HorizontalAlignment="Left">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:OffsetSlot">
                             <Grid>
@@ -157,35 +229,31 @@
                                     <ColumnDefinition Width="60"/>
                                     <ColumnDefinition Width="50"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0"
-                           Text="{x:Bind Index}"
-                           Style="{StaticResource ListTextBlock}"
-                           x:Phase="1"/>
-                                <TextBlock Grid.Column="1"                  
-                           Text="{x:Bind Offset}"
-                           Style="{StaticResource ListTextBlock}"
-                           x:Phase="2"/>
+                                <TextBlock Grid.Column="0" 
+                                               Text="{x:Bind Index}" 
+                                               Style="{StaticResource ListTextBlock}" 
+                                               x:Phase="1"/>
+                                <TextBlock Grid.Column="1" 
+                                               Text="{x:Bind Offset}" 
+                                               Style="{StaticResource ListTextBlock}"
+                                               x:Phase="2"/>
                                 <TextBlock Grid.Column="2"                  
-                           Text="{x:Bind Description}"
-                           Style="{StaticResource ListTextBlock}"
-                           x:Phase="3"/>
+                                               Text="{x:Bind Description}"
+                                               Style="{StaticResource ListTextBlock}"
+                                               x:Phase="3"/>
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
             </Grid>
 
-            <Grid x:Name="MarkerContainerGrid"
-      Grid.Column="3" 
-      Grid.Row="2" 
-      Margin="10,0,14,14">
+            <Grid x:Name="MarkerContainerGrid" Margin="0,0,14,14" Grid.Column="1" Grid.Row="3" Grid.ColumnSpan="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <Grid x:Name="MarkerHeaderGrid"
-          Style="{StaticResource SlotHeader}"
-          Grid.Row="0">
+
+                <Grid x:Name="MarkerHeaderGrid" Style="{StaticResource SlotHeader}" Grid.Row="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="30"/>
                         <ColumnDefinition Width="*"/>
@@ -200,15 +268,16 @@
                     <TextBlock Grid.Column="4" Text="End"/>
                 </Grid>
                 <ListView x:Name="MarkerListView"
-              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-              BorderThickness="1"
-              Grid.Row="1"
-              BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
-              ItemsSource="{x:Bind ViewModel.Markers, Mode=OneWay}"
-              HorizontalAlignment="Stretch">
+                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                              BorderThickness="1"
+                              Grid.Row="1"
+                              BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
+                              ItemsSource="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                              ItemContainerStyle="{StaticResource ListViewItemMarkerStyle}"
+                              HorizontalAlignment="Stretch">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:Marker">
-                            <Grid>
+                            <Grid Margin="0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="30"/>
                                     <ColumnDefinition Width="*"/>
@@ -216,7 +285,17 @@
                                     <ColumnDefinition Width="50"/>
                                     <ColumnDefinition Width="50"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Style="{StaticResource ListTextBlock}"/>
+                                <Grid Width="20" Height="20"
+                                    Background="{x:Bind BackColour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
+                                    <TextBlock         
+                                        Grid.Column="0"              
+                                        Text="00"
+                                        TextAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Foreground="{x:Bind ForeColour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
+                                        Style="{StaticResource HexStyle}"/>
+
+                                </Grid>
                                 <TextBlock Grid.Column="1"                  
                                            Text="{x:Bind Name}"
                                            Style="{StaticResource ListTextBlock}" />
@@ -234,7 +313,6 @@
                     </ListView.ItemTemplate>
                 </ListView>
             </Grid>
-
         </Grid>
     </Grid>
 </UserControl>
