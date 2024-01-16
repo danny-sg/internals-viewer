@@ -1,9 +1,7 @@
-﻿using System;
-using InternalsViewer.UI.App.vNext.Services;
+﻿using InternalsViewer.UI.App.vNext.Services;
 using System.Threading.Tasks;
 using InternalsViewer.UI.App.vNext.Models.Connections;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
@@ -13,13 +11,13 @@ public partial class ConnectViewModel(MainViewModel parent) : TabViewModel(paren
     {
         var viewModel = new ConnectViewModel(parent);
         
-        await viewModel.Initialize();
+        await viewModel.InitializeAsync();
         viewModel.Name = "Connect";
 
         return viewModel;
     }
 
-    private async Task Initialize()
+    private async Task InitializeAsync()
     {
         var settingsService = GetSettingsService();
 

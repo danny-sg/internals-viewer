@@ -13,57 +13,14 @@
         <MicaBackdrop Kind="Base"/>
     </Window.SystemBackdrop>
     <Grid x:Name="RootGrid">
-        <Grid.Resources>
-            <DataTemplate x:Key="DatabaseTemplate" x:DataType="tabs:DatabaseViewModel">
-                <Grid>
-                    <views:DatabaseView x:Name="DatabaseView" DataContext="{x:Bind Mode=OneWay}" />
-                </Grid>
-            </DataTemplate>
-
-            <DataTemplate x:Key="PageTemplate" x:DataType="tabs:PageViewModel">
-                <Grid>
-                    <views:PageView x:Name="PageView" DataContext="{x:Bind Mode=OneWay}"  />
-                </Grid>
-            </DataTemplate>
-
-            <DataTemplate x:Key="GetStartedTemplate"  x:DataType="tabs:ConnectViewModel">
-                <Grid>
-                    <views:ConnectView x:Name="GetStartedView" DataContext="{x:Bind Mode=OneWay}"  />
-                </Grid>
-            </DataTemplate>
-            
-            <selectors:TabTemplateSelector x:Key="TabTemplateSelector" 
-                                           DatabaseTemplate="{StaticResource DatabaseTemplate}" 
-                                           PageTemplate="{StaticResource PageTemplate}"
-                                           GetStartedTemplate="{StaticResource GetStartedTemplate}"/>
-
-            <DataTemplate x:Key="SelectorWrapper"
-                          x:DataType="tabs:TabViewModel">
-                <TabViewItem>
-                    <TabViewItem.Header>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
-                            <Image Source="{x:Bind ImageSource}" Height="16" Width="16" Stretch="Fill"/>
-                            <TextBlock Padding="6,0,0,0" Text="{x:Bind Name, Mode=OneWay}" />
-                        </StackPanel>
-                    </TabViewItem.Header>
-
-                    <ContentControl Content="{x:Bind}"
-                                    HorizontalContentAlignment="Stretch"
-                                    VerticalContentAlignment="Stretch"
-                                        ContentTemplateSelector="{StaticResource TabTemplateSelector}"/>
-
-                </TabViewItem>
-            </DataTemplate>
-        </Grid.Resources>
-        <TabView HorizontalAlignment="Stretch" 
+        <TabView x:Name="WindowTabView"
+                 HorizontalAlignment="Stretch" 
                  VerticalAlignment="Stretch" 
                  Background="Transparent" 
                  IsAddTabButtonVisible="False"
                  Margin="0,8,0,0"
                  TabCloseRequested="TabView_OnTabCloseRequested"
-                 TabItemsSource="{x:Bind ViewModel.Tabs, Mode=OneWay}"
-                 SelectedItem="{x:Bind ViewModel.SelectedTab, Mode=TwoWay}"
-                 TabItemTemplate="{StaticResource SelectorWrapper}">
+                 Loaded="TabView_Loaded">
             <TabView.Resources>
                 <ResourceDictionary>
                     <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" 

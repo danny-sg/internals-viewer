@@ -198,12 +198,12 @@ public partial class PageViewModel(MainViewModel parent,
                     case PageType.Data:
                         Logger.LogDebug("Loading Data Records");
 
-                        Records.Add(recordService!.GetDataRecord((DataPage)target, slot.Offset));
+                        Records.Add(recordService.GetDataRecord((DataPage)target, slot.Offset));
                         break;
                     case PageType.Index:
                         Logger.LogDebug("Loading Index Records");
 
-                        Records.Add(recordService!.GetIndexRecord((IndexPage)target, slot.Offset));
+                        Records.Add(recordService.GetIndexRecord((IndexPage)target, slot.Offset));
                         break;
                 }
             }

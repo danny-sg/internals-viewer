@@ -4,6 +4,8 @@ using InternalsViewer.UI.App.vNext.Models;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.UI.App.vNext.Controls.Allocation;
 using DatabaseViewModel = InternalsViewer.UI.App.vNext.ViewModels.Tabs.DatabaseViewModel;
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.UI.App.vNext.Messages;
 
 namespace InternalsViewer.UI.App.vNext.Views;
 
@@ -51,8 +53,10 @@ public sealed partial class DatabaseView
         return target as T;
     }
 
-    private async void Allocations_OnPageClicked(object? sender, PageClickedEventArgs e)
+    private void Allocations_OnPageClicked(object? sender, PageClickedEventArgs e)
     {
-       await ViewModel.Parent.OpenPage(ViewModel.Database, new Internals.Engine.Address.PageAddress(1, e.PageId));
+        var pageAddress = new Internals.Engine.Address.PageAddress(1, e.PageId);
+
+        WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
     }
 }
