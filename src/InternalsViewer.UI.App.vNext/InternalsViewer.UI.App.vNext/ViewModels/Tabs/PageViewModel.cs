@@ -18,16 +18,14 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using InternalsViewer.UI.App.vNext.Helpers;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
-public partial class PageViewModel(MainViewModel parent,
-                                   DatabaseSource database,
-                                   ILogger<PageViewModel> logger)
-    : TabViewModel(parent, TabType.Page)
+public partial class PageViewModel(IServiceProvider serviceProvider,
+                                   DatabaseSource database)
+    : TabViewModel(serviceProvider, TabType.Page)
 {
-    public ILogger<PageViewModel> Logger { get; } = logger;
-
     public override TabType TabType => TabType.Page;
 
     public override ImageSource ImageSource => new BitmapImage(new Uri("ms-appx:///Assets/TabIcons/Page32.png"));
@@ -102,18 +100,20 @@ public partial class PageViewModel(MainViewModel parent,
     [RelayCommand]
     public async Task LoadPage(PageAddress address)
     {
-        Logger.LogDebug("Loading Page {Address}", address);
+        var logger = GetService<ILogger<PageViewModel>>();
+
+        logger.LogDebug("Loading Page {Address}", address);
 
         IsLoading = true;
 
-        var pageService = Parent.GetService<IPageService>();
+        var pageService = GetService<IPageService>();
 
         Name = $"Page {address}";
         PageAddress = address;
 
         var resultPage = await pageService.GetPage(Database, address);
 
-        Logger.LogDebug("Building Offset Table");
+        logger.LogDebug("Building Offset Table");
 
         var slots = resultPage.OffsetTable.Select((s, i) => new OffsetSlot
         {
@@ -126,7 +126,7 @@ public partial class PageViewModel(MainViewModel parent,
 
         Offsets = new ObservableCollection<OffsetSlot>(slots);
 
-        Logger.LogDebug("Adding Page Markers");
+        logger.LogDebug("Adding Page Markers");
 
         AddPageMarkers(resultPage.PageHeader.SlotCount);
 
@@ -136,6 +136,12 @@ public partial class PageViewModel(MainViewModel parent,
                 SetAllocationUnitDescription(dataPage);
 
                 LoadRecords(dataPage);
+                break;
+            default:
+                IndexName = string.Empty;
+                ObjectName = string.Empty;
+                IndexType = string.Empty;
+                ObjectIndexType = string.Empty;
                 break;
         }
 
@@ -183,11 +189,12 @@ public partial class PageViewModel(MainViewModel parent,
 
     private void LoadRecords(Internals.Engine.Pages.Page target)
     {
-        Logger.LogDebug("Loading Records");
+        var logger = GetService<ILogger<PageViewModel>>();
+        logger.LogDebug("Loading Records");
 
         Records.Clear();
 
-        var recordService = Parent.GetService<IRecordService>();
+        var recordService = GetService<IRecordService>();
 
         foreach (var slot in Offsets)
         {
@@ -196,12 +203,12 @@ public partial class PageViewModel(MainViewModel parent,
                 switch (target.PageHeader.PageType)
                 {
                     case PageType.Data:
-                        Logger.LogDebug("Loading Data Records");
+                        logger.LogDebug("Loading Data Records");
 
                         Records.Add(recordService.GetDataRecord((DataPage)target, slot.Offset));
                         break;
                     case PageType.Index:
-                        Logger.LogDebug("Loading Index Records");
+                        logger.LogDebug("Loading Index Records");
 
                         Records.Add(recordService.GetIndexRecord((IndexPage)target, slot.Offset));
                         break;
@@ -209,11 +216,11 @@ public partial class PageViewModel(MainViewModel parent,
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, $"Error loading record {slot.Index}");
+                logger.LogError(ex, $"Error loading record {slot.Index}");
             }
         }
 
-        Logger.LogDebug("{RecordCount} Record(s) loaded", Records.Count);
+        logger.LogDebug("{RecordCount} Record(s) loaded", Records.Count);
     }
 
     /// <summary>
@@ -249,6 +256,7 @@ public partial class PageViewModel(MainViewModel parent,
             ForeColour = Color.Green,
             BackColour = Color.FromArgb(245, 250, 245)
         });
+
         return m;
     }
 }

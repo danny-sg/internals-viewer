@@ -28,8 +28,6 @@ public sealed partial class MainWindow
 {
     public IServiceProvider ServiceProvider { get; }
 
-    public required MainViewModel ViewModel { get; set; }
-
     public MainWindow(IServiceProvider serviceProvider)
     {
         ServiceProvider = serviceProvider;
@@ -40,8 +38,6 @@ public sealed partial class MainWindow
         ExtendsContentIntoTitleBar = true;
 
         SetTitleBar(CustomDragRegion);
-
-        ViewModel = new MainViewModel(serviceProvider);
 
         WeakReferenceMessenger.Default.Register<ConnectServerMessage>(this, async (_, m)
             => await ConnectServer(m.Value));
@@ -73,9 +69,7 @@ public sealed partial class MainWindow
 
     private async Task OpenPage(DatabaseSource database, PageAddress pageAddress)
     {
-        var logger = ServiceProvider.GetService<ILogger<PageViewModel>>();
-
-        var viewModel = new PageViewModel(ViewModel, database, logger);
+        var viewModel = new PageViewModel(ServiceProvider, database);
 
         await viewModel.LoadPage(pageAddress);
 
@@ -110,7 +104,7 @@ public sealed partial class MainWindow
 
         var database = await databaseLoader.Load(connection.Name, connection);
 
-        var viewModel = new DatabaseViewModel(ViewModel, database);
+        var viewModel = new DatabaseViewModel(ServiceProvider, database);
 
         viewModel.Name = connection.Name;
 
@@ -138,11 +132,6 @@ public sealed partial class MainWindow
         WindowTabView.SelectedItem = tab;
     }
 
-    public async Task InitializeAsync()
-    {
-        await ViewModel.InitializeAsync();
-    }
-
     private void TabView_OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
         sender.TabItems.Remove(args.Tab);
@@ -162,7 +151,7 @@ public sealed partial class MainWindow
     {
         var content = new ConnectView();
 
-        var viewModel = await ConnectViewModel.CreateAsync(ViewModel);
+        var viewModel = await ConnectViewModel.CreateAsync(ServiceProvider);
 
         content.DataContext = viewModel;
 
@@ -178,7 +167,7 @@ public sealed partial class MainWindow
     {
         var content = new ConnectView();
 
-        var viewModel = await ConnectViewModel.CreateAsync(ViewModel);
+        var viewModel = await ConnectViewModel.CreateAsync(ServiceProvider);
 
         content.DataContext = viewModel;
 
@@ -188,5 +177,10 @@ public sealed partial class MainWindow
             Header = "Connect",
             Content = content
         });
+    }
+
+    public Task InitializeAsync()
+    {
+        return Task.CompletedTask;
     }
 }

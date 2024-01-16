@@ -5,9 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:views="using:InternalsViewer.UI.App.vNext.Views"
-    xmlns:tabs="using:InternalsViewer.UI.App.vNext.ViewModels.Tabs"
-    xmlns:selectors="using:InternalsViewer.UI.App.vNext.Helpers.Selectors"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop Kind="Base"/>
@@ -42,7 +39,7 @@
                            Width="16" Height="16"
                            Margin="8,0,0,0"/>
                     <TextBlock x:Name="TitleBarTextBlock" 
-                               Text="Internals Viewer" 
+                               Text="Internals Viewer 2024.1" 
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Grid.Column="1"
                                VerticalAlignment="Center"

@@ -4,7 +4,6 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:WinUIGallery.DesktopWap.Controls"
     xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls">
 
     <Style BasedOn="{StaticResource DefaultCopyButtonStyle}" TargetType="controls:CopyButton" />

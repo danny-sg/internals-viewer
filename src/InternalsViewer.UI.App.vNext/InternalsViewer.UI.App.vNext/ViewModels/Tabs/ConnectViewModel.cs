@@ -1,15 +1,16 @@
-﻿using InternalsViewer.UI.App.vNext.Services;
+﻿using System;
+using InternalsViewer.UI.App.vNext.Services;
 using System.Threading.Tasks;
 using InternalsViewer.UI.App.vNext.Models.Connections;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
-public partial class ConnectViewModel(MainViewModel parent) : TabViewModel(parent, TabType.Connect)
+public partial class ConnectViewModel(IServiceProvider serviceProvider) : TabViewModel(serviceProvider, TabType.Connect)
 {
-    public static async Task<ConnectViewModel> CreateAsync(MainViewModel parent)
+    public static async Task<ConnectViewModel> CreateAsync(IServiceProvider serviceProvider)
     {
-        var viewModel = new ConnectViewModel(parent);
+        var viewModel = new ConnectViewModel(serviceProvider);
         
         await viewModel.InitializeAsync();
         viewModel.Name = "Connect";
@@ -33,7 +34,7 @@ public partial class ConnectViewModel(MainViewModel parent) : TabViewModel(paren
 
     private SettingsService GetSettingsService()
     {
-        var settingsService = Parent.GetService<SettingsService>();
+        var settingsService = GetService<SettingsService>();
 
         return settingsService;
     }

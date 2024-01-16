@@ -63,7 +63,7 @@
         </Grid.Resources>
         <Grid x:Name="ContentGrid">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" x:Name="HeaderColumn"/>
+                <ColumnDefinition Width="340" x:Name="HeaderColumn"/>
                 <ColumnDefinition Width="Auto" x:Name="DataColumn"/>
                 <ColumnDefinition Width="Auto" x:Name="SlotColumn"/>
                 <ColumnDefinition Width="*" x:Name="WideLayoutColumn"/>
@@ -105,50 +105,7 @@
                                   CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
                     <AppBarSeparator />
                     <AppBarElementContainer>
-                        <Grid Margin="8" Padding="0">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="ObjectName"
-                                       Grid.Row="0"
-                                       Grid.Column="0"
-                                       Margin="0"  
-                                       Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}">
-                            </TextBlock>
-                            <Grid Grid.Row="0"
-                                  Grid.Column="1"
-                                  Margin="4,0,0,0"
-                                  Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-                                <TextBlock x:Name="ObjectIndexType"
-                                           Margin="0"  
-                                           Foreground="BlueViolet"
-                                           Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}">
-                                </TextBlock>
-                            </Grid >
-                            
-                            <TextBlock x:Name="IndexName"
-                                       Grid.Row="1"
-                                       Grid.Column="0"
-                                       Margin="0"  
-                                       Text="{x:Bind ViewModel.IndexName, Mode=OneWay}">
-                            </TextBlock>
-                            <Grid Grid.Row="1"
-                                  Grid.Column="1"
-                                  Margin="4,0,0,0"
-                                  Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-                                <TextBlock x:Name="IndexType"
-                                           Margin="0"  
-                                           Foreground="BlueViolet"
-                                           Text="{x:Bind ViewModel.IndexType, Mode=OneWay}">
-                                </TextBlock>
-                            </Grid >
-
-                        </Grid>
+                       
                     </AppBarElementContainer>
                 </CommandBar>
                 <CommandBar
@@ -157,13 +114,45 @@
                 </CommandBar>
             </StackPanel>
 
-            <TextBlock Style="{StaticResource TitleStyle}" 
-                       Grid.Row="1"
-                       Grid.Column="0"
-                       Margin="10,12,10,12">
-                Header
-            </TextBlock>
+  
+            <Grid Margin="8" Grid.Row="1" Grid.Column="0" Padding="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" Grid.Row="0">
+                    <TextBlock x:Name="ObjectName"
+                                   FontWeight="Bold"
+                                   Margin="0,0,10,0"  
+                                   Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}">
+                    </TextBlock>
+                    <Grid 
+                            Margin="0"
+                            Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                        <TextBlock x:Name="ObjectIndexType"
+                                       Margin="0"  
+                                       Foreground="BlueViolet"
+                                       Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}">
+                        </TextBlock>
+                    </Grid >
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Grid.Row="1">
+                    <TextBlock x:Name="IndexName"
+                                   Margin="0,0,10,0"  
 
+                                   Text="{x:Bind ViewModel.IndexName, Mode=OneWay}">
+                    </TextBlock>
+                    <Grid 
+                            Margin="0"
+                            Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                        <TextBlock x:Name="IndexType"
+                                       Margin="0"  
+                                       Foreground="BlueViolet"
+                                       Text="{x:Bind ViewModel.IndexType, Mode=OneWay}">
+                        </TextBlock>
+                    </Grid >
+                </StackPanel>
+            </Grid>
             <TextBlock Style="{StaticResource TitleStyle}" 
                        Grid.Row="1"
                        Grid.Column="1"
@@ -178,11 +167,16 @@
                 Slot Offset Table
             </TextBlock>
 
-
-            <page:PageHeaderControl Page="{x:Bind ViewModel.Page, Mode=OneWay}"
-                                    Grid.Row="2"
-                                    Grid.Column="0"/>
-
+            <StackPanel     Grid.Row="2"
+                            Grid.Column="0">
+                <TextBlock Style="{StaticResource TitleStyle}" 
+               
+                           Margin="10,0,10,10">
+                    Header
+                </TextBlock>
+                <page:PageHeaderControl Page="{x:Bind ViewModel.Page, Mode=OneWay}"
+                                />
+            </StackPanel>
             <page:HexViewControl Grid.Row="2"
                                  Grid.Column="1"
                                  CornerRadius="8,0,0,0"
