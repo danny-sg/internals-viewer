@@ -108,6 +108,6 @@ internal class AllocationLayerBuilder
 
         colourIndex += userObjectCount > ColourCount ? 1 : (int)Math.Floor(ColourCount / (double)userObjectCount);
 
-        return HsvColour.HsvToColor(colourIndex, UserSaturation, UserValue);
+        return ColourHelpers.HsvToColor(colourIndex, UserSaturation, UserValue);
     }
 }

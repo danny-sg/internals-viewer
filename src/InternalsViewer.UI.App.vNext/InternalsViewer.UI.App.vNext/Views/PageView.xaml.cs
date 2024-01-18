@@ -1,8 +1,5 @@
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
-using Microsoft.UI.Xaml.Data;
-using static Microsoft.UI.Xaml.Controls.TextBox;
 
 namespace InternalsViewer.UI.App.vNext.Views;
 

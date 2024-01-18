@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml.Media;
-using InternalsViewer.UI.App.vNext.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Collections.ObjectModel;
@@ -19,7 +18,7 @@ using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Connections.Backup;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using Microsoft.Extensions.Logging;
+using InternalsViewer.UI.App.vNext.Views.Connect;
 using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.vNext;
@@ -40,7 +39,7 @@ public sealed partial class MainWindow
         SetTitleBar(CustomDragRegion);
 
         WeakReferenceMessenger.Default.Register<ConnectServerMessage>(this, async (_, m)
-            => await ConnectServer(m.Value));
+            => await ConnectServer(m.Value.ConnectionString));
 
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, async (_, m)
             => await OpenPage(m.Value.Database, m.Value.PageAddress));

@@ -5,119 +5,54 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:toolkit1="using:CommunityToolkit.WinUI.Controls"
-    xmlns:toolkit2="using:CommunityToolkit.WinUI.UI.Controls"
-    xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:allocation="using:InternalsViewer.UI.App.vNext.Controls.Allocation"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" x:Name="LayoutGrid">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"  MaxHeight="300"/>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Orientation="Horizontal" >
+            <MenuBar Background="Transparent" 
+                     HorizontalAlignment="Left">
+
+                <MenuBarItem Title="View">
+                    <MenuFlyoutSubItem Text="Allocation Units">
+                        <RadioMenuFlyoutItem Text="Bottom" GroupName="OrientationGroup"/>
+                        <RadioMenuFlyoutItem Text="Right" GroupName="OrientationGroup" IsChecked="True"/>
+                        <RadioMenuFlyoutItem Text="Hide" GroupName="OrientationGroup" IsChecked="True"/>
+                    </MenuFlyoutSubItem>
+                </MenuBarItem>
+
+
+            </MenuBar>
             <CommandBar 
                     Background="Transparent" 
                     IsOpen="False" 
-                    DefaultLabelPosition="Right" 
-                    HorizontalAlignment="Left">
+                    DefaultLabelPosition="Right" >
 
-                <AppBarButton  Label="Details"/>
-
-            </CommandBar>
-            <CommandBar 
-                Background="Transparent" 
-                IsOpen="False" 
-                DefaultLabelPosition="Right" >
-         
             </CommandBar>
         </StackPanel>
-        <Grid Grid.Row="1" x:Name="ContentGrid">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-
-            <allocation:AllocationControl Grid.Row="0"
-                                        MinHeight="200"
-                                        ExtentCount="{x:Bind ViewModel.Size, Mode=OneWay}" 
-                                        Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
-                                        SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=OneWay}"
-                                        AllocationOver="{x:Bind ViewModel.AllocationOver,Mode=TwoWay}"
-                                        PageClicked="Allocations_OnPageClicked"
-                                        x:Name="Allocations"/>
-            <toolkit1:ContentSizer Grid.Row="1"
-                                   Cursor="Hand"
-                                   Orientation="Horizontal"
-                                   TargetControl="{x:Bind Allocations}" />
-            <Grid Grid.Row="2" x:Name="DetailGrid">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <CommandBar Grid.Row="0"
-                        Margin="0" 
-                        IsOpen="True"
-                        IsSticky="True" 
-                        Background="Transparent"
-                        DefaultLabelPosition="Right">
-                    <AppBarElementContainer>
-                        <TextBox Width="200" Margin="0 8 10 0"  
-                             PlaceholderText="Filter" 
-                            
-                             Text="{x:Bind ViewModel.Filter, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-                    </AppBarElementContainer>
-                    <CommandBar.Content>
-                        <TextBlock Text="{x:Bind Path=ViewModel.AllocationOver.LayerName, Mode=OneWay}" 
-                                   Margin="12,14"/>
-                    </CommandBar.Content>
-                </CommandBar>
-
-                <toolkit2:DataGrid x:Name="DataGrid"
-                                   Grid.Row="1"
-                               AutoGenerateColumns="False"
-                               CanUserSortColumns="True"
-                               SelectionMode="Single"
-                                   Height="Auto"
-                                   MaxHeight="300"
-                               PointerPressed="DataGrid_OnPointerPressed"
-                               IsReadOnly="True"
-                               GridLinesVisibility="Vertical"
-                               ItemsSource="{x:Bind ViewModel.GridAllocationLayers, Mode=OneWay}">
-                    <toolkit2:DataGrid.Columns>
-                        <toolkit2:DataGridTemplateColumn Header="Key"
-                                                     Tag="Key">
-                            <toolkit2:DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate x:DataType="models:AllocationLayer">
-                                    <Grid>
-                                        <Rectangle Width="16" 
-                                               Height="16" 
-                                               Fill="{x:Bind Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
-                                        </Rectangle>
-                                    </Grid>
-                                </DataTemplate>
-                            </toolkit2:DataGridTemplateColumn.CellTemplate>
-                        </toolkit2:DataGridTemplateColumn>
-                        <toolkit2:DataGridTextColumn Header="Object Name"
-                                                 Binding="{Binding ObjectName}"/>
-                        <toolkit2:DataGridTextColumn Header="Index Name"
-                                                 Binding="{Binding IndexName}"/>
-                        <toolkit2:DataGridTextColumn Header="Index Type"
-                                                 Binding="{Binding IndexType}"/>
-                        <toolkit2:DataGridTextColumn Header="Root Page"
-                                                 Binding="{Binding RootPage}"/>
-                        <toolkit2:DataGridTextColumn Header="First Page"
-                                                 Binding="{Binding FirstPage}"/>
-                        <toolkit2:DataGridTextColumn Header="First IAM"
-                                                 Binding="{Binding FirstIamPage}"/>
-                        <toolkit2:DataGridTextColumn Header="Page Count"
-                                                 Binding="{Binding TotalPages}"/>
-                    </toolkit2:DataGrid.Columns>
-                </toolkit2:DataGrid>
-            </Grid>
-        </Grid>
+        <allocation:AllocationControl Grid.Row="1"
+                                      MinHeight="200"
+                                      ExtentCount="{x:Bind ViewModel.Size, Mode=OneWay}" 
+                                      Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
+                                      SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=OneWay}"
+                                      AllocationOver="{x:Bind ViewModel.AllocationOver,Mode=TwoWay}"
+                                      PageClicked="Allocations_OnPageClicked"
+                                      x:Name="Allocations"/>
+        <allocation:AllocationLayerGrid Grid.Row="2" 
+                                        SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=TwoWay}"
+                                        Layers="{x:Bind ViewModel.AllocationLayers}"/>
+        <toolkit:GridSplitter Grid.Row="2"
+                              Grid.ColumnSpan="1"
+                              Height="16"
+                              VerticalAlignment="Top">
+            <toolkit:GridSplitter.RenderTransform>
+                <TranslateTransform Y="-7" />
+            </toolkit:GridSplitter.RenderTransform>
+        </toolkit:GridSplitter>
     </Grid>
 </UserControl>

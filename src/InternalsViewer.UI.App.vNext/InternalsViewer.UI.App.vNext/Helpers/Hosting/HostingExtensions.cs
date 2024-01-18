@@ -4,18 +4,18 @@
 // at https://opensource.org/licenses/MIT).
 // SPDX-License-Identifier: MIT
 
+using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Dispatching;
-using System;
-using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
 using WinRT;
 
-namespace InternalsViewer.UI.App.vNext.Hosting;
+namespace InternalsViewer.UI.App.vNext.Helpers.Hosting;
 
 /// <summary>
 /// Contains helper extensions for <see cref="HostApplicationBuilder" /> to

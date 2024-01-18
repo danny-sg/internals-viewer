@@ -1,15 +1,15 @@
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.UI.App.vNext.Controls.Connections;
+using InternalsViewer.UI.App.vNext.Messages;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 using System;
 using Windows.Storage.Pickers;
-using InternalsViewer.UI.App.vNext.Controls.Connections;
-using CommunityToolkit.Mvvm.Messaging;
-using InternalsViewer.UI.App.vNext.Messages;
 
-namespace InternalsViewer.UI.App.vNext.Views;
+namespace InternalsViewer.UI.App.vNext.Views.Connect;
 
-public sealed partial class ConnectView
+public sealed partial class ConnectStartPage
 {
-    public ConnectView()
+    public ConnectStartPage()
     {
         InitializeComponent();
     }
@@ -18,7 +18,6 @@ public sealed partial class ConnectView
 
     private async void ServerConnectionControl_OnConnectRequested(object? sender, ServerConnectEventArgs e)
     {
-        WeakReferenceMessenger.Default.Send(new ConnectServerMessage(e.ConnectionString));
 
         await ViewModel.SaveSettings(e.Settings);
     }
@@ -42,5 +41,10 @@ public sealed partial class ConnectView
         {
             WeakReferenceMessenger.Default.Send(new ConnectFileMessage(file.Path));
         }
+    }
+
+    private void ConnectSqlServerHeaderTile_Click(object sender, RoutedEventArgs e)
+    {
+        WeakReferenceMessenger.Default.Send(new NavigateMessage("ConnectServerPage"));
     }
 }

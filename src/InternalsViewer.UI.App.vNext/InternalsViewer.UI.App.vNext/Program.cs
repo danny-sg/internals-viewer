@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using InternalsViewer.Internals;
-using InternalsViewer.UI.App.vNext.Hosting;
+using InternalsViewer.UI.App.vNext.Helpers.Hosting;
 using InternalsViewer.UI.App.vNext.Models;
 using InternalsViewer.UI.App.vNext.Services;
+using InternalsViewer.UI.App.vNext.ViewModels.Connections;
+using InternalsViewer.UI.App.vNext.Views.Connect;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -34,6 +36,8 @@ public static partial class Program
         builder.Services.RegisterServices();
 
         builder.Services.Configure<SettingsOptions>(builder.Configuration.GetSection(nameof(SettingsOptions)));
+
+        builder.Services.AddTransient<ServerConnectionViewModel>();
 
         var host = builder.ConfigureWinUi<App>().Build();
 

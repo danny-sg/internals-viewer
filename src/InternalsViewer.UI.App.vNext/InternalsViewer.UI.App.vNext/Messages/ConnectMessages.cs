@@ -1,10 +1,10 @@
 ﻿using CommunityToolkit.Mvvm.Messaging.Messages;
-using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.UI.App.vNext.Models.Connections;
 
 namespace InternalsViewer.UI.App.vNext.Messages;
 
-public class ConnectServerMessage(string connectionString) : ValueChangedMessage<string>(connectionString);
+public class ConnectServerMessage((string ConnectionString, ServerConnectionSettings settings) value)
+    : ValueChangedMessage<(string ConnectionString, ServerConnectionSettings settings)>(value);
 
 public class ConnectFileMessage(string filename) : ValueChangedMessage<string>(filename);
 

@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
-using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Services.Pages;
 using InternalsViewer.Internals.Services.Pages.Loaders;
 using InternalsViewer.Internals.Services.Pages.Parsers;

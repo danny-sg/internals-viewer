@@ -139,12 +139,10 @@
                 <StackPanel Orientation="Horizontal" Grid.Row="1">
                     <TextBlock x:Name="IndexName"
                                    Margin="0,0,10,0"  
-
                                    Text="{x:Bind ViewModel.IndexName, Mode=OneWay}">
                     </TextBlock>
-                    <Grid 
-                            Margin="0"
-                            Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                    <Grid Margin="0"
+                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
                         <TextBlock x:Name="IndexType"
                                        Margin="0"  
                                        Foreground="BlueViolet"

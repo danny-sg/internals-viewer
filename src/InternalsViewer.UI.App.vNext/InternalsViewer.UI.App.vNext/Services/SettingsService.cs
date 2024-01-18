@@ -36,7 +36,7 @@ public class SettingsService
         settings = new Dictionary<string, object>();
     }
 
-    private async Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         if (!isInitialized)
         {
@@ -52,7 +52,7 @@ public class SettingsService
         object? value;
         bool isFound;
 
-        if (RuntimeHelper.IsMSIX)
+        if (RuntimeHelper.IsMsix)
         {
             isFound = ApplicationData.Current.LocalSettings.Values.TryGetValue(key, out value);
           
@@ -83,7 +83,7 @@ public class SettingsService
 
     public async Task SaveSettingAsync<T>(string key, T value)
     {
-        if (RuntimeHelper.IsMSIX)
+        if (RuntimeHelper.IsMsix)
         {
             ApplicationData.Current.LocalSettings.Values[key] = JsonSerializer.Serialize(value);
         }

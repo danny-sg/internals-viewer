@@ -1,5 +1,4 @@
 using InternalsViewer.Internals.Engine.Address;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using DatabasePage = InternalsViewer.Internals.Engine.Pages.Page;
 

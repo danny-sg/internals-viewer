@@ -18,7 +18,6 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using InternalsViewer.UI.App.vNext.Helpers;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 

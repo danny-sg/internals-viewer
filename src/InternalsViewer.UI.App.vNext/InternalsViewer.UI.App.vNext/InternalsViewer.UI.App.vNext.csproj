@@ -36,6 +36,10 @@
         <None Remove="Controls\ServerConnectionControl.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Views\ConnectView.xaml" />
+        <None Remove="Views\Connect\ConnectBackupPage.xaml" />
+        <None Remove="Views\Connect\ConnectFilePage.xaml" />
+        <None Remove="Views\Connect\ConnectServerPage.xaml" />
+        <None Remove="Views\Connect\ConnectStartPage.xaml" />
         <None Remove="Views\DatabaseView.xaml" />
         <None Remove="Views\PageView.xaml" />
     </ItemGroup>
@@ -100,6 +104,18 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Views\Connect\ConnectBackupPage.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Views\Connect\ConnectFilePage.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Views\Connect\ConnectServerPage.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Views\Connect\ConnectStartPage.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\CopyButton.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
@@ -169,9 +185,5 @@
         <Page Update="Styles\CommonStyles.xaml">
             <Generator>MSBuild:Compile</Generator>
         </Page>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Controls\Allocation\" />
     </ItemGroup>
 </Project>

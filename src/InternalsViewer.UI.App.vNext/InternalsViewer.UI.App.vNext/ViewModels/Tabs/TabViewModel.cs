@@ -29,7 +29,7 @@ public partial class TabViewModel : ObservableObject
         TabId = Guid.NewGuid().ToString();
     }
 
-    protected T GetService<T>()
+    public T GetService<T>()
     {
         var service = ServiceProvider.GetService<T>();
 

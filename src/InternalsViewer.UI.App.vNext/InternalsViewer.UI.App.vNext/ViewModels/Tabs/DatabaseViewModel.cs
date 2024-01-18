@@ -33,6 +33,16 @@ public partial class DatabaseViewModel(IServiceProvider serviceProvider, Databas
     [ObservableProperty]
     private bool isLayerDetailVisible;
 
+    [ObservableProperty]
+    private ViewLocation allocationUnitsGridLocation = ViewLocation.Bottom;
+
     public List<AllocationLayer> GridAllocationLayers
         => allocationLayers.Where(w => string.IsNullOrEmpty(Filter) || w.Name.ToLower().Contains(filter.ToLower())).ToList();
+}
+
+public enum ViewLocation
+{
+    Bottom,
+    Left,
+    Hidden
 }

@@ -6,33 +6,23 @@ using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
 using InternalsViewer.UI.App.vNext.Models.Connections;
 using System.ComponentModel.DataAnnotations;
+using InternalsViewer.UI.App.vNext.Services;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Connections;
 
-public partial class ServerConnectionViewModel : ObservableValidator
+public partial class ServerConnectionViewModel(SettingsService settingsService) : ObservableValidator
 {
-    public void SetInitialSettings(ServerConnectionSettings serverConnectionSettings)
-    {
-        InstanceName = serverConnectionSettings.InstanceName;
-        AuthenticationType = (SqlAuthenticationMethod?)serverConnectionSettings.AuthenticationType;
-        Database = serverConnectionSettings.DatabaseName;
-        UserId = serverConnectionSettings.UserId;
-
-        if(Databases.Count == 0)
-        {
-            Databases.Add(Database);
-        }
-    }
+    public SettingsService SettingsService { get; } = settingsService;
 
     private readonly SqlConnectionStringBuilder builder = new() { TrustServerCertificate = true };
 
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
-    private string instanceName = string.Empty;
+    private string instanceName = "localhost";
 
     [Required]
     [ObservableProperty]
-    private SqlAuthenticationMethod? authenticationType;
+    private SqlAuthenticationMethod authenticationType = SqlAuthenticationMethod.ActiveDirectoryIntegrated;
 
     [ObservableProperty]
     private string userId = string.Empty;
@@ -69,21 +59,9 @@ public partial class ServerConnectionViewModel : ObservableValidator
         new (SqlAuthenticationMethod.ActiveDirectoryServicePrincipal, "Active Directory Service Principal"),
     };
 
-    partial void OnUserIdChanging(string value)
+    partial void OnAuthenticationTypeChanged(SqlAuthenticationMethod value)
     {
-        builder.DataSource = value;
-    }
-
-    partial void OnAuthenticationTypeChanged(SqlAuthenticationMethod? value)
-    {
-        if (value == null)
-        {
-            builder.Remove(nameof(SqlAuthenticationMethod));
-
-            return;
-        }
-
-        builder.Authentication = value.Value;
+        builder.Authentication = value;
 
         switch (builder)
         {
@@ -116,23 +94,10 @@ public partial class ServerConnectionViewModel : ObservableValidator
         }
     }
 
-    partial void OnUserIdChanged(string value)
-    {
-        builder.UserID = value;
-    }
-
-    partial void OnPasswordChanged(string value)
-    {
-        builder.Password = value;
-    }
-
-    partial void OnDatabaseChanged(string value)
-    {
-        builder.InitialCatalog = value;
-    }
-
     public string GetConnectionString()
     {
+        RefreshConnectionString();
+
         return builder.ConnectionString;
     }
 
@@ -203,6 +168,39 @@ public partial class ServerConnectionViewModel : ObservableValidator
         if (!string.IsNullOrEmpty(Database))
         {
             Databases.Add(Database);
+        }
+    }
+
+    public async Task InitializeAsync()
+    {
+        var settings = await SettingsService.ReadSettingAsync<ServerConnectionSettings>("CurrentServerConnection");  
+
+        if (settings != null)
+        {
+            InstanceName = settings.InstanceName;
+            AuthenticationType = (SqlAuthenticationMethod)settings.AuthenticationType;
+            Database = settings.DatabaseName;
+            UserId = settings.UserId;
+
+            RefreshConnectionString();
+        }
+    }
+
+    private void RefreshConnectionString()
+    {
+        builder.InitialCatalog = Database;
+        builder.DataSource = InstanceName;
+        
+        builder.Authentication = AuthenticationType;
+
+        if (!string.IsNullOrEmpty(UserId))
+        {
+            builder.UserID = UserId;
+        }
+
+        if (!string.IsNullOrEmpty(Password))
+        {
+            builder.Password = Password;
         }
     }
 }

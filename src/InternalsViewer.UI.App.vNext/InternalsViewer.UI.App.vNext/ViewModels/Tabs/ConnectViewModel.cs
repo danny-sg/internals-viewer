@@ -18,7 +18,7 @@ public partial class ConnectViewModel(IServiceProvider serviceProvider) : TabVie
         return viewModel;
     }
 
-    private async Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         var settingsService = GetSettingsService();
 

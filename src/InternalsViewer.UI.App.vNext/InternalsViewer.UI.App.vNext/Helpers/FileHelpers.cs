@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.vNext.Helpers;
 
@@ -39,5 +40,20 @@ public static class FileHelpers
         {
             File.Delete(Path.Combine(folderPath, filename));
         }
+    }
+}
+
+public static class LayoutHelpers
+{
+    public static T? FindParent<T>(DependencyObject? source) where T : DependencyObject
+    {
+        var target = source;
+
+        while (target != null && target is not T)
+        {
+            target = VisualTreeHelper.GetParent(target);
+        }
+
+        return target as T;
     }
 }

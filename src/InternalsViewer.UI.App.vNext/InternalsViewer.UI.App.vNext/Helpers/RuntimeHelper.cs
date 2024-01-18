@@ -8,7 +8,7 @@ public class RuntimeHelper
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, StringBuilder? packageFullName);
 
-    public static bool IsMSIX
+    public static bool IsMsix
     {
         get
         {
