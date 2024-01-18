@@ -55,7 +55,7 @@ public sealed partial class ConnectView
     {
         if (args.IsSettingsSelected)
         {
-            // contentFrame5.Navigate(typeof(SampleSettingsPage));
+            ContentFrame.Navigate(typeof(SettingsPage));
         }
         else
         {

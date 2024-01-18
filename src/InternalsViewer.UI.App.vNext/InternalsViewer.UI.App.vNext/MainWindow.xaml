@@ -15,7 +15,8 @@
                  VerticalAlignment="Stretch" 
                  Background="Transparent" 
                  IsAddTabButtonVisible="False"
-                 Margin="0,8,0,0"
+                 Margin="0,4,0,0"
+                 TabWidthMode="Equal"
                  TabCloseRequested="TabView_OnTabCloseRequested"
                  Loaded="TabView_Loaded">
             <TabView.Resources>
@@ -27,7 +28,8 @@
 
             <TabView.TabStripHeader>
                 <Grid x:Name="AppTitleBar"  
-                      Height="34">
+                      Height="30"
+                      Margin="0,-4,10,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition x:Name="LeftPaddingColumn" Width="8"/>
                         <ColumnDefinition/>
@@ -43,7 +45,7 @@
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Grid.Column="1"
                                VerticalAlignment="Center"
-                               Margin="34,0,32,0"/>
+                               Margin="32,0,0,0"/>
                 </Grid>
             </TabView.TabStripHeader>
 

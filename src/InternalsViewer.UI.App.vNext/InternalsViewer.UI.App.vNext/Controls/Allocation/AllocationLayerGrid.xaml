@@ -8,13 +8,16 @@
     xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <CollectionViewSource x:Name="LayersCollectionViewSource" Source="{x:Bind Layers}"/>
+    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <CommandBar Grid.Row="0"
-                    Margin="0" 
+                    Margin="0"
                     IsOpen="True"
                     IsSticky="True" 
                     Background="Transparent"
@@ -22,7 +25,7 @@
             <AppBarElementContainer>
                 <TextBox Width="200" Margin="0 8 10 0"  
                          PlaceholderText="Filter"        
-                         Text="{x:Bind Filter, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+                         Text="{x:Bind ViewModel.Filter, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
             </AppBarElementContainer>
             <CommandBar.Content>
                 <!--<TextBlock Text="{x:Bind Path=ViewModel.AllocationOver.LayerName, Mode=OneWay}" 
@@ -37,7 +40,7 @@
                                IsReadOnly="True"
                                GridLinesVisibility="Vertical"
                                PointerPressed="DataGrid_OnPointerPressed"
-                               ItemsSource="{x:Bind Layers, Mode=OneWay}">
+                               ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">
                 <toolkit:DataGrid.Columns>
                     <toolkit:DataGridTemplateColumn Header="Key"
                                                      Tag="Key">
@@ -66,7 +69,6 @@
                     <toolkit:DataGridTextColumn Header="First IAM"
                                                  Binding="{Binding FirstIamPage}"/>
                     <toolkit:DataGridTextColumn Header="Page Count"
-                                              
                                                  Binding="{Binding TotalPages}"/>
                 </toolkit:DataGrid.Columns>
             </toolkit:DataGrid>

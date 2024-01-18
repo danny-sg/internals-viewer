@@ -42,6 +42,7 @@
         <None Remove="Views\Connect\ConnectStartPage.xaml" />
         <None Remove="Views\DatabaseView.xaml" />
         <None Remove="Views\PageView.xaml" />
+        <None Remove="Views\SettingsPage.xaml" />
     </ItemGroup>
     <ItemGroup>
       <Content Include="InternalsViewer.ico" />
@@ -104,6 +105,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Views\SettingsPage.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Views\Connect\ConnectBackupPage.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>

@@ -1,14 +1,21 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.UI.App.vNext.Helpers;
 using InternalsViewer.UI.App.vNext.Models;
+using InternalsViewer.UI.App.vNext.ViewModels.Allocation;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.vNext.Controls.Allocation;
 
 public sealed partial class AllocationLayerGrid
 {
+    public AllocationLayerGridViewModel ViewModel { get; set; } = new();
+
     public ObservableCollection<AllocationLayer> Layers
     {
         get => (ObservableCollection<AllocationLayer>)GetValue(LayersProperty);
@@ -32,8 +39,6 @@ public sealed partial class AllocationLayerGrid
             typeof(AllocationLayerGrid),
             new PropertyMetadata(default, OnPropertyChanged));
 
-    public string Filter { get; set; } = string.Empty;
-
     public AllocationLayerGrid()
     {
         InitializeComponent();
@@ -41,7 +46,19 @@ public sealed partial class AllocationLayerGrid
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
+        var control = (AllocationLayerGrid)d;
 
+        if(e.Property == LayersProperty)
+        {
+            var layers = (ObservableCollection<AllocationLayer>)e.NewValue;
+
+            control.ViewModel.SetLayers(layers.ToList());
+        }
+
+        if(e.Property == SelectedLayerProperty)
+        {
+            control.ViewModel.SelectedLayer = (AllocationLayer)e.NewValue;
+        }
     }
 
     private void DataGrid_OnPointerPressed(object sender, PointerRoutedEventArgs e)

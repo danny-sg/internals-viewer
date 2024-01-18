@@ -25,7 +25,9 @@ namespace InternalsViewer.UI.App.vNext;
 
 public sealed partial class MainWindow
 {
-    public IServiceProvider ServiceProvider { get; }
+    private IServiceProvider ServiceProvider { get; }
+
+    private TabViewItem? ConnectTab { get; set; }
 
     public MainWindow(IServiceProvider serviceProvider)
     {
@@ -90,6 +92,8 @@ public sealed partial class MainWindow
 
         WindowTabView.TabItems.Add(tab);
         WindowTabView.SelectedItem = tab;
+
+        ConnectTab!.IsClosable = true;
     }
 
     private async Task AddConnection(IConnectionType connection)
@@ -129,11 +133,29 @@ public sealed partial class MainWindow
 
         WindowTabView.TabItems.Add(tab);
         WindowTabView.SelectedItem = tab;
+
+        ConnectTab!.IsClosable = true;
     }
 
     private void TabView_OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
-        sender.TabItems.Remove(args.Tab);
+        // Hide the Connect tab rather than close it
+        if (args.Tab == ConnectTab)
+        {
+            ConnectTab.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            sender.TabItems.Remove(args.Tab);
+        }
+
+        // If all tabs have been closed, show the Connect tab
+        if(sender.TabItems.Count == 1)
+        {
+            ConnectTab!.Visibility = Visibility.Visible;
+            ConnectTab!.IsClosable = false;
+            sender.SelectedItem = ConnectTab;
+        }
     }
 
     private async void TabView_Loaded(object sender, RoutedEventArgs e)
@@ -142,11 +164,12 @@ public sealed partial class MainWindow
 
         if (tabView != null)
         {
-            await AddConnectTab(tabView);
+            ConnectTab = await AddConnectTab(tabView);
+            ConnectTab.IsClosable = false;
         }
     }
 
-    private async Task AddConnectTab(TabView tabView)
+    private async Task<TabViewItem> AddConnectTab(TabView tabView)
     {
         var content = new ConnectView();
 
@@ -154,12 +177,16 @@ public sealed partial class MainWindow
 
         content.DataContext = viewModel;
 
-        tabView.TabItems.Add(new TabViewItem
+        var connectTab = new TabViewItem
         {
             Name = "Connect",
             Header = "Connect",
             Content = content
-        });
+        };
+
+        tabView.TabItems.Add(connectTab);
+
+        return connectTab;
     }
 
     private async Task AddDatabaseTab(TabView tabView)
@@ -176,6 +203,8 @@ public sealed partial class MainWindow
             Header = "Connect",
             Content = content
         });
+
+        ConnectTab!.IsClosable = true;
     }
 
     public Task InitializeAsync()
