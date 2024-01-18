@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
+using InternalsViewer.UI.App.vNext.Controls.Page;
 using InternalsViewer.UI.App.vNext.Controls.Renderers;
 using InternalsViewer.UI.App.vNext.Helpers;
 using InternalsViewer.UI.App.vNext.Models;
@@ -69,8 +70,6 @@ public sealed partial class AllocationControl
             typeof(AllocationOverViewModel),
             typeof(AllocationControl),
             new PropertyMetadata(default));
-
-
 
     public int PageCount => ExtentCount * 8;
 

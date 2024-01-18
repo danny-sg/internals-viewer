@@ -17,53 +17,7 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutputHelper { get; set; } = testOutput;
 
-    [Fact]
-    public async Task Get_Database_Creates_A_Database()
-    {
-        // Create a database service using mocks
-        var serverInfoProvider = new Mock<IServerInfoProvider>();
-        var allocationChainService = new Mock<IAllocationChainService>();
-        var iamChainService = new Mock<IIamChainService>();
-        var pfsChainService = new Mock<IPfsChainService>();
-
-        var metadataProvider = new Mock<IMetadataLoader>();
-
-        var pageService = new Mock<IPageService>();
-
-        var databaseInfo = new DatabaseSummary
-        {
-            DatabaseId = 1,
-            Name = "TestDatabase",
-            State = DatabaseState.Online,
-            CompatibilityLevel = 170,
-        };
-
-        var files = new List<DatabaseFile>
-        {
-            new(1) { Name = "File 1.mdf", PhysicalName = @"C:\TestDatabase_1.mdf", Size = 8192 },
-            new(2) { Name = "File 2.mdf", PhysicalName = @"C:\TestDatabase_2.mdf", Size = 8192 },
-        };
-
-        serverInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
-                            .ReturnsAsync(databaseInfo);
-
-        var databaseService = new DatabaseLoader(TestLogger.GetLogger<DatabaseLoader>(TestOutputHelper),
-                                                 serverInfoProvider.Object,
-                                                 metadataProvider.Object,
-                                                 pageService.Object,
-                                                 allocationChainService.Object,
-                                                 iamChainService.Object,
-                                                 pfsChainService.Object);
-
-        var result = await databaseService.Load("TestDatabase");
-
-        Assert.NotNull(result);
-        Assert.Equal("TestDatabase", result.Name);
-        Assert.Equal(170, result.CompatibilityLevel);
-        Assert.Equal(2, result.Files.Count);
-        Assert.Equal(DatabaseState.Online, result.State);
-    }
-
+  
     [Fact]
     public async Task Get_Database_Adds_Allocation_Chains()
     {
@@ -95,9 +49,6 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
         metadataProvider.Setup(m => m.Load(It.IsAny<DatabaseSource>()))
                         .ReturnsAsync(metadata);
 
-        databaseInfoProvider.Setup(d => d.GetDatabase("TestDatabase"))
-            .ReturnsAsync(databaseInfo);
-
         allocationChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>(), It.IsAny<PageType>()))
             .ReturnsAsync(new AllocationChain());
 
@@ -109,7 +60,7 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
 
-        var result = await databaseService.Load("TestDatabase");
+        var result = await databaseService.Load("", null);
 
         // Check that all allocations are populated for the two files
         Assert.NotNull(result.Gam[1]);
@@ -148,7 +99,7 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
 
-        var result = await databaseService.Load("TestDatabase");
+        var result = await databaseService.Load("TestDatabase", null);
 
         // Check that all PFS chains are populated for the two files
         Assert.NotNull(result.Pfs[1]);

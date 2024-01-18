@@ -20,6 +20,10 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
+    <Style TargetType="ToggleSwitch">
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
     <Style x:Key="ListTextBlock" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="VerticalAlignment" Value="Center" />

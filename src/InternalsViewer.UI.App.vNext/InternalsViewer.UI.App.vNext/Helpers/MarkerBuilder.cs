@@ -189,6 +189,8 @@ public class MarkerBuilder
             else
             {
                 marker.Name = item.PropertyName;
+                marker.ForeColour = Color.Black;
+                marker.BackColour = Color.Transparent;
             }
 
             if (property == null)
@@ -221,7 +223,7 @@ public class MarkerBuilder
                 SetValue(markers, marker, array[item.Index], value);
             }
 
-            if (item.StartPosition > 0)
+            if (item.StartPosition >= 0)
             {
                 index += 1;
                 markers.Add(marker);

@@ -1,6 +1,8 @@
 using InternalsViewer.Internals.Engine.Address;
 using System.Collections.ObjectModel;
+using Microsoft.UI.Xaml.Controls;
 using DatabasePage = InternalsViewer.Internals.Engine.Pages.Page;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace InternalsViewer.UI.App.vNext.Controls.Page;
 
@@ -51,7 +53,16 @@ public sealed partial class PageHeaderControl
 
     public ObservableCollection<PageHeaderValue> Values { get; } = new();
 
+    private void CopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        var tag = ((Button)sender).Tag.ToString();
 
+        var package = new DataPackage();
+
+        package.SetText(tag);
+
+        Clipboard.SetContent(package);
+    }
 }
 
 public class PageHeaderValue

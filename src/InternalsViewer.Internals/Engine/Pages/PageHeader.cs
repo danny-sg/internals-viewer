@@ -120,4 +120,6 @@ public class PageHeader : DataStructure
     /// 
     /// </remarks>
     public byte TypeFlagBits { get; set; }
+
+    public PageAddress InternalTransactionId { get; set; }
 }

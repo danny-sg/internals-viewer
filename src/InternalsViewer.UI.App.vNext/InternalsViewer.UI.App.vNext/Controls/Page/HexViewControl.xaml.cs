@@ -1,18 +1,27 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+
 using System.Text;
+using Windows.UI;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.UI.App.vNext.Controls.Allocation;
 using InternalsViewer.UI.App.vNext.Helpers;
 using InternalsViewer.UI.App.vNext.Models;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using InternalsViewer.Internals.Converters;
+using System.Globalization;
+using InternalsViewer.UI.App.vNext.ViewModels.Page;
 
 namespace InternalsViewer.UI.App.vNext.Controls.Page
 {
     public sealed partial class HexViewControl
     {
+        public HexControlViewModel ViewModel { get; } = new();
+
         public HexViewControl()
         {
             InitializeComponent();
@@ -44,7 +53,6 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
                 typeof(HexViewControl),
                 new PropertyMetadata(default, OnDataChanged));
 
-
         public ObservableCollection<Marker>? Markers
         {
             get { return (ObservableCollection<Marker>)GetValue(MarkersProperty); }
@@ -56,6 +64,25 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
                 typeof(ObservableCollection<Marker>),
                 typeof(HexViewControl),
                 new PropertyMetadata(default, OnMarkersChanged));
+
+        public Marker? SelectedMarker
+        {
+            get => (Marker?)GetValue(SelectedMarkerProperty);
+            set => SetValue(SelectedMarkerProperty, value);
+        }
+
+        public static readonly DependencyProperty SelectedMarkerProperty
+            = DependencyProperty.Register(nameof(SelectedMarker),
+                typeof(Marker),
+                typeof(HexViewControl),
+                new PropertyMetadata(default, OnSelectedRangeChanged));
+
+        private static void OnSelectedRangeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var control = (HexViewControl)d;
+
+            HighlightMarkers(control, control.Markers);
+        }
 
         private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
@@ -116,10 +143,25 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
 
                     var length = end - start;
 
+                    Color foregroundColour;
+                    Color backgroundColour;
+
+                    if (marker == target.SelectedMarker)
+                    {
+                        foregroundColour = Color.FromArgb(255, 255, 255, 255);
+                        backgroundColour = target.HexRichTextBlock.SelectionHighlightColor.Color;
+                    }
+                    else
+                    {
+                        foregroundColour = marker.ForeColour.ToWindowsColor();
+                        backgroundColour = marker.BackColour.ToWindowsColor();
+                    }
+
                     var highlighter = new TextHighlighter
                     {
-                        Foreground = new SolidColorBrush(marker.ForeColour.ToWindowsColor()),
-                        Background = new SolidColorBrush(marker.BackColour.ToWindowsColor()),
+                        Foreground = new SolidColorBrush(foregroundColour),
+                        Background = new SolidColorBrush(backgroundColour),
+
                         Ranges = { new TextRange(start, length) }
                     };
 
@@ -134,6 +176,25 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
 
             return position * 3 + lineNumber * (Environment.NewLine.Length - 1);
         }
+
+        private void HexRichTextBlock_SelectionChanged(object sender, RoutedEventArgs e)
+        {
+            var rect = HexRichTextBlock.SelectionEnd.GetCharacterRect(LogicalDirection.Forward);
+
+            SelectionInfoPopup.HorizontalOffset = rect.X + 4;
+            SelectionInfoPopup.VerticalOffset = rect.Y;
+
+            ViewModel.StartOffset = ToRunPosition(HexRichTextBlock.SelectionStart.Offset);
+            ViewModel.EndOffset = ToRunPosition(HexRichTextBlock.SelectionEnd.Offset);
+
+            ViewModel.SelectedText = HexRichTextBlock.SelectedText;
+        }
+
+        private void HexRichTextBlock_LostFocus(object sender, RoutedEventArgs e)
+        {
+            SelectionInfoPopup.IsOpen = false;
+        }
+
     }
 
 }

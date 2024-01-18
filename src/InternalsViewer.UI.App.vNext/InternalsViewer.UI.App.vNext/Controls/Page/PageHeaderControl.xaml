@@ -52,8 +52,10 @@
                                Style="{StaticResource ValueStyle}"
                                Text="{x:Bind Value}"/>
                 <controls:CopyButton Grid.Column="2"    
-                                         Content="&#xE8C8;" 
-                                         ToolTipService.ToolTip="Copy to clipboard" />
+                                     Content="&#xE8C8;" 
+                                     ToolTipService.ToolTip="Copy to clipboard" 
+                                     Tag="{x:Bind Value}"
+                                     Click="CopyButton_Click"/>
             </Grid>
 
         </DataTemplate>
@@ -71,8 +73,10 @@
                                  Content="{x:Bind Value}" 
                                  Style="{StaticResource PageAddressStyle}"/>
                 <controls:CopyButton Grid.Column="2"    
-                                       Content="&#xE8C8;" 
-                                       ToolTipService.ToolTip="Copy to clipboard"/>
+                                     Content="&#xE8C8;" 
+                                     ToolTipService.ToolTip="Copy to clipboard"
+                                     Tag="{x:Bind Value}"
+                                     Click="CopyButton_Click"/>
             </Grid>
         </DataTemplate>
     </Control.Resources>

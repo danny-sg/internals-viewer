@@ -1,4 +1,6 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Connections.File;
+using InternalsViewer.Internals.Connections.Server;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Engine;
@@ -16,19 +18,20 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
 
     protected async Task<InternalMetadata> GetMetadata()
     {
-        var pageService = ServiceHelper.CreatePageService(TestOutput, LogLevel);
-
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
-
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput, LogLevel), pageService, loader);
-
-        var database = new DatabaseSource
+        var connectionString = ConnectionStringHelper.GetConnectionString("local");
+        var database = new DatabaseSource(ServerConnectionFactory.Create(c => c.ConnectionString = connectionString))
         {
-            Name = "TestDatabase",
+            Name = "AdventureWorks2022",
             BootPage = new BootPage { FirstAllocationUnitsPage = new PageAddress(1, 20) }
         };
 
-        var service = new MetadataLoader(TestLogger.GetLogger<MetadataLoader>(TestOutput, LogLevel), dataReader);
+        var pageService = ServiceHelper.CreatePageService(TestOutput);
+
+        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(TestOutput), pageService, loader);
+
+        var service = new MetadataLoader(TestLogger.GetLogger<MetadataLoader>(TestOutput), dataReader);
 
         var metadata = await service.Load(database);
 

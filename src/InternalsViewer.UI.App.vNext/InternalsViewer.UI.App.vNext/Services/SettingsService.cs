@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace InternalsViewer.UI.App.vNext.Services;
 
@@ -47,6 +48,7 @@ public class SettingsService
         }
     }
 
+    [DebuggerStepThrough]
     public async Task<T?> ReadSettingAsync<T>(string key)
     {
         object? value;

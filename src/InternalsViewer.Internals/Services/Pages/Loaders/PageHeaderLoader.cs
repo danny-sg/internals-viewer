@@ -28,6 +28,7 @@ public class PageHeaderLoader
     private const byte ReservedCountOffset = 38;
     private const byte LsnOffset = 40;
     private const byte TransactionReservedCountOffset = 50;
+    private const byte InternalTransactionIdOffset = 52;
     private const byte GhostRecordCountOffset = 58;
     private const byte TornBitsOffset = 60;
 
@@ -68,6 +69,8 @@ public class PageHeaderLoader
         pageHeader.ReservedCount = BitConverter.ToInt16(data, ReservedCountOffset);
 
         pageHeader.TransactionReservedCount = BitConverter.ToInt16(data, TransactionReservedCountOffset);
+
+        pageHeader.InternalTransactionId = PageAddressParser.Parse(data, InternalTransactionIdOffset);
         pageHeader.GhostRecordCount = BitConverter.ToInt16(data, GhostRecordCountOffset);
         pageHeader.FreeData = BitConverter.ToInt16(data, FreeDataOffset);
 
@@ -88,7 +91,7 @@ public class PageHeaderLoader
 
         header.MarkDataStructure("FlagBits", FlagBitsOffset, sizeof(short));
 
-        header.MarkDataStructure("IndexId", IndexIdOffset, sizeof(short));
+        header.MarkDataStructure("InternalIndexId", IndexIdOffset, sizeof(short));
 
         header.MarkDataStructure("PreviousPage", PreviousPageOffset, PageAddress.Size);
 
@@ -98,7 +101,7 @@ public class PageHeaderLoader
 
         header.MarkDataStructure("SlotCount", SlotCountOffset, sizeof(short));
 
-        header.MarkDataStructure("ObjectId", ObjectIdOffset, sizeof(int));
+        header.MarkDataStructure("InternalObjectId", ObjectIdOffset, sizeof(int));
 
         header.MarkDataStructure("FreeCount", FreeCountOffset, sizeof(short));
 
@@ -111,6 +114,8 @@ public class PageHeaderLoader
         header.MarkDataStructure("Lsn", LsnOffset, LogSequenceNumber.Size);
 
         header.MarkDataStructure("TransactionReservedCount", TransactionReservedCountOffset, sizeof(short));
+
+        header.MarkDataStructure("InternalTransactionId", InternalTransactionIdOffset, PageAddress.Size);
 
         header.MarkDataStructure("GhostRecordCount", GhostRecordCountOffset, sizeof(short));
 

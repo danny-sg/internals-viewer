@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Engine.Parsers;
 
@@ -18,7 +19,7 @@ public class AllocationUnitProvider
         return metadata.AllocationUnits.Select(a => GetAllocationUnit(metadata, a)).ToList();
     }
 
-    private static AllocationUnit GetAllocationUnit(InternalMetadata metadata, InternalAllocationUnit source)
+    public static AllocationUnit GetAllocationUnit(InternalMetadata metadata, InternalAllocationUnit source)
     {
         var rowSet = metadata.RowSets
                              .First(r => r.RowSetId == source.ContainerId);
@@ -27,13 +28,13 @@ public class AllocationUnitProvider
                                      .First(o => o.ObjectId == rowSet.ObjectId);
 
         var schema = metadata.Entities
-                              .First(s => s.Id == internalObject.SchemaId && s.ClassId == SchemaClassId);
+                             .First(s => s.Id == internalObject.SchemaId && s.ClassId == SchemaClassId);
 
         var index = metadata.Indexes
                             .FirstOrDefault(i => i.ObjectId == rowSet.ObjectId && i.IndexId == rowSet.IndexId);
 
         var parentIndex = metadata.Indexes
-                                  .FirstOrDefault(i => i.ObjectId == internalObject.ParentObjectId 
+                                  .FirstOrDefault(i => i.ObjectId == internalObject.ObjectId 
                                                        && i.IndexId <= 1);
 
         var displayName = !string.IsNullOrEmpty(index?.Name)
@@ -43,6 +44,7 @@ public class AllocationUnitProvider
         var allocationUnit = new AllocationUnit
         {
             AllocationUnitId = source.AllocationUnitId,
+            AllocationUnitType = (AllocationUnitType)source.Type,
             ObjectId = rowSet.ObjectId,
             IndexId = rowSet.IndexId,
             SchemaName = schema.Name,

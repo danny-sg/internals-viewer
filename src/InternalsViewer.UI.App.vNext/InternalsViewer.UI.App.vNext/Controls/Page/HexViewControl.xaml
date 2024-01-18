@@ -6,6 +6,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:system="using:System"
+    xmlns:winUi="using:CommunityToolkit.WinUI"
+    xmlns:decoder="using:InternalsViewer.Internals.Converters.Decoder"
+    xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls"
     mc:Ignorable="d">
     <Control.Resources>
         <Style x:Key="AddressStyle" TargetType="TextBlock">
@@ -19,13 +22,32 @@
             <Setter Property="FontFamily" Value="Consolas"/>
         </Style>
 
+        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="10,4,0,0" />
+        </Style>
+        
         <Style TargetType="Paragraph">
             <Setter Property="Margin"
                     Value="0" />
         </Style>
 
+        <DataTemplate x:DataType="decoder:DecodeResult" x:Key="DecodeResultTemplate">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="40"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{x:Bind DataType}" Margin="10,0,0,0"/>
+                <TextBlock Grid.Column="1" Text="{x:Bind Value}" Margin="10,0,0,0"/>
+                <controls:CopyButton Grid.Column="2"/>
+            </Grid>
+        </DataTemplate>
     </Control.Resources>
-    <ScrollViewer Name="ScrollViewer"
+    <Grid>
+        <ScrollViewer Name="ScrollViewer"
                   BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
                   BorderThickness="1"
                   Background="{x:Bind Background}"
@@ -33,20 +55,57 @@
                   VerticalScrollBarVisibility="Visible"
                   VerticalAlignment="Stretch"
                   HorizontalScrollBarVisibility="Hidden">
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" 
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" 
                        x:Name="AddressTextBlock" 
                        Style="{StaticResource AddressStyle}" 
                        Margin="8,0,8,0"
                        VerticalAlignment="Stretch"/>
-            <RichTextBlock Grid.Column="1" 
+                <Grid Grid.Column="1">
+                    <RichTextBlock  
                            x:Name="HexRichTextBlock" 
                            VerticalAlignment="Stretch"
+                           SelectionChanged="HexRichTextBlock_SelectionChanged"
+                           LostFocus="HexRichTextBlock_LostFocus"
                            Style="{StaticResource HexStyle}"/>
-        </Grid>
-    </ScrollViewer>
+                    <Popup x:Name="SelectionInfoPopup" 
+                           PlacementTarget="{x:Bind HexRichTextBlock}"
+                           IsOpen="{x:Bind ViewModel.IsDataTipOpen, Mode=OneWay}">
+                        <Grid>
+                            <Border x:Name="ShadowTarget" />
+                            <Border x:Name="SelectionInfoPopupBorder"
+                                    CornerRadius="4"
+                                    Background="{ThemeResource TeachingTipBackgroundBrush}"
+                                    BorderBrush="{ThemeResource TeachingTipBorderBrush}" BorderThickness="1">
+                                <StackPanel Padding="4">
+                                    <TextBlock x:Name="PopupTextBox" 
+                                               Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                               Text="{x:Bind ViewModel.DataTipTitle, Mode=OneWay}"/>
+                                    <ListView ItemsSource="{x:Bind ViewModel.DecodeResults, Mode=OneWay}" 
+                                              ItemTemplate="{StaticResource DecodeResultTemplate}" 
+                                              MaxHeight="200"
+                                              Width="400">
+                                    </ListView>
+
+                                    <winUi:Effects.Shadow>
+                                        <winUi:AttachedDropShadow CastTo="{x:Bind ShadowTarget}"
+                                                                  CornerRadius="4"
+                                                                  BlurRadius="10"
+                                                                  Opacity="0.2"
+                                                                  Offset="4,4" />
+                                    </winUi:Effects.Shadow>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Popup>
+                </Grid>
+            </Grid>
+
+        </ScrollViewer>
+
+    </Grid>
 </UserControl>

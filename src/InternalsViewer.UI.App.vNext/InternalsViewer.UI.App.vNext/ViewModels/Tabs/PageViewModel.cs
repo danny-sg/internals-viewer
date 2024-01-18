@@ -66,9 +66,20 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
     private ushort? selectedOffset;
 
     [ObservableProperty]
+    private Marker? selectedMarker;
+
+    [ObservableProperty]
+    private bool includeHeaderMarkers = false;
+
+    [ObservableProperty]
     private ObservableCollection<Marker> markers = new();
 
     public List<Record> Records { get; set; } = new();
+
+    partial void OnIncludeHeaderMarkersChanged(bool value)
+    {
+        AddPageMarkers(Page);
+    }
 
     partial void OnSelectedOffsetChanged(ushort? value)
     {
@@ -77,6 +88,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
             Markers.Clear();
             return;
         }
+
         AddRecordMarkers(value.Value);
     }
 
@@ -89,7 +101,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
             return;
         }
 
-        var pageMarkers = GetPageMarkers(Offsets.Count);
+        var pageMarkers = GetPageMarkers(Page);
 
         var recordMarkers = MarkerBuilder.BuildMarkers(record);
 
@@ -122,12 +134,13 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
         });
 
         SelectedOffset = null;
+        SelectedMarker = null;
 
         Offsets = new ObservableCollection<OffsetSlot>(slots);
 
         logger.LogDebug("Adding Page Markers");
 
-        AddPageMarkers(resultPage.PageHeader.SlotCount);
+        AddPageMarkers(resultPage);
 
         switch (resultPage)
         {
@@ -167,23 +180,6 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
         ObjectIndexType = dataPage.AllocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
                                                          ? "Clustered"
                                                          : "Heap";
-
-        switch (dataPage.AllocationUnit)
-        {
-            case { IndexType: Internals.Engine.Database.Enums.IndexType.Clustered }:
-                ObjectIndexType = "Clustered";
-                IndexType = string.Empty;
-                break;
-            case { ParentIndexType: Internals.Engine.Database.Enums.IndexType.Heap }:
-                ObjectIndexType = dataPage.AllocationUnit.IndexType.ToString();
-                IndexType = "Heap";
-                break;
-            default:
-                ObjectIndexType = dataPage.AllocationUnit.IndexType.ToString();
-                IndexType = dataPage.AllocationUnit.ParentIndexType?.ToString() ?? string.Empty;
-                break;
-
-        }
     }
 
     private void LoadRecords(Internals.Engine.Pages.Page target)
@@ -225,14 +221,14 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
     /// <summary>
     /// Add the header and offset table markers (applies to all pages)
     /// </summary>
-    private void AddPageMarkers(int slotCount)
+    private void AddPageMarkers(Internals.Engine.Pages.Page p)
     {
-        var m = GetPageMarkers(slotCount);
+        var m = GetPageMarkers(p);
 
         Markers = new ObservableCollection<Marker>(m);
     }
 
-    private List<Marker> GetPageMarkers(int slotCount)
+    private List<Marker> GetPageMarkers(Internals.Engine.Pages.Page p)
     {
         var m = new List<Marker>();
 
@@ -240,12 +236,19 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
         {
             Name = "Page Header",
             StartPosition = 0,
-            EndPosition = 96,
+            EndPosition = 95,
             ForeColour = Color.Blue,
             BackColour = Color.FromArgb(245, 245, 250)
         });
 
-        var offsetTableStart = PageData.Size - slotCount * 2;
+        if (IncludeHeaderMarkers)
+        {
+            var headerMarkers = MarkerBuilder.BuildMarkers(p.PageHeader);
+
+            m.AddRange(headerMarkers);
+        }
+
+        var offsetTableStart = PageData.Size - p.PageHeader.SlotCount * 2;
 
         m.Add(new Marker
         {

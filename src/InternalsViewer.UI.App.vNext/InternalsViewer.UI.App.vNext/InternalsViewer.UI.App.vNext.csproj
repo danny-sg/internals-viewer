@@ -87,6 +87,9 @@
       <Content Update="Assets\AppLogo.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
+      <Content Update="Assets\Bookmark.svg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
       <Content Update="Assets\ConnectHeaderImage.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>

@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace InternalsViewer.Internals.Helpers;
 
@@ -48,5 +49,27 @@ public static class StringHelpers
     public static string SplitCamelCase(this string value)
     {
         return Regex.Replace(value, "([A-Z])", " $1", RegexOptions.Compiled).Trim();
+    }
+
+
+    public static byte[] ToByteArray(this string value)
+    {
+        value = value.Replace(" ", string.Empty);
+
+        var data = new byte[value.Length / 2];
+
+        for (var i = 0; i < data.Length; i++)
+        {
+            data[i] = byte.Parse(value.Substring(i * 2, 2),
+                NumberStyles.AllowHexSpecifier,
+                CultureInfo.InvariantCulture);
+        }
+
+        return data;
+    }
+
+    public static string CleanHex(this string value)
+    {
+        return Regex.Replace(value, "[^a-fA-F0-9]", string.Empty);
     }
 }

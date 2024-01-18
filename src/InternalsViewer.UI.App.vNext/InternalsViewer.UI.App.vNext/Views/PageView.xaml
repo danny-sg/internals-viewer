@@ -20,9 +20,7 @@
                     <VisualState.StateTriggers>
                         <AdaptiveTrigger MinWindowWidth="1400" x:Name="WideAdaptiveTrigger"/>
                     </VisualState.StateTriggers>
-
                     <VisualState.Setters>
-
                         <Setter Target="MarkerContainerGrid.(Grid.Row)" Value="2"/>
                         <Setter Target="MarkerContainerGrid.(Grid.Column)" Value="3"/>
                         <Setter Target="BottomLayoutRow.Height" Value="Auto"/>
@@ -84,7 +82,6 @@
                 <CommandBar 
                     Background="Transparent" 
                     IsOpen="False"       
-               
                     DefaultLabelPosition="Right" 
                     HorizontalAlignment="Left">
                     <AppBarElementContainer>
@@ -104,53 +101,58 @@
                                   Command="{x:Bind ViewModel.LoadPageCommand}"
                                   CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
                     <AppBarSeparator />
+                    <AppBarButton Label="Add Bookmark">
+                        <AppBarButton.Icon>
+                            <ImageIcon Source="ms-appx:///Assets/Bookmark.svg"/>
+                        </AppBarButton.Icon>
+                    </AppBarButton>
                     <AppBarElementContainer>
-                       
+
                     </AppBarElementContainer>
                 </CommandBar>
                 <CommandBar
                     HorizontalAlignment="Right">
-
+                    <AppBarElementContainer>
+                        <Grid Margin="8" Padding="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal" Grid.Row="0">
+                                <TextBlock x:Name="ObjectName"
+                                           FontWeight="Bold"
+                                           Margin="0,0,10,0"  
+                                           Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}">
+                                </TextBlock>
+                                <Grid 
+                                    Margin="0"
+                                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                                    <TextBlock x:Name="ObjectIndexType"
+                                               Margin="0"  
+                                               Foreground="BlueViolet"
+                                               Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}">
+                                    </TextBlock>
+                                </Grid >
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Grid.Row="1">
+                                <TextBlock x:Name="IndexName"
+                                           Margin="0,0,10,0"  
+                                           Text="{x:Bind ViewModel.IndexName, Mode=OneWay}">
+                                </TextBlock>
+                                <Grid Margin="0"
+                                      Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                                    <TextBlock x:Name="IndexType"
+                                               Margin="0"  
+                                               Foreground="DarkGreen"
+                                               Text="{x:Bind ViewModel.IndexType, Mode=OneWay}">
+                                    </TextBlock>
+                                </Grid >
+                            </StackPanel>
+                        </Grid>
+                    </AppBarElementContainer>
                 </CommandBar>
             </StackPanel>
 
-  
-            <Grid Margin="8" Grid.Row="1" Grid.Column="0" Padding="0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal" Grid.Row="0">
-                    <TextBlock x:Name="ObjectName"
-                                   FontWeight="Bold"
-                                   Margin="0,0,10,0"  
-                                   Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}">
-                    </TextBlock>
-                    <Grid 
-                            Margin="0"
-                            Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-                        <TextBlock x:Name="ObjectIndexType"
-                                       Margin="0"  
-                                       Foreground="BlueViolet"
-                                       Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}">
-                        </TextBlock>
-                    </Grid >
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Grid.Row="1">
-                    <TextBlock x:Name="IndexName"
-                                   Margin="0,0,10,0"  
-                                   Text="{x:Bind ViewModel.IndexName, Mode=OneWay}">
-                    </TextBlock>
-                    <Grid Margin="0"
-                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-                        <TextBlock x:Name="IndexType"
-                                       Margin="0"  
-                                       Foreground="BlueViolet"
-                                       Text="{x:Bind ViewModel.IndexType, Mode=OneWay}">
-                        </TextBlock>
-                    </Grid >
-                </StackPanel>
-            </Grid>
             <TextBlock Style="{StaticResource TitleStyle}" 
                        Grid.Row="1"
                        Grid.Column="1"
@@ -165,16 +167,23 @@
                 Slot Offset Table
             </TextBlock>
 
-            <StackPanel     Grid.Row="2"
-                            Grid.Column="0">
-                <TextBlock Style="{StaticResource TitleStyle}" 
-               
-                           Margin="10,0,10,10">
-                    Header
-                </TextBlock>
-                <page:PageHeaderControl Page="{x:Bind ViewModel.Page, Mode=OneWay}"
-                                />
-            </StackPanel>
+            <TextBlock Style="{StaticResource TitleStyle}" 
+                       Grid.Row="1"
+                       Grid.Column="0"
+                       Margin="12,12,0,12">
+                Header
+            </TextBlock>
+
+            <ToggleSwitch Grid.Row="1"
+                          Grid.Column="3"
+                          OnContent="Include Page Header"
+                          OffContent="Hide Page Header"
+                          IsOn="{x:Bind ViewModel.IncludeHeaderMarkers, Mode=TwoWay}"/>
+
+            <page:PageHeaderControl Grid.Row="2"
+                                    Grid.Column="0" 
+                                    Page="{x:Bind ViewModel.Page, Mode=OneWay}" />
+
             <page:HexViewControl Grid.Row="2"
                                  Grid.Column="1"
                                  CornerRadius="8,0,0,0"
@@ -183,7 +192,8 @@
                                  VerticalContentAlignment="Stretch"
                                  Margin="0,0,0,14"
                                  Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
-                                 Data="{x:Bind ViewModel.Page.Data, Mode=OneWay}"/>
+                                 Data="{x:Bind ViewModel.Page.Data, Mode=OneWay}"
+                                 SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
 
             <Grid x:Name="OffsetTableContainerGrid"
                       Grid.Row="2"
@@ -260,13 +270,14 @@
                     <TextBlock Grid.Column="4" Text="End"/>
                 </Grid>
                 <ListView x:Name="MarkerListView"
-                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                              BorderThickness="1"
-                              Grid.Row="1"
-                              BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
-                              ItemsSource="{x:Bind ViewModel.Markers, Mode=OneWay}"
-                              ItemContainerStyle="{StaticResource ListViewItemMarkerStyle}"
-                              HorizontalAlignment="Stretch">
+                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                          BorderThickness="1"
+                          Grid.Row="1"
+                          BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
+                          ItemsSource="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                          SelectedValue="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
+                          ItemContainerStyle="{StaticResource ListViewItemMarkerStyle}"
+                          HorizontalAlignment="Stretch">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:Marker">
                             <Grid Margin="0">
