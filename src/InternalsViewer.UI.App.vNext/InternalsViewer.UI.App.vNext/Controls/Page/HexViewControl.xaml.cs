@@ -6,14 +6,10 @@ using System.Text;
 using Windows.UI;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
-using InternalsViewer.UI.App.vNext.Controls.Allocation;
 using InternalsViewer.UI.App.vNext.Helpers;
 using InternalsViewer.UI.App.vNext.Models;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using InternalsViewer.Internals.Converters;
-using System.Globalization;
 using InternalsViewer.UI.App.vNext.ViewModels.Page;
 
 namespace InternalsViewer.UI.App.vNext.Controls.Page
@@ -170,11 +166,37 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
             }
         }
 
+        /// <summary>
+        /// Converts a byte position to a position in the hex text block
+        /// </summary>
         private static int ToRunPosition(int position)
         {
-            var lineNumber = position / 16;
+            // 16 bytes per line is the conventional way of displaying hex
+            const int bytesPerLine = 16;
 
-            return position * 3 + lineNumber * (Environment.NewLine.Length - 1);
+            // Bytes are represented by 2 characters and a space
+            const int charactersPerByte = 3;
+
+            var lineNumber = position / bytesPerLine;
+
+            return position * charactersPerByte + lineNumber * (Environment.NewLine.Length - 1);
+        }
+
+        private static int FromRunPosition(int position)
+        {
+            // 16 bytes per line is the conventional way of displaying hex
+            const int bytesPerLine = 16;
+
+            // Bytes are represented by 2 characters and a space
+            const int charactersPerByte = 3;
+
+            var charactersPerLine = bytesPerLine * charactersPerByte + Environment.NewLine.Length;
+
+            var lineNumber = position / charactersPerLine;
+            var linePosition = position % charactersPerLine;
+            var bytePosition = linePosition / charactersPerByte;
+
+            return lineNumber * bytesPerLine + bytePosition;
         }
 
         private void HexRichTextBlock_SelectionChanged(object sender, RoutedEventArgs e)
@@ -184,8 +206,8 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
             SelectionInfoPopup.HorizontalOffset = rect.X + 4;
             SelectionInfoPopup.VerticalOffset = rect.Y;
 
-            ViewModel.StartOffset = ToRunPosition(HexRichTextBlock.SelectionStart.Offset);
-            ViewModel.EndOffset = ToRunPosition(HexRichTextBlock.SelectionEnd.Offset);
+            ViewModel.StartOffset = FromRunPosition(HexRichTextBlock.SelectionStart.Offset);
+            ViewModel.EndOffset = FromRunPosition(HexRichTextBlock.SelectionEnd.Offset);
 
             ViewModel.SelectedText = HexRichTextBlock.SelectedText;
         }

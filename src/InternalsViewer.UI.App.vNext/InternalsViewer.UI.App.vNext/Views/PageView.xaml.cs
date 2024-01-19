@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
@@ -21,5 +22,10 @@ public sealed partial class PageView
                 ViewModel.LoadPageCommand.Execute(pageAddress);
             }
         }
+    }
+
+    private void PageHeaderControl_PageClicked(object sender, Controls.Allocation.PageClickedEventArgs e)
+    {
+        ViewModel.LoadPageCommand.Execute(new PageAddress(e.FileId, e.PageId));
     }
 }

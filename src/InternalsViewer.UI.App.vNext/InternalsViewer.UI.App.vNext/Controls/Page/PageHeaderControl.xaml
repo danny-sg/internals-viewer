@@ -49,8 +49,10 @@
                                Style="{StaticResource LabelStyle}"
                                Text="{x:Bind Label}"/>
                 <TextBlock Grid.Column="1"
-                               Style="{StaticResource ValueStyle}"
-                               Text="{x:Bind Value}"/>
+                               Style="{StaticResource ValueStyle}">
+                    <Run Text="{x:Bind Value}"/>
+                    <Run Text="{x:Bind Tag}" Foreground="Purple" />
+                </TextBlock>
                 <controls:CopyButton Grid.Column="2"    
                                      Content="&#xE8C8;" 
                                      ToolTipService.ToolTip="Copy to clipboard" 
@@ -71,7 +73,9 @@
                 <TextBlock Grid.Column="0" Text="{x:Bind Label}" Style="{StaticResource LabelStyle}"/>
                 <HyperlinkButton Grid.Column="1" 
                                  Content="{x:Bind Value}" 
-                                 Style="{StaticResource PageAddressStyle}"/>
+                                 Style="{StaticResource PageAddressStyle}"
+                                 Click="HyperlinkButton_Click"
+                                 Tag="{x:Bind Value}"/>
                 <controls:CopyButton Grid.Column="2"    
                                      Content="&#xE8C8;" 
                                      ToolTipService.ToolTip="Copy to clipboard"

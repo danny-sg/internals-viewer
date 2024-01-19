@@ -36,6 +36,9 @@ public partial class DatabaseViewModel(IServiceProvider serviceProvider, Databas
     [ObservableProperty]
     private ViewLocation allocationUnitsGridLocation = ViewLocation.Bottom;
 
+    [ObservableProperty]
+    private short fileId = 1;
+
     public List<AllocationLayer> GridAllocationLayers
         => allocationLayers.Where(w => string.IsNullOrEmpty(Filter) || w.Name.ToLower().Contains(filter.ToLower())).ToList();
 }

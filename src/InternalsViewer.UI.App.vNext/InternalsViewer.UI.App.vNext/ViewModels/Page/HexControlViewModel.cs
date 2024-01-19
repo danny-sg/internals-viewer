@@ -24,7 +24,7 @@ public partial class HexControlViewModel
     private string selectedText = string.Empty;
 
     [ObservableProperty]
-    private string dataTipTitle = "DECODE";
+    private string dataTipTitle = string.Empty;
 
     partial void OnSelectedTextChanged(string value)
     {
@@ -45,7 +45,7 @@ public partial class HexControlViewModel
 
     private void SetDataTipTitle()
     {
-        DataTipTitle = $" {StartOffset} ({StartOffset:X8}) - {EndOffset} ({EndOffset:X8})";
+        DataTipTitle = $" {StartOffset} (0x{StartOffset:X8}) - {EndOffset} (0x{EndOffset:X8})";
     }   
 
     [RelayCommand]

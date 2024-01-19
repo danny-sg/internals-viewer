@@ -1,12 +1,10 @@
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.vNext.Messages;
-using InternalsViewer.UI.App.vNext.Models.Connections;
 using InternalsViewer.UI.App.vNext.ViewModels.Connections;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
-using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace InternalsViewer.UI.App.vNext.Views.Connect;

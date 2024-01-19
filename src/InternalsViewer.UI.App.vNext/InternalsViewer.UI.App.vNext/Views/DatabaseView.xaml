@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:allocation="using:InternalsViewer.UI.App.vNext.Controls.Allocation"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" x:Name="LayoutGrid">
         <Grid.RowDefinitions>
@@ -41,8 +42,11 @@
                                       Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
                                       SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=OneWay}"
                                       AllocationOver="{x:Bind ViewModel.AllocationOver,Mode=TwoWay}"
+                                      FileId="{x:Bind ViewModel.FileId,Mode=OneWay}"
                                       PageClicked="Allocations_OnPageClicked"
-                                      x:Name="Allocations"/>
+                                      x:Name="Allocations">
+
+        </allocation:AllocationControl>
         <allocation:AllocationLayerGrid Grid.Row="2" 
                                         SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=TwoWay}"
                                         Layers="{x:Bind ViewModel.AllocationLayers}"/>

@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Connections.File;
-using InternalsViewer.Internals.Connections.Server;
+﻿using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Readers.Internals;

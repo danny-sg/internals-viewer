@@ -11,7 +11,6 @@ using InternalsViewer.UI.App.vNext.Models;
 
 namespace InternalsViewer.UI.App.vNext.Helpers;
 
-
 public class MarkStyle
 {
     public MarkStyle(Color foreColour, Color backColour, Color alternateBackColour)

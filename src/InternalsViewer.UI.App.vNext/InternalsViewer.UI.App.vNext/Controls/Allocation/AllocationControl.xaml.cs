@@ -2,7 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
-using InternalsViewer.UI.App.vNext.Controls.Page;
 using InternalsViewer.UI.App.vNext.Controls.Renderers;
 using InternalsViewer.UI.App.vNext.Helpers;
 using InternalsViewer.UI.App.vNext.Models;
@@ -22,6 +21,18 @@ public sealed partial class AllocationControl
     public ExtentLayout Layout { get; set; } = new();
 
     public event EventHandler<PageClickedEventArgs>? PageClicked;
+
+    public short FileId
+    {
+        get => (short)GetValue(FileIdProperty);
+        set => SetValue(FileIdProperty, value);
+    }
+
+    public static readonly DependencyProperty FileIdProperty
+        = DependencyProperty.Register(nameof(FileId),
+            typeof(short),
+            typeof(AllocationControl),
+            null);
 
     public int ExtentCount
     {
@@ -164,8 +175,8 @@ public sealed partial class AllocationControl
         borderPaint.StrokeWidth = 1;
         borderPaint.Style = SKPaintStyle.Stroke;
 
+        // Draw border around the control
         canvas.DrawLine(width, 0, width, e.Info.Height, borderPaint);
-        //canvas.DrawRect(0, 0, e.Info.Width, e.Info.Height - 1, borderPaint);
     }
 
     private void DrawScrollbarMarkers(SKCanvas canvas, ExtentLayout layout, AllocationLayer layer, int width, int height)
@@ -408,7 +419,7 @@ public sealed partial class AllocationControl
 
         if (pageId <= PageCount)
         {
-            PageClicked?.Invoke(this, new PageClickedEventArgs(pageId));
+            PageClicked?.Invoke(this, new PageClickedEventArgs(FileId, pageId));
         }
     }
 
@@ -418,8 +429,10 @@ public sealed partial class AllocationControl
     }
 }
 
-public class PageClickedEventArgs(int pageId) : EventArgs
+public class PageClickedEventArgs(short fileId, int pageId) : EventArgs
 {
+    public short FileId { get; } = fileId;
+
     public int PageId { get; set; } = pageId;
 }
 

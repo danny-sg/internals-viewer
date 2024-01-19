@@ -5,7 +5,6 @@ using InternalsViewer.UI.App.vNext.Helpers.Hosting;
 using InternalsViewer.UI.App.vNext.Models;
 using InternalsViewer.UI.App.vNext.Services;
 using InternalsViewer.UI.App.vNext.ViewModels.Connections;
-using InternalsViewer.UI.App.vNext.Views.Connect;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 

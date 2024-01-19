@@ -100,12 +100,13 @@
                                   Icon="Next" 
                                   Command="{x:Bind ViewModel.LoadPageCommand}"
                                   CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
-                    <AppBarSeparator />
+                 
                     <AppBarButton Label="Add Bookmark">
                         <AppBarButton.Icon>
                             <ImageIcon Source="ms-appx:///Assets/Bookmark.svg"/>
                         </AppBarButton.Icon>
                     </AppBarButton>
+                    <AppBarSeparator />
                     <AppBarElementContainer>
 
                     </AppBarElementContainer>
@@ -176,12 +177,13 @@
 
             <ToggleSwitch Grid.Row="1"
                           Grid.Column="3"
-                          OnContent="Include Page Header"
-                          OffContent="Hide Page Header"
+                          OnContent="Hide Page Header"
+                          OffContent="Include Page Header"
                           IsOn="{x:Bind ViewModel.IncludeHeaderMarkers, Mode=TwoWay}"/>
 
             <page:PageHeaderControl Grid.Row="2"
                                     Grid.Column="0" 
+                                    PageClicked="PageHeaderControl_PageClicked"
                                     Page="{x:Bind ViewModel.Page, Mode=OneWay}" />
 
             <page:HexViewControl Grid.Row="2"

@@ -7,7 +7,6 @@ using InternalsViewer.UI.App.vNext.Controls.Connections;
 using InternalsViewer.UI.App.vNext.Messages;
 using InternalsViewer.UI.App.vNext.ViewModels.Connections;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
-using InternalsViewer.UI.App.vNext.Services;
 
 namespace InternalsViewer.UI.App.vNext.Views.Connect;
 

@@ -40,5 +40,5 @@ public enum DataStructureItemType
     UpdateSeq,
     CdArrayItem,
     SlotCount,
-    Uniqueifier
+    Uniqueifier,
 }

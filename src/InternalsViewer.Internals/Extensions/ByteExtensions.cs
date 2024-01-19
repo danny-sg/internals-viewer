@@ -1,6 +1,5 @@
 ﻿using InternalsViewer.Internals.Helpers;
 using System.Collections;
-using System.Globalization;
 using System.Text;
 
 namespace InternalsViewer.Internals.Extensions;
