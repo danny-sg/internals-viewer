@@ -1,9 +1,13 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows.Input;
 using CommunityToolkit.WinUI.UI.Controls;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.vNext.Helpers;
 using InternalsViewer.UI.App.vNext.Models;
 using InternalsViewer.UI.App.vNext.ViewModels.Allocation;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.vNext.Controls.Allocation;
@@ -34,6 +38,8 @@ public sealed partial class AllocationLayerGrid
             typeof(AllocationLayer),
             typeof(AllocationLayerGrid),
             new PropertyMetadata(default, OnPropertyChanged));
+
+    public event EventHandler<PageClickedEventArgs>? PageClicked;
 
     public AllocationLayerGrid()
     {
@@ -78,5 +84,12 @@ public sealed partial class AllocationLayerGrid
 
             e.Handled = true;
         }
+    }
+
+    private void HyperlinkButton_Click(object sender, RoutedEventArgs e)
+    {
+        var pageAddress = (PageAddress)((HyperlinkButton)sender).Tag;
+
+        PageClicked?.Invoke(this, new PageClickedEventArgs(pageAddress.FileId, pageAddress.PageId));
     }
 }

@@ -43,12 +43,13 @@
                                       SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=OneWay}"
                                       AllocationOver="{x:Bind ViewModel.AllocationOver,Mode=TwoWay}"
                                       FileId="{x:Bind ViewModel.FileId,Mode=OneWay}"
-                                      PageClicked="Allocations_OnPageClicked"
+                                      PageClicked="OnPageClicked"
                                       x:Name="Allocations">
 
         </allocation:AllocationControl>
         <allocation:AllocationLayerGrid Grid.Row="2" 
                                         SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=TwoWay}"
+                                        PageClicked="OnPageClicked"
                                         Layers="{x:Bind ViewModel.AllocationLayers}"/>
         <toolkit:GridSplitter Grid.Row="2"
                               Grid.ColumnSpan="1"

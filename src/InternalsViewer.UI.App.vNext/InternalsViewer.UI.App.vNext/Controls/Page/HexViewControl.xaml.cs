@@ -16,6 +16,9 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
 {
     public sealed partial class HexViewControl
     {
+        // 16 bytes per line is the conventional way of displaying hex
+        private const int BytesPerLine = 16;
+
         public HexControlViewModel ViewModel { get; } = new();
 
         public HexViewControl()
@@ -29,9 +32,9 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
         {
             var stringBuilder = new StringBuilder();
 
-            for (var i = 0; i < PageData.Size / 16; i++)
+            for (var i = 0; i < PageData.Size / BytesPerLine; i++)
             {
-                stringBuilder.AppendLine($"{i * 16:X8}");
+                stringBuilder.AppendLine($"{i * BytesPerLine:X8}");
             }
 
             AddressTextBlock.Text = stringBuilder.ToString();
@@ -71,13 +74,18 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
             = DependencyProperty.Register(nameof(SelectedMarker),
                 typeof(Marker),
                 typeof(HexViewControl),
-                new PropertyMetadata(default, OnSelectedRangeChanged));
+                new PropertyMetadata(default, OnSelectedMarkerChanged));
 
-        private static void OnSelectedRangeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private static void OnSelectedMarkerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var control = (HexViewControl)d;
 
             HighlightMarkers(control, control.Markers);
+
+            if(e.NewValue is Marker marker)
+            {
+                ScrollToPosition(control, marker.StartPosition);
+            }   
         }
 
         private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -100,13 +108,13 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
 
             var position = 0;
 
-            for (var line = 0; line < data.Count / 16; line++)
+            for (var line = 0; line < data.Count / BytesPerLine; line++)
             {
-                for (var column = 0; column < 16; column++)
+                for (var byteIndex = 0; byteIndex < BytesPerLine; byteIndex++)
                 {
                     stringBuilder.Append(StringHelpers.ToHexString(data[position]));
 
-                    if (column != 15)
+                    if (byteIndex != 15)
                     {
                         stringBuilder.Append(" ");
                     }
@@ -163,7 +171,31 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
 
                     target.HexRichTextBlock.TextHighlighters.Add(highlighter);
                 }
+
+                target.ScrollViewer.ScrollToVerticalOffset(0);
             }
+        }
+
+        /// <summary>
+        /// Scrolls the hex view to the specified offset position
+        /// </summary>
+        /// <remarks>
+        /// There doesn't seem to be a ScrollToPosition type method built into the RichTextBlock control.
+        /// 
+        /// This works by taking the height of the text and dividing by the know number of lines to get the height of each line, then 
+        /// multiplying by the calculated line number to get the position.
+        /// </remarks>
+        private static void ScrollToPosition(HexViewControl target, int position)
+        {
+            const int totalLines = PageData.Size / BytesPerLine;
+
+            var positionLineNumber = position / BytesPerLine + 1;
+
+            var heightPerLine = target.HexRichTextBlock.ActualHeight / totalLines;
+
+            var scrollPosition = positionLineNumber * heightPerLine;
+
+            target.ScrollViewer.ScrollToVerticalOffset(scrollPosition);
         }
 
         /// <summary>
@@ -171,32 +203,29 @@ namespace InternalsViewer.UI.App.vNext.Controls.Page
         /// </summary>
         private static int ToRunPosition(int position)
         {
-            // 16 bytes per line is the conventional way of displaying hex
-            const int bytesPerLine = 16;
-
             // Bytes are represented by 2 characters and a space
             const int charactersPerByte = 3;
 
-            var lineNumber = position / bytesPerLine;
+            var lineNumber = position / BytesPerLine;
 
             return position * charactersPerByte + lineNumber * (Environment.NewLine.Length - 1);
         }
 
+        /// <summary>
+        /// Converts a position in the hex text block to a byte position
+        /// </summary>
         private static int FromRunPosition(int position)
         {
-            // 16 bytes per line is the conventional way of displaying hex
-            const int bytesPerLine = 16;
-
             // Bytes are represented by 2 characters and a space
             const int charactersPerByte = 3;
 
-            var charactersPerLine = bytesPerLine * charactersPerByte + Environment.NewLine.Length;
+            var charactersPerLine = BytesPerLine * charactersPerByte + Environment.NewLine.Length;
 
             var lineNumber = position / charactersPerLine;
             var linePosition = position % charactersPerLine;
             var bytePosition = linePosition / charactersPerByte;
 
-            return lineNumber * bytesPerLine + bytePosition;
+            return lineNumber * BytesPerLine + bytePosition;
         }
 
         private void HexRichTextBlock_SelectionChanged(object sender, RoutedEventArgs e)

@@ -12,26 +12,10 @@
     xmlns:converters="using:InternalsViewer.UI.App.vNext.Helpers.Converters"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
-        <VisualStateManager.VisualStateGroups>
-
-
-            <VisualStateGroup x:Name="WideView">
-                <VisualState>
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="1400" x:Name="WideAdaptiveTrigger"/>
-                    </VisualState.StateTriggers>
-                    <VisualState.Setters>
-                        <Setter Target="MarkerContainerGrid.(Grid.Row)" Value="2"/>
-                        <Setter Target="MarkerContainerGrid.(Grid.Column)" Value="3"/>
-                        <Setter Target="BottomLayoutRow.Height" Value="Auto"/>
-                    </VisualState.Setters>
-                </VisualState>
-            </VisualStateGroup>
-        </VisualStateManager.VisualStateGroups>
         <Grid.Resources>
             <Style x:Key="TitleStyle" 
                    BasedOn="{StaticResource BodyStrongTextBlockStyle}" 
-                   TargetType="TextBlock" >
+                   TargetType="TextBlock">
 
             </Style>
             <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}" x:Key="ListViewItemSlotStyle">
@@ -54,6 +38,16 @@
                 <Setter Property="BorderBrush" Value="{StaticResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1,1,1,0" />
             </Style>
+
+            <Style x:Key="RowHeader" TargetType="Grid" >
+                <Setter Property="Height" Value="30"/>
+                <Setter Property="MinHeight" Value="22" />
+                <Setter Property="Padding" Value="8" />
+                <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1,0,1,0" />
+            </Style>
+
             <Style x:Key="HexStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="FontFamily" Value="Consolas"/>
@@ -61,21 +55,18 @@
         </Grid.Resources>
         <Grid x:Name="ContentGrid">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="340" x:Name="HeaderColumn"/>
                 <ColumnDefinition Width="Auto" x:Name="DataColumn"/>
                 <ColumnDefinition Width="Auto" x:Name="SlotColumn"/>
-                <ColumnDefinition Width="*" x:Name="WideLayoutColumn"/>
+                <ColumnDefinition Width="*" x:Name="TabsColumn"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" x:Name="MenuRow"/>
-                <RowDefinition Height="Auto" x:Name="TitleRow"/>
-                <RowDefinition Height="50*" x:Name="ContentRow"/>
-                <RowDefinition Height="50*" x:Name="BottomLayoutRow"/>
+                <RowDefinition Height="*" x:Name="ContentRow"/>
             </Grid.RowDefinitions>
             <StackPanel Grid.Row="0" 
                         x:Name="MenuStackPanel"
                         Grid.Column="0" 
-                        Grid.ColumnSpan="4"
+                        Grid.ColumnSpan="3"
                         Orientation="Horizontal"  
                         BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
                         BorderThickness="0,0,0,1">
@@ -100,7 +91,7 @@
                                   Icon="Next" 
                                   Command="{x:Bind ViewModel.LoadPageCommand}"
                                   CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
-                 
+
                     <AppBarButton Label="Add Bookmark">
                         <AppBarButton.Icon>
                             <ImageIcon Source="ms-appx:///Assets/Bookmark.svg"/>
@@ -154,66 +145,34 @@
                 </CommandBar>
             </StackPanel>
 
-            <TextBlock Style="{StaticResource TitleStyle}" 
-                       Grid.Row="1"
-                       Grid.Column="1"
-                       Margin="0,12,0,12">
-                Data
-            </TextBlock>
-
-            <TextBlock Style="{StaticResource TitleStyle}" 
-                       Grid.Row="1"
-                       Grid.Column="2"
-                       Margin="12,12,0,12">
-                Slot Offset Table
-            </TextBlock>
-
-            <TextBlock Style="{StaticResource TitleStyle}" 
-                       Grid.Row="1"
-                       Grid.Column="0"
-                       Margin="12,12,0,12">
-                Header
-            </TextBlock>
-
-            <ToggleSwitch Grid.Row="1"
-                          Grid.Column="3"
-                          OnContent="Hide Page Header"
-                          OffContent="Include Page Header"
-                          IsOn="{x:Bind ViewModel.IncludeHeaderMarkers, Mode=TwoWay}"/>
-
-            <page:PageHeaderControl Grid.Row="2"
-                                    Grid.Column="0" 
-                                    PageClicked="PageHeaderControl_PageClicked"
-                                    Page="{x:Bind ViewModel.Page, Mode=OneWay}" />
-
-            <page:HexViewControl Grid.Row="2"
-                                 Grid.Column="1"
-                                 CornerRadius="8,0,0,0"
+            <page:HexViewControl Grid.Row="1"
+                                 Grid.Column="0"
                                  Background="White"
-                                 Width="460" 
+                                 Width="455" 
                                  VerticalContentAlignment="Stretch"
-                                 Margin="0,0,0,14"
+                                 Margin="14,14,0,14"
                                  Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                  Data="{x:Bind ViewModel.Page.Data, Mode=OneWay}"
                                  SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
 
             <Grid x:Name="OffsetTableContainerGrid"
-                      Grid.Row="2"
-                      Grid.Column="2"
-                      Margin="10,0,14,14" >
+                      Grid.Row="1"
+                      Grid.Column="1"
+                      Margin="14,14,0,14" >
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid x:Name="OffsetTableHeaderGrid" Style="{StaticResource SlotHeader}" Grid.Row="0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="50"/>
-                        <ColumnDefinition Width="50"/>
-                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="40"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="Slot"/>
                     <TextBlock Grid.Column="1" Text="Offset"/>
                 </Grid>
+
                 <ListView x:Name="OffsetTableListView"
                               Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                               BorderThickness="1"
@@ -222,7 +181,10 @@
                               SelectedValuePath="Offset"
                               BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
                               ItemsSource="{x:Bind ViewModel.Offsets, Mode=OneWay}"
-                              Width="180" 
+                              Width="175"
+                              IsItemClickEnabled="True"
+                              ItemClick="OffsetTableListView_ItemClick"
+                              VirtualizingStackPanel.VirtualizationMode="Standard"
                               ItemContainerStyle="{StaticResource ListViewItemSlotStyle}"
                               HorizontalAlignment="Left">
                     <ListView.ItemTemplate>
@@ -251,48 +213,74 @@
                 </ListView>
             </Grid>
 
-            <Grid x:Name="MarkerContainerGrid" Margin="0,0,14,14" Grid.Column="1" Grid.Row="3" Grid.ColumnSpan="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+            <TabView Grid.Column="2" 
+                     Grid.Row="1" 
+                     Margin="14,0,14,14" 
+                     IsAddTabButtonVisible="False"
+                     TabWidthMode="SizeToContent"
+                     >
+                <TabViewItem IsClosable="False" x:Name="PageHeaderTabViewItem">
+                    <TabViewItem.Header>
+                        Page Header
+                    </TabViewItem.Header>
+                    <page:PageHeaderControl
+                        Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1,0,1,1"
+                        VerticalAlignment="Stretch"
+                        PageClicked="PageHeaderControl_PageClicked"
+                        Page="{x:Bind ViewModel.Page, Mode=OneWay}" />
+                </TabViewItem>
+                <TabViewItem IsClosable="False" x:Name="RowDataTabViewItem">
+                    <TabViewItem.Header>
+                        Row Data
+                    </TabViewItem.Header>
+                    <!--<ToggleSwitch OnContent="Hide Page Header"
+                                      OffContent="Include Page Header"
+                                      IsOn="{x:Bind ViewModel.IncludeHeaderMarkers, Mode=TwoWay}"/>-->
+                    <Grid x:Name="MarkerContainerGrid" VerticalAlignment="Stretch">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                <Grid x:Name="MarkerHeaderGrid" Style="{StaticResource SlotHeader}" Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="30"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="50"/>
-                        <ColumnDefinition Width="50"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Key"/>
-                    <TextBlock Grid.Column="1" Text="Name"/>
-                    <TextBlock Grid.Column="2" Text="Value"/>
-                    <TextBlock Grid.Column="3" Text="Start"/>
-                    <TextBlock Grid.Column="4" Text="End"/>
-                </Grid>
-                <ListView x:Name="MarkerListView"
+                        <Grid x:Name="MarkerHeaderGrid" Style="{StaticResource RowHeader}" Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Key"/>
+                            <TextBlock Grid.Column="1" Text="Name"/>
+                            <TextBlock Grid.Column="2" Text="Value"/>
+                            <TextBlock Grid.Column="3" Text="Start"/>
+                            <TextBlock Grid.Column="4" Text="End"/>
+                        </Grid>
+                        <ListView x:Name="MarkerListView"
                           Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                           BorderThickness="1"
                           Grid.Row="1"
-                          BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
                           ItemsSource="{x:Bind ViewModel.Markers, Mode=OneWay}"
                           SelectedValue="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
                           ItemContainerStyle="{StaticResource ListViewItemMarkerStyle}"
+                          VerticalAlignment="Stretch"
                           HorizontalAlignment="Stretch">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:Marker">
-                            <Grid Margin="0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="30"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="50"/>
-                                    <ColumnDefinition Width="50"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid Width="20" Height="20"
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="models:Marker">
+                                    <Grid Margin="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="30"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid Width="20" Height="20"
                                     Background="{x:Bind BackColour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
-                                    <TextBlock         
+                                            <TextBlock         
                                         Grid.Column="0"              
                                         Text="00"
                                         TextAlignment="Center"
@@ -300,24 +288,28 @@
                                         Foreground="{x:Bind ForeColour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
                                         Style="{StaticResource HexStyle}"/>
 
-                                </Grid>
-                                <TextBlock Grid.Column="1"                  
+                                        </Grid>
+                                        <TextBlock Grid.Column="1"                  
                                            Text="{x:Bind Name}"
                                            Style="{StaticResource ListTextBlock}" />
-                                <TextBlock Grid.Column="2"                  
+                                        <TextBlock Grid.Column="2"                  
                                            Text="{x:Bind Value}"
                                            Style="{StaticResource ListTextBlock}"/>
-                                <TextBlock Grid.Column="3"                  
+                                        <TextBlock Grid.Column="3"                  
                                            Text="{x:Bind StartPosition}"
                                            Style="{StaticResource ListTextBlock}"/>
-                                <TextBlock Grid.Column="4"                  
+                                        <TextBlock Grid.Column="4"                  
                                            Text="{x:Bind EndPosition}"
                                            Style="{StaticResource ListTextBlock}"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </Grid>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+
+                </TabViewItem>
+            </TabView>
+
         </Grid>
     </Grid>
 </UserControl>

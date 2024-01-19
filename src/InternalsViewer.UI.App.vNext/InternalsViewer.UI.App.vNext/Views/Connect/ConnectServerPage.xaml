@@ -3,14 +3,11 @@
     x:Class="InternalsViewer.UI.App.vNext.Views.Connect.ConnectServerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:InternalsViewer.UI.App.vNext.Views.Connect"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:converters="using:CommunityToolkit.WinUI.Converters"
-    mc:Ignorable="d"
-    xmlns:winUi="using:CommunityToolkit.WinUI"
-  >
+    mc:Ignorable="d">
 
     <Grid Padding="20">
         <Grid.Resources>
@@ -23,7 +20,6 @@
             </TextBlock>
             <controls:SettingsCard Description="Name or network address of the SQL Server instance"
                             Header="Instance Name"
-                            HeaderIcon="{winUi:FontIcon Glyph=e770}"
                             CornerRadius="4,4,0,0">
                 <TextBox Text="{x:Bind ViewModel.InstanceName, Mode=TwoWay}" MinWidth="200" />
             </controls:SettingsCard>
@@ -69,17 +65,18 @@
                 </StackPanel>
             </controls:SettingsCard>
 
-            <controls:SettingsCard Header="Connect to a server instance"
-                          >
-                <Button Content="Connect"
-                 Name="ConnectButton"
-                 MinWidth="200"
-                
-                 IsEnabled="{x:Bind ViewModel.HasErrors, Mode=OneWay,Converter={StaticResource BoolNegationConverter}}"
-                 Click="ConnectButton_Click"
-             Style="{StaticResource AccentButtonStyle}">
-
-                </Button>
+            <controls:SettingsCard Header="Connect to a server instance">
+                <StackPanel Orientation="Horizontal">
+                    <ProgressRing HorizontalAlignment="Left"
+                                  IsActive="{x:Bind ViewModel.ConnectCommand.IsRunning, Mode=OneWay}"/>
+                    <Button Content="{x:Bind ViewModel.ConnectButtonText, Mode=OneWay}"
+                            Margin="10,0,0,0"
+                            Name="ConnectButton"
+                            MinWidth="200"
+                            IsEnabled="{x:Bind ViewModel.IsBusy, Mode=OneWay,Converter={StaticResource BoolNegationConverter}}"
+                            Command="{x:Bind ViewModel.ConnectCommand}"
+                            Style="{ThemeResource AccentButtonStyle}"/>
+                </StackPanel>
             </controls:SettingsCard>
         </StackPanel>
     </Grid>

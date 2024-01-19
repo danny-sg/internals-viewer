@@ -7,9 +7,16 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    x:Name="Root"
     mc:Ignorable="d">
     <UserControl.Resources>
         <CollectionViewSource x:Name="LayersCollectionViewSource" Source="{x:Bind Layers}"/>
+        <Style x:Key="PageAddressStyle" TargetType="HyperlinkButton">
+            <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -41,6 +48,7 @@
                                GridLinesVisibility="Vertical"
                                PointerPressed="DataGrid_OnPointerPressed"
                                ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">
+
                 <toolkit:DataGrid.Columns>
                     <toolkit:DataGridTemplateColumn Header="Key"
                                                      Tag="Key">
@@ -55,19 +63,50 @@
                             </DataTemplate>
                         </toolkit:DataGridTemplateColumn.CellTemplate>
                     </toolkit:DataGridTemplateColumn>
-                    
+
                     <toolkit:DataGridTextColumn Header="Object Name"
                                                  Binding="{Binding ObjectName}"/>
                     <toolkit:DataGridTextColumn Header="Index Name"
                                                   Binding="{Binding IndexName}"/>
                     <toolkit:DataGridTextColumn Header="Index Type"
                                                  Binding="{Binding IndexType}"/>
-                    <toolkit:DataGridTextColumn Header="Root Page"
-                                                 Binding="{Binding RootPage}"/>
-                    <toolkit:DataGridTextColumn Header="First Page"
-                                                 Binding="{Binding FirstPage}"/>
-                    <toolkit:DataGridTextColumn Header="First IAM"
-                                                 Binding="{Binding FirstIamPage}"/>
+                    <toolkit:DataGridTemplateColumn Header="Root Page">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid>
+                                    <HyperlinkButton Content="{x:Bind RootPage, Mode=OneWay}" 
+                                                     Click="HyperlinkButton_Click"
+                                                     Style="{StaticResource PageAddressStyle}"
+                                                     Tag="{x:Bind RootPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
+                    <toolkit:DataGridTemplateColumn Header="First Page">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid>
+                                    <HyperlinkButton Content="{x:Bind FirstPage, Mode=OneWay}" 
+                                                     Click="HyperlinkButton_Click"
+                                             
+                                                     Style="{StaticResource PageAddressStyle}"
+                                                     Tag="{x:Bind FirstPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
+                    <toolkit:DataGridTemplateColumn Header="First IAM Page">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid>
+                                    <HyperlinkButton Content="{x:Bind FirstIamPage, Mode=OneWay}" 
+                                                     Click="HyperlinkButton_Click"
+                                                     Style="{StaticResource PageAddressStyle}"
+                                                     Tag="{x:Bind FirstIamPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
                     <toolkit:DataGridTextColumn Header="Page Count"
                                                  Binding="{Binding TotalPages}"/>
                 </toolkit:DataGrid.Columns>

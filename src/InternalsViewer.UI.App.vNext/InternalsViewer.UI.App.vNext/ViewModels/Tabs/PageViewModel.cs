@@ -119,10 +119,12 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
 
         var pageService = GetService<IPageService>();
 
-        Name = $"Page {address}";
+        Name = $"Loading Page {address}...";
         PageAddress = address;
 
         var resultPage = await pageService.GetPage(Database, address);
+
+        Name = $"{resultPage.PageHeader.PageTypeName} Page {address}";
 
         logger.LogDebug("Building Offset Table");
 

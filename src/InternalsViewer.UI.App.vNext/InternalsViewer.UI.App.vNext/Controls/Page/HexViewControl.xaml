@@ -5,7 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:system="using:System"
     xmlns:winUi="using:CommunityToolkit.WinUI"
     xmlns:decoder="using:InternalsViewer.Internals.Converters.Decoder"
     xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls"
@@ -14,7 +13,7 @@
         <Style x:Key="AddressStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontFamily" Value="Consolas"/>
-            <Setter Property="Foreground" Value="{StaticResource TextFillColorTertiaryBrush}"/>
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}"/>
         </Style>
 
         <Style x:Key="HexStyle" TargetType="RichTextBlock">
@@ -29,8 +28,7 @@
         </Style>
         
         <Style TargetType="Paragraph">
-            <Setter Property="Margin"
-                    Value="0" />
+            <Setter Property="Margin" Value="0" />
         </Style>
 
         <DataTemplate x:DataType="decoder:DecodeResult" x:Key="DecodeResultTemplate">
@@ -48,10 +46,9 @@
     </Control.Resources>
     <Grid>
         <ScrollViewer Name="ScrollViewer"
-                  BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                   BorderThickness="1"
                   Background="{x:Bind Background}"
-                  CornerRadius="{x:Bind CornerRadius}"
                   VerticalScrollBarVisibility="Visible"
                   VerticalAlignment="Stretch"
                   HorizontalScrollBarVisibility="Hidden">

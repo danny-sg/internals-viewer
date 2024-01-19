@@ -7,6 +7,9 @@ using System.Collections.Generic;
 using InternalsViewer.UI.App.vNext.Models.Connections;
 using System.ComponentModel.DataAnnotations;
 using InternalsViewer.UI.App.vNext.Services;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.UI.App.vNext.Messages;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Connections;
 
@@ -39,6 +42,9 @@ public partial class ServerConnectionViewModel(SettingsService settingsService) 
 
     [ObservableProperty]
     private bool isBusy;
+
+    [ObservableProperty]
+    private string connectButtonText = "Connect";
 
     [ObservableProperty]
     private bool isUserIdEnabled;
@@ -159,6 +165,26 @@ public partial class ServerConnectionViewModel(SettingsService settingsService) 
         {
             isBusy = false;
         }
+    }
+
+    [RelayCommand]
+    public async Task Connect()
+    {
+        var settings = GetSettings();
+        var connectionString = GetConnectionString();
+
+        IsBusy = true;
+        ConnectButtonText = "Connecting...";
+
+        var message = new ConnectServerMessage(connectionString, settings);
+
+        WeakReferenceMessenger.Default.Send(message);
+
+        await message.Response;
+
+        ConnectButtonText = "Connect";
+
+        IsBusy = false;
     }
 
     private void ClearDatabaseList()

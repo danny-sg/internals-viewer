@@ -40,18 +40,23 @@ public sealed partial class MainWindow
 
         SetTitleBar(CustomDragRegion);
 
-        WeakReferenceMessenger.Default.Register<ConnectServerMessage>(this, async (_, m)
-            => await ConnectServer(m.Value.ConnectionString));
+        WeakReferenceMessenger.Default.Register<ConnectServerMessage>(this, (_, m)
+            =>
+        {
+            m.Reply(ConnectServer(m.ConnectionString));
+        });
 
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, async (_, m)
             => await OpenPage(m.Value.Database, m.Value.PageAddress));
     }
 
-    private async Task ConnectServer(string connectionString)
+    private async Task<bool> ConnectServer(string connectionString)
     {
         var connection = ServerConnectionFactory.Create(c => c.ConnectionString = connectionString);
 
         await AddConnection(connection);
+
+        return true;
     }
 
     private async Task ConnectFile(string filename)
@@ -150,7 +155,7 @@ public sealed partial class MainWindow
         }
 
         // If all tabs have been closed, show the Connect tab
-        if(sender.TabItems.Count == 1)
+        if (sender.TabItems.Count == 1)
         {
             ConnectTab!.Visibility = Visibility.Visible;
             ConnectTab!.IsClosable = false;

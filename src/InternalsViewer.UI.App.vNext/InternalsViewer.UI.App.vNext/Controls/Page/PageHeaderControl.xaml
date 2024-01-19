@@ -9,6 +9,7 @@
     xmlns:pages="using:InternalsViewer.Internals.Engine.Pages"
     xmlns:controls="using:InternalsViewer.UI.App.vNext.Controls"
     xmlns:selectors="using:InternalsViewer.UI.App.vNext.Helpers.Selectors"
+
     d:DataContext="{d:DesignInstance Type=pages:Page, IsDesignTimeCreatable=True}"
     mc:Ignorable="d">
     <Control.Resources>
@@ -41,7 +42,7 @@
         <DataTemplate x:DataType="page:PageHeaderValue" x:Key="PageHeaderValueTemplate" >
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="160" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="30" />
                 </Grid.ColumnDefinitions>
@@ -66,7 +67,7 @@
                       x:Key="PageAddressHeaderValueTemplate" >
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="160" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="30" />
                 </Grid.ColumnDefinitions>
@@ -88,5 +89,8 @@
     <ListView ItemsSource="{x:Bind Values, Mode=OneWay}" 
                SelectionMode="None" 
                VerticalAlignment="Stretch"
+               Background="{x:Bind Background}"
+               BorderBrush="{x:Bind BorderBrush}"
+               BorderThickness="{x:Bind BorderThickness}"
                ItemTemplateSelector="{StaticResource PageHeaderTemplateSelector}"/>
 </UserControl>

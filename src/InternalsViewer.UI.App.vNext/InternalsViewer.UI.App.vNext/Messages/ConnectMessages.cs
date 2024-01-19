@@ -3,8 +3,12 @@ using InternalsViewer.UI.App.vNext.Models.Connections;
 
 namespace InternalsViewer.UI.App.vNext.Messages;
 
-public class ConnectServerMessage((string ConnectionString, ServerConnectionSettings settings) value)
-    : ValueChangedMessage<(string ConnectionString, ServerConnectionSettings settings)>(value);
+public class ConnectServerMessage(string connectionString, ServerConnectionSettings settings) : AsyncRequestMessage<bool>
+{
+    public string ConnectionString { get; set; } = connectionString;
+
+    public ServerConnectionSettings Settings { get; set; } = settings;
+}
 
 public class ConnectFileMessage(string filename) : ValueChangedMessage<string>(filename);
 

@@ -1,6 +1,8 @@
+using CommunityToolkit.WinUI;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
+using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.vNext.Views;
 
@@ -27,5 +29,17 @@ public sealed partial class PageView
     private void PageHeaderControl_PageClicked(object sender, Controls.Allocation.PageClickedEventArgs e)
     {
         ViewModel.LoadPageCommand.Execute(new PageAddress(e.FileId, e.PageId));
+    }
+
+    private void OffsetTableListView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        var listView = sender as ListView;
+
+        // If the clicked item is already selected, unselect it
+        if (listView?.SelectedItem == e.ClickedItem)
+        {
+            listView.DeselectAll();
+            ViewModel.SelectedOffset = null;
+        }
     }
 }
