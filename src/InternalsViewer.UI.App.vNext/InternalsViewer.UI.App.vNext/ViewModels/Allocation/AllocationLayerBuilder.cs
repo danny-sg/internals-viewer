@@ -8,6 +8,7 @@ using InternalsViewer.UI.App.vNext.Models;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Allocation;
 
@@ -49,6 +50,23 @@ internal class AllocationLayerBuilder
         }
 
         return layers;
+    }
+
+    public static AllocationLayer GenerateLayer(AllocationPage allocationPage)
+    {
+        var layer = new AllocationLayer();
+
+        layer.Allocations
+            .AddRange(allocationPage.AllocationMap
+                                    .Select((isAllocated, index) => new
+                                            {
+                                                isAllocated,
+                                                Extent = index
+                                            })
+                                    .Where(w => w.isAllocated)
+                                    .Select(s => s.Extent));
+
+        return layer;
     }
 
     private static List<int> GetExtentAllocations(IamChain chain)

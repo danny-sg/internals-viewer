@@ -18,6 +18,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using InternalsViewer.UI.App.vNext.Helpers;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.UI.App.vNext.ViewModels.Allocation;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
@@ -73,6 +74,15 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
 
     [ObservableProperty]
     private ObservableCollection<Marker> markers = new();
+
+    [ObservableProperty]
+    private ObservableCollection<AllocationLayer> allocationLayers = new();
+
+    [ObservableProperty]
+    private bool isMarkerKeyTableVisible;
+
+    [ObservableProperty]
+    private bool isAllocationMapVisible;
 
     public List<Record> Records { get; set; } = new();
 
@@ -150,7 +160,19 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
                 SetAllocationUnitDescription(dataPage);
 
                 LoadRecords(dataPage);
+                IsAllocationMapVisible = false;
+                IsMarkerKeyTableVisible = true;
+
                 break;
+
+            case AllocationPage allocationPage:
+                LoadAllocationLayer(allocationPage);
+
+                IsAllocationMapVisible = true;
+                IsMarkerKeyTableVisible = false;
+
+                break;
+
             default:
                 IndexName = string.Empty;
                 ObjectName = string.Empty;
@@ -169,6 +191,17 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
         }
 
         IsLoading = false;
+    }
+
+    private void LoadAllocationLayer(AllocationPage allocationPage)
+    {
+        var layer = AllocationLayerBuilder.GenerateLayer(allocationPage);
+
+        layer.Name = $"Allocation Page {allocationPage.PageAddress}";
+        layer.Colour = Color.Brown;
+        layer.IsVisible = true;
+        
+        AllocationLayers = new ObservableCollection<AllocationLayer>(new[] { layer });
     }
 
     private void SetAllocationUnitDescription(AllocationUnitPage dataPage)

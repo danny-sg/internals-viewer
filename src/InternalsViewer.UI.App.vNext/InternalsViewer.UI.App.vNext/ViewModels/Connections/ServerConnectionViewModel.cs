@@ -150,7 +150,7 @@ public partial class ServerConnectionViewModel(SettingsService settingsService) 
                     results.Add(reader.GetString(0));
                 }
             }
-            if ((!string.IsNullOrEmpty(Database) || !results.Contains(Database)))
+            if ((!string.IsNullOrEmpty(Database) && !results.Contains(Database)))
             {
                 results.Insert(0, Database);
             }

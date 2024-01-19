@@ -10,6 +10,7 @@
     xmlns:interactivity="using:Microsoft.Xaml.Interactivity"
     xmlns:behaviors="using:CommunityToolkit.WinUI.Behaviors"
     xmlns:converters="using:InternalsViewer.UI.App.vNext.Helpers.Converters"
+    xmlns:allocation="using:InternalsViewer.UI.App.vNext.Controls.Allocation"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.Resources>
@@ -24,11 +25,7 @@
                 <Setter Property="Padding" Value="10" />
             </Style>
 
-            <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}" x:Key="ListViewItemMarkerStyle">
-                <Setter Property="Height" Value="38" />
-                <Setter Property="MinHeight" Value="38" />
-                <Setter Property="Padding" Value="10,0,0,0" />
-            </Style>
+
 
             <Style x:Key="SlotHeader" TargetType="Grid" >
                 <Setter Property="Height" Value="30"/>
@@ -37,20 +34,6 @@
                 <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}"/>
                 <Setter Property="BorderBrush" Value="{StaticResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1,1,1,0" />
-            </Style>
-
-            <Style x:Key="RowHeader" TargetType="Grid" >
-                <Setter Property="Height" Value="30"/>
-                <Setter Property="MinHeight" Value="22" />
-                <Setter Property="Padding" Value="8" />
-                <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}"/>
-                <Setter Property="BorderBrush" Value="{StaticResource CardStrokeColorDefaultBrush}" />
-                <Setter Property="BorderThickness" Value="1,0,1,0" />
-            </Style>
-
-            <Style x:Key="HexStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="14" />
-                <Setter Property="FontFamily" Value="Consolas"/>
             </Style>
         </Grid.Resources>
         <Grid x:Name="ContentGrid">
@@ -217,8 +200,8 @@
                      Grid.Row="1" 
                      Margin="14,0,14,14" 
                      IsAddTabButtonVisible="False"
-                     TabWidthMode="SizeToContent"
-                     >
+                     VerticalAlignment="Stretch"
+                     TabWidthMode="SizeToContent">
                 <TabViewItem IsClosable="False" x:Name="PageHeaderTabViewItem">
                     <TabViewItem.Header>
                         Page Header
@@ -231,85 +214,29 @@
                         PageClicked="PageHeaderControl_PageClicked"
                         Page="{x:Bind ViewModel.Page, Mode=OneWay}" />
                 </TabViewItem>
-                <TabViewItem IsClosable="False" x:Name="RowDataTabViewItem">
+                <TabViewItem IsClosable="False" 
+                             x:Name="RowDataTabViewItem"
+                             Visibility="{x:Bind ViewModel.IsMarkerKeyTableVisible, 
+                                                 Converter={StaticResource BoolToVisibilityConverter},
+                                                 Mode=OneWay}">
                     <TabViewItem.Header>
                         Row Data
                     </TabViewItem.Header>
-                    <!--<ToggleSwitch OnContent="Hide Page Header"
-                                      OffContent="Include Page Header"
-                                      IsOn="{x:Bind ViewModel.IncludeHeaderMarkers, Mode=TwoWay}"/>-->
-                    <Grid x:Name="MarkerContainerGrid" VerticalAlignment="Stretch">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-
-                        <Grid x:Name="MarkerHeaderGrid" Style="{StaticResource RowHeader}" Grid.Row="0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="30"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="50"/>
-                                <ColumnDefinition Width="50"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Key"/>
-                            <TextBlock Grid.Column="1" Text="Name"/>
-                            <TextBlock Grid.Column="2" Text="Value"/>
-                            <TextBlock Grid.Column="3" Text="Start"/>
-                            <TextBlock Grid.Column="4" Text="End"/>
-                        </Grid>
-                        <ListView x:Name="MarkerListView"
-                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          BorderThickness="1"
-                          Grid.Row="1"
-                          ItemsSource="{x:Bind ViewModel.Markers, Mode=OneWay}"
-                          SelectedValue="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
-                          ItemContainerStyle="{StaticResource ListViewItemMarkerStyle}"
-                          VerticalAlignment="Stretch"
-                          HorizontalAlignment="Stretch">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="models:Marker">
-                                    <Grid Margin="0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="30"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="50"/>
-                                            <ColumnDefinition Width="50"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid Width="20" Height="20"
-                                    Background="{x:Bind BackColour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
-                                            <TextBlock         
-                                        Grid.Column="0"              
-                                        Text="00"
-                                        TextAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Foreground="{x:Bind ForeColour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
-                                        Style="{StaticResource HexStyle}"/>
-
-                                        </Grid>
-                                        <TextBlock Grid.Column="1"                  
-                                           Text="{x:Bind Name}"
-                                           Style="{StaticResource ListTextBlock}" />
-                                        <TextBlock Grid.Column="2"                  
-                                           Text="{x:Bind Value}"
-                                           Style="{StaticResource ListTextBlock}"/>
-                                        <TextBlock Grid.Column="3"                  
-                                           Text="{x:Bind StartPosition}"
-                                           Style="{StaticResource ListTextBlock}"/>
-                                        <TextBlock Grid.Column="4"                  
-                                           Text="{x:Bind EndPosition}"
-                                           Style="{StaticResource ListTextBlock}"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </Grid>
-
+                    <page:MarkerListView DataContext="{x:Bind ViewModel, Mode=OneWay}"/>
+                </TabViewItem>
+                <TabViewItem IsClosable="False" 
+                             x:Name="AllocationTabViewItem" 
+                             Visibility="{x:Bind ViewModel.IsAllocationMapVisible, 
+                                                 Converter={StaticResource BoolToVisibilityConverter},
+                                                 Mode=OneWay}">
+                    <TabViewItem.Header>
+                        Allocations
+                    </TabViewItem.Header>
+                    <allocation:AllocationControl ExtentCount="63903" 
+                                                  FileId="{x:Bind ViewModel.Page.PageAddress.FileId, Mode=OneWay}"
+                                                  Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
                 </TabViewItem>
             </TabView>
-
         </Grid>
     </Grid>
 </UserControl>

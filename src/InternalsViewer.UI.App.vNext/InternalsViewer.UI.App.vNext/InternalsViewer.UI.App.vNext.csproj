@@ -33,6 +33,7 @@
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Controls\Page\HexViewControl.xaml" />
         <None Remove="Controls\Page\MarkerKeyControl.xaml" />
+        <None Remove="Controls\Page\MarkerListView.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Views\ConnectView.xaml" />
@@ -108,6 +109,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\Page\MarkerListView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Views\SettingsPage.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
