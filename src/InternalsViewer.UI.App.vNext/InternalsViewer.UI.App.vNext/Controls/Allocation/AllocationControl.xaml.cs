@@ -34,14 +34,14 @@ public sealed partial class AllocationControl
             typeof(AllocationControl),
             null);
 
-    public int ExtentCount
+    public int Size
     {
-        get => (int)GetValue(ExtentCountProperty);
-        set => SetValue(ExtentCountProperty, value);
+        get => (int)GetValue(SizeProperty);
+        set => SetValue(SizeProperty, value);
     }
 
-    public static readonly DependencyProperty ExtentCountProperty
-        = DependencyProperty.Register(nameof(ExtentCount),
+    public static readonly DependencyProperty SizeProperty
+        = DependencyProperty.Register(nameof(Size),
                                      typeof(int),
                                      typeof(AllocationControl),
                                      new PropertyMetadata(default, OnPropertyChanged));
@@ -82,7 +82,7 @@ public sealed partial class AllocationControl
             typeof(AllocationControl),
             new PropertyMetadata(default));
 
-    public int PageCount => ExtentCount * 8;
+    public int PageCount => Size * 8;
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -98,7 +98,7 @@ public sealed partial class AllocationControl
 
     public void Refresh()
     {
-        Layout = GetExtentLayout(ExtentCount, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
+        Layout = GetExtentLayout(Size, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
 
         SetScrollBarValues();
 
@@ -126,7 +126,7 @@ public sealed partial class AllocationControl
 
     private void AllocationCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        Layout = GetExtentLayout(ExtentCount, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
+        Layout = GetExtentLayout(Size, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
 
         SetScrollBarValues();
     }
@@ -138,10 +138,10 @@ public sealed partial class AllocationControl
             return;
         }
 
-        ScrollBar.IsEnabled = ExtentCount > Layout.VisibleCount;
+        ScrollBar.IsEnabled = Size > Layout.VisibleCount;
         ScrollBar.SmallChange = Layout.HorizontalCount;
         ScrollBar.LargeChange = (Layout.VerticalCount - 1) * Layout.HorizontalCount;
-        ScrollBar.Maximum = ExtentCount + ExtentCount % Layout.HorizontalCount;
+        ScrollBar.Maximum = Size + Size % Layout.HorizontalCount;
     }
 
     private void AllocationCanvas_PaintSurface(object sender, SKPaintSurfaceEventArgs e)
@@ -190,7 +190,7 @@ public sealed partial class AllocationControl
         // The number of [Block Size] pixel block in the allocation map
         var renderLines = (height - (offset)) / blockSize;
 
-        var extentLines = ExtentCount / layout.HorizontalCount;
+        var extentLines = Size / layout.HorizontalCount;
 
         var extentLinePerRenderLine = extentLines / renderLines;
 
@@ -300,9 +300,11 @@ public sealed partial class AllocationControl
 
     public ExtentLayout GetExtentLayout(int extentCount, Size extentSize, decimal width, decimal height)
     {
+        // Number of extents horizontally/vertically available if ths screen is full
         var extentsHorizontal = (int)Math.Floor(width / extentSize.Width);
         var extentsVertical = (int)Math.Ceiling(height / extentSize.Height);
 
+        // Total number of extents visible
         var visibleCount = extentsHorizontal * extentsVertical;
 
         if (extentsHorizontal == 0 | extentsVertical == 0 | extentCount == 0)
@@ -322,7 +324,7 @@ public sealed partial class AllocationControl
 
         if (extentsVertical > extentCount / extentsHorizontal)
         {
-            extentsVertical = extentCount / extentsHorizontal;
+            extentsVertical = (int)Math.Ceiling((double)extentCount / extentsHorizontal);
         }
 
         var extentsRemaining = extentCount - visibleCount;
@@ -434,6 +436,8 @@ public class PageClickedEventArgs(short fileId, int pageId) : EventArgs
     public short FileId { get; } = fileId;
 
     public int PageId { get; set; } = pageId;
+
+    public ushort? Slot { get; set; }
 }
 
 public class ExtentLayout

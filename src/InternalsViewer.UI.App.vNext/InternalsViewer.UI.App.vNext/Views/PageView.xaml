@@ -32,7 +32,7 @@
                 <Setter Property="MinHeight" Value="22" />
                 <Setter Property="Padding" Value="8" />
                 <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}"/>
-                <Setter Property="BorderBrush" Value="{StaticResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1,1,1,0" />
             </Style>
         </Grid.Resources>
@@ -51,7 +51,7 @@
                         Grid.Column="0" 
                         Grid.ColumnSpan="3"
                         Orientation="Horizontal"  
-                        BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="0,0,0,1">
                 <CommandBar 
                     Background="Transparent" 
@@ -157,19 +157,17 @@
                 </Grid>
 
                 <ListView x:Name="OffsetTableListView"
-                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                              BorderThickness="1"
-                              Grid.Row="1"
-                              SelectedValue="{x:Bind ViewModel.SelectedOffset, Mode=TwoWay}"
-                              SelectedValuePath="Offset"
-                              BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
-                              ItemsSource="{x:Bind ViewModel.Offsets, Mode=OneWay}"
-                              Width="175"
-                              IsItemClickEnabled="True"
-                              ItemClick="OffsetTableListView_ItemClick"
-                              VirtualizingStackPanel.VirtualizationMode="Standard"
-                              ItemContainerStyle="{StaticResource ListViewItemSlotStyle}"
-                              HorizontalAlignment="Left">
+                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                          BorderThickness="1"
+                          Grid.Row="1"
+                          SelectionMode="Single"
+                          SelectedItem="{x:Bind ViewModel.SelectedSlot, Mode=TwoWay}"
+                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                          ItemsSource="{x:Bind ViewModel.Offsets, Mode=OneWay}"
+                          Width="175"
+                          ItemClick="OffsetTableListView_ItemClick"
+                          ItemContainerStyle="{StaticResource ListViewItemSlotStyle}"
+                          HorizontalAlignment="Left">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:OffsetSlot">
                             <Grid>
@@ -199,6 +197,7 @@
             <TabView Grid.Column="2" 
                      Grid.Row="1" 
                      Margin="14,0,14,14" 
+                     SelectedIndex="{x:Bind ViewModel.SelectedTabIndex, Mode=TwoWay}"
                      IsAddTabButtonVisible="False"
                      VerticalAlignment="Stretch"
                      TabWidthMode="SizeToContent">
@@ -211,28 +210,30 @@
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1,0,1,1"
                         VerticalAlignment="Stretch"
-                        PageClicked="PageHeaderControl_PageClicked"
+                        PageClicked="Control_PageClicked"
                         Page="{x:Bind ViewModel.Page, Mode=OneWay}" />
                 </TabViewItem>
                 <TabViewItem IsClosable="False" 
                              x:Name="RowDataTabViewItem"
-                             Visibility="{x:Bind ViewModel.IsMarkerKeyTableVisible, 
+                             Visibility="{x:Bind ViewModel.IsRowDataTabVisible, 
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
                     <TabViewItem.Header>
                         Row Data
                     </TabViewItem.Header>
-                    <page:MarkerListView DataContext="{x:Bind ViewModel, Mode=OneWay}"/>
+                    <page:MarkerListView DataContext="{x:Bind ViewModel, Mode=OneWay}" 
+                                         PageClicked="Control_PageClicked"/>
                 </TabViewItem>
                 <TabViewItem IsClosable="False" 
                              x:Name="AllocationTabViewItem" 
-                             Visibility="{x:Bind ViewModel.IsAllocationMapVisible, 
+                             Visibility="{x:Bind ViewModel.IsAllocationsTabVisible, 
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
                     <TabViewItem.Header>
                         Allocations
                     </TabViewItem.Header>
-                    <allocation:AllocationControl ExtentCount="63903" 
+                    <allocation:AllocationControl Size="63903" 
+                                                  PageClicked="Control_PageClicked"
                                                   FileId="{x:Bind ViewModel.Page.PageAddress.FileId, Mode=OneWay}"
                                                   Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
                 </TabViewItem>

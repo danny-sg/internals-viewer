@@ -25,7 +25,7 @@ public partial class DatabaseViewModel(IServiceProvider serviceProvider, Databas
     private AllocationLayer? selectedLayer;
 
     [ObservableProperty]
-    private int size;
+    private int extentCount;
 
     [ObservableProperty]
     private Allocation.AllocationOverViewModel allocationOver = new();

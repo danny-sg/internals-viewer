@@ -121,7 +121,7 @@ public sealed partial class MainWindow
         var layers = AllocationLayerBuilder.GenerateLayers(database, true);
 
         viewModel.Database = database;
-        viewModel.Size = database.GetFileSize(1);
+        viewModel.ExtentCount = database.GetFileSize(1) / 8;
         viewModel.AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
 
         viewModel.IsLoading = false;

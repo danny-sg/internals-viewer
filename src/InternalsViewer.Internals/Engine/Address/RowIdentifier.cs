@@ -12,21 +12,21 @@ public struct RowIdentifier
 
     public PageAddress PageAddress { get; set; }
 
-    public int SlotId { get; set; }
+    public ushort SlotId { get; set; }
 
     public RowIdentifier(byte[] address)
     {
         PageAddress = new PageAddress(BitConverter.ToInt16(address, 4), BitConverter.ToInt32(address, 0));
-        SlotId = BitConverter.ToInt16(address, 6);
+        SlotId = BitConverter.ToUInt16(address, 6);
     }
 
-    public RowIdentifier(PageAddress page, int slot)
+    public RowIdentifier(PageAddress page, ushort slot)
     {
         PageAddress = page;
         SlotId = slot;
     }
 
-    public RowIdentifier(short fileId, int pageId, int slot)
+    public RowIdentifier(short fileId, int pageId, ushort slot)
     {
         PageAddress = new PageAddress(fileId, pageId);
         SlotId = slot;
@@ -34,7 +34,7 @@ public struct RowIdentifier
 
     public static RowIdentifier Parse(string? address)
     {
-        short slot = 0;
+        ushort slot = 0;
 
         var sb = new StringBuilder(address);
 
@@ -54,7 +54,7 @@ public struct RowIdentifier
 
         if (splitAddress.Length > 2)
         {
-            parsed &= short.TryParse(splitAddress[2], out slot);
+            parsed &= ushort.TryParse(splitAddress[2], out slot);
         }
 
         if (parsed)
@@ -68,8 +68,8 @@ public struct RowIdentifier
     public override string ToString()
     {
         return string.Format(CultureInfo.CurrentCulture, "({0}:{1}:{2})",
-            PageAddress.FileId,
-            PageAddress.PageId,
-            SlotId);
+                             PageAddress.FileId,
+                             PageAddress.PageId,
+                             SlotId);
     }
 }

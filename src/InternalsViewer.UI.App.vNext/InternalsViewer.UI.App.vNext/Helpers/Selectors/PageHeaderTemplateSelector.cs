@@ -9,8 +9,6 @@ public class PageHeaderTemplateSelector : DataTemplateSelector
 
     public DataTemplate PageAddressTemplate { get; set; } = null!;
 
-    public DataTemplate GetStartedTemplate { get; set; } = null!;
-
     protected override DataTemplate? SelectTemplateCore(object item, DependencyObject container)
     {
         return item switch

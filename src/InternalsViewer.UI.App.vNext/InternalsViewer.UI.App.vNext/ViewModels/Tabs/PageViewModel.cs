@@ -64,7 +64,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
     private ObservableCollection<OffsetSlot> offsets = new();
 
     [ObservableProperty]
-    private ushort? selectedOffset;
+    private OffsetSlot? selectedSlot;
 
     [ObservableProperty]
     private Marker? selectedMarker;
@@ -79,10 +79,17 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
     private ObservableCollection<AllocationLayer> allocationLayers = new();
 
     [ObservableProperty]
-    private bool isMarkerKeyTableVisible;
+    private bool isRowDataTabVisible;
 
     [ObservableProperty]
-    private bool isAllocationMapVisible;
+    private bool isAllocationsTabVisible;
+
+    [ObservableProperty]
+    private int selectedTabIndex;
+
+    private const int HeaderTab = 0;
+    private const int RowDataTab = 1;
+    private const int AllocationsTab = 2;
 
     public List<Record> Records { get; set; } = new();
 
@@ -91,7 +98,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
         AddPageMarkers(Page);
     }
 
-    partial void OnSelectedOffsetChanged(ushort? value)
+    partial void OnSelectedSlotChanged(OffsetSlot? value)
     {
         if (value == null)
         {
@@ -99,7 +106,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
             return;
         }
 
-        AddRecordMarkers(value.Value);
+        AddRecordMarkers(value.Offset);
     }
 
     private void AddRecordMarkers(ushort value)
@@ -134,7 +141,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
 
         var resultPage = await pageService.GetPage(Database, address);
 
-        Name = $"{resultPage.PageHeader.PageTypeName} Page {address}";
+        Name = $"{resultPage.PageHeader.PageType} Page {address}";
 
         logger.LogDebug("Building Offset Table");
 
@@ -145,7 +152,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
             Description = $"0x{s:X}"
         });
 
-        SelectedOffset = null;
+        SelectedSlot = null;
         SelectedMarker = null;
 
         Offsets = new ObservableCollection<OffsetSlot>(slots);
@@ -156,20 +163,13 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
 
         switch (resultPage)
         {
-            case AllocationUnitPage dataPage:
-                SetAllocationUnitDescription(dataPage);
-
-                LoadRecords(dataPage);
-                IsAllocationMapVisible = false;
-                IsMarkerKeyTableVisible = true;
+            case AllocationUnitPage allocationUnitPage:
+                DisplayAllocationUnitPage(allocationUnitPage);
 
                 break;
 
             case AllocationPage allocationPage:
-                LoadAllocationLayer(allocationPage);
-
-                IsAllocationMapVisible = true;
-                IsMarkerKeyTableVisible = false;
+                DisplayAllocationPage(allocationPage);
 
                 break;
 
@@ -191,6 +191,30 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
         }
 
         IsLoading = false;
+    }
+
+    private void DisplayAllocationPage(AllocationPage allocationPage)
+    {
+        LoadAllocationLayer(allocationPage);
+
+        IsAllocationsTabVisible = true;
+        IsRowDataTabVisible = false;
+
+        SelectedTabIndex = SelectedTabIndex == RowDataTab ? AllocationsTab : SelectedTabIndex;
+    }
+
+    private void DisplayAllocationUnitPage(AllocationUnitPage allocationUnitPage)
+    {
+        SetAllocationUnitDescription(allocationUnitPage);
+
+        LoadRecords(allocationUnitPage);
+
+        IsAllocationsTabVisible = false;
+        IsRowDataTabVisible = true;
+
+        SelectedSlot = Offsets.FirstOrDefault();
+
+        SelectedTabIndex = SelectedTabIndex == AllocationsTab ? RowDataTab : SelectedTabIndex;
     }
 
     private void LoadAllocationLayer(AllocationPage allocationPage)

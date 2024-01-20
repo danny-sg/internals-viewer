@@ -7,6 +7,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:vNext="using:InternalsViewer.UI.App.vNext"
+    xmlns:system="using:System"
+    xmlns:views="using:InternalsViewer.UI.App.vNext.Views"
     x:Name="Root"
     mc:Ignorable="d">
     <UserControl.Resources>
@@ -34,10 +37,6 @@
                          PlaceholderText="Filter"        
                          Text="{x:Bind ViewModel.Filter, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
             </AppBarElementContainer>
-            <CommandBar.Content>
-                <!--<TextBlock Text="{x:Bind Path=ViewModel.AllocationOver.LayerName, Mode=OneWay}" 
-                           Margin="12,14"/>-->
-            </CommandBar.Content>
         </CommandBar>
         <Grid Grid.Row="1">
             <toolkit:DataGrid x:Name="DataGrid"                       

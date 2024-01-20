@@ -161,6 +161,8 @@ public class MarkerBuilder
 
                 var style = styleProvider.GetMarkStyle(attribute.DataStructureItemType);
 
+                marker.ItemType = attribute.DataStructureItemType;
+
                 marker.ForeColour = style.ForeColour;
 
                 if (style.BackColour != style.AlternateBackColour && index % 2 == 0)

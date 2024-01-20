@@ -16,7 +16,7 @@
         <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
         <StartupObject>InternalsViewer.UI.App.vNext.Program</StartupObject>
         <Nullable>enable</Nullable>
-        <ApplicationIcon>InternalsViewer.ico</ApplicationIcon>
+        <ApplicationIcon>Assets\InternalsViewer.ico</ApplicationIcon>
     </PropertyGroup>
     <ItemGroup>
       <Content Remove="Assets\Database.svg" />
@@ -45,9 +45,6 @@
         <None Remove="Views\PageView.xaml" />
         <None Remove="Views\SettingsPage.xaml" />
     </ItemGroup>
-    <ItemGroup>
-      <Content Include="InternalsViewer.ico" />
-    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.0.240109" />
@@ -73,15 +70,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Update="Assets\AppIcon16.png">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </Content>
-      <Content Update="Assets\AppLogo-256-database.png">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </Content>
-      <Content Update="Assets\AppLogo-256.png">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </Content>
       <Content Update="Assets\AppLogo-512.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>

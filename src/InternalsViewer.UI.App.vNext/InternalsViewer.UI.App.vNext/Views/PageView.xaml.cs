@@ -26,7 +26,7 @@ public sealed partial class PageView
         }
     }
 
-    private void PageHeaderControl_PageClicked(object sender, Controls.Allocation.PageClickedEventArgs e)
+    private void Control_PageClicked(object sender, Controls.Allocation.PageClickedEventArgs e)
     {
         ViewModel.LoadPageCommand.Execute(new PageAddress(e.FileId, e.PageId));
     }
@@ -39,7 +39,7 @@ public sealed partial class PageView
         if (listView?.SelectedItem == e.ClickedItem)
         {
             listView.DeselectAll();
-            ViewModel.SelectedOffset = null;
+            ViewModel.SelectedSlot = null;
         }
     }
 }

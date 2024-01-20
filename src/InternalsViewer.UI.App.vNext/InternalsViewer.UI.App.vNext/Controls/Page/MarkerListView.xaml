@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:InternalsViewer.UI.App.vNext.Models"
+    xmlns:selectors="using:InternalsViewer.UI.App.vNext.Helpers.Selectors"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}" x:Key="ListViewItemMarkerStyle">
@@ -19,7 +20,7 @@
             <Setter Property="MinHeight" Value="22" />
             <Setter Property="Padding" Value="8" />
             <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
             <Setter Property="BorderThickness" Value="1,0,1,0" />
         </Style>
 
@@ -27,6 +28,97 @@
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontFamily" Value="Consolas"/>
         </Style>
+
+        <Style x:Key="PointerStyle" TargetType="HyperlinkButton">
+            <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
+        
+        <DataTemplate x:Key="DefaultItemTemplate" x:DataType="models:Marker">
+
+            <Grid Margin="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="30"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="50"/>
+                </Grid.ColumnDefinitions>
+                <Grid Width="20"
+                      Height="20"
+                      Background="{x:Bind BackColour, 
+                                          Mode=OneWay, 
+                                          Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
+                    <TextBlock Grid.Column="0"              
+                               Text="00"
+                               TextAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{x:Bind ForeColour, 
+                                                   Mode=OneWay, 
+                                                   Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
+                               Style="{StaticResource HexStyle}"/>
+
+                </Grid>
+                <TextBlock Grid.Column="1"                  
+                           Text="{x:Bind Name}"
+                           Style="{StaticResource ListTextBlock}" />
+                <TextBlock Grid.Column="2"                  
+                           Text="{x:Bind Value}"
+                           Style="{StaticResource ListTextBlock}"/>
+                <TextBlock Grid.Column="3"                  
+                           Text="{x:Bind StartPosition}"
+                           Style="{StaticResource ListTextBlock}"/>
+                <TextBlock Grid.Column="4"                  
+                           Text="{x:Bind EndPosition}"
+                           Style="{StaticResource ListTextBlock}"/>
+            </Grid>
+
+        </DataTemplate>
+
+        <DataTemplate x:Key="PointerItemTemplate" x:DataType="models:Marker">
+            <Grid Margin="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="30"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="50"/>
+                </Grid.ColumnDefinitions>
+                <Grid Width="20"
+                      Height="20"
+                      Background="{x:Bind BackColour, 
+                                          Mode=OneWay, 
+                                          Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
+                    <TextBlock Grid.Column="0"              
+                               Text="00"
+                               TextAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{x:Bind ForeColour, 
+                                                   Mode=OneWay, 
+                                                   Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
+                               Style="{StaticResource HexStyle}"/>
+
+                </Grid>
+                <TextBlock Grid.Column="1"                  
+                           Text="{x:Bind Name}"
+                           Style="{StaticResource ListTextBlock}" />
+                <HyperlinkButton Grid.Column="2"       
+                                 Style="{StaticResource PointerStyle}"
+                                 Content="{x:Bind Value}"
+                                 Click="HyperlinkButton_Click"/>
+                <TextBlock Grid.Column="3"                  
+                           Text="{x:Bind StartPosition}"
+                           Style="{StaticResource ListTextBlock}"/>
+                <TextBlock Grid.Column="4"                  
+                           Text="{x:Bind EndPosition}"
+                           Style="{StaticResource ListTextBlock}"/>
+            </Grid>
+        </DataTemplate>
+
+        <selectors:MarkerTemplateSelector x:Key="MarkerTemplateSelector" 
+                                          DefaultTemplate="{StaticResource DefaultItemTemplate}"
+                                          PointerTemplate="{StaticResource PointerItemTemplate}" />
     </UserControl.Resources>
     <Grid x:Name="MarkerContainerGrid" VerticalAlignment="Stretch">
         <Grid.RowDefinitions>
@@ -55,44 +147,9 @@
                   ItemsSource="{x:Bind ViewModel.Markers, Mode=OneWay}"
                   SelectedValue="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
                   ItemContainerStyle="{StaticResource ListViewItemMarkerStyle}"
+                  ItemTemplateSelector="{StaticResource MarkerTemplateSelector}"
                   VerticalAlignment="Stretch"
                   HorizontalAlignment="Stretch">
-            <ListView.ItemTemplate>
-                <DataTemplate x:DataType="models:Marker">
-                    <Grid Margin="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="30"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="50"/>
-                            <ColumnDefinition Width="50"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid Width="20"
-                              Height="20"
-                              Background="{x:Bind BackColour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
-                            <TextBlock Grid.Column="0"              
-                                       Text="00"
-                                       TextAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Foreground="{x:Bind ForeColour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
-                                       Style="{StaticResource HexStyle}"/>
-
-                        </Grid>
-                        <TextBlock Grid.Column="1"                  
-                                           Text="{x:Bind Name}"
-                                           Style="{StaticResource ListTextBlock}" />
-                        <TextBlock Grid.Column="2"                  
-                                           Text="{x:Bind Value}"
-                                           Style="{StaticResource ListTextBlock}"/>
-                        <TextBlock Grid.Column="3"                  
-                                           Text="{x:Bind StartPosition}"
-                                           Style="{StaticResource ListTextBlock}"/>
-                        <TextBlock Grid.Column="4"                  
-                                           Text="{x:Bind EndPosition}"
-                                           Style="{StaticResource ListTextBlock}"/>
-                    </Grid>
-                </DataTemplate>
-            </ListView.ItemTemplate>
         </ListView>
     </Grid>
 </UserControl>
