@@ -34,7 +34,7 @@ public sealed partial class AllocationControl
             typeof(AllocationControl),
             null);
 
-    public bool IsTooltipEnabled 
+    public bool IsTooltipEnabled
     {
         get => (bool)GetValue(IsTooltipEnabledProperty);
         set => SetValue(IsTooltipEnabledProperty, value);
@@ -69,7 +69,7 @@ public sealed partial class AllocationControl
                                       typeof(ObservableCollection<AllocationLayer>),
                                       typeof(AllocationControl),
                                       new PropertyMetadata(default, OnPropertyChanged));
-    
+
     public AllocationLayer? SelectedLayer
     {
         get => (AllocationLayer?)GetValue(SelectedLayerProperty);
@@ -219,7 +219,7 @@ public sealed partial class AllocationControl
             var pagesFrom = extentsFrom * 8;
             var pagesTo = extentsTo * 8;
 
-            if (layer.Allocations.Any(a => a > extentsFrom && a <= i + extentsTo)
+            if (layer.Allocations.Any(a => a.FileId == FileId && a.ExtentId > extentsFrom && a.ExtentId <= i + extentsTo)
                                       || layer.SinglePages.Any(a => a.PageId > pagesFrom && a.PageId <= pagesTo))
             {
                 var top = offset + i * blockSize;
@@ -248,15 +248,14 @@ public sealed partial class AllocationControl
 
                 renderer.SetAllocationColour(colour, backgroundColour);
 
-                foreach (var extent in layer.Allocations)
+                foreach (var extent in layer.Allocations.Where(l => l.FileId == FileId))
                 {
-                    renderer.DrawExtent(canvas, GetExtentPosition(extent - ScrollPosition, layout));
+                    renderer.DrawExtent(canvas, GetExtentPosition(extent.ExtentId - ScrollPosition, layout));
                 }
 
-                foreach (var page in layer.SinglePages)
+                foreach (var page in layer.SinglePages.Where(l=>l.FileId == FileId))
                 {
                     renderer.DrawPage(canvas, GetPagePosition(page.PageId - ScrollPosition * 8, layout));
-
                 }
             }
         }
@@ -373,7 +372,7 @@ public sealed partial class AllocationControl
         var pageId = GetPageAtPosition((int)position.X, (int)position.Y);
         var extentId = GetExtentAtPosition((int)position.X, (int)position.Y);
 
-        var layer = Layers.FirstOrDefault(l => l.Allocations.Contains(extentId));
+        var layer = Layers.FirstOrDefault(l => l.Allocations.Any(a => a.FileId == FileId && a.ExtentId == extentId));
 
         string layerName;
 

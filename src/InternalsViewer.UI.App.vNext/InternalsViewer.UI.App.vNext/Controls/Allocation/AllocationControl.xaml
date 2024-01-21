@@ -6,7 +6,6 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:skia="using:SkiaSharp.Views.Windows"
-    xmlns:winUi="using:CommunityToolkit.WinUI"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="TooltipValueStyle" TargetType="TextBlock">

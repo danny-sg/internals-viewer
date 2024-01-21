@@ -57,31 +57,33 @@ internal class AllocationLayerBuilder
         var layer = new AllocationLayer();
 
         layer.Allocations
-            .AddRange(allocationPage.AllocationMap
-                                    .Select((isAllocated, index) => new
-                                            {
-                                                isAllocated,
-                                                Extent = index
-                                            })
-                                    .Where(w => w.isAllocated)
-                                    .Select(s => s.Extent));
-
+             .AddRange(allocationPage.AllocationMap
+                                     .Select((isAllocated, index) => new
+                                             {
+                                                 isAllocated,
+                                                 Extent = index,
+                                                 allocationPage.PageAddress.FileId
+                                             })
+                                     .Where(w => w.isAllocated)
+                                     .Select(s => new ExtentAllocation(s.FileId, s.Extent)));
+            
         return layer;
     }
 
-    private static List<int> GetExtentAllocations(IamChain chain)
+    private static List<ExtentAllocation> GetExtentAllocations(IamChain chain)
     {
-        var result = new List<int>();
+        var result = new List<ExtentAllocation>();
 
         result.AddRange(chain.Pages
                              .SelectMany(s => s.AllocationMap
                                                .Select((isAllocated, index) => new
                                                {
                                                    isAllocated,
-                                                   Extent = index + s.StartPage.PageId * 8
+                                                   Extent = index + s.StartPage.PageId * 8,
+                                                   s.StartPage.FileId
                                                }))
                              .Where(w => w.isAllocated)
-                             .Select(s => s.Extent));
+                             .Select(s => new ExtentAllocation(s.FileId, s.Extent)));
 
         return result;
     }

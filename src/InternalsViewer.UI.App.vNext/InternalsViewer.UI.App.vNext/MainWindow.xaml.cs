@@ -21,6 +21,8 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.UI.App.vNext.Views.Connect;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media.Imaging;
+using System.Linq;
+using DatabaseFile = InternalsViewer.UI.App.vNext.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.vNext;
 
@@ -120,6 +122,7 @@ public sealed partial class MainWindow
 
         viewModel.Name = connection.Name;
 
+        viewModel.DatabaseFiles = database.Files.Select(f => new DatabaseFile(viewModel) { FileId = f.FileId, Size = f.Size }).ToArray();
         viewModel.IsLoading = true;
 
         var layers = AllocationLayerBuilder.GenerateLayers(database, true);

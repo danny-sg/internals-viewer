@@ -42,11 +42,18 @@ public partial class AllocationLayer : ObservableObject
     private long totalPages;
 
     [ObservableProperty]
-    private List<int> allocations = new();
+    private List<ExtentAllocation> allocations = new();
 
     [ObservableProperty]
     private List<PageAddress> singlePages = new();
 
     [ObservableProperty]
     private bool isVisible;
+}
+
+public class ExtentAllocation(short fileId, int extentId)
+{
+    public int ExtentId { get; set; } = extentId;
+
+    public short FileId { get; set; } = fileId;
 }

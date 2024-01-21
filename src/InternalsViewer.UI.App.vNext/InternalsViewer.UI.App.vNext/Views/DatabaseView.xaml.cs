@@ -1,3 +1,4 @@
+using System.Collections;
 using InternalsViewer.UI.App.vNext.Controls.Allocation;
 using DatabaseViewModel = InternalsViewer.UI.App.vNext.ViewModels.Tabs.DatabaseViewModel;
 using CommunityToolkit.Mvvm.Messaging;
@@ -11,9 +12,13 @@ public sealed partial class DatabaseView
     public DatabaseView()
     {
         InitializeComponent();
+
+        AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
     }
 
     public DatabaseViewModel ViewModel => (DatabaseViewModel)DataContext;
+
+    public double AllocationMapHeight { get; set; }
 
     private void OnPageClicked(object? sender, PageClickedEventArgs e)
     {
@@ -29,7 +34,23 @@ public sealed partial class DatabaseView
 
         if(isChecked)
         {
-            AllocationLayerGrid.Height = this.Height / 2;
+            AllocationLayerGrid.Height = Height / 2;
         }
+    }
+
+    private void OnParentSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if(AllocationItemRepeater.ItemsSource is IList items)
+        {
+            var itemCount = items.Count;
+
+            if(itemCount > 0)
+            {
+                var itemHeight = AllocationItemRepeater.ActualHeight / itemCount;
+
+                ViewModel.AllocationMapHeight = itemHeight;
+            }
+        }
+
     }
 }

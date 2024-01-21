@@ -9,6 +9,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.UI.App.vNext.Messages;
 using InternalsViewer.UI.App.vNext.Models;
+using DatabaseFile = InternalsViewer.UI.App.vNext.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.vNext.ViewModels.Tabs;
 
@@ -17,6 +18,9 @@ public partial class DatabaseViewModel(IServiceProvider serviceProvider, Databas
 {
     [ObservableProperty]
     private DatabaseSource database = database;
+
+    [ObservableProperty]
+    private DatabaseFile[] databaseFiles = Array.Empty<DatabaseFile>();
 
     [ObservableProperty]
     private ObservableCollection<AllocationLayer> allocationLayers = new();
@@ -44,12 +48,7 @@ public partial class DatabaseViewModel(IServiceProvider serviceProvider, Databas
     private short fileId = 1;
 
     [ObservableProperty]
-    private double rowHeight = double.NaN;
-
-    partial void OnIsDetailVisibleChanged(bool value)
-    {
-        RowHeight = value ? double.NaN : 0;
-    }
+    private double allocationMapHeight = 200;
 
     [RelayCommand]
     private void OpenPage(PageAddress pageAddress)
