@@ -178,7 +178,7 @@ public partial class ServerConnectionViewModel(SettingsService settingsService) 
 
         var message = new ConnectServerMessage(connectionString, settings);
 
-        WeakReferenceMessenger.Default.Send(message);
+        await WeakReferenceMessenger.Default.Send(message);
 
         await message.Response;
 

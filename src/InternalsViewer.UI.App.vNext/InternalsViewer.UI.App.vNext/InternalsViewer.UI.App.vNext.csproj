@@ -12,11 +12,16 @@
         <AccelerateBuildsInVisualStudio>True</AccelerateBuildsInVisualStudio>
         
         <!-- Use our own Main entry point so we can control the HostBuilder -->
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
         <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
         <StartupObject>InternalsViewer.UI.App.vNext.Program</StartupObject>
         <Nullable>enable</Nullable>
         <ApplicationIcon>Assets\InternalsViewer.ico</ApplicationIcon>
+        <EnableMsixTooling>true</EnableMsixTooling>
+        <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+        <PlatformTarget>x64</PlatformTarget>
+        
+        
     </PropertyGroup>
     <ItemGroup>
       <Content Remove="Assets\Database.svg" />
@@ -35,6 +40,56 @@
         <None Remove="Controls\Page\MarkerKeyControl.xaml" />
         <None Remove="Controls\Page\MarkerListView.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
+        <None Remove="Images\LargeTile.scale-100.png" />
+        <None Remove="Images\LargeTile.scale-125.png" />
+        <None Remove="Images\LargeTile.scale-150.png" />
+        <None Remove="Images\LargeTile.scale-200.png" />
+        <None Remove="Images\LargeTile.scale-400.png" />
+        <None Remove="Images\SmallTile.scale-100.png" />
+        <None Remove="Images\SmallTile.scale-125.png" />
+        <None Remove="Images\SmallTile.scale-150.png" />
+        <None Remove="Images\SmallTile.scale-200.png" />
+        <None Remove="Images\SmallTile.scale-400.png" />
+        <None Remove="Images\SplashScreen.scale-100.png" />
+        <None Remove="Images\SplashScreen.scale-125.png" />
+        <None Remove="Images\SplashScreen.scale-150.png" />
+        <None Remove="Images\SplashScreen.scale-200.png" />
+        <None Remove="Images\SplashScreen.scale-400.png" />
+        <None Remove="Images\Square150x150Logo.scale-100.png" />
+        <None Remove="Images\Square150x150Logo.scale-125.png" />
+        <None Remove="Images\Square150x150Logo.scale-150.png" />
+        <None Remove="Images\Square150x150Logo.scale-200.png" />
+        <None Remove="Images\Square150x150Logo.scale-400.png" />
+        <None Remove="Images\Square44x44Logo.altform-lightunplated_targetsize-16.png" />
+        <None Remove="Images\Square44x44Logo.altform-lightunplated_targetsize-24.png" />
+        <None Remove="Images\Square44x44Logo.altform-lightunplated_targetsize-256.png" />
+        <None Remove="Images\Square44x44Logo.altform-lightunplated_targetsize-32.png" />
+        <None Remove="Images\Square44x44Logo.altform-lightunplated_targetsize-48.png" />
+        <None Remove="Images\Square44x44Logo.altform-unplated_targetsize-16.png" />
+        <None Remove="Images\Square44x44Logo.altform-unplated_targetsize-24.png" />
+        <None Remove="Images\Square44x44Logo.altform-unplated_targetsize-256.png" />
+        <None Remove="Images\Square44x44Logo.altform-unplated_targetsize-32.png" />
+        <None Remove="Images\Square44x44Logo.altform-unplated_targetsize-48.png" />
+        <None Remove="Images\Square44x44Logo.scale-100.png" />
+        <None Remove="Images\Square44x44Logo.scale-125.png" />
+        <None Remove="Images\Square44x44Logo.scale-150.png" />
+        <None Remove="Images\Square44x44Logo.scale-200.png" />
+        <None Remove="Images\Square44x44Logo.scale-400.png" />
+        <None Remove="Images\Square44x44Logo.targetsize-16.png" />
+        <None Remove="Images\Square44x44Logo.targetsize-24.png" />
+        <None Remove="Images\Square44x44Logo.targetsize-256.png" />
+        <None Remove="Images\Square44x44Logo.targetsize-32.png" />
+        <None Remove="Images\Square44x44Logo.targetsize-48.png" />
+        <None Remove="Images\StoreLogo.scale-100.png" />
+        <None Remove="Images\StoreLogo.scale-125.png" />
+        <None Remove="Images\StoreLogo.scale-150.png" />
+        <None Remove="Images\StoreLogo.scale-200.png" />
+        <None Remove="Images\StoreLogo.scale-400.png" />
+        <None Remove="Images\Wide310x150Logo.scale-100.png" />
+        <None Remove="Images\Wide310x150Logo.scale-125.png" />
+        <None Remove="Images\Wide310x150Logo.scale-150.png" />
+        <None Remove="Images\Wide310x150Logo.scale-200.png" />
+        <None Remove="Images\Wide310x150Logo.scale-400.png" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Views\ConnectView.xaml" />
         <None Remove="Views\Connect\ConnectBackupPage.xaml" />
@@ -45,8 +100,61 @@
         <None Remove="Views\PageView.xaml" />
         <None Remove="Views\SettingsPage.xaml" />
     </ItemGroup>
+    <ItemGroup>
+      <Content Include="Images\LargeTile.scale-100.png" />
+      <Content Include="Images\LargeTile.scale-125.png" />
+      <Content Include="Images\LargeTile.scale-150.png" />
+      <Content Include="Images\LargeTile.scale-200.png" />
+      <Content Include="Images\LargeTile.scale-400.png" />
+      <Content Include="Images\SmallTile.scale-100.png" />
+      <Content Include="Images\SmallTile.scale-125.png" />
+      <Content Include="Images\SmallTile.scale-150.png" />
+      <Content Include="Images\SmallTile.scale-200.png" />
+      <Content Include="Images\SmallTile.scale-400.png" />
+      <Content Include="Images\SplashScreen.scale-100.png" />
+      <Content Include="Images\SplashScreen.scale-125.png" />
+      <Content Include="Images\SplashScreen.scale-150.png" />
+      <Content Include="Images\SplashScreen.scale-200.png" />
+      <Content Include="Images\SplashScreen.scale-400.png" />
+      <Content Include="Images\Square150x150Logo.scale-100.png" />
+      <Content Include="Images\Square150x150Logo.scale-125.png" />
+      <Content Include="Images\Square150x150Logo.scale-150.png" />
+      <Content Include="Images\Square150x150Logo.scale-200.png" />
+      <Content Include="Images\Square150x150Logo.scale-400.png" />
+      <Content Include="Images\Square44x44Logo.altform-lightunplated_targetsize-16.png" />
+      <Content Include="Images\Square44x44Logo.altform-lightunplated_targetsize-24.png" />
+      <Content Include="Images\Square44x44Logo.altform-lightunplated_targetsize-256.png" />
+      <Content Include="Images\Square44x44Logo.altform-lightunplated_targetsize-32.png" />
+      <Content Include="Images\Square44x44Logo.altform-lightunplated_targetsize-48.png" />
+      <Content Include="Images\Square44x44Logo.altform-unplated_targetsize-16.png" />
+      <Content Include="Images\Square44x44Logo.altform-unplated_targetsize-24.png" />
+      <Content Include="Images\Square44x44Logo.altform-unplated_targetsize-256.png" />
+      <Content Include="Images\Square44x44Logo.altform-unplated_targetsize-32.png" />
+      <Content Include="Images\Square44x44Logo.altform-unplated_targetsize-48.png" />
+      <Content Include="Images\Square44x44Logo.scale-100.png" />
+      <Content Include="Images\Square44x44Logo.scale-125.png" />
+      <Content Include="Images\Square44x44Logo.scale-150.png" />
+      <Content Include="Images\Square44x44Logo.scale-200.png" />
+      <Content Include="Images\Square44x44Logo.scale-400.png" />
+      <Content Include="Images\Square44x44Logo.targetsize-16.png" />
+      <Content Include="Images\Square44x44Logo.targetsize-24.png" />
+      <Content Include="Images\Square44x44Logo.targetsize-256.png" />
+      <Content Include="Images\Square44x44Logo.targetsize-32.png" />
+      <Content Include="Images\Square44x44Logo.targetsize-48.png" />
+      <Content Include="Images\StoreLogo.scale-100.png" />
+      <Content Include="Images\StoreLogo.scale-125.png" />
+      <Content Include="Images\StoreLogo.scale-150.png" />
+      <Content Include="Images\StoreLogo.scale-200.png" />
+      <Content Include="Images\StoreLogo.scale-400.png" />
+      <Content Include="Images\Wide310x150Logo.scale-100.png" />
+      <Content Include="Images\Wide310x150Logo.scale-125.png" />
+      <Content Include="Images\Wide310x150Logo.scale-150.png" />
+      <Content Include="Images\Wide310x150Logo.scale-200.png" />
+      <Content Include="Images\Wide310x150Logo.scale-400.png" />
+    </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.230913002" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.0.240109" />
         <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.0.240109" />
         <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
@@ -57,7 +165,6 @@
      
         <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-        <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231219000" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.2428" />
         <PackageReference Include="SkiaSharp" Version="2.88.7" />
         <PackageReference Include="SkiaSharp.Views.WinUI" Version="2.88.7" />
@@ -65,6 +172,36 @@
         <Manifest Include="$(ApplicationManifest)" />
     </ItemGroup>
 
+    <!-- 
+    Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
+    Tools extension to be activated for this project even if the Windows App SDK Nuget
+    package has not yet been restored.
+  -->
+    <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+        <ProjectCapability Include="Msix" />
+    </ItemGroup>
+
+    <!-- 
+    Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution 
+    Explorer "Package and Publish" context menu entry to be enabled for this project even if 
+    the Windows App SDK Nuget package has not yet been restored.
+  -->
+    <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+        <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+      <WarningLevel>7</WarningLevel>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      <WarningLevel>7</WarningLevel>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+      <WarningLevel>7</WarningLevel>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      <WarningLevel>7</WarningLevel>
+    </PropertyGroup>
+    
     <ItemGroup>
         <ProjectReference Include="..\..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
     </ItemGroup>

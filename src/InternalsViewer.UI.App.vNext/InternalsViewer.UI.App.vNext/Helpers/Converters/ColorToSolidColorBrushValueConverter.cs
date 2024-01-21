@@ -48,7 +48,7 @@ public class PageAddressToStringConverter: IValueConverter
         return value?.ToString() ?? string.Empty;
     }
 
-    public object ConvertBack(object? value, Type targetType, object parameter, string language)
+    public object? ConvertBack(object? value, Type targetType, object parameter, string language)
     {
         if (value?.ToString() is null)
         {

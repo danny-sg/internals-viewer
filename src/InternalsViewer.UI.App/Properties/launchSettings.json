@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "InternalsViewer.UI.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "InternalsViewer.UI.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
