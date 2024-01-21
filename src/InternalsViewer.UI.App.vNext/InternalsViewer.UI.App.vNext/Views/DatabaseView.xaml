@@ -15,15 +15,13 @@
         <DataTemplate x:Key="AllocationFileTemplate" x:DataType="models:DatabaseFile">
             <Grid>
                 <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
-               
-                                          Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
-                                          Size="{x:Bind Size, Mode=OneWay}" 
-                                          Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
-                                          SelectedLayer="{x:Bind Parent.SelectedLayer, Mode=OneWay}"
-                                          AllocationOver="{x:Bind Parent.AllocationOver,Mode=TwoWay}"
-                                          FileId="{x:Bind FileId, Mode=OneWay}"
-                                          PageClicked="OnPageClicked"
-                                          x:Name="Allocations"/>
+                                              Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
+                                              Size="{x:Bind Size, Mode=OneWay}" 
+                                              Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
+                                              SelectedLayer="{x:Bind Parent.SelectedLayer, Mode=OneWay}"
+                                              FileId="{x:Bind FileId, Mode=OneWay}"
+                                              PageClicked="OnPageClicked"
+                                              x:Name="Allocations"/>
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
@@ -58,7 +56,6 @@
             ItemsSource="{x:Bind ViewModel.DatabaseFiles}"
             Layout="{StaticResource VerticalStackLayout}"
             ItemTemplate="{StaticResource AllocationFileTemplate}" />
-
         <allocation:AllocationLayerGrid Grid.Row="2" 
                                         x:Name="AllocationLayerGrid"
                                         SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=TwoWay}"

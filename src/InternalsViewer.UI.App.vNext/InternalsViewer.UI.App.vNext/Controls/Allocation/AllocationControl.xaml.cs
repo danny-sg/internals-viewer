@@ -82,17 +82,7 @@ public sealed partial class AllocationControl
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
-    public AllocationOverViewModel AllocationOver
-    {
-        get => (AllocationOverViewModel)GetValue(AllocationOverProperty);
-        set => SetValue(AllocationOverProperty, value);
-    }
-
-    public static readonly DependencyProperty AllocationOverProperty
-        = DependencyProperty.Register(nameof(AllocationOver),
-            typeof(AllocationOverViewModel),
-            typeof(AllocationControl),
-            new PropertyMetadata(default));
+    public AllocationOverViewModel AllocationOver { get; set; } = new();
 
     public int PageCount => Size * 8;
 
