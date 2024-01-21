@@ -20,6 +20,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.UI.App.vNext.Views.Connect;
 using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace InternalsViewer.UI.App.vNext;
 
@@ -83,10 +84,13 @@ public sealed partial class MainWindow
 
         content.DataContext = viewModel;
 
+        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
+
         var tab = new TabViewItem
         {
             Name = $"Page {pageAddress.PageId}",
-            Content = content
+            Content = content,
+            IconSource = new ImageIconSource { ImageSource = svg }
         };
 
         var titleBinding = new Binding { Path = new PropertyPath("Name"), Mode = BindingMode.OneWay };
@@ -129,10 +133,13 @@ public sealed partial class MainWindow
         var content = new DatabaseView();
         content.DataContext = viewModel;
 
+        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/DatabaseTabIcon.svg"));
+
         var tab = new TabViewItem
         {
             Name = connection.Name,
             Header = connection.Name,
+            IconSource = new ImageIconSource { ImageSource = svg },
             Content = content
         };
 

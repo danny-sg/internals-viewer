@@ -35,13 +35,21 @@ public partial class DatabaseViewModel(IServiceProvider serviceProvider, Databas
     private string filter = string.Empty;
 
     [ObservableProperty]
-    private bool isLayerDetailVisible;
+    private bool isDetailVisible = true;
 
     [ObservableProperty]
-    private ViewLocation allocationUnitsGridLocation = ViewLocation.Bottom;
+    private bool isTooltipEnabled;
 
     [ObservableProperty]
     private short fileId = 1;
+
+    [ObservableProperty]
+    private double rowHeight = double.NaN;
+
+    partial void OnIsDetailVisibleChanged(bool value)
+    {
+        RowHeight = value ? double.NaN : 0;
+    }
 
     [RelayCommand]
     private void OpenPage(PageAddress pageAddress)

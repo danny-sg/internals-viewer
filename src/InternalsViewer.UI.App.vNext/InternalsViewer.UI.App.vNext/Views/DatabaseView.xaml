@@ -9,36 +9,35 @@
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:allocation="using:InternalsViewer.UI.App.vNext.Controls.Allocation"
     xmlns:sys="clr-namespace:System;assembly=mscorlib"
+    xmlns:system="using:System"
+    xmlns:converters="using:CommunityToolkit.WinUI.Converters"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" x:Name="LayoutGrid">
+
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="*" x:Name="AllocationLayerGridRow"/>
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Orientation="Horizontal" >
-            <MenuBar Background="Transparent" 
-                     HorizontalAlignment="Left">
-
-                <MenuBarItem Title="View">
-                    <MenuFlyoutSubItem Text="Allocation Units">
-                        <RadioMenuFlyoutItem Text="Bottom" GroupName="OrientationGroup"/>
-                        <RadioMenuFlyoutItem Text="Right" GroupName="OrientationGroup" IsChecked="True"/>
-                        <RadioMenuFlyoutItem Text="Hide" GroupName="OrientationGroup" IsChecked="True"/>
-                    </MenuFlyoutSubItem>
-                </MenuBarItem>
-
-
-            </MenuBar>
-            <CommandBar 
-                    Background="Transparent" 
-                    IsOpen="False" 
-                    DefaultLabelPosition="Right" >
-
+            <CommandBar  IsOpen="False" DefaultLabelPosition="Right"
+                         Background="Transparent" 
+                       >
+                <AppBarToggleButton  Label="Tooltip" IsChecked="{x:Bind ViewModel.IsTooltipEnabled, Mode=TwoWay}" >
+                    <AppBarToggleButton.Icon>
+                        <FontIcon Glyph="&#xE759;"/>
+                    </AppBarToggleButton.Icon>
+                </AppBarToggleButton>
+                <AppBarToggleButton Icon="DockBottom" 
+                                    Label="Allocation Info" 
+                                    Checked="AppBarToggleButton_Changed"
+                                    Unchecked="AppBarToggleButton_Changed"
+                                    IsChecked="{x:Bind ViewModel.IsDetailVisible, Mode=TwoWay}" />
             </CommandBar>
         </StackPanel>
         <allocation:AllocationControl Grid.Row="1"
                                       MinHeight="200"
+                                      IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
                                       Size="{x:Bind ViewModel.ExtentCount, Mode=OneWay}" 
                                       Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
                                       SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=OneWay}"
@@ -49,9 +48,16 @@
 
         </allocation:AllocationControl>
         <allocation:AllocationLayerGrid Grid.Row="2" 
+                                        x:Name="AllocationLayerGrid"
                                         SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=TwoWay}"
                                         PageClicked="OnPageClicked"
-                                        Layers="{x:Bind ViewModel.AllocationLayers}"/>
+                                        Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
+        <!--<toolkit:ContentSizer Grid.Row="2"
+                               Height="16"
+                               VerticalAlignment="Top"
+                               Orientation="Vertical"
+                               TargetControl="{x:Bind AllocationLayerGrid}"
+                               Visibility="{x:Bind ViewModel.IsDetailVisible, Mode=OneWay}" />-->
         <toolkit:GridSplitter Grid.Row="2"
                               Grid.ColumnSpan="1"
                               Height="16"

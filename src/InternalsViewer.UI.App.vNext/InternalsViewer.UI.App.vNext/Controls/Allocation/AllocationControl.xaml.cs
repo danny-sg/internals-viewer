@@ -34,6 +34,18 @@ public sealed partial class AllocationControl
             typeof(AllocationControl),
             null);
 
+    public bool IsTooltipEnabled 
+    {
+        get => (bool)GetValue(IsTooltipEnabledProperty);
+        set => SetValue(IsTooltipEnabledProperty, value);
+    }
+
+    public static readonly DependencyProperty IsTooltipEnabledProperty
+        = DependencyProperty.Register(nameof(IsTooltipEnabled),
+            typeof(bool),
+            typeof(AllocationControl),
+            null);
+
     public int Size
     {
         get => (int)GetValue(SizeProperty);
@@ -392,16 +404,19 @@ public sealed partial class AllocationControl
                 layerName = "Bulk Change Map";
                 break;
             default:
-                layerName = $"Page 1:{pageId}, Extent: {extentId} - {layer?.Name ?? "Unallocated"}";
+                layerName = $"{layer?.Name ?? "Unallocated"}";
                 break;
         }
 
-        AllocationOver = new AllocationOverViewModel
+        AllocationOver.ExtentId = extentId;
+        AllocationOver.PageId = pageId;
+        AllocationOver.LayerName = layerName;
+
+        if (IsTooltipEnabled)
         {
-            ExtentId = extentId,
-            PageId = pageId,
-            LayerName = layerName
-        };
+            TooltipPopup.HorizontalOffset = position.X + 5;
+            TooltipPopup.VerticalOffset = position.Y + 5;
+        }
     }
 
     private void ScrollBar_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -427,7 +442,12 @@ public sealed partial class AllocationControl
 
     private void AllocationCanvas_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-        AllocationOver = new AllocationOverViewModel();
+        AllocationOver.IsOpen = false;
+    }
+
+    private void AllocationCanvas_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        AllocationOver.IsOpen = IsTooltipEnabled;
     }
 }
 

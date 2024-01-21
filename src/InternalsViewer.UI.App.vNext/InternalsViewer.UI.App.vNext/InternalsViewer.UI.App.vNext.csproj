@@ -85,6 +85,9 @@
       <Content Update="Assets\TabIcons\Database.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
+      <Content Update="Assets\TabIcons\DatabaseTabIcon.svg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
       <Content Update="Assets\TabIcons\Page.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>

@@ -6,6 +6,9 @@ namespace InternalsViewer.UI.App.vNext.ViewModels.Allocation;
 public partial class AllocationOverViewModel : ObservableObject
 {
     [ObservableProperty]
+    private bool isOpen;
+
+    [ObservableProperty]
     private int pageId;
 
     [ObservableProperty]

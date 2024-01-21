@@ -1,8 +1,13 @@
+using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
+using InternalsViewer.UI.App.vNext.Messages;
 using InternalsViewer.UI.App.vNext.ViewModels.Tabs;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace InternalsViewer.UI.App.vNext.Views;
 
@@ -28,10 +33,23 @@ public sealed partial class PageView
 
     private void Control_PageClicked(object sender, Controls.Allocation.PageClickedEventArgs e)
     {
-        ViewModel.LoadPageCommand.Execute(new PageAddress(e.FileId, e.PageId));
+        var pageAddress = new PageAddress(e.FileId, e.PageId);
+
+        var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+        
+        var isShiftPressed = state.HasFlag(CoreVirtualKeyStates.Down);
+
+        if (isShiftPressed)
+        {
+            WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+        }
+        else
+        {
+            ViewModel.LoadPageCommand.Execute(pageAddress);
+        }
     }
 
-    private void OffsetTableListView_ItemClick(object sender, ItemClickEventArgs e)
+        private void OffsetTableListView_ItemClick(object sender, ItemClickEventArgs e)
     {
         var listView = sender as ListView;
 

@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:tabs="using:InternalsViewer.UI.App.vNext.ViewModels.Tabs"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop Kind="Base"/>
@@ -16,7 +17,7 @@
                  Background="Transparent" 
                  IsAddTabButtonVisible="False"
                  Margin="0,4,0,0"
-                 TabWidthMode="Equal"
+                 TabWidthMode="SizeToContent"
                  TabCloseRequested="TabView_OnTabCloseRequested"
                  Loaded="TabView_Loaded">
             <TabView.Resources>
@@ -25,7 +26,6 @@
                                      Color="{ThemeResource LayerFillColorDefault}"/>
                 </ResourceDictionary>
             </TabView.Resources>
-
             <TabView.TabStripHeader>
                 <Grid x:Name="AppTitleBar"  
                       Height="30"
@@ -35,7 +35,8 @@
                         <ColumnDefinition/>
                         <ColumnDefinition x:Name="RightPaddingColumn" Width="0"/>
                     </Grid.ColumnDefinitions>
-                    <Image x:Name="TitleBarIcon" Source="ms-appx:///Assets/AppIcon16.png"
+                    <Image x:Name="TitleBarIcon" 
+                           Source="ms-appx:///Assets/AppIcon16.png"
                            Grid.Column="1"
                            HorizontalAlignment="Left"
                            Width="16" Height="16"
@@ -45,12 +46,14 @@
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Grid.Column="1"
                                VerticalAlignment="Center"
-                               Margin="32,0,0,0"/>
+                               Margin="32,0,12,0"/>
                 </Grid>
             </TabView.TabStripHeader>
 
             <TabView.TabStripFooter>
-                <Grid x:Name="CustomDragRegion" Background="Transparent" MinWidth="200" />
+                <Grid x:Name="CustomDragRegion" 
+                      Background="Transparent" 
+                      MinWidth="200" />
             </TabView.TabStripFooter>
         </TabView>
     </Grid>
