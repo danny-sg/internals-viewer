@@ -19,7 +19,7 @@
         <ApplicationIcon>Assets\InternalsViewer.ico</ApplicationIcon>
         <EnableMsixTooling>true</EnableMsixTooling>
         <PublishProfile>win-$(Platform).pubxml</PublishProfile>
-        <PlatformTarget>x64</PlatformTarget>
+        <PlatformTarget>AnyCPU</PlatformTarget>
         <SignAssembly>False</SignAssembly>
         <PackageCertificateThumbprint>4107D51B0A9C0FFF0FFAE6CC7C43975BE477D83A</PackageCertificateThumbprint>
         <PackageCertificateKeyFile>InternalsViewer.UI.App.vNext_TemporaryKey.pfx</PackageCertificateKeyFile>
