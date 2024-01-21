@@ -88,8 +88,8 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
     private int selectedTabIndex;
 
     private const int HeaderTab = 0;
-    private const int RowDataTab = 1;
-    private const int AllocationsTab = 2;
+    private const int RowDataTabIndex = 1;
+    private const int AllocationsTabIndex = 2;
 
     public List<Record> Records { get; set; } = new();
 
@@ -137,6 +137,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
         var pageService = GetService<IPageService>();
 
         Name = $"Loading Page {address}...";
+
         PageAddress = address;
 
         var resultPage = await pageService.GetPage(Database, address);
@@ -200,7 +201,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
         IsAllocationsTabVisible = true;
         IsRowDataTabVisible = false;
 
-        SelectedTabIndex = SelectedTabIndex == RowDataTab ? AllocationsTab : SelectedTabIndex;
+        SelectedTabIndex = SelectedTabIndex == RowDataTabIndex ? AllocationsTabIndex : SelectedTabIndex;
     }
 
     private void DisplayAllocationUnitPage(AllocationUnitPage allocationUnitPage)
@@ -214,7 +215,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
 
         SelectedSlot = Offsets.FirstOrDefault();
 
-        SelectedTabIndex = SelectedTabIndex == AllocationsTab ? RowDataTab : SelectedTabIndex;
+        SelectedTabIndex = SelectedTabIndex == AllocationsTabIndex ? RowDataTabIndex : SelectedTabIndex;
     }
 
     private void LoadAllocationLayer(AllocationPage allocationPage)

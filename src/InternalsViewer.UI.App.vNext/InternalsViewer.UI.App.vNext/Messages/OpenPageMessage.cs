@@ -10,7 +10,7 @@ public class OpenPageRequest(DatabaseSource database, PageAddress pageAddress)
 
     public DatabaseSource Database { get; set; } = database;
 
-    public string Target { get; set; } = string.Empty;
+    public ushort? Slot { get; set; }
 }
 
 public class OpenPageMessage(OpenPageRequest request) : ValueChangedMessage<OpenPageRequest>(request);

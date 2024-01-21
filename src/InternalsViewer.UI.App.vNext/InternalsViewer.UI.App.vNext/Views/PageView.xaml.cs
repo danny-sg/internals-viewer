@@ -22,7 +22,7 @@ public sealed partial class PageView
 
     private void PageAddressTextBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
-        if (e.Key == Windows.System.VirtualKey.Enter)
+        if (e.Key == VirtualKey.Enter)
         {
             if (PageAddressParser.TryParse(PageAddressTextBox.Text, out var pageAddress))
             {
@@ -41,7 +41,9 @@ public sealed partial class PageView
 
         if (isShiftPressed)
         {
-            WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+            var request = new OpenPageRequest(ViewModel.Database, pageAddress) { Slot = e.Slot };
+
+            WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
         }
         else
         {
