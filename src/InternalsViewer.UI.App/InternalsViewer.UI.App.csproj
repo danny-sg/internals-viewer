@@ -158,7 +158,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.230913002" />
+        <PackageReference Include="GitVersion.MsBuild" Version="5.12.0">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231219000" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.0.240109" />
         <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.0.240109" />
         <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
