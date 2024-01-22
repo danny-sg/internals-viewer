@@ -10,8 +10,11 @@ namespace InternalsViewer.UI.App.Views.Connect;
 
 public sealed partial class ConnectView
 {
-    public ConnectView()
+    public ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
+
+    public ConnectView(ConnectServerViewModelFactory connectServerViewModelFactory)
     {
+        ConnectServerViewModelFactory = connectServerViewModelFactory;
         InitializeComponent();
 
         WeakReferenceMessenger.Default.Register<NavigateMessage>(this, (_, m)
@@ -56,14 +59,14 @@ public sealed partial class ConnectView
         switch (value)
         {
             case "ConnectServerPage":
-                var connectServerViewModel = ViewModel.GetService<ConnectServerViewModel>();
+                var connectServerViewModel = ConnectServerViewModelFactory.Create();
 
                 await connectServerViewModel.InitializeAsync();
 
                 ContentFrame.Navigate(typeof(ConnectServerPage), connectServerViewModel);
                 break;
             case "ConnectFilePage":
-                var connectFileViewModel = ViewModel.GetService<ConnectFileViewModel>();
+                var connectFileViewModel = ConnectFileViewModelFactory.Create();
                 ContentFrame.Navigate(typeof(ConnectFilePage), connectFileViewModel);
                 break;
             default:

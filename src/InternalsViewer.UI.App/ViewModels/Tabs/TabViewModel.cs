@@ -6,8 +6,6 @@ namespace InternalsViewer.UI.App.ViewModels.Tabs;
 
 public partial class TabViewModel : ObservableObject
 {
-    private IServiceProvider ServiceProvider { get; }
-
     [ObservableProperty]
     private string tabId = string.Empty;
 
@@ -17,22 +15,8 @@ public partial class TabViewModel : ObservableObject
     [ObservableProperty]
     private bool isLoading = true;
 
-    protected TabViewModel(IServiceProvider serviceProvider)
+    protected TabViewModel()
     {
-        ServiceProvider = serviceProvider;
-
         TabId = Guid.NewGuid().ToString();
-    }
-
-    protected T GetService<T>()
-    {
-        var service = ServiceProvider.GetService<T>();
-
-        if (service is null)
-        {
-            throw new InvalidOperationException($"Service {typeof(T).Name} not found");
-        }
-
-        return service;
     }
 }

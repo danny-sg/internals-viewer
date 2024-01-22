@@ -25,6 +25,7 @@ using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Database;
 using InternalsViewer.UI.App.ViewModels.Page;
+using InternalsViewer.UI.App.ViewModels.Connections;
 
 namespace InternalsViewer.UI.App;
 
@@ -38,14 +39,27 @@ public sealed partial class MainWindow
 
     private MainViewModel ViewModel { get; }
 
+    public PageTabViewModelFactory PageTabViewModelFactory { get; }
+
+    public DatabaseTabViewModelFactory DatabaseTabViewModelFactory { get; }
+
+    public ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
+
+
     public MainWindow(IServiceProvider serviceProvider,
                       IDatabaseLoader databaseLoader,
-                      MainViewModel mainViewModel)
+                      MainViewModel mainViewModel,
+                      PageTabViewModelFactory pageTabViewModelFactory,
+                      DatabaseTabViewModelFactory databaseTabViewModelFactory,
+                      ConnectServerViewModelFactory connectServerViewModelFactory)
     {
         ServiceProvider = serviceProvider;
         DatabaseLoader = databaseLoader;
         
         ViewModel = mainViewModel;
+        PageTabViewModelFactory = pageTabViewModelFactory;
+        DatabaseTabViewModelFactory = databaseTabViewModelFactory;
+        ConnectServerViewModelFactory = connectServerViewModelFactory;
 
         InitializeComponent();
 
@@ -96,7 +110,7 @@ public sealed partial class MainWindow
 
     private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress)
     {
-        var viewModel = new PageTabViewModel(ServiceProvider, database);
+        var viewModel = PageTabViewModelFactory.Create(database);
 
         await viewModel.LoadPage(pageAddress);
 
@@ -131,22 +145,12 @@ public sealed partial class MainWindow
     {
         var database = await DatabaseLoader.Load(connection.Name, connection);
 
-        var viewModel = new DatabaseTabViewModel(ServiceProvider, database);
+        var viewModel = DatabaseTabViewModelFactory.Create(database);
 
-        viewModel.Name = connection.Name;
-
-        viewModel.DatabaseFiles = database.Files.Select(f => new DatabaseFile(viewModel) { FileId = f.FileId, Size = f.Size }).ToArray();
-        viewModel.IsLoading = true;
-
-        var layers = AllocationLayerBuilder.GenerateLayers(database, true);
-
-        viewModel.Database = database;
-        viewModel.ExtentCount = database.GetFileSize(1) / 8;
-        viewModel.AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
-
-        viewModel.IsLoading = false;
+        viewModel.Load(connection.Name);
 
         var content = new DatabaseView();
+
         content.DataContext = viewModel;
 
         var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/DatabaseTabIcon.svg"));
@@ -199,7 +203,7 @@ public sealed partial class MainWindow
 
     private TabViewItem AddConnectTab(TabView tabView)
     {
-        var content = new ConnectView();
+        var content = new ConnectView(ConnectServerViewModelFactory);
 
         content.DataContext = ViewModel;
 

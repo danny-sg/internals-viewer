@@ -13,6 +13,13 @@ using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 
+public class ConnectServerViewModelFactory(SettingsService settingsService)
+{
+    private SettingsService SettingsService { get; } = settingsService;
+
+    public ConnectServerViewModel Create() => new(SettingsService);
+}
+
 public partial class ConnectServerViewModel(SettingsService settingsService) : ObservableValidator
 {
     private SettingsService SettingsService { get; } = settingsService;

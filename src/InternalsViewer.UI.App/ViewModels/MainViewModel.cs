@@ -1,37 +1,21 @@
-﻿using System;
-using InternalsViewer.UI.App.Services;
+﻿using InternalsViewer.UI.App.Services;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.Models.Connections;
 using System.Linq;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
-public partial class MainViewModel(IServiceProvider serviceProvider, SettingsService settingsService) 
+public partial class MainViewModel(SettingsService settingsService) 
     : ObservableObject
 {
-    private IServiceProvider ServiceProvider { get; } = serviceProvider;
-
     private SettingsService SettingsService { get; } = settingsService;
-
-    public T GetService<T>()
-    {
-        var service = ServiceProvider.GetService<T>();
-
-        if (service is null)
-        {
-            throw new InvalidOperationException($"Service {typeof(T).Name} not found");
-        }
-
-        return service;
-    }
 
     public async Task InitializeAsync()
     {
-        var recent = await settingsService.ReadSettingAsync<RecentConnection[]>("RecentConnections");
+        var recent = await SettingsService.ReadSettingAsync<RecentConnection[]>("RecentConnections");
 
         if (recent != null)
         {
@@ -50,7 +34,7 @@ public partial class MainViewModel(IServiceProvider serviceProvider, SettingsSer
 
         RecentConnections = new ObservableCollection<RecentConnection>(existing);
 
-        await settingsService.SaveSettingAsync("RecentConnections", RecentConnections.ToArray());
+        await SettingsService.SaveSettingAsync("RecentConnections", RecentConnections.ToArray());
     }
 
     [RelayCommand]
@@ -60,7 +44,7 @@ public partial class MainViewModel(IServiceProvider serviceProvider, SettingsSer
 
         RecentConnections = new ObservableCollection<RecentConnection>(existing);
 
-        await settingsService.SaveSettingAsync("RecentConnections", RecentConnections.ToArray());
+        await SettingsService.SaveSettingAsync("RecentConnections", RecentConnections.ToArray());
     }
 
     [ObservableProperty]

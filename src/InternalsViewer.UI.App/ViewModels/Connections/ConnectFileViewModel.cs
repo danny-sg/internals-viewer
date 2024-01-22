@@ -9,6 +9,11 @@ using InternalsViewer.UI.App.Models.Connections;
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 
+public static class ConnectFileViewModelFactory
+{
+    public static ConnectFileViewModel Create() => new();
+}
+
 public partial class ConnectFileViewModel : ObservableValidator
 {
     [Required(AllowEmptyStrings = false)]

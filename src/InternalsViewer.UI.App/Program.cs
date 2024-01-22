@@ -6,6 +6,8 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Connections;
+using InternalsViewer.UI.App.ViewModels.Database;
+using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -37,9 +39,10 @@ public static partial class Program
 
         builder.Services.Configure<SettingsOptions>(builder.Configuration.GetSection(nameof(SettingsOptions)));
 
+        builder.Services.AddTransient<ConnectServerViewModelFactory>();
+        builder.Services.AddTransient<DatabaseTabViewModelFactory>();
+        builder.Services.AddTransient<PageTabViewModelFactory>();
         builder.Services.AddTransient<MainViewModel>();
-        builder.Services.AddTransient<ConnectServerViewModel>();
-        builder.Services.AddTransient<ConnectFileViewModel>();
 
         var host = builder.ConfigureWinUi<App>().Build();
 

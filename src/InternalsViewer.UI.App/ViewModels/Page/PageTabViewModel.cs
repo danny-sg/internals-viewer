@@ -13,6 +13,7 @@ using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
+using InternalsViewer.Internals.Services.Records;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
@@ -21,10 +22,32 @@ using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
-public partial class PageTabViewModel(IServiceProvider serviceProvider,
-                                      DatabaseSource database)
-    : TabViewModel(serviceProvider)
+public class PageTabViewModelFactory(ILogger<PageTabViewModel> logger, IPageService pageService, IRecordService recordService)
 {
+    private ILogger<PageTabViewModel> Logger { get; } = logger;
+   
+    private IPageService PageService { get; } = pageService;
+
+    private IRecordService RecordService { get; } = recordService;
+
+    public PageTabViewModel Create(DatabaseSource database)
+    {
+        return new PageTabViewModel(Logger, PageService, RecordService, database);
+    }
+}
+
+public partial class PageTabViewModel(ILogger<PageTabViewModel> logger, 
+                                      IPageService pageService, 
+                                      IRecordService recordService,
+                                      DatabaseSource database)
+    : TabViewModel()
+{
+    private ILogger<PageTabViewModel> Logger { get; } = logger;
+
+    private IPageService PageService { get; } = pageService;
+
+    private IRecordService RecordService { get; } = recordService;
+
     [ObservableProperty]
     private string objectName = string.Empty;
 
@@ -123,23 +146,19 @@ public partial class PageTabViewModel(IServiceProvider serviceProvider,
     [RelayCommand]
     public async Task LoadPage(PageAddress address)
     {
-        var logger = GetService<ILogger<PageTabViewModel>>();
-
-        logger.LogDebug("Loading Page {Address}", address);
+        Logger.LogDebug("Loading Page {Address}", address);
 
         IsLoading = true;
-
-        var pageService = GetService<IPageService>();
 
         Name = $"Loading Page {address}...";
 
         PageAddress = address;
 
-        var resultPage = await pageService.GetPage(Database, address);
+        var resultPage = await PageService.GetPage(Database, address);
 
         Name = $"{resultPage.PageHeader.PageType} Page {address}";
 
-        logger.LogDebug("Building Offset Table");
+        Logger.LogDebug("Building Offset Table");
 
         var slots = resultPage.OffsetTable.Select((s, i) => new OffsetSlot
         {
@@ -153,7 +172,7 @@ public partial class PageTabViewModel(IServiceProvider serviceProvider,
 
         Offsets = new ObservableCollection<OffsetSlot>(slots);
 
-        logger.LogDebug("Adding Page Markers");
+        Logger.LogDebug("Adding Page Markers");
 
         AddPageMarkers(resultPage);
 
@@ -239,12 +258,9 @@ public partial class PageTabViewModel(IServiceProvider serviceProvider,
 
     private void LoadRecords(Internals.Engine.Pages.Page target)
     {
-        var logger = GetService<ILogger<PageTabViewModel>>();
-        logger.LogDebug("Loading Records");
+        Logger.LogDebug("Loading Records");
 
         Records.Clear();
-
-        var recordService = GetService<IRecordService>();
 
         foreach (var slot in Offsets)
         {
@@ -253,24 +269,24 @@ public partial class PageTabViewModel(IServiceProvider serviceProvider,
                 switch (target.PageHeader.PageType)
                 {
                     case PageType.Data:
-                        logger.LogDebug("Loading Data Records");
+                        Logger.LogDebug("Loading Data Records");
 
-                        Records.Add(recordService.GetDataRecord((DataPage)target, slot.Offset));
+                        Records.Add(RecordService.GetDataRecord((DataPage)target, slot.Offset));
                         break;
                     case PageType.Index:
-                        logger.LogDebug("Loading Index Records");
+                        Logger.LogDebug("Loading Index Records");
 
-                        Records.Add(recordService.GetIndexRecord((IndexPage)target, slot.Offset));
+                        Records.Add(RecordService.GetIndexRecord((IndexPage)target, slot.Offset));
                         break;
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, $"Error loading record {slot.Index}");
+                Logger.LogError(ex, $"Error loading record {slot.Index}");
             }
         }
 
-        logger.LogDebug("{RecordCount} Record(s) loaded", Records.Count);
+        Logger.LogDebug("{RecordCount} Record(s) loaded", Records.Count);
     }
 
     /// <summary>
