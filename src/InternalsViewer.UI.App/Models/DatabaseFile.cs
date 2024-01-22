@@ -1,9 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using InternalsViewer.UI.App.ViewModels.Tabs;
+using InternalsViewer.UI.App.ViewModels.Database;
 
 namespace InternalsViewer.UI.App.Models;
 
-public partial class DatabaseFile(DatabaseViewModel parent) : ObservableObject
+public partial class DatabaseFile(DatabaseTabViewModel parent) : ObservableObject
 {
     [ObservableProperty]
     private short fileId;
@@ -11,5 +11,5 @@ public partial class DatabaseFile(DatabaseViewModel parent) : ObservableObject
     [ObservableProperty]
     private int size;
 
-    public DatabaseViewModel Parent { get; set; } = parent;
+    public DatabaseTabViewModel Parent { get; set; } = parent;
 }

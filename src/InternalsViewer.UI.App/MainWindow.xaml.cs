@@ -5,7 +5,6 @@ using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.Views;
-using InternalsViewer.UI.App.ViewModels.Tabs;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.Internals.Connections.Server;
@@ -13,7 +12,6 @@ using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
-using Microsoft.Extensions.DependencyInjection;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Connections.Backup;
 using InternalsViewer.Internals.Engine.Address;
@@ -22,7 +20,11 @@ using InternalsViewer.UI.App.Views.Connect;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System.Linq;
+using InternalsViewer.UI.App.Models.Connections;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
+using InternalsViewer.UI.App.ViewModels;
+using InternalsViewer.UI.App.ViewModels.Database;
+using InternalsViewer.UI.App.ViewModels.Page;
 
 namespace InternalsViewer.UI.App;
 
@@ -30,11 +32,21 @@ public sealed partial class MainWindow
 {
     private IServiceProvider ServiceProvider { get; }
 
+    private IDatabaseLoader DatabaseLoader { get; }
+
     private TabViewItem? ConnectTab { get; set; }
 
-    public MainWindow(IServiceProvider serviceProvider)
+    private MainViewModel ViewModel { get; }
+
+    public MainWindow(IServiceProvider serviceProvider,
+                      IDatabaseLoader databaseLoader,
+                      MainViewModel mainViewModel)
     {
         ServiceProvider = serviceProvider;
+        DatabaseLoader = databaseLoader;
+        
+        ViewModel = mainViewModel;
+
         InitializeComponent();
 
         SystemBackdrop = new MicaBackdrop { Kind = MicaKind.Base };
@@ -44,29 +56,33 @@ public sealed partial class MainWindow
         SetTitleBar(CustomDragRegion);
 
         WeakReferenceMessenger.Default.Register<ConnectServerMessage>(this, (_, m)
-            => m.Reply(ConnectServer(m.ConnectionString)));
+            => m.Reply(ConnectServer(m.ConnectionString, m.Recent)));
 
         WeakReferenceMessenger.Default.Register<ConnectFileMessage>(this, (_, m)
-            => m.Reply(ConnectFile(m.Filename)));
+            => m.Reply(ConnectFile(m.Filename, m.Recent)));
 
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, (_, m)
             => m.Reply(OpenPage(m.Request.Database, m.Request.PageAddress)));
     }
 
-    private async Task<bool> ConnectServer(string connectionString)
+    private async Task<bool> ConnectServer(string connectionString, RecentConnection recent)
     {
         var connection = ServerConnectionFactory.Create(c => c.ConnectionString = connectionString);
 
         await AddConnection(connection);
 
+        await ViewModel.AddRecentConnectionCommand.ExecuteAsync(recent);
+
         return true;
     }
 
-    private async Task<bool> ConnectFile(string filename)
+    private async Task<bool> ConnectFile(string filename, RecentConnection recent)
     {
         var connection = FileConnectionFactory.Create(c => c.Filename = filename);
 
         await AddConnection(connection);
+
+        await ViewModel.AddRecentConnectionCommand.ExecuteAsync(recent);
 
         return true;
     }
@@ -80,7 +96,7 @@ public sealed partial class MainWindow
 
     private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress)
     {
-        var viewModel = new PageViewModel(ServiceProvider, database);
+        var viewModel = new PageTabViewModel(ServiceProvider, database);
 
         await viewModel.LoadPage(pageAddress);
 
@@ -113,16 +129,9 @@ public sealed partial class MainWindow
 
     private async Task AddConnection(IConnectionType connection)
     {
-        var databaseLoader = ServiceProvider.GetService<IDatabaseLoader>();
+        var database = await DatabaseLoader.Load(connection.Name, connection);
 
-        if (databaseLoader == null)
-        {
-            throw new InvalidOperationException("Database loader not found");
-        }
-
-        var database = await databaseLoader.Load(connection.Name, connection);
-
-        var viewModel = new DatabaseViewModel(ServiceProvider, database);
+        var viewModel = new DatabaseTabViewModel(ServiceProvider, database);
 
         viewModel.Name = connection.Name;
 
@@ -177,24 +186,22 @@ public sealed partial class MainWindow
         }
     }
 
-    private async void TabView_Loaded(object sender, RoutedEventArgs e)
+    private void TabView_Loaded(object sender, RoutedEventArgs e)
     {
         var tabView = sender as TabView;
 
         if (tabView != null)
         {
-            ConnectTab = await AddConnectTab(tabView);
+            ConnectTab = AddConnectTab(tabView);
             ConnectTab.IsClosable = false;
         }
     }
 
-    private async Task<TabViewItem> AddConnectTab(TabView tabView)
+    private TabViewItem AddConnectTab(TabView tabView)
     {
         var content = new ConnectView();
 
-        var viewModel = await ConnectViewModel.CreateAsync(ServiceProvider);
-
-        content.DataContext = viewModel;
+        content.DataContext = ViewModel;
 
         var connectTab = new TabViewItem
         {
@@ -208,26 +215,8 @@ public sealed partial class MainWindow
         return connectTab;
     }
 
-    private async Task AddDatabaseTab(TabView tabView)
+    public async Task InitializeAsync()
     {
-        var content = new ConnectView();
-
-        var viewModel = await ConnectViewModel.CreateAsync(ServiceProvider);
-
-        content.DataContext = viewModel;
-
-        tabView.TabItems.Add(new TabViewItem
-        {
-            Name = "Connect",
-            Header = "Connect",
-            Content = content
-        });
-
-        ConnectTab!.IsClosable = true;
-    }
-
-    public Task InitializeAsync()
-    {
-        return Task.CompletedTask;
+        await ViewModel.InitializeAsync();
     }
 }

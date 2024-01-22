@@ -3,17 +3,17 @@ using CommunityToolkit.WinUI;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.UI.App.Messages;
-using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using Windows.UI.Core;
+using InternalsViewer.UI.App.ViewModels.Page;
 
 namespace InternalsViewer.UI.App.Views;
 
 public sealed partial class PageView
 {
-    public PageViewModel ViewModel => (PageViewModel)DataContext;
+    public PageTabViewModel TabViewModel => (PageTabViewModel)DataContext;
 
     public PageView()
     {
@@ -26,7 +26,7 @@ public sealed partial class PageView
         {
             if (PageAddressParser.TryParse(PageAddressTextBox.Text, out var pageAddress))
             {
-                ViewModel.LoadPageCommand.Execute(pageAddress);
+                TabViewModel.LoadPageCommand.Execute(pageAddress);
             }
         }
     }
@@ -41,13 +41,13 @@ public sealed partial class PageView
 
         if (isShiftPressed)
         {
-            var request = new OpenPageRequest(ViewModel.Database, pageAddress) { Slot = e.Slot };
+            var request = new OpenPageRequest(TabViewModel.Database, pageAddress) { Slot = e.Slot };
 
             WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
         }
         else
         {
-            ViewModel.LoadPageCommand.Execute(pageAddress);
+            TabViewModel.LoadPageCommand.Execute(pageAddress);
         }
     }
 
@@ -59,7 +59,7 @@ public sealed partial class PageView
         if (listView?.SelectedItem == e.ClickedItem)
         {
             listView.DeselectAll();
-            ViewModel.SelectedSlot = null;
+            TabViewModel.SelectedSlot = null;
         }
     }
 }

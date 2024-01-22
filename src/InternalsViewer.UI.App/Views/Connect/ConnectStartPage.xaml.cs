@@ -1,9 +1,6 @@
 using CommunityToolkit.Mvvm.Messaging;
-using InternalsViewer.UI.App.Controls.Connections;
 using InternalsViewer.UI.App.Messages;
-using InternalsViewer.UI.App.ViewModels.Tabs;
-using System;
-using Windows.Storage.Pickers;
+using InternalsViewer.UI.App.ViewModels;
 
 namespace InternalsViewer.UI.App.Views.Connect;
 
@@ -14,7 +11,7 @@ public sealed partial class ConnectStartPage
         InitializeComponent();
     }
 
-    public ConnectViewModel ViewModel => (ConnectViewModel)DataContext;
+    public MainViewModel ViewModel => (MainViewModel)DataContext;
 
     private void ConnectFileTile_OnClick(object? sender, RoutedEventArgs e)
     {

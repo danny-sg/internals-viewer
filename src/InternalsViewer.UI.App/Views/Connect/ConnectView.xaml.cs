@@ -1,12 +1,10 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Windows.Storage.Pickers;
 using CommunityToolkit.Mvvm.Messaging;
-using InternalsViewer.UI.App.Controls.Connections;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Connections;
-using InternalsViewer.UI.App.ViewModels.Tabs;
+using InternalsViewer.UI.App.ViewModels;
 
 namespace InternalsViewer.UI.App.Views.Connect;
 
@@ -20,34 +18,7 @@ public sealed partial class ConnectView
             => SelectAndNavigate(m.Value));
     }
 
-    public ConnectViewModel ViewModel => (ConnectViewModel)DataContext;
-
-    private async void ServerConnectionControl_OnConnectRequested(object? sender, ServerConnectEventArgs e)
-    {
-
-        await ViewModel.SaveSettings(e.Settings);
-    }
-
-    //private async void HeaderTile_OnClick(object? sender, RoutedEventArgs e)
-    //{
-    //    var openPicker = new FileOpenPicker();
-
-    //    var window = (Application.Current as App)!.Window;
-
-    //    var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-
-    //    WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hWnd);
-
-    //    openPicker.ViewMode = PickerViewMode.List;
-    //    openPicker.FileTypeFilter.Add(".mdf");
-
-    //    var file = await openPicker.PickSingleFileAsync();
-
-    //    if (file != null)
-    //    {
-    //        WeakReferenceMessenger.Default.Send(new ConnectFileMessage(file.Path));
-    //    }
-    //}
+    private MainViewModel ViewModel => (MainViewModel)DataContext;
 
     private async void ConnectNavigationView_SelectionChanged(Microsoft.UI.Xaml.Controls.NavigationView sender,
                                                               Microsoft.UI.Xaml.Controls.NavigationViewSelectionChangedEventArgs args)

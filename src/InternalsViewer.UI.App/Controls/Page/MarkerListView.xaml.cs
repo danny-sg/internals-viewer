@@ -1,7 +1,7 @@
 using System;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
-using InternalsViewer.UI.App.ViewModels.Tabs;
+using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Controls.Page;
@@ -10,7 +10,7 @@ public sealed partial class MarkerListView
 {
     public event EventHandler<PageClickedEventArgs>? PageClicked;
 
-    public PageViewModel ViewModel => (PageViewModel)DataContext;
+    public PageTabViewModel TabViewModel => (PageTabViewModel)DataContext;
 
     public MarkerListView()
     {

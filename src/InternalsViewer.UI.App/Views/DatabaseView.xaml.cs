@@ -1,8 +1,8 @@
 using System.Collections;
 using InternalsViewer.UI.App.Controls.Allocation;
-using DatabaseViewModel = InternalsViewer.UI.App.ViewModels.Tabs.DatabaseViewModel;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
+using InternalsViewer.UI.App.ViewModels.Database;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views;
@@ -16,7 +16,7 @@ public sealed partial class DatabaseView
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
     }
 
-    public DatabaseViewModel ViewModel => (DatabaseViewModel)DataContext;
+    public DatabaseTabViewModel TabViewModel => (DatabaseTabViewModel)DataContext;
 
     public double AllocationMapHeight { get; set; }
 
@@ -24,7 +24,7 @@ public sealed partial class DatabaseView
     {
         var pageAddress = new Internals.Engine.Address.PageAddress(e.FileId, e.PageId);
 
-        WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+        WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(TabViewModel.Database, pageAddress)));
     }
 
     private void AppBarToggleButton_Changed(object sender, RoutedEventArgs e)
@@ -48,7 +48,7 @@ public sealed partial class DatabaseView
             {
                 var itemHeight = AllocationItemRepeater.ActualHeight / itemCount;
 
-                ViewModel.AllocationMapHeight = itemHeight;
+                TabViewModel.AllocationMapHeight = itemHeight;
             }
         }
 

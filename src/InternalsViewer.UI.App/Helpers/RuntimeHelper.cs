@@ -1,5 +1,4 @@
 ﻿using System.Runtime.InteropServices;
-using System.Security.Policy;
 using System.Text;
 
 namespace InternalsViewer.UI.App.Helpers;

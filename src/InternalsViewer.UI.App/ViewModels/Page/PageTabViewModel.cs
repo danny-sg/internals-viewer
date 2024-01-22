@@ -5,31 +5,26 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
-using InternalsViewer.UI.App.Models;
-using Microsoft.Extensions.Logging;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using InternalsViewer.UI.App.Helpers;
-using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
+using InternalsViewer.UI.App.ViewModels.Tabs;
+using Microsoft.Extensions.Logging;
 
-namespace InternalsViewer.UI.App.ViewModels.Tabs;
+namespace InternalsViewer.UI.App.ViewModels.Page;
 
-public partial class PageViewModel(IServiceProvider serviceProvider,
-                                   DatabaseSource database)
-    : TabViewModel(serviceProvider, TabType.Page)
+public partial class PageTabViewModel(IServiceProvider serviceProvider,
+                                      DatabaseSource database)
+    : TabViewModel(serviceProvider)
 {
-    public override TabType TabType => TabType.Page;
-
-    public override ImageSource ImageSource => new BitmapImage(new Uri("ms-appx:///Assets/TabIcons/Page32.png"));
-
     [ObservableProperty]
     private string objectName = string.Empty;
 
@@ -91,7 +86,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
     private const int RowDataTabIndex = 1;
     private const int AllocationsTabIndex = 2;
 
-    public List<Record> Records { get; set; } = new();
+    private List<Record> Records { get; set; } = new();
 
     partial void OnIncludeHeaderMarkersChanged(bool value)
     {
@@ -128,7 +123,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
     [RelayCommand]
     public async Task LoadPage(PageAddress address)
     {
-        var logger = GetService<ILogger<PageViewModel>>();
+        var logger = GetService<ILogger<PageTabViewModel>>();
 
         logger.LogDebug("Loading Page {Address}", address);
 
@@ -213,7 +208,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
         IsAllocationsTabVisible = false;
         IsRowDataTabVisible = true;
 
-        SelectedSlot = Offsets.FirstOrDefault();
+        SelectedSlot = Enumerable.FirstOrDefault<OffsetSlot>(Offsets);
 
         SelectedTabIndex = SelectedTabIndex == AllocationsTabIndex ? RowDataTabIndex : SelectedTabIndex;
     }
@@ -244,7 +239,7 @@ public partial class PageViewModel(IServiceProvider serviceProvider,
 
     private void LoadRecords(Internals.Engine.Pages.Page target)
     {
-        var logger = GetService<ILogger<PageViewModel>>();
+        var logger = GetService<ILogger<PageTabViewModel>>();
         logger.LogDebug("Loading Records");
 
         Records.Clear();

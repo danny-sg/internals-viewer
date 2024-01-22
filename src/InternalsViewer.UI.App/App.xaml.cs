@@ -22,6 +22,7 @@ public partial class App
         var window = (MainWindow)ActivatorUtilities.CreateInstance(serviceProvider, typeof(MainWindow));
 
         Window = window;
+
         Window.Activate();
 
         await window.InitializeAsync();

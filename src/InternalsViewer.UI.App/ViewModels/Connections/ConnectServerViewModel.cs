@@ -103,6 +103,15 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         return builder.ConnectionString;
     }
 
+    private string GetSafeConnectionString()
+    {
+        RefreshConnectionString();
+
+        builder.Remove(nameof(Password));
+
+        return builder.ConnectionString;
+    }
+
     private ServerConnectionSettings GetSettings() =>
         new()
         {
@@ -166,13 +175,13 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     [RelayCommand]
     private async Task Connect()
     {
-        var settings = GetSettings();
+        var recent = GetRecent();
         var connectionString = GetConnectionString();
 
         IsBusy = true;
         ConnectButtonText = "Connecting...";
 
-        var message = new ConnectServerMessage(connectionString, settings);
+        var message = new ConnectServerMessage(connectionString, recent);
 
         await WeakReferenceMessenger.Default.Send(message);
 
@@ -181,6 +190,18 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         ConnectButtonText = "Connect";
 
         IsBusy = false;
+    }
+
+    private RecentConnection GetRecent()
+    {
+        var recent = new RecentConnection
+        {
+            Name = $"{InstanceName}.{Database}",
+            ConnectionType = "Server",
+            Value = GetConnectionString(),
+        };
+
+        return recent;
     }
 
     private void ClearDatabaseList()

@@ -10,10 +10,9 @@
     Height="220"
     mc:Ignorable="d">
 
-        <Grid
-        Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
-        BorderBrush="{ThemeResource SurfaceStrokeColorFlyoutBrush}"
-        CornerRadius="8">
+        <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource SurfaceStrokeColorFlyoutBrush}"
+              CornerRadius="8">
             <Grid.Resources>
                 <ResourceDictionary>
                     <ResourceDictionary.ThemeDictionaries>
@@ -38,16 +37,14 @@
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
             </Grid.Resources>
-            <Button
-            Padding="-1"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch"
-            HorizontalContentAlignment="Stretch"
-            VerticalContentAlignment="Stretch"
-                Click="Button_Click"
-            AutomationProperties.LabeledBy="{Binding ElementName=TitleText}"
-            Flyout="{x:Bind Flyout}"
-            CornerRadius="{StaticResource OverlayCornerRadius}">
+            <Button Padding="-1"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalContentAlignment="Stretch"
+                    Click="Button_Click"
+                    AutomationProperties.LabeledBy="{Binding ElementName=TitleText}"
+                    CornerRadius="{StaticResource OverlayCornerRadius}">
             <Grid
                 Padding="24"
                 VerticalAlignment="Stretch"
@@ -59,14 +56,13 @@
 
                 <ContentPresenter
                         Grid.Row="0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Content="{x:Bind Source, Mode=OneWay}" />
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Content="{x:Bind Source, Mode=OneWay}" />
 
-                <StackPanel
-                    Grid.Row="1"
-                    Orientation="Vertical"
-                    Spacing="4">
+                <StackPanel Grid.Row="1"
+                            Orientation="Vertical"
+                            Spacing="4">
                     <TextBlock
                         x:Name="TitleText"
                         FontSize="18"

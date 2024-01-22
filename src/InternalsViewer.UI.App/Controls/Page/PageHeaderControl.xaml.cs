@@ -5,9 +5,7 @@ using DatabasePage = InternalsViewer.Internals.Engine.Pages.Page;
 using Windows.ApplicationModel.DataTransfer;
 using InternalsViewer.UI.App.Controls.Allocation;
 using System;
-using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Parsers;
-using Microsoft.UI.Xaml.Documents;
 
 namespace InternalsViewer.UI.App.Controls.Page;
 

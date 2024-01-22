@@ -9,12 +9,13 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.ViewModels.Tabs;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
-namespace InternalsViewer.UI.App.ViewModels.Tabs;
+namespace InternalsViewer.UI.App.ViewModels.Database;
 
-public partial class DatabaseViewModel(IServiceProvider serviceProvider, DatabaseSource database)
-    : TabViewModel(serviceProvider, TabType.Database)
+public partial class DatabaseTabViewModel(IServiceProvider serviceProvider, DatabaseSource database)
+    : TabViewModel(serviceProvider)
 {
     [ObservableProperty]
     private DatabaseSource database = database;
@@ -58,11 +59,4 @@ public partial class DatabaseViewModel(IServiceProvider serviceProvider, Databas
 
     public List<AllocationLayer> GridAllocationLayers
         => allocationLayers.Where(w => string.IsNullOrEmpty(Filter) || w.Name.ToLower().Contains(filter.ToLower())).ToList();
-}
-
-public enum ViewLocation
-{
-    Bottom,
-    Left,
-    Hidden
 }
