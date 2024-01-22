@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.DatabaseView"
+    x:Name="DatabaseViewUserControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+    xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
+    xmlns:models="using:InternalsViewer.UI.App.Models"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <StackLayout Orientation="Vertical" x:Key="VerticalStackLayout" />
+        <DataTemplate x:Key="AllocationFileTemplate" x:DataType="models:DatabaseFile">
+            <Grid>
+                <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
+                                              Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
+                                              Size="{x:Bind Size, Mode=OneWay}" 
+                                              Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
+                                              SelectedLayer="{x:Bind Parent.SelectedLayer, Mode=OneWay}"
+                                              FileId="{x:Bind FileId, Mode=OneWay}"
+                                              PageClicked="OnPageClicked"
+                                              x:Name="Allocations"/>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" x:Name="LayoutGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*" x:Name="AllocationLayerGridRow"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <CommandBar IsOpen="False" DefaultLabelPosition="Right"
+                        Background="Transparent">
+                <AppBarToggleButton  Label="Tooltip" IsChecked="{x:Bind ViewModel.IsTooltipEnabled, Mode=TwoWay}" >
+                    <AppBarToggleButton.Icon>
+                        <FontIcon Glyph="&#xE759;"/>
+                    </AppBarToggleButton.Icon>
+                </AppBarToggleButton>
+                <AppBarToggleButton Icon="DockBottom" 
+                                    Label="Allocation Info" 
+                                    Checked="AppBarToggleButton_Changed"
+                                    Unchecked="AppBarToggleButton_Changed"
+                                    IsChecked="{x:Bind ViewModel.IsDetailVisible, Mode=TwoWay}" />
+            </CommandBar>
+        </StackPanel>
+
+        <ItemsRepeater
+            x:Name="AllocationItemRepeater"
+            Grid.Row="1" 
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            ItemsSource="{x:Bind ViewModel.DatabaseFiles}"
+            Layout="{StaticResource VerticalStackLayout}"
+            ItemTemplate="{StaticResource AllocationFileTemplate}" />
+        <allocation:AllocationLayerGrid Grid.Row="2" 
+                                        x:Name="AllocationLayerGrid"
+                                        SelectedLayer="{x:Bind ViewModel.SelectedLayer, Mode=TwoWay}"
+                                        PageClicked="OnPageClicked"
+                                        Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
+        <toolkit:GridSplitter Grid.Row="2"
+                              Grid.ColumnSpan="1"
+                              Height="16"
+                              VerticalAlignment="Top">
+            <toolkit:GridSplitter.RenderTransform>
+                <TranslateTransform Y="-7" />
+            </toolkit:GridSplitter.RenderTransform>
+        </toolkit:GridSplitter>
+    </Grid>
+</UserControl>

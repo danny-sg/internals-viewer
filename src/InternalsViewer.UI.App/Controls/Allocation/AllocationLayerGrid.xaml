@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Allocation.AllocationLayerGrid"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:InternalsViewer.UI.App.Models"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:vNext="using:InternalsViewer.UI.App"
+    xmlns:system="using:System"
+    xmlns:views="using:InternalsViewer.UI.App.Views"
+    x:Name="Root"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <CollectionViewSource x:Name="LayersCollectionViewSource" Source="{x:Bind Layers}"/>
+        <Style x:Key="PageAddressStyle" TargetType="HyperlinkButton">
+            <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <CommandBar Grid.Row="0"
+                    Margin="0"
+                    IsOpen="True"
+                    IsSticky="True" 
+                    Background="Transparent"
+                    DefaultLabelPosition="Right">
+            <AppBarElementContainer>
+                <TextBox Width="200" Margin="0 8 10 0"  
+                         PlaceholderText="Filter"        
+                         Text="{x:Bind ViewModel.Filter, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+            </AppBarElementContainer>
+        </CommandBar>
+        <Grid Grid.Row="1">
+            <toolkit:DataGrid x:Name="DataGrid"                       
+                               AutoGenerateColumns="False"
+                               CanUserSortColumns="True"
+                               SelectionMode="Extended"
+                               IsReadOnly="True"
+                               GridLinesVisibility="Vertical"
+                               PointerPressed="DataGrid_OnPointerPressed"
+                               ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">
+
+                <toolkit:DataGrid.Columns>
+                    <toolkit:DataGridTemplateColumn Header="Key"
+                                                     Tag="Key">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid>
+                                    <Rectangle Width="16" 
+                                               Height="16" 
+                                               Fill="{x:Bind Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
+                                    </Rectangle>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
+
+                    <toolkit:DataGridTextColumn Header="Object Name"
+                                                 Binding="{Binding ObjectName}"/>
+                    <toolkit:DataGridTextColumn Header="Index Name"
+                                                  Binding="{Binding IndexName}"/>
+                    <toolkit:DataGridTextColumn Header="Index Type"
+                                                 Binding="{Binding IndexType}"/>
+                    <toolkit:DataGridTemplateColumn Header="Root Page">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid>
+                                    <HyperlinkButton Content="{x:Bind RootPage, Mode=OneWay}" 
+                                                     Click="HyperlinkButton_Click"
+                                                     Style="{StaticResource PageAddressStyle}"
+                                                     Tag="{x:Bind RootPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
+                    <toolkit:DataGridTemplateColumn Header="First Page">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid>
+                                    <HyperlinkButton Content="{x:Bind FirstPage, Mode=OneWay}" 
+                                                     Click="HyperlinkButton_Click"
+                                             
+                                                     Style="{StaticResource PageAddressStyle}"
+                                                     Tag="{x:Bind FirstPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
+                    <toolkit:DataGridTemplateColumn Header="First IAM Page">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid>
+                                    <HyperlinkButton Content="{x:Bind FirstIamPage, Mode=OneWay}" 
+                                                     Click="HyperlinkButton_Click"
+                                                     Style="{StaticResource PageAddressStyle}"
+                                                     Tag="{x:Bind FirstIamPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
+                    <toolkit:DataGridTextColumn Header="Page Count"
+                                                 Binding="{Binding TotalPages}"/>
+                </toolkit:DataGrid.Columns>
+            </toolkit:DataGrid>
+        </Grid>
+    </Grid>
+</UserControl>
