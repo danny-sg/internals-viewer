@@ -6,7 +6,7 @@ using InternalsViewer.UI.App.vNext.Helpers;
 
 namespace InternalsViewer.UI.App.vNext.Models
 {
-    public record Marker
+    public class Marker: DependencyObject
     {
         public string Name { get; set; } = string.Empty;
 

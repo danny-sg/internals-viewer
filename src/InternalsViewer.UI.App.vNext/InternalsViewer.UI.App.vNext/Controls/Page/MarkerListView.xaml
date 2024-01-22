@@ -48,14 +48,12 @@
                 <Grid Width="20"
                       Height="20"
                       Background="{x:Bind BackColour, 
-                                          Mode=OneWay, 
                                           Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
                     <TextBlock Grid.Column="0"              
                                Text="00"
                                TextAlignment="Center"
                                VerticalAlignment="Center"
-                               Foreground="{x:Bind ForeColour, 
-                                                   Mode=OneWay, 
+                               Foreground="{x:Bind ForeColour,
                                                    Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
                                Style="{StaticResource HexStyle}"/>
 
@@ -88,14 +86,12 @@
                 <Grid Width="20"
                       Height="20"
                       Background="{x:Bind BackColour, 
-                                          Mode=OneWay, 
                                           Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
                     <TextBlock Grid.Column="0"              
                                Text="00"
                                TextAlignment="Center"
                                VerticalAlignment="Center"
                                Foreground="{x:Bind ForeColour, 
-                                                   Mode=OneWay, 
                                                    Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
                                Style="{StaticResource HexStyle}"/>
 

@@ -4,7 +4,7 @@ public class ServerConnectionSettings
 {
     public string InstanceName { get; set; } = string.Empty;
 
-    public int? AuthenticationType { get; set; }
+    public int AuthenticationType { get; set; }
 
     public string DatabaseName { get; set; } = string.Empty;
 

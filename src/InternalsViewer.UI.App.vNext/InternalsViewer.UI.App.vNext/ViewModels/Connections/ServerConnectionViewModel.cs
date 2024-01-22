@@ -111,7 +111,7 @@ public partial class ServerConnectionViewModel(SettingsService settingsService) 
         new()
         {
             InstanceName = instanceName,
-            AuthenticationType = (int?)authenticationType,
+            AuthenticationType = (int)authenticationType,
             DatabaseName = database,
             UserId = userId
         };
