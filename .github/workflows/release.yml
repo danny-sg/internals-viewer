@@ -5,6 +5,7 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/build-msix-sideload.yml
+    secrets: inherit
 
   release:
     needs: build
