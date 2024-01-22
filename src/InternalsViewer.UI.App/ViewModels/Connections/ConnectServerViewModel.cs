@@ -13,9 +13,9 @@ using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 
-public partial class ServerConnectionViewModel(SettingsService settingsService) : ObservableValidator
+public partial class ConnectServerViewModel(SettingsService settingsService) : ObservableValidator
 {
-    public SettingsService SettingsService { get; } = settingsService;
+    private SettingsService SettingsService { get; } = settingsService;
 
     private readonly SqlConnectionStringBuilder builder = new() { TrustServerCertificate = true };
 
@@ -56,11 +56,7 @@ public partial class ServerConnectionViewModel(SettingsService settingsService) 
     {
         new (SqlAuthenticationMethod.ActiveDirectoryIntegrated, "Active Directory Integrated"),
         new (SqlAuthenticationMethod.SqlPassword, "SQL Password"),
-        new (SqlAuthenticationMethod.ActiveDirectoryDefault, "Active Directory Default"),
-        new (SqlAuthenticationMethod.ActiveDirectoryDeviceCodeFlow, "Active Directory Device Code Flow"),
-        new (SqlAuthenticationMethod.ActiveDirectoryInteractive, "Active Directory Interactive"),
         new (SqlAuthenticationMethod.ActiveDirectoryManagedIdentity, "Active Directory Managed Identity"),
-        new (SqlAuthenticationMethod.ActiveDirectoryMSI, "Active Directory MSI"),
         new (SqlAuthenticationMethod.ActiveDirectoryPassword, "Active Directory Password"),
         new (SqlAuthenticationMethod.ActiveDirectoryServicePrincipal, "Active Directory Service Principal"),
     };
@@ -100,14 +96,14 @@ public partial class ServerConnectionViewModel(SettingsService settingsService) 
         }
     }
 
-    public string GetConnectionString()
+    private string GetConnectionString()
     {
         RefreshConnectionString();
 
         return builder.ConnectionString;
     }
 
-    public ServerConnectionSettings GetSettings() =>
+    private ServerConnectionSettings GetSettings() =>
         new()
         {
             InstanceName = instanceName,
@@ -127,7 +123,7 @@ public partial class ServerConnectionViewModel(SettingsService settingsService) 
 
         try
         {
-            var connectionStringBuilder = new SqlConnectionStringBuilder(builder.ConnectionString);
+            var connectionStringBuilder = new SqlConnectionStringBuilder(GetConnectionString());
 
             connectionStringBuilder.InitialCatalog = string.Empty;
 
@@ -168,7 +164,7 @@ public partial class ServerConnectionViewModel(SettingsService settingsService) 
     }
 
     [RelayCommand]
-    public async Task Connect()
+    private async Task Connect()
     {
         var settings = GetSettings();
         var connectionString = GetConnectionString();

@@ -11,18 +11,25 @@ public partial class ConnectViewModel(IServiceProvider serviceProvider) : TabVie
     public static async Task<ConnectViewModel> CreateAsync(IServiceProvider serviceProvider)
     {
         var viewModel = new ConnectViewModel(serviceProvider);
-        
+
         await viewModel.InitializeAsync();
         viewModel.Name = "Connect";
 
         return viewModel;
     }
 
-    public async Task InitializeAsync()
+    private async Task InitializeAsync()
     {
         var settingsService = GetSettingsService();
 
-        ServerConnectionSettings = await settingsService.ReadSettingAsync<ServerConnectionSettings>("CurrentServerConnection");
+        try
+        {
+            ServerConnectionSettings = await settingsService.ReadSettingAsync<ServerConnectionSettings>("CurrentServerConnection");
+        }
+        catch (Exception)
+        {
+            // ignored
+        }
     }
 
     public async Task SaveSettings(ServerConnectionSettings? connectionSettings)

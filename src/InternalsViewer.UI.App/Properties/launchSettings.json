@@ -9,7 +9,7 @@
       "authenticationMode": "Windows", /* The authentication scheme to use when connecting to the remote machine. */
       "doNotLaunchApp": false, /* Do not launch the app, but debug my code when it starts. */
       "remoteDebugMachine": "", /* The name of the remote machine. */
-      "nativeDebugging": true /* Enable debugging for managed and native code together, also known as mixed-mode debugging. */
+      "nativeDebugging": false /* Enable debugging for managed and native code together, also known as mixed-mode debugging. */
     }
   }
 }

@@ -44,13 +44,13 @@ public sealed partial class MainWindow
         SetTitleBar(CustomDragRegion);
 
         WeakReferenceMessenger.Default.Register<ConnectServerMessage>(this, (_, m)
-            =>
-        {
-            m.Reply(ConnectServer(m.ConnectionString));
-        });
+            => m.Reply(ConnectServer(m.ConnectionString)));
 
-        WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, async (_, m)
-            => await OpenPage(m.Value.Database, m.Value.PageAddress));
+        WeakReferenceMessenger.Default.Register<ConnectFileMessage>(this, (_, m)
+            => m.Reply(ConnectFile(m.Filename)));
+
+        WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, (_, m)
+            => m.Reply(OpenPage(m.Request.Database, m.Request.PageAddress)));
     }
 
     private async Task<bool> ConnectServer(string connectionString)
@@ -62,11 +62,13 @@ public sealed partial class MainWindow
         return true;
     }
 
-    private async Task ConnectFile(string filename)
+    private async Task<bool> ConnectFile(string filename)
     {
         var connection = FileConnectionFactory.Create(c => c.Filename = filename);
 
         await AddConnection(connection);
+
+        return true;
     }
 
     private async Task ConnectBackup(string filename)
@@ -76,7 +78,7 @@ public sealed partial class MainWindow
         await AddConnection(connection);
     }
 
-    private async Task OpenPage(DatabaseSource database, PageAddress pageAddress)
+    private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress)
     {
         var viewModel = new PageViewModel(ServiceProvider, database);
 
@@ -105,6 +107,8 @@ public sealed partial class MainWindow
         WindowTabView.SelectedItem = tab;
 
         ConnectTab!.IsClosable = true;
+
+        return true;
     }
 
     private async Task AddConnection(IConnectionType connection)

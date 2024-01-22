@@ -36,7 +36,8 @@ public static partial class Program
 
         builder.Services.Configure<SettingsOptions>(builder.Configuration.GetSection(nameof(SettingsOptions)));
 
-        builder.Services.AddTransient<ServerConnectionViewModel>();
+        builder.Services.AddTransient<ConnectServerViewModel>();
+        builder.Services.AddTransient<ConnectFileViewModel>();
 
         var host = builder.ConfigureWinUi<App>().Build();
 

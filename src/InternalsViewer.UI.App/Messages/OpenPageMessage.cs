@@ -13,4 +13,7 @@ public class OpenPageRequest(DatabaseSource database, PageAddress pageAddress)
     public ushort? Slot { get; set; }
 }
 
-public class OpenPageMessage(OpenPageRequest request) : ValueChangedMessage<OpenPageRequest>(request);
+public class OpenPageMessage(OpenPageRequest request) : AsyncRequestMessage<bool>
+{
+    public OpenPageRequest Request { get; } = request;
+}

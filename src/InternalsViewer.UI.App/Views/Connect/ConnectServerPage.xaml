@@ -21,7 +21,7 @@
             <controls:SettingsCard Description="Name or network address of the SQL Server instance"
                             Header="Instance Name"
                             CornerRadius="4,4,0,0">
-                <TextBox Text="{x:Bind ViewModel.InstanceName, Mode=TwoWay}" MinWidth="200" />
+                <TextBox Text="{x:Bind ViewModel.InstanceName, Mode=TwoWay}" MinWidth="300" />
             </controls:SettingsCard>
 
             <controls:SettingsCard Header="Authentication"
@@ -31,7 +31,7 @@
                    SelectedValuePath="Key"
                    DisplayMemberPath="Value"
                    SelectedValue="{x:Bind ViewModel.AuthenticationType, Mode=TwoWay}"
-                   MinWidth="200" />
+                   MinWidth="300"/>
             </controls:SettingsCard>
 
             <controls:SettingsCard x:Name="UserIdSettingsCard"
@@ -39,29 +39,24 @@
          
                     IsEnabled="{x:Bind ViewModel.IsUserIdEnabled, Mode=OneWay}">
 
-                <TextBox Text="{x:Bind ViewModel.UserId, Mode=TwoWay}"
-              MinWidth="200" />
+                <TextBox Text="{x:Bind ViewModel.UserId, Mode=TwoWay}" MinWidth="300" />
             </controls:SettingsCard>
 
             <controls:SettingsCard x:Name="PasswordSettingsCard"
-                    Header="Password"
-        
-                    IsEnabled="{x:Bind ViewModel.IsPasswordEnabled, Mode=OneWay}"
-                  >
+                                   Header="Password"
+                                   IsEnabled="{x:Bind ViewModel.IsPasswordEnabled, Mode=OneWay}">
 
-                <PasswordBox Password="{x:Bind ViewModel.Password, Mode=TwoWay}"
-                      MinWidth="200" />
+                <PasswordBox Password="{x:Bind ViewModel.Password, Mode=TwoWay}" MinWidth="300" />
             </controls:SettingsCard>
 
-            <controls:SettingsCard Description="Name of the database" 
-                            Header="Database" 
+            <controls:SettingsCard Description="Name of the database" Header="Database" 
                         >
                 <StackPanel>
                     <ComboBox DropDownOpened="DatabaseComboBox_DropDownOpened"
-                       ItemsSource="{x:Bind ViewModel.Databases, Mode=OneWay}"
-                       Text="{x:Bind ViewModel.Database, Mode=TwoWay}"
-                       IsEditable="True"
-                       MinWidth="200" />
+                              ItemsSource="{x:Bind ViewModel.Databases, Mode=OneWay}"
+                              Text="{x:Bind ViewModel.Database, Mode=TwoWay}"
+                              IsEditable="True"
+                              MinWidth="300" />
                 </StackPanel>
             </controls:SettingsCard>
 
@@ -72,7 +67,7 @@
                     <Button Content="{x:Bind ViewModel.ConnectButtonText, Mode=OneWay}"
                             Margin="10,0,0,0"
                             Name="ConnectButton"
-                            MinWidth="200"
+                            MinWidth="150"
                             IsEnabled="{x:Bind ViewModel.IsBusy, Mode=OneWay,Converter={StaticResource BoolNegationConverter}}"
                             Command="{x:Bind ViewModel.ConnectCommand}"
                             Style="{ThemeResource AccentButtonStyle}"/>

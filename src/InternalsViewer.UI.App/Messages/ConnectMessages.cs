@@ -5,12 +5,17 @@ namespace InternalsViewer.UI.App.Messages;
 
 public class ConnectServerMessage(string connectionString, ServerConnectionSettings settings) : AsyncRequestMessage<bool>
 {
-    public string ConnectionString { get; set; } = connectionString;
+    public string ConnectionString { get; } = connectionString;
 
     public ServerConnectionSettings Settings { get; set; } = settings;
 }
 
-public class ConnectFileMessage(string filename) : ValueChangedMessage<string>(filename);
+public class ConnectFileMessage(string filename) : AsyncRequestMessage<bool>
+{
+    public string Filename { get; } = filename;
+}
 
-public class ConnectBackupMessage(string filename) : ValueChangedMessage<string>(filename);
-
+public class ConnectBackupMessage(string filename) : AsyncRequestMessage<bool>
+{
+    public string Filename { get; } = filename;
+}

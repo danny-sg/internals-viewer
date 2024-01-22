@@ -7,8 +7,6 @@ public sealed partial class BackupFileConnectionControl
 {
     public BackupFileConnectionViewModel ViewModel => (BackupFileConnectionViewModel)DataContext;
 
-    public event EventHandler<ServerConnectEventArgs>? ConnectRequested;
-
     public BackupFileConnectionControl()
     {
         InitializeComponent();

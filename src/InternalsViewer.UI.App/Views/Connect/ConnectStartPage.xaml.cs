@@ -16,31 +16,9 @@ public sealed partial class ConnectStartPage
 
     public ConnectViewModel ViewModel => (ConnectViewModel)DataContext;
 
-    private async void ServerConnectionControl_OnConnectRequested(object? sender, ServerConnectEventArgs e)
+    private void ConnectFileTile_OnClick(object? sender, RoutedEventArgs e)
     {
-
-        await ViewModel.SaveSettings(e.Settings);
-    }
-
-    private async void HeaderTile_OnClick(object? sender, RoutedEventArgs e)
-    {
-        var openPicker = new FileOpenPicker();
-
-        var window = (Application.Current as App)!.Window;
-
-        var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-
-        WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hWnd);
-
-        openPicker.ViewMode = PickerViewMode.List;
-        openPicker.FileTypeFilter.Add(".mdf");
-
-        var file = await openPicker.PickSingleFileAsync();
-
-        if (file != null)
-        {
-            WeakReferenceMessenger.Default.Send(new ConnectFileMessage(file.Path));
-        }
+        WeakReferenceMessenger.Default.Send(new NavigateMessage("ConnectFilePage"));
     }
 
     private void ConnectSqlServerHeaderTile_Click(object sender, RoutedEventArgs e)

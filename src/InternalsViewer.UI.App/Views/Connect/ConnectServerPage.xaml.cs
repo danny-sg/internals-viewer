@@ -8,16 +8,17 @@ public sealed partial class ConnectServerPage
     public ConnectServerPage()
     {
         InitializeComponent();
+
         NavigationCacheMode = NavigationCacheMode.Enabled;
     }
 
-    public ServerConnectionViewModel ViewModel => (ServerConnectionViewModel)DataContext;
+    private ConnectServerViewModel ViewModel => (ConnectServerViewModel)DataContext;
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
 
-        if (e.Parameter is ServerConnectionViewModel viewModel)
+        if (e.Parameter is ConnectServerViewModel viewModel)
         {
             DataContext = viewModel;
         }

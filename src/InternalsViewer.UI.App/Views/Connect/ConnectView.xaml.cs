@@ -28,29 +28,29 @@ public sealed partial class ConnectView
         await ViewModel.SaveSettings(e.Settings);
     }
 
-    private async void HeaderTile_OnClick(object? sender, RoutedEventArgs e)
-    {
-        var openPicker = new FileOpenPicker();
+    //private async void HeaderTile_OnClick(object? sender, RoutedEventArgs e)
+    //{
+    //    var openPicker = new FileOpenPicker();
 
-        var window = (Application.Current as App)!.Window;
+    //    var window = (Application.Current as App)!.Window;
 
-        var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+    //    var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
 
-        WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hWnd);
+    //    WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hWnd);
 
-        openPicker.ViewMode = PickerViewMode.List;
-        openPicker.FileTypeFilter.Add(".mdf");
+    //    openPicker.ViewMode = PickerViewMode.List;
+    //    openPicker.FileTypeFilter.Add(".mdf");
 
-        var file = await openPicker.PickSingleFileAsync();
+    //    var file = await openPicker.PickSingleFileAsync();
 
-        if (file != null)
-        {
-            WeakReferenceMessenger.Default.Send(new ConnectFileMessage(file.Path));
-        }
-    }
+    //    if (file != null)
+    //    {
+    //        WeakReferenceMessenger.Default.Send(new ConnectFileMessage(file.Path));
+    //    }
+    //}
 
     private async void ConnectNavigationView_SelectionChanged(Microsoft.UI.Xaml.Controls.NavigationView sender,
-                                                        Microsoft.UI.Xaml.Controls.NavigationViewSelectionChangedEventArgs args)
+                                                              Microsoft.UI.Xaml.Controls.NavigationViewSelectionChangedEventArgs args)
     {
         if (args.IsSettingsSelected)
         {
@@ -85,11 +85,15 @@ public sealed partial class ConnectView
         switch (value)
         {
             case "ConnectServerPage":
-                var connectServerViewModel = ViewModel.GetService<ServerConnectionViewModel>();
+                var connectServerViewModel = ViewModel.GetService<ConnectServerViewModel>();
 
                 await connectServerViewModel.InitializeAsync();
 
                 ContentFrame.Navigate(typeof(ConnectServerPage), connectServerViewModel);
+                break;
+            case "ConnectFilePage":
+                var connectFileViewModel = ViewModel.GetService<ConnectFileViewModel>();
+                ContentFrame.Navigate(typeof(ConnectFilePage), connectFileViewModel);
                 break;
             default:
                 ContentFrame.Navigate(pageType);
