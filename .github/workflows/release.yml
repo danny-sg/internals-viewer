@@ -21,8 +21,7 @@ jobs:
 
       - name: Create release
         run: |
-          gh release create ${{ steps.gitversion.outputs.MajorMinorPatch }} /*
+          gh release create ${{ steps.gitversion.outputs.MajorMinorPatch }}
         env:
           GITHUB_TOKEN: ${{ github.TOKEN }}
         shell: bash
-        
