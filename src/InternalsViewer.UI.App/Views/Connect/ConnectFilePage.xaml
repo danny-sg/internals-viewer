@@ -33,8 +33,7 @@
                             Name="BrowseButton"
                             HorizontalAlignment="Right"
                             MinWidth="75"
-                            Click="BrowseButton_Click"
-                            Style="{ThemeResource AccentButtonStyle}"/>
+                            Click="BrowseButton_Click"/>
                 </StackPanel>     
             </controls:SettingsCard>
 

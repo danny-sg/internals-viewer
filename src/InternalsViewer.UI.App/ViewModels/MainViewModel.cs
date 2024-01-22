@@ -10,7 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
-public partial class MainViewModel(IServiceProvider serviceProvider, SettingsService settingsService) : ObservableObject
+public partial class MainViewModel(IServiceProvider serviceProvider, SettingsService settingsService) 
+    : ObservableObject
 {
     private IServiceProvider ServiceProvider { get; } = serviceProvider;
 

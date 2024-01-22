@@ -28,7 +28,7 @@ public partial class ConnectFileViewModel : ObservableValidator
     {
         var recent = new RecentConnection
         {
-            Name = Path.GetFileNameWithoutExtension(Filename),
+            Name = Path.GetFileName(Filename),
             ConnectionType = "File",
             Value = Filename
         };

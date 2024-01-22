@@ -12,7 +12,7 @@ using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.UI.App.ViewModels.Allocation;
 
-internal class AllocationLayerBuilder
+internal static class AllocationLayerBuilder
 {
     private const int ColourCount = 360;
     private const int UserSaturation = 150;

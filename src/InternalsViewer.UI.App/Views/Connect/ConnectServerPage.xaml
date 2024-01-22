@@ -12,6 +12,9 @@
     <Grid Padding="20">
         <Grid.Resources>
             <converters:BoolNegationConverter x:Key="BoolNegationConverter" />
+            <Style TargetType="TextBox">
+                <Setter Property="FontSize" Value="14" />
+            </Style>
         </Grid.Resources>
         <StackPanel Spacing="6" Background="Transparent" >
             <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">SQL Server</TextBlock>
@@ -27,34 +30,31 @@
             <controls:SettingsCard Header="Authentication"
                             Description="Authentication method">
                 <ComboBox x:Name="AuthenticationProtocolsComboBox"
-                   ItemsSource="{x:Bind ViewModel.AuthenticationTypes, Mode=OneWay}"
-                   SelectedValuePath="Key"
-                   DisplayMemberPath="Value"
-                   SelectedValue="{x:Bind ViewModel.AuthenticationType, Mode=TwoWay}"
-                   MinWidth="300"/>
+                          ItemsSource="{x:Bind ViewModel.AuthenticationTypes, Mode=OneWay}"
+                          SelectedValuePath="Id"
+                          DisplayMemberPath="Name"
+                          SelectedValue="{x:Bind ViewModel.AuthenticationType, Mode=TwoWay}"
+                          MinWidth="300"/>
             </controls:SettingsCard>
 
             <controls:SettingsCard x:Name="UserIdSettingsCard"
-                    Header="User Id"
-         
-                    IsEnabled="{x:Bind ViewModel.IsUserIdEnabled, Mode=OneWay}">
-
+                                   Header="User Id"
+                                   IsEnabled="{x:Bind ViewModel.IsUserIdEnabled, Mode=OneWay}">
                 <TextBox Text="{x:Bind ViewModel.UserId, Mode=TwoWay}" MinWidth="300" />
             </controls:SettingsCard>
 
             <controls:SettingsCard x:Name="PasswordSettingsCard"
                                    Header="Password"
                                    IsEnabled="{x:Bind ViewModel.IsPasswordEnabled, Mode=OneWay}">
-
                 <PasswordBox Password="{x:Bind ViewModel.Password, Mode=TwoWay}" MinWidth="300" />
             </controls:SettingsCard>
 
-            <controls:SettingsCard Description="Name of the database" Header="Database" 
-                        >
+            <controls:SettingsCard Description="Name of the database" Header="Database" >
                 <StackPanel>
                     <ComboBox DropDownOpened="DatabaseComboBox_DropDownOpened"
                               ItemsSource="{x:Bind ViewModel.Databases, Mode=OneWay}"
                               Text="{x:Bind ViewModel.Database, Mode=TwoWay}"
+                              SelectedItem="{x:Bind ViewModel.Database, Mode=TwoWay}"
                               IsEditable="True"
                               MinWidth="300" />
                 </StackPanel>

@@ -8,19 +8,18 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace InternalsViewer.UI.App.Services;
 
 public class SettingsService
 {
-    public ILogger<SettingsService> Logger { get; }
+    private ILogger<SettingsService> Logger { get; }
 
     private readonly string localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-    public string ApplicationDataFolder { get; }
+    private string ApplicationDataFolder { get; }
 
-    public string LocalSettingsFile { get; }
+    private string LocalSettingsFile { get; }
 
     private IDictionary<string, object> settings;
 
@@ -37,7 +36,7 @@ public class SettingsService
         settings = new Dictionary<string, object>();
     }
 
-    public async Task InitializeAsync()
+    private async Task InitializeAsync()
     {
         if (!isInitialized)
         {
@@ -48,7 +47,6 @@ public class SettingsService
         }
     }
 
-    [DebuggerStepThrough]
     public async Task<T?> ReadSettingAsync<T>(string key)
     {
         object? value;

@@ -25,7 +25,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
     [Required]
     [ObservableProperty]
-    private SqlAuthenticationMethod authenticationType = SqlAuthenticationMethod.ActiveDirectoryIntegrated;
+    private int authenticationType = (int)SqlAuthenticationMethod.ActiveDirectoryIntegrated;
 
     [ObservableProperty]
     private string userId = string.Empty;
@@ -52,18 +52,16 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     [ObservableProperty]
     private bool isPasswordEnabled;
 
-    public List<KeyValuePair<SqlAuthenticationMethod, string>> AuthenticationTypes => new()
+    public List<AuthenticationTypeOption> AuthenticationTypes => new()
     {
-        new (SqlAuthenticationMethod.ActiveDirectoryIntegrated, "Active Directory Integrated"),
-        new (SqlAuthenticationMethod.SqlPassword, "SQL Password"),
-        new (SqlAuthenticationMethod.ActiveDirectoryManagedIdentity, "Active Directory Managed Identity"),
-        new (SqlAuthenticationMethod.ActiveDirectoryPassword, "Active Directory Password"),
-        new (SqlAuthenticationMethod.ActiveDirectoryServicePrincipal, "Active Directory Service Principal"),
+        new ((int)SqlAuthenticationMethod.ActiveDirectoryIntegrated, "Active Directory Integrated"),
+        new ((int)SqlAuthenticationMethod.SqlPassword, "SQL Password"),
+        new ((int)SqlAuthenticationMethod.ActiveDirectoryPassword, "Active Directory Password")
     };
 
-    partial void OnAuthenticationTypeChanged(SqlAuthenticationMethod value)
+    partial void OnAuthenticationTypeChanged(int value)
     {
-        builder.Authentication = value;
+        builder.Authentication = (SqlAuthenticationMethod)value;
 
         switch (builder)
         {
@@ -116,7 +114,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         new()
         {
             InstanceName = instanceName,
-            AuthenticationType = (int)authenticationType,
+            AuthenticationType = authenticationType,
             DatabaseName = database,
             UserId = userId
         };
@@ -190,6 +188,8 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         ConnectButtonText = "Connect";
 
         IsBusy = false;
+
+        await SettingsService.SaveSettingAsync("CurrentServerConnection", GetSettings());
     }
 
     private RecentConnection GetRecent()
@@ -216,14 +216,19 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
     public async Task InitializeAsync()
     {
-        var settings = await SettingsService.ReadSettingAsync<ServerConnectionSettings>("CurrentServerConnection");  
+        var settings = await SettingsService.ReadSettingAsync<ServerConnectionSettings>("CurrentServerConnection");
 
         if (settings != null)
         {
             InstanceName = settings.InstanceName;
-            AuthenticationType = (SqlAuthenticationMethod)settings.AuthenticationType;
+            AuthenticationType = settings.AuthenticationType;
             Database = settings.DatabaseName;
             UserId = settings.UserId;
+
+            if(Databases.Count == 0)
+            {
+                Databases.Add(Database);
+            }
 
             RefreshConnectionString();
         }
@@ -233,8 +238,8 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     {
         builder.InitialCatalog = Database;
         builder.DataSource = InstanceName;
-        
-        builder.Authentication = AuthenticationType;
+
+        builder.Authentication = (SqlAuthenticationMethod)AuthenticationType;
 
         if (!string.IsNullOrEmpty(UserId))
         {
@@ -246,4 +251,11 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
             builder.Password = Password;
         }
     }
+}
+
+public class AuthenticationTypeOption(int id, string name)
+{
+    public int Id { get; set; } = id;
+
+    public string Name { get; set; } = name;
 }

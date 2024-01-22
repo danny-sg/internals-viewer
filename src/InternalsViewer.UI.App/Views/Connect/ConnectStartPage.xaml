@@ -67,7 +67,7 @@
         <GridView Grid.Row="3" ItemsSource="{x:Bind ViewModel.RecentConnections, Mode=OneWay}">
             <GridView.ItemContainerStyle>
                 <Style TargetType="GridViewItem">
-                    <Setter Property="Margin" Value="0,0,12,0"/>
+                    <Setter Property="Margin" Value="0,0,12,12"/>
                 </Style>
             </GridView.ItemContainerStyle>
             <GridView.ItemTemplate>

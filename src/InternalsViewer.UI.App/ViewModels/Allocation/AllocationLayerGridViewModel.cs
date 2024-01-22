@@ -11,9 +11,9 @@ namespace InternalsViewer.UI.App.ViewModels.Allocation
     [ObservableObject]
     public partial class AllocationLayerGridViewModel
     {
-        private readonly string[] refreshProperties = { nameof(Filter), nameof(DataSource) }; 
+        private readonly string[] refreshProperties = { nameof(Filter), nameof(DataSource) };
 
-        public List<AllocationLayer> Layers { get; private set; } = new();
+        private List<AllocationLayer> Layers { get; set; } = new();
 
         [ObservableProperty]
         private string filter = string.Empty;

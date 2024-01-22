@@ -208,7 +208,7 @@ public partial class PageTabViewModel(IServiceProvider serviceProvider,
         IsAllocationsTabVisible = false;
         IsRowDataTabVisible = true;
 
-        SelectedSlot = Enumerable.FirstOrDefault<OffsetSlot>(Offsets);
+        SelectedSlot = Offsets.FirstOrDefault();
 
         SelectedTabIndex = SelectedTabIndex == AllocationsTabIndex ? RowDataTabIndex : SelectedTabIndex;
     }
