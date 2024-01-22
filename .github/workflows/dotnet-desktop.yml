@@ -54,7 +54,7 @@ jobs:
       env:
         Appx_Bundle: Never
         Appx_Package_Build_Mode: SideloadOnly
-        Appx_Package_Dir: ${{ env.Solution_Name }}\\Packages
+        Appx_Package_Dir: "\Packages"
         Configuration: ${{ matrix.configuration }}
         Platform: ${{ matrix.platform }}
 
@@ -67,4 +67,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: MSIX Package
-        path: ${{ env.Solution_Name }}\\Packages
+        path: "\Packages"
