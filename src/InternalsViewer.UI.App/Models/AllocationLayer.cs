@@ -53,7 +53,7 @@ public partial class AllocationLayer : ObservableObject
 
 public class ExtentAllocation(short fileId, int extentId)
 {
-    public int ExtentId { get; set; } = extentId;
+    public int ExtentId { get; } = extentId;
 
-    public short FileId { get; set; } = fileId;
+    public short FileId { get; } = fileId;
 }

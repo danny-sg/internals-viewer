@@ -85,8 +85,7 @@
                                     <ListView ItemsSource="{x:Bind ViewModel.DecodeResults, Mode=OneWay}" 
                                               ItemTemplate="{StaticResource DecodeResultTemplate}" 
                                               MaxHeight="200"
-                                              Width="400">
-                                    </ListView>
+                                              Width="400" />
 
                                     <winUi:Effects.Shadow>
                                         <winUi:AttachedDropShadow CastTo="{x:Bind ShadowTarget}"

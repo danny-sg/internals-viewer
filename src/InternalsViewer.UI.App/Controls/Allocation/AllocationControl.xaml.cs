@@ -18,7 +18,7 @@ public sealed partial class AllocationControl
 {
     private static readonly Size ExtentSize = new(80, 10);
 
-    public ExtentLayout Layout { get; set; } = new();
+    private ExtentLayout Layout { get; set; } = new();
 
     public event EventHandler<PageClickedEventArgs>? PageClicked;
 
@@ -84,7 +84,7 @@ public sealed partial class AllocationControl
 
     public AllocationOverViewModel AllocationOver { get; set; } = new();
 
-    public int PageCount => Size * 8;
+    private int PageCount => Size * 8;
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -94,11 +94,11 @@ public sealed partial class AllocationControl
         }
     }
 
-    public int ScrollPosition { get; set; }
+    private int ScrollPosition { get; set; }
 
-    public SKColor BorderColour { get; set; }
+    private SKColor BorderColour { get; }
 
-    public void Refresh()
+    private void Refresh()
     {
         Layout = GetExtentLayout(Size, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
 
@@ -154,7 +154,7 @@ public sealed partial class AllocationControl
         canvas.Clear();
         canvas.Clear(SKColors.Transparent);
 
-        using var extentRenderer = new AllocationRenderer(Color.Red, Color.Blue, Color.White, ExtentSize);
+        using var extentRenderer = new AllocationRenderer(Color.White, ExtentSize);
 
         extentRenderer.IsDrawBorder = true;
 

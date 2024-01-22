@@ -31,9 +31,7 @@
                     Name="OpenButton"
                     MinWidth="200"
                     Click="OpenButton_Click"
-                    Style="{StaticResource AccentButtonStyle}">
-
-            </Button>
+                    Style="{StaticResource AccentButtonStyle}" />
         </controls:SettingsCard>
     </StackPanel>
 </UserControl>

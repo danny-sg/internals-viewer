@@ -13,7 +13,7 @@ namespace InternalsViewer.UI.App.Controls.Allocation;
 
 public sealed partial class AllocationLayerGrid
 {
-    public AllocationLayerGridViewModel ViewModel { get; set; } = new();
+    public AllocationLayerGridViewModel ViewModel { get; } = new();
 
     public ObservableCollection<AllocationLayer> Layers
     {

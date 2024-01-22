@@ -7,14 +7,14 @@ public class ConnectServerMessage(string connectionString, RecentConnection rece
 {
     public string ConnectionString { get; } = connectionString;
 
-    public RecentConnection Recent { get; set; } = recent;
+    public RecentConnection Recent { get; } = recent;
 }
 
 public class ConnectFileMessage(string filename, RecentConnection recent) : AsyncRequestMessage<bool>
 {
     public string Filename { get; } = filename;
 
-    public RecentConnection Recent { get; set; } = recent;
+    public RecentConnection Recent { get; } = recent;
 }
 
 public class ConnectBackupMessage(string filename, RecentConnection recent) : AsyncRequestMessage<bool>

@@ -7,13 +7,9 @@ namespace InternalsViewer.UI.App.Controls.Renderers;
 
 public class AllocationRenderer : IDisposable
 {
-    public AllocationRenderer(Color backgroundColour, 
-                              Color unusedColour, 
-                              Color borderColour, 
+    public AllocationRenderer(Color borderColour, 
                               Size extentSize)
     {
-        BackgroundColour = backgroundColour;
-        UnusedColour = unusedColour;
         BorderColour = borderColour;
 
         ExtentSize = extentSize;
@@ -26,21 +22,17 @@ public class AllocationRenderer : IDisposable
 
     public bool IsDrawBorder { get; set; }
 
-    public SKPaint BackgroundPaint { get; set; }
+    private SKPaint BackgroundPaint { get; }
 
-    public Color BackgroundColour { get; set; }
+    private Color BorderColour { get; }
 
-    public Color UnusedColour { get; set; }
+    private Size ExtentSize { get; }
 
-    public Color BorderColour { get; set; }
+    private SKPaint AllocationPaint { get; }
 
-    public Size ExtentSize { get; }
+    private SKPaint PagePaint { get; }
 
-    public SKPaint AllocationPaint { get; set; }
-
-    public SKPaint PagePaint { get; set; }
-
-    public SKPaint BorderPaint { get; init; }
+    private SKPaint BorderPaint { get; }
 
     public void SetAllocationColour(Color colourFrom, Color colourTo)
     {

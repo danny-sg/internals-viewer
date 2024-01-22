@@ -3,7 +3,7 @@ using System;
 
 namespace InternalsViewer.UI.App.Models.Connections;
 
-public partial class RecentConnection: ObservableObject
+public partial class RecentConnection : ObservableObject
 {
     [ObservableProperty]
     private string name = string.Empty;

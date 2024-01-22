@@ -25,6 +25,7 @@
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
+    
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" x:Name="LayoutGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -56,11 +57,13 @@
             ItemsSource="{x:Bind TabViewModel.DatabaseFiles}"
             Layout="{StaticResource VerticalStackLayout}"
             ItemTemplate="{StaticResource AllocationFileTemplate}" />
+        
         <allocation:AllocationLayerGrid Grid.Row="2" 
                                         x:Name="AllocationLayerGrid"
                                         SelectedLayer="{x:Bind TabViewModel.SelectedLayer, Mode=TwoWay}"
                                         PageClicked="OnPageClicked"
                                         Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
+        
         <toolkit:GridSplitter Grid.Row="2"
                               Grid.ColumnSpan="1"
                               Height="16"

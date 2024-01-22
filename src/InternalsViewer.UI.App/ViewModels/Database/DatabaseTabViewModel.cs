@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -18,7 +17,7 @@ namespace InternalsViewer.UI.App.ViewModels.Database;
 
 public class DatabaseTabViewModelFactory
 {
-    public DatabaseTabViewModel Create(DatabaseSource database)
+    public static DatabaseTabViewModel Create(DatabaseSource database)
         => new(database);
 }
 

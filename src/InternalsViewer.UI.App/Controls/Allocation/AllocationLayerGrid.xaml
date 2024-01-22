@@ -7,9 +7,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
-    xmlns:vNext="using:InternalsViewer.UI.App"
-    xmlns:system="using:System"
-    xmlns:views="using:InternalsViewer.UI.App.Views"
     x:Name="Root"
     mc:Ignorable="d">
     <UserControl.Resources>
@@ -40,13 +37,14 @@
         </CommandBar>
         <Grid Grid.Row="1">
             <toolkit:DataGrid x:Name="DataGrid"                       
-                               AutoGenerateColumns="False"
-                               CanUserSortColumns="True"
-                               SelectionMode="Extended"
-                               IsReadOnly="True"
-                               GridLinesVisibility="Vertical"
-                               PointerPressed="DataGrid_OnPointerPressed"
-                               ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">
+                              AutoGenerateColumns="False"
+                              CanUserSortColumns="True"
+                              SelectionMode="Extended"
+                              IsReadOnly="True"
+                              GridLinesVisibility="Vertical"
+                              PointerPressed="DataGrid_OnPointerPressed"
+                              Background="{ThemeResource LayerFillColorDefaultBrush}"
+                              ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">
 
                 <toolkit:DataGrid.Columns>
                     <toolkit:DataGridTemplateColumn Header="Key"
@@ -56,8 +54,7 @@
                                 <Grid>
                                     <Rectangle Width="16" 
                                                Height="16" 
-                                               Fill="{x:Bind Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
-                                    </Rectangle>
+                                               Fill="{x:Bind Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}" />
                                 </Grid>
                             </DataTemplate>
                         </toolkit:DataGridTemplateColumn.CellTemplate>

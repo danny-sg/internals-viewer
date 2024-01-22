@@ -87,10 +87,10 @@
     </Control.Resources>
 
     <ListView ItemsSource="{x:Bind Values, Mode=OneWay}" 
-               SelectionMode="None" 
-               VerticalAlignment="Stretch"
-               Background="{x:Bind Background}"
-               BorderBrush="{x:Bind BorderBrush}"
-               BorderThickness="{x:Bind BorderThickness}"
-               ItemTemplateSelector="{StaticResource PageHeaderTemplateSelector}"/>
+              SelectionMode="None" 
+              VerticalAlignment="Stretch"
+              Background="{x:Bind Background}"
+              BorderBrush="{x:Bind BorderBrush}"
+              BorderThickness="{x:Bind BorderThickness}"
+              ItemTemplateSelector="{StaticResource PageHeaderTemplateSelector}"/>
 </UserControl>

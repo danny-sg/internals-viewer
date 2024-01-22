@@ -145,7 +145,6 @@
                   ItemContainerStyle="{StaticResource ListViewItemMarkerStyle}"
                   ItemTemplateSelector="{StaticResource MarkerTemplateSelector}"
                   VerticalAlignment="Stretch"
-                  HorizontalAlignment="Stretch">
-        </ListView>
+                  HorizontalAlignment="Stretch" />
     </Grid>
 </UserControl>

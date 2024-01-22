@@ -49,6 +49,22 @@ public class SettingsService
 
     public async Task<T?> ReadSettingAsync<T>(string key)
     {
+        try
+        {
+            var value = await ReadSettingInternal<T>(key);
+
+            return value;
+        }
+        catch(Exception ex)
+        {
+            Logger.LogError(ex, "Error reading setting {Key}", key);
+
+            return default;
+        }
+    }
+
+    private async Task<T?> ReadSettingInternal<T>(string key)
+    {
         object? value;
         bool isFound;
 
@@ -82,6 +98,18 @@ public class SettingsService
     }
 
     public async Task SaveSettingAsync<T>(string key, T value)
+    {
+        try
+        {
+            await SaveSettingInternal(key, value);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving setting {Key} - {value}", key, value);
+        }   
+    }
+
+    private async Task SaveSettingInternal<T>(string key, T value)
     {
         if (RuntimeHelper.IsMsix)
         {

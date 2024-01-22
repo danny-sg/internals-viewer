@@ -6,9 +6,9 @@ namespace InternalsViewer.UI.App.Messages;
 
 public class OpenPageRequest(DatabaseSource database, PageAddress pageAddress)
 {
-    public PageAddress PageAddress { get; set; } = pageAddress;
+    public PageAddress PageAddress { get; } = pageAddress;
 
-    public DatabaseSource Database { get; set; } = database;
+    public DatabaseSource Database { get; } = database;
 
     public ushort? Slot { get; set; }
 }

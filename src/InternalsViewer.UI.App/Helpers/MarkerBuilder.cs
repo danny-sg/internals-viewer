@@ -11,67 +11,9 @@ using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.Helpers;
 
-public class MarkStyle
-{
-    public MarkStyle(Color foreColour, Color backColour, Color alternateBackColour)
-    {
-        ForeColour = foreColour;
-        BackColour = backColour;
-        AlternateBackColour = alternateBackColour;
-    }
-
-    public MarkStyle(Color foreColour, Color backColour)
-    {
-        ForeColour = foreColour;
-        BackColour = backColour;
-        AlternateBackColour = backColour;
-    }
-
-    public MarkStyle(Color foreColour, Color backColour, string description)
-    {
-        ForeColour = foreColour;
-        BackColour = backColour;
-        AlternateBackColour = backColour;
-
-        Description = description;
-    }
-
-    public MarkStyle(Color foreColour, Color backColour, Color alternateBackColour, string description)
-    {
-        ForeColour = foreColour;
-        BackColour = backColour;
-        AlternateBackColour = alternateBackColour;
-        Description = description;
-    }
-
-    /// <summary>
-    /// Gets or sets the mark display description.
-    /// </summary>
-    /// <value>The description.</value>
-    public string Description { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the fore colour.
-    /// </summary>
-    /// <value>The fore colour.</value>
-    public Color ForeColour { get; set; }
-
-    /// <summary>
-    /// Gets or sets the back colour.
-    /// </summary>
-    /// <value>The back colour.</value>
-    public Color BackColour { get; set; }
-
-    /// <summary>
-    /// Gets or sets the alternate back colour.
-    /// </summary>
-    /// <value>The alternate back colour.</value>
-    public Color AlternateBackColour { get; set; }
-}
-
 public class MarkStyleProvider
 {
-    public Dictionary<DataStructureItemType, MarkStyle> Styles = new()
+    private readonly Dictionary<DataStructureItemType, MarkStyle> styles = new()
     {
         { DataStructureItemType.Rid, new MarkStyle(Color.DarkMagenta, Color.Thistle, "Row Identifier")},
         { DataStructureItemType.Uniqueifier, new MarkStyle(Color.SteelBlue, Color.AliceBlue, "Uniqueifier")},
@@ -117,14 +59,14 @@ public class MarkStyleProvider
 
     public MarkStyle GetMarkStyle(DataStructureItemType dataStructureItemType)
     {
-        return Styles[dataStructureItemType];
+        return styles[dataStructureItemType];
     }
 }
 
 /// <summary>
 /// Builds Markers for use in the Hex Viewer
 /// </summary>
-public class MarkerBuilder
+public static class MarkerBuilder
 {
     public static List<Marker> BuildMarkers(DataStructure markedObject)
     {
@@ -134,7 +76,7 @@ public class MarkerBuilder
     /// <summary>
     /// Builds the markers using an IMarkable collection and reflection to access the property values
     /// </summary>
-    public static List<Marker> BuildMarkers(DataStructure markedObject, string prefix)
+    private static List<Marker> BuildMarkers(DataStructure markedObject, string prefix)
     {
         var styleProvider = new MarkStyleProvider();
 

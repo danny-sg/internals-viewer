@@ -2,11 +2,11 @@
 
 public class ServerConnectionSettings
 {
-    public string InstanceName { get; set; } = string.Empty;
+    public string InstanceName { get; init; } = string.Empty;
 
-    public int AuthenticationType { get; set; }
+    public int AuthenticationType { get; init; }
 
-    public string DatabaseName { get; set; } = string.Empty;
+    public string DatabaseName { get; init; } = string.Empty;
 
-    public string UserId { get; set; } = string.Empty;
+    public string UserId { get; init; } = string.Empty;
 }

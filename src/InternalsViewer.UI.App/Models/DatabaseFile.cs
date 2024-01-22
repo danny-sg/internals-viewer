@@ -11,5 +11,5 @@ public partial class DatabaseFile(DatabaseTabViewModel parent) : ObservableObjec
     [ObservableProperty]
     private int size;
 
-    public DatabaseTabViewModel Parent { get; set; } = parent;
+    public DatabaseTabViewModel Parent { get; } = parent;
 }

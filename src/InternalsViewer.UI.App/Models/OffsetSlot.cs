@@ -1,11 +1,10 @@
-﻿namespace InternalsViewer.UI.App.Models
+﻿namespace InternalsViewer.UI.App.Models;
+
+public class OffsetSlot
 {
-    public class OffsetSlot
-    {
-        public ushort Index { get; set; }
+    public ushort Index { get; init; }
 
-        public ushort Offset { get; set; }
+    public ushort Offset { get; init; }
 
-        public string Description { get; set; } = string.Empty;
-    }
+    public string Description { get; init; } = string.Empty;
 }

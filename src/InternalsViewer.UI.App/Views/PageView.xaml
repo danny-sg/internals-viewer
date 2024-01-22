@@ -7,25 +7,18 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     xmlns:models="using:InternalsViewer.UI.App.Models"
-    xmlns:interactivity="using:Microsoft.Xaml.Interactivity"
-    xmlns:behaviors="using:CommunityToolkit.WinUI.Behaviors"
-    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.Resources>
             <Style x:Key="TitleStyle" 
                    BasedOn="{StaticResource BodyStrongTextBlockStyle}" 
-                   TargetType="TextBlock">
-
-            </Style>
+                   TargetType="TextBlock" />
             <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}" x:Key="ListViewItemSlotStyle">
                 <Setter Property="Height" Value="30" />
                 <Setter Property="MinHeight" Value="30" />
                 <Setter Property="Padding" Value="10" />
             </Style>
-
-
 
             <Style x:Key="SlotHeader" TargetType="Grid" >
                 <Setter Property="Height" Value="30"/>
@@ -63,8 +56,7 @@
                                  Width="105" Margin="0 8 10 0"  
                                  PlaceholderText="(File Id: Page Id)"  
                                  KeyDown="PageAddressTextBox_KeyDown"   
-                                 Text="{x:Bind TabViewModel.PageAddress, Mode=OneWay, Converter={StaticResource StringToPageAddressConverter}}">
-                        </TextBox>
+                                 Text="{x:Bind TabViewModel.PageAddress, Mode=OneWay, Converter={StaticResource StringToPageAddressConverter}}" />
                     </AppBarElementContainer>
                     <AppBarButton Label="Previous Page" 
                                   Icon="Previous" 
@@ -81,12 +73,9 @@
                         </AppBarButton.Icon>
                     </AppBarButton>
                     <AppBarSeparator />
-                    <AppBarElementContainer>
-
-                    </AppBarElementContainer>
+                    <AppBarElementContainer />
                 </CommandBar>
-                <CommandBar
-                    HorizontalAlignment="Right">
+                <CommandBar HorizontalAlignment="Right">
                     <AppBarElementContainer>
                         <Grid Margin="8" Padding="0">
                             <Grid.RowDefinitions>
@@ -97,30 +86,26 @@
                                 <TextBlock x:Name="ObjectName"
                                            FontWeight="Bold"
                                            Margin="0,0,10,0"  
-                                           Text="{x:Bind TabViewModel.ObjectName, Mode=OneWay}">
-                                </TextBlock>
+                                           Text="{x:Bind TabViewModel.ObjectName, Mode=OneWay}" />
                                 <Grid 
                                     Margin="0"
                                     Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
                                     <TextBlock x:Name="ObjectIndexType"
                                                Margin="0"  
                                                Foreground="BlueViolet"
-                                               Text="{x:Bind TabViewModel.ObjectIndexType, Mode=OneWay}">
-                                    </TextBlock>
+                                               Text="{x:Bind TabViewModel.ObjectIndexType, Mode=OneWay}" />
                                 </Grid >
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Grid.Row="1">
                                 <TextBlock x:Name="IndexName"
                                            Margin="0,0,10,0"  
-                                           Text="{x:Bind TabViewModel.IndexName, Mode=OneWay}">
-                                </TextBlock>
+                                           Text="{x:Bind TabViewModel.IndexName, Mode=OneWay}" />
                                 <Grid Margin="0"
                                       Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
                                     <TextBlock x:Name="IndexType"
                                                Margin="0"  
                                                Foreground="DarkGreen"
-                                               Text="{x:Bind TabViewModel.IndexType, Mode=OneWay}">
-                                    </TextBlock>
+                                               Text="{x:Bind TabViewModel.IndexType, Mode=OneWay}" />
                                 </Grid >
                             </StackPanel>
                         </Grid>
@@ -201,6 +186,7 @@
                      IsAddTabButtonVisible="False"
                      VerticalAlignment="Stretch"
                      TabWidthMode="SizeToContent">
+                
                 <TabViewItem IsClosable="False" x:Name="PageHeaderTabViewItem">
                     <TabViewItem.Header>
                         Page Header
@@ -213,6 +199,7 @@
                         PageClicked="Control_PageClicked"
                         Page="{x:Bind TabViewModel.Page, Mode=OneWay}" />
                 </TabViewItem>
+                
                 <TabViewItem IsClosable="False" 
                              x:Name="RowDataTabViewItem"
                              Visibility="{x:Bind TabViewModel.IsRowDataTabVisible, 
@@ -224,6 +211,7 @@
                     <page:MarkerListView DataContext="{x:Bind TabViewModel, Mode=OneWay}" 
                                          PageClicked="Control_PageClicked"/>
                 </TabViewItem>
+                
                 <TabViewItem IsClosable="False" 
                              x:Name="AllocationTabViewItem" 
                              Visibility="{x:Bind TabViewModel.IsAllocationsTabVisible, 

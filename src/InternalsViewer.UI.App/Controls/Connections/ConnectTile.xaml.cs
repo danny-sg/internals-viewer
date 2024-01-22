@@ -1,10 +1,8 @@
 using Microsoft.UI.Xaml.Controls;
 
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace InternalsViewer.UI.App.Controls.Connections;
-public sealed partial class ConnectTile : UserControl
+
+public sealed partial class ConnectTile
 {
     public ConnectTile()
     {
@@ -35,15 +33,14 @@ public sealed partial class ConnectTile : UserControl
     private void ScrollBackButton_Click(object sender, RoutedEventArgs e)
     {
         ScrollViewer.ChangeView(ScrollViewer.HorizontalOffset - ScrollViewer.ViewportWidth, null, null);
-        // Manually focus to ScrollForwardBtn since this button disappears after scrolling to the end.          
+        
         ScrollForwardButton.Focus(FocusState.Programmatic);
     }
 
     private void ScrollForwardButton_Click(object sender, RoutedEventArgs e)
     {
         ScrollViewer.ChangeView(ScrollViewer.HorizontalOffset + ScrollViewer.ViewportWidth, null, null);
-
-        // Manually focus to ScrollBackBtn since this button disappears after scrolling to the end.    
+   
         ScrollBackButton.Focus(FocusState.Programmatic);
     }
 
