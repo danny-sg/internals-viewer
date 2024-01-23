@@ -22,6 +22,9 @@ using InternalsViewer.UI.App.ViewModels.Database;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using InternalsViewer.UI.App.Controls;
+using WinUIEx;
+using Windows.ApplicationModel.Core;
+using Microsoft.UI.Windowing;
 
 namespace InternalsViewer.UI.App;
 
@@ -37,7 +40,7 @@ public sealed partial class MainWindow
 
     private PageTabViewModelFactory PageTabViewModelFactory { get; }
 
-    public DatabaseTabViewModelFactory DatabaseTabViewModelFactory { get; }
+    private DatabaseTabViewModelFactory DatabaseTabViewModelFactory { get; }
 
     private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
@@ -48,9 +51,11 @@ public sealed partial class MainWindow
                       DatabaseTabViewModelFactory databaseTabViewModelFactory,
                       ConnectServerViewModelFactory connectServerViewModelFactory)
     {
+        Title = "Internals Viewer 2024";
+
         ServiceProvider = serviceProvider;
         DatabaseLoader = databaseLoader;
-        
+
         ViewModel = mainViewModel;
         PageTabViewModelFactory = pageTabViewModelFactory;
         DatabaseTabViewModelFactory = databaseTabViewModelFactory;
@@ -58,11 +63,9 @@ public sealed partial class MainWindow
 
         InitializeComponent();
 
+        this.SetIcon("Assets/InternalsViewer.ico");
+
         SystemBackdrop = new MicaBackdrop { Kind = MicaKind.Base };
-
-        ExtendsContentIntoTitleBar = true;
-
-        SetTitleBar(CustomDragRegion);
 
         WeakReferenceMessenger.Default.Register<ConnectServerMessage>(this, (_, m)
             => m.Reply(ConnectServer(m.ConnectionString, m.Recent)));
@@ -75,6 +78,10 @@ public sealed partial class MainWindow
 
         WeakReferenceMessenger.Default.Register<ExceptionMessage>(this, (_, m)
                        => ShowExceptionDialog(m.Value));
+
+        ExtendsContentIntoTitleBar = true;
+
+        SetTitleBar(CustomDragRegion);
     }
 
     private async void ShowExceptionDialog(Exception exception)
@@ -218,11 +225,15 @@ public sealed partial class MainWindow
 
         content.DataContext = ViewModel;
 
+
+        var icon = new ImageIconSource { ImageSource = new BitmapImage(new Uri("ms-appx:///Assets/AppIcon16.png")) };
+
         var connectTab = new TabViewItem
         {
             Name = "Connect",
             Header = "Connect",
-            Content = content
+            Content = content,
+            IconSource = icon
         };
 
         tabView.TabItems.Add(connectTab);

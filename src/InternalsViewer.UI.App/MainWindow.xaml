@@ -25,26 +25,20 @@
                                  Color="{ThemeResource LayerFillColorDefault}"/>
             </TabView.Resources>
             <TabView.TabStripHeader>
-                <Grid x:Name="AppTitleBar"  
-                      Height="30"
-                      Margin="0,-4,10,0">
+                <Grid x:Name="ShellTitlebarInset"  
+                      MinHeight="32"
+                      Height="32">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition x:Name="LeftPaddingColumn" Width="8"/>
+                        <ColumnDefinition x:Name="LeftPaddingColumn" Width="0"/>
                         <ColumnDefinition/>
                         <ColumnDefinition x:Name="RightPaddingColumn" Width="0"/>
                     </Grid.ColumnDefinitions>
-                    <Image x:Name="TitleBarIcon" 
-                           Source="ms-appx:///Assets/AppIcon16.png"
-                           Grid.Column="1"
-                           HorizontalAlignment="Left"
-                           Width="16" Height="16"
-                           Margin="8,0,0,0"/>
                     <TextBlock x:Name="TitleBarTextBlock" 
-                               Text="Internals Viewer 2024.1" 
+                               Text="{x:Bind Title}" 
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Grid.Column="1"
                                VerticalAlignment="Center"
-                               Margin="32,0,12,0"/>
+                               Margin="14,0,14,0"/>
                 </Grid>
             </TabView.TabStripHeader>
 

@@ -219,6 +219,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Content Update="Assets\AppIcon16.bmp">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
       <Content Update="Assets\AppLogo-512.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
