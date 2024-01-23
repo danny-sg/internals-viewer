@@ -21,16 +21,17 @@
         <PublishProfile>win-$(Platform).pubxml</PublishProfile>
         <PlatformTarget>AnyCPU</PlatformTarget>
         <SignAssembly>False</SignAssembly>
-        <PackageCertificateKeyFile>InternalsViewer.UI.App.vNext.pfx</PackageCertificateKeyFile>
+        <PackageCertificateKeyFile>InternalsViewer.UI.App_TemporaryKey.pfx</PackageCertificateKeyFile>
         <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
         <GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
         <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
         <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
         <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
-        <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
+        <AppxSymbolPackageEnabled>True</AppxSymbolPackageEnabled>
         <GenerateTestArtifacts>True</GenerateTestArtifacts>
         <AppxBundle>Never</AppxBundle>
         <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+        <AppxPackageDir>D:\package\InternalsViewer</AppxPackageDir>
         
         
     </PropertyGroup>
