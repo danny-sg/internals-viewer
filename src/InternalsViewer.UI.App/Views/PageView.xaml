@@ -115,7 +115,7 @@
 
             <page:HexViewControl Grid.Row="1"
                                  Grid.Column="0"
-                                 Background="White"
+                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                  Width="455" 
                                  VerticalContentAlignment="Stretch"
                                  Margin="14,14,0,14"

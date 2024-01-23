@@ -7,10 +7,10 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 using AllocationOverViewModel = InternalsViewer.UI.App.ViewModels.Allocation.AllocationOverViewModel;
+using Color = Windows.UI.Color;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
 
@@ -21,6 +21,18 @@ public sealed partial class AllocationControl
     private ExtentLayout Layout { get; set; } = new();
 
     public event EventHandler<PageClickedEventArgs>? PageClicked;
+
+    public Color BorderColor
+    {
+        get => (Color)GetValue(BorderColorProperty);
+        set => SetValue(BorderColorProperty, value);
+    }
+
+    public static readonly DependencyProperty BorderColorProperty
+        = DependencyProperty.Register(nameof(BorderColor),
+            typeof(Color),
+            typeof(AllocationControl),
+            new PropertyMetadata(default, OnPropertyChanged));
 
     public short FileId
     {
@@ -96,8 +108,6 @@ public sealed partial class AllocationControl
 
     private int ScrollPosition { get; set; }
 
-    private SKColor BorderColour { get; }
-
     private void Refresh()
     {
         Layout = GetExtentLayout(Size, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
@@ -115,10 +125,6 @@ public sealed partial class AllocationControl
         PointerWheelChanged += AllocationControl_PointerWheelChanged;
 
         SetScrollBarValues();
-
-        var borderBrush = Application.Current.Resources["ControlElevationBorderBrush"] as LinearGradientBrush;
-
-        BorderColour = borderBrush?.GradientStops[0].Color.ToSKColor() ?? SystemColors.ActiveBorder.ToSkColor();
     }
 
     private void AllocationControl_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
@@ -151,10 +157,9 @@ public sealed partial class AllocationControl
         var surface = e.Surface;
         var canvas = surface.Canvas;
 
-        canvas.Clear();
         canvas.Clear(SKColors.Transparent);
 
-        using var extentRenderer = new AllocationRenderer(Color.White, ExtentSize);
+        using var extentRenderer = new AllocationRenderer(BorderColor.ToColor(), ExtentSize);
 
         extentRenderer.IsDrawBorder = true;
 
@@ -173,7 +178,7 @@ public sealed partial class AllocationControl
 
         using var borderPaint = new SKPaint();
 
-        borderPaint.Color = BorderColour;
+        borderPaint.Color = BorderColor.ToSkColor();
         borderPaint.StrokeWidth = 1;
         borderPaint.Style = SKPaintStyle.Stroke;
 
@@ -444,20 +449,20 @@ public class PageClickedEventArgs(short fileId, int pageId) : EventArgs
 {
     public short FileId { get; } = fileId;
 
-    public int PageId { get; set; } = pageId;
+    public int PageId { get; } = pageId;
 
-    public ushort? Slot { get; set; }
+    public ushort? Slot { get; init; }
 }
 
 public class ExtentLayout
 {
-    public int HorizontalCount { get; set; }
+    public int HorizontalCount { get; init; }
 
-    public int VerticalCount { get; set; }
+    public int VerticalCount { get; init; }
 
-    public int RemainingCount { get; set; }
+    public int RemainingCount { get; init; }
 
-    public int VisibleCount { get; set; }
+    public int VisibleCount { get; init; }
 
     public bool IsInitialized { get; set; }
 }

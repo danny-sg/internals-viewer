@@ -16,6 +16,16 @@ internal static class ColourHelpers
         return Windows.UI.Color.FromArgb(color.A, color.R, color.G, color.B);
     }
 
+    public static SKColor ToSkColor(this Windows.UI.Color color)
+    {
+        return new SKColor(color.R, color.G, color.B, color.A);
+    }
+
+    public static Color ToColor(this Windows.UI.Color color)
+    {
+        return Color.FromArgb(color.A, color.R, color.G, color.B);
+    }
+
     /// <summary>
     /// Return the background colour for a given colour, used for gradients
     /// </summary>

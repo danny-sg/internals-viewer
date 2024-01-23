@@ -1,9 +1,6 @@
-﻿using System;
-using ABI.System;
-using CommunityToolkit.Mvvm.Messaging.Messages;
+﻿using CommunityToolkit.Mvvm.Messaging.Messages;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using static CommunityToolkit.WinUI.Animations.Expressions.ExpressionValues;
 
 namespace InternalsViewer.UI.App.Messages;
 

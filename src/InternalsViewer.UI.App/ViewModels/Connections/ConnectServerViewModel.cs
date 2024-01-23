@@ -10,6 +10,7 @@ using InternalsViewer.UI.App.Services;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
+using System.ComponentModel;
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 
@@ -26,28 +27,36 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
     private readonly SqlConnectionStringBuilder builder = new() { TrustServerCertificate = true };
 
+    public bool CanConnect => !HasErrors && !IsBusy;    
+
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConnect))]
     private string instanceName = "localhost";
 
     [Required]
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConnect))]
     private int authenticationType = (int)SqlAuthenticationMethod.ActiveDirectoryIntegrated;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConnect))]
     private string userId = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConnect))]
     private string password = string.Empty;
 
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConnect))]
     private string database = string.Empty;
 
     [ObservableProperty]
     private ObservableCollection<string> databases = new();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConnect))]
     private bool isBusy;
 
     [ObservableProperty]
@@ -58,6 +67,13 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
     [ObservableProperty]
     private bool isPasswordEnabled;
+
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        ValidateAllProperties();
+
+        base.OnPropertyChanged(e);
+    }
 
     public List<AuthenticationTypeOption> AuthenticationTypes => new()
     {
@@ -101,6 +117,9 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         }
     }
 
+    /// <summary>
+    /// Gets the connection string from the current settings
+    /// </summary>
     private string GetConnectionString()
     {
         RefreshConnectionString();
@@ -108,6 +127,9 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         return builder.ConnectionString;
     }
 
+    /// <summary>
+    /// Gets the connection string without the password
+    /// </summary>
     private string GetSafeConnectionString()
     {
         RefreshConnectionString();
@@ -180,23 +202,57 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     [RelayCommand]
     private async Task Connect()
     {
+        ValidateAllProperties();
+
+        if (HasErrors)
+        {
+            return;
+        }
+
         var recent = GetRecent();
+
         var connectionString = GetConnectionString();
 
         IsBusy = true;
+
         ConnectButtonText = "Connecting...";
 
-        var message = new ConnectServerMessage(connectionString, recent);
+        if (await CheckConnection(connectionString))
+        {
+            var message = new ConnectServerMessage(connectionString, recent);
 
-        await WeakReferenceMessenger.Default.Send(message);
+            await WeakReferenceMessenger.Default.Send(message);
 
-        await message.Response;
+            await message.Response;
+
+            await SettingsService.SaveSettingAsync("CurrentServerConnection", GetSettings());
+        }
 
         ConnectButtonText = "Connect";
 
         IsBusy = false;
+    }
 
-        await SettingsService.SaveSettingAsync("CurrentServerConnection", GetSettings());
+    private static async Task<bool> CheckConnection(string connectionString)
+    {
+        var connection = new SqlConnection(connectionString);
+
+        try
+        {
+            await connection.OpenAsync();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+
+            return false;
+        }
+        finally
+        {
+            connection.Close();
+        }
     }
 
     private RecentConnection GetRecent()
@@ -232,7 +288,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
             Database = settings.DatabaseName;
             UserId = settings.UserId;
 
-            if(Databases.Count == 0)
+            if (Databases.Count == 0)
             {
                 Databases.Add(Database);
             }

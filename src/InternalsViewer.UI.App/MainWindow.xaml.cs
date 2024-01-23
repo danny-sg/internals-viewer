@@ -23,15 +23,11 @@ using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using InternalsViewer.UI.App.Controls;
 using WinUIEx;
-using Windows.ApplicationModel.Core;
-using Microsoft.UI.Windowing;
 
 namespace InternalsViewer.UI.App;
 
 public sealed partial class MainWindow
 {
-    private IServiceProvider ServiceProvider { get; }
-
     private IDatabaseLoader DatabaseLoader { get; }
 
     private TabViewItem? ConnectTab { get; set; }
@@ -44,8 +40,7 @@ public sealed partial class MainWindow
 
     private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
-    public MainWindow(IServiceProvider serviceProvider,
-                      IDatabaseLoader databaseLoader,
+    public MainWindow(IDatabaseLoader databaseLoader,
                       MainViewModel mainViewModel,
                       PageTabViewModelFactory pageTabViewModelFactory,
                       DatabaseTabViewModelFactory databaseTabViewModelFactory,
@@ -53,7 +48,6 @@ public sealed partial class MainWindow
     {
         Title = "Internals Viewer 2024";
 
-        ServiceProvider = serviceProvider;
         DatabaseLoader = databaseLoader;
 
         ViewModel = mainViewModel;

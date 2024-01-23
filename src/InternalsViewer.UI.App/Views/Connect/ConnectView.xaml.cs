@@ -5,16 +5,18 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using InternalsViewer.UI.App.ViewModels;
+using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Connect;
 
 public sealed partial class ConnectView
 {
-    public ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
+    private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
     public ConnectView(ConnectServerViewModelFactory connectServerViewModelFactory)
     {
         ConnectServerViewModelFactory = connectServerViewModelFactory;
+
         InitializeComponent();
 
         WeakReferenceMessenger.Default.Register<NavigateMessage>(this, (_, m)
@@ -23,8 +25,8 @@ public sealed partial class ConnectView
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
-    private async void ConnectNavigationView_SelectionChanged(Microsoft.UI.Xaml.Controls.NavigationView sender,
-                                                              Microsoft.UI.Xaml.Controls.NavigationViewSelectionChangedEventArgs args)
+    private async void ConnectNavigationView_SelectionChanged(NavigationView sender,
+                                                              NavigationViewSelectionChangedEventArgs args)
     {
         if (args.IsSettingsSelected)
         {
@@ -32,7 +34,7 @@ public sealed partial class ConnectView
         }
         else
         {
-            var selectedItem = (Microsoft.UI.Xaml.Controls.NavigationViewItem)args.SelectedItem;
+            var selectedItem = (NavigationViewItem)args.SelectedItem;
             var selectedItemTag = (string)selectedItem.Tag;
 
             await Navigate(selectedItemTag);
@@ -42,7 +44,7 @@ public sealed partial class ConnectView
     private void SelectAndNavigate(string value)
     {
         var item = ConnectNavigationView.MenuItems
-                                        .OfType<Microsoft.UI.Xaml.Controls.NavigationViewItem>()
+                                        .OfType<NavigationViewItem>()
                                         .First(i => (string)i.Tag == value);
 
         ConnectNavigationView.SelectedItem = item;

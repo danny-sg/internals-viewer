@@ -68,7 +68,7 @@
                             Margin="10,0,0,0"
                             Name="ConnectButton"
                             MinWidth="150"
-                            IsEnabled="{x:Bind ViewModel.IsBusy, Mode=OneWay,Converter={StaticResource BoolNegationConverter}}"
+                            IsEnabled="{x:Bind ViewModel.CanConnect, Mode=OneWay}"
                             Command="{x:Bind ViewModel.ConnectCommand}"
                             Style="{ThemeResource AccentButtonStyle}"/>
                 </StackPanel>

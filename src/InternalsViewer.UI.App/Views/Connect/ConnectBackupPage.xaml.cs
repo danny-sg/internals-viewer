@@ -11,6 +11,6 @@ public sealed partial class ConnectBackupPage : Page
 {
     public ConnectBackupPage()
     {
-        this.InitializeComponent();
+        InitializeComponent();
     }
 }

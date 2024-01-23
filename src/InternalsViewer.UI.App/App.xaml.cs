@@ -36,10 +36,12 @@ public partial class App
     {
         InitializeComponent();
 
-        Host = Microsoft.Extensions.Hosting.Host
-                .CreateDefaultBuilder()
-                .UseContentRoot(AppContext.BaseDirectory)
-                .ConfigureServices((context, services) =>
+        Host = Microsoft.Extensions
+                        .Hosting
+                        .Host
+                        .CreateDefaultBuilder()
+                        .UseContentRoot(AppContext.BaseDirectory)
+                        .ConfigureServices((context, services) =>
         {
             // Default Activation Handler
             services.AddTransient<ActivationHandler<LaunchActivatedEventArgs>, DefaultActivationHandler>();
@@ -62,7 +64,7 @@ public partial class App
         UnhandledException += App_UnhandledException;
     }
 
-    private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    private static void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
         WeakReferenceMessenger.Default.Send(new ExceptionMessage(e.Exception));
 

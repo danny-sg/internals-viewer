@@ -20,6 +20,7 @@
                                               Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
                                               SelectedLayer="{x:Bind Parent.SelectedLayer, Mode=OneWay}"
                                               FileId="{x:Bind FileId, Mode=OneWay}"
+                                              BorderColor="{ThemeResource AllocationBorderColor}"
                                               PageClicked="OnPageClicked"
                                               x:Name="Allocations"/>
             </Grid>
