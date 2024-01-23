@@ -109,8 +109,6 @@ public sealed partial class MainWindow
 
         await ViewModel.AddRecentConnectionCommand.ExecuteAsync(recent);
 
-        throw new Exception("test");
-
         return true;
     }
 
