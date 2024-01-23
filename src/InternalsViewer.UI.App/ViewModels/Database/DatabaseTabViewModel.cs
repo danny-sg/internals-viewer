@@ -17,7 +17,7 @@ namespace InternalsViewer.UI.App.ViewModels.Database;
 
 public class DatabaseTabViewModelFactory
 {
-    public static DatabaseTabViewModel Create(DatabaseSource database)
+    public DatabaseTabViewModel Create(DatabaseSource database)
         => new(database);
 }
 

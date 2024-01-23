@@ -21,6 +21,7 @@ using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Database;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Connections;
+using InternalsViewer.UI.App.Controls;
 
 namespace InternalsViewer.UI.App;
 
@@ -34,12 +35,11 @@ public sealed partial class MainWindow
 
     private MainViewModel ViewModel { get; }
 
-    public PageTabViewModelFactory PageTabViewModelFactory { get; }
+    private PageTabViewModelFactory PageTabViewModelFactory { get; }
 
     public DatabaseTabViewModelFactory DatabaseTabViewModelFactory { get; }
 
-    public ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
-
+    private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
     public MainWindow(IServiceProvider serviceProvider,
                       IDatabaseLoader databaseLoader,
@@ -72,6 +72,22 @@ public sealed partial class MainWindow
 
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, (_, m)
             => m.Reply(OpenPage(m.Request.Database, m.Request.PageAddress)));
+
+        WeakReferenceMessenger.Default.Register<ExceptionMessage>(this, (_, m)
+                       => ShowExceptionDialog(m.Value));
+    }
+
+    private async void ShowExceptionDialog(Exception exception)
+    {
+        var dialog = new ExceptionDialog();
+
+        dialog.Message = exception.Message;
+        dialog.StackTrace = exception.StackTrace ?? string.Empty;
+
+        dialog.XamlRoot = Content.XamlRoot;
+        dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+
+        await dialog.ShowAsync();
     }
 
     private async Task<bool> ConnectServer(string connectionString, RecentConnection recent)
@@ -92,6 +108,8 @@ public sealed partial class MainWindow
         await AddConnection(connection);
 
         await ViewModel.AddRecentConnectionCommand.ExecuteAsync(recent);
+
+        throw new Exception("test");
 
         return true;
     }

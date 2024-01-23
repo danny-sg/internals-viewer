@@ -28,7 +28,7 @@ public sealed partial class ConnectFilePage
     {
         var openPicker = new FileOpenPicker();
 
-        var window = (Application.Current as App)!.Window;
+        var window = App.MainWindow;
 
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
 

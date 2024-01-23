@@ -10,12 +10,7 @@
         <UseWinUI>true</UseWinUI>
         <UserSecretsId>fca01508-87d8-47e7-9683-c1f91185a04d</UserSecretsId>
         <AccelerateBuildsInVisualStudio>True</AccelerateBuildsInVisualStudio>
-        
-        <!-- Use our own Main entry point so we can control the HostBuilder -->
-        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-        <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-        <StartupObject>InternalsViewer.UI.App.Program</StartupObject>
-        <Nullable>enable</Nullable>
+                <Nullable>enable</Nullable>
         <ApplicationIcon>Assets\InternalsViewer.ico</ApplicationIcon>
         <EnableMsixTooling>true</EnableMsixTooling>
         <PublishProfile>win-$(Platform).pubxml</PublishProfile>
@@ -45,6 +40,7 @@
         <None Remove="Controls\Connections\BackupFileConnectionControl.xaml" />
         <None Remove="Controls\ConnectTile.xaml" />
         <None Remove="Controls\CopyButton.xaml" />
+        <None Remove="Controls\ExceptionDialog.xaml" />
         <None Remove="Controls\HeaderTile.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
@@ -185,6 +181,7 @@
         <PackageReference Include="SkiaSharp" Version="2.88.7" />
         <PackageReference Include="SkiaSharp.Views.WinUI" Version="2.88.7" />
         <PackageReference Include="System.Text.Json" Version="8.0.1" />
+        <PackageReference Include="WinUIEx" Version="2.3.2" />
         <Manifest Include="$(ApplicationManifest)" />
     </ItemGroup>
 
@@ -252,6 +249,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\ExceptionDialog.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\Page\MarkerListView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
