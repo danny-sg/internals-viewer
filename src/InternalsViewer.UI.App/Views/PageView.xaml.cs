@@ -13,7 +13,7 @@ namespace InternalsViewer.UI.App.Views;
 
 public sealed partial class PageView
 {
-    public PageTabViewModel TabViewModel => (PageTabViewModel)DataContext;
+    public PageTabViewModel ViewModel => (PageTabViewModel)DataContext;
 
     public PageView()
     {
@@ -26,7 +26,7 @@ public sealed partial class PageView
         {
             if (PageAddressParser.TryParse(PageAddressTextBox.Text, out var pageAddress))
             {
-                TabViewModel.LoadPageCommand.Execute(pageAddress);
+                ViewModel.LoadPageCommand.Execute(pageAddress);
             }
         }
     }
@@ -41,13 +41,13 @@ public sealed partial class PageView
 
         if (isShiftPressed)
         {
-            var request = new OpenPageRequest(TabViewModel.Database, pageAddress) { Slot = e.Slot };
+            var request = new OpenPageRequest(ViewModel.Database, pageAddress) { Slot = e.Slot };
 
             WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
         }
         else
         {
-            TabViewModel.LoadPageCommand.Execute(pageAddress);
+            ViewModel.LoadPageCommand.Execute(pageAddress);
         }
     }
 
@@ -59,7 +59,7 @@ public sealed partial class PageView
         if (listView?.SelectedItem == e.ClickedItem)
         {
             listView.DeselectAll();
-            TabViewModel.SelectedSlot = null;
+            ViewModel.SelectedSlot = null;
         }
     }
 }

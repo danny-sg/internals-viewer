@@ -1,10 +1,10 @@
 ﻿using InternalsViewer.Internals.Engine.Pages.Enums;
-using InternalsViewer.Internals.Services.Pages.Loaders;
+using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Readers.Headers;
 
-public class PageHeaderLoaderTests
+public class PageHeaderParserTests
 {
     [Fact]
     public async Task Can_Read_Header()
@@ -15,7 +15,7 @@ public class PageHeaderLoaderTests
 
         var data = await reader.Read("TestDatabase", new PageAddress(1, 9));
 
-        var header = PageHeaderLoader.Read(data);
+        var header = PageHeaderParser.Parse(data);
 
         Assert.Equal(new PageAddress(1, 9), header.PageAddress);
         Assert.Equal(1, header.HeaderVersion);
@@ -43,7 +43,7 @@ public class PageHeaderLoaderTests
     {
         var data = value.ToByteArray();
 
-        var header = PageHeaderLoader.Read(data);
+        var header = PageHeaderParser.Parse(data);
 
         Assert.Equal(new PageAddress(1, 9), header.PageAddress);
         Assert.Equal(1, header.HeaderVersion);

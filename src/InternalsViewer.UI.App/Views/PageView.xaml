@@ -56,16 +56,18 @@
                                  Width="105" Margin="0 8 10 0"  
                                  PlaceholderText="(File Id: Page Id)"  
                                  KeyDown="PageAddressTextBox_KeyDown"   
-                                 Text="{x:Bind TabViewModel.PageAddress, Mode=OneWay, Converter={StaticResource StringToPageAddressConverter}}" />
+                                 Text="{x:Bind ViewModel.PageAddress, 
+                                               Mode=OneWay, 
+                                               Converter={StaticResource StringToPageAddressConverter}}" />
                     </AppBarElementContainer>
                     <AppBarButton Label="Previous Page" 
                                   Icon="Previous" 
-                                  Command="{x:Bind TabViewModel.LoadPageCommand}" 
-                                  CommandParameter="{x:Bind TabViewModel.PreviousPage, Mode=OneWay}"/>
+                                  Command="{x:Bind ViewModel.LoadPageCommand}" 
+                                  CommandParameter="{x:Bind ViewModel.PreviousPage, Mode=OneWay}"/>
                     <AppBarButton Label="Next Page" 
                                   Icon="Next" 
-                                  Command="{x:Bind TabViewModel.LoadPageCommand}"
-                                  CommandParameter="{x:Bind TabViewModel.NextPage, Mode=OneWay}"/>
+                                  Command="{x:Bind ViewModel.LoadPageCommand}"
+                                  CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
 
                     <AppBarButton Label="Add Bookmark">
                         <AppBarButton.Icon>
@@ -86,26 +88,26 @@
                                 <TextBlock x:Name="ObjectName"
                                            FontWeight="Bold"
                                            Margin="0,0,10,0"  
-                                           Text="{x:Bind TabViewModel.ObjectName, Mode=OneWay}" />
+                                           Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}" />
                                 <Grid 
                                     Margin="0"
                                     Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
                                     <TextBlock x:Name="ObjectIndexType"
                                                Margin="0"  
                                                Foreground="BlueViolet"
-                                               Text="{x:Bind TabViewModel.ObjectIndexType, Mode=OneWay}" />
+                                               Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}" />
                                 </Grid >
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Grid.Row="1">
                                 <TextBlock x:Name="IndexName"
                                            Margin="0,0,10,0"  
-                                           Text="{x:Bind TabViewModel.IndexName, Mode=OneWay}" />
+                                           Text="{x:Bind ViewModel.IndexName, Mode=OneWay}" />
                                 <Grid Margin="0"
                                       Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
                                     <TextBlock x:Name="IndexType"
                                                Margin="0"  
                                                Foreground="DarkGreen"
-                                               Text="{x:Bind TabViewModel.IndexType, Mode=OneWay}" />
+                                               Text="{x:Bind ViewModel.IndexType, Mode=OneWay}" />
                                 </Grid >
                             </StackPanel>
                         </Grid>
@@ -119,9 +121,9 @@
                                  Width="455" 
                                  VerticalContentAlignment="Stretch"
                                  Margin="14,14,0,14"
-                                 Markers="{x:Bind TabViewModel.Markers, Mode=OneWay}"
-                                 Data="{x:Bind TabViewModel.Page.Data, Mode=OneWay}"
-                                 SelectedMarker="{x:Bind TabViewModel.SelectedMarker, Mode=TwoWay}"/>
+                                 Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                 Data="{x:Bind ViewModel.Page.Data, Mode=OneWay}"
+                                 SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
 
             <Grid x:Name="OffsetTableContainerGrid"
                       Grid.Row="1"
@@ -146,9 +148,9 @@
                           BorderThickness="1"
                           Grid.Row="1"
                           SelectionMode="Single"
-                          SelectedItem="{x:Bind TabViewModel.SelectedSlot, Mode=TwoWay}"
+                          SelectedItem="{x:Bind ViewModel.SelectedSlot, Mode=TwoWay}"
                           BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          ItemsSource="{x:Bind TabViewModel.Offsets, Mode=OneWay}"
+                          ItemsSource="{x:Bind ViewModel.Offsets, Mode=OneWay}"
                           Width="175"
                           ItemClick="OffsetTableListView_ItemClick"
                           ItemContainerStyle="{StaticResource ListViewItemSlotStyle}"
@@ -182,7 +184,7 @@
             <TabView Grid.Column="2" 
                      Grid.Row="1" 
                      Margin="14,0,14,14" 
-                     SelectedIndex="{x:Bind TabViewModel.SelectedTabIndex, Mode=TwoWay}"
+                     SelectedIndex="{x:Bind ViewModel.SelectedTabIndex, Mode=TwoWay}"
                      IsAddTabButtonVisible="False"
                      VerticalAlignment="Stretch"
                      TabWidthMode="SizeToContent">
@@ -197,24 +199,24 @@
                         BorderThickness="1,0,1,1"
                         VerticalAlignment="Stretch"
                         PageClicked="Control_PageClicked"
-                        Page="{x:Bind TabViewModel.Page, Mode=OneWay}" />
+                        Page="{x:Bind ViewModel.Page, Mode=OneWay}" />
                 </TabViewItem>
                 
                 <TabViewItem IsClosable="False" 
                              x:Name="RowDataTabViewItem"
-                             Visibility="{x:Bind TabViewModel.IsRowDataTabVisible, 
+                             Visibility="{x:Bind ViewModel.IsRowDataTabVisible, 
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
                     <TabViewItem.Header>
-                        Row Data
+                        <TextBlock Text="{x:Bind ViewModel.RowDataTabName}"/>
                     </TabViewItem.Header>
-                    <page:MarkerListView DataContext="{x:Bind TabViewModel, Mode=OneWay}" 
+                    <page:MarkerListView DataContext="{x:Bind ViewModel, Mode=OneWay}" 
                                          PageClicked="Control_PageClicked"/>
                 </TabViewItem>
                 
                 <TabViewItem IsClosable="False" 
                              x:Name="AllocationTabViewItem" 
-                             Visibility="{x:Bind TabViewModel.IsAllocationsTabVisible, 
+                             Visibility="{x:Bind ViewModel.IsAllocationsTabVisible, 
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
                     <TabViewItem.Header>
@@ -222,8 +224,8 @@
                     </TabViewItem.Header>
                     <allocation:AllocationControl Size="63903" 
                                                   PageClicked="Control_PageClicked"
-                                                  FileId="{x:Bind TabViewModel.Page.PageAddress.FileId, Mode=OneWay}"
-                                                  Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
+                                                  FileId="{x:Bind ViewModel.Page.PageAddress.FileId, Mode=OneWay}"
+                                                  Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
                 </TabViewItem>
             </TabView>
         </Grid>

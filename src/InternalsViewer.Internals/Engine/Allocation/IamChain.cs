@@ -28,9 +28,9 @@ namespace InternalsViewer.Internals.Engine.Allocation;
 /// If the allocation unit spans more than 64,000 extents additional IAM pages are linked via the page header Next Page and Previous Page 
 /// pointers to create a chain.
 /// </remarks>
-public class IamChain : IAllocationChain
+public class IamChain : IAllocationChain<IamPage>
 {
-    public List<AllocationPage> Pages { get; } = new();
+    public List<IamPage> Pages { get; } = new();
 
     public PageAddress[] SinglePageSlots { get; set; } = Array.Empty<PageAddress>();
 
@@ -47,7 +47,7 @@ public class IamChain : IAllocationChain
     /// <summary>
     /// Check is a specific extent is allocated
     /// </summary>
-    public bool IsExtentAllocated(int extent, short fileId)
+    private bool IsExtentAllocated(int extent, short fileId)
     {
         var page = Pages.FirstOrDefault(p => p.StartPage.FileId == fileId &&
                                              extent >= p.StartPage.PageId / 8 &&

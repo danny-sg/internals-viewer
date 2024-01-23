@@ -3,11 +3,11 @@ using System.Drawing;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
 
-namespace InternalsViewer.UI.App.Controls.Renderers;
+namespace InternalsViewer.UI.App.Controls.Allocation;
 
 public class AllocationRenderer : IDisposable
 {
-    public AllocationRenderer(Color borderColour, 
+    public AllocationRenderer(Color borderColour,
                               Size extentSize)
     {
         BorderColour = borderColour;
@@ -79,7 +79,7 @@ public class AllocationRenderer : IDisposable
     private SKPaint GetExtentPaint(Color colourFrom, Color colourTo)
     {
         var rect = new SKRect(0, 0, ExtentSize.Width, ExtentSize.Height);
-        
+
         var paint = new SKPaint
         {
             Shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
@@ -185,6 +185,6 @@ public class AllocationRenderer : IDisposable
         AllocationPaint.Dispose();
         BorderPaint.Dispose();
         BackgroundPaint.Dispose();
-        PagePaint.Dispose();    
+        PagePaint.Dispose();
     }
 }

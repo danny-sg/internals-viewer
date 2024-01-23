@@ -2,7 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
-using InternalsViewer.UI.App.Controls.Renderers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Controls.Primitives;

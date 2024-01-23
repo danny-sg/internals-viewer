@@ -2,6 +2,7 @@
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Pages.Parsers;
 
 namespace InternalsViewer.Internals.Services.Pages.Loaders;
 
@@ -18,7 +19,7 @@ public class PageLoader : IPageLoader
     {
         var data = await database.Connection.PageReader.Read(database.Name, pageAddress);
 
-        var header = PageHeaderLoader.Read(data);
+        var header = PageHeaderParser.Parse(data);
 
         var page = new PageData
         {

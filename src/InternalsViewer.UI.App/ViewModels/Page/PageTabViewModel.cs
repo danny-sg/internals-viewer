@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Internals.Engine;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -96,6 +97,9 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private ObservableCollection<AllocationLayer> allocationLayers = new();
 
     [ObservableProperty]
+    private string rowDataTabName = "Row Data";
+
+    [ObservableProperty]
     private bool isRowDataTabVisible;
 
     [ObservableProperty]
@@ -135,14 +139,19 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             return;
         }
 
+        AddMarkers(record);
+    }
+
+    private void AddMarkers(DataStructure source)
+    {
         var pageMarkers = GetPageMarkers(Page);
 
-        var recordMarkers = MarkerBuilder.BuildMarkers(record);
+        var recordMarkers = MarkerBuilder.BuildMarkers(source);
 
         Markers = new ObservableCollection<Marker>(pageMarkers.Concat(recordMarkers).OrderBy(o => o.StartPosition));
     }
 
-    [RelayCommand]
+        [RelayCommand]
     public async Task LoadPage(PageAddress address)
     {
         Logger.LogDebug("Loading Page {Address}", address);
@@ -181,7 +190,10 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 DisplayAllocationUnitPage(allocationUnitPage);
 
                 break;
+            case IamPage iamPage:
+                DisplayIamPage(iamPage);
 
+                break;
             case AllocationPage allocationPage:
                 DisplayAllocationPage(allocationPage);
 
@@ -207,6 +219,20 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         IsLoading = false;
     }
 
+    private void DisplayIamPage(IamPage iamPage)
+    {
+        LoadAllocationLayer(iamPage);
+
+        AddMarkers(iamPage);
+
+        RowDataTabName = "IAM Header/Single Page Allocations";
+
+        IsRowDataTabVisible = true;
+        IsAllocationsTabVisible = true;
+
+        SelectedTabIndex = SelectedTabIndex == RowDataTabIndex ? AllocationsTabIndex : SelectedTabIndex;
+    }
+
     private void DisplayAllocationPage(AllocationPage allocationPage)
     {
         LoadAllocationLayer(allocationPage);
@@ -222,6 +248,8 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         SetAllocationUnitDescription(allocationUnitPage);
 
         LoadRecords(allocationUnitPage);
+
+        RowDataTabName = "Row Data";
 
         IsAllocationsTabVisible = false;
         IsRowDataTabVisible = true;
@@ -308,7 +336,8 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             StartPosition = 0,
             EndPosition = 95,
             ForeColour = Color.Blue,
-            BackColour = Color.FromArgb(245, 245, 250)
+            BackColour = Color.FromArgb(245, 245, 250),
+            IsVisible = false
         });
 
         if (IncludeHeaderMarkers)
@@ -326,7 +355,8 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             StartPosition = offsetTableStart,
             EndPosition = PageData.Size,
             ForeColour = Color.Green,
-            BackColour = Color.FromArgb(245, 250, 245)
+            BackColour = Color.FromArgb(245, 250, 245),
+            IsVisible = false
         });
 
         return m;

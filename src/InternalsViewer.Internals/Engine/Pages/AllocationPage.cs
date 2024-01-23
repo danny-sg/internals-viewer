@@ -38,14 +38,4 @@ public class AllocationPage : Page
     /// Allocation bitmap
     /// </summary>
     public bool[] AllocationMap { get; set; } = new bool[AllocationInterval];
-
-    /// <summary>
-    /// Single page slots collection (IAM pages only).
-    /// </summary>
-    public List<PageAddress> SinglePageSlots { get; set; } = new();
-
-    /// <summary>
-    /// Start page for the allocation
-    /// </summary>
-    public PageAddress StartPage { get; set; }
 }

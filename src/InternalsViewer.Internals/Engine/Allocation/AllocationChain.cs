@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Engine.Allocation;
 /// <summary>
 /// An Allocation structure represented by a collection of allocation pages
 /// </summary>
-public class AllocationChain : IAllocationChain
+public class AllocationChain : IAllocationChain<AllocationPage>
 {
     public List<AllocationPage> Pages { get; } = new();
 

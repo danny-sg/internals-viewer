@@ -4,12 +4,12 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Parsers;
 
-namespace InternalsViewer.Internals.Services.Pages.Loaders;
+namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
 /// <summary>
 /// Responsible for loading the header of a Page
 /// </summary>
-public class PageHeaderLoader
+public class PageHeaderParser
 {
     private const byte HeaderVersionOffset = 0;
     private const byte PageTypeOffset = 1;
@@ -32,7 +32,7 @@ public class PageHeaderLoader
     private const byte GhostRecordCountOffset = 58;
     private const byte TornBitsOffset = 60;
 
-    public static PageHeader Read(byte[] data)
+    public static PageHeader Parse(byte[] data)
     {
         var header = new PageHeader();
 

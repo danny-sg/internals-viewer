@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using InternalsViewer.Internals.Engine;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
@@ -23,7 +24,11 @@ public class IamPageParser : PageParser, IPageParser<IamPage>
     {
         var iamPage = CopyToPageType<IamPage>(page);
 
-        return Parse(iamPage);
+        var result =  Parse(iamPage);
+
+        SetIamMarkers(result);
+
+        return result;
     }
 
     private static IamPage Parse(IamPage page)
@@ -32,7 +37,7 @@ public class IamPageParser : PageParser, IPageParser<IamPage>
         page.SinglePageSlots = GetSinglePageSlots(page);
 
         var allocationData = new byte[AllocationPage.AllocationInterval / 8];
-        
+
         Array.Copy(page.Data,
                    AllocationPage.AllocationArrayOffset,
                    allocationData,
@@ -46,7 +51,7 @@ public class IamPageParser : PageParser, IPageParser<IamPage>
         return page;
     }
 
-    private static List<PageAddress> GetSinglePageSlots(PageData page)
+    private static PageAddress[] GetSinglePageSlots(PageData page)
     {
         var singlePageSlots = new List<PageAddress>();
 
@@ -63,11 +68,23 @@ public class IamPageParser : PageParser, IPageParser<IamPage>
             offset += PageAddress.Size;
         }
 
-        return singlePageSlots;
+        return singlePageSlots.ToArray();
     }
 
     private static PageAddress GetIamStartPage(PageData page)
     {
         return PageAddressParser.Parse(page.Data, IamPage.StartPageOffset);
+    }
+
+    private static void SetIamMarkers(DataStructure page)
+    {
+        page.MarkDataStructure("StartPage", IamPage.StartPageOffset, PageAddress.Size);
+
+        for (var i = 0; i < 8; i++)
+        {
+            page.MarkDataStructure($"SinglePageSlot{i}", AllocationPage.SinglePageSlotOffset + i * PageAddress.Size, PageAddress.Size);
+        }
+
+        page.MarkDataStructure("AllocationMap", AllocationPage.AllocationArrayOffset, AllocationPage.AllocationInterval / 8);
     }
 }
