@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:InternalsViewer.UI.App.Models">
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <models:MarkStyle Name="Row Identifier" x:Key="MarkerStyleRid" ForeColour="{StaticResource Color.Blue}" BackColour="{StaticResource Color.Thistle}" />
+
+            <models:MarkStyle Name="Uniqueifier" x:Key="MarkerStyleUniqueifier" ForeColour="{StaticResource Color.SteelBlue}" BackColour="{StaticResource Color.AliceBlue}" />
+
+            <models:MarkStyle Name="Offset" x:Key="MarkerStyleBlobChildOffset" ForeColour="{StaticResource Color.Blue}" BackColour="{StaticResource Color.Thistle}" />
+
+            <models:MarkStyle Name="Length" x:Key="MarkerStyleBlobChildLength" ForeColour="{StaticResource Color.Red}" BackColour="{StaticResource Color.Thistle}" />
+
+            <models:MarkStyle Name="Status Bits A" x:Key="MarkerStyleStatusBitsA" ForeColour="{StaticResource Color.Red}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Status Bits B" x:Key="MarkerStyleStatusBitsB" ForeColour="{StaticResource Color.Maroon}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="ID" x:Key="MarkerStyleBlobId" ForeColour="{StaticResource Color.Navy}" BackColour="{StaticResource Color.AliceBlue}" />
+
+            <models:MarkStyle Name="Length" x:Key="MarkerStyleBlobLength" ForeColour="{StaticResource Color.Blue}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Type" x:Key="MarkerStyleBlobType" ForeColour="{StaticResource Color.DarkGreen}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="MaxLinks" x:Key="MarkerStyleMaxLinks" ForeColour="{StaticResource Color.Firebrick}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Current Links" x:Key="MarkerStyleCurrentLinks" ForeColour="{StaticResource Color.Firebrick}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Level" x:Key="MarkerStyleLevel" ForeColour="{StaticResource Color.SlateGray}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Size" x:Key="MarkerStyleBlobSize" ForeColour="{StaticResource Color.Purple}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Data" x:Key="MarkerStyleBlobData" ForeColour="{StaticResource Color.Gray}" BackColour="{StaticResource Color.PaleGoldenrod}" />
+
+            <models:MarkStyle Name="Data" x:Key="MarkerStyleCompressedValue" ForeColour="{StaticResource Color.Black}" BackColour="{StaticResource Color.PaleGreen}" />
+
+            <models:MarkStyle Name="Forwarding Stub" x:Key="MarkerStyleForwardingStub" ForeColour="{StaticResource Color.DarkBlue}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Down Page Pointer" x:Key="MarkerStyleDownPagePointer" ForeColour="{StaticResource Color.White}" BackColour="{StaticResource Color.Navy}" />
+
+            <models:MarkStyle Name="Column Offset Array" x:Key="MarkerStyleColumnOffsetArray" ForeColour="{StaticResource Color.Blue}" BackColour="{StaticResource Color.AliceBlue}" />
+
+            <models:MarkStyle Name="Column Count" x:Key="MarkerStyleColumnCount" ForeColour="{StaticResource Color.DarkGreen}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Column Count Offset" x:Key="MarkerStyleColumnCountOffset" ForeColour="{StaticResource Color.Blue}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Slot Offset" x:Key="MarkerStyleSlotOffset" ForeColour="{StaticResource Color.Black}" BackColour="{StaticResource Color.White}" />
+
+            <models:MarkStyle Name="Variable Length Column Count" x:Key="MarkerStyleVariableLengthColumnCount" ForeColour="{StaticResource Color.Black}" BackColour="{StaticResource Color.AliceBlue}" />
+
+            <models:MarkStyle Name="Null Bitmap" x:Key="MarkerStyleNullBitmap" ForeColour="{StaticResource Color.Purple}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Data" x:Key="MarkerStyleValue" ForeColour="{StaticResource Color.Gray}" BackColour="{StaticResource Color.LemonChiffon}" />
+
+            <models:MarkStyle Name="Sparse Columns" x:Key="MarkerStyleSparseColumns" ForeColour="{StaticResource Color.Black}" BackColour="{StaticResource Color.Olive}" />
+
+            <models:MarkStyle Name="Sparse Column Offsets" x:Key="MarkerStyleSparseColumnOffsets" ForeColour="{StaticResource Color.Black}" BackColour="{StaticResource Color.DarkKhaki}" />
+
+            <models:MarkStyle Name="Sparse Column Count" x:Key="MarkerStyleSparseColumnCount" ForeColour="{StaticResource Color.Black}" BackColour="{StaticResource Color.SeaGreen}" />
+
+            <models:MarkStyle Name="Complex Header" x:Key="MarkerStyleComplexHeader" ForeColour="{StaticResource Color.Green}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Page Mod Count" x:Key="MarkerStylePageModCount" ForeColour="{StaticResource Color.DarkGreen}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Size" x:Key="MarkerStyleCiSize" ForeColour="{StaticResource Color.Purple}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Length" x:Key="MarkerStyleCiLength" ForeColour="{StaticResource Color.Blue}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Timestamp" x:Key="MarkerStyleTimestamp" ForeColour="{StaticResource Color.DarkGreen}" BackColour="{StaticResource Color.PeachPuff}" />
+
+            <models:MarkStyle Name="Type" x:Key="MarkerStylePointerType" ForeColour="{StaticResource Color.DarkGreen}" BackColour="{StaticResource Color.PeachPuff}" />
+
+            <models:MarkStyle Name="Entry Count" x:Key="MarkerStyleEntryCount" ForeColour="{StaticResource Color.AliceBlue}" BackColour="{StaticResource Color.Gainsboro}" />
+
+            <models:MarkStyle Name="Length" x:Key="MarkerStyleOverflowLength" ForeColour="{StaticResource Color.Red}" BackColour="{StaticResource Color.PeachPuff}" />
+
+            <models:MarkStyle Name="Unused" x:Key="MarkerStyleUnused" ForeColour="{StaticResource Color.DarkGreen}" BackColour="{StaticResource Color.PeachPuff}" />
+
+            <models:MarkStyle Name="UpdateSeq" x:Key="MarkerStyleUpdateSeq" ForeColour="{StaticResource Color.DarkGreen}" BackColour="{StaticResource Color.PeachPuff}" />
+
+            <models:MarkStyle Name="Item" x:Key="MarkerStyleCdArrayItem" ForeColour="{StaticResource Color.White}" BackColour="{StaticResource Color.Orange}" />
+
+            <models:MarkStyle Name="Slot Count" x:Key="MarkerStyleSlotCount" ForeColour="{StaticResource Color.DarkGreen}" BackColour="{StaticResource Color.PeachPuff}" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

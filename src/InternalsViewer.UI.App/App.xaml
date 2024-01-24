@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     xmlns:converters1="using:CommunityToolkit.WinUI.Converters"
-    xmlns:ui="using:Windows.UI">
+    xmlns:ui="using:Windows.UI" xmlns:models="using:InternalsViewer.UI.App.Models">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -20,9 +20,13 @@
             <converters1:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:ColorToSolidColorBrushValueConverter x:Key="ColorToSolidColorBrushValueConverter"/>
             <converters:PageAddressToStringConverter x:Key="StringToPageAddressConverter"/>
+            <models:MarkStyle Name="Data" x:Key="MarkerStyleValue" ForeColour="Gray" BackColour="LemonChiffon" />
 
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
+                    <ResourceDictionary.MergedDictionaries>
+                        <ResourceDictionary Source="ms-appx:///Styles/Markers/MarkerStylesLight.xaml" />
+                    </ResourceDictionary.MergedDictionaries>
                     <ui:Color x:Key="AllocationBorderColor">White</ui:Color>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">

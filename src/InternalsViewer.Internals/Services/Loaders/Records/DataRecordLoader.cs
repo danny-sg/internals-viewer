@@ -18,7 +18,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 /// </remarks>
 public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
 {
-    public ILogger<DataRecordLoader> Logger { get; } = logger;
+    private ILogger<DataRecordLoader> Logger { get; } = logger;
 
     /// <summary>
     /// Loads the data record at the given offset
@@ -53,7 +53,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
         LoadStatusBitsB(record, data);
 
         // The record structure gives information about the structure of the record to decode the values
-        LoadRecordStructure(record, data, slotOffset, structure);
+        LoadRecordStructure(record, data, structure);
 
         LoadValues(record, structure, data);
 
@@ -84,7 +84,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
     ///     Column offset array                        - 2 bytes * Number of variable length columns
     ///     Variable length data                       - defined by Column offset array
     /// </remarks>
-    internal void LoadRecordStructure(DataRecord dataRecord, byte[] data, ushort slotOffset, TableStructure structure)
+    private void LoadRecordStructure(DataRecord dataRecord, byte[] data, TableStructure structure)
     {
         // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
         var columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);

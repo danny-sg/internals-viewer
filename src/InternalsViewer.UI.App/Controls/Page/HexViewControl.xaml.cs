@@ -157,8 +157,8 @@ public sealed partial class HexViewControl
                 }
                 else
                 {
-                    foregroundColour = marker.ForeColour.ToWindowsColor();
-                    backgroundColour = marker.BackColour.ToWindowsColor();
+                    foregroundColour = marker.ForeColour;
+                    backgroundColour = marker.BackColour;
                 }
 
                 var highlighter = new TextHighlighter

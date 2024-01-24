@@ -1,5 +1,8 @@
 ﻿namespace InternalsViewer.Internals.Engine.Annotations;
 
+/// <summary>
+/// Data Structure annotations that can be made against a <see cref="DataStructure">Data Structure</see> object
+/// </summary>
 public class DataStructureItem(string propertyName, int startPosition, int length)
 {
     public DataStructureItem(string propertyName, int startPosition, int length, int index)
@@ -20,13 +23,13 @@ public class DataStructureItem(string propertyName, int startPosition, int lengt
         Index = index;
     }
 
-    public int StartPosition { get; set; } = startPosition;
+    public int StartPosition { get; } = startPosition;
 
-    public int Length { get; set; } = length;
+    public int Length { get; } = length;
 
-    public string PropertyName { get; set; } = propertyName;
+    public string PropertyName { get; } = propertyName;
 
-    public int Index { get; set; } = -1;
+    public int Index { get; } = -1;
 
-    public string Prefix { get; set; } = string.Empty;
+    public string Prefix { get; } = string.Empty;
 }

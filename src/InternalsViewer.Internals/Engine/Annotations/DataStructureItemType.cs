@@ -41,4 +41,5 @@ public enum DataStructureItemType
     CdArrayItem,
     SlotCount,
     Uniqueifier,
+    PageAddress
 }

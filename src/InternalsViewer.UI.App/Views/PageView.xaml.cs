@@ -8,6 +8,8 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using Windows.UI.Core;
 using InternalsViewer.UI.App.ViewModels.Page;
+using Windows.ApplicationModel.DataTransfer;
+using System;
 
 namespace InternalsViewer.UI.App.Views;
 
@@ -61,5 +63,21 @@ public sealed partial class PageView
             listView.DeselectAll();
             ViewModel.SelectedSlot = null;
         }
+    }
+
+    private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
+    {
+        var option = int.Parse((sender as MenuFlyoutItem)?.Tag.ToString() ?? string.Empty);
+
+        var text = $"DBCC TRACEON (3604);{Environment.NewLine}" +
+            $"DBCC PAGE('{ViewModel.Database.Name}', " +
+            $"{ViewModel.Page.PageAddress.FileId}, " +
+            $"{ViewModel.Page.PageAddress.PageId}, " +
+            $"{option});";
+        
+        var package = new DataPackage();
+        package.SetText(text);
+        Clipboard.SetContent(package);
+
     }
 }

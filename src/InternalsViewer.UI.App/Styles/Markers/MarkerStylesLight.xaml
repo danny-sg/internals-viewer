@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:InternalsViewer.UI.App.Models">
+
+    <models:MarkStyle Name="Row Identifier" x:Key="MarkerStyleRid" ForeColour="Blue" BackColour="Thistle" />
+
+    <models:MarkStyle Name="Uniqueifier" x:Key="MarkerStyleUniqueifier" ForeColour="SteelBlue" BackColour="AliceBlue" />
+
+    <models:MarkStyle Name="Offset" x:Key="MarkerStyleBlobChildOffset" ForeColour="Blue" BackColour="Thistle" />
+
+    <models:MarkStyle Name="Length" x:Key="MarkerStyleBlobChildLength" ForeColour="Red" BackColour="Thistle" />
+
+    <models:MarkStyle Name="Status Bits A" x:Key="MarkerStyleStatusBitsA" ForeColour="Red" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Status Bits B" x:Key="MarkerStyleStatusBitsB" ForeColour="Maroon" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="ID" x:Key="MarkerStyleBlobId" ForeColour="Navy" BackColour="AliceBlue" />
+
+    <models:MarkStyle Name="Length" x:Key="MarkerStyleBlobLength" ForeColour="Blue" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Type" x:Key="MarkerStyleBlobType" ForeColour="DarkGreen" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="MaxLinks" x:Key="MarkerStyleMaxLinks" ForeColour="Firebrick" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Current Links" x:Key="MarkerStyleCurrentLinks" ForeColour="Firebrick" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Level" x:Key="MarkerStyleLevel" ForeColour="SlateGray" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Size" x:Key="MarkerStyleBlobSize" ForeColour="Purple" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Data" x:Key="MarkerStyleBlobData" ForeColour="Gray" BackColour="PaleGoldenrod" />
+
+    <models:MarkStyle Name="Data" x:Key="MarkerStyleCompressedValue" ForeColour="Black" BackColour="PaleGreen" />
+
+    <models:MarkStyle Name="Forwarding Stub" x:Key="MarkerStyleForwardingStub" ForeColour="DarkBlue" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Down Page Pointer" x:Key="MarkerStyleDownPagePointer" ForeColour="White" BackColour="Navy" />
+
+    <models:MarkStyle Name="Column Offset Array" x:Key="MarkerStyleColumnOffsetArray" ForeColour="Blue" BackColour="AliceBlue" />
+
+    <models:MarkStyle Name="Column Count" x:Key="MarkerStyleColumnCount" ForeColour="DarkGreen" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Column Count Offset" x:Key="MarkerStyleColumnCountOffset" ForeColour="Blue" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Slot Offset" x:Key="MarkerStyleSlotOffset" ForeColour="Black" BackColour="White" />
+
+    <models:MarkStyle Name="Variable Length Column Count" x:Key="MarkerStyleVariableLengthColumnCount" ForeColour="Black" BackColour="AliceBlue" />
+
+    <models:MarkStyle Name="Null Bitmap" x:Key="MarkerStyleNullBitmap" ForeColour="Purple" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Data" x:Key="MarkerStyleValue" ForeColour="Gray" BackColour="LemonChiffon" />
+
+    <models:MarkStyle Name="Sparse Columns" x:Key="MarkerStyleSparseColumns" ForeColour="Black" BackColour="Olive" />
+
+    <models:MarkStyle Name="Sparse Column Offsets" x:Key="MarkerStyleSparseColumnOffsets" ForeColour="Black" BackColour="DarkKhaki" />
+
+    <models:MarkStyle Name="Sparse Column Count" x:Key="MarkerStyleSparseColumnCount" ForeColour="Black" BackColour="SeaGreen" />
+
+    <models:MarkStyle Name="Complex Header" x:Key="MarkerStyleComplexHeader" ForeColour="Green" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Page Mod Count" x:Key="MarkerStylePageModCount" ForeColour="DarkGreen" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Size" x:Key="MarkerStyleCiSize" ForeColour="Purple" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Length" x:Key="MarkerStyleCiLength" ForeColour="Blue" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Timestamp" x:Key="MarkerStyleTimestamp" ForeColour="DarkGreen" BackColour="PeachPuff" />
+
+    <models:MarkStyle Name="Type" x:Key="MarkerStylePointerType" ForeColour="DarkGreen" BackColour="PeachPuff" />
+
+    <models:MarkStyle Name="Entry Count" x:Key="MarkerStyleEntryCount" ForeColour="AliceBlue" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Length" x:Key="MarkerStyleOverflowLength" ForeColour="Red" BackColour="PeachPuff" />
+
+    <models:MarkStyle Name="Unused" x:Key="MarkerStyleUnused" ForeColour="DarkGreen" BackColour="PeachPuff" />
+
+    <models:MarkStyle Name="UpdateSeq" x:Key="MarkerStyleUpdateSeq" ForeColour="DarkGreen" BackColour="PeachPuff" />
+
+    <models:MarkStyle Name="Item" x:Key="MarkerStyleCdArrayItem" ForeColour="White" BackColour="Orange" />
+
+    <models:MarkStyle Name="Slot Count" x:Key="MarkerStyleSlotCount" ForeColour="DarkGreen" BackColour="PeachPuff" />
+
+    <models:MarkStyle Name="Start Page" x:Key="MarkerStylePageAddress" ForeColour="Blue" BackColour="Thistle" />
+</ResourceDictionary>

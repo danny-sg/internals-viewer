@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.UI.App.Helpers;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Models;
 
@@ -17,6 +17,8 @@ public class Marker: DependencyObject
     public int Length => EndPosition - StartPosition;   
 
     public Color BackColour { get; set; }
+
+    public Color AlternateBackColour { get; set; }
 
     public Color ForeColour { get; set; }
 

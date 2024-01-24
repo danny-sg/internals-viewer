@@ -99,6 +99,8 @@
         <None Remove="Images\Wide310x150Logo.scale-200.png" />
         <None Remove="Images\Wide310x150Logo.scale-400.png" />
         <None Remove="Styles\CommonStyles.xaml" />
+        <None Remove="Styles\Markers\MarkerStylesDark.xaml" />
+        <None Remove="Styles\Markers\MarkerStylesLight.xaml" />
         <None Remove="Views\ConnectView.xaml" />
         <None Remove="Views\Connect\ConnectBackupPage.xaml" />
         <None Remove="Views\Connect\ConnectFilePage.xaml" />
@@ -252,6 +254,13 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Styles\Markers\MarkerStylesDark.xaml">
+        <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
+        <SubType>Designer</SubType>
+      </Page>
+      <Page Update="Styles\Markers\MarkerStylesLight.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\ExceptionDialog.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>

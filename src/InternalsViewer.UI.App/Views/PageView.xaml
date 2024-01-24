@@ -58,7 +58,19 @@
                                  KeyDown="PageAddressTextBox_KeyDown"   
                                  Text="{x:Bind ViewModel.PageAddress, 
                                                Mode=OneWay, 
-                                               Converter={StaticResource StringToPageAddressConverter}}" />
+                                               Converter={StaticResource StringToPageAddressConverter}}">
+                            <TextBox.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutSubItem Text="Copy DBCC PAGE command to clipboard">
+                                        <MenuFlyoutItem Text="Option 0 - Header" Click="MenuFlyoutItem_Click" Tag="0"/>
+                                        <MenuFlyoutItem Text="Option 1 - Per-row hex dump" Click="MenuFlyoutItem_Click" Tag="1"/>
+                                        <MenuFlyoutItem Text="Option 2 - Hex dump" Click="MenuFlyoutItem_Click" Tag="2"/>
+                                        <MenuFlyoutItem Text="Option 3 - Per-row interpretation" Click="MenuFlyoutItem_Click" Tag="3"/>
+                                    </MenuFlyoutSubItem>
+                                </MenuFlyout>
+
+                            </TextBox.ContextFlyout>
+                        </TextBox>
                     </AppBarElementContainer>
                     <AppBarButton Label="Previous Page" 
                                   Icon="Previous" 
@@ -188,7 +200,7 @@
                      IsAddTabButtonVisible="False"
                      VerticalAlignment="Stretch"
                      TabWidthMode="SizeToContent">
-                
+
                 <TabViewItem IsClosable="False" x:Name="PageHeaderTabViewItem">
                     <TabViewItem.Header>
                         Page Header
@@ -201,7 +213,7 @@
                         PageClicked="Control_PageClicked"
                         Page="{x:Bind ViewModel.Page, Mode=OneWay}" />
                 </TabViewItem>
-                
+
                 <TabViewItem IsClosable="False" 
                              x:Name="RowDataTabViewItem"
                              Visibility="{x:Bind ViewModel.IsRowDataTabVisible, 
@@ -213,7 +225,7 @@
                     <page:MarkerListView DataContext="{x:Bind ViewModel, Mode=OneWay}" 
                                          PageClicked="Control_PageClicked"/>
                 </TabViewItem>
-                
+
                 <TabViewItem IsClosable="False" 
                              x:Name="AllocationTabViewItem" 
                              Visibility="{x:Bind ViewModel.IsAllocationsTabVisible, 
@@ -224,6 +236,8 @@
                     </TabViewItem.Header>
                     <allocation:AllocationControl Size="63903" 
                                                   PageClicked="Control_PageClicked"
+                                                  IsTooltipEnabled="True"
+                                                  BorderColor="{ThemeResource AllocationBorderColor}"
                                                   FileId="{x:Bind ViewModel.Page.PageAddress.FileId, Mode=OneWay}"
                                                   Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
                 </TabViewItem>

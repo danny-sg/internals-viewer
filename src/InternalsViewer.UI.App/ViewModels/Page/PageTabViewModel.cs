@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -19,6 +18,8 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
@@ -264,7 +265,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         var layer = AllocationLayerBuilder.GenerateLayer(allocationPage);
 
         layer.Name = $"Allocation Page {allocationPage.PageAddress}";
-        layer.Colour = Color.Brown;
+        layer.Colour = System.Drawing.Color.Brown;
         layer.IsVisible = true;
         
         AllocationLayers = new ObservableCollection<AllocationLayer>(new[] { layer });
@@ -335,8 +336,8 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             Name = "Page Header",
             StartPosition = 0,
             EndPosition = 95,
-            ForeColour = Color.Blue,
-            BackColour = Color.FromArgb(245, 245, 250),
+            ForeColour = Colors.Blue,
+            BackColour = Color.FromArgb(1, 245, 245, 250),
             IsVisible = false
         });
 
@@ -354,8 +355,8 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             Name = "Offset Table",
             StartPosition = offsetTableStart,
             EndPosition = PageData.Size,
-            ForeColour = Color.Green,
-            BackColour = Color.FromArgb(245, 250, 245),
+            ForeColour = Colors.Green,
+            BackColour = Color.FromArgb(1, 245, 250, 245),
             IsVisible = false
         });
 

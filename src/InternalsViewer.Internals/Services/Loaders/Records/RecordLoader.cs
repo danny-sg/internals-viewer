@@ -14,7 +14,7 @@ public abstract class RecordLoader
     /// Gets the variable offset array.
     /// </summary>
     /// <returns>An array of 2-byte integers representing a start offset in the page</returns>
-    public static ushort[] GetOffsetArray(byte[] record, int size, int offset)
+    protected static ushort[] GetOffsetArray(byte[] record, int size, int offset)
     {
         var offsetArray = new ushort[size];
 
@@ -49,7 +49,7 @@ public abstract class RecordLoader
     /// <summary>
     /// Loads a LOB field.
     /// </summary>
-    public static void LoadLobField(RecordField field, byte[] data, int offset)
+    protected static void LoadLobField(RecordField field, byte[] data, int offset)
     {
         field.MarkDataStructure("BlobInlineRoot");
 
