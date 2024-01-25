@@ -7,17 +7,19 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:connections="using:InternalsViewer.UI.App.Controls.Connections"
     xmlns:connections1="using:InternalsViewer.UI.App.Models.Connections"
+    x:Name="CurrentStartPage"
     mc:Ignorable="d"
     Background="Transparent">
-    <Grid Padding="20,20,20,20">
+    <Grid Padding="20,20,20,20" x:Name="ConnectStartPageGrid">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Margin="0,0,0,36"
+        <StackPanel Margin="0,0,0,24"
                     Grid.Row="0" 
                     VerticalAlignment="Center"
                     Orientation="Vertical">
@@ -27,24 +29,24 @@
                        Margin="0,0,0,10"/>
             <TextBlock x:Name="SubHeaderText"
                        Style="{StaticResource BodyTextBlockStyle}"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       Text="Connect Internals Viewer to a database on a SQL Server instance, a detached/offline database file, or a full database backup" />
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                Connect Internals Viewer to a database on a SQL Server instance, a detached/offline database file, or a full database 
+                backup
+            </TextBlock>
         </StackPanel>
         <connections:ConnectTile Grid.Row="1">
             <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,20">
-
                 <connections:HeaderTile x:Name="ConnectSqlServerHeaderTile"
-                Title="Connect to SQL Server"
-                Description="Connect Internals Viewer to a SQL Server instance"
-                    Click="ConnectSqlServerHeaderTile_Click">
+                                        Title="Connect to SQL Server"
+                                        Description="Connect Internals Viewer to a SQL Server instance"
+                                        Click="ConnectSqlServerHeaderTile_Click">
                     <connections:HeaderTile.Source>
                         <Image Source="/Assets/AppLogo-512.png"/>
                     </connections:HeaderTile.Source>
                 </connections:HeaderTile>
-                <connections:HeaderTile
-                Title="Data file"
-                Description="Open an MDF data file for a database that has been taken offline"
-                Click="ConnectFileTile_OnClick">
+                <connections:HeaderTile Title="Data file"
+                                        Description="Open an MDF data file for a database that has been taken offline"
+                                        Click="ConnectFileTile_OnClick">
                     <connections:HeaderTile.Source>
                         <Image Source="/Assets/AppLogo-512.png" />
                     </connections:HeaderTile.Source>
@@ -55,7 +57,7 @@
                     <connections:HeaderTile.Source>
                         <Image Source="/Assets/AppLogo-512.png" />
                     </connections:HeaderTile.Source>
-                   
+
                 </connections:HeaderTile>
             </StackPanel>
         </connections:ConnectTile>
@@ -72,40 +74,43 @@
             </GridView.ItemContainerStyle>
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="connections1:RecentConnection">
-                    <Grid x:Name="controlRoot"
-                          Width="360"
-                          Height="90"
-                          Padding="8"
-                          HorizontalAlignment="Stretch"
-                          BorderBrush="{ThemeResource SurfaceStrokeColorFlyoutBrush}"
-                          Background="{ThemeResource LayerFillColorDefault}"
-                          CornerRadius="8"
-                          BorderThickness="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                    <Button Padding="-1"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch"
+                            Command="{Binding ElementName=CurrentStartPage, Path=ViewModel.ConnectRecentCommand}"
+                            CommandParameter="{x:Bind}">
+                        <Grid x:Name="controlRoot"
+                              Width="360"
+                              Height="90"
+                              Padding="8"
+                              HorizontalAlignment="Stretch"
+                              BorderThickness="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="1"
-                                    Grid.ColumnSpan="2"
-                                    Margin="16,0,0,0"
-                                    VerticalAlignment="Center"
-                                    Orientation="Vertical"
-                                    Spacing="2">
-                            <TextBlock
-                                Style="{StaticResource BodyStrongTextBlockStyle}"
-                                Text="{x:Bind Name}"
-                                TextLineBounds="TrimToCapHeight"
-                                TextWrapping="NoWrap" />
-                            <TextBlock
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                RelativePanel.Below="titleText"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Text="{x:Bind ConnectionType}"
-                                TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Grid>
+                            <StackPanel Grid.Column="1"
+                                        Grid.ColumnSpan="2"
+                                        Margin="16,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Orientation="Vertical"
+                                        Spacing="2">
+                                <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                           Text="{x:Bind Name}"
+                                           TextLineBounds="TrimToCapHeight"
+                                           TextWrapping="NoWrap" />
+                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           RelativePanel.Below="titleText"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Text="{x:Bind ConnectionType}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </Button>
                 </DataTemplate>
             </GridView.ItemTemplate>
             <GridView.ItemsPanel>
@@ -114,5 +119,8 @@
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
         </GridView>
+        <ProgressRing HorizontalAlignment="Left"
+                      Grid.Row="4"
+                      IsActive="{x:Bind ViewModel.ConnectRecentCommand.IsRunning, Mode=OneWay}"/>
     </Grid>
 </Page>

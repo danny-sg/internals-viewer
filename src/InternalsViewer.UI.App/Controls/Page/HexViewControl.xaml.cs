@@ -6,7 +6,6 @@ using System.Text;
 using Windows.UI;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
-using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;

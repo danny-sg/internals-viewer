@@ -8,14 +8,14 @@
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefault}">
         <NavigationView x:Name="ConnectNavigationView" 
-                     PaneTitle="Internals Viewer 2024.1"
-                     PaneDisplayMode="Auto" 
-                     IsTabStop="False" 
-                     IsBackButtonVisible="Collapsed"
-                     AlwaysShowHeader="False"
-                     Background="Transparent"
-                     SelectionFollowsFocus="Enabled"
-                     SelectionChanged="ConnectNavigationView_SelectionChanged" >
+                        PaneTitle="Internals Viewer 2024.1"
+                        PaneDisplayMode="Auto" 
+                        IsTabStop="False" 
+                        IsBackButtonVisible="Collapsed"
+                        AlwaysShowHeader="False"
+                        Background="Transparent"
+                        SelectionFollowsFocus="Enabled"
+                        SelectionChanged="ConnectNavigationView_SelectionChanged" >
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Start" Tag="ConnectStartPage" Icon="Play" IsSelected="True"/>
                 <NavigationViewItem Content="SQL Server" Tag="ConnectServerPage" >

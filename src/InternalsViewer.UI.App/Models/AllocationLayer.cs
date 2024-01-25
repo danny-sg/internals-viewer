@@ -54,10 +54,3 @@ public partial class AllocationLayer : ObservableObject
     [ObservableProperty]
     private bool isVisible;
 }
-
-public class ExtentAllocation(short fileId, int extentId)
-{
-    public int ExtentId { get; } = extentId;
-
-    public short FileId { get; } = fileId;
-}

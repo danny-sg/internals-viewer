@@ -8,6 +8,8 @@ public class ConnectServerMessage(string connectionString, RecentConnection rece
     public string ConnectionString { get; } = connectionString;
 
     public RecentConnection Recent { get; } = recent;
+
+    public bool IsPasswordRequired { get; set; }
 }
 
 public class ConnectFileMessage(string filename, RecentConnection recent) : AsyncRequestMessage<bool>

@@ -50,6 +50,7 @@
         <None Remove="Controls\Page\HexViewControl.xaml" />
         <None Remove="Controls\Page\MarkerKeyControl.xaml" />
         <None Remove="Controls\Page\MarkerListView.xaml" />
+        <None Remove="Controls\PasswordDialog.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
         <None Remove="Images\LargeTile.scale-100.png" />
         <None Remove="Images\LargeTile.scale-125.png" />
@@ -263,6 +264,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\PasswordDialog.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\PageAddressTextBox.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>

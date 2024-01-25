@@ -27,36 +27,36 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
     private readonly SqlConnectionStringBuilder builder = new() { TrustServerCertificate = true };
 
-    public bool CanConnect => !HasErrors && !IsBusy;    
+    public bool CanConnect() => !HasErrors && !IsBusy;    
 
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanConnect))]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     private string instanceName = "localhost";
 
     [Required]
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanConnect))]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     private int authenticationType = (int)SqlAuthenticationMethod.ActiveDirectoryIntegrated;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanConnect))]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     private string userId = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanConnect))]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     private string password = string.Empty;
 
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanConnect))]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     private string database = string.Empty;
 
     [ObservableProperty]
     private ObservableCollection<string> databases = new();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanConnect))]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     private bool isBusy;
 
     [ObservableProperty]
@@ -199,7 +199,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanConnect))]
     private async Task Connect()
     {
         ValidateAllProperties();
@@ -219,7 +219,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
         if (await CheckConnection(connectionString))
         {
-            var message = new ConnectServerMessage(connectionString, recent);
+            var message = new ConnectServerMessage(connectionString, recent) { IsPasswordRequired = false };
 
             await WeakReferenceMessenger.Default.Send(message);
 
@@ -262,6 +262,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
             Name = $"{InstanceName}.{Database}",
             ConnectionType = "Server",
             Value = GetConnectionString(),
+            IsPasswordRequired = AuthenticationType == (int)SqlAuthenticationMethod.SqlPassword
         };
 
         return recent;
@@ -295,6 +296,8 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
             RefreshConnectionString();
         }
+
+        ValidateAllProperties();
     }
 
     private void RefreshConnectionString()

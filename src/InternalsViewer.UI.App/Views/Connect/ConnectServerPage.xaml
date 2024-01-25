@@ -17,10 +17,18 @@
             </Style>
         </Grid.Resources>
         <StackPanel Spacing="6" Background="Transparent" >
-            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">SQL Server</TextBlock>
-            <TextBlock Style="{ThemeResource BodyTextBlockStyle}" Margin="0,0,14,14">
-                Connect Internals Viewer to a live SQL Server database. This requires the sysadmin permission.
-            </TextBlock>
+            <RichTextBlock Margin="0,0,0,14">
+                <Paragraph Margin="0,0,0,14">
+                    Connect Internals Viewer to a live SQL Server database.
+                </Paragraph>
+                <Paragraph>This requires the server level
+                    <Hyperlink 
+                        FontFamily="Consolas"
+                        NavigateUri="https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/server-level-roles">
+                        sysadmin
+                    </Hyperlink> role.
+                </Paragraph>
+            </RichTextBlock>
             <controls:SettingsCard Description="Name or network address of the SQL Server instance"
                             Header="Instance Name"
                             CornerRadius="4,4,0,0">
@@ -68,7 +76,6 @@
                             Margin="10,0,0,0"
                             Name="ConnectButton"
                             MinWidth="150"
-                            IsEnabled="{x:Bind ViewModel.CanConnect, Mode=OneWay}"
                             Command="{x:Bind ViewModel.ConnectCommand}"
                             Style="{ThemeResource AccentButtonStyle}"/>
                 </StackPanel>

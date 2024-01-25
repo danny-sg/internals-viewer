@@ -13,7 +13,7 @@ public sealed partial class ExceptionDialog
     }
 
     public static readonly DependencyProperty MessageProperty =
-        DependencyProperty.Register(nameof(Title), typeof(string), typeof(ExceptionDialog), new PropertyMetadata(null));
+        DependencyProperty.Register(nameof(Message), typeof(string), typeof(ExceptionDialog), new PropertyMetadata(null));
 
     public string StackTrace
     {

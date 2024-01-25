@@ -6,10 +6,12 @@ using InternalsViewer.UI.App.Models.Connections;
 using System.Linq;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.UI.App.ViewModels.Tabs;
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
-public partial class MainViewModel(SettingsService settingsService) 
+public partial class MainViewModel(SettingsService settingsService)
     : TabViewModel
 {
     private SettingsService SettingsService { get; } = settingsService;
@@ -46,6 +48,36 @@ public partial class MainViewModel(SettingsService settingsService)
         RecentConnections = new ObservableCollection<RecentConnection>(existing);
 
         await SettingsService.SaveSettingAsync("RecentConnections", RecentConnections.ToArray());
+    }
+
+    [RelayCommand]
+    private async Task ConnectRecent(RecentConnection recent)
+    {
+        switch (recent.ConnectionType)
+        {
+            case "Server":
+                var serverMessage = new ConnectServerMessage(recent.Value, recent);
+
+                serverMessage.IsPasswordRequired = recent.IsPasswordRequired;
+
+                await WeakReferenceMessenger.Default.Send(serverMessage);
+
+                break;
+
+            case "File":
+                var fileMessage = new ConnectFileMessage(recent.Value, recent);
+
+                await WeakReferenceMessenger.Default.Send(fileMessage);
+
+                break;
+
+            case "Backup":
+                var backupMessage = new ConnectFileMessage(recent.Value, recent);
+
+                await WeakReferenceMessenger.Default.Send(backupMessage);
+
+                break;
+        }
     }
 
     [ObservableProperty]

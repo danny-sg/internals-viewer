@@ -13,7 +13,6 @@
     </Window.SystemBackdrop>
     <Grid x:Name="RootGrid">
         <Grid.Resources>
-
             <Style TargetType="TabViewItem" x:Key="MainWindowTabStyle">
                 <Setter Property="HeaderTemplate">
                     <Setter.Value>
@@ -24,6 +23,7 @@
                 </Setter>
             </Style>
         </Grid.Resources>
+
         <TabView x:Name="WindowTabView"
                  HorizontalAlignment="Stretch" 
                  VerticalAlignment="Stretch" 
@@ -36,10 +36,8 @@
             <TabView.Resources>
                 <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" 
                                  Color="{ThemeResource LayerFillColorDefault}"/>
-                <SolidColorBrush x:Key="TabViewItemHeaderBorderBrush"
-                                 Color="Black"/>
-
             </TabView.Resources>
+
             <TabView.TabStripHeader>
                 <Grid x:Name="ShellTitlebarInset"  
                       MinHeight="32"
@@ -50,7 +48,6 @@
                         <ColumnDefinition x:Name="RightPaddingColumn" Width="0"/>
                     </Grid.ColumnDefinitions>
                 </Grid>
-
             </TabView.TabStripHeader>
 
             <TabView.TabStripFooter>

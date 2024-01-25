@@ -22,9 +22,9 @@ using InternalsViewer.UI.App.ViewModels.Database;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using InternalsViewer.UI.App.Controls;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using WinUIEx;
-using Microsoft.UI.Windowing;
 
 namespace InternalsViewer.UI.App;
 
@@ -59,7 +59,6 @@ public sealed partial class MainWindow
 
         ExtendsContentIntoTitleBar = true;
 
-
         InitializeComponent();
 
         this.SetIcon("Assets/InternalsViewer.ico");
@@ -67,7 +66,7 @@ public sealed partial class MainWindow
         SystemBackdrop = new MicaBackdrop { Kind = MicaKind.Base };
 
         WeakReferenceMessenger.Default.Register<ConnectServerMessage>(this, (_, m)
-            => m.Reply(ConnectServer(m.ConnectionString, m.Recent)));
+            => m.Reply(ConnectServer(m.ConnectionString, m.Recent, m.IsPasswordRequired)));
 
         WeakReferenceMessenger.Default.Register<ConnectFileMessage>(this, (_, m)
             => m.Reply(ConnectFile(m.Filename, m.Recent)));
@@ -94,8 +93,38 @@ public sealed partial class MainWindow
         await dialog.ShowAsync();
     }
 
-    private async Task<bool> ConnectServer(string connectionString, RecentConnection recent)
+    private async Task<string> ShowPasswordDialog()
     {
+        var dialog = new PasswordDialog();
+
+        dialog.XamlRoot = Content.XamlRoot;
+        dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+
+        var result = await dialog.ShowAsync();
+
+        if (result == ContentDialogResult.Primary)
+        {
+            return dialog.Password;
+        }
+
+        return string.Empty;
+    }
+
+    private async Task<bool> ConnectServer(string connectionString, RecentConnection recent, bool isPasswordRequired)
+    {
+        // Recent Connections don't store the password so if required it will prompt and update the connection string
+        if (isPasswordRequired)
+        {
+            var result = await ShowPasswordDialog();
+
+            if(string.IsNullOrEmpty(result))
+            {
+                return false;
+            }
+
+            connectionString = ConnectionHelper.SetPassword(connectionString, result);
+        }
+
         var connection = ServerConnectionFactory.Create(c => c.ConnectionString = connectionString);
 
         await AddConnection(connection);
@@ -143,8 +172,6 @@ public sealed partial class MainWindow
             Content = content,
             IconSource = new ImageIconSource { ImageSource = svg },
         };
-        
-        //tab.Style = Application.Current.Resources["MainWindowTabStyle"] as Style;
 
         BindTabTitle(viewModel, tab);
 
@@ -238,12 +265,6 @@ public sealed partial class MainWindow
 
     public async Task InitializeAsync()
     {
-
         await ViewModel.InitializeAsync();
-    }
-
-    private void AppLogoImage_Loaded(object sender, RoutedEventArgs e)
-    {
-       
     }
 }

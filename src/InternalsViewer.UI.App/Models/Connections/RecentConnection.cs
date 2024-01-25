@@ -16,4 +16,6 @@ public partial class RecentConnection : ObservableObject
 
     [ObservableProperty]
     private string id = Guid.NewGuid().ToString();
+
+    public bool IsPasswordRequired { get; init; }
 }
