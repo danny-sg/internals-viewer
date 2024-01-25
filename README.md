@@ -1,3 +1,8 @@
+<a href="https://apps.microsoft.com/detail/Internals%20Viewer/9MSW42CQMK2V?launch=true
+	&mode=mini">
+	<img src="https://get.microsoft.com/images/en-gb%20dark.svg" width="200"/>
+</a>
+
 # Internals Viewer 2024
 
 >This is based on the codebase for Internals Viewer from 2007. The code has been upgraded to .NET Core 8 and I've started modernizing things. I'll hopefully be able to refactor and add testing to bring the 16 year old code back to life and up to scratch.
