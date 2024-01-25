@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 /// <summary>
 /// Provider responsible for providing allocation unit information from the metadata collection
 /// </summary>
-public class AllocationUnitProvider
+public static class AllocationUnitProvider
 {
     private const int SchemaClassId = 50;
 

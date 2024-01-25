@@ -20,13 +20,15 @@ using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI;
 using Windows.UI;
+using InternalsViewer.Internals.Helpers;
+using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
 public class PageTabViewModelFactory(ILogger<PageTabViewModel> logger, IPageService pageService, IRecordService recordService)
 {
     private ILogger<PageTabViewModel> Logger { get; } = logger;
-   
+
     private IPageService PageService { get; } = pageService;
 
     private IRecordService RecordService { get; } = recordService;
@@ -37,11 +39,11 @@ public class PageTabViewModelFactory(ILogger<PageTabViewModel> logger, IPageServ
     }
 }
 
-public partial class PageTabViewModel(ILogger<PageTabViewModel> logger, 
-                                      IPageService pageService, 
+public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
+                                      IPageService pageService,
                                       IRecordService recordService,
                                       DatabaseSource database)
-    : TabViewModel()
+    : TabViewModel
 {
     private ILogger<PageTabViewModel> Logger { get; } = logger;
 
@@ -74,6 +76,8 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private PageAddress previousPage;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PageForwardCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PageBackCommand))]
     private Internals.Engine.Pages.Page page = new EmptyPage();
 
     [ObservableProperty]
@@ -89,7 +93,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private Marker? selectedMarker;
 
     [ObservableProperty]
-    private bool includeHeaderMarkers = false;
+    private bool includeHeaderMarkers;
 
     [ObservableProperty]
     private ObservableCollection<Marker> markers = new();
@@ -113,7 +117,9 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private const int RowDataTabIndex = 1;
     private const int AllocationsTabIndex = 2;
 
-    private List<Record> Records { get; set; } = new();
+    private List<Record> Records { get; } = new();
+
+    private History<PageAddress> History { get; } = new();
 
     partial void OnIncludeHeaderMarkersChanged(bool value)
     {
@@ -152,7 +158,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         Markers = new ObservableCollection<Marker>(pageMarkers.Concat(recordMarkers).OrderBy(o => o.StartPosition));
     }
 
-        [RelayCommand]
+    [RelayCommand]
     public async Task LoadPage(PageAddress address)
     {
         Logger.LogDebug("Loading Page {Address}", address);
@@ -165,7 +171,9 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         var resultPage = await PageService.GetPage(Database, address);
 
-        Name = $"{resultPage.PageHeader.PageType} Page {address}";
+        Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} Page {address}";
+
+        History.Add(pageAddress);
 
         Logger.LogDebug("Building Offset Table");
 
@@ -217,14 +225,44 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             PreviousPage = new PageAddress(pageAddress.FileId, pageAddress.PageId - 1);
         }
 
+    
+
         IsLoading = false;
     }
+
+    [RelayCommand(CanExecute = nameof(CanGoBack))]
+    private async Task PageBack()
+    {
+        var back = History.Back();
+
+        if (back != default)
+        {
+            await LoadPage(back);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanGoForward))]
+    private async Task PageForward()
+    {
+        var forward = History.Forward();
+
+        if (forward != default)
+        {
+            await LoadPage(forward);
+        }
+    }
+
+    private bool CanGoForward() => History.CanGoForward();
+
+    private bool CanGoBack() => History.CanGoBack();
 
     private void DisplayIamPage(IamPage iamPage)
     {
         LoadAllocationLayer(iamPage);
 
         AddMarkers(iamPage);
+
+        SetAllocationUnitDescription(iamPage.AllocationUnit);
 
         RowDataTabName = "IAM Header/Single Page Allocations";
 
@@ -246,7 +284,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private void DisplayAllocationUnitPage(AllocationUnitPage allocationUnitPage)
     {
-        SetAllocationUnitDescription(allocationUnitPage);
+        SetAllocationUnitDescription(allocationUnitPage.AllocationUnit);
 
         LoadRecords(allocationUnitPage);
 
@@ -267,19 +305,19 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         layer.Name = $"Allocation Page {allocationPage.PageAddress}";
         layer.Colour = System.Drawing.Color.Brown;
         layer.IsVisible = true;
-        
+
         AllocationLayers = new ObservableCollection<AllocationLayer>(new[] { layer });
     }
 
-    private void SetAllocationUnitDescription(AllocationUnitPage dataPage)
+    private void SetAllocationUnitDescription(AllocationUnit allocationUnit)
     {
-        ObjectName = $"{dataPage.AllocationUnit.SchemaName}.{dataPage.AllocationUnit.TableName}";
+        ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
 
-        IndexName = dataPage.AllocationUnit.IndexName;
-        IndexType = dataPage.AllocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
+        IndexName = allocationUnit.IndexName;
+        IndexType = allocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
                                                          ? "Non-Clustered"
                                                          : string.Empty;
-        ObjectIndexType = dataPage.AllocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
+        ObjectIndexType = allocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
                                                          ? "Clustered"
                                                          : "Heap";
     }

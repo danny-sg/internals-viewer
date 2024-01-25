@@ -11,7 +11,7 @@ namespace InternalsViewer.UI.App.Controls.Page;
 
 public sealed partial class PageHeaderControl
 {
-    public event EventHandler<PageClickedEventArgs>? PageClicked;
+    public event EventHandler<PageNavigationEventArgs>? PageClicked;
 
     public PageHeaderControl()
     {
@@ -110,7 +110,7 @@ public sealed partial class PageHeaderControl
 
         var pageAddress = PageAddressParser.Parse(value ?? string.Empty);
 
-        PageClicked?.Invoke(this, new PageClickedEventArgs(pageAddress.FileId, pageAddress.PageId));
+        PageClicked?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId));
     }
 }
 

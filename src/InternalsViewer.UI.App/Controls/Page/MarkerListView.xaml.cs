@@ -8,7 +8,7 @@ namespace InternalsViewer.UI.App.Controls.Page;
 
 public sealed partial class MarkerListView
 {
-    public event EventHandler<PageClickedEventArgs>? PageClicked;
+    public event EventHandler<PageNavigationEventArgs>? PageClicked;
 
     public PageTabViewModel TabViewModel => (PageTabViewModel)DataContext;
 
@@ -25,7 +25,7 @@ public sealed partial class MarkerListView
         {
             var rowIdentifier = RowIdentifier.Parse(value);
 
-            var eventArgs = new PageClickedEventArgs(rowIdentifier.PageAddress.FileId, rowIdentifier.PageAddress.PageId)
+            var eventArgs = new PageNavigationEventArgs(rowIdentifier.PageAddress.FileId, rowIdentifier.PageAddress.PageId)
             {
                 Slot = rowIdentifier.SlotId
             };

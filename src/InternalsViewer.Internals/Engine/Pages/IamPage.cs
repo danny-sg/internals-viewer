@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Annotations;
+using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Internals.Engine.Pages;
 
@@ -16,6 +17,8 @@ public class IamPage : AllocationPage
     public int IndexId { get; set; }
 
     public int PageCount { get; set; }
+
+    public AllocationUnit AllocationUnit { get; set; } = AllocationUnit.Unknown;
 
     /// <summary>
     /// Single page slots collection (IAM pages only).

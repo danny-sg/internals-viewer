@@ -22,7 +22,9 @@ using InternalsViewer.UI.App.ViewModels.Database;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using InternalsViewer.UI.App.Controls;
+using InternalsViewer.UI.App.ViewModels.Tabs;
 using WinUIEx;
+using Microsoft.UI.Windowing;
 
 namespace InternalsViewer.UI.App;
 
@@ -46,7 +48,7 @@ public sealed partial class MainWindow
                       DatabaseTabViewModelFactory databaseTabViewModelFactory,
                       ConnectServerViewModelFactory connectServerViewModelFactory)
     {
-        Title = "Internals Viewer 2024";
+        Title = "Internals Viewer";
 
         DatabaseLoader = databaseLoader;
 
@@ -54,6 +56,9 @@ public sealed partial class MainWindow
         PageTabViewModelFactory = pageTabViewModelFactory;
         DatabaseTabViewModelFactory = databaseTabViewModelFactory;
         ConnectServerViewModelFactory = connectServerViewModelFactory;
+
+        ExtendsContentIntoTitleBar = true;
+
 
         InitializeComponent();
 
@@ -72,8 +77,6 @@ public sealed partial class MainWindow
 
         WeakReferenceMessenger.Default.Register<ExceptionMessage>(this, (_, m)
                        => ShowExceptionDialog(m.Value));
-
-        ExtendsContentIntoTitleBar = true;
 
         SetTitleBar(CustomDragRegion);
     }
@@ -132,25 +135,34 @@ public sealed partial class MainWindow
 
         var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
 
+        var title = $"Page {pageAddress.PageId}";
+
         var tab = new TabViewItem
         {
-            Name = $"Page {pageAddress.PageId}",
+            Name = title,
             Content = content,
-            IconSource = new ImageIconSource { ImageSource = svg }
+            IconSource = new ImageIconSource { ImageSource = svg },
         };
+        
+        //tab.Style = Application.Current.Resources["MainWindowTabStyle"] as Style;
 
-        var titleBinding = new Binding { Path = new PropertyPath("Name"), Mode = BindingMode.OneWay };
-
-        titleBinding.Source = viewModel;
-
-        tab.SetBinding(TabViewItem.HeaderProperty, titleBinding);
+        BindTabTitle(viewModel, tab);
 
         WindowTabView.TabItems.Add(tab);
         WindowTabView.SelectedItem = tab;
 
-        ConnectTab!.IsClosable = true;
-
         return true;
+    }
+
+    private void BindTabTitle(TabViewModel viewModel, TabViewItem tab)
+    {
+        var titleBinding = new Binding { Mode = BindingMode.OneWay };
+
+        titleBinding.Source = viewModel;
+
+        tab.Style = RootGrid.Resources["MainWindowTabStyle"] as Style;
+
+        tab.SetBinding(TabViewItem.HeaderProperty, titleBinding);
     }
 
     private async Task AddConnection(IConnectionType connection)
@@ -170,35 +182,22 @@ public sealed partial class MainWindow
         var tab = new TabViewItem
         {
             Name = connection.Name,
-            Header = connection.Name,
             IconSource = new ImageIconSource { ImageSource = svg },
             Content = content
         };
 
+        BindTabTitle(viewModel, tab);
+
         WindowTabView.TabItems.Add(tab);
         WindowTabView.SelectedItem = tab;
-
-        ConnectTab!.IsClosable = true;
     }
 
     private void TabView_OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
-        // Hide the Connect tab rather than close it
-        if (args.Tab == ConnectTab)
-        {
-            ConnectTab.Visibility = Visibility.Collapsed;
-        }
-        else
+        // Close tab if it's not the connect tab
+        if (args.Tab != ConnectTab)
         {
             sender.TabItems.Remove(args.Tab);
-        }
-
-        // If all tabs have been closed, show the Connect tab
-        if (sender.TabItems.Count == 1)
-        {
-            ConnectTab!.Visibility = Visibility.Visible;
-            ConnectTab!.IsClosable = false;
-            sender.SelectedItem = ConnectTab;
         }
     }
 
@@ -219,16 +218,18 @@ public sealed partial class MainWindow
 
         content.DataContext = ViewModel;
 
+        ViewModel.Name = "Internals Viewer";
 
         var icon = new ImageIconSource { ImageSource = new BitmapImage(new Uri("ms-appx:///Assets/AppIcon16.png")) };
 
         var connectTab = new TabViewItem
         {
-            Name = "Connect",
-            Header = "Connect",
             Content = content,
-            IconSource = icon
+            IconSource = icon,
+            IsClosable = false
         };
+
+        BindTabTitle(ViewModel, connectTab);
 
         tabView.TabItems.Add(connectTab);
 
@@ -237,6 +238,12 @@ public sealed partial class MainWindow
 
     public async Task InitializeAsync()
     {
+
         await ViewModel.InitializeAsync();
+    }
+
+    private void AppLogoImage_Loaded(object sender, RoutedEventArgs e)
+    {
+       
     }
 }

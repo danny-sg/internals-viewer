@@ -6,11 +6,24 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:winUiEx="using:WinUIEx"
+    xmlns:tabs="using:InternalsViewer.UI.App.ViewModels.Tabs"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop Kind="Base"/>
     </Window.SystemBackdrop>
     <Grid x:Name="RootGrid">
+        <Grid.Resources>
+
+            <Style TargetType="TabViewItem" x:Key="MainWindowTabStyle">
+                <Setter Property="HeaderTemplate">
+                    <Setter.Value>
+                        <DataTemplate x:DataType="tabs:TabViewModel">
+                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" Margin="0,0,8,0"/>
+                        </DataTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </Grid.Resources>
         <TabView x:Name="WindowTabView"
                  HorizontalAlignment="Stretch" 
                  VerticalAlignment="Stretch" 
@@ -23,6 +36,9 @@
             <TabView.Resources>
                 <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" 
                                  Color="{ThemeResource LayerFillColorDefault}"/>
+                <SolidColorBrush x:Key="TabViewItemHeaderBorderBrush"
+                                 Color="Black"/>
+
             </TabView.Resources>
             <TabView.TabStripHeader>
                 <Grid x:Name="ShellTitlebarInset"  
@@ -33,13 +49,8 @@
                         <ColumnDefinition/>
                         <ColumnDefinition x:Name="RightPaddingColumn" Width="0"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="TitleBarTextBlock" 
-                               Text="{x:Bind Title}" 
-                               Style="{StaticResource CaptionTextBlockStyle}"
-                               Grid.Column="1"
-                               VerticalAlignment="Center"
-                               Margin="14,0,14,0"/>
                 </Grid>
+
             </TabView.TabStripHeader>
 
             <TabView.TabStripFooter>

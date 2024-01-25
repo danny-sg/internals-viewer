@@ -46,11 +46,10 @@ public static class StringHelpers
         return ToHexString(new byte[1] { bytes });
     }
 
-    public static string SplitCamelCase(this string value)
+    public static string SplitCamelCase(this string value, string separator = " ")
     {
-        return Regex.Replace(value, "([A-Z])", " $1", RegexOptions.Compiled).Trim();
+        return Regex.Replace(value, "(\\B[A-Z])", $"{separator}$1", RegexOptions.Compiled).Trim();
     }
-
 
     public static byte[] ToByteArray(this string value)
     {

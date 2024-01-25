@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:system="using:System"
     x:Name="Root"
     mc:Ignorable="d">
     <UserControl.Resources>
@@ -65,7 +66,18 @@
                     <toolkit:DataGridTextColumn Header="Index Name"
                                                   Binding="{Binding IndexName}"/>
                     <toolkit:DataGridTextColumn Header="Index Type"
-                                                 Binding="{Binding IndexType}"/>
+                                                 Binding="{Binding IndexTypeDescription}"/>
+                    <toolkit:DataGridTemplateColumn Header="Page Count">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid>
+                                    <TextBlock Text="{x:Bind TotalPages, Mode=OneWay}"
+                                               Margin="0,4,10,4"
+                                               TextAlignment="Right"/>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
                     <toolkit:DataGridTemplateColumn Header="Root Page">
                         <toolkit:DataGridTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
@@ -103,8 +115,7 @@
                             </DataTemplate>
                         </toolkit:DataGridTemplateColumn.CellTemplate>
                     </toolkit:DataGridTemplateColumn>
-                    <toolkit:DataGridTextColumn Header="Page Count"
-                                                 Binding="{Binding TotalPages}"/>
+
                 </toolkit:DataGrid.Columns>
             </toolkit:DataGrid>
         </Grid>

@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Database;
 using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.UI.App.Views;
 
@@ -20,9 +21,9 @@ public sealed partial class DatabaseView
 
     public double AllocationMapHeight { get; set; }
 
-    private void OnPageClicked(object? sender, PageClickedEventArgs e)
+    private void OnPageSelected(object? sender, PageNavigationEventArgs e)
     {
-        var pageAddress = new Internals.Engine.Address.PageAddress(e.FileId, e.PageId);
+        var pageAddress = new PageAddress(e.FileId, e.PageId);
 
         WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(TabViewModel.Database, pageAddress)));
     }
@@ -51,6 +52,5 @@ public sealed partial class DatabaseView
                 TabViewModel.AllocationMapHeight = itemHeight;
             }
         }
-
     }
 }

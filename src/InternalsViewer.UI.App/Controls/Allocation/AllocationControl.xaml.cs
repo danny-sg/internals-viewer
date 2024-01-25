@@ -19,7 +19,7 @@ public sealed partial class AllocationControl
 
     private ExtentLayout Layout { get; set; } = new();
 
-    public event EventHandler<PageClickedEventArgs>? PageClicked;
+    public event EventHandler<PageNavigationEventArgs>? PageClicked;
 
     public Color BorderColor
     {
@@ -29,6 +29,18 @@ public sealed partial class AllocationControl
 
     public static readonly DependencyProperty BorderColorProperty
         = DependencyProperty.Register(nameof(BorderColor),
+            typeof(Color),
+            typeof(AllocationControl),
+            new PropertyMetadata(default, OnPropertyChanged));
+
+    public Color GridColor
+    {
+        get => (Color)GetValue(GridColorProperty);
+        set => SetValue(GridColorProperty, value);
+    }
+
+    public static readonly DependencyProperty GridColorProperty
+        = DependencyProperty.Register(nameof(GridColor),
             typeof(Color),
             typeof(AllocationControl),
             new PropertyMetadata(default, OnPropertyChanged));
@@ -158,7 +170,7 @@ public sealed partial class AllocationControl
 
         canvas.Clear(SKColors.Transparent);
 
-        using var extentRenderer = new AllocationRenderer(BorderColor.ToColor(), ExtentSize);
+        using var extentRenderer = new AllocationRenderer(GridColor.ToColor(), ExtentSize);
 
         extentRenderer.IsDrawBorder = true;
 
@@ -286,8 +298,8 @@ public sealed partial class AllocationControl
     {
         var horizontalCount = layout.HorizontalCount;
 
-        var row = (extentId - 1) / horizontalCount;
-        var column = (extentId - 1) % horizontalCount;
+        var row = (extentId) / horizontalCount;
+        var column = (extentId) % horizontalCount;
 
         var left = column * ExtentSize.Width;
         var top = row * ExtentSize.Height;
@@ -303,7 +315,7 @@ public sealed partial class AllocationControl
         return new SKRect(0, 0, ExtentSize.Width, ExtentSize.Height);
     }
 
-    public ExtentLayout GetExtentLayout(int extentCount, Size extentSize, decimal width, decimal height)
+    private ExtentLayout GetExtentLayout(int extentCount, Size extentSize, decimal width, decimal height)
     {
         // Number of extents horizontally/vertically available if ths screen is full
         var extentsHorizontal = (int)Math.Floor(width / extentSize.Width);
@@ -348,7 +360,7 @@ public sealed partial class AllocationControl
     /// </summary>
     private int GetExtentAtPosition(int x, int y)
     {
-        return 1 + y / ExtentSize.Height * Layout.HorizontalCount + x / ExtentSize.Width + ScrollPosition;
+        return  y / ExtentSize.Height * Layout.HorizontalCount + x / ExtentSize.Width + ScrollPosition;
     }
 
     /// <summary>
@@ -429,7 +441,7 @@ public sealed partial class AllocationControl
 
         if (pageId <= PageCount)
         {
-            PageClicked?.Invoke(this, new PageClickedEventArgs(FileId, pageId));
+            PageClicked?.Invoke(this, new PageNavigationEventArgs(FileId, pageId));
         }
     }
 
@@ -444,7 +456,7 @@ public sealed partial class AllocationControl
     }
 }
 
-public class PageClickedEventArgs(short fileId, int pageId) : EventArgs
+public class PageNavigationEventArgs(short fileId, int pageId) : EventArgs
 {
     public short FileId { get; } = fileId;
 

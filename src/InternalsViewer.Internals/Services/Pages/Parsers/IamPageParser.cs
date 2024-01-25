@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using InternalsViewer.Internals.Engine;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Parsers;
@@ -23,6 +24,11 @@ public class IamPageParser : PageParser, IPageParser<IamPage>
     public IamPage Parse(PageData page)
     {
         var iamPage = CopyToPageType<IamPage>(page);
+
+        iamPage.AllocationUnit = iamPage.Database
+                                        .AllocationUnits
+                                        .FirstOrDefault(a => a.AllocationUnitId == iamPage.PageHeader.AllocationUnitId)
+                                 ?? AllocationUnit.Unknown;
 
         var result =  Parse(iamPage);
 

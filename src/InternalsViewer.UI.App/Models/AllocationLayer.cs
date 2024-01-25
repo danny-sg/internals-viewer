@@ -3,6 +3,7 @@ using System.Drawing;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.UI.App.Models;
 
@@ -21,7 +22,10 @@ public partial class AllocationLayer : ObservableObject
     private string indexName  = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IndexTypeDescription))]
     private IndexType indexType;
+
+    public string IndexTypeDescription => IndexType.ToString().SplitCamelCase("-");
 
     [ObservableProperty]
     private bool isSystemObject;

@@ -8,6 +8,7 @@
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
+    xmlns:controls="using:InternalsViewer.UI.App.Controls"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.Resources>
@@ -19,7 +20,6 @@
                 <Setter Property="MinHeight" Value="30" />
                 <Setter Property="Padding" Value="10" />
             </Style>
-
             <Style x:Key="SlotHeader" TargetType="Grid" >
                 <Setter Property="Height" Value="30"/>
                 <Setter Property="MinHeight" Value="22" />
@@ -52,42 +52,34 @@
                     DefaultLabelPosition="Right" 
                     HorizontalAlignment="Left">
                     <AppBarElementContainer>
-                        <TextBox x:Name="PageAddressTextBox"
-                                 Width="105" Margin="0 8 10 0"  
-                                 PlaceholderText="(File Id: Page Id)"  
-                                 KeyDown="PageAddressTextBox_KeyDown"   
-                                 Text="{x:Bind ViewModel.PageAddress, 
-                                               Mode=OneWay, 
-                                               Converter={StaticResource StringToPageAddressConverter}}">
-                            <TextBox.ContextFlyout>
-                                <MenuFlyout>
-                                    <MenuFlyoutSubItem Text="Copy DBCC PAGE command to clipboard">
-                                        <MenuFlyoutItem Text="Option 0 - Header" Click="MenuFlyoutItem_Click" Tag="0"/>
-                                        <MenuFlyoutItem Text="Option 1 - Per-row hex dump" Click="MenuFlyoutItem_Click" Tag="1"/>
-                                        <MenuFlyoutItem Text="Option 2 - Hex dump" Click="MenuFlyoutItem_Click" Tag="2"/>
-                                        <MenuFlyoutItem Text="Option 3 - Per-row interpretation" Click="MenuFlyoutItem_Click" Tag="3"/>
-                                    </MenuFlyoutSubItem>
-                                </MenuFlyout>
-
-                            </TextBox.ContextFlyout>
-                        </TextBox>
+                        <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
+                                                     PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 
+                                                     AddressChanged="PageAddressTextBox_Changed"/>
                     </AppBarElementContainer>
-                    <AppBarButton Label="Previous Page" 
+                    <AppBarButton Label="Back" 
                                   Icon="Previous" 
-                                  Command="{x:Bind ViewModel.LoadPageCommand}" 
-                                  CommandParameter="{x:Bind ViewModel.PreviousPage, Mode=OneWay}"/>
-                    <AppBarButton Label="Next Page" 
+                                  Command="{x:Bind ViewModel.PageBackCommand}" />
+                    <AppBarButton Label="Forward" 
                                   Icon="Next" 
-                                  Command="{x:Bind ViewModel.LoadPageCommand}"
-                                  CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
-
-                    <AppBarButton Label="Add Bookmark">
-                        <AppBarButton.Icon>
-                            <ImageIcon Source="ms-appx:///Assets/Bookmark.svg"/>
-                        </AppBarButton.Icon>
-                    </AppBarButton>
+                                  Command="{x:Bind ViewModel.PageForwardCommand}"/>
                     <AppBarSeparator />
                     <AppBarElementContainer />
+                    <CommandBar.SecondaryCommands>
+                        <AppBarButton Label="Add Bookmark">
+                            <AppBarButton.Icon>
+                                <ImageIcon Source="ms-appx:///Assets/Bookmark.svg"/>
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+                        <AppBarSeparator />
+                        <AppBarButton Label="Page + 1" 
+                                      Icon="Previous" 
+                                      Command="{x:Bind ViewModel.LoadPageCommand}" 
+                                      CommandParameter="{x:Bind ViewModel.PreviousPage, Mode=OneWay}"/>
+                        <AppBarButton Label="Page - 1" 
+                                      Icon="Next" 
+                                      Command="{x:Bind ViewModel.LoadPageCommand}"
+                                      CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
+                    </CommandBar.SecondaryCommands>
                 </CommandBar>
                 <CommandBar HorizontalAlignment="Right">
                     <AppBarElementContainer>
@@ -200,7 +192,8 @@
                      IsAddTabButtonVisible="False"
                      VerticalAlignment="Stretch"
                      TabWidthMode="SizeToContent">
-
+                <TabView.Resources>
+                </TabView.Resources>
                 <TabViewItem IsClosable="False" x:Name="PageHeaderTabViewItem">
                     <TabViewItem.Header>
                         Page Header
@@ -220,7 +213,7 @@
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
                     <TabViewItem.Header>
-                        <TextBlock Text="{x:Bind ViewModel.RowDataTabName}"/>
+                        <TextBlock Text="{x:Bind ViewModel.RowDataTabName, Mode=OneWay}"/>
                     </TabViewItem.Header>
                     <page:MarkerListView DataContext="{x:Bind ViewModel, Mode=OneWay}" 
                                          PageClicked="Control_PageClicked"/>
@@ -237,7 +230,8 @@
                     <allocation:AllocationControl Size="63903" 
                                                   PageClicked="Control_PageClicked"
                                                   IsTooltipEnabled="True"
-                                                  BorderColor="{ThemeResource AllocationBorderColor}"
+                                                  BorderColor="{ThemeResource CardStrokeColorDefault}"
+                                                  GridColor="{ThemeResource AllocationBorderColor}"
                                                   FileId="{x:Bind ViewModel.Page.PageAddress.FileId, Mode=OneWay}"
                                                   Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
                 </TabViewItem>

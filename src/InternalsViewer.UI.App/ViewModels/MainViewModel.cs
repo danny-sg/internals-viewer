@@ -5,11 +5,12 @@ using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.Models.Connections;
 using System.Linq;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.UI.App.ViewModels.Tabs;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
 public partial class MainViewModel(SettingsService settingsService) 
-    : ObservableObject
+    : TabViewModel
 {
     private SettingsService SettingsService { get; } = settingsService;
 

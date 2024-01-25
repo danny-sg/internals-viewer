@@ -35,6 +35,8 @@
       <Content Remove="Assets\DatabaseFile.svg" />
     </ItemGroup>
     <ItemGroup>
+        <None Remove="Assets\AppLogo-16.svg" />
+        <None Remove="Assets\AppLogo.svg" />
         <None Remove="Controls\AllocationControl.xaml" />
         <None Remove="Controls\AllocationDataGridView.xaml" />
         <None Remove="Controls\Connections\BackupFileConnectionControl.xaml" />
@@ -43,6 +45,7 @@
         <None Remove="Controls\ExceptionDialog.xaml" />
         <None Remove="Controls\HeaderTile.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
+        <None Remove="Controls\PageAddressTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Controls\Page\HexViewControl.xaml" />
         <None Remove="Controls\Page\MarkerKeyControl.xaml" />
@@ -248,12 +251,21 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Content Update="Assets\AppLogo.svg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+      <Content Update="Assets\AppLogo-16.svg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
       <None Update="Assets\Database.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\PageAddressTextBox.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Styles\Markers\MarkerStylesDark.xaml">
         <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
         <SubType>Designer</SubType>

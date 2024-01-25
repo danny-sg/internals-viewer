@@ -1,15 +1,13 @@
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.UI.App.Messages;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using Windows.UI.Core;
 using InternalsViewer.UI.App.ViewModels.Page;
-using Windows.ApplicationModel.DataTransfer;
-using System;
+using InternalsViewer.UI.App.Controls.Allocation;
 
 namespace InternalsViewer.UI.App.Views;
 
@@ -22,18 +20,12 @@ public sealed partial class PageView
         InitializeComponent();
     }
 
-    private void PageAddressTextBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    private void PageAddressTextBox_Changed(object sender, PageNavigationEventArgs args)
     {
-        if (e.Key == VirtualKey.Enter)
-        {
-            if (PageAddressParser.TryParse(PageAddressTextBox.Text, out var pageAddress))
-            {
-                ViewModel.LoadPageCommand.Execute(pageAddress);
-            }
-        }
+        ViewModel.LoadPageCommand.Execute(new PageAddress(args.FileId, args.PageId));
     }
 
-    private void Control_PageClicked(object sender, Controls.Allocation.PageClickedEventArgs e)
+    private void Control_PageClicked(object sender, PageNavigationEventArgs e)
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
@@ -63,21 +55,5 @@ public sealed partial class PageView
             listView.DeselectAll();
             ViewModel.SelectedSlot = null;
         }
-    }
-
-    private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
-    {
-        var option = int.Parse((sender as MenuFlyoutItem)?.Tag.ToString() ?? string.Empty);
-
-        var text = $"DBCC TRACEON (3604);{Environment.NewLine}" +
-            $"DBCC PAGE('{ViewModel.Database.Name}', " +
-            $"{ViewModel.Page.PageAddress.FileId}, " +
-            $"{ViewModel.Page.PageAddress.PageId}, " +
-            $"{option});";
-        
-        var package = new DataPackage();
-        package.SetText(text);
-        Clipboard.SetContent(package);
-
     }
 }

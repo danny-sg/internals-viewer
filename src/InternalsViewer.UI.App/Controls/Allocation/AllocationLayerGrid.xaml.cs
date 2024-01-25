@@ -38,7 +38,7 @@ public sealed partial class AllocationLayerGrid
             typeof(AllocationLayerGrid),
             new PropertyMetadata(default, OnPropertyChanged));
 
-    public event EventHandler<PageClickedEventArgs>? PageClicked;
+    public event EventHandler<PageNavigationEventArgs>? PageClicked;
 
     public AllocationLayerGrid()
     {
@@ -89,6 +89,6 @@ public sealed partial class AllocationLayerGrid
     {
         var pageAddress = (PageAddress)((HyperlinkButton)sender).Tag;
 
-        PageClicked?.Invoke(this, new PageClickedEventArgs(pageAddress.FileId, pageAddress.PageId));
+        PageClicked?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId));
     }
 }
