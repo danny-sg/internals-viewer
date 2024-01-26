@@ -1,6 +1,7 @@
 name: Build application and create GitHub release
 on:
-  workflow_dispatch:
+  push:
+    tags: [ 'v*.*.*' ]
 
 jobs:
   build:
@@ -27,7 +28,7 @@ jobs:
 
       - name: Create release
         run: |
-          gh release create ${{ steps.gitversion.outputs.MajorMinorPatch }}
+          gh release create ${{ github.ref }}
         env:
           GITHUB_TOKEN: ${{ github.TOKEN }}
         shell: bash
