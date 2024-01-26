@@ -24,4 +24,6 @@ public class MarkStyle
     public SolidColorBrush AlternateBackColour { get; set; } = new(Colors.Transparent);
 
     public string Name { get; set; } = string.Empty;
+
+    public int? Ordinal { get; set; }
 }

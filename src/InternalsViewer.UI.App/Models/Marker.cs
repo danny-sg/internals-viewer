@@ -32,6 +32,8 @@ public class Marker: DependencyObject
         
     public DataStructureItemType ItemType { get; set; }
 
+    public int? Ordinal { get; set; }
+
     public static Marker? GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
     {
         return markers.FirstOrDefault(marker => marker.StartPosition >= startPosition & marker.EndPosition <= endPosition);

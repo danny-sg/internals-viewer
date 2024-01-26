@@ -26,7 +26,7 @@ public partial class AllocationLayer : ObservableObject
     private IndexType indexType;
 
     public string IndexTypeDescription => IndexType.ToString().SplitCamelCase("-");
-
+    
     [ObservableProperty]
     private bool isSystemObject;
 

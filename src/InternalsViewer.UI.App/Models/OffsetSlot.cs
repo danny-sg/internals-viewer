@@ -2,7 +2,7 @@
 
 public class OffsetSlot
 {
-    public ushort Index { get; init; }
+    public short Index { get; init; }
 
     public ushort Offset { get; init; }
 

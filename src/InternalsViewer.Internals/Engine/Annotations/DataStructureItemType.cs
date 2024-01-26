@@ -41,5 +41,27 @@ public enum DataStructureItemType
     CdArrayItem,
     SlotCount,
     Uniqueifier,
-    PageAddress
+    PageAddress,
+
+    // Header
+    HeaderPageAddress,
+    PageType,
+    NextPage,
+    PreviousPage,
+    InternalObjectId,
+    InternalIndexId,
+    IndexLevel,
+    FreeCount,
+    FreeData,
+    FixedLengthSize,
+    PageSlotCount,
+    ReservedCount,
+    TransactionReservedCount,
+    TornBits,
+    FlagBits,
+    Lsn,
+    HeaderVersion,
+    GhostRecordCount,
+    TypeFlagBits,
+    InternalTransactionId
 }

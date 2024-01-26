@@ -102,7 +102,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private ObservableCollection<AllocationLayer> allocationLayers = new();
 
     [ObservableProperty]
-    private string rowDataTabName = "Row Data";
+    private string markerTabName = "Page Header";
 
     [ObservableProperty]
     private bool isRowDataTabVisible;
@@ -113,9 +113,15 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [ObservableProperty]
     private int selectedTabIndex;
 
+    [ObservableProperty]
+    private short allocationFileId;
+
     private const int HeaderTab = 0;
     private const int RowDataTabIndex = 1;
     private const int AllocationsTabIndex = 2;
+
+    private const short PageHeaderSlot = -100;
+    private const short IamHeaderSlot = -10;
 
     private List<Record> Records { get; } = new();
 
@@ -134,28 +140,18 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             return;
         }
 
-        AddRecordMarkers(value.Offset);
-    }
-
-    private void AddRecordMarkers(ushort value)
-    {
-        var record = Records.FirstOrDefault(r => r.SlotOffset == value);
-
-        if (record is null)
+        switch (value.Index)
         {
-            return;
+            case PageHeaderSlot:
+                AddPageHeaderMarkers();
+                break;
+            case IamHeaderSlot:
+                AddIamHeaderMarkers();
+                break;
+            default:
+                AddRecordMarkers(value);
+                break;
         }
-
-        AddMarkers(record);
-    }
-
-    private void AddMarkers(DataStructure source)
-    {
-        var pageMarkers = GetPageMarkers(Page);
-
-        var recordMarkers = MarkerBuilder.BuildMarkers(source);
-
-        Markers = new ObservableCollection<Marker>(pageMarkers.Concat(recordMarkers).OrderBy(o => o.StartPosition));
     }
 
     [RelayCommand]
@@ -179,19 +175,24 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         var slots = resultPage.OffsetTable.Select((s, i) => new OffsetSlot
         {
-            Index = (ushort)i,
+            Index = (short)i,
             Offset = s,
             Description = $"0x{s:X}"
-        });
+        }).ToList();
 
-        SelectedSlot = null;
-        SelectedMarker = null;
+        var headerSlot = new OffsetSlot
+        {
+            Index = PageHeaderSlot,
+            Description = "Page Header"
+        };
 
-        Offsets = new ObservableCollection<OffsetSlot>(slots);
+        var iamHeaderSlot = new OffsetSlot
+        {
+            Index = IamHeaderSlot,
+            Description = "IAM Header"
+        };
 
-        Logger.LogDebug("Adding Page Markers");
-
-        AddPageMarkers(resultPage);
+        slots.Insert(0, headerSlot);
 
         switch (resultPage)
         {
@@ -201,6 +202,8 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 break;
             case IamPage iamPage:
                 DisplayIamPage(iamPage);
+
+                slots.Insert(1, iamHeaderSlot);
 
                 break;
             case AllocationPage allocationPage:
@@ -216,6 +219,11 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 break;
         }
 
+        Offsets = new ObservableCollection<OffsetSlot>(new[] { headerSlot }.Union(slots));
+
+        SelectedSlot = headerSlot;
+        SelectedMarker = null;
+
         Page = resultPage;
 
         NextPage = new PageAddress(pageAddress.FileId, pageAddress.PageId + 1);
@@ -225,7 +233,8 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             PreviousPage = new PageAddress(pageAddress.FileId, pageAddress.PageId - 1);
         }
 
-    
+        AddPageMarkers(resultPage);
+        AddPageHeaderMarkers();
 
         IsLoading = false;
     }
@@ -258,13 +267,9 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private void DisplayIamPage(IamPage iamPage)
     {
-        LoadAllocationLayer(iamPage);
-
-        AddMarkers(iamPage);
+        LoadIamLayer(iamPage);
 
         SetAllocationUnitDescription(iamPage.AllocationUnit);
-
-        RowDataTabName = "IAM Header/Single Page Allocations";
 
         IsRowDataTabVisible = true;
         IsAllocationsTabVisible = true;
@@ -288,8 +293,6 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         LoadRecords(allocationUnitPage);
 
-        RowDataTabName = "Row Data";
-
         IsAllocationsTabVisible = false;
         IsRowDataTabVisible = true;
 
@@ -298,12 +301,30 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         SelectedTabIndex = SelectedTabIndex == AllocationsTabIndex ? RowDataTabIndex : SelectedTabIndex;
     }
 
+    private void LoadIamLayer(IamPage iamPage)
+    {
+        var layer = AllocationLayerBuilder.GenerateLayer(iamPage);
+
+        // IAMs are not necessarily in the same file as where they are tracking. The Start Page file determines the file
+        AllocationFileId = iamPage.StartPage.FileId;
+
+        layer.Name = $"IAM Page {iamPage.PageAddress}";
+        layer.Colour = System.Drawing.Color.Brown;
+
+        layer.IsVisible = true;
+
+        AllocationLayers = new ObservableCollection<AllocationLayer>(new[] { layer });
+    }
+
     private void LoadAllocationLayer(AllocationPage allocationPage)
     {
         var layer = AllocationLayerBuilder.GenerateLayer(allocationPage);
 
+        AllocationFileId = allocationPage.PageAddress.FileId;
+
         layer.Name = $"Allocation Page {allocationPage.PageAddress}";
         layer.Colour = System.Drawing.Color.Brown;
+
         layer.IsVisible = true;
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(new[] { layer });
@@ -322,7 +343,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                                                          : "Heap";
     }
 
-    private void LoadRecords(Internals.Engine.Pages.Page target)
+    private void LoadRecords(AllocationUnitPage target)
     {
         Logger.LogDebug("Loading Records");
 
@@ -358,14 +379,64 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     /// <summary>
     /// Add the header and offset table markers (applies to all pages)
     /// </summary>
-    private void AddPageMarkers(Internals.Engine.Pages.Page p)
+    private void AddPageMarkers(PageData p)
     {
         var m = GetPageMarkers(p);
 
         Markers = new ObservableCollection<Marker>(m);
     }
 
-    private List<Marker> GetPageMarkers(Internals.Engine.Pages.Page p)
+    private void AddPageHeaderMarkers()
+    {
+        MarkerTabName = "Page Header";
+        var headerMarkers = MarkerBuilder.BuildMarkers(Page.PageHeader);
+
+        headerMarkers.Add(new Marker
+        {
+            Name = "Unused",
+            StartPosition = 64,
+            EndPosition = 95,
+            ForeColour = Colors.Gray,
+            BackColour = Colors.AliceBlue,
+            IsVisible = false
+        });
+
+        Markers = new ObservableCollection<Marker>(headerMarkers);
+    }
+
+    private void AddIamHeaderMarkers()
+    {
+        MarkerTabName = "IAM Header";
+
+        var m = MarkerBuilder.BuildMarkers(Page);
+
+        Markers = new ObservableCollection<Marker>(m);
+    }
+
+    private void AddRecordMarkers(OffsetSlot offsetSlot)
+    {
+        MarkerTabName = $"Slot {offsetSlot.Description}";
+
+        var record = Records.FirstOrDefault(r => r.SlotOffset == offsetSlot.Offset);
+
+        if (record is null)
+        {
+            return;
+        }
+
+        AddMarkers(record);
+    }
+
+    private void AddMarkers(DataStructure source)
+    {
+        var pageMarkers = GetPageMarkers(Page);
+
+        var recordMarkers = MarkerBuilder.BuildMarkers(source);
+
+        Markers = new ObservableCollection<Marker>(pageMarkers.Concat(recordMarkers).OrderBy(o => o.StartPosition));
+    }
+
+    private List<Marker> GetPageMarkers(PageData p)
     {
         var m = new List<Marker>();
 
@@ -378,13 +449,6 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             BackColour = Color.FromArgb(1, 245, 245, 250),
             IsVisible = false
         });
-
-        if (IncludeHeaderMarkers)
-        {
-            var headerMarkers = MarkerBuilder.BuildMarkers(p.PageHeader);
-
-            m.AddRange(headerMarkers);
-        }
 
         var offsetTableStart = PageData.Size - p.PageHeader.SlotCount * 2;
 

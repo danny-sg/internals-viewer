@@ -79,7 +79,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
             LoadColumnOffsetArray(record, startIndex, page);
 
             // Calculate the offset of the variable length data
-            record.VariableLengthDataOffset = (ushort)(page.PageHeader.MinLen
+            record.VariableLengthDataOffset = (ushort)(page.PageHeader.FixedLengthSize
                                                        + sizeof(short)
                                                        + startIndex
                                                        + sizeof(short) * record.VariableLengthColumnCount);
@@ -162,7 +162,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         //Last 6 bytes of the fixed slot
         var address = new byte[PageAddress.Size];
 
-        var downPagePointerOffset = record.SlotOffset + page.PageHeader.MinLen - PageAddress.Size;
+        var downPagePointerOffset = record.SlotOffset + page.PageHeader.FixedLengthSize - PageAddress.Size;
 
         Array.Copy(page.Data, downPagePointerOffset, address, 0, PageAddress.Size);
 
@@ -186,7 +186,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
     private void LoadColumnOffsetArray(Record record, int varColStartIndex, Page page)
     {
-        var variableColumnCountOffset = record.SlotOffset + page.PageHeader.MinLen + varColStartIndex;
+        var variableColumnCountOffset = record.SlotOffset + page.PageHeader.FixedLengthSize + varColStartIndex;
 
         record.VariableLengthColumnCount = BitConverter.ToUInt16(page.Data, variableColumnCountOffset);
 
@@ -195,7 +195,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         // Load offset array of 2-byte integers indicating the end offset of each variable length field
         record.ColOffsetArray = GetOffsetArray(page.Data,
                                                record.VariableLengthColumnCount,
-                                               record.SlotOffset + page.PageHeader.MinLen + sizeof(short) + varColStartIndex);
+                                               record.SlotOffset + page.PageHeader.FixedLengthSize + sizeof(short) + varColStartIndex);
 
         record.MarkDataStructure("ColOffsetArrayDescription",
                                  variableColumnCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));
@@ -215,7 +215,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
             if (columnOffset >= 0)
             {
-                if (IsRowIdentifier(column, nodeType, page.PageHeader.MinLen))
+                if (IsRowIdentifier(column, nodeType, page.PageHeader.FixedLengthSize))
                 {
                     LoadRidField(columnOffset, record, page.Data);
                 }
@@ -371,7 +371,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     {
         record.NullBitmapSize = (short)((structure.Columns.Count - 1) / 8 + 1);
 
-        var columnCountPosition = record.SlotOffset + page.PageHeader.MinLen;
+        var columnCountPosition = record.SlotOffset + page.PageHeader.FixedLengthSize;
 
         record.ColumnCount = BitConverter.ToInt16(page.Data, columnCountPosition);
 
@@ -379,7 +379,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
         var nullBitmapBytes = new byte[record.NullBitmapSize];
 
-        var nullBitmapPosition = record.SlotOffset + page.PageHeader.MinLen + sizeof(short);
+        var nullBitmapPosition = record.SlotOffset + page.PageHeader.FixedLengthSize + sizeof(short);
 
         Array.Copy(page.Data,
                    nullBitmapPosition,

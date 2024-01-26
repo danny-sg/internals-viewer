@@ -9,7 +9,7 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// <summary>
 /// Responsible for loading the header of a Page
 /// </summary>
-public class PageHeaderParser
+public static class PageHeaderParser
 {
     private const byte HeaderVersionOffset = 0;
     private const byte PageTypeOffset = 1;
@@ -18,7 +18,7 @@ public class PageHeaderParser
     private const byte FlagBitsOffset = 4;
     private const byte IndexIdOffset = 6;
     private const byte PreviousPageOffset = 8;
-    private const byte MinLenOffset = 14;
+    private const byte FixedLengthOffset = 14;
     private const byte NextPageOffset = 16;
     private const byte SlotCountOffset = 22;
     private const byte ObjectIdOffset = 24;
@@ -31,6 +31,7 @@ public class PageHeaderParser
     private const byte InternalTransactionIdOffset = 52;
     private const byte GhostRecordCountOffset = 58;
     private const byte TornBitsOffset = 60;
+    private const byte UnusedOffset = 62;
 
     public static PageHeader Parse(byte[] data)
     {
@@ -62,7 +63,7 @@ public class PageHeaderParser
         pageHeader.TypeFlagBits = data[TypeFlagBitsOffset];
         pageHeader.FlagBits = BitConverter.ToInt16(data, FlagBitsOffset);
 
-        pageHeader.MinLen = BitConverter.ToInt16(data, MinLenOffset);
+        pageHeader.FixedLengthSize = BitConverter.ToInt16(data, FixedLengthOffset);
 
         pageHeader.SlotCount = BitConverter.ToInt16(data, SlotCountOffset);
         pageHeader.FreeCount = BitConverter.ToInt16(data, FreeCountOffset);
@@ -95,7 +96,7 @@ public class PageHeaderParser
 
         header.MarkDataStructure("PreviousPage", PreviousPageOffset, PageAddress.Size);
 
-        header.MarkDataStructure("MinLen", MinLenOffset, sizeof(short));
+        header.MarkDataStructure("FixedLengthSize", FixedLengthOffset, sizeof(short));
 
         header.MarkDataStructure("NextPage", NextPageOffset, PageAddress.Size);
 

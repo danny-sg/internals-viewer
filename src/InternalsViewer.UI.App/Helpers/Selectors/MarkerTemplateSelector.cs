@@ -17,7 +17,10 @@ public class MarkerTemplateSelector : DataTemplateSelector
         var pointerTypes = new[]
         {
             Internals.Engine.Annotations.DataStructureItemType.DownPagePointer,
-            Internals.Engine.Annotations.DataStructureItemType.Rid
+            Internals.Engine.Annotations.DataStructureItemType.Rid,
+            Internals.Engine.Annotations.DataStructureItemType.HeaderPageAddress,
+            Internals.Engine.Annotations.DataStructureItemType.NextPage,
+            Internals.Engine.Annotations.DataStructureItemType.PreviousPage,
         };
 
         if (pointerTypes.Any(p => p == marker?.ItemType))

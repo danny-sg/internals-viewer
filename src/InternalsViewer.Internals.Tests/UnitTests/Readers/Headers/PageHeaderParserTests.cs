@@ -27,7 +27,7 @@ public class PageHeaderParserTests
         Assert.Equal(0, header.InternalIndexId);
         Assert.Equal(new PageAddress(0, 0), header.PreviousPage);
         Assert.Equal(new PageAddress(0, 0), header.NextPage);
-        Assert.Equal(0, header.MinLen);
+        Assert.Equal(0, header.FixedLengthSize);
         Assert.Equal(1, header.SlotCount);
         Assert.Equal(6308, header.FreeCount);
         Assert.Equal(1882, header.FreeData);
@@ -55,7 +55,7 @@ public class PageHeaderParserTests
         Assert.Equal(0, header.InternalIndexId);
         Assert.Equal(new PageAddress(0, 0), header.PreviousPage);
         Assert.Equal(new PageAddress(0, 0), header.NextPage);
-        Assert.Equal(0, header.MinLen);
+        Assert.Equal(0, header.FixedLengthSize);
         Assert.Equal(1, header.SlotCount);
         Assert.Equal(6308, header.FreeCount);
         Assert.Equal(1882, header.FreeData);

@@ -34,9 +34,9 @@ public class MarkStyleProvider
     {
         object? resource = null;
 
-        ThemeDictionary?.TryGetValue($"MarkerStyle{dataStructureItemType}", out resource);
+        ThemeDictionary?.TryGetValue($"{dataStructureItemType}MarkerStyle", out resource);
 
-        var style = resource as MarkStyle ?? new MarkStyle();   
+        var style = resource as MarkStyle ?? new MarkStyle();
 
         return style;
     }
@@ -61,7 +61,7 @@ public static class MarkerBuilder
 
         var markers = new List<Marker>();
 
-        foreach (var item in markedObject.MarkItems.OrderBy(o => o.StartPosition))
+        foreach (var item in markedObject.MarkItems)
         {
             var marker = new Marker();
 
@@ -86,6 +86,8 @@ public static class MarkerBuilder
 
                 marker.BackColour = style.BackColour.Color;
                 marker.AlternateBackColour = style.AlternateBackColour.Color;
+                
+                marker.Ordinal = style.Ordinal;
 
                 var name = string.IsNullOrEmpty(attribute.Description) ? style.Name : attribute.Description;
 
@@ -143,7 +145,7 @@ public static class MarkerBuilder
             }
         }
 
-        return markers;
+        return markers.OrderBy(o => o.Ordinal).ThenBy(o => o.StartPosition).ToList();
     }
 
     /// <summary>
