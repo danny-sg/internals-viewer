@@ -29,17 +29,15 @@ jobs:
 
       - name: Zip x86 package
         run: |
-          cd artifacts
-          zip -r internals-viewer-release-${{ github.ref }}-msix-package-x86.zip ./msix-package-x86/
+          zip -r artifacts/internals-viewer-msix-x86.zip artifacts/msix-package-x86/
 
       - name: Zip x64 package
         run: |
-          cd artifacts
-          zip -r internals-viewer-release-${{ github.ref }}-msix-package-x64.zip ./msix-package-x64/
+          zip -r artifacts/internals-viewer-msix-x64.zip artifacts/msix-package-x64/
           
       - name: Create release
         run: |
-          gh release create ${{ github.ref }} artifacts/internals-viewer-release-*.zip
+          gh release create ${{ github.ref }} artifacts/internals-viewer-*.zip
         env:
           GITHUB_TOKEN: ${{ github.TOKEN }}
         shell: bash
