@@ -2,10 +2,11 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:models="using:InternalsViewer.UI.App.Models">
+    xmlns:models="using:InternalsViewer.UI.App.Models"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
     <models:MarkStyle Name="Page Address" x:Key="PageAddressMarkerStyle" ForeColour="Gray" BackColour="LightGoldenrodYellow" />
-    
+
     <models:MarkStyle Name="Row Identifier" x:Key="RidMarkerStyle" ForeColour="Blue" BackColour="Thistle" />
 
     <models:MarkStyle Name="Uniqueifier" x:Key="UniqueifierMarkerStyle" ForeColour="SteelBlue" BackColour="AliceBlue" />
@@ -86,7 +87,7 @@
 
     <!--Page Header-->
     <models:MarkStyle Name="Page Address" x:Key="HeaderPageAddressMarkerStyle" ForeColour="#00F" BackColour="AliceBlue" Ordinal="0" />
-    
+
     <models:MarkStyle Name="Page Type" x:Key="PageTypeMarkerStyle" ForeColour="#02F" BackColour="AliceBlue" Ordinal="10" />
 
     <models:MarkStyle Name="Next Page" x:Key="NextPageMarkerStyle" ForeColour="#04F" BackColour="AliceBlue" Ordinal="21"/>
@@ -100,7 +101,7 @@
     <models:MarkStyle Name="Index Level" x:Key="IndexLevelMarkerStyle" ForeColour="#0CC" BackColour="AliceBlue" Ordinal="40"/>
 
     <models:MarkStyle Name="Slot Count" x:Key="PageSlotCountMarkerStyle" ForeColour="#0BD" BackColour="AliceBlue" Ordinal="50" />
-    
+
     <models:MarkStyle Name="Free Count" x:Key="FreeCountMarkerStyle" ForeColour="#0BB" BackColour="AliceBlue" Ordinal="60" />
 
     <models:MarkStyle Name="Free Data" x:Key="FreeDataMarkerStyle" ForeColour="#0B9" BackColour="AliceBlue" Ordinal="70" />
@@ -108,14 +109,14 @@
     <models:MarkStyle Name="Reserved Count" x:Key="ReservedCountMarkerStyle" ForeColour="#0B7" BackColour="AliceBlue" Ordinal="80"/>
 
     <models:MarkStyle Name="Transaction Reserved Count" x:Key="TransactionReservedCountMarkerStyle" ForeColour="#097" BackColour="AliceBlue" Ordinal="90"/>
-    
+
     <models:MarkStyle Name="Fixed Length Size" x:Key="FixedLengthSizeMarkerStyle" ForeColour="#077" BackColour="AliceBlue" Ordinal="55" />
 
     <models:MarkStyle Name="Torn Bits" x:Key="TornBitsMarkerStyle" ForeColour="#057" BackColour="AliceBlue" Ordinal="101" />
 
     <models:MarkStyle Name="Flag Bits" x:Key="FlagBitsMarkerStyle" ForeColour="#037" BackColour="AliceBlue" Ordinal="102" />
 
-    <models:MarkStyle Name="Lsn" x:Key="LsnMarkerStyle" ForeColour="#017" BackColour="AliceBlue" Ordinal="110"/>
+    <models:MarkStyle Name="LSN (Log Sequence Number)" x:Key="LsnMarkerStyle" ForeColour="#017" BackColour="AliceBlue" Ordinal="110"/>
 
     <models:MarkStyle Name="Header Version" x:Key="HeaderVersionMarkerStyle" ForeColour="#005" BackColour="AliceBlue" Ordinal="120"/>
 
@@ -127,4 +128,8 @@
 
     <models:MarkStyle Name="Unused" x:Key="HeaderUnusedMarkerStyle" ForeColour="LightGray" BackColour="AliceBlue" />
 
+    <models:MarkStyle Name="Allocation Unit Id" x:Key="AllocationUnitIdMarkerStyle" ForeColour="White" BackColour="White" />
+
+    <Style x:Key="VirtualMarkerDataRowStyle" TargetType="controls:DataRow">
+    </Style>
 </ResourceDictionary>

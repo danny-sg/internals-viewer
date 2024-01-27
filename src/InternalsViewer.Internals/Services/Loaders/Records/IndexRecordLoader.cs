@@ -168,7 +168,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
         record.DownPagePointer = PageAddressParser.Parse(address);
 
-        record.MarkDataStructure("DownPagePointer", downPagePointerOffset, PageAddress.Size);
+        record.MarkProperty("DownPagePointer", downPagePointerOffset, PageAddress.Size);
     }
 
     /// <summary>
@@ -190,14 +190,14 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
         record.VariableLengthColumnCount = BitConverter.ToUInt16(page.Data, variableColumnCountOffset);
 
-        record.MarkDataStructure("VariableLengthColumnCount", variableColumnCountOffset, sizeof(short));
+        record.MarkProperty("VariableLengthColumnCount", variableColumnCountOffset, sizeof(short));
 
         // Load offset array of 2-byte integers indicating the end offset of each variable length field
         record.ColOffsetArray = GetOffsetArray(page.Data,
                                                record.VariableLengthColumnCount,
                                                record.SlotOffset + page.PageHeader.FixedLengthSize + sizeof(short) + varColStartIndex);
 
-        record.MarkDataStructure("ColOffsetArrayDescription",
+        record.MarkProperty("ColOffsetArrayDescription",
                                  variableColumnCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));
     }
 
@@ -235,7 +235,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
                 field = LoadVariableLengthField(columnOffset, column, record, page.Data);
             }
 
-            record.MarkDataStructure("FieldsArray", field.Name, index);
+            record.MarkProperty("FieldsArray", field.Name, index);
 
             index++;
 
@@ -253,7 +253,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
         record.Rid = new RowIdentifier(ridAddress);
 
-        record.MarkDataStructure("Rid", record.SlotOffset + offset, RowIdentifier.Size);
+        record.MarkProperty("Rid", record.SlotOffset + offset, RowIdentifier.Size);
     }
 
     private RecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, Record record, byte[] pageData)
@@ -284,7 +284,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         field.Data = data;
         field.VariableOffset = variableIndex;
 
-        field.MarkDataStructure("Value", record.SlotOffset + field.Offset, field.Length);
+        field.MarkProperty("Value", record.SlotOffset + field.Offset, field.Length);
 
         return field;
     }
@@ -335,7 +335,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         field.Data = data;
 
         //TODO: change to uniqueifier
-        field.MarkDataStructure("Value", record.SlotOffset + field.Offset, field.Length);
+        field.MarkProperty("Value", record.SlotOffset + field.Offset, field.Length);
         //record.MarkDataStructure("Uniqueifier", record.SlotOffset + field.Offset, field.Length);
 
         return field;
@@ -362,7 +362,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         field.Length = length;
         field.Data = data;
 
-        field.MarkDataStructure("Value", dataRecord.SlotOffset + field.Offset, field.Length);
+        field.MarkProperty("Value", dataRecord.SlotOffset + field.Offset, field.Length);
 
         return field;
     }
@@ -375,7 +375,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
         record.ColumnCount = BitConverter.ToInt16(page.Data, columnCountPosition);
 
-        record.MarkDataStructure("ColumnCount", columnCountPosition, sizeof(short));
+        record.MarkProperty("ColumnCount", columnCountPosition, sizeof(short));
 
         var nullBitmapBytes = new byte[record.NullBitmapSize];
 
@@ -389,6 +389,6 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
         record.NullBitmap = new BitArray(nullBitmapBytes);
 
-        record.MarkDataStructure("NullBitmapDescription", nullBitmapPosition, record.NullBitmapSize);
+        record.MarkProperty("NullBitmapDescription", nullBitmapPosition, record.NullBitmapSize);
     }
 }

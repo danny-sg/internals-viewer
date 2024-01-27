@@ -84,13 +84,13 @@ public class IamPageParser : PageParser, IPageParser<IamPage>
 
     private static void SetIamMarkers(DataStructure page)
     {
-        page.MarkDataStructure("StartPage", IamPage.StartPageOffset, PageAddress.Size);
+        page.MarkProperty("StartPage", IamPage.StartPageOffset, PageAddress.Size);
 
         for (var i = 0; i < 8; i++)
         {
-            page.MarkDataStructure($"SinglePageSlot{i}", AllocationPage.SinglePageSlotOffset + i * PageAddress.Size, PageAddress.Size);
+            page.MarkProperty($"SinglePageSlot{i}", AllocationPage.SinglePageSlotOffset + i * PageAddress.Size, PageAddress.Size);
         }
 
-        page.MarkDataStructure("AllocationMap", AllocationPage.AllocationArrayOffset, AllocationPage.AllocationInterval / 8);
+        page.MarkProperty("AllocationMap", AllocationPage.AllocationArrayOffset, AllocationPage.AllocationInterval / 8);
     }
 }

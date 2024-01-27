@@ -86,7 +86,7 @@ public static class MarkerBuilder
 
                 marker.BackColour = style.BackColour.Color;
                 marker.AlternateBackColour = style.AlternateBackColour.Color;
-                
+
                 marker.Ordinal = style.Ordinal;
 
                 var name = string.IsNullOrEmpty(attribute.Description) ? style.Name : attribute.Description;
@@ -139,7 +139,7 @@ public static class MarkerBuilder
                 SetValue(markers, marker, array[item.Index], value);
             }
 
-            if (item.StartPosition >= 0)
+            if (marker.StartPosition >= 0 || item.IsVirtual)
             {
                 markers.Add(marker);
             }

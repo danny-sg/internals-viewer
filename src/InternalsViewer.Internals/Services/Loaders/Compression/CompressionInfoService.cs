@@ -27,24 +27,24 @@ public class CompressionInfoService(IDictionaryService dictionaryService,
 
         ci.StatusBits = new BitArray(new[] { page.Data[ci.SlotOffset] });
 
-        ci.MarkDataStructure("StatusDescription", ci.SlotOffset, 1);
+        ci.MarkProperty("StatusDescription", ci.SlotOffset, 1);
 
         ci.HasAnchorRecord = ci.StatusBits[1];
         ci.HasDictionary = ci.StatusBits[2];
 
         ci.PageModCount = BitConverter.ToInt16(page.Data, ci.SlotOffset + 1);
 
-        ci.MarkDataStructure("PageModCount", ci.SlotOffset + sizeof(byte), sizeof(short));
+        ci.MarkProperty("PageModCount", ci.SlotOffset + sizeof(byte), sizeof(short));
 
         ci.Length = BitConverter.ToInt16(page.Data, ci.SlotOffset + 3);
 
-        ci.MarkDataStructure("Length", ci.SlotOffset + sizeof(byte) + sizeof(short), sizeof(short));
+        ci.MarkProperty("Length", ci.SlotOffset + sizeof(byte) + sizeof(short), sizeof(short));
 
         if (ci.HasDictionary)
         {
             ci.Size = BitConverter.ToInt16(page.Data, ci.SlotOffset + 5);
 
-            ci.MarkDataStructure("Size", ci.SlotOffset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
+            ci.MarkProperty("Size", ci.SlotOffset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
         }
 
         if (ci.HasAnchorRecord)

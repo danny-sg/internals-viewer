@@ -63,5 +63,7 @@ public enum DataStructureItemType
     HeaderVersion,
     GhostRecordCount,
     TypeFlagBits,
-    InternalTransactionId
+    InternalTransactionId,
+
+    AllocationUnitId
 }

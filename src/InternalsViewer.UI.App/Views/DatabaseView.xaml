@@ -67,6 +67,7 @@
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Right">
                 <AppBarElementContainer>
                     <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
+                                                 DatabaseName="{x:Bind TabViewModel.Database.Name, Mode=OneWay}"
                                                  AddressChanged="OnPageSelected"/>
                 </AppBarElementContainer>
             </CommandBar>

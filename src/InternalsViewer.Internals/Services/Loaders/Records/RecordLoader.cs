@@ -37,7 +37,7 @@ public abstract class RecordLoader
 
         record.StatusBitsA = new BitArray(new[] { statusA });
 
-        record.MarkDataStructure("StatusBitsADescription", record.SlotOffset, 1);
+        record.MarkProperty("StatusBitsADescription", record.SlotOffset, 1);
 
         record.RecordType = (RecordType)(statusA >> 1 & 7);
 
@@ -51,7 +51,7 @@ public abstract class RecordLoader
     /// </summary>
     protected static void LoadLobField(RecordField field, byte[] data, int offset)
     {
-        field.MarkDataStructure("BlobInlineRoot");
+        field.MarkProperty("BlobInlineRoot");
 
         // First byte gives the Blob field type
         switch ((BlobFieldType)data[0])

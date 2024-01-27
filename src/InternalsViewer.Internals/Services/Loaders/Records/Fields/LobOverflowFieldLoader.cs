@@ -24,23 +24,23 @@ public class LobOverflowFieldLoader
 
         var field = new OverflowField();
 
-        field.MarkDataStructure("PointerType", offset, sizeof(byte));
+        field.MarkProperty("PointerType", offset, sizeof(byte));
 
         field.PointerType = (BlobFieldType)data[0];
 
-        field.MarkDataStructure("Unused", offset + UnusedOffset, sizeof(byte));
+        field.MarkProperty("Unused", offset + UnusedOffset, sizeof(byte));
 
         field.Unused = data[UnusedOffset];
 
-        field.MarkDataStructure("Level", offset + LevelOffset, sizeof(byte));
+        field.MarkProperty("Level", offset + LevelOffset, sizeof(byte));
 
         field.Level = data[LevelOffset];
 
-        field.MarkDataStructure("Timestamp", offset + TimestampOffset, sizeof(int));
+        field.MarkProperty("Timestamp", offset + TimestampOffset, sizeof(int));
 
         field.Timestamp = BitConverter.ToUInt32(data, TimestampOffset);
 
-        field.MarkDataStructure("UpdateSeq", offset + UpdateSeqOffset, sizeof(short));
+        field.MarkProperty("UpdateSeq", offset + UpdateSeqOffset, sizeof(short));
 
         field.UpdateSeq = BitConverter.ToInt16(data, UpdateSeqOffset);
 
@@ -53,7 +53,7 @@ public class LobOverflowFieldLoader
     {
         field.Links = new List<BlobChildLink>();
 
-        field.MarkDataStructure("Length", offset + ChildOffset, sizeof(int));
+        field.MarkProperty("Length", offset + ChildOffset, sizeof(int));
 
         field.Length = BitConverter.ToInt32(data, ChildOffset);
 
@@ -61,13 +61,13 @@ public class LobOverflowFieldLoader
 
         Array.Copy(data, ChildOffset + 4, rowIdData, 0, 8);
 
-        field.MarkDataStructure("LinksArray", string.Empty, 0);
+        field.MarkProperty("LinksArray", string.Empty, 0);
 
         var rowId = new RowIdentifier(rowIdData);
 
         var link = new BlobChildLink(rowId, field.Length, 0);
 
-        link.MarkDataStructure("RowIdentifier", offset + ChildOffset + 4, 8);
+        link.MarkProperty("RowIdentifier", offset + ChildOffset + 4, 8);
 
         field.Links.Add(link);
     }

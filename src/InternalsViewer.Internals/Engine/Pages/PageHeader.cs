@@ -41,6 +41,7 @@ public class PageHeader : DataStructure
 
     public string PageTypeName => PageHelpers.GetPageTypeName(PageType);
 
+    [DataStructureItem(DataStructureItemType.AllocationUnitId)]
     public long AllocationUnitId => IdHelpers.GetAllocationUnitId(InternalObjectId, InternalIndexId);
 
     /// <summary>

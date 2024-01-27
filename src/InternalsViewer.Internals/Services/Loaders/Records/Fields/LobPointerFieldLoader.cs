@@ -11,11 +11,11 @@ public class LobPointerFieldLoader
     {
         var field = new PointerField();
 
-        field.MarkDataStructure("PointerType", offset, sizeof(byte));
+        field.MarkProperty("PointerType", offset, sizeof(byte));
 
         field.PointerType = (BlobFieldType)data[0];
 
-        field.MarkDataStructure("Timestamp", offset + sizeof(byte), sizeof(int));
+        field.MarkProperty("Timestamp", offset + sizeof(byte), sizeof(int));
 
         field.Timestamp = BitConverter.ToUInt32(data, 0);
 
@@ -31,13 +31,13 @@ public class LobPointerFieldLoader
         var rowIdData = new byte[8];
         Array.Copy(data, RowIdOffset, rowIdData, 0, 8);
 
-        field.MarkDataStructure("LinksArray", string.Empty, 0);
+        field.MarkProperty("LinksArray", string.Empty, 0);
 
         var rowId = new RowIdentifier(rowIdData);
 
         var link = new BlobChildLink(rowId, 0, 0);
 
-        link.MarkDataStructure("RowIdentifier", offset + RowIdOffset, 8);
+        link.MarkProperty("RowIdentifier", offset + RowIdOffset, 8);
 
         field.Links.Add(link);
     }

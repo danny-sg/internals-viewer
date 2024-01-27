@@ -37,7 +37,7 @@ public sealed partial class MarkerDataTable
 
     private void CopyButton_Click(object sender, RoutedEventArgs e)
     {
-        var value = (sender as MenuFlyoutItem)?.Tag.ToString() ?? string.Empty;
+        var value = (sender as CopyButton)?.Tag.ToString() ?? string.Empty;
 
         var package = new DataPackage();
         

@@ -13,13 +13,13 @@ public class DictionaryService : IDictionaryService
 
         dictionary.EntryCount = entryCount;
 
-        dictionary.MarkDataStructure("EntryCount", offset, sizeof(short));
+        dictionary.MarkProperty("EntryCount", offset, sizeof(short));
 
         dictionary.EntryOffset = new ushort[entryCount];
 
         var dataOffset = sizeof(short) + sizeof(short) * entryCount;
 
-        dictionary.MarkDataStructure("EntryOffsetArrayDescription", offset + sizeof(short), entryCount * sizeof(short));
+        dictionary.MarkProperty("EntryOffsetArrayDescription", offset + sizeof(short), entryCount * sizeof(short));
 
         for (var i = 0; i < entryCount; i++)
         {
@@ -31,11 +31,11 @@ public class DictionaryService : IDictionaryService
 
             Array.Copy(data, offset + dataOffset, dictionaryData, 0, length);
 
-            dictionary.MarkDataStructure("DictionaryEntriesArray", "Dictionary Entry " + i, i);
+            dictionary.MarkProperty("DictionaryEntriesArray", "Dictionary Entry " + i, i);
 
             var entry = new DictionaryEntry(dictionaryData);
 
-            entry.MarkDataStructure("Data", offset + dataOffset, length);
+            entry.MarkProperty("Data", offset + dataOffset, length);
 
             dictionary.DictionaryEntries.Add(entry);
 

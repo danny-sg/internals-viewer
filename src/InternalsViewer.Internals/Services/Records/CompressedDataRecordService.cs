@@ -49,7 +49,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
 
             record.VariableLengthColumnCount = BitConverter.ToUInt16(data, varLengthColumnCountOffset);
 
-            record.MarkDataStructure("VariableLengthColumnCount", varLengthColumnCountOffset, sizeof(short));
+            record.MarkProperty("VariableLengthColumnCount", varLengthColumnCountOffset, sizeof(short));
         }
 
         LoadShortFields(record, page, structure);
@@ -62,7 +62,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
                                                    record.VariableLengthColumnCount,
                                                    colArrayOffset);
 
-            record.MarkDataStructure("ColOffsetArrayDescription", colArrayOffset, record.VariableLengthColumnCount * sizeof(short));
+            record.MarkProperty("ColOffsetArrayDescription", colArrayOffset, record.VariableLengthColumnCount * sizeof(short));
         }
 
         var longStartPosition = record.SlotOffset + 4 + record.ColumnCountBytes + cdArraySize + record.CompressedSize + 2 * record.VariableLengthColumnCount;
@@ -81,7 +81,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
         record.HasVariableLengthColumns = record.StatusBitsA[5];
         record.HasNullBitmap = record.StatusBitsA[4];
 
-        record.MarkDataStructure("StatusBitsADescription", record.SlotOffset, sizeof(byte));
+        record.MarkProperty("StatusBitsADescription", record.SlotOffset, sizeof(byte));
     }
 
     private CompressedDataRecord LoadForwardingRecord(CompressedDataRecord record)
@@ -116,7 +116,7 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
         }
 
         // 1/2 byte int located after the status bits (1 byte)
-        record.MarkDataStructure("ColumnCount", record.SlotOffset + sizeof(byte), record.ColumnCountBytes);
+        record.MarkProperty("ColumnCount", record.SlotOffset + sizeof(byte), record.ColumnCountBytes);
 
         return columns;
     }
@@ -174,9 +174,9 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
                     field.AnchorField = page.CompressionInfo.AnchorRecord.Fields.First(f => f.ColumnStructure.ColumnId == i + 1);
                 }
 
-                field.MarkDataStructure("Value", field.Offset, field.Length);
+                field.MarkProperty("Value", field.Offset, field.Length);
 
-                record.MarkDataStructure("FieldsArray", field.Name, index);
+                record.MarkProperty("FieldsArray", field.Name, index);
 
                 index++;
 
@@ -220,10 +220,10 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
                 }
                 else
                 {
-                    field.MarkDataStructure("Value", field.Offset, field.Length);
+                    field.MarkProperty("Value", field.Offset, field.Length);
                 }
 
-                record.MarkDataStructure("FieldsArray", field.Name, record.Fields.Count - 1);
+                record.MarkProperty("FieldsArray", field.Name, record.Fields.Count - 1);
 
                 prevLength = DecodeOffset(record.ColOffsetArray[longColIndex]);
 
@@ -256,13 +256,13 @@ public class CompressedDataRecordService : RecordLoader, ICompressedDataRecordSe
 
         for (var i = 0; i < Math.Ceiling(record.ColumnCount / 2D); i++)
         {
-            record.MarkDataStructure("CdItemsArray", "CD Array offset " + i, i);
+            record.MarkProperty("CdItemsArray", "CD Array offset " + i, i);
 
             var cdItem = Convert.ToByte(data[record.SlotOffset + bytePosition]);
 
             var item = new CdArray(i, cdItem);
 
-            item.MarkDataStructure("Description", record.SlotOffset + bytePosition, sizeof(byte));
+            item.MarkProperty("Description", record.SlotOffset + bytePosition, sizeof(byte));
 
             record.CdItems.Add(item);
 

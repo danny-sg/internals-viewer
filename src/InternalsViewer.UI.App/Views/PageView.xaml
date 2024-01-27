@@ -91,6 +91,7 @@
                     <AppBarElementContainer>
                         <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
                                                      PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 
+                                                     DatabaseName="{x:Bind ViewModel.Database.Name, Mode=OneWay}"
                                                      AddressChanged="PageAddressTextBox_Changed"/>
                     </AppBarElementContainer>
                     <AppBarButton Label="Back" 

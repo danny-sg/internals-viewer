@@ -15,25 +15,25 @@ public class LobRootFieldLoader
     {
         var field = new RootField();
 
-        field.MarkDataStructure("PointerType", offset, sizeof(byte));
+        field.MarkProperty("PointerType", offset, sizeof(byte));
 
         field.PointerType = (BlobFieldType)data[0];
 
         field.Unused = data[UnusedOffset];
 
-        field.MarkDataStructure("Unused", offset + UnusedOffset, sizeof(byte));
+        field.MarkProperty("Unused", offset + UnusedOffset, sizeof(byte));
 
         field.Level = data[LevelOffset];
 
-        field.MarkDataStructure("Level", offset + LevelOffset, sizeof(byte));
+        field.MarkProperty("Level", offset + LevelOffset, sizeof(byte));
 
         field.Timestamp = BitConverter.ToUInt32(data, TimestampOffset);
 
-        field.MarkDataStructure("Timestamp", offset + TimestampOffset, sizeof(int));
+        field.MarkProperty("Timestamp", offset + TimestampOffset, sizeof(int));
 
         field.UpdateSeq = BitConverter.ToInt16(data, UpdateSeqOffset);
 
-        field.MarkDataStructure("UpdateSeq", offset + UpdateSeqOffset, sizeof(short));
+        field.MarkProperty("UpdateSeq", offset + UpdateSeqOffset, sizeof(short));
 
         LoadLinks(field, data, offset);
 
@@ -48,7 +48,7 @@ public class LobRootFieldLoader
 
         for (var i = 0; i < field.SlotCount; i++)
         {
-            field.MarkDataStructure("LinksArray", "Child " + i + " - ", i);
+            field.MarkProperty("LinksArray", "Child " + i + " - ", i);
 
             var length = BitConverter.ToInt32(data, ChildOffset + i * 12);
 
@@ -59,9 +59,9 @@ public class LobRootFieldLoader
 
             var link = new BlobChildLink(rowId, 0, length);
 
-            link.MarkDataStructure("Length", offset + ChildOffset + i * 12, sizeof(int));
+            link.MarkProperty("Length", offset + ChildOffset + i * 12, sizeof(int));
 
-            link.MarkDataStructure("RowIdentifier", offset + ChildOffset + i * 12 + sizeof(int), 8);
+            link.MarkProperty("RowIdentifier", offset + ChildOffset + i * 12 + sizeof(int), 8);
 
             field.Links.Add(link);
         }

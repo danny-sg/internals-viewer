@@ -82,44 +82,46 @@ public static class PageHeaderParser
 
     private static void SetHeaderMarkers(DataStructure header)
     {
-        header.MarkDataStructure("HeaderVersion", HeaderVersionOffset, sizeof(byte));
+        header.MarkProperty("HeaderVersion", HeaderVersionOffset, sizeof(byte));
 
-        header.MarkDataStructure("PageType", PageTypeOffset, sizeof(byte));
+        header.MarkProperty("PageType", PageTypeOffset, sizeof(byte));
 
-        header.MarkDataStructure("TypeFlagBits", TypeFlagBitsOffset, sizeof(byte));
+        header.MarkProperty("TypeFlagBits", TypeFlagBitsOffset, sizeof(byte));
 
-        header.MarkDataStructure("Level", LevelOffset, sizeof(byte));
+        header.MarkProperty("Level", LevelOffset, sizeof(byte));
 
-        header.MarkDataStructure("FlagBits", FlagBitsOffset, sizeof(short));
+        header.MarkProperty("FlagBits", FlagBitsOffset, sizeof(short));
 
-        header.MarkDataStructure("InternalIndexId", IndexIdOffset, sizeof(short));
+        header.MarkProperty("InternalIndexId", IndexIdOffset, sizeof(short));
 
-        header.MarkDataStructure("PreviousPage", PreviousPageOffset, PageAddress.Size);
+        header.MarkProperty("PreviousPage", PreviousPageOffset, PageAddress.Size);
 
-        header.MarkDataStructure("FixedLengthSize", FixedLengthOffset, sizeof(short));
+        header.MarkProperty("FixedLengthSize", FixedLengthOffset, sizeof(short));
 
-        header.MarkDataStructure("NextPage", NextPageOffset, PageAddress.Size);
+        header.MarkProperty("NextPage", NextPageOffset, PageAddress.Size);
 
-        header.MarkDataStructure("SlotCount", SlotCountOffset, sizeof(short));
+        header.MarkProperty("SlotCount", SlotCountOffset, sizeof(short));
 
-        header.MarkDataStructure("InternalObjectId", ObjectIdOffset, sizeof(int));
+        header.MarkProperty("InternalObjectId", ObjectIdOffset, sizeof(int));
 
-        header.MarkDataStructure("FreeCount", FreeCountOffset, sizeof(short));
+        header.MarkProperty("FreeCount", FreeCountOffset, sizeof(short));
 
-        header.MarkDataStructure("FreeData", FreeDataOffset, sizeof(short));
+        header.MarkProperty("FreeData", FreeDataOffset, sizeof(short));
 
-        header.MarkDataStructure("PageAddress", PageAddressOffset, PageAddress.Size);
+        header.MarkProperty("PageAddress", PageAddressOffset, PageAddress.Size);
 
-        header.MarkDataStructure("ReservedCount", ReservedCountOffset, sizeof(short));
+        header.MarkProperty("ReservedCount", ReservedCountOffset, sizeof(short));
 
-        header.MarkDataStructure("Lsn", LsnOffset, LogSequenceNumber.Size);
+        header.MarkProperty("Lsn", LsnOffset, LogSequenceNumber.Size);
 
-        header.MarkDataStructure("TransactionReservedCount", TransactionReservedCountOffset, sizeof(short));
+        header.MarkProperty("TransactionReservedCount", TransactionReservedCountOffset, sizeof(short));
 
-        header.MarkDataStructure("InternalTransactionId", InternalTransactionIdOffset, PageAddress.Size);
+        header.MarkProperty("InternalTransactionId", InternalTransactionIdOffset, PageAddress.Size);
 
-        header.MarkDataStructure("GhostRecordCount", GhostRecordCountOffset, sizeof(short));
+        header.MarkProperty("GhostRecordCount", GhostRecordCountOffset, sizeof(short));
 
-        header.MarkDataStructure("TornBits", TornBitsOffset, sizeof(int));
+        header.MarkProperty("TornBits", TornBitsOffset, sizeof(int));
+
+        header.MarkVirtualProperty("AllocationUnitId");
     }
 }

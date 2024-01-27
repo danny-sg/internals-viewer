@@ -106,9 +106,26 @@
             </toolkit:DataRow>
         </DataTemplate>
 
+        <DataTemplate x:Key="VirtualItemTemplate" x:DataType="models:Marker">
+            <toolkit:DataRow HorizontalAlignment="Left" Style="{ThemeResource VirtualMarkerDataRowStyle}">
+                <Grid Width="20"
+                      Height="20">
+                </Grid>
+                <TextBlock Text="{x:Bind Name}" Style="{StaticResource ListTextBlock}"/>
+                <TextBlock Text="{x:Bind Value}"  Style="{StaticResource ListTextBlock}"/>
+                <controls:CopyButton Content="&#xE8C8;" 
+                                     ToolTipService.ToolTip="Copy to clipboard"
+                                     Tag="{x:Bind Value}"
+                                     Click="CopyButton_Click"/>
+                <TextBlock  Style="{StaticResource ListTextBlock}"/>
+                <TextBlock  Style="{StaticResource ListTextBlock}"/>
+            </toolkit:DataRow>
+        </DataTemplate>
+
         <selectors:MarkerTemplateSelector x:Key="MarkerTemplateSelector" 
                                        DefaultTemplate="{StaticResource DefaultItemTemplate}"
-                                       PointerTemplate="{StaticResource PointerItemTemplate}" />
+                                       PointerTemplate="{StaticResource PointerItemTemplate}"
+                                       VirtualTemplate="{StaticResource VirtualItemTemplate}"/>
     </UserControl.Resources>
 
     <ListView BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"

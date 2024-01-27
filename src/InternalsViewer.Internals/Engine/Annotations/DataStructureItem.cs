@@ -32,4 +32,6 @@ public class DataStructureItem(string propertyName, int startPosition, int lengt
     public int Index { get; } = -1;
 
     public string Prefix { get; } = string.Empty;
+
+    public bool IsVirtual { get; set; }
 }
