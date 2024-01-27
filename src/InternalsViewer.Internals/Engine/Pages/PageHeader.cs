@@ -2,7 +2,6 @@
 using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Helpers;
-using System.Drawing;
 
 namespace InternalsViewer.Internals.Engine.Pages;
 

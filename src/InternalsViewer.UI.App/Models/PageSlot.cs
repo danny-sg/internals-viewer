@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.UI.App.Models;
 
-public class OffsetSlot
+public class PageSlot
 {
     public short Index { get; init; }
 

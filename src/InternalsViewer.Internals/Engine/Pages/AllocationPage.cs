@@ -1,6 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-
-namespace InternalsViewer.Internals.Engine.Pages;
+﻿namespace InternalsViewer.Internals.Engine.Pages;
 
 /// <summary>
 /// Allocation Page containing an allocation bitmap (IAM, GAM, SGAM, DCM, BCM)
@@ -37,5 +35,5 @@ public class AllocationPage : Page
     /// <summary>
     /// Allocation bitmap
     /// </summary>
-    public bool[] AllocationMap { get; set; } = new bool[AllocationInterval];
+    public bool[] AllocationMap { get; } = new bool[AllocationInterval];
 }

@@ -69,8 +69,10 @@
                 <TextBlock Text="{x:Bind Name}" Style="{StaticResource ListTextBlock}"/>
                 <TextBlock Text="{x:Bind Value}"  Style="{StaticResource ListTextBlock}"/>
                 <controls:CopyButton Content="&#xE8C8;" 
-                                     ToolTipService.ToolTip="Copy to clipboard" />
-                <TextBlock Text="{x:Bind StartPosition}"  Style="{StaticResource ListTextBlock}"/>
+                                     ToolTipService.ToolTip="Copy to clipboard"
+                                     Tag="{x:Bind Value}"
+                                     Click="CopyButton_Click"/>
+                <TextBlock Text="{x:Bind StartPosition }"  Style="{StaticResource ListTextBlock}"/>
                 <TextBlock Text="{x:Bind EndPosition}"  Style="{StaticResource ListTextBlock}"/>
             </toolkit:DataRow>
         </DataTemplate>
@@ -91,9 +93,14 @@
 
                 </Grid>
                 <TextBlock Text="{x:Bind Name}" Style="{StaticResource ListTextBlock}" />
-                <HyperlinkButton Style="{StaticResource PointerStyle}" Content="{x:Bind Value}" Click="HyperlinkButton_Click"/>
+                <HyperlinkButton Style="{StaticResource PointerStyle}"
+                                 Content="{x:Bind Value}" 
+                                 ToolTipService.ToolTip="Open Page"
+                                 Click="PageLink_Click"/>
                 <controls:CopyButton Content="&#xE8C8;" 
-                                     ToolTipService.ToolTip="Copy to clipboard" />
+                                     ToolTipService.ToolTip="Copy to clipboard"
+                                     Tag="{x:Bind Value}"
+                                     Click="CopyButton_Click" />
                 <TextBlock Text="{x:Bind StartPosition}" Style="{StaticResource ListTextBlock}"/>
                 <TextBlock Text="{x:Bind EndPosition}" Style="{StaticResource ListTextBlock}"/>
             </toolkit:DataRow>
@@ -118,19 +125,19 @@
                 </interactivity:Interaction.Behaviors>
                 <toolkit:DataTable Margin="12,0,0,0">
                     <toolkit:DataColumn Content="Key"
-                                         DesiredWidth="40"
-                                         MinWidth="40"/>
+                                        DesiredWidth="40"
+                                        MinWidth="40"/>
                     <toolkit:DataColumn DesiredWidth="*" CanResize="True"
-                                         Content="Name" />
+                                        Content="Name" />
                     <toolkit:DataColumn DesiredWidth="*"
-                                         CanResize="True"
-                                         Content="Value" />
+                                        CanResize="True"
+                                        Content="Value" />
                     <toolkit:DataColumn DesiredWidth="30" />
                     <toolkit:DataColumn Content="Start"
-                                         DesiredWidth="50" />
+                                        DesiredWidth="50" />
                     <toolkit:DataColumn Content="End"
-                                         DesiredWidth="50" />
-              
+                                        DesiredWidth="50" />
+
                 </toolkit:DataTable>
             </Border>
         </ListView.Header>

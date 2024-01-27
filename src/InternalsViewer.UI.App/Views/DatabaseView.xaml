@@ -37,8 +37,8 @@
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0"
-                    BorderThickness="0,0,0,1" 
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+              BorderThickness="0,0,0,1" 
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -58,6 +58,9 @@
                                     Checked="AppBarToggleButton_Changed"
                                     Unchecked="AppBarToggleButton_Changed"
                                     IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
+                <AppBarButton Label="Refresh" 
+                              Icon="Refresh" 
+                              Command="{x:Bind TabViewModel.RefreshCommand}"/>
             </CommandBar>
             <CommandBar 
                 Grid.Column="1"

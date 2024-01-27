@@ -63,7 +63,7 @@ public abstract class Record : DataStructure
 
     public bool IsNullBitmapSet(ColumnStructure columnStructure, int offset)
     {
-        if (columnStructure.NullBitIndex < 1)
+        if (columnStructure.NullBitIndex < 1 || NullBitmap.Length < columnStructure.NullBitIndex)
         {
             return false;
         }

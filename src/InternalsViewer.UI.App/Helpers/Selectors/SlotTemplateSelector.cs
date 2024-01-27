@@ -11,7 +11,7 @@ internal class SlotTemplateSelector : DataTemplateSelector
 
     protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
     {
-        var slot = item as OffsetSlot;
+        var slot = item as PageSlot;
 
         if (slot?.Index < 0)
         {

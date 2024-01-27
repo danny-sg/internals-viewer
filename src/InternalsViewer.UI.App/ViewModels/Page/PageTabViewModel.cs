@@ -84,16 +84,13 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private DatabaseSource database = database;
 
     [ObservableProperty]
-    private ObservableCollection<OffsetSlot> offsets = new();
+    private ObservableCollection<PageSlot> pageSlots = new();
 
     [ObservableProperty]
-    private OffsetSlot? selectedSlot;
+    private PageSlot? selectedSlot;
 
     [ObservableProperty]
     private Marker? selectedMarker;
-
-    [ObservableProperty]
-    private bool includeHeaderMarkers;
 
     [ObservableProperty]
     private ObservableCollection<Marker> markers = new();
@@ -127,12 +124,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private History<PageAddress> History { get; } = new();
 
-    partial void OnIncludeHeaderMarkersChanged(bool value)
-    {
-        AddPageMarkers(Page);
-    }
-
-    partial void OnSelectedSlotChanged(OffsetSlot? value)
+    partial void OnSelectedSlotChanged(PageSlot? value)
     {
         if (value == null)
         {
@@ -173,20 +165,20 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         Logger.LogDebug("Building Offset Table");
 
-        var slots = resultPage.OffsetTable.Select((s, i) => new OffsetSlot
+        var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
         {
             Index = (short)i,
             Offset = s,
             Description = $"0x{s:X}"
         }).ToList();
 
-        var headerSlot = new OffsetSlot
+        var headerSlot = new PageSlot
         {
             Index = PageHeaderSlot,
             Description = "Page Header"
         };
 
-        var iamHeaderSlot = new OffsetSlot
+        var iamHeaderSlot = new PageSlot
         {
             Index = IamHeaderSlot,
             Description = "IAM Header"
@@ -219,7 +211,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 break;
         }
 
-        Offsets = new ObservableCollection<OffsetSlot>(new[] { headerSlot }.Union(slots));
+        PageSlots = new ObservableCollection<PageSlot>(new[] { headerSlot }.Union(slots));
 
         SelectedSlot = headerSlot;
         SelectedMarker = null;
@@ -261,6 +253,12 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         }
     }
 
+    [RelayCommand]
+    private async Task Refresh()
+    {
+        await LoadPage(PageAddress);
+    }
+
     private bool CanGoForward() => History.CanGoForward();
 
     private bool CanGoBack() => History.CanGoBack();
@@ -296,7 +294,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         IsAllocationsTabVisible = false;
         IsRowDataTabVisible = true;
 
-        SelectedSlot = Offsets.FirstOrDefault();
+        SelectedSlot = PageSlots.FirstOrDefault();
 
         SelectedTabIndex = SelectedTabIndex == AllocationsTabIndex ? RowDataTabIndex : SelectedTabIndex;
     }
@@ -349,7 +347,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         Records.Clear();
 
-        foreach (var slot in Offsets)
+        foreach (var offset in target.OffsetTable)
         {
             try
             {
@@ -358,18 +356,18 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                     case PageType.Data:
                         Logger.LogDebug("Loading Data Records");
 
-                        Records.Add(RecordService.GetDataRecord((DataPage)target, slot.Offset));
+                        Records.Add(RecordService.GetDataRecord((DataPage)target, offset));
                         break;
                     case PageType.Index:
                         Logger.LogDebug("Loading Index Records");
 
-                        Records.Add(RecordService.GetIndexRecord((IndexPage)target, slot.Offset));
+                        Records.Add(RecordService.GetIndexRecord((IndexPage)target, offset));
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, $"Error loading record {slot.Index}");
+                Logger.LogError(ex, $"Error loading record at offset {offset}");
             }
         }
 
@@ -413,11 +411,11 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         Markers = new ObservableCollection<Marker>(m);
     }
 
-    private void AddRecordMarkers(OffsetSlot offsetSlot)
+    private void AddRecordMarkers(PageSlot pageSlot)
     {
-        MarkerTabName = $"Slot {offsetSlot.Description}";
+        MarkerTabName = $"Slot {pageSlot.Description}";
 
-        var record = Records.FirstOrDefault(r => r.SlotOffset == offsetSlot.Offset);
+        var record = Records.FirstOrDefault(r => r.SlotOffset == pageSlot.Offset);
 
         if (record is null)
         {
