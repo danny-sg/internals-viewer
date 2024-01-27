@@ -2,7 +2,8 @@ name: Build application and create GitHub release
 on:
   push:
     tags: [ 'v*.*.*' ]
-
+  workflow_dispatch:
+  
 jobs:
   build:
     uses: ./.github/workflows/build-msix-sideload.yml
@@ -20,15 +21,23 @@ jobs:
          
       - name: Download artifacts
         uses: actions/download-artifact@v4
-
-      - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v0
         with:
-          versionSpec: '5.x'
+          path: artifacts
+          
+      - name: List downloaded files
+        run: ls -R artifacts
 
+      - name: Zip x86 package
+        run: |
+          zip -r artifacts/internals-viewer-msix-x86.zip artifacts/msix-package-x86/
+
+      - name: Zip x64 package
+        run: |
+          zip -r artifacts/internals-viewer-msix-x64.zip artifacts/msix-package-x64/
+          
       - name: Create release
         run: |
-          gh release create ${{ github.ref }} msix-package-*.zip
+          gh release create ${{ github.ref }} artifacts/internals-viewer-*.zip
         env:
           GITHUB_TOKEN: ${{ github.TOKEN }}
         shell: bash
