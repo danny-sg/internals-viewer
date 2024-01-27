@@ -2,7 +2,8 @@ name: Build application and create GitHub release
 on:
   push:
     tags: [ 'v*.*.*' ]
-
+  workflow_dispatch:
+  
 jobs:
   build:
     uses: ./.github/workflows/build-msix-sideload.yml
@@ -20,6 +21,8 @@ jobs:
          
       - name: Download artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: /artifacts
 
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v0
@@ -28,7 +31,7 @@ jobs:
 
       - name: Create release
         run: |
-          gh release create ${{ github.ref }} msix-package-*.zip
+          gh release create ${{ github.ref }} /artifacts/msix-package-*
         env:
           GITHUB_TOKEN: ${{ github.TOKEN }}
         shell: bash
