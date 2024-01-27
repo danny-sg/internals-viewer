@@ -19,14 +19,14 @@ public partial class AllocationLayer : ObservableObject
     private string objectName = string.Empty;
 
     [ObservableProperty]
-    private string indexName  = string.Empty;
+    private string indexName = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IndexTypeDescription))]
     private IndexType indexType;
 
-    public string IndexTypeDescription => IndexType.ToString().SplitCamelCase("-");
-    
+    public string IndexTypeDescription => isSystemObject ? string.Empty : IndexType.ToString().SplitCamelCase("-");
+
     [ObservableProperty]
     private bool isSystemObject;
 

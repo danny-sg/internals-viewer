@@ -259,7 +259,7 @@ public sealed partial class AllocationControl
                     renderer.DrawExtent(canvas, GetExtentPosition(extent.ExtentId - ScrollPosition, layout));
                 }
 
-                foreach (var page in layer.SinglePages.Where(l=>l.FileId == FileId))
+                foreach (var page in layer.SinglePages.Where(l => l.FileId == FileId))
                 {
                     renderer.DrawPage(canvas, GetPagePosition(page.PageId - ScrollPosition * 8, layout));
                 }
@@ -360,7 +360,7 @@ public sealed partial class AllocationControl
     /// </summary>
     private int GetExtentAtPosition(int x, int y)
     {
-        return  y / ExtentSize.Height * Layout.HorizontalCount + x / ExtentSize.Width + ScrollPosition;
+        return y / ExtentSize.Height * Layout.HorizontalCount + x / ExtentSize.Width + ScrollPosition;
     }
 
     /// <summary>
@@ -378,7 +378,8 @@ public sealed partial class AllocationControl
         var pageId = GetPageAtPosition((int)position.X, (int)position.Y);
         var extentId = GetExtentAtPosition((int)position.X, (int)position.Y);
 
-        var layer = Layers.FirstOrDefault(l => l.Allocations.Any(a => a.FileId == FileId && a.ExtentId == extentId));
+        var layer = Layers.FirstOrDefault(l => l.Allocations.Any(a => a.FileId == FileId && a.ExtentId == extentId) 
+                                               || l.SinglePages.Any(p => p.PageId == pageId && p.FileId == FileId));
 
         string layerName;
 

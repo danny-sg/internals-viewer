@@ -8,6 +8,7 @@ using InternalsViewer.UI.App.Models;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.UI.App.ViewModels.Allocation;
@@ -28,7 +29,7 @@ internal static class AllocationLayerBuilder
 
         var userObjectCount = allocationUnits.Where(u => !u.IsSystem).DistinctBy(t => t.TableName).Count();
 
-        foreach (var allocationUnit in allocationUnits.OrderBy(o => o.TableName).ThenBy(o => o.IndexName))
+        foreach (var allocationUnit in allocationUnits.OrderBy(o => o.TableName).ThenBy(o => o.IndexName).Where(o => !o.IsSystem))
         {
             var currentObjectName = GetCurrentObjectName(allocationUnit, separateIndexes);
 
@@ -49,6 +50,30 @@ internal static class AllocationLayerBuilder
                                           .Where(s => s != PageAddress.Empty));
         }
 
+        var systemLayer = new AllocationLayer
+        {
+            Name = "System Objects",
+            ObjectName = "System Objects",
+            Colour = Color.FromArgb(255, 190, 190, 205),
+            IsSystemObject = true,
+            IsVisible = true
+        };
+
+        foreach (var systemAllocationUnit in allocationUnits.Where(a => a.IsSystem))
+        {
+            systemLayer.Allocations.AddRange(GetExtentAllocations(systemAllocationUnit.IamChain));
+
+            systemLayer.SinglePages
+                       .AddRange(systemAllocationUnit.IamChain
+                       .Pages
+                       .SelectMany(s => s.SinglePageSlots)
+                       .Where(s => s != PageAddress.Empty));
+
+            systemLayer.TotalPages += systemAllocationUnit.TotalPages;
+        }
+
+        layers.Add(systemLayer);
+
         return layers;
     }
 
@@ -59,14 +84,14 @@ internal static class AllocationLayerBuilder
         layer.Allocations
              .AddRange(allocationPage.AllocationMap
                                      .Select((isAllocated, index) => new
-                                             {
-                                                 isAllocated,
-                                                 Extent = index,
-                                                 allocationPage.PageAddress.FileId
-                                             })
+                                     {
+                                         isAllocated,
+                                         Extent = index,
+                                         allocationPage.PageAddress.FileId
+                                     })
                                      .Where(w => w.isAllocated)
                                      .Select(s => new ExtentAllocation(s.FileId, s.Extent)));
-            
+
         return layer;
     }
 
