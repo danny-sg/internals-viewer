@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine;
+﻿using System.Text;
+using InternalsViewer.Internals.Engine;
 using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records;
 
@@ -8,7 +9,7 @@ public class Dictionary(int offset) : DataStructure
 {
     public int Offset { get; set; } = offset;
 
-    public List<DictionaryEntry> DictionaryEntries { get; set; } = new();
+    public List<DictionaryEntry> DictionaryEntries { get; } = new();
 
     [DataStructureItem(DataStructureItemType.EntryCount)]
     public int EntryCount { get; set; }
@@ -17,4 +18,23 @@ public class Dictionary(int offset) : DataStructure
 
     [DataStructureItem(DataStructureItemType.ColumnOffsetArray)]
     public string EntryOffsetArrayDescription => RecordHelpers.GetArrayString(EntryOffset);
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine($"Dictionary at {Offset}");
+        sb.AppendLine($"Entry count = {EntryCount}");
+        sb.AppendLine($"Entry offset = {EntryOffset}");
+        sb.AppendLine();
+        sb.AppendLine($"Dictionary entries");
+        sb.AppendLine();
+
+        foreach (var entry in DictionaryEntries)
+        {
+            sb.AppendLine(entry.ToString());
+        }
+
+        return sb.ToString();
+    }
 }

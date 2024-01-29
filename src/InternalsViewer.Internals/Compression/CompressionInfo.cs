@@ -28,12 +28,12 @@ public class CompressionInfo : DataStructure
     public short Size { get; set; }
 
     [DataStructureItem(DataStructureItemType.CiLength)]
-    public short Length { get; set; }
+    public ushort Length { get; set; }
 
     [DataStructureItem(DataStructureItemType.CiHeader)]
     public byte Header { get; set; }
 
-    public static int SlotOffset => 96;
+    public static ushort SlotOffset => 96;
 
     [DataStructureItem(DataStructureItemType.StatusBitsA)]
     public string HeaderDescription

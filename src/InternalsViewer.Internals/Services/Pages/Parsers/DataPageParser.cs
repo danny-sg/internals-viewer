@@ -32,7 +32,7 @@ public class DataPageParser(CompressionInfoLoader compressionInfoLoader) : PageP
 
         if(dataPage.AllocationUnit.CompressionType == CompressionType.Page && dataPage.IsPageCompressed)
         {
-            dataPage.CompressionInfo = CompressionInfoLoader.Load(dataPage);
+            dataPage.CompressionInfo = CompressionInfoLoader.Load(dataPage, CompressionInfo.SlotOffset);
         }
 
         return dataPage;

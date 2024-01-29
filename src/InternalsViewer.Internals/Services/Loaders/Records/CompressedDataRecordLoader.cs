@@ -59,7 +59,6 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 ///     - Special Information 
 ///     
 ///         Indicated by the header byte. It could be a forwarding pointer, back pointer, or version info.
-///
 /// </remarks>
 public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logger)
 {
@@ -68,7 +67,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
     /// </summary>
     private const int ClusterSize = 30;
 
-    public ILogger<CompressedDataRecordLoader> Logger { get; } = logger;
+    private ILogger<CompressedDataRecordLoader> Logger { get; } = logger;
 
     public CompressedDataRecord Load(AllocationUnitPage page, ushort slotOffset, TableStructure structure)
     {
@@ -103,7 +102,8 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
         if (record.HasLongDataRegion)
         {
-            currentPosition += record.ColumnDescriptors.Sum(GetSize);
+            // Calculate the size of the short data region
+            currentPosition += record.ColumnDescriptors.Sum(GetSizeFromColumnDescriptor);
 
             LoadLongDataRegion(record, structure, page.CompressionInfo?.AnchorRecord, page.Data, currentPosition);
         }
@@ -192,7 +192,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
     /// Bit 2 - 4 - Record Type - <see cref="CompressedRecordType"/>"
     /// Bit 5 - If the record has a a long data region
     /// </remarks>
-    public static void ParseHeader(CompressedDataRecord record, byte[] data, int offset)
+    public void ParseHeader(CompressedDataRecord record, byte[] data, int offset)
     {
         record.Header = data[offset];
 
@@ -203,6 +203,8 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
         record.RecordType = (CompressedRecordType)((record.Header >> 2) & 7);
 
         record.MarkProperty(nameof(record.Header), record.SlotOffset, sizeof(byte));
+
+        Logger.LogDebug("Record Type: {0}", record.RecordType);
     }
 
     private static void LoadForwardingRecord(CompressedDataRecord record)
@@ -276,7 +278,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
                 }
                 else
                 {
-                    var size = (int)columnDescriptor - 1;
+                    var size = GetSizeFromColumnDescriptor(columnDescriptor);
 
                     field.IsNull = columnDescriptor == ColumnDescriptor.Null;
                     field.Length = size;
@@ -308,7 +310,11 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
         }
     }
 
-    private static void LoadLongFields(int offset, CompressedDataRecord record, CompressedDataRecord? anchorRecord, TableStructure structure, byte[] data)
+    private static void LoadLongFields(int offset, 
+                                       CompressedDataRecord record, 
+                                       CompressedDataRecord? anchorRecord, 
+                                       TableStructure structure, 
+                                       byte[] data)
     {
         var columnIndex = 0;
         var previousOffset = 0;
@@ -320,6 +326,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
             if (record.ColumnDescriptors[i] == ColumnDescriptor.Long)
             {
                 var nextOffset = record.LongDataOffsetArray[columnIndex];
+             
                 var field = new CompressedRecordField(structure.Columns[i], record);
 
                 field.Cluster = cluster;
@@ -355,7 +362,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
         }
     }
 
-    private static int GetSize(ColumnDescriptor value)
+    private static int GetSizeFromColumnDescriptor(ColumnDescriptor value)
     {
         return value switch
         {
@@ -384,6 +391,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
     /// </remarks>
     private static void ParseColumnDescriptorArray(CompressedDataRecord record, byte[] data, int offset)
     {
+        var columnDescriptors = new List<ColumnDescriptor>();   
         var bytePosition = offset;
 
         var column = 1;
@@ -401,7 +409,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
             record.MarkProperty(nameof(record.ColumnDescriptors), record.SlotOffset + bytePosition, sizeof(byte));
 
-            record.ColumnDescriptors.Add(item1);
+            columnDescriptors.Add(item1);
 
             column++;
 
@@ -415,12 +423,14 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
                 record.MarkProperty(nameof(record.ColumnDescriptors), record.SlotOffset + bytePosition, sizeof(byte), column - 1);
 
-                record.ColumnDescriptors.Add(item2);
+                columnDescriptors.Add(item2);
 
                 column++;
             }
 
             bytePosition++;
         }
+
+        record.ColumnDescriptors = columnDescriptors.ToArray();
     }
 }

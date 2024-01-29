@@ -2,9 +2,19 @@
 
 namespace InternalsViewer.Internals.Services.Loaders.Compression;
 
-public class DictionaryLoader
+public static class DictionaryLoader
 {
-    public static Dictionary Load(byte[] data, int offset)
+    /// <summary>
+    /// Loads a Dictionary Structure
+    /// </summary>
+    /// <remarks>
+    /// Dictionary structure is:
+    /// 
+    ///     - Entry Count (2 bytes)
+    ///     - Entry Offset Array (2 bytes * Entry Count)
+    ///     - Dictionary Entries defined by the offset array
+    /// </remarks>
+    public static Dictionary Load(byte[] data, ushort offset)
     {
         var dictionary = new Dictionary(offset);
 
@@ -28,11 +38,13 @@ public class DictionaryLoader
 
             var dictionaryData = new byte[length];
 
-            Array.Copy(data, offset + dataOffset, dictionaryData, 0, length);
+            var entryOffset = offset + dataOffset;
+
+            Array.Copy(data, entryOffset, dictionaryData, 0, length);
 
             dictionary.MarkProperty("DictionaryEntriesArray", "Dictionary Entry " + i, i);
 
-            var entry = new DictionaryEntry(dictionaryData);
+            var entry = new DictionaryEntry(i, (ushort)entryOffset, dictionaryData);
 
             entry.MarkProperty("Data", offset + dataOffset, length);
 

@@ -1,10 +1,20 @@
-﻿using InternalsViewer.Internals.Engine;
+﻿using System.Text;
+using InternalsViewer.Internals.Engine;
 using InternalsViewer.Internals.Engine.Annotations;
 
 namespace InternalsViewer.Internals.Compression;
 
-public class DictionaryEntry(byte[] data) : DataStructure
+public class DictionaryEntry(int symbol, ushort offset, byte[] data) : DataStructure
 {
+    public int Symbol { get; set; } = symbol;
+
     [DataStructureItem(DataStructureItemType.Value)]
-    public byte[] Data { get; set; } = data;
+    public byte[] Data { get; } = data;
+
+    public ushort Offset { get; } = offset;
+
+    public override string ToString()
+    {
+        return $"Dictionary Entry = Symbol {Symbol}, offset {Offset} length {Data.Length}";
+    }
 }

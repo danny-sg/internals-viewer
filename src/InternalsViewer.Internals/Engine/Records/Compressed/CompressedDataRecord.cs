@@ -12,7 +12,7 @@ public class CompressedDataRecord(CompressionInfo compressionInfo) : Record
 
     public RowIdentifier RowIdentifier { get; set; }
 
-    public List<ColumnDescriptor> ColumnDescriptors { get; } = new();
+    public ColumnDescriptor[] ColumnDescriptors { get; set; } = Array.Empty<ColumnDescriptor>();
 
     public short CompressedSize { get; set; }
 

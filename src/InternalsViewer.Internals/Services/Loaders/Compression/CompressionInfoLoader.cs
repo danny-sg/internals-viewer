@@ -13,73 +13,69 @@ public class CompressionInfoLoader(CompressedDataRecordLoader compressedDataReco
 {
     private CompressedDataRecordLoader CompressedDataRecordLoader { get; } = compressedDataRecordLoader;
 
-    private static readonly short Offset = 96;
-
-    public CompressionInfo Load(AllocationUnitPage page)
+    public CompressionInfo Load(AllocationUnitPage page, ushort offset)
     {
         var ci = new CompressionInfo();
 
-        ParseHeader(ci, page.Data, CompressionInfo.SlotOffset);
+        ParseHeader(ci, page.Data, offset);
 
-        ci.PageModificationCount = BitConverter.ToInt16(page.Data, CompressionInfo.SlotOffset + 1);
+        ci.PageModificationCount = BitConverter.ToInt16(page.Data, offset + 1);
 
-        ci.MarkProperty(nameof(ci.PageModificationCount), CompressionInfo.SlotOffset + sizeof(byte), sizeof(short));
+        ci.MarkProperty(nameof(ci.PageModificationCount), offset + sizeof(byte), sizeof(short));
 
-        ci.Length = BitConverter.ToInt16(page.Data, CompressionInfo.SlotOffset + 3);
+        ci.Length = BitConverter.ToUInt16(page.Data, offset + 3);
 
-        ci.MarkProperty(nameof(ci.Length), CompressionInfo.SlotOffset + sizeof(byte) + sizeof(short), sizeof(short));
+        ci.MarkProperty(nameof(ci.Length), offset + sizeof(byte) + sizeof(short), sizeof(short));
 
         if (ci.HasDictionary)
         {
-            ci.Size = BitConverter.ToInt16(page.Data, CompressionInfo.SlotOffset + 5);
+            ci.Size = BitConverter.ToInt16(page.Data, offset + 5);
 
-            ci.MarkProperty(nameof(ci.Size), CompressionInfo.SlotOffset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
+            ci.MarkProperty(nameof(ci.Size), offset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
         }
 
         if (ci.HasAnchorRecord)
         {
-            LoadAnchor(ci, page);
+            LoadAnchor(ci, page, offset + (ci.HasDictionary ? 7 : 5));
         }
 
         if (ci.HasDictionary)
         {
-            LoadDictionary(ci, page);
+            LoadDictionary(ci, page.Data, (ushort)(offset + ci.Length));
         }
 
         return ci;
     }
 
-    private void ParseHeader(CompressionInfo ci, byte[] pageData, int slotOffset)
+    private void ParseHeader(CompressionInfo ci, byte[] pageData, int offset)
     {
-        ci.Header = pageData[slotOffset];
+        ci.Header = pageData[offset];
 
-        ci.HasAnchorRecord = (ci.Header & 0b00000001) != 0;
-        ci.HasDictionary = (ci.Header & 0b00000010) != 0;
+        ci.HasAnchorRecord = (ci.Header & 0b00000010) != 0;
+        ci.HasDictionary = (ci.Header & 0b00000100) != 0;
 
-        ci.MarkProperty(nameof(ci.Header), Offset, sizeof(byte));
+        ci.MarkProperty(nameof(ci.Header), offset, sizeof(byte));
     }
 
-    private static void LoadDictionary(CompressionInfo ci, AllocationUnitPage page)
+    private static void LoadDictionary(CompressionInfo ci, byte[] data, ushort offset)
     {
-        ci.CompressionDictionary = DictionaryLoader.Load(page.Data, Offset + ci.Length);
+        ci.CompressionDictionary = DictionaryLoader.Load(data, offset);
     }
 
-    private void LoadAnchor(CompressionInfo ci, AllocationUnitPage page)
+    private void LoadAnchor(CompressionInfo ci, AllocationUnitPage page, int offset)
     {
-        var startOffset = (ci.HasDictionary ? 7 : 5) + CompressionInfo.SlotOffset;
+        int records = page.Data[offset + 1];
 
-        int records = page.Data[startOffset + 1];
+        var structure = CreateTableStructure(records);
 
-        var structure = CreateTableStructure(records, ci, page);
-
-        var anchorRecord = CompressedDataRecordLoader.Load(page, (ushort)startOffset, structure);
+        var anchorRecord = CompressedDataRecordLoader.Load(page, (ushort)offset, structure);
 
         ci.AnchorRecord = anchorRecord;
     }
 
-    private static TableStructure CreateTableStructure(int records, CompressionInfo ci, Page page)
+    private static TableStructure CreateTableStructure(int records)
     {
-        var structure = new TableStructure(page.PageHeader.AllocationUnitId);
+        var structure = new TableStructure(-1);
 
         for (short i = 0; i < records; i++)
         {
