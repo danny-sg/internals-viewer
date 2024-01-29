@@ -191,11 +191,14 @@ public class IndexFixedVarRecordLoader(ILogger<IndexFixedVarRecordLoader> logger
         record.VariableLengthColumnCount = BitConverter.ToUInt16(page.Data, variableColumnCountOffset);
 
         record.MarkProperty("VariableLengthColumnCount", variableColumnCountOffset, sizeof(short));
+        
+        var offset =
+            record.SlotOffset + page.PageHeader.FixedLengthSize + sizeof(short) + varColStartIndex;
 
         // Load offset array of 2-byte integers indicating the end offset of each variable length field
-        record.ColOffsetArray = GetOffsetArray(page.Data,
-                                               record.VariableLengthColumnCount,
-                                               record.SlotOffset + page.PageHeader.FixedLengthSize + sizeof(short) + varColStartIndex);
+        record.ColOffsetArray = RecordHelpers.GetOffsetArray(page.Data,
+                                                             record.VariableLengthColumnCount,
+                                                             offset);
 
         record.MarkProperty("ColOffsetArrayDescription",
                                  variableColumnCountOffset + sizeof(short), record.VariableLengthColumnCount * sizeof(short));

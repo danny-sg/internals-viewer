@@ -8,11 +8,15 @@ using InternalsViewer.Internals.Engine.Records.Compressed;
 using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Compression;
+using Microsoft.IdentityModel.Logging;
+using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Loaders;
 
-public class CompressedDataRecordLoaderTests
+public class CompressedDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 {
+    public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;
+
     [Theory]
     [InlineData(0x00, false, false, RecordType.Primary, false)]
     [InlineData(01, true, false, RecordType.Primary, false)]
@@ -34,7 +38,7 @@ public class CompressedDataRecordLoaderTests
     [Fact]
     public void Can_Load_Record()
     {
-        var loader = new CompressedDataRecordLoader(null);
+        var loader = new CompressedDataRecordLoader(TestLogger.GetLogger<CompressedDataRecordLoader>(TestOutputHelper));
 
         var page = new DataPage();
 
@@ -63,6 +67,7 @@ public class CompressedDataRecordLoaderTests
 
         Assert.Equal("101", record.Fields[0].Value);
         Assert.Equal("Row 1", record.Fields.First(f=>f.ColumnStructure.ColumnName == "FixedTextField").Value);
+        Assert.Equal("This is row 1", record.Fields.First(f => f.ColumnStructure.ColumnName == "TextField").Value);
     }
 
     private readonly byte[] data = @"

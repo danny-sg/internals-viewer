@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Converters;

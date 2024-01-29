@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
@@ -104,14 +103,22 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
         if (record.HasLongDataRegion)
         {
-            currentPosition += record.ShortDataClusterArray.Length;
+            currentPosition += record.ColumnDescriptors.Sum(GetSize);
 
-            // LoadLongDataRegion(record, structure, page, currentPosition);
+            LoadLongDataRegion(record, structure, page.CompressionInfo?.AnchorRecord, page.Data, currentPosition);
         }
 
         return record;
     }
 
+    /// <summary>
+    /// Loads Short Data Region
+    /// </summary>
+    /// <remarks>
+    /// Short Data Region:
+    /// 
+    ///     Short Data Cluster Array | Short Fields
+    /// </remarks>
     private void LoadShortDataRegion(CompressedDataRecord record,
                                      TableStructure structure,
                                      CompressedDataRecord? anchorRecord,
@@ -124,9 +131,17 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
         currentPosition += record.ShortDataClusterArray.Length;
 
-        currentPosition += LoadShortFields(record, structure, anchorRecord, data, currentPosition);
+        LoadShortFields(record, structure, anchorRecord, data, currentPosition);
     }
 
+    /// <summary>
+    /// Loads Long Data Region
+    /// </summary>
+    /// <remarks>
+    /// Short Data Region:
+    /// 
+    ///     Long Data Header | Long Data Offset Count | Long Data Offset Array | Long Data Cluster Array | Long Data
+    /// </remarks>
     private void LoadLongDataRegion(CompressedDataRecord record,
                                     TableStructure structure,
                                     CompressedDataRecord? anchorRecord,
@@ -134,6 +149,31 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
                                     int offset)
     {
         var currentPosition = offset;
+
+        record.LongDataHeader = data[currentPosition];
+
+        currentPosition += sizeof(byte);
+
+        record.LongDataOffsetCount = BitConverter.ToUInt16(data, currentPosition);
+
+        currentPosition += sizeof(ushort);
+
+        record.LongDataOffsetArray = RecordHelpers.GetOffsetArray(data, record.LongDataOffsetCount, currentPosition);
+
+        currentPosition += record.LongDataOffsetCount * sizeof(ushort);
+
+        ParseLongDataClusterArray(record, data, currentPosition);
+
+        currentPosition += record.LongDataClusterArray.Length;
+
+        LoadLongFields(currentPosition, record, anchorRecord, structure, data);
+    }
+
+    private void ParseLongDataClusterArray(CompressedDataRecord record, byte[] data, int offset)
+    {
+        var longDataClusterArraySize = (record.ColumnCount - 1) / ClusterSize;
+
+        record.LongDataClusterArray = data[offset..(offset + longDataClusterArraySize)];
     }
 
     private void ParseShortDataClusterArray(CompressedDataRecord record, byte[] data, int offset)
@@ -209,11 +249,11 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
         return columns;
     }
 
-    public static int LoadShortFields(CompressedDataRecord record,
-                                      TableStructure structure,
-                                      CompressedDataRecord? anchorRecord,
-                                      byte[] data,
-                                      int offset)
+    private static void LoadShortFields(CompressedDataRecord record,
+                                        TableStructure structure,
+                                        CompressedDataRecord? anchorRecord,
+                                        byte[] data,
+                                        int offset)
     {
         var index = 0;
 
@@ -226,6 +266,8 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
             if (columnDescriptor != ColumnDescriptor.Long)
             {
                 var field = new CompressedRecordField(structure.Columns[i], record);
+
+                field.Cluster = cluster;
 
                 if (structure.Columns[i].DataType == SqlDbType.Bit)
                 {
@@ -264,35 +306,34 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
                 record.Fields.Add(field);
             }
         }
-
-        return offset;
     }
 
-    private static void LoadLongFields(int startPos, CompressedDataRecord record, TableStructure structure, AllocationUnitPage page)
+    private static void LoadLongFields(int offset, CompressedDataRecord record, CompressedDataRecord? anchorRecord, TableStructure structure, byte[] data)
     {
-        var longColIndex = 0;
-        var prevLength = 0;
+        var columnIndex = 0;
+        var previousOffset = 0;
 
         for (var i = 0; i < record.ColumnCount; i++)
         {
+            var cluster = i / ClusterSize;
+
             if (record.ColumnDescriptors[i] == ColumnDescriptor.Long)
             {
+                var nextOffset = record.LongDataOffsetArray[columnIndex];
                 var field = new CompressedRecordField(structure.Columns[i], record);
 
-                field.Length = RecordHelpers.DecodeOffset(record.ColOffsetArray[longColIndex]) - prevLength;
+                field.Cluster = cluster;
+                field.Length = RecordHelpers.DecodeOffset(nextOffset) - previousOffset;
                 field.Data = new byte[field.Length];
-                field.Offset = startPos + prevLength;
+                field.Offset = offset + previousOffset;
 
-                var isLob = (record.ColOffsetArray[longColIndex] & 0x8000) == 0x8000;
+                var isLob = (nextOffset & 0x8000) == 0;
 
-                Array.Copy(page.Data, field.Offset, field.Data, 0, field.Length);
+                Array.Copy(data, field.Offset, field.Data, 0, field.Length);
 
-
-                field.AnchorField = page.CompressionInfo?.AnchorRecord?
-                                        .Fields
-                                        .Cast<CompressedRecordField>()
-                                        .FirstOrDefault(f => f.ColumnStructure.ColumnId == i);
-
+                field.AnchorField = anchorRecord?.Fields
+                                                 .Cast<CompressedRecordField>()
+                                                 .FirstOrDefault(f => f.ColumnStructure.ColumnId == i);
 
                 record.Fields.Add(field);
 
@@ -307,19 +348,30 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
                 record.MarkProperty("FieldsArray", field.Name, record.Fields.Count - 1);
 
-                prevLength = RecordHelpers.DecodeOffset(record.ColOffsetArray[longColIndex]);
+                previousOffset = RecordHelpers.DecodeOffset(nextOffset);
 
-                longColIndex++;
+                columnIndex++;
             }
         }
     }
 
-    private static int GetCdArrayItemSize(int cdItem)
+    private static int GetSize(ColumnDescriptor value)
     {
-        return cdItem switch
+        return value switch
         {
-            > 0 and < 10 => cdItem - 1,
-            > 10 => cdItem - 11,
+            ColumnDescriptor.Null => 0,
+            ColumnDescriptor.ZeroByteShort => 0,
+            ColumnDescriptor.OneByteShort => 1,
+            ColumnDescriptor.TwoByteShort => 2,
+            ColumnDescriptor.ThreeByteShort => 3,
+            ColumnDescriptor.FourByteShort => 4,
+            ColumnDescriptor.FiveByteShort => 5,
+            ColumnDescriptor.SixByteShort => 6,
+            ColumnDescriptor.SevenByteShort => 7,
+            ColumnDescriptor.EightByteShort => 8,
+            ColumnDescriptor.Long => 0,
+            ColumnDescriptor.BitTrue => 0,
+            ColumnDescriptor.PageSymbol => 1,
             _ => 0
         };
     }

@@ -25,6 +25,8 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
 
     public bool IsNull { get; set; }
 
+    public int Cluster { get; set; }
+
     public int AnchorLength { get; set; }
 
     public CompressedRecordField? AnchorField { get; set; }

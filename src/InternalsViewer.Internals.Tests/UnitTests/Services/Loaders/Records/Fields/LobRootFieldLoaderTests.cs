@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Services.Loaders.Records.Fields;
 using InternalsViewer.Internals.Tests.Helpers;
 

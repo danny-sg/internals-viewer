@@ -21,6 +21,24 @@ public static class RecordHelpers
         return value;
     }
 
+    /// <summary>
+    /// Get an offset array from a record
+    /// </summary>
+    /// <returns>An array of 2-byte integers representing a start offset in the page</returns>
+    public static ushort[] GetOffsetArray(byte[] record, int size, int offset)
+    {
+        var offsetArray = new ushort[size];
+
+        for (var i = 0; i < size; i++)
+        {
+            offsetArray[i] = BitConverter.ToUInt16(record, offset);
+
+            offset += sizeof(ushort);
+        }
+
+        return offsetArray;
+    }
+
     public static string GetArrayString(ushort[] array)
     {
         var sb = new StringBuilder();

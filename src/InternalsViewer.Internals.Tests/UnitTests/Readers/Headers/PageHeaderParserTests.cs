@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Internals.Tests.Helpers;
 

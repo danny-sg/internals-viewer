@@ -130,21 +130,21 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
                                                                              dataRecord.SlotOffset + variableLengthColumnCountOffset);
 
                 dataRecord.MarkProperty("VariableLengthColumnCount",
-                                             dataRecord.SlotOffset + variableLengthColumnCountOffset,
-                                             sizeof(short));
+                                        dataRecord.SlotOffset + variableLengthColumnCountOffset,
+                                        sizeof(short));
 
                 // Offset starts after the variable length column count (2-bytes)
                 offsetStart = (short)(variableLengthColumnCountOffset + sizeof(short));
             }
 
             // Load offset array of 2-byte integers indicating the end offset of each variable length field
-            dataRecord.ColOffsetArray = GetOffsetArray(data,
-                                                       dataRecord.VariableLengthColumnCount,
-                                                       dataRecord.SlotOffset + offsetStart);
+            dataRecord.ColOffsetArray = RecordHelpers.GetOffsetArray(data,
+                                                                     dataRecord.VariableLengthColumnCount,
+                                                                     dataRecord.SlotOffset + offsetStart);
 
             dataRecord.MarkProperty("ColOffsetArrayDescription",
-                                         dataRecord.SlotOffset + offsetStart,
-                                         dataRecord.VariableLengthColumnCount * sizeof(short));
+                                    dataRecord.SlotOffset + offsetStart,
+                                    dataRecord.VariableLengthColumnCount * sizeof(short));
 
             // Variable length data starts after the offset array length (2 byte integers * number of variable length columns)
             dataRecord.VariableLengthDataOffset = (ushort)(offsetStart + sizeof(ushort) * dataRecord.VariableLengthColumnCount);

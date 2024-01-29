@@ -27,11 +27,15 @@ public class CompressedDataRecord(CompressionInfo compressionInfo) : Record
 
     public byte[] LongDataClusterArray { get; set; } = Array.Empty<byte>();
 
-    public ushort[] ColOffsetArray { get; set; } = Array.Empty<ushort>();
-    
     public bool IsCompressedDataRecord { get; set; }
     
     public bool HasVersioning { get; set; }
 
     public bool HasLongDataRegion { get; set; }
+    
+    public byte LongDataHeader { get; set; }
+    
+    public ushort LongDataOffsetCount { get; set; }
+
+    public ushort[] LongDataOffsetArray { get; set; } = Array.Empty<ushort>();
 }

@@ -11,24 +11,6 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 public abstract class FixedVarRecordLoader
 {
     /// <summary>
-    /// Gets the variable offset array.
-    /// </summary>
-    /// <returns>An array of 2-byte integers representing a start offset in the page</returns>
-    protected static ushort[] GetOffsetArray(byte[] record, int size, int offset)
-    {
-        var offsetArray = new ushort[size];
-
-        for (var i = 0; i < size; i++)
-        {
-            offsetArray[i] = BitConverter.ToUInt16(record, offset);
-
-            offset += sizeof(ushort);
-        }
-
-        return offsetArray;
-    }
-
-    /// <summary>
     /// Loads Status Bits A, part of the two byte record header
     /// </summary>
     protected static void LoadStatusBitsA(FixedVarRecord record, byte[] data)
