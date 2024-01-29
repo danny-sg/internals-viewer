@@ -10,7 +10,7 @@ public class DataPageParserTests(ITestOutputHelper testOutput)
     {
         var pageData = await GetPageData(new PageAddress(1, 25520));
 
-        var parser = new DataPageParser();
+        var parser = new DataPageParser(null);
 
         var page = parser.Parse(pageData);
 

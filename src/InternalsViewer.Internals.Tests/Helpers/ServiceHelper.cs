@@ -1,4 +1,6 @@
 ﻿using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Loaders.Compression;
+using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Pages;
 using InternalsViewer.Internals.Services.Pages.Loaders;
 using InternalsViewer.Internals.Services.Pages.Parsers;
@@ -14,7 +16,7 @@ internal class ServiceHelper
 
         var parsers = new IPageParser[]
         {
-            new DataPageParser(),
+         //   new DataPageParser(new Services.Loaders.Compression.CompressionInfoLoader(new Services.Loaders.Records.CompressedDataRecordLoader(TestLogger.GetLogger<CompressedDataRecordLoader>(testOutput, logLevel))),
             new IndexPageParser(),
             new PfsPageParser(),
             new BootPageParser()

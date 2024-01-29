@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Generators;
 
 // ReSharper disable StringLiteralTypo
@@ -38,7 +39,7 @@ public record InternalRowSet
     public long RowCount { get; set; }
 
     [InternalsMetadataColumn("cmprlevel", 9, SqlDbType.TinyInt, 1, 39, 9)]
-    public byte CompressionLevel { get; set; }
+    public CompressionType CompressionType { get; set; }
 
     [InternalsMetadataColumn("fillfact", 10, SqlDbType.TinyInt, 1, 40, 10)]
     public byte FillFactor { get; set; }

@@ -20,7 +20,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
       
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
@@ -40,7 +40,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
 
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
@@ -60,7 +60,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
 
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
@@ -80,7 +80,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
 
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 

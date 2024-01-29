@@ -8,7 +8,7 @@ using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records;
 
-internal class BlobRecordLoader : RecordLoader
+internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
 {
     /// <summary>
     /// Loads a record at the specified offset

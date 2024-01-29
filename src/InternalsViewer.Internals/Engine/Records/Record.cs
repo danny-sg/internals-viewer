@@ -5,10 +5,7 @@ using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records;
 
-/// <summary>
-/// Database Record Structure
-/// </summary>
-public abstract class Record : DataStructure
+public abstract class FixedVarRecord: Record
 {
     /// <summary>
     /// Gets the record type description.
@@ -44,22 +41,7 @@ public abstract class Record : DataStructure
         return stringBuilder.ToString();
     }
 
-    public static string GetArrayString(ushort[] array)
-    {
-        var sb = new StringBuilder();
 
-        foreach (var offset in array)
-        {
-            if (sb.Length > 0)
-            {
-                sb.Append(", ");
-            }
-
-            sb.AppendFormat("{0} - 0x{0:X}", offset);
-        }
-
-        return sb.ToString();
-    }
 
     public bool IsNullBitmapSet(ColumnStructure columnStructure, int offset)
     {
@@ -71,7 +53,7 @@ public abstract class Record : DataStructure
         return NullBitmap.Get(columnStructure.NullBitIndex - 1 + offset);
     }
 
-    internal static string GetStatusBitsDescription(Record record)
+    internal static string GetStatusBitsDescription(FixedVarRecord record)
     {
         var statusDescription = string.Empty;
 
@@ -92,15 +74,10 @@ public abstract class Record : DataStructure
         return statusDescription;
     }
 
-    public RecordType RecordType { get; set; }
-
-    [DataStructureItem(DataStructureItemType.SlotOffset)]
-    public ushort SlotOffset { get; set; }
-
     public ushort[] ColOffsetArray { get; set; } = Array.Empty<ushort>();
 
     [DataStructureItem(DataStructureItemType.ColumnOffsetArray)]
-    public string ColOffsetArrayDescription => GetArrayString(ColOffsetArray);
+    public string ColOffsetArrayDescription => RecordHelpers.GetArrayString(ColOffsetArray);
 
     public BitArray StatusBitsA { get; set; } = new(0);
 
@@ -111,8 +88,7 @@ public abstract class Record : DataStructure
 
     public short ColumnCountBytes { get; set; }
 
-    [DataStructureItem(DataStructureItemType.ColumnCount)]
-    public short ColumnCount { get; set; }
+    public RecordType RecordType { get; set; }
 
     [DataStructureItem(DataStructureItemType.ColumnCountOffset)]
     public short ColumnCountOffset { get; set; }
@@ -137,9 +113,21 @@ public abstract class Record : DataStructure
 
     public bool Compressed { get; set; }
 
+    public bool HasRowVersioning { get; set; }
+}
+
+/// <summary>
+/// Database Record Structure
+/// </summary>
+public abstract class Record : DataStructure
+{
+    [DataStructureItem(DataStructureItemType.SlotOffset)]
+    public ushort SlotOffset { get; set; }
+
     public List<RecordField> Fields { get; set; } = new();
 
     public RecordField[] FieldsArray => Fields.ToArray();
-    
-    public bool HasRowVersioning { get; set; }
+
+    [DataStructureItem(DataStructureItemType.ColumnCount)]
+    public short ColumnCount { get; set; }
 }

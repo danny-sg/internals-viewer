@@ -25,7 +25,7 @@ namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records;
 ///                LEFT JOIN sys.all_columns c ON column_id = partition_column_id AND c.object_id = p.object_id
 ///         WHERE  o.name = 'DataRecordLoaderTests_VariableFixed_NotNull'
 /// </remarks>
-public class DataRecordLoaderTests(ITestOutputHelper testOutputHelper)
+public class DataFixedVarRecordLoaderTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutput { get; set; } = testOutputHelper;
 
@@ -108,7 +108,7 @@ public class DataRecordLoaderTests(ITestOutputHelper testOutputHelper)
             NullBitIndex = 3
         });
 
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
@@ -183,7 +183,7 @@ public class DataRecordLoaderTests(ITestOutputHelper testOutputHelper)
             NullBitIndex = 2
         });
 
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
@@ -292,7 +292,7 @@ public class DataRecordLoaderTests(ITestOutputHelper testOutputHelper)
             NullBitIndex = 4
         });
 
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
@@ -319,7 +319,7 @@ public class DataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 
         var structure = new TableStructure(100);
 
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
@@ -390,7 +390,7 @@ public class DataRecordLoaderTests(ITestOutputHelper testOutputHelper)
         structure.Columns.Add(new ColumnStructure { ColumnName = "Column3", ColumnId = 3, DataType = SqlDbType.VarChar, LeafOffset = -2, Precision = 0, NullBitIndex = 3 });
         structure.Columns.Add(new ColumnStructure { ColumnName = "Column4", ColumnId = 4, DataType = SqlDbType.VarChar, LeafOffset = -3, Precision = 0, NullBitIndex = 4 });
 
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
     }

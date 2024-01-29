@@ -6,9 +6,9 @@ using System.Collections;
 namespace InternalsViewer.Internals.Services.Loaders.Records;
 
 /// <summary>
-/// Loads a record
+/// Loads a record in the FixedVar format
 /// </summary>
-public abstract class RecordLoader
+public abstract class FixedVarRecordLoader
 {
     /// <summary>
     /// Gets the variable offset array.
@@ -31,7 +31,7 @@ public abstract class RecordLoader
     /// <summary>
     /// Loads Status Bits A, part of the two byte record header
     /// </summary>
-    protected static void LoadStatusBitsA(Record record, byte[] data)
+    protected static void LoadStatusBitsA(FixedVarRecord record, byte[] data)
     {
         var statusA = data[record.SlotOffset];
 
@@ -49,7 +49,7 @@ public abstract class RecordLoader
     /// <summary>
     /// Loads a LOB field.
     /// </summary>
-    protected static void LoadLobField(RecordField field, byte[] data, int offset)
+    protected static void LoadLobField(FixedVarRecordField field, byte[] data, int offset)
     {
         field.MarkProperty("BlobInlineRoot");
 
@@ -68,18 +68,5 @@ public abstract class RecordLoader
                 field.BlobInlineRoot = LobOverflowFieldLoader.Load(data, offset);
                 break;
         }
-    }
-
-    /// <summary>
-    /// Flips the high bit if set
-    /// </summary>
-    public static ushort DecodeOffset(ushort value)
-    {
-        if ((value | 0x8000) == value)
-        {
-            return Convert.ToUInt16(value ^ 0x8000);
-        }
-
-        return value;
     }
 }

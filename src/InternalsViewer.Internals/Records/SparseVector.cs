@@ -42,10 +42,10 @@ public class SparseVector: DataStructure
     public ushort[] Columns { get; set; } = Array.Empty<ushort>();
 
     [DataStructureItem(DataStructureItemType.SparseColumns)]
-    public string ColumnsDescription => Record.GetArrayString(Columns);
+    public string ColumnsDescription => RecordHelpers.GetArrayString(Columns);
 
     [DataStructureItem(DataStructureItemType.SparseColumnOffsets)]
-    public string OffsetsDescription => Record.GetArrayString(Offset);
+    public string OffsetsDescription => RecordHelpers.GetArrayString(Offset);
 
     public ushort[] Offset { get; set; } = Array.Empty<ushort>();
 

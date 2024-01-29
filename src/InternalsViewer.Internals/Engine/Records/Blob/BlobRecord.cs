@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Engine.Records.Blob;
 
-public class BlobRecord : Record
+public class BlobRecord : FixedVarRecord
 {
     public const short CurLinksOffset = 16;
     public const short DataOffset = 14;

@@ -20,6 +20,7 @@ using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI;
 using Windows.UI;
+using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Helpers;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 
@@ -119,6 +120,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private const short PageHeaderSlot = -100;
     private const short IamHeaderSlot = -10;
+    private const short CompressionInfoSlot = -90;
 
     private List<Record> Records { get; } = new();
 
@@ -136,6 +138,9 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         {
             case PageHeaderSlot:
                 AddPageHeaderMarkers();
+                break;
+            case CompressionInfoSlot:
+                AddCompressionInfoMarkers();
                 break;
             case IamHeaderSlot:
                 AddIamHeaderMarkers();
@@ -184,6 +189,12 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             Description = "IAM Header"
         };
 
+        var compressionInfoSlot = new PageSlot
+        {
+            Index = CompressionInfoSlot,
+            Description = "Compression Info"
+        };  
+
         slots.Insert(0, headerSlot);
 
         switch (resultPage)
@@ -191,6 +202,10 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             case AllocationUnitPage allocationUnitPage:
                 DisplayAllocationUnitPage(allocationUnitPage);
 
+                if(allocationUnitPage.CompressionInfo != null)
+                {
+                    slots.Insert(1, compressionInfoSlot);
+                }
                 break;
             case IamPage iamPage:
                 DisplayIamPage(iamPage);
@@ -347,28 +362,30 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         Records.Clear();
 
-        foreach (var offset in target.OffsetTable)
+        try
         {
-            try
+            switch (target)
             {
-                switch (target.PageHeader.PageType)
-                {
-                    case PageType.Data:
-                        Logger.LogDebug("Loading Data Records");
+                case { PageHeader.PageType: PageType.Data } and { AllocationUnit.CompressionType: CompressionType.None }:
 
-                        Records.Add(RecordService.GetDataRecord((DataPage)target, offset));
-                        break;
-                    case PageType.Index:
-                        Logger.LogDebug("Loading Index Records");
+                    Records.AddRange(RecordService.GetDataRecords((DataPage)target));
+                    break;
 
-                        Records.Add(RecordService.GetIndexRecord((IndexPage)target, offset));
-                        break;
-                }
+                case { PageHeader.PageType: PageType.Data } and not { AllocationUnit.CompressionType: CompressionType.None }:
+
+                    Records.AddRange(RecordService.GetCompressedDataRecords((DataPage)target));
+                    break;
+
+                case { PageHeader.PageType: PageType.Index }:
+                    Logger.LogDebug("Loading Index Records");
+
+                    Records.AddRange(RecordService.GetIndexRecords((IndexPage)target));
+                    break;
             }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, $"Error loading record at offset {offset}");
-            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading record(s)");
         }
 
         Logger.LogDebug("{RecordCount} Record(s) loaded", Records.Count);
@@ -423,6 +440,19 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         }
 
         AddMarkers(record);
+    }
+
+
+    private void AddCompressionInfoMarkers()
+    {
+        MarkerTabName = $"Compression Info";
+
+        if (Page is AllocationUnitPage { CompressionInfo: not null } p)
+        {
+            var m = MarkerBuilder.BuildMarkers(p.CompressionInfo);
+
+            Markers = new ObservableCollection<Marker>(m);
+        }
     }
 
     private void AddMarkers(DataStructure source)

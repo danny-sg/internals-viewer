@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Database.Enums;
+﻿using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Database.Enums;
 
 namespace InternalsViewer.Internals.Metadata.Structures;
 
@@ -17,4 +18,6 @@ public abstract record Structure<T>(long AllocationUnitId) where T : ColumnStruc
     public bool HasSparseColumns => Columns.Any(c => c.IsSparse);
 
     public IndexType IndexType { get; set; }
+
+    public CompressionType CompressionType { get; set; }
 }

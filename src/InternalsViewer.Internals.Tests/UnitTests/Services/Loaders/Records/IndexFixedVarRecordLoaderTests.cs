@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records;
 
-public class IndexRecordLoaderTests
+public class IndexFixedVarRecordLoaderTests
 {
     /// <summary>
     /// DBCC Page results:

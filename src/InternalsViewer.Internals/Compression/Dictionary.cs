@@ -16,5 +16,5 @@ public class Dictionary(int offset) : DataStructure
     public ushort[] EntryOffset { get; set; } = Array.Empty<ushort>();
 
     [DataStructureItem(DataStructureItemType.ColumnOffsetArray)]
-    public string EntryOffsetArrayDescription => Record.GetArrayString(EntryOffset);
+    public string EntryOffsetArrayDescription => RecordHelpers.GetArrayString(EntryOffset);
 }

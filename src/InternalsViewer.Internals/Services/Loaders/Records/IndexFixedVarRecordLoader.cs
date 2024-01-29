@@ -33,9 +33,9 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 ///     
 /// This is in addition to the variable/fixed length record fields.
 /// </remarks>
-public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
+public class IndexFixedVarRecordLoader(ILogger<IndexFixedVarRecordLoader> logger) : FixedVarRecordLoader
 {
-    public ILogger<IndexRecordLoader> Logger { get; } = logger;
+    private ILogger<IndexFixedVarRecordLoader> Logger { get; } = logger;
 
     /// <summary>
     /// Load an Index record at the specified offset
@@ -184,7 +184,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         return isBinaryDataType && hasCorrectDataLength && (hasCorrectLeafOffset || hasCorrectNodeOffset);
     }
 
-    private void LoadColumnOffsetArray(Record record, int varColStartIndex, Page page)
+    private void LoadColumnOffsetArray(IndexRecord record, int varColStartIndex, Page page)
     {
         var variableColumnCountOffset = record.SlotOffset + page.PageHeader.FixedLengthSize + varColStartIndex;
 
@@ -203,7 +203,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
 
     private void LoadColumnValues(IndexRecord record, PageData page, List<IndexColumnStructure> columns, NodeType nodeType)
     {
-        var columnValues = new List<RecordField>();
+        var columnValues = new List<FixedVarRecordField>();
 
         var index = 0;
 
@@ -211,7 +211,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         {
             var columnOffset = nodeType == NodeType.Leaf ? column.LeafOffset : column.NodeOffset;
 
-            var field = new RecordField(column);
+            var field = new FixedVarRecordField(column);
 
             if (columnOffset >= 0)
             {
@@ -256,11 +256,11 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         record.MarkProperty("Rid", record.SlotOffset + offset, RowIdentifier.Size);
     }
 
-    private RecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, Record record, byte[] pageData)
+    private FixedVarRecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, IndexRecord record, byte[] pageData)
     {
         int length;
 
-        var field = new RecordField(column);
+        var field = new FixedVarRecordField(column);
 
         var variableIndex = Math.Abs(columnOffset) - 1;
 
@@ -289,7 +289,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         return field;
     }
 
-    private static ushort GetVariableLengthOffset(Record record, int variableIndex)
+    private static ushort GetVariableLengthOffset(IndexRecord record, int variableIndex)
     {
         ushort offset;
 
@@ -307,9 +307,9 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         return offset;
     }
 
-    private RecordField LoadUniqueifier(short columnOffset, IndexColumnStructure column, IndexRecord record, byte[] pageData)
+    private FixedVarRecordField LoadUniqueifier(short columnOffset, IndexColumnStructure column, IndexRecord record, byte[] pageData)
     {
-        var field = new RecordField(column);
+        var field = new FixedVarRecordField(column);
 
         var uniqueifierIndex = Math.Abs(columnOffset) - 1;
 
@@ -347,9 +347,9 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
     /// <remarks>
     /// Fixed length fields are based on the length of the field defined in the table structure.
     /// </remarks>
-    private static RecordField LoadFixedLengthField(short offset, ColumnStructure column, Record dataRecord, byte[] pageData)
+    private static FixedVarRecordField LoadFixedLengthField(short offset, ColumnStructure column, Record dataRecord, byte[] pageData)
     {
-        var field = new RecordField(column);
+        var field = new FixedVarRecordField(column);
 
         // Length fixed from data type/data length
         var length = column.DataLength;
@@ -367,7 +367,7 @@ public class IndexRecordLoader(ILogger<IndexRecordLoader> logger) : RecordLoader
         return field;
     }
 
-    private void LoadNullBitmap(Record record, PageData page, IndexStructure structure)
+    private void LoadNullBitmap(IndexRecord record, PageData page, IndexStructure structure)
     {
         record.NullBitmapSize = (short)((structure.Columns.Count - 1) / 8 + 1);
 

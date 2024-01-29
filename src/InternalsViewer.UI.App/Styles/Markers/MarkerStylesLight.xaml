@@ -104,7 +104,7 @@
 
     <models:MarkStyle Name="Free Count" x:Key="FreeCountMarkerStyle" ForeColour="#0BB" BackColour="AliceBlue" Ordinal="60" />
 
-    <models:MarkStyle Name="Free Data" x:Key="FreeDataMarkerStyle" ForeColour="#0B9" BackColour="AliceBlue" Ordinal="70" />
+    <models:MarkStyle Name="Free Data Offset" x:Key="FreeDataMarkerStyle" ForeColour="#0B9" BackColour="AliceBlue" Ordinal="70" />
 
     <models:MarkStyle Name="Reserved Count" x:Key="ReservedCountMarkerStyle" ForeColour="#0B7" BackColour="AliceBlue" Ordinal="80"/>
 

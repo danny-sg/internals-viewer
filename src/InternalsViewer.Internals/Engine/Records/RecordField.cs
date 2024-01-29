@@ -1,51 +1,30 @@
-﻿using InternalsViewer.Internals.Converters;
-using InternalsViewer.Internals.Engine.Annotations;
-using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
-using InternalsViewer.Internals.Helpers;
-using InternalsViewer.Internals.Metadata.Structures;
+﻿using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records;
 
-/// <summary>
-/// Record field
-/// </summary>
-public class RecordField(ColumnStructure columnStructure) : Field
+public abstract class RecordField(ColumnStructure columnStructure) : Field
 {
-    public BlobField? BlobInlineRoot { get; set; }
+    public ColumnStructure ColumnStructure { get; } = columnStructure;
 
-    public ColumnStructure ColumnStructure { get; set; } = columnStructure;
-
-    public int LeafOffset => ColumnStructure.LeafOffset;
-
+    /// <summary>
+    /// Length of the field (in bytes)
+    /// </summary>
     public int Length { get; set; }
 
+    /// <summary>
+    /// Offset of the field in the row
+    /// </summary>
     public int Offset { get; set; }
 
+    /// <summary>
+    /// Raw data for the field
+    /// </summary>
     public byte[] Data { get; set; } = Array.Empty<byte>();
-
-    public int VariableOffset { get; set; }
-
-    public bool Compressed { get; set; }
-
-    public bool Sparse { get; set; }
 
     public string Name => ColumnStructure.ColumnName;
 
-    [DataStructureItem(DataStructureItemType.Value)]
-    public string Value => DataConverter.BinaryToString(Data, 
-                                                        ColumnStructure.DataType, 
-                                                        ColumnStructure.Precision, 
-                                                        ColumnStructure.Scale,
-                                                        ColumnStructure.BitPosition);
-
-    public override string ToString()
-    {
-        return string.Format("  Offset: {0, -4} Leaf Offset: {1, -4} Length: {2, -4} Field: {3, -30} Data type: {4, -10} Value: {5}",
-                             Offset,
-                             LeafOffset,
-                             Length,
-                             ColumnStructure.ColumnName,
-                             ColumnStructure.DataType,
-                             StringHelpers.ToHexString(Data));
-    }
+    /// <summary>
+    /// String representation of the field value
+    /// </summary>
+    public abstract string Value { get; }
 }

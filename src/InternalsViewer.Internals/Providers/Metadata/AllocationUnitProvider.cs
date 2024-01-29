@@ -59,7 +59,7 @@ public static class AllocationUnitProvider
             UsedPages = source.UsedPages,
             TotalPages = source.TotalPages,
             DisplayName = displayName,
-            CompressionType = (CompressionType)rowSet.CompressionLevel,
+            CompressionType = (CompressionType)rowSet.CompressionType,
             ParentIndexType = parentIndex?.IndexType
         };
 

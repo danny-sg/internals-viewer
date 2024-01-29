@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Annotations;
 
 namespace InternalsViewer.Internals.Engine.Records.Index;
 
-public class IndexRecord : Record
+public class IndexRecord : FixedVarRecord
 {
     /// <summary>
     /// Down page pointer to the next page in the index

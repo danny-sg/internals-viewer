@@ -34,6 +34,8 @@ public class TableStructureProvider
 
         structure.IndexType = rowSet.IndexId == 0 ? IndexType.Heap : IndexType.Clustered;
 
+        structure.CompressionType = rowSet.CompressionType;
+
         var columnLayouts = metadata.ColumnLayouts.Where(c => c.PartitionId == rowSet.RowSetId).ToList();
 
         var columns = metadata.Columns.Where(c => c.ObjectId == rowSet.ObjectId).ToList();

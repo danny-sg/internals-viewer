@@ -1,15 +1,19 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Loaders.Compression;
 
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
 /// <summary>
 /// Parser for Data pages
 /// </summary>
-public class DataPageParser : PageParser, IPageParser<DataPage>
+public class DataPageParser(CompressionInfoLoader compressionInfoLoader) : PageParser, IPageParser<DataPage>
 {
+    private CompressionInfoLoader CompressionInfoLoader { get; } = compressionInfoLoader;
+
     public PageType[] SupportedPageTypes => new[] { PageType.Data };
 
     Page IPageParser.Parse(PageData page)
@@ -25,6 +29,11 @@ public class DataPageParser : PageParser, IPageParser<DataPage>
                                           .AllocationUnits
                                           .FirstOrDefault(a => a.AllocationUnitId == dataPage.PageHeader.AllocationUnitId)
                                   ?? AllocationUnit.Unknown;
+
+        if(dataPage.AllocationUnit.CompressionType == CompressionType.Page && dataPage.IsPageCompressed)
+        {
+            dataPage.CompressionInfo = CompressionInfoLoader.Load(dataPage);
+        }
 
         return dataPage;
     }

@@ -22,7 +22,7 @@ public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
 
         var pageService = ServiceHelper.CreatePageService(TestOutput);
 
-        var loader = new DataRecordLoader(TestLogger.GetLogger<DataRecordLoader>(TestOutput));
+        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(TestOutput), pageService, loader);
 

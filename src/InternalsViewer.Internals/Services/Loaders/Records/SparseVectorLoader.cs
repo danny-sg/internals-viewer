@@ -45,10 +45,10 @@ class SparseVectorLoader
 
             var column = sparseVector.Structure.Columns.First(col => col.ColumnId == sparseVector.Columns[i]);
 
-            var field = new RecordField(column);
+            var field = new FixedVarRecordField(column);
 
             field.Data = columnData;
-            field.Sparse = true;
+            field.IsSparse = true;
             field.Offset = sparseVector.Offset[i];
             field.Length = sparseVector.Offset[i] - previousOffset;
 

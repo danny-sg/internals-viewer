@@ -7,7 +7,7 @@ public class CompressedDataConverter
 {
     public static string CompressedBinaryToBinary(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
     {
-        if (data == null)
+        if (data == null || data.Length == 0)
         {
             return string.Empty;
         }
@@ -223,7 +223,7 @@ public class CompressedDataConverter
 
     public static int DecodeInternalInt(byte[] data, int startPos)
     {
-        if ((data[startPos] & 0x80) == 0x80)
+        if ((data[startPos] & 0x80) != 0 && data.Length > 1)
         {
             var numberOfColumnsData = new byte[2];
 

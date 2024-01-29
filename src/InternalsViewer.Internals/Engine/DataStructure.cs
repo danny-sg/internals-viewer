@@ -9,6 +9,11 @@ public class DataStructure
         MarkItems.Add(new DataStructureItem(propertyName, startPosition, length));
     }
 
+    public void MarkProperty(string propertyName, int startPosition, int length, params string[] tags)
+    {
+        MarkItems.Add(new DataStructureItem(propertyName, startPosition, length) { Tags = tags.ToList()});
+    }
+
     public void MarkProperty(string propertyName, int startPosition, int length, int index)
     {
         MarkItems.Add(new DataStructureItem(propertyName, startPosition, length, index));

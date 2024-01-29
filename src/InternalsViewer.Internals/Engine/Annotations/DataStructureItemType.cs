@@ -65,5 +65,7 @@ public enum DataStructureItemType
     TypeFlagBits,
     InternalTransactionId,
 
-    AllocationUnitId
+    AllocationUnitId,
+    AnchorRecord,
+    CompressionDictionary
 }

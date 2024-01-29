@@ -1,11 +1,10 @@
 ﻿using InternalsViewer.Internals.Compression;
-using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 
 namespace InternalsViewer.Internals.Services.Loaders.Compression;
 
-public class DictionaryService : IDictionaryService
+public class DictionaryLoader
 {
-    public Dictionary Load(byte[] data, int offset)
+    public static Dictionary Load(byte[] data, int offset)
     {
         var dictionary = new Dictionary(offset);
 

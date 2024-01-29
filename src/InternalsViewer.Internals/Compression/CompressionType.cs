@@ -17,5 +17,9 @@ public enum CompressionType : byte
     /// <summary>
     /// Page level compression
     /// </summary>
-    Page = 2
+    Page = 2,
+
+    Columnstore = 3,
+
+    ColumnstoreArchive = 4,
 }

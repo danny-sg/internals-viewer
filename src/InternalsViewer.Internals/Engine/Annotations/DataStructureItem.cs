@@ -34,4 +34,6 @@ public class DataStructureItem(string propertyName, int startPosition, int lengt
     public string Prefix { get; } = string.Empty;
 
     public bool IsVirtual { get; set; }
+
+    public List<string> Tags { get; set; } = new();
 }

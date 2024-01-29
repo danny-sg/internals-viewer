@@ -6,23 +6,37 @@ using InternalsViewer.Internals.Engine.Records.Compressed;
 
 namespace InternalsViewer.Internals.Compression;
 
+/// <summary>
+/// Compression Info record
+/// </summary>
+/// <remarks>
+/// The CI record is a record added for pages compressed using the PAGE compression type.
+/// 
+/// It has the following structure:
+/// 
+///         - Header
+///         - Page Modification Count
+///         - Offsets (Length = CI Record Size, Size = CI Record Size)
+///         - Anchor Record
+///         - Dictionary
+/// </remarks>
 public class CompressionInfo : DataStructure
 {
-    public static byte CiSize = 7;
-    public static short Offset = 96;
-
     [DataStructureItem(DataStructureItemType.PageModCount)]
-    public short PageModCount { get; set; }
+    public short PageModificationCount { get; set; }
 
     [DataStructureItem(DataStructureItemType.CiSize)]
     public short Size { get; set; }
 
-    public BitArray StatusBits { get; set; } = new(0);
+    [DataStructureItem(DataStructureItemType.CiLength)]
+    public short Length { get; set; }
 
-    public int SlotOffset { get; set; }
+    public BitArray HeaderBits { get; set; } = new(0);
+
+    public static int SlotOffset => 96;
 
     [DataStructureItem(DataStructureItemType.StatusBitsA)]
-    public string StatusDescription
+    public string HeaderDescription
     {
         get
         {
@@ -46,14 +60,14 @@ public class CompressionInfo : DataStructure
             return sb.ToString();
         }
     }
+
+    [DataStructureItem(DataStructureItemType.AnchorRecord)]
     public CompressedDataRecord? AnchorRecord { get; set; }
 
+    [DataStructureItem(DataStructureItemType.CompressionDictionary)]
     public Dictionary? CompressionDictionary { get; set; }
 
     public bool HasAnchorRecord { get; set; }
 
     public bool HasDictionary { get; set; }
-
-    [DataStructureItem(DataStructureItemType.CiLength)]
-    public short Length { get; set; }
 }

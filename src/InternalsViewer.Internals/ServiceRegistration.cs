@@ -2,7 +2,6 @@
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
-using InternalsViewer.Internals.Interfaces.Services.Loaders.Compression;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
@@ -46,16 +45,15 @@ public static class ServiceRegistration
         services.AddTransient<IPfsChainService, PfsChainService>();
         services.AddTransient<IIamChainService, IamChainService>();
 
-        services.AddTransient<ICompressionInfoService, CompressionInfoService>();
-        services.AddTransient<IDictionaryService, DictionaryService>();
-        services.AddTransient<ICompressedDataRecordService, CompressedDataRecordService>();
-
         services.AddTransient<IRecordService, RecordService>();
 
         services.AddTransient<IPageService, PageService>();
 
-        services.AddTransient<DataRecordLoader>();
-        services.AddTransient<IndexRecordLoader>();
+        services.AddTransient<CompressionInfoLoader>();
+
+        services.AddTransient<DataFixedVarRecordLoader>();
+        services.AddTransient<CompressedDataRecordLoader>();
+        services.AddTransient<IndexFixedVarRecordLoader>();
 
         RegisterPageParsers(services);
     }

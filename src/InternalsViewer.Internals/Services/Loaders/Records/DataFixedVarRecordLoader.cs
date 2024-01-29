@@ -16,9 +16,9 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 /// <remarks>
 /// Microsoft SQL Server 2012 Internals by Kalen Delaney et al. has a good description of the data record structure in Chapter 6.
 /// </remarks>
-public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
+public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) : FixedVarRecordLoader
 {
-    private ILogger<DataRecordLoader> Logger { get; } = logger;
+    private ILogger<DataFixedVarRecordLoader> Logger { get; } = logger;
 
     /// <summary>
     /// Loads the data record at the given offset
@@ -28,7 +28,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
     {
         var data = page.Data;
 
-        Logger.BeginScope("Index Record Loader: {FileId}{PageId}:{Offset}", page.PageAddress.FileId, page.PageAddress.PageId, slotOffset);
+        Logger.BeginScope("Data Record Loader: {FileId}{PageId}:{Offset}", page.PageAddress.FileId, page.PageAddress.PageId, slotOffset);
 
         Logger.LogTrace(structure.ToDetailString());
 
@@ -159,7 +159,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
     /// <summary>
     /// Loads the null bitmap values
     /// </summary>
-    private static void LoadNullBitmap(Record dataRecord, byte[] data)
+    private static void LoadNullBitmap(DataRecord dataRecord, byte[] data)
     {
         var nullBitmapBytes = new byte[dataRecord.NullBitmapSize];
 
@@ -193,7 +193,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
             startOffset = dataRecord.ColOffsetArray[^2];
         }
 
-        int endOffset = DecodeOffset(dataRecord.ColOffsetArray[^1]);
+        int endOffset = RecordHelpers.DecodeOffset(dataRecord.ColOffsetArray[^1]);
 
         var sparseRecord = new byte[endOffset - startOffset];
 
@@ -209,7 +209,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
     /// </summary>
     private void LoadValues(DataRecord dataRecord, TableStructure structure, byte[] pageData)
     {
-        var columnValues = new List<RecordField>();
+        var columnValues = new List<FixedVarRecordField>();
 
         var index = 0;
 
@@ -219,7 +219,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
         {
             if (!column.IsSparse)
             {
-                RecordField field;
+                FixedVarRecordField field;
 
                 if (column.LeafOffset is >= 0 and < PageData.Size && !dataRecord.IsNullBitmapSet(column, nullBitmapOffset))
                 {
@@ -257,9 +257,9 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
         dataRecord.Fields.AddRange(columnValues);
     }
 
-    private static RecordField LoadNullField(ColumnStructure column)
+    private static FixedVarRecordField LoadNullField(ColumnStructure column)
     {
-        var nullField = new RecordField(column);
+        var nullField = new FixedVarRecordField(column);
 
         nullField.MarkProperty("Value");
 
@@ -272,9 +272,9 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
     /// <remarks>
     /// Fixed length fields are based on the length of the field defined in the table structure.
     /// </remarks>
-    private RecordField LoadFixedLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
+    private FixedVarRecordField LoadFixedLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
     {
-        var field = new RecordField(column);
+        var field = new FixedVarRecordField(column);
 
         // Fixed offset given by the column leaf offset field in sys.columns
         var offset = column.LeafOffset;
@@ -306,9 +306,9 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
     /// If the first bit is set in the offset array entry, the field is a LOB field. Instead of the value the data will be a pointer to 
     /// the LOB root.
     /// </remarks>
-    private RecordField LoadVariableLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
+    private FixedVarRecordField LoadVariableLengthField(ColumnStructure column, DataRecord dataRecord, byte[] pageData)
     {
-        var field = new RecordField(column);
+        var field = new FixedVarRecordField(column);
 
         short length;
         ushort offset;
@@ -325,7 +325,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
         else
         {
             // ...else use the end offset of the previous column as the start of this one
-            offset = DecodeOffset(dataRecord.ColOffsetArray[fieldIndex - 1]);
+            offset = RecordHelpers.DecodeOffset(dataRecord.ColOffsetArray[fieldIndex - 1]);
         }
 
         if (fieldIndex < dataRecord.ColOffsetArray.Length)
@@ -333,7 +333,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
             // LOB field is indicated by the first/high bit being set in the offset entry (0x8000 = 32768 = 0b1000000000000000)
             isLob = (dataRecord.ColOffsetArray[fieldIndex] & 0x8000) == 0x8000;
 
-            length = (short)(DecodeOffset(dataRecord.ColOffsetArray[fieldIndex]) - offset);
+            length = (short)(RecordHelpers.DecodeOffset(dataRecord.ColOffsetArray[fieldIndex]) - offset);
         }
         else
         {
@@ -365,7 +365,7 @@ public class DataRecordLoader(ILogger<DataRecordLoader> logger) : RecordLoader
     /// <summary>
     /// Loads Status bits B
     /// </summary>
-    private void LoadStatusBitsB(Record record, byte[] data)
+    private void LoadStatusBitsB(DataRecord record, byte[] data)
     {
         record.StatusBitsB = new BitArray(new[] { data[record.SlotOffset + 1] });
 

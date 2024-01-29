@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Engine.Records.Data;
 
-public class DataRecord : Record
+public class DataRecord : FixedVarRecord
 {
     public SparseVector? SparseVector { get; set; }
 

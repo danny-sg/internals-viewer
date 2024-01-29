@@ -27,20 +27,20 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
 
     public int AnchorLength { get; set; }
 
-    public RecordField? AnchorField { get; set; }
+    public CompressedRecordField? AnchorField { get; set; }
 
     public CompressedDataRecord Record { get; set; } = parentRecord;
 
     public short SymbolOffset { get; set; }
 
-    public bool PageSymbol { get; set; }
+    public bool IsPageSymbol { get; set; }
 
     [DataStructureItem(DataStructureItemType.CompressedValue)]
-    public new string Value
+    public override string Value
     {
         get
         {
-            if (PageSymbol)
+            if (IsPageSymbol)
             {
                 return GetPageSymbolValue();
             }
@@ -78,7 +78,7 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
     private string GetPageSymbolValue()
     {
         var dictionaryEntry = CompressedDataConverter.DecodeInternalInt(Data, 0);
-        byte[]? dictionaryValue = null;// "Record.Page.CompressionInfo.CompressionDictionary.DictionaryEntries[dictionaryEntry].Data;
+        var dictionaryValue = Record.CompressionInfo.CompressionDictionary?.DictionaryEntries[dictionaryEntry].Data ?? Array.Empty<byte>();
 
         string value;
 
