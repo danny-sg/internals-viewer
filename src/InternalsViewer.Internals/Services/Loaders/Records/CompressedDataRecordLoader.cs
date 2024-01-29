@@ -202,7 +202,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
         record.RecordType = (CompressedRecordType)((record.Header >> 2) & 7);
 
-        record.MarkProperty("HeaderDescription", record.SlotOffset, sizeof(byte));
+        record.MarkProperty(nameof(record.Header), record.SlotOffset, sizeof(byte));
     }
 
     private static void LoadForwardingRecord(CompressedDataRecord record)
@@ -244,7 +244,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
             columns = data[offset];
         }
 
-        record.MarkProperty("ColumnCount", offset, record.ColumnCountBytes);
+        record.MarkProperty(nameof(record.ColumnCount), offset, record.ColumnCountBytes);
 
         return columns;
     }
@@ -297,9 +297,9 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
                                                  .Cast<CompressedRecordField>()
                                                  .FirstOrDefault(f => f.ColumnStructure.ColumnId == i + 1);
 
-                field.MarkProperty("Value", field.Offset, field.Length);
+                field.MarkProperty(nameof(field.Value), field.Offset, field.Length);
 
-                record.MarkProperty("FieldsArray", field.Name, index);
+                record.MarkProperty(nameof(record.FieldsArray), field.Name, index);
 
                 index++;
 
@@ -399,7 +399,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
             var item1 = (ColumnDescriptor)value1;
 
-            record.MarkProperty("Description", record.SlotOffset + bytePosition, sizeof(byte));
+            record.MarkProperty(nameof(record.ColumnDescriptors), record.SlotOffset + bytePosition, sizeof(byte));
 
             record.ColumnDescriptors.Add(item1);
 
@@ -413,7 +413,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
                 var item2 = (ColumnDescriptor)value2;
 
-                record.MarkProperty("Description", record.SlotOffset + bytePosition, sizeof(byte));
+                record.MarkProperty(nameof(record.ColumnDescriptors), record.SlotOffset + bytePosition, sizeof(byte), column - 1);
 
                 record.ColumnDescriptors.Add(item2);
 

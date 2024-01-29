@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Compression;
-using InternalsViewer.Internals.Engine.Pages;
+﻿using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records.Compressed;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;

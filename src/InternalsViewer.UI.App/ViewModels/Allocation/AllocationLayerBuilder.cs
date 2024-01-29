@@ -8,7 +8,6 @@ using InternalsViewer.UI.App.Models;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.UI.App.ViewModels.Allocation;

@@ -67,5 +67,6 @@ public enum DataStructureItemType
 
     AllocationUnitId,
     AnchorRecord,
-    CompressionDictionary
+    CompressionDictionary,
+    CiHeader
 }

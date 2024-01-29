@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Metadata.Structures;
@@ -10,9 +9,6 @@ namespace InternalsViewer.Internals.Services.Loaders.Compression;
 /// <summary>
 /// Service responsible for loading CI (Compression Information) data structures
 /// </summary>
-/// <remarks>
-/// 
-/// </remarks>
 public class CompressionInfoLoader(CompressedDataRecordLoader compressedDataRecordLoader)
 {
     private CompressedDataRecordLoader CompressedDataRecordLoader { get; } = compressedDataRecordLoader;
@@ -23,43 +19,44 @@ public class CompressionInfoLoader(CompressedDataRecordLoader compressedDataReco
     {
         var ci = new CompressionInfo();
 
-        ci.HeaderBits = new BitArray(new[] { page.Data[CompressionInfo.SlotOffset] });
-
-        ci.MarkProperty("Header", Offset, 1);
-
-        ci.HasAnchorRecord = ci.HeaderBits[1];
-        ci.HasDictionary = ci.HeaderBits[2];
+        ParseHeader(ci, page.Data, CompressionInfo.SlotOffset);
 
         ci.PageModificationCount = BitConverter.ToInt16(page.Data, CompressionInfo.SlotOffset + 1);
 
-        ci.MarkProperty("PageModificationCount", CompressionInfo.SlotOffset + sizeof(byte), sizeof(short));
+        ci.MarkProperty(nameof(ci.PageModificationCount), CompressionInfo.SlotOffset + sizeof(byte), sizeof(short));
 
         ci.Length = BitConverter.ToInt16(page.Data, CompressionInfo.SlotOffset + 3);
 
-        ci.MarkProperty("Length", CompressionInfo.SlotOffset + sizeof(byte) + sizeof(short), sizeof(short));
+        ci.MarkProperty(nameof(ci.Length), CompressionInfo.SlotOffset + sizeof(byte) + sizeof(short), sizeof(short));
 
         if (ci.HasDictionary)
         {
             ci.Size = BitConverter.ToInt16(page.Data, CompressionInfo.SlotOffset + 5);
 
-            ci.MarkProperty("Size", CompressionInfo.SlotOffset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
+            ci.MarkProperty(nameof(ci.Size), CompressionInfo.SlotOffset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
         }
 
         if (ci.HasAnchorRecord)
         {
-            ci.MarkProperty("AnchorRecord");
-            
             LoadAnchor(ci, page);
         }
 
         if (ci.HasDictionary)
         {
-            ci.MarkProperty("CompressionDictionary");
-
             LoadDictionary(ci, page);
         }
 
         return ci;
+    }
+
+    private void ParseHeader(CompressionInfo ci, byte[] pageData, int slotOffset)
+    {
+        ci.Header = pageData[slotOffset];
+
+        ci.HasAnchorRecord = (ci.Header & 0b00000001) != 0;
+        ci.HasDictionary = (ci.Header & 0b00000010) != 0;
+
+        ci.MarkProperty(nameof(ci.Header), Offset, sizeof(byte));
     }
 
     private static void LoadDictionary(CompressionInfo ci, AllocationUnitPage page)

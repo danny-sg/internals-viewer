@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Text;
+﻿using System.Text;
 using InternalsViewer.Internals.Engine;
 using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records.Compressed;
@@ -31,7 +30,8 @@ public class CompressionInfo : DataStructure
     [DataStructureItem(DataStructureItemType.CiLength)]
     public short Length { get; set; }
 
-    public BitArray HeaderBits { get; set; } = new(0);
+    [DataStructureItem(DataStructureItemType.CiHeader)]
+    public byte Header { get; set; }
 
     public static int SlotOffset => 96;
 

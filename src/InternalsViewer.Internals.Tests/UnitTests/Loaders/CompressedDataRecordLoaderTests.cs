@@ -1,14 +1,8 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Records.Compressed;
 using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Compression;
-using Microsoft.IdentityModel.Logging;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Loaders;
