@@ -55,7 +55,7 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
             return CompressedDataConverter.CompressedBinaryToBinary(Data,
                                                                     ColumnStructure.DataType,
                                                                     ColumnStructure.Precision,
-                                                                    ColumnStructure.Scale) ?? string.Empty;
+                                                                    ColumnStructure.Scale);
         }
     }
 

@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Services.Loaders.Records;
 
@@ -54,12 +55,19 @@ public class CompressionInfoLoader(CompressedDataRecordLoader compressedDataReco
         ci.HasAnchorRecord = (ci.Header & 0b00000010) != 0;
         ci.HasDictionary = (ci.Header & 0b00000100) != 0;
 
-        ci.MarkProperty(nameof(ci.Header), offset, sizeof(byte));
+        var tags = new List<string>();
+
+        tags.AddIf("Has Anchor Record", ci.HasAnchorRecord);
+        tags.AddIf("Has Dictionary", ci.HasDictionary);
+
+        ci.MarkProperty(nameof(ci.Header), offset, sizeof(byte), tags);
     }
 
     private static void LoadDictionary(CompressionInfo ci, byte[] data, ushort offset)
     {
         ci.CompressionDictionary = DictionaryLoader.Load(data, offset);
+
+        ci.MarkProperty(nameof(ci.CompressionDictionary), offset, ci.Size);
     }
 
     private void LoadAnchor(CompressionInfo ci, AllocationUnitPage page, int offset)
@@ -71,6 +79,8 @@ public class CompressionInfoLoader(CompressedDataRecordLoader compressedDataReco
         var anchorRecord = CompressedDataRecordLoader.Load(page, (ushort)offset, structure);
 
         ci.AnchorRecord = anchorRecord;
+
+        ci.MarkProperty(nameof(ci.AnchorRecord), offset, ci.Length - (ci.HasDictionary ? 7 : 5));
     }
 
     private static TableStructure CreateTableStructure(int records)

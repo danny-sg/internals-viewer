@@ -35,32 +35,6 @@ public class CompressionInfo : DataStructure
 
     public static ushort SlotOffset => 96;
 
-    [DataStructureItem(ItemType.StatusBitsA)]
-    public string HeaderDescription
-    {
-        get
-        {
-            var sb = new StringBuilder();
-
-            if (HasAnchorRecord)
-            {
-                sb.Append("Has Anchor Record");
-            }
-
-            if (HasAnchorRecord && HasDictionary)
-            {
-                sb.Append(", ");
-            }
-
-            if (HasDictionary)
-            {
-                sb.Append("Has Dictionary");
-            }
-
-            return sb.ToString();
-        }
-    }
-
     [DataStructureItem(ItemType.AnchorRecord)]
     public CompressedDataRecord? AnchorRecord { get; set; }
 

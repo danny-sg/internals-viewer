@@ -89,9 +89,9 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    
+
                     <TextBlock Grid.Column="0" Text="{x:Bind Value}"  Style="{StaticResource ListTextBlock}"/>
-                    
+
                     <GridView Grid.Column="1"
                               SelectionMode="None"
                               ItemsSource="{x:Bind Tags}" 
@@ -161,7 +161,8 @@
         </DataTemplate>
 
         <DataTemplate x:Key="VirtualItemTemplate" x:DataType="models:Marker">
-            <toolkit:DataRow HorizontalAlignment="Left" Style="{ThemeResource VirtualMarkerDataRowStyle}">
+            <toolkit:DataRow HorizontalAlignment="Left" 
+                             Style="{ThemeResource VirtualMarkerDataRowStyle}" >
                 <Grid Width="20"
                       Height="20">
                 </Grid>
@@ -186,8 +187,8 @@
               BorderThickness="1,0,1,1"
               VerticalAlignment="Stretch"
               ItemContainerStyle="{StaticResource ListViewItemMarkerStyle}"
-              ItemsSource="{x:Bind TabViewModel.Markers, Mode=OneWay}"
-              SelectedValue="{x:Bind TabViewModel.SelectedMarker, Mode=TwoWay}"
+              ItemsSource="{x:Bind Markers, Mode=OneWay}"
+              SelectedValue="{x:Bind SelectedMarker, Mode=TwoWay}"
               ItemTemplateSelector="{StaticResource MarkerTemplateSelector}">
         <ListView.Header>
             <Border Style="{StaticResource RowHeader}">

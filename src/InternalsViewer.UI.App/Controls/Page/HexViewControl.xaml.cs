@@ -141,7 +141,7 @@ public sealed partial class HexViewControl
             {
                 // If selection is over a line break the run will be flushed as the InlineUIContainer doesn't handle line breaks
                 paragraph.Inlines.Add(FlushSelectionRun(stringBuilder, target.SelectedMarker));
-             
+
                 // Add the line break specifically as a normal run
                 stringBuilder.Append(Environment.NewLine);
 
@@ -206,16 +206,19 @@ public sealed partial class HexViewControl
         {
             foreach (var marker in markers)
             {
-                var selectionOffset = 0;
+                var selectionOffset = (Start: 0, End: 0);
 
                 if (marker.StartPosition > target.SelectedMarker?.EndPosition && target.SelectedMarker.StartPosition > 0)
                 {
-                    selectionOffset = 3 * (target.SelectedMarker.EndPosition - target.SelectedMarker.StartPosition + 1) - 1;
+                    var selectionStart = ToRunPosition(target.SelectedMarker.StartPosition -1);
+                    var selectionEnd = ToRunPosition(target.SelectedMarker.EndPosition);
+
+                    selectionOffset.Start = selectionEnd - selectionStart;
+                    selectionOffset.End = selectionOffset.Start + 1;
                 }
 
-                var start = ToRunPosition(marker.StartPosition) - selectionOffset;
-                var end = ToRunPosition(marker.EndPosition + 1) - 1 - selectionOffset;
-
+                var start = ToRunPosition(marker.StartPosition) - selectionOffset.Start;
+                var end = ToRunPosition(marker.EndPosition + 1) - selectionOffset.End - 1;
 
                 var length = end - start;
 

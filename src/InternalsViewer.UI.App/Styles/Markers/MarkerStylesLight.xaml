@@ -141,4 +141,11 @@
     <models:MarkStyle x:Key="ShortFieldMarkerStyle" ForeColour="Gray" BackColour="Lavender" />
 
     <models:MarkStyle x:Key="LongFieldMarkerStyle" ForeColour="Gray" BackColour="LavenderBlush" />
+
+
+    <models:MarkStyle Name="Header" x:Key="CiHeaderMarkerStyle" ForeColour="Green" BackColour="Gainsboro" />
+
+    <models:MarkStyle Name="Anchor Record" x:Key="AnchorRecordMarkerStyle" ForeColour="Green" BackColour="Gainsboro" />
+
+
 </ResourceDictionary>

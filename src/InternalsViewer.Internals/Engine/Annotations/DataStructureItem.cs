@@ -18,6 +18,8 @@ public class DataStructureItem
     public string Prefix { get; set; } = string.Empty;
 
     public List<string> Tags { get; set; } = new();
+
+    public bool IsVisible { get; set; } = true;
 }
 
 public class PropertyItem : DataStructureItem

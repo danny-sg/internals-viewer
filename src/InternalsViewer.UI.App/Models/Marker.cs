@@ -27,7 +27,7 @@ public class Marker: DependencyObject
 
     public bool IsNull { get; set; }
 
-    public bool IsVisible { get; set; }
+    public bool IsVisible { get; set; } = true;
         
     public MarkerType MarkerType { get; set; }
         

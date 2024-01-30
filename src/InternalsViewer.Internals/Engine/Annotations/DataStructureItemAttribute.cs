@@ -16,5 +16,5 @@ public class DataStructureItemAttribute(ItemType itemType, string description)
     {
     }
 
-    public bool IsVisible { get; set; }
+    public bool IsVisible { get; set; } = true;
 }
