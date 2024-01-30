@@ -21,6 +21,27 @@
             <Setter Property="FontFamily" Value="Consolas"/>
         </Style>
 
+        <Style TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Consolas"/>
+
+            <Setter Property="Padding" Value="0,0,0,0"/>
+            
+
+
+        </Style>
+
+        <Style TargetType="Border">
+            <Setter Property="Margin" Value="-1,-3,-1,-5"/>
+
+        </Style>
+
+        <Style TargetType="RichTextBlock">
+
+            <Setter Property="LineHeight" Value="16"/>
+
+        </Style>
+
         <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
             <Setter Property="Height" Value="30" />
             <Setter Property="MinHeight" Value="30" />
@@ -66,6 +87,7 @@
                     <RichTextBlock  
                            x:Name="HexRichTextBlock" 
                            VerticalAlignment="Stretch"
+             LineHeight="16"
                            SelectionChanged="HexRichTextBlock_SelectionChanged"
                            LostFocus="HexRichTextBlock_LostFocus"
                            Style="{StaticResource HexStyle}"/>

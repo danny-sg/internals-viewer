@@ -5,6 +5,8 @@
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
+    <models:MarkStyle x:Key="DefaultMarkerStyle" ForeColour="Black" BackColour="WhiteSmoke" />
+    
     <models:MarkStyle Name="Page Address" x:Key="PageAddressMarkerStyle" ForeColour="Gray" BackColour="LightGoldenrodYellow" />
 
     <models:MarkStyle Name="Row Identifier" x:Key="RidMarkerStyle" ForeColour="Blue" BackColour="Thistle" />
@@ -131,5 +133,12 @@
     <models:MarkStyle Name="Allocation Unit Id" x:Key="AllocationUnitIdMarkerStyle" ForeColour="White" BackColour="White" />
 
     <Style x:Key="VirtualMarkerDataRowStyle" TargetType="controls:DataRow">
+
+
     </Style>
+
+
+    <models:MarkStyle x:Key="ShortFieldMarkerStyle" ForeColour="Gray" BackColour="Lavender" />
+
+    <models:MarkStyle x:Key="LongFieldMarkerStyle" ForeColour="Gray" BackColour="LavenderBlush" />
 </ResourceDictionary>

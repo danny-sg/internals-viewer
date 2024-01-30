@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
@@ -23,7 +24,6 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
     /// <summary>
     /// Loads the data record at the given offset
     /// </summary>
-    /// 
     public DataRecord Load(DataPage page, ushort slotOffset, TableStructure structure)
     {
         var data = page.Data;
@@ -84,7 +84,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
     ///     Column offset array                        - 2 bytes * Number of variable length columns
     ///     Variable length data                       - defined by Column offset array
     /// </remarks>
-    private void LoadRecordStructure(DataRecord dataRecord, byte[] data, TableStructure structure)
+    private static void LoadRecordStructure(DataRecord dataRecord, byte[] data, TableStructure structure)
     {
         // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
         var columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);
@@ -92,14 +92,14 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
         // Column count offset determines the offset of the column count after the fixed length data
         dataRecord.ColumnCountOffset = BitConverter.ToInt16(data, columnCountOffsetPosition);
 
-        dataRecord.MarkProperty("ColumnCountOffset", columnCountOffsetPosition, sizeof(short));
+        dataRecord.MarkProperty(nameof(DataRecord.ColumnCountOffset), columnCountOffsetPosition, sizeof(short));
 
         // Column count 2-byte integer located at the column count offset
         var columnCountPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset;
 
         dataRecord.ColumnCount = BitConverter.ToInt16(data, columnCountPosition);
 
-        dataRecord.MarkProperty("ColumnCount", columnCountPosition, sizeof(short));
+        dataRecord.MarkProperty(nameof(DataRecord.ColumnCount), columnCountPosition, sizeof(short));
 
         // Calculate the number of bytes required to store the null bitmap for each non-sparse column, rounded up to the nearest byte
         dataRecord.NullBitmapSize = (short)Math.Ceiling(structure.Columns.Count(column => !column.IsSparse) / 8.0);
@@ -110,7 +110,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
             LoadNullBitmap(dataRecord, data);
         }
 
-        if (dataRecord is { HasVariableLengthColumns: true, Compressed: false })
+        if (dataRecord.HasVariableLengthColumns)
         {
             short offsetStart;
 
@@ -129,7 +129,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
                 dataRecord.VariableLengthColumnCount = BitConverter.ToUInt16(data,
                                                                              dataRecord.SlotOffset + variableLengthColumnCountOffset);
 
-                dataRecord.MarkProperty("VariableLengthColumnCount",
+                dataRecord.MarkProperty(nameof(DataRecord.VariableLengthColumnCount),
                                         dataRecord.SlotOffset + variableLengthColumnCountOffset,
                                         sizeof(short));
 
@@ -142,7 +142,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
                                                                      dataRecord.VariableLengthColumnCount,
                                                                      dataRecord.SlotOffset + offsetStart);
 
-            dataRecord.MarkProperty("ColOffsetArrayDescription",
+            dataRecord.MarkProperty(nameof(DataRecord.ColOffsetArray),
                                     dataRecord.SlotOffset + offsetStart,
                                     dataRecord.VariableLengthColumnCount * sizeof(short));
 
@@ -174,7 +174,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
 
         dataRecord.NullBitmap = new BitArray(nullBitmapBytes);
 
-        dataRecord.MarkProperty("NullBitmapDescription", nullBitmapPosition, dataRecord.NullBitmapSize);
+        dataRecord.MarkProperty(nameof(DataRecord.NullBitmap), nullBitmapPosition, dataRecord.NullBitmapSize);
     }
 
     /// <summary>
@@ -199,7 +199,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
 
         Array.Copy(pageData, dataRecord.SlotOffset + startOffset, sparseRecord, 0, endOffset - startOffset);
 
-        dataRecord.MarkProperty("SparseVector");
+        dataRecord.MarkProperty(nameof(DataRecord.SparseVector));
 
         dataRecord.SparseVector = new SparseVector(sparseRecord, structure, dataRecord, (short)startOffset);
     }
@@ -210,8 +210,6 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
     private void LoadValues(DataRecord dataRecord, TableStructure structure, byte[] pageData)
     {
         var columnValues = new List<FixedVarRecordField>();
-
-        var index = 0;
 
         var nullBitmapOffset = 0;
 
@@ -246,11 +244,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
                     field = LoadNullField(column);
                 }
 
-                dataRecord.MarkProperty("FieldsArray", field.Name, index);
-
                 columnValues.Add(field);
-
-                index++;
             }
         }
 
@@ -261,7 +255,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
     {
         var nullField = new FixedVarRecordField(column);
 
-        nullField.MarkProperty("Value");
+        nullField.MarkProperty(nameof(FixedVarRecordField.Value));
 
         return nullField;
     }
@@ -290,7 +284,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
         field.Length = length;
         field.Data = data;
 
-        field.MarkProperty("Value", dataRecord.SlotOffset + field.Offset, field.Length);
+        dataRecord.MarkValue(ItemType.FixedLengthField, column.ColumnName, field, dataRecord.SlotOffset + field.Offset, field.Length);
 
         return field;
     }
@@ -356,7 +350,11 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
         }
         else
         {
-            field.MarkProperty("Value", dataRecord.SlotOffset + field.Offset, field.Length);
+            dataRecord.MarkValue(ItemType.VariableLengthField, 
+                                 column.ColumnName, 
+                                 field, 
+                                 dataRecord.SlotOffset + field.Offset, 
+                                 field.Length);
         }
 
         return field;
@@ -367,9 +365,9 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
     /// </summary>
     private void LoadStatusBitsB(DataRecord record, byte[] data)
     {
-        record.StatusBitsB = new BitArray(new[] { data[record.SlotOffset + 1] });
+        record.StatusBitsB = data[record.SlotOffset + 1];
 
-        record.MarkProperty("StatusBitsBDescription", record.SlotOffset + sizeof(byte), sizeof(byte));
+        record.MarkProperty(nameof(DataRecord.StatusBitsB), record.SlotOffset + sizeof(byte), sizeof(byte));
     }
 
     /// <summary>
@@ -377,7 +375,7 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
     /// </summary>
     /// <remarks>
     /// Forwarding stubs are used when a record is moved to a new page in a heap.
-    /// 
+    /// F
     /// An example would be two VARCHAR(8000) columns in one table. A record could start where the total size of column 1 + column 2 is 
     /// less than the size of the page, but a subsequent update could push it over the page size. The record would then be moved to a new 
     /// page with a forwarding stub left in its place.
@@ -392,6 +390,6 @@ public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) 
 
         dataRecord.ForwardingStub = new RowIdentifier(forwardingRecord);
 
-        dataRecord.MarkProperty("ForwardingStub", dataRecord.SlotOffset + sizeof(byte), 6);
+        dataRecord.MarkProperty(nameof(DataRecord.ForwardingStub), dataRecord.SlotOffset + sizeof(byte), 6);
     }
 }

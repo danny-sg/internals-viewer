@@ -8,13 +8,13 @@ public class IndexRecord : FixedVarRecord
     /// <summary>
     /// Down page pointer to the next page in the index
     /// </summary>
-    [DataStructureItem(DataStructureItemType.DownPagePointer)]
+    [DataStructureItem(ItemType.DownPagePointer)]
     public PageAddress DownPagePointer { get; set; }
 
     /// <summary>
     /// RID (Row Identifier) the index is pointing to
     /// </summary>
-    [DataStructureItem(DataStructureItemType.Rid)]
+    [DataStructureItem(ItemType.Rid)]
     public RowIdentifier Rid { get; set; }
 
     public bool IncludeKey { get; set; }

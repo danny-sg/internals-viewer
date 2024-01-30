@@ -7,18 +7,18 @@ namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 /// </summary>
 public class OverflowField : BlobField
 {
-    [DataStructureItem(DataStructureItemType.Level)]
+    [DataStructureItem(ItemType.Level)]
     public byte Level { get; set; }
 
-    [DataStructureItem(DataStructureItemType.OverflowLength)]
+    [DataStructureItem(ItemType.OverflowLength)]
     public int Length { get; set; }
 
-    [DataStructureItem(DataStructureItemType.Unused)]
+    [DataStructureItem(ItemType.Unused)]
     public byte Unused { get; set; }
 
     /// <summary>
     /// Update seq (used by optimistic concurrency control for cursors)
     /// </summary>
-    [DataStructureItem(DataStructureItemType.UpdateSeq)]
+    [DataStructureItem(ItemType.UpdateSeq)]
     public short UpdateSeq { get; set; }
 }

@@ -1,7 +1,8 @@
 ﻿namespace InternalsViewer.Internals.Engine.Annotations;
 
-public enum DataStructureItemType
+public enum ItemType
 {
+    Unknown = 0,
     ColumnOffsetArray,
     StatusBitsA,
     StatusBitsB,
@@ -68,5 +69,9 @@ public enum DataStructureItemType
     AllocationUnitId,
     AnchorRecord,
     CompressionDictionary,
-    CiHeader
+    CiHeader,
+    FixedLengthField,
+    VariableLengthField,
+    ShortField,
+    LongField
 }

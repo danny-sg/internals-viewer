@@ -11,15 +11,15 @@ public class BlobField : Field
     /// <summary>
     /// Timestamp used by DBCC CHECKTABLE
     /// </summary>
-    [DataStructureItem(DataStructureItemType.Timestamp)]
+    [DataStructureItem(ItemType.Timestamp)]
     public uint Timestamp { get; set; }
 
     public List<BlobChildLink> Links { get; set; } = new();
 
-    [DataStructureItem(DataStructureItemType.Rid)]
+    [DataStructureItem(ItemType.Rid)]
     public BlobChildLink[] LinksArray => Links.ToArray();
 
-    [DataStructureItem(DataStructureItemType.PointerType)]
+    [DataStructureItem(ItemType.PointerType)]
     public BlobFieldType PointerType { get; set; }
 
     public int Offset { get; set; }

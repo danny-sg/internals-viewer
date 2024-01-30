@@ -3,40 +3,70 @@
 namespace InternalsViewer.Internals.Engine;
 
 public class DataStructure
-{
-    public void MarkProperty(string propertyName, int startPosition, int length)
+{ 
+    /// <summary>
+    /// Adds a marker that the given property is a part of the data structure at the offset
+    /// </summary>
+    public void MarkProperty(string propertyName, int offset, int length, List<string>? tags = null)
     {
-        MarkItems.Add(new DataStructureItem(propertyName, startPosition, length));
+        var dataStructureItem = new PropertyItem
+        {
+            PropertyName = propertyName,
+            Offset = offset,
+            Length = length,
+            Tags = tags ?? new()
+        };
+
+        MarkItems.Add(dataStructureItem);
     }
 
-    public void MarkProperty(string propertyName, int startPosition, int length, params string[] tags)
+    public void MarkArray(string propertyName, int startPosition, int length, int index)
     {
-        MarkItems.Add(new DataStructureItem(propertyName, startPosition, length) { Tags = tags.ToList()});
-    }
+        var dataStructureItem = new PropertyItem
+        {
+            PropertyName = propertyName,
+            Offset = startPosition,
+            Length = length,
+            Index = index
+        };
 
-    public void MarkProperty(string propertyName, int startPosition, int length, int index)
-    {
-        MarkItems.Add(new DataStructureItem(propertyName, startPosition, length, index));
-    }
-
-    public void MarkProperty(string propertyName, string prefix, int startPosition, int length, int index)
-    {
-        MarkItems.Add(new DataStructureItem(propertyName, startPosition, length, index));
+        MarkItems.Add(dataStructureItem);
     }
 
     public void MarkProperty(string propertyName, string prefix, int index)
     {
-        MarkItems.Add(new DataStructureItem(propertyName, prefix, index));
+        var dataStructureItem = new PropertyItem
+        {
+            PropertyName = propertyName,
+            Prefix = prefix,
+            Index = index
+        };
+
+        MarkItems.Add(dataStructureItem);
     }
 
     public void MarkProperty(string propertyName)
     {
-        MarkItems.Add(new DataStructureItem(propertyName, string.Empty, -1));
+        var dataStructureItem = new PropertyItem
+        {
+            PropertyName = propertyName
+        };
+        MarkItems.Add(dataStructureItem);
     }
 
-    public void MarkVirtualProperty(string propertyName)
+    public void MarkValue(ItemType type, string name, object value, int offset, int length, List<string>? tags = null)
     {
-        MarkItems.Add(new DataStructureItem(propertyName, string.Empty, -1) { IsVirtual = true });
+        var dataStructureItem = new ValueItem
+        {
+            ItemType = type,
+            Name = name,
+            Value = value,
+            Offset = offset,
+            Length = length,
+            Tags = tags ?? new()
+        };
+
+        MarkItems.Add(dataStructureItem);
     }
 
     public List<DataStructureItem> MarkItems { get; } = new();

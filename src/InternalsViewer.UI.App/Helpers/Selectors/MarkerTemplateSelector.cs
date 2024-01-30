@@ -18,14 +18,14 @@ public class MarkerTemplateSelector : DataTemplateSelector
 
         var pointerTypes = new[]
         {
-            Internals.Engine.Annotations.DataStructureItemType.DownPagePointer,
-            Internals.Engine.Annotations.DataStructureItemType.Rid,
-            Internals.Engine.Annotations.DataStructureItemType.HeaderPageAddress,
-            Internals.Engine.Annotations.DataStructureItemType.NextPage,
-            Internals.Engine.Annotations.DataStructureItemType.PreviousPage,
+            Internals.Engine.Annotations.ItemType.DownPagePointer,
+            Internals.Engine.Annotations.ItemType.Rid,
+            Internals.Engine.Annotations.ItemType.HeaderPageAddress,
+            Internals.Engine.Annotations.ItemType.NextPage,
+            Internals.Engine.Annotations.ItemType.PreviousPage,
         };
 
-        if (pointerTypes.Any(p => p == marker?.ItemType))
+        if (pointerTypes.Any(p => p == marker?.Type))
         {
             return PointerTemplate;
         }

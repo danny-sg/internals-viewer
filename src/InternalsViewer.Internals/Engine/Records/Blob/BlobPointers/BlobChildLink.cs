@@ -16,13 +16,13 @@ public class BlobChildLink : DataStructure
         Length = length;
     }
 
-    [DataStructureItem(DataStructureItemType.Rid)]
+    [DataStructureItem(ItemType.Rid)]
     public RowIdentifier RowIdentifier { get; set; }
 
-    [DataStructureItem(DataStructureItemType.BlobChildOffset)]
+    [DataStructureItem(ItemType.BlobChildOffset)]
     public int Offset { get; set; }
 
-    [DataStructureItem(DataStructureItemType.BlobChildLength)]
+    [DataStructureItem(ItemType.BlobChildLength)]
     public int Length { get; set; }
 
     public override string ToString()

@@ -4,12 +4,17 @@ using System.Collections.ObjectModel;
 
 using System.Text;
 using Windows.UI;
+using Windows.UI.Text;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using InternalsViewer.UI.App.ViewModels.Page;
+using Microsoft.UI;
+using Microsoft.UI.Text;
+using Microsoft.UI.Xaml.Controls;
+using System.Runtime.CompilerServices;
 
 namespace InternalsViewer.UI.App.Controls.Page;
 
@@ -79,12 +84,12 @@ public sealed partial class HexViewControl
     {
         var control = (HexViewControl)d;
 
-        HighlightMarkers(control, control.Markers);
-
-        if(e.NewValue is Marker marker)
+        if (e.NewValue is Marker marker)
         {
             ScrollToPosition(control, marker.StartPosition);
-        }   
+        }
+
+        SetHexData(control.Data, control);
     }
 
     private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -101,8 +106,6 @@ public sealed partial class HexViewControl
     {
         var paragraph = new Paragraph();
 
-        var run = new Run();
-
         var stringBuilder = new StringBuilder();
 
         var position = 0;
@@ -111,8 +114,21 @@ public sealed partial class HexViewControl
         {
             for (var byteIndex = 0; byteIndex < BytesPerLine; byteIndex++)
             {
+                if (position == target.SelectedMarker?.StartPosition)
+                {
+                    // Flush current run, replace with selection inline
+                    paragraph.Inlines.Add(FlushRun(stringBuilder));
+                }
+
                 stringBuilder.Append(StringHelpers.ToHexString(data[position]));
 
+                if (position == target.SelectedMarker?.EndPosition)
+                {
+                    // Flush current run, replace with selection inline
+                    paragraph.Inlines.Add(FlushSelectionRun(stringBuilder, target.SelectedMarker));
+                }
+
+                // Add a space between bytes, but not for the last byte of the line
                 if (byteIndex != 15)
                 {
                     stringBuilder.Append(" ");
@@ -121,16 +137,65 @@ public sealed partial class HexViewControl
                 position++;
             }
 
-            stringBuilder.Append(Environment.NewLine);
+            if (position > target.SelectedMarker?.StartPosition && position < target.SelectedMarker?.EndPosition)
+            {
+                // If selection is over a line break the run will be flushed as the InlineUIContainer doesn't handle line breaks
+                paragraph.Inlines.Add(FlushSelectionRun(stringBuilder, target.SelectedMarker));
+             
+                // Add the line break specifically as a normal run
+                stringBuilder.Append(Environment.NewLine);
+
+                paragraph.Inlines.Add(FlushRun(stringBuilder));
+            }
+            else
+            {
+                stringBuilder.Append(Environment.NewLine);
+            }
         }
 
-        run.Text = stringBuilder.ToString();
-        paragraph.Inlines.Add(run);
+        paragraph.Inlines.Add(FlushRun(stringBuilder));
 
         target.HexRichTextBlock.Blocks.Clear();
         target.HexRichTextBlock.Blocks.Add(paragraph);
 
         HighlightMarkers(target, target.Markers);
+    }
+
+    private static Inline FlushRun(StringBuilder stringBuilder)
+    {
+        var run = new Run { Text = stringBuilder.ToString() };
+
+        stringBuilder.Clear();
+
+        return run;
+    }
+
+    private static Inline FlushSelectionRun(StringBuilder stringBuilder, Marker marker)
+    {
+        var container = new InlineUIContainer();
+
+        var border = new Border
+        {
+            BorderBrush = new SolidColorBrush(Colors.Navy),
+            BorderThickness = new Thickness(1),
+            Background = new SolidColorBrush(marker.BackColour)
+        };
+
+        border.VerticalAlignment = VerticalAlignment.Top;
+
+        var textRun = new TextBlock { Text = stringBuilder.ToString() };
+
+        textRun.Foreground = new SolidColorBrush(marker.ForeColour);
+
+        textRun.TextWrapping = TextWrapping.Wrap;
+
+        container.Child = border;
+
+        border.Child = textRun;
+
+        stringBuilder.Clear();
+
+        return container;
     }
 
     private static void HighlightMarkers(HexViewControl target, ObservableCollection<Marker>? markers)
@@ -141,24 +206,21 @@ public sealed partial class HexViewControl
         {
             foreach (var marker in markers)
             {
-                var start = ToRunPosition(marker.StartPosition);
-                var end = ToRunPosition(marker.EndPosition + 1) - 1;
+                var selectionOffset = 0;
+
+                if (marker.StartPosition > target.SelectedMarker?.EndPosition && target.SelectedMarker.StartPosition > 0)
+                {
+                    selectionOffset = 3 * (target.SelectedMarker.EndPosition - target.SelectedMarker.StartPosition + 1) - 1;
+                }
+
+                var start = ToRunPosition(marker.StartPosition) - selectionOffset;
+                var end = ToRunPosition(marker.EndPosition + 1) - 1 - selectionOffset;
+
 
                 var length = end - start;
 
-                Color foregroundColour;
-                Color backgroundColour;
-
-                if (marker == target.SelectedMarker)
-                {
-                    foregroundColour = Color.FromArgb(255, 255, 255, 255);
-                    backgroundColour = target.HexRichTextBlock.SelectionHighlightColor.Color;
-                }
-                else
-                {
-                    foregroundColour = marker.ForeColour;
-                    backgroundColour = marker.BackColour;
-                }
+                var foregroundColour = marker.ForeColour;
+                var backgroundColour = marker.BackColour;
 
                 var highlighter = new TextHighlighter
                 {
@@ -188,7 +250,7 @@ public sealed partial class HexViewControl
     {
         const int totalLines = PageData.Size / BytesPerLine;
 
-        var positionLineNumber = position / BytesPerLine + 1;
+        var positionLineNumber = (position / BytesPerLine) - 1;
 
         var heightPerLine = target.HexRichTextBlock.ActualHeight / totalLines;
 

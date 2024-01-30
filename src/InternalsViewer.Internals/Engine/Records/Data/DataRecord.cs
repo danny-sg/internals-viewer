@@ -9,10 +9,10 @@ public class DataRecord : FixedVarRecord
 {
     public SparseVector? SparseVector { get; set; }
 
-    [DataStructureItem(DataStructureItemType.StatusBitsB)]
+    [DataStructureItem(ItemType.StatusBitsB)]
     public string StatusBitsBDescription => "";
 
-    [DataStructureItem(DataStructureItemType.ForwardingStub)]
+    [DataStructureItem(ItemType.ForwardingStub)]
     public RowIdentifier ForwardingStub { get; set; }
 
     public RowIdentifier RowIdentifier { get; set; }

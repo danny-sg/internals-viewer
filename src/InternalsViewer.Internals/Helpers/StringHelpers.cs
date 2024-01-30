@@ -1,4 +1,6 @@
-﻿using System.Globalization;
+﻿using System.Collections;
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace InternalsViewer.Internals.Helpers;
@@ -67,8 +69,28 @@ public static class StringHelpers
         return data;
     }
 
+    /// <summary>
+    /// Gets a string representation of a bit array
+    /// </summary>
+    public static string GetBitArrayString(BitArray nullBitmap)
+    {
+        var stringBuilder = new StringBuilder();
+
+        for (var i = 0; i < nullBitmap.Length; i++)
+        {
+            stringBuilder.Insert(0, nullBitmap[i] ? "1" : "0");
+        }
+
+        return stringBuilder.ToString();
+    }
+
     public static string CleanHex(this string value)
     {
         return Regex.Replace(value, "[^a-fA-F0-9]", string.Empty);
+    }
+
+    public static string GetArrayString<T>(IEnumerable<T> values)
+    {
+        return string.Join(", ", values);
     }
 }

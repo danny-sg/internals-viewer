@@ -3,37 +3,29 @@
 /// <summary>
 /// Data Structure annotations that can be made against a <see cref="DataStructure">Data Structure</see> object
 /// </summary>
-public class DataStructureItem(string propertyName, int startPosition, int length)
+public class DataStructureItem
 {
-    public DataStructureItem(string propertyName, int startPosition, int length, int index)
-        : this(propertyName, startPosition, length)
-    {
-        Index = index;
-    }
+    public ItemType ItemType { get; set; }
 
-    public DataStructureItem(string propertyName, string prefix, int startPosition, int length, int index)
-        : this(propertyName, startPosition, length, index)
-    {
-        Prefix = prefix;
-    }
+    public int Offset { get; set; } = -1;
 
-    public DataStructureItem(string propertyName, string prefix, int index) : this(propertyName, -1, 0)
-    {
-        Prefix = prefix;
-        Index = index;
-    }
+    public int Length { get; set; } = -1;
 
-    public int StartPosition { get; } = startPosition;
+    public string Name { get; set; } = string.Empty;
 
-    public int Length { get; } = length;
+    public int Index { get; set; } = -1;
 
-    public string PropertyName { get; } = propertyName;
-
-    public int Index { get; } = -1;
-
-    public string Prefix { get; } = string.Empty;
-
-    public bool IsVirtual { get; set; }
+    public string Prefix { get; set; } = string.Empty;
 
     public List<string> Tags { get; set; } = new();
+}
+
+public class PropertyItem : DataStructureItem
+{
+    public string PropertyName { get; set; } = string.Empty;
+}
+
+public class ValueItem : DataStructureItem
+{
+    public object? Value { get; set; }
 }

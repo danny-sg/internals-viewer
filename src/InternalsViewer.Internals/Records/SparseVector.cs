@@ -41,21 +41,21 @@ public class SparseVector: DataStructure
 
     public ushort[] Columns { get; set; } = Array.Empty<ushort>();
 
-    [DataStructureItem(DataStructureItemType.SparseColumns)]
+    [DataStructureItem(ItemType.SparseColumns)]
     public string ColumnsDescription => RecordHelpers.GetArrayString(Columns);
 
-    [DataStructureItem(DataStructureItemType.SparseColumnOffsets)]
+    [DataStructureItem(ItemType.SparseColumnOffsets)]
     public string OffsetsDescription => RecordHelpers.GetArrayString(Offset);
 
     public ushort[] Offset { get; set; } = Array.Empty<ushort>();
 
-    [DataStructureItem(DataStructureItemType.SparseColumnCount)]
+    [DataStructureItem(ItemType.SparseColumnCount)]
     public short ColCount { get; set; }
 
     public short RecordOffset { get; set; }
 
     public short ComplexHeader { get; set; }
 
-    [DataStructureItem(DataStructureItemType.ComplexHeader)]
+    [DataStructureItem(ItemType.ComplexHeader)]
     public string ComplexHeaderDescription => GetComplexHeaderDescription(ComplexHeader);
 }

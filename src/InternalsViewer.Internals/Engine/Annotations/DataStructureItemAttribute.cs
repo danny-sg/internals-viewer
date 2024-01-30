@@ -4,15 +4,15 @@
 /// Custom attribute to store mark properties
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
-public class DataStructureItemAttribute(DataStructureItemType dataStructureItemType, string description)
+public class DataStructureItemAttribute(ItemType itemType, string description)
     : Attribute
 {
-    public string Description { get; set; } = description;
+    public string Name { get; set; } = description;
 
-    public DataStructureItemType DataStructureItemType { get; set; } = dataStructureItemType;
+    public ItemType ItemType { get; set; } = itemType;
 
-    public DataStructureItemAttribute(DataStructureItemType dataStructureItemType)
-        : this(dataStructureItemType, string.Empty)
+    public DataStructureItemAttribute(ItemType itemType)
+        : this(itemType, string.Empty)
     {
     }
 

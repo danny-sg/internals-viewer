@@ -18,36 +18,36 @@ public class BlobRecord : FixedVarRecord
     public const short SmallSizeOffset = 14;
     public const short TypeOffset = 12;
 
-    [DataStructureItem(DataStructureItemType.StatusBitsA)]
+    [DataStructureItem(ItemType.StatusBitsA)]
     public new string StatusBitsADescription => "TODO";
 
-    [DataStructureItem(DataStructureItemType.StatusBitsB)]
+    [DataStructureItem(ItemType.StatusBitsB)]
     public string StatusBitsBDescription => string.Empty;
 
-    [DataStructureItem(DataStructureItemType.BlobId)]
+    [DataStructureItem(ItemType.BlobId)]
     public long BlobId { get; set; }
 
-    [DataStructureItem(DataStructureItemType.BlobLength)]
+    [DataStructureItem(ItemType.BlobLength)]
     public int Length { get; set; }
 
     public BlobType BlobType { get; set; }
 
-    [DataStructureItem(DataStructureItemType.BlobType)]
+    [DataStructureItem(ItemType.BlobType)]
     public string BlobTypeDescription => BlobType.ToString();
 
-    [DataStructureItem(DataStructureItemType.MaxLinks)]
+    [DataStructureItem(ItemType.MaxLinks)]
     public int MaxLinks { get; set; }
 
-    [DataStructureItem(DataStructureItemType.CurrentLinks)]
+    [DataStructureItem(ItemType.CurrentLinks)]
     public int CurLinks { get; set; }
 
-    [DataStructureItem(DataStructureItemType.Level)]
+    [DataStructureItem(ItemType.Level)]
     public short Level { get; set; }
 
-    [DataStructureItem(DataStructureItemType.BlobSize)]
+    [DataStructureItem(ItemType.BlobSize)]
     public short Size { get; set; }
 
-    [DataStructureItem(DataStructureItemType.BlobData)]
+    [DataStructureItem(ItemType.BlobData)]
     public byte[] Data { get; set; } = Array.Empty<byte>(); 
 
     public List<BlobChildLink> BlobChildren { get; set; } = new();

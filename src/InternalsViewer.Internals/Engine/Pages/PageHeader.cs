@@ -18,30 +18,30 @@ public class PageHeader : DataStructure
     /// <summary>
     /// Type of page
     /// </summary>
-    [DataStructureItem(DataStructureItemType.PageType)]
+    [DataStructureItem(ItemType.PageType)]
     public PageType PageType { get; set; } = PageType.None;
 
     /// <summary>
     /// The page address in the format File Id : Page Id
     /// </summary>
-    [DataStructureItem(DataStructureItemType.HeaderPageAddress)]
+    [DataStructureItem(ItemType.HeaderPageAddress)]
     public PageAddress PageAddress { get; set; }
 
     /// <summary>
     /// The next page if the page is part of a linked list
     /// </summary>
-    [DataStructureItem(DataStructureItemType.NextPage)]
+    [DataStructureItem(ItemType.NextPage)]
     public PageAddress NextPage { get; set; }
 
     /// <summary>
     /// The previous page if the page is part of a linked list
     /// </summary>
-    [DataStructureItem(DataStructureItemType.PreviousPage)]
+    [DataStructureItem(ItemType.PreviousPage)]
     public PageAddress PreviousPage { get; set; }
 
     public string PageTypeName => PageHelpers.GetPageTypeName(PageType);
 
-    [DataStructureItem(DataStructureItemType.AllocationUnitId)]
+    [DataStructureItem(ItemType.AllocationUnitId)]
     public long AllocationUnitId => IdHelpers.GetAllocationUnitId(InternalObjectId, InternalIndexId);
 
     /// <summary>
@@ -50,7 +50,7 @@ public class PageHeader : DataStructure
     /// <remarks>
     /// Not necessarily the same as the object id of the table/index
     /// </remarks>
-    [DataStructureItem(DataStructureItemType.InternalObjectId)]
+    [DataStructureItem(ItemType.InternalObjectId)]
     public int InternalObjectId { get; set; }
 
     /// <summary>
@@ -59,7 +59,7 @@ public class PageHeader : DataStructure
     /// <remarks>
     /// Not necessarily the same as the index id in sys.indexes
     /// </remarks>
-    [DataStructureItem(DataStructureItemType.InternalIndexId)]
+    [DataStructureItem(ItemType.InternalIndexId)]
     public int InternalIndexId { get; set; }
 
     /// <summary>
@@ -71,43 +71,43 @@ public class PageHeader : DataStructure
     /// Leaf level = 0
     /// Root level = > 0
     /// </remarks>
-    [DataStructureItem(DataStructureItemType.IndexLevel)]
+    [DataStructureItem(ItemType.IndexLevel)]
     public int Level { get; set; }
 
     /// <summary>
     /// Record/slot count
     /// </summary>
-    [DataStructureItem(DataStructureItemType.PageSlotCount)]
+    [DataStructureItem(ItemType.PageSlotCount)]
     public int SlotCount { get; set; }
 
     /// <summary>
     /// Free space in bytes
     /// </summary>
-    [DataStructureItem(DataStructureItemType.FreeCount)]
+    [DataStructureItem(ItemType.FreeCount)]
     public int FreeCount { get; set; }
 
-    [DataStructureItem(DataStructureItemType.FreeData)]
+    [DataStructureItem(ItemType.FreeData)]
     public int FreeData { get; set; }
 
     /// <summary>
     /// Record fixed length size
     /// </summary>
-    [DataStructureItem(DataStructureItemType.FixedLengthSize)]
+    [DataStructureItem(ItemType.FixedLengthSize)]
     public int FixedLengthSize { get; set; }
 
     /// <summary>
     /// Space reserved by an active transaction
     /// </summary>
-    [DataStructureItem(DataStructureItemType.ReservedCount)]
+    [DataStructureItem(ItemType.ReservedCount)]
     public int ReservedCount { get; set; }
 
     /// <summary>
     /// Last transaction reserved count
     /// </summary>
-    [DataStructureItem(DataStructureItemType.TransactionReservedCount)]
+    [DataStructureItem(ItemType.TransactionReservedCount)]
     public int TransactionReservedCount { get; set; }
 
-    [DataStructureItem(DataStructureItemType.TornBits)]
+    [DataStructureItem(ItemType.TornBits)]
     public int TornBits { get; set; }
 
     /// <summary>
@@ -119,19 +119,19 @@ public class PageHeader : DataStructure
     /// 0x200 = Page checksum enabled
     /// 0x100 = Torn page detection enabled
     /// </remarks>
-    [DataStructureItem(DataStructureItemType.FlagBits)]
+    [DataStructureItem(ItemType.FlagBits)]
     public short FlagBits { get; set; }
 
     /// <summary>
     /// LSN (Log Sequence Number) of the last change to the page
     /// </summary>
-    [DataStructureItem(DataStructureItemType.Lsn)]
+    [DataStructureItem(ItemType.Lsn)]
     public LogSequenceNumber Lsn { get; set; }
 
-    [DataStructureItem(DataStructureItemType.HeaderVersion)]
+    [DataStructureItem(ItemType.HeaderVersion)]
     public byte HeaderVersion { get; set; }
 
-    [DataStructureItem(DataStructureItemType.GhostRecordCount)]
+    [DataStructureItem(ItemType.GhostRecordCount)]
     public short GhostRecordCount { get; set; }
 
     /// <summary>
@@ -144,9 +144,9 @@ public class PageHeader : DataStructure
     /// 0x4 = Fixed length fields
     /// 
     /// </remarks>
-    [DataStructureItem(DataStructureItemType.TypeFlagBits)]
+    [DataStructureItem(ItemType.TypeFlagBits)]
     public byte TypeFlagBits { get; set; }
 
-    [DataStructureItem(DataStructureItemType.InternalTransactionId)]
+    [DataStructureItem(ItemType.InternalTransactionId)]
     public PageAddress InternalTransactionId { get; set; }
 }

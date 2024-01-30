@@ -26,7 +26,7 @@ public class CompressedDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 
         var loader = new CompressedDataRecordLoader(TestLogger.GetLogger<CompressedDataRecordLoader>(TestOutputHelper));
 
-        loader.ParseHeader(record, new[] { header }, 0);
+        loader.LoadHeader(record, new[] { header }, 0);
 
         Assert.Equal(isCdRecord, record.IsCompressedDataRecord);
         Assert.Equal(containsRowVersioning, record.HasVersioning);
@@ -58,11 +58,11 @@ public class CompressedDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 
         Assert.True(record.HasLongDataRegion);
 
-        Assert.Equal(ColumnDescriptor.OneByteShort, record.ColumnDescriptors[0]);
+        Assert.Equal(ColumnDescriptorFlag.OneByteShort, record.ColumnDescriptors[0].Value);
 
-        Assert.Equal(ColumnDescriptor.Long, record.ColumnDescriptors[1]);
+        Assert.Equal(ColumnDescriptorFlag.Long, record.ColumnDescriptors[1].Value);
 
-        Assert.Equal(ColumnDescriptor.FiveByteShort, record.ColumnDescriptors[2]);
+        Assert.Equal(ColumnDescriptorFlag.FiveByteShort, record.ColumnDescriptors[2].Value);
 
         Assert.Equal("101", record.Fields[0].Value);
         Assert.Equal("Row 1", record.Fields.First(f => f.ColumnStructure.ColumnName == "FixedTextField").Value);

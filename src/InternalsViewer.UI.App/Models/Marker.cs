@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using InternalsViewer.Internals.Engine.Annotations;
-using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Services.Markers;
 using Windows.UI;
 
 namespace InternalsViewer.UI.App.Models;
@@ -30,12 +31,16 @@ public class Marker: DependencyObject
         
     public MarkerType MarkerType { get; set; }
         
-    public DataStructureItemType ItemType { get; set; }
+    public ItemType Type { get; set; }
 
     public int? Ordinal { get; set; }
+
+    public List<string> Tags { get; set; } = new();
 
     public static Marker? GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
     {
         return markers.FirstOrDefault(marker => marker.StartPosition >= startPosition & marker.EndPosition <= endPosition);
     }
+
+    public ObservableCollection<Marker> Children { get; set; } = new();
 }

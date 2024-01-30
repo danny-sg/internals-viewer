@@ -21,21 +21,21 @@ namespace InternalsViewer.Internals.Compression;
 /// </remarks>
 public class CompressionInfo : DataStructure
 {
-    [DataStructureItem(DataStructureItemType.PageModCount)]
+    [DataStructureItem(ItemType.PageModCount)]
     public short PageModificationCount { get; set; }
 
-    [DataStructureItem(DataStructureItemType.CiSize)]
+    [DataStructureItem(ItemType.CiSize)]
     public short Size { get; set; }
 
-    [DataStructureItem(DataStructureItemType.CiLength)]
+    [DataStructureItem(ItemType.CiLength)]
     public ushort Length { get; set; }
 
-    [DataStructureItem(DataStructureItemType.CiHeader)]
+    [DataStructureItem(ItemType.CiHeader)]
     public byte Header { get; set; }
 
     public static ushort SlotOffset => 96;
 
-    [DataStructureItem(DataStructureItemType.StatusBitsA)]
+    [DataStructureItem(ItemType.StatusBitsA)]
     public string HeaderDescription
     {
         get
@@ -61,10 +61,10 @@ public class CompressionInfo : DataStructure
         }
     }
 
-    [DataStructureItem(DataStructureItemType.AnchorRecord)]
+    [DataStructureItem(ItemType.AnchorRecord)]
     public CompressedDataRecord? AnchorRecord { get; set; }
 
-    [DataStructureItem(DataStructureItemType.CompressionDictionary)]
+    [DataStructureItem(ItemType.CompressionDictionary)]
     public Dictionary? CompressionDictionary { get; set; }
 
     public bool HasAnchorRecord { get; set; }

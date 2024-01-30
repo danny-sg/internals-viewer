@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Services.Loaders.Records.Fields;
-using System.Collections;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records;
 
@@ -17,15 +17,24 @@ public abstract class FixedVarRecordLoader
     {
         var statusA = data[record.SlotOffset];
 
-        record.StatusBitsA = new BitArray(new[] { statusA });
-
-        record.MarkProperty("StatusBitsADescription", record.SlotOffset, 1);
+        record.StatusBitsA = statusA;
 
         record.RecordType = (RecordType)(statusA >> 1 & 7);
 
-        record.HasNullBitmap = record.StatusBitsA[4];
-        record.HasVariableLengthColumns = record.StatusBitsA[5];
-        record.HasRowVersioning = record.StatusBitsA[6];
+        record.HasNullBitmap = (record.StatusBitsA & 0b10000) != 0;
+        record.HasVariableLengthColumns = (record.StatusBitsA & 0b100000) != 0;
+        record.HasRowVersioning = (record.StatusBitsA & 0b1000000) != 0;
+
+        var tags = new List<string>();
+
+        tags.Add(record.RecordType.ToString());
+
+        tags.AddIf("Has Null Bitmap", record.HasNullBitmap);
+        tags.AddIf("Has Variable Length Columns", record.HasVariableLengthColumns);
+        tags.AddIf("Has Row Versioning", record.HasRowVersioning);
+
+
+        record.MarkProperty(nameof(FixedVarRecord.StatusBitsA), record.SlotOffset, 1, tags);
     }
 
     /// <summary>
@@ -33,7 +42,7 @@ public abstract class FixedVarRecordLoader
     /// </summary>
     protected static void LoadLobField(FixedVarRecordField field, byte[] data, int offset)
     {
-        field.MarkProperty("BlobInlineRoot");
+        field.MarkProperty(nameof(field.BlobInlineRoot));
 
         // First byte gives the Blob field type
         switch ((BlobFieldType)data[0])

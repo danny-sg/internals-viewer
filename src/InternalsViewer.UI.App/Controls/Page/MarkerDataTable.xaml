@@ -41,6 +41,18 @@
             <Setter Property="FontFamily" Value="Consolas"/>
         </Style>
 
+        <Style x:Key="TagTextBlockStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Padding" Value="1"/>
+            <Setter Property="Margin" Value="2,0,2,0"/>
+            <Setter Property="Foreground" Value="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+        </Style>
+
+        <Style x:Key="TagContainerStyle" TargetType="ItemContainer">
+            <Setter Property="Background" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+            <Setter Property="Margin" Value="0,-12,0,0"/>
+        </Style>
+
         <Style x:Key="PointerStyle" TargetType="HyperlinkButton">
             <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
             <Setter Property="FontSize" Value="12"/>
@@ -52,7 +64,9 @@
         </Style>
 
         <DataTemplate x:Key="DefaultItemTemplate" x:DataType="models:Marker">
-            <toolkit:DataRow  HorizontalAlignment="Left">
+
+            <toolkit:DataRow HorizontalAlignment="Left">
+                <!--Colour Key Column-->
                 <Grid Width="20"
                    Height="20"
                    Background="{x:Bind BackColour, 
@@ -66,14 +80,54 @@
                             Style="{StaticResource HexStyle}"/>
 
                 </Grid>
+                <!--Name Column-->
                 <TextBlock Text="{x:Bind Name}" Style="{StaticResource ListTextBlock}"/>
-                <TextBlock Text="{x:Bind Value}"  Style="{StaticResource ListTextBlock}"/>
+
+                <!--Value Column-->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" Text="{x:Bind Value}"  Style="{StaticResource ListTextBlock}"/>
+                    
+                    <GridView Grid.Column="1"
+                              SelectionMode="None"
+                              ItemsSource="{x:Bind Tags}" 
+                              x:Name="TagsItemView"
+                              VerticalAlignment="Top"
+                              Height="30"
+                              Padding="0"
+                              Margin="10,0"
+                              VerticalContentAlignment="Top"
+                              HorizontalAlignment="Left">
+                        <GridView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="0"/>
+                            </ItemsPanelTemplate>
+                        </GridView.ItemsPanel>
+                        <GridView.ItemTemplate>
+                            <DataTemplate x:Key="ImageTemplate" x:DataType="x:String">
+                                <ItemContainer Style="{StaticResource TagContainerStyle}">
+                                    <TextBlock Text="{x:Bind}" Style="{StaticResource TagTextBlockStyle}" />
+                                </ItemContainer>
+                            </DataTemplate>
+                        </GridView.ItemTemplate>
+                    </GridView>
+                </Grid>
+
+                <!--Copy button column-->
                 <controls:CopyButton Content="&#xE8C8;" 
                                      ToolTipService.ToolTip="Copy to clipboard"
                                      Tag="{x:Bind Value}"
                                      Click="CopyButton_Click"/>
-                <TextBlock Text="{x:Bind StartPosition }"  Style="{StaticResource ListTextBlock}"/>
-                <TextBlock Text="{x:Bind EndPosition}"  Style="{StaticResource ListTextBlock}"/>
+
+                <!--Start Position Column-->
+                <TextBlock Text="{x:Bind StartPosition}" Style="{StaticResource ListTextBlock}"/>
+
+                <!--End Position Column-->
+                <TextBlock Text="{x:Bind EndPosition}" Style="{StaticResource ListTextBlock}"/>
             </toolkit:DataRow>
         </DataTemplate>
 
@@ -117,8 +171,8 @@
                                      ToolTipService.ToolTip="Copy to clipboard"
                                      Tag="{x:Bind Value}"
                                      Click="CopyButton_Click"/>
-                <TextBlock  Style="{StaticResource ListTextBlock}"/>
-                <TextBlock  Style="{StaticResource ListTextBlock}"/>
+                <TextBlock Style="{StaticResource ListTextBlock}"/>
+                <TextBlock Style="{StaticResource ListTextBlock}"/>
             </toolkit:DataRow>
         </DataTemplate>
 

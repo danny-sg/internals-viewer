@@ -11,12 +11,12 @@ public class Dictionary(int offset) : DataStructure
 
     public List<DictionaryEntry> DictionaryEntries { get; } = new();
 
-    [DataStructureItem(DataStructureItemType.EntryCount)]
+    [DataStructureItem(ItemType.EntryCount)]
     public int EntryCount { get; set; }
 
     public ushort[] EntryOffset { get; set; } = Array.Empty<ushort>();
 
-    [DataStructureItem(DataStructureItemType.ColumnOffsetArray)]
+    [DataStructureItem(ItemType.ColumnOffsetArray)]
     public string EntryOffsetArrayDescription => RecordHelpers.GetArrayString(EntryOffset);
 
     public override string ToString()

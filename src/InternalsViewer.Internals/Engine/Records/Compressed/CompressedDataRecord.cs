@@ -20,8 +20,6 @@ public class CompressedDataRecord(CompressionInfo compressionInfo) : Record
 
     public byte Header { get; set; }
 
-    public short ColumnCountBytes { get; set; }
-
     public byte[] ShortDataClusterArray { get; set; } = Array.Empty<byte>();
 
     public byte[] LongDataClusterArray { get; set; } = Array.Empty<byte>();

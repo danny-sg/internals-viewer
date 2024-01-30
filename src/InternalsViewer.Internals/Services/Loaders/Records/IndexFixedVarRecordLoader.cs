@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
@@ -59,7 +60,7 @@ public class IndexFixedVarRecordLoader(ILogger<IndexFixedVarRecordLoader> logger
         // Indexes should always have a Status Bits A
         LoadStatusBitsA(record, page.Data);
 
-        Logger.LogTrace("Status Bits A: {StatusBitsA}", record.StatusBitsADescription);
+        Logger.LogTrace("Status Bits A: {StatusBitsA}", record.StatusBitsA);
 
         // Load the null bitmap if necessary
         if (record.HasNullBitmap)
@@ -208,8 +209,6 @@ public class IndexFixedVarRecordLoader(ILogger<IndexFixedVarRecordLoader> logger
     {
         var columnValues = new List<FixedVarRecordField>();
 
-        var index = 0;
-
         foreach (var column in columns)
         {
             var columnOffset = nodeType == NodeType.Leaf ? column.LeafOffset : column.NodeOffset;
@@ -237,10 +236,6 @@ public class IndexFixedVarRecordLoader(ILogger<IndexFixedVarRecordLoader> logger
                 // Variable length field
                 field = LoadVariableLengthField(columnOffset, column, record, page.Data);
             }
-
-            record.MarkProperty("FieldsArray", field.Name, index);
-
-            index++;
 
             columnValues.Add(field);
         }
@@ -287,7 +282,7 @@ public class IndexFixedVarRecordLoader(ILogger<IndexFixedVarRecordLoader> logger
         field.Data = data;
         field.VariableOffset = variableIndex;
 
-        field.MarkProperty("Value", record.SlotOffset + field.Offset, field.Length);
+        record.MarkValue(ItemType.VariableLengthField, column.ColumnName, field, record.SlotOffset + field.Offset, field.Length);
 
         return field;
     }
@@ -337,9 +332,7 @@ public class IndexFixedVarRecordLoader(ILogger<IndexFixedVarRecordLoader> logger
         field.Length = length;
         field.Data = data;
 
-        //TODO: change to uniqueifier
-        field.MarkProperty("Value", record.SlotOffset + field.Offset, field.Length);
-        //record.MarkDataStructure("Uniqueifier", record.SlotOffset + field.Offset, field.Length);
+        record.MarkValue(ItemType.Uniqueifier, "Uniqueifier", field, record.SlotOffset + field.Offset, field.Length);
 
         return field;
     }
@@ -350,7 +343,7 @@ public class IndexFixedVarRecordLoader(ILogger<IndexFixedVarRecordLoader> logger
     /// <remarks>
     /// Fixed length fields are based on the length of the field defined in the table structure.
     /// </remarks>
-    private static FixedVarRecordField LoadFixedLengthField(short offset, ColumnStructure column, Record dataRecord, byte[] pageData)
+    private static FixedVarRecordField LoadFixedLengthField(short offset, ColumnStructure column, Record record, byte[] pageData)
     {
         var field = new FixedVarRecordField(column);
 
@@ -359,13 +352,17 @@ public class IndexFixedVarRecordLoader(ILogger<IndexFixedVarRecordLoader> logger
 
         var data = new byte[length];
 
-        Array.Copy(pageData, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
+        Array.Copy(pageData, column.LeafOffset + record.SlotOffset, data, 0, length);
 
         field.Offset = offset;
         field.Length = length;
         field.Data = data;
 
-        field.MarkProperty("Value", dataRecord.SlotOffset + field.Offset, field.Length);
+        record.MarkValue(ItemType.FixedLengthField, 
+                         column.ColumnName, 
+                         field, 
+                         record.SlotOffset + field.Offset, 
+                         field.Length);
 
         return field;
     }
