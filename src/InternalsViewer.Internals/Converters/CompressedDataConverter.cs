@@ -3,7 +3,7 @@ using System.Globalization;
 
 namespace InternalsViewer.Internals.Converters;
 
-public class CompressedDataConverter
+public static class CompressedDataConverter
 {
     public static string CompressedBinaryToBinary(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
     {
@@ -14,7 +14,7 @@ public class CompressedDataConverter
 
         try
         {
-            var unsigned = (data[0] & 0x80) == 0x80;
+            var unsigned = (data[0] & 0x80) != 0;
 
             switch (sqlType)
             {
@@ -117,7 +117,6 @@ public class CompressedDataConverter
 
     private static string DecodeBigInt(byte[] data, bool unsigned)
     {
-
         var returnData = DecodeInt(data, unsigned, 8);
 
         if (unsigned)
@@ -221,13 +220,13 @@ public class CompressedDataConverter
         return returnData;
     }
 
-    public static int DecodeInternalInt(byte[] data, int startPos)
+    public static int DecodeInternalInt(byte[] data, int startPosition)
     {
-        if ((data[startPos] & 0x80) != 0 && data.Length > 1)
+        if ((data[startPosition] & 0x80) != 0 && data.Length > 1)
         {
             var numberOfColumnsData = new byte[2];
 
-            Array.Copy(data, startPos, numberOfColumnsData, 0, 2);
+            Array.Copy(data, startPosition, numberOfColumnsData, 0, 2);
 
             numberOfColumnsData[0] = Convert.ToByte(numberOfColumnsData[0] ^ 0x80);
 
@@ -236,6 +235,6 @@ public class CompressedDataConverter
             return BitConverter.ToUInt16(numberOfColumnsData, 0);
         }
 
-        return data[startPos];
+        return data[startPosition];
     }
 }

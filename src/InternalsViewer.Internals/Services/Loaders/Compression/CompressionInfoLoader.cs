@@ -87,7 +87,7 @@ public class CompressionInfoLoader(CompressedDataRecordLoader compressedDataReco
     {
         var structure = new TableStructure(-1);
 
-        for (short i = 0; i < records; i++)
+        for (short i = 1; i <= records; i++)
         {
             var column = new ColumnStructure();
 

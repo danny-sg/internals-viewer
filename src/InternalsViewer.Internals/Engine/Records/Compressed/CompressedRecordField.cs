@@ -11,13 +11,14 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
     {
         AnchorLength = CompressedDataConverter.DecodeInternalInt(fieldData, 0);
 
-        var dataOffset = ((fieldData[0] & 0x80) == 0x80) ? 2 : 1;
+        var dataOffset = (fieldData[0] & 0x80) != 0 ? 2 : 1;
 
         var compositeData = new byte[AnchorLength + fieldData.Length - dataOffset];
 
         Debug.Assert(AnchorField != null, nameof(AnchorField) + " != null");
 
         Array.Copy(AnchorField.Data, 0, compositeData, 0, AnchorLength);
+
         Array.Copy(fieldData, dataOffset, compositeData, AnchorLength, fieldData.Length - dataOffset);
 
         return compositeData;
@@ -47,7 +48,7 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
                 return GetPageSymbolValue();
             }
 
-            if (AnchorField is { Data: not null })
+            if (AnchorField is { Data: not null, IsNull: false })
             {
                 return GetValueWithAnchor();
             }
