@@ -229,9 +229,12 @@
                     <TabViewItem.Header>
                         <TextBlock Text="{x:Bind ViewModel.MarkerTabName, Mode=OneWay}"/>
                     </TabViewItem.Header>
-                    <page:MarkerDataTable Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                    <!--<page:MarkerDataTable Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                           SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
-                                          PageClicked="Control_PageClicked"/>
+                                          PageClicked="Control_PageClicked"/>-->
+
+                    <page:MarkerTreeView Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                         SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
                 </TabViewItem>
 
                 <TabViewItem IsClosable="False" 

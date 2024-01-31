@@ -52,6 +52,7 @@ public static class MarkerBuilder
         SetStyle(marker, style);
 
         marker.Name = item.Name;
+
         SetValue(marker, item.Value);
 
         return marker;
@@ -141,29 +142,36 @@ public static class MarkerBuilder
     /// </summary>
     private static void SetValue(Marker marker, object? value)
     {
+        if (value is DataStructure markedObject)
+        {
+            marker.Children = BuildMarkers(markedObject).ToObservableCollection();
+        }
+
         try
         {
-            switch (value)
+            switch (value, marker.Children.Any())
             {
-                case RecordField field:
+                case (RecordField field, _):
                     marker.Value = field.Value;
                     break;
-                case byte[] bytes:
+                case (byte[] bytes, _):
                     marker.Value = DataConverter.BinaryToString(bytes, SqlDbType.VarChar);
                     break;
-                case BitArray bitArray:
+                case (BitArray bitArray, _):
                     marker.Value = StringHelpers.GetBitArrayString(bitArray);
                     break;
-                case short[] shortArray:
+                case (short[] shortArray, _):
                     marker.Value = StringHelpers.GetArrayString(shortArray);
                     break;
-                case ushort[] ushortArray:
+                case (ushort[] ushortArray, _):
                     marker.Value = StringHelpers.GetArrayString(ushortArray);
                     break;
-                case byte byteValue:
+                case (byte byteValue, _):
                     marker.Value = $"{byteValue} (0x{byteValue:X})";
                     break;
-
+                case (DataStructure, true):
+                    marker.Value = string.Empty;
+                    break;
                 default:
                     {
                         marker.Value = value?.ToString() ?? string.Empty;
@@ -183,10 +191,7 @@ public static class MarkerBuilder
             marker.Value = $"Error - {ex.Message}";
         }
 
-        if (value is DataStructure markedObject)
-        {
-            marker.Children = BuildMarkers(markedObject).ToObservableCollection();
-        }
+
     }
 }
 

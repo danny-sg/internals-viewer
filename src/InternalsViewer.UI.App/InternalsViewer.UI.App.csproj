@@ -49,6 +49,7 @@
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Controls\Page\HexViewControl.xaml" />
         <None Remove="Controls\Page\MarkerDataTable.xaml" />
+        <None Remove="Controls\Page\MarkerTreeView.xaml" />
         <None Remove="Controls\PasswordDialog.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
         <None Remove="Images\LargeTile.scale-100.png" />
@@ -264,6 +265,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\Page\MarkerTreeView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\Page\MarkerDataTable.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
