@@ -138,11 +138,11 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
             }
 
             // Load offset array of 2-byte integers indicating the end offset of each variable length field
-            dataRecord.ColOffsetArray = RecordHelpers.GetOffsetArray(data,
+            dataRecord.VariableLengthColumnOffsetArray = RecordHelpers.GetOffsetArray(data,
                                                                      dataRecord.VariableLengthColumnCount,
                                                                      dataRecord.SlotOffset + offsetStart);
 
-            dataRecord.MarkProperty(nameof(DataRecord.ColOffsetArray),
+            dataRecord.MarkProperty(nameof(DataRecord.VariableLengthColumnOffsetArray),
                                     dataRecord.SlotOffset + offsetStart,
                                     dataRecord.VariableLengthColumnCount * sizeof(short));
 
@@ -152,7 +152,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
         else
         {
             dataRecord.VariableLengthColumnCount = 0;
-            dataRecord.ColOffsetArray = Array.Empty<ushort>();
+            dataRecord.VariableLengthColumnOffsetArray = Array.Empty<ushort>();
         }
     }
 
@@ -184,16 +184,16 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
     {
         int startOffset;
 
-        if (dataRecord.ColOffsetArray.Length == 1)
+        if (dataRecord.VariableLengthColumnOffsetArray.Length == 1)
         {
             startOffset = dataRecord.VariableLengthDataOffset;
         }
         else
         {
-            startOffset = dataRecord.ColOffsetArray[^2];
+            startOffset = dataRecord.VariableLengthColumnOffsetArray[^2];
         }
 
-        int endOffset = RecordHelpers.DecodeOffset(dataRecord.ColOffsetArray[^1]);
+        int endOffset = RecordHelpers.DecodeOffset(dataRecord.VariableLengthColumnOffsetArray[^1]);
 
         var sparseRecord = new byte[endOffset - startOffset];
 
@@ -284,7 +284,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
         field.Length = length;
         field.Data = data;
 
-        dataRecord.MarkValue(ItemType.FixedLengthField, column.ColumnName, field, dataRecord.SlotOffset + field.Offset, field.Length);
+        dataRecord.MarkValue(ItemType.FixedLengthValue, column.ColumnName, field, dataRecord.SlotOffset + field.Offset, field.Length);
 
         return field;
     }
@@ -319,15 +319,15 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
         else
         {
             // ...else use the end offset of the previous column as the start of this one
-            offset = RecordHelpers.DecodeOffset(dataRecord.ColOffsetArray[fieldIndex - 1]);
+            offset = RecordHelpers.DecodeOffset(dataRecord.VariableLengthColumnOffsetArray[fieldIndex - 1]);
         }
 
-        if (fieldIndex < dataRecord.ColOffsetArray.Length)
+        if (fieldIndex < dataRecord.VariableLengthColumnOffsetArray.Length)
         {
             // LOB field is indicated by the first/high bit being set in the offset entry (0x8000 = 32768 = 0b1000000000000000)
-            isLob = (dataRecord.ColOffsetArray[fieldIndex] & 0x8000) == 0x8000;
+            isLob = (dataRecord.VariableLengthColumnOffsetArray[fieldIndex] & 0x8000) == 0x8000;
 
-            length = (short)(RecordHelpers.DecodeOffset(dataRecord.ColOffsetArray[fieldIndex]) - offset);
+            length = (short)(RecordHelpers.DecodeOffset(dataRecord.VariableLengthColumnOffsetArray[fieldIndex]) - offset);
         }
         else
         {
@@ -350,7 +350,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
         }
         else
         {
-            dataRecord.MarkValue(ItemType.VariableLengthField, 
+            dataRecord.MarkValue(ItemType.VariableLengthValue, 
                                  column.ColumnName, 
                                  field, 
                                  dataRecord.SlotOffset + field.Offset, 

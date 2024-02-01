@@ -41,7 +41,7 @@ public class BlobRecord : FixedVarRecord
     [DataStructureItem(ItemType.CurrentLinks)]
     public int CurLinks { get; set; }
 
-    [DataStructureItem(ItemType.Level)]
+    [DataStructureItem(ItemType.IndexLevel)]
     public short Level { get; set; }
 
     [DataStructureItem(ItemType.BlobSize)]

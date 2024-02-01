@@ -8,9 +8,9 @@ using InternalsViewer.Internals.Services.Loaders.Records;
 
 namespace InternalsViewer.Internals.Services.Records;
 
-public class RecordService(IndexFixedVarRecordLoader indexFixedVarRecordLoader, FixedVarRecord fixedVarRecord, CdDataRecordLoader cdDataRecordLoader) : IRecordService
+public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, FixedVarRecord fixedVarRecord, CdDataRecordLoader cdDataRecordLoader) : IRecordService
 {
-    private IndexFixedVarRecordLoader IndexFixedVarRecordLoader { get; } = indexFixedVarRecordLoader;
+    private FixedVarIndexRecordLoader FixedVarIndexRecordLoader { get; } = fixedVarIndexRecordLoader;
 
     private FixedVarRecord FixedVarRecord { get; } = fixedVarRecord;
 
@@ -37,7 +37,7 @@ public class RecordService(IndexFixedVarRecordLoader indexFixedVarRecordLoader, 
         var structure = IndexStructureProvider.GetIndexStructure(page.Database.Metadata,
             page.PageHeader.AllocationUnitId);
 
-        return page.OffsetTable.Select(s => IndexFixedVarRecordLoader.Load(page, s, structure)).ToList();
+        return page.OffsetTable.Select(s => FixedVarIndexRecordLoader.Load(page, s, structure)).ToList();
     }
 
     public DataRecord GetDataRecord(DataPage page, ushort offset)
@@ -53,6 +53,6 @@ public class RecordService(IndexFixedVarRecordLoader indexFixedVarRecordLoader, 
         var structure = IndexStructureProvider.GetIndexStructure(page.Database.Metadata,
                                                                  page.PageHeader.AllocationUnitId);
 
-        return IndexFixedVarRecordLoader.Load(page, offset, structure);
+        return FixedVarIndexRecordLoader.Load(page, offset, structure);
     }
 }

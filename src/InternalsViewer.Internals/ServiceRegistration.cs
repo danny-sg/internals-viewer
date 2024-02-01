@@ -53,7 +53,7 @@ public static class ServiceRegistration
 
         services.AddTransient<FixedVarRecord>();
         services.AddTransient<CdDataRecordLoader>();
-        services.AddTransient<IndexFixedVarRecordLoader>();
+        services.AddTransient<FixedVarIndexRecordLoader>();
 
         RegisterPageParsers(services);
     }

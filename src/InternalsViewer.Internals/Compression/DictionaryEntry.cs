@@ -8,7 +8,7 @@ public class DictionaryEntry(int symbol, ushort offset, byte[] data) : DataStruc
 {
     public int Symbol { get; set; } = symbol;
 
-    [DataStructureItem(ItemType.Value)]
+    [DataStructureItem(ItemType.DictionaryValue)]
     public byte[] Data { get; } = data;
 
     public ushort Offset { get; } = offset;

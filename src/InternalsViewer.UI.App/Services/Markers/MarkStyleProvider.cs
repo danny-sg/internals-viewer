@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.WinUI.Helpers;
 using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.UI.App.Models;
+using System.Diagnostics;
 
 namespace InternalsViewer.UI.App.Services.Markers;
 
@@ -38,6 +39,11 @@ public class MarkStyleProvider
         object? resource = null;
 
         ThemeDictionary?.TryGetValue($"{itemType}MarkerStyle", out resource);
+
+        if(Debugger.IsAttached && resource == null)
+        {
+            Debugger.Break();
+        }
 
         if (resource == null)
         {

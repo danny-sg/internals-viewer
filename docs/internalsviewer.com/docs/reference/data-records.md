@@ -2,7 +2,7 @@
   import MarkerKey from '../components/MarkerKey.vue'
 </script>
 
-# Data Record
+# Data Records
 
 ## FixedVar Format
 

@@ -36,10 +36,8 @@ public abstract class FixedVarRecord : Record
         return NullBitmap.Get(columnStructure.NullBitIndex - 1 + offset);
     }
 
-    public ushort[] ColOffsetArray { get; set; } = Array.Empty<ushort>();
-
-    [DataStructureItem(ItemType.ColumnOffsetArray)]
-    public string ColOffsetArrayDescription => RecordHelpers.GetArrayString(ColOffsetArray);
+    [DataStructureItem(ItemType.VariableLengthColumnOffsetArray)]
+    public ushort[] VariableLengthColumnOffsetArray { get; set; } = Array.Empty<ushort>();
 
     [DataStructureItem(ItemType.StatusBitsA)]
     public byte StatusBitsA { get; set; }

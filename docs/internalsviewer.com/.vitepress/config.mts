@@ -18,6 +18,19 @@ export default defineConfig({
           { text: 'Installation', link: 'docs/introduction/installation' },
           { text: 'Background', link: 'docs/introduction/background' }
         ]
+      },
+      {
+        text: 'Concepts',
+        items: []
+      },
+      {
+        text: 'Reference',
+        items: [
+          {text: "Page Header", link: "docs/reference/page-header"},
+          {text: "Data Records", link: "docs/reference/data-records"},
+          {text: "Index Records", link: "docs/reference/index-records"},
+          {text: "Compression", link: "docs/reference/compression"},
+        ]
       }
     ],
 

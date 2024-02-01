@@ -223,27 +223,40 @@ public sealed partial class HexViewControl
     {
         target.HexRichTextBlock.TextHighlighters.Clear();
 
+        void Highlight(Marker source)
+        {
+            var start = ToRunPosition(source.StartPosition);
+            var end = ToRunPosition(source.EndPosition + 1) - 1;
+
+            var length = end - start;
+
+            var foregroundColour = source.ForeColour;
+            var backgroundColour = source.BackColour;
+
+            var highlighter = new TextHighlighter
+            {
+                Foreground = new SolidColorBrush(foregroundColour),
+                Background = new SolidColorBrush(backgroundColour),
+
+                Ranges = { new TextRange(start, length) }
+            };
+
+            target.HexRichTextBlock.TextHighlighters.Add(highlighter);
+
+            if (source.Children.Any())
+            {
+                foreach (var child in source.Children)
+                {
+                    Highlight(child);
+                }
+            }
+        }
+
         if (markers != null)
         {
             foreach (var marker in markers)
             {
-                var start = ToRunPosition(marker.StartPosition);
-                var end = ToRunPosition(marker.EndPosition + 1) - 1;
-
-                var length = end - start;
-
-                var foregroundColour = marker.ForeColour;
-                var backgroundColour = marker.BackColour;
-
-                var highlighter = new TextHighlighter
-                {
-                    Foreground = new SolidColorBrush(foregroundColour),
-                    Background = new SolidColorBrush(backgroundColour),
-
-                    Ranges = { new TextRange(start, length) }
-                };
-
-                target.HexRichTextBlock.TextHighlighters.Add(highlighter);
+                Highlight(marker);
             }
 
             target.ScrollViewer.ScrollToVerticalOffset(0);

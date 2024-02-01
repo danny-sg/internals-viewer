@@ -17,10 +17,9 @@ public class FixedVarRecordField(ColumnStructure columnStructure) : RecordField(
 
     public bool IsSparse { get; set; }
 
-    [DataStructureItem(ItemType.Value)]
-    public override string Value => DataConverter.BinaryToString(Data, 
-                                                                 ColumnStructure.DataType, 
-                                                                 ColumnStructure.Precision, 
+    public override string Value => DataConverter.BinaryToString(Data,
+                                                                 ColumnStructure.DataType,
+                                                                 ColumnStructure.Precision,
                                                                  ColumnStructure.Scale,
                                                                  ColumnStructure.BitPosition);
 

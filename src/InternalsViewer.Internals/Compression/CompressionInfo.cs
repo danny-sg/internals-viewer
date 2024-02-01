@@ -21,16 +21,16 @@ namespace InternalsViewer.Internals.Compression;
 /// </remarks>
 public class CompressionInfo : DataStructure
 {
-    [DataStructureItem(ItemType.PageModCount)]
+    [DataStructureItem(ItemType.PageModificationCount)]
     public short PageModificationCount { get; set; }
 
-    [DataStructureItem(ItemType.CiSize)]
+    [DataStructureItem(ItemType.Size)]
     public short Size { get; set; }
 
-    [DataStructureItem(ItemType.CiLength)]
+    [DataStructureItem(ItemType.Length)]
     public ushort Length { get; set; }
 
-    [DataStructureItem(ItemType.CiHeader)]
+    [DataStructureItem(ItemType.Header)]
     public byte Header { get; set; }
 
     public static ushort SlotOffset => 96;

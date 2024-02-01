@@ -77,7 +77,7 @@ public class PageHeader : DataStructure
     /// <summary>
     /// Record/slot count
     /// </summary>
-    [DataStructureItem(ItemType.PageSlotCount)]
+    [DataStructureItem(ItemType.SlotCount)]
     public int SlotCount { get; set; }
 
     /// <summary>
@@ -86,7 +86,7 @@ public class PageHeader : DataStructure
     [DataStructureItem(ItemType.FreeCount)]
     public int FreeCount { get; set; }
 
-    [DataStructureItem(ItemType.FreeData)]
+    [DataStructureItem(ItemType.FreeDataOffset)]
     public int FreeData { get; set; }
 
     /// <summary>
@@ -104,7 +104,7 @@ public class PageHeader : DataStructure
     /// <summary>
     /// Last transaction reserved count
     /// </summary>
-    [DataStructureItem(ItemType.TransactionReservedCount)]
+    [DataStructureItem(ItemType.TransactionReserved)]
     public int TransactionReservedCount { get; set; }
 
     [DataStructureItem(ItemType.TornBits)]

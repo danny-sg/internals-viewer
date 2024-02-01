@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 /// </summary>
 public class OverflowField : BlobField
 {
-    [DataStructureItem(ItemType.Level)]
+    [DataStructureItem(ItemType.OverflowLevel)]
     public byte Level { get; set; }
 
     [DataStructureItem(ItemType.OverflowLength)]

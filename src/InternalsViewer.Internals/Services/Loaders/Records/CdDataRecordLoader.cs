@@ -329,7 +329,7 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
                                                  .Cast<CompressedRecordField>()
                                                  .FirstOrDefault(f => f.ColumnStructure.ColumnId == i + 1);
 
-                record.MarkValue(Internals.Engine.Annotations.ItemType.ShortField, field.Name, field, field.Offset, field.Length);
+                record.MarkValue(ItemType.ShortFieldValue, field.Name, field, field.Offset, field.Length);
 
                 record.Fields.Add(field);
             }
@@ -375,7 +375,7 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
                     // LoadLobField(field, field.Data, field.Offset);
                 }
 
-                record.MarkValue(ItemType.LongField, field.Name, field, field.Offset, field.Length);
+                record.MarkValue(ItemType.LongFieldValue, field.Name, field, field.Offset, field.Length);
 
                 previousOffset = RecordHelpers.DecodeOffset(nextOffset);
 
@@ -409,7 +409,7 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
             item1.MarkValue(ItemType.ColumnDescriptor,
                             $"Column {column}",
                             value1,
-                            offset + bytePosition,
+                            bytePosition,
                             sizeof(byte),
                             new List<string> { item1.ToString() });
 
@@ -428,7 +428,7 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
                 item2.MarkValue(ItemType.ColumnDescriptor,
                                 $"Column {column}",
                                 value2,
-                                offset + bytePosition,
+                                bytePosition,
                                 sizeof(byte),
                                 new List<string> { item2.ToString() });
 

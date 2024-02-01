@@ -38,7 +38,6 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
 
     public bool IsPageSymbol { get; set; }
 
-    [DataStructureItem(ItemType.CompressedValue)]
     public override string Value
     {
         get
