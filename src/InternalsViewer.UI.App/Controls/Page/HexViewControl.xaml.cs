@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-
+using System.Linq;
 using System.Text;
-using Windows.UI;
-using Windows.UI.Text;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -12,16 +10,29 @@ using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI;
-using Microsoft.UI.Text;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
-using System.Runtime.CompilerServices;
+using Windows.UI.Text;
+using Microsoft.UI.Text;
 
 namespace InternalsViewer.UI.App.Controls.Page;
 
 public sealed partial class HexViewControl
 {
+    public class MouseOverInfo(int? offset, Marker? marker)
+    {
+        public int? Offset { get; } = offset;
+
+        public Marker? Marker { get; } = marker;
+
+        public bool HasMarker => Marker != null;
+    }
+
     // 16 bytes per line is the conventional way of displaying hex
     private const int BytesPerLine = 16;
+
+    // Bytes are represented by 2 characters and a space
+    const int CharactersPerByte = 2;
 
     public HexControlViewModel ViewModel { get; } = new();
 
@@ -30,6 +41,8 @@ public sealed partial class HexViewControl
         InitializeComponent();
 
         SetAddress();
+
+        MouseOver = new(default, default);
     }
 
     private void SetAddress()
@@ -80,6 +93,18 @@ public sealed partial class HexViewControl
             typeof(HexViewControl),
             new PropertyMetadata(default, OnSelectedMarkerChanged));
 
+    public MouseOverInfo MouseOver
+    {
+        get => (MouseOverInfo)GetValue(MouseOverProperty);
+        set => SetValue(MouseOverProperty, value);
+    }
+
+    public static readonly DependencyProperty MouseOverProperty
+        = DependencyProperty.Register(nameof(MouseOver),
+            typeof(MouseOverInfo),
+            typeof(HexViewControl),
+            new PropertyMetadata(default, null));
+
     private static void OnSelectedMarkerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (HexViewControl)d;
@@ -124,7 +149,7 @@ public sealed partial class HexViewControl
 
                 if (position == target.SelectedMarker?.EndPosition)
                 {
-                    // Flush current run, replace with selection inline
+                    // Flush current run with selection formatting
                     paragraph.Inlines.Add(FlushSelectionRun(stringBuilder, target.SelectedMarker));
                 }
 
@@ -137,20 +162,7 @@ public sealed partial class HexViewControl
                 position++;
             }
 
-            if (position > target.SelectedMarker?.StartPosition && position < target.SelectedMarker?.EndPosition)
-            {
-                // If selection is over a line break the run will be flushed as the InlineUIContainer doesn't handle line breaks
-                paragraph.Inlines.Add(FlushSelectionRun(stringBuilder, target.SelectedMarker));
-
-                // Add the line break specifically as a normal run
-                stringBuilder.Append(Environment.NewLine);
-
-                paragraph.Inlines.Add(FlushRun(stringBuilder));
-            }
-            else
-            {
-                stringBuilder.Append(Environment.NewLine);
-            }
+            stringBuilder.Append(Environment.NewLine);
         }
 
         paragraph.Inlines.Add(FlushRun(stringBuilder));
@@ -171,6 +183,15 @@ public sealed partial class HexViewControl
     }
 
     private static Inline FlushSelectionRun(StringBuilder stringBuilder, Marker marker)
+    {
+        var run = new Run { Text = stringBuilder.ToString(), TextDecorations = TextDecorations.Underline, FontWeight = FontWeights.Bold };
+
+        stringBuilder.Clear();
+
+        return run;
+    }
+
+    private static Inline FlushSelectionContainerRun(StringBuilder stringBuilder, Marker marker)
     {
         var container = new InlineUIContainer();
 
@@ -206,19 +227,8 @@ public sealed partial class HexViewControl
         {
             foreach (var marker in markers)
             {
-                var selectionOffset = (Start: 0, End: 0);
-
-                if (marker.StartPosition > target.SelectedMarker?.EndPosition && target.SelectedMarker.StartPosition > 0)
-                {
-                    var selectionStart = ToRunPosition(target.SelectedMarker.StartPosition -1);
-                    var selectionEnd = ToRunPosition(target.SelectedMarker.EndPosition);
-
-                    selectionOffset.Start = selectionEnd - selectionStart;
-                    selectionOffset.End = selectionOffset.Start + 1;
-                }
-
-                var start = ToRunPosition(marker.StartPosition) - selectionOffset.Start;
-                var end = ToRunPosition(marker.EndPosition + 1) - selectionOffset.End - 1;
+                var start = ToRunPosition(marker.StartPosition);
+                var end = ToRunPosition(marker.EndPosition + 1) - 1;
 
                 var length = end - start;
 
@@ -278,18 +288,14 @@ public sealed partial class HexViewControl
     /// <summary>
     /// Converts a position in the hex text block to a byte position
     /// </summary>
-    private static int FromRunPosition(int position)
+    private static int FromRunPosition(int position, decimal charactersPerLine)
     {
-        // Bytes are represented by 2 characters and a space
-        const int charactersPerByte = 3;
+        var lineNumber = (int)Math.Floor(position / charactersPerLine);
 
-        var charactersPerLine = BytesPerLine * charactersPerByte + Environment.NewLine.Length;
-
-        var lineNumber = position / charactersPerLine;
         var linePosition = position % charactersPerLine;
-        var bytePosition = linePosition / charactersPerByte;
+        var bytePosition = Math.Round(linePosition / (CharactersPerByte + 1));
 
-        return lineNumber * BytesPerLine + bytePosition;
+        return lineNumber * BytesPerLine + (int)bytePosition;
     }
 
     private void HexRichTextBlock_SelectionChanged(object sender, RoutedEventArgs e)
@@ -299,8 +305,15 @@ public sealed partial class HexViewControl
         SelectionInfoPopup.HorizontalOffset = rect.X + 4;
         SelectionInfoPopup.VerticalOffset = rect.Y;
 
-        ViewModel.StartOffset = FromRunPosition(HexRichTextBlock.SelectionStart.Offset);
-        ViewModel.EndOffset = FromRunPosition(HexRichTextBlock.SelectionEnd.Offset);
+        ViewModel.StartOffset = FromRunPosition(HexRichTextBlock.SelectionStart.Offset,
+                                                BytesPerLine * CharactersPerByte // Bytes
+                                                 + BytesPerLine - 1               // Spaces in between bytes (except last byte)
+                                                 + Environment.NewLine.Length);
+
+        ViewModel.EndOffset = FromRunPosition(HexRichTextBlock.SelectionEnd.Offset,
+                                                BytesPerLine * CharactersPerByte // Bytes
+                                              + BytesPerLine - 1               // Spaces in between bytes (except last byte)
+                                              + Environment.NewLine.Length);
 
         ViewModel.SelectedText = HexRichTextBlock.SelectedText;
     }
@@ -308,5 +321,33 @@ public sealed partial class HexViewControl
     private void HexRichTextBlock_LostFocus(object sender, RoutedEventArgs e)
     {
         SelectionInfoPopup.IsOpen = false;
+    }
+
+    private void HexRichTextBlock_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        var position = HexRichTextBlock.GetPositionFromPoint(e.GetCurrentPoint(HexRichTextBlock).Position);
+
+        if (position != null)
+        {
+            var offset = FromRunPosition(position.Offset, BytesPerLine * CharactersPerByte // Bytes
+                                                          + BytesPerLine - 1               // Spaces in between bytes (except last byte)
+                                                          + Environment.NewLine.Length) - 1;
+
+            var marker = Markers?.FirstOrDefault(m => m.StartPosition <= offset && m.EndPosition >= offset);
+
+            MouseOver = new(offset, marker);
+        }
+    }
+
+    private void HexRichTextBlock_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.Arrow));
+
+        e.Handled = true;
+    }
+
+    private void HexRichTextBlock_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        MouseOver = new(default, default);
     }
 }

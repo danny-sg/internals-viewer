@@ -162,6 +162,7 @@
                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                BorderThickness="1,0,1,1"
                                SelectionMode="Single"
+                               SelectedItem="{x:Bind SelectedMarker, Mode=TwoWay}"
                                Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                VerticalAlignment="Stretch">
         <controls:HeaderedTreeView.Header>
