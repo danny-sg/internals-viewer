@@ -1,9 +1,11 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Compressed;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records;
@@ -60,14 +62,14 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 ///     
 ///         Indicated by the header byte. It could be a forwarding pointer, back pointer, or version info.
 /// </remarks>
-public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logger)
+public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
 {
     /// <summary>
     /// Columns are grouped into clusters of 30 in the short and long data regions
     /// </summary>
     private const int ClusterSize = 30;
 
-    private ILogger<CompressedDataRecordLoader> Logger { get; } = logger;
+    private ILogger<CdDataRecordLoader> Logger { get; } = logger;
 
     public CompressedDataRecord Load(AllocationUnitPage page, ushort slotOffset, TableStructure structure)
     {
@@ -226,7 +228,15 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
         record.RecordType = (CompressedRecordType)((record.Header >> 2) & 7);
 
-        record.MarkProperty(nameof(record.Header), offset, sizeof(byte));
+        var tags = new List<string>();
+
+        tags.Add(record.RecordType.ToString());
+
+        tags.AddIf("Compressed", record.IsCompressedDataRecord);
+        tags.AddIf("Has Long Data Region", record.HasLongDataRegion);
+        tags.AddIf("Has Versioning", record.HasVersioning);
+
+        record.MarkProperty(nameof(record.Header), offset, sizeof(byte), tags);
 
         Logger.LogDebug("Record Type: {0}", record.RecordType);
     }
@@ -365,7 +375,7 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
                     // LoadLobField(field, field.Data, field.Offset);
                 }
 
-                record.MarkValue(Internals.Engine.Annotations.ItemType.LongField, field.Name, field, field.Offset, field.Length);
+                record.MarkValue(ItemType.LongField, field.Name, field, field.Offset, field.Length);
 
                 previousOffset = RecordHelpers.DecodeOffset(nextOffset);
 
@@ -396,7 +406,12 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
             var item1 = new ColumnDescriptor(value1);
 
-            record.MarkProperty(nameof(record.ColumnDescriptors), record.SlotOffset + bytePosition, sizeof(byte));
+            item1.MarkValue(ItemType.ColumnDescriptor,
+                            $"Column {column}",
+                            value1,
+                            offset + bytePosition,
+                            sizeof(byte),
+                            new List<string> { item1.ToString() });
 
             columnDescriptors.Add(item1);
 
@@ -410,7 +425,12 @@ public class CompressedDataRecordLoader(ILogger<CompressedDataRecordLoader> logg
 
                 var item2 = new ColumnDescriptor(value2);
 
-                record.MarkProperty(nameof(record.ColumnDescriptors), record.SlotOffset + bytePosition, sizeof(byte));
+                item2.MarkValue(ItemType.ColumnDescriptor,
+                                $"Column {column}",
+                                value2,
+                                offset + bytePosition,
+                                sizeof(byte),
+                                new List<string> { item2.ToString() });
 
                 columnDescriptors.Add(item2);
 

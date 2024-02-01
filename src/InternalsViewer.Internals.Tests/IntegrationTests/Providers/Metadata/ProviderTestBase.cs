@@ -26,7 +26,7 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
 
         var pageService = ServiceHelper.CreatePageService(TestOutput);
 
-        var loader = new DataFixedVarRecordLoader(TestLogger.GetLogger<DataFixedVarRecordLoader>(TestOutput));
+        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(TestOutput), pageService, loader);
 

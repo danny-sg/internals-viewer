@@ -43,4 +43,6 @@ public class Marker: DependencyObject
     }
 
     public ObservableCollection<Marker> Children { get; set; } = new();
+
+    public bool HasKey { get; set; }
 }

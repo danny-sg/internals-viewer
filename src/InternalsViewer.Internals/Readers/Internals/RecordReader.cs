@@ -9,13 +9,13 @@ using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Readers.Internals;
 
-public class RecordReader(ILogger<RecordReader> logger, IPageService pageService, DataFixedVarRecordLoader dataFixedVarRecordLoader) : IRecordReader
+public class RecordReader(ILogger<RecordReader> logger, IPageService pageService, FixedVarRecord fixedVarRecord) : IRecordReader
 {
     public ILogger<RecordReader> Logger { get; } = logger;
 
     public IPageService PageService { get; } = pageService;
 
-    public DataFixedVarRecordLoader DataFixedVarRecordLoader { get; } = dataFixedVarRecordLoader;
+    public FixedVarRecord FixedVarRecord { get; } = fixedVarRecord;
 
     public async Task<List<DataRecord>> Read(DatabaseSource database, PageAddress startPage, TableStructure structure)
     {
@@ -34,7 +34,7 @@ public class RecordReader(ILogger<RecordReader> logger, IPageService pageService
                                 page.PageHeader.PageAddress.PageId, 
                                 offset);
 
-                return DataFixedVarRecordLoader.Load(page, offset, structure);
+                return FixedVarRecord.Load(page, offset, structure);
             }));
             
             var nextPage = page.PageHeader.NextPage;

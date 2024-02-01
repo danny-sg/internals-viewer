@@ -53,6 +53,10 @@ public static class MarkerBuilder
 
         marker.Name = item.Name;
 
+        marker.HasKey = item.Offset >= 0;
+
+        marker.Tags = item.Tags;
+
         SetValue(marker, item.Value);
 
         return marker;
@@ -105,6 +109,8 @@ public static class MarkerBuilder
 
         marker.Tags = item.Tags;
 
+        marker.HasKey = item.Offset >= 0;
+
         SetStyle(marker, style);
 
         return marker;
@@ -147,6 +153,11 @@ public static class MarkerBuilder
             marker.Children = BuildMarkers(markedObject).ToObservableCollection();
         }
 
+        if (value is DataStructure[] markedObjectArray)
+        {
+            marker.Children = markedObjectArray.SelectMany(BuildMarkers).ToObservableCollection();
+        }
+
         try
         {
             switch (value, marker.Children.Any())
@@ -170,6 +181,7 @@ public static class MarkerBuilder
                     marker.Value = $"{byteValue} (0x{byteValue:X})";
                     break;
                 case (DataStructure, true):
+                case (DataStructure[], true):
                     marker.Value = string.Empty;
                     break;
                 default:
@@ -207,5 +219,6 @@ public enum MarkerType
     Bitmap,
     Internal,
     Lob,
-    Compressed
+    Compressed,
+    None
 }

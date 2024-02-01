@@ -7,7 +7,7 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Loaders;
 
-public class CompressedDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
+public class CdDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 {
     private ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;
 
@@ -24,7 +24,7 @@ public class CompressedDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
     {
         var record = new CompressedDataRecord(null!);
 
-        var loader = new CompressedDataRecordLoader(TestLogger.GetLogger<CompressedDataRecordLoader>(TestOutputHelper));
+        var loader = new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutputHelper));
 
         loader.LoadHeader(record, new[] { header }, 0);
 
@@ -37,7 +37,7 @@ public class CompressedDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public void Can_Load_Record()
     {
-        var loader = new CompressedDataRecordLoader(TestLogger.GetLogger<CompressedDataRecordLoader>(TestOutputHelper));
+        var loader = new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutputHelper));
 
         var page = new DataPage();
 

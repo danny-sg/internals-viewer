@@ -202,7 +202,7 @@
                           SelectedItem="{x:Bind ViewModel.SelectedSlot, Mode=TwoWay}"
                           BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                           ItemsSource="{x:Bind ViewModel.PageSlots, Mode=OneWay}"
-                          Width="175"
+                          Width="178"
                           ItemClick="OffsetTableListView_ItemClick"
                           ItemContainerStyle="{StaticResource ListViewItemSlotStyle}"
                           ItemTemplateSelector="{StaticResource SlotTemplateSelector}"
@@ -229,12 +229,10 @@
                     <TabViewItem.Header>
                         <TextBlock Text="{x:Bind ViewModel.MarkerTabName, Mode=OneWay}"/>
                     </TabViewItem.Header>
-                    <!--<page:MarkerDataTable Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
-                                          SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
-                                          PageClicked="Control_PageClicked"/>-->
 
                     <page:MarkerTreeView Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
-                                         SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
+                                         SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
+                                         PageClicked="Control_PageClicked"/>
                 </TabViewItem>
 
                 <TabViewItem IsClosable="False" 

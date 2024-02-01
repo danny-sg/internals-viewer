@@ -51,8 +51,8 @@ public static class ServiceRegistration
 
         services.AddTransient<CompressionInfoLoader>();
 
-        services.AddTransient<DataFixedVarRecordLoader>();
-        services.AddTransient<CompressedDataRecordLoader>();
+        services.AddTransient<FixedVarRecord>();
+        services.AddTransient<CdDataRecordLoader>();
         services.AddTransient<IndexFixedVarRecordLoader>();
 
         RegisterPageParsers(services);

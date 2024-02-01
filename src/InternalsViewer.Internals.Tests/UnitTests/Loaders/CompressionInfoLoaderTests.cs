@@ -17,7 +17,7 @@ public class CompressionInfoLoaderTests(ITestOutputHelper testOutputHelper)
 
         page.Data = ciStructure;
 
-        var loader = new CompressionInfoLoader(new CompressedDataRecordLoader(TestLogger.GetLogger<CompressedDataRecordLoader>(TestOutputHelper)));
+        var loader = new CompressionInfoLoader(new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutputHelper)));
 
         var ci = loader.Load(page, 0);
     }

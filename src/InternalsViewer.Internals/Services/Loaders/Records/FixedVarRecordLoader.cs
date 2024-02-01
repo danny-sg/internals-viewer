@@ -13,7 +13,7 @@ public abstract class FixedVarRecordLoader
     /// <summary>
     /// Loads Status Bits A, part of the two byte record header
     /// </summary>
-    protected static void LoadStatusBitsA(FixedVarRecord record, byte[] data)
+    protected static void LoadStatusBitsA(Internals.Engine.Records.FixedVarRecord record, byte[] data)
     {
         var statusA = data[record.SlotOffset];
 
@@ -33,7 +33,7 @@ public abstract class FixedVarRecordLoader
         tags.AddIf("Has Variable Length Columns", record.HasVariableLengthColumns);
         tags.AddIf("Has Row Versioning", record.HasRowVersioning);
 
-        record.MarkProperty(nameof(FixedVarRecord.StatusBitsA), record.SlotOffset, 1, tags);
+        record.MarkProperty(nameof(Internals.Engine.Records.FixedVarRecord.StatusBitsA), record.SlotOffset, 1, tags);
     }
 
     /// <summary>

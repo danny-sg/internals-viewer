@@ -10,9 +10,9 @@ namespace InternalsViewer.Internals.Services.Loaders.Compression;
 /// <summary>
 /// Service responsible for loading CI (Compression Information) data structures
 /// </summary>
-public class CompressionInfoLoader(CompressedDataRecordLoader compressedDataRecordLoader)
+public class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
 {
-    private CompressedDataRecordLoader CompressedDataRecordLoader { get; } = compressedDataRecordLoader;
+    private CdDataRecordLoader CdDataRecordLoader { get; } = cdDataRecordLoader;
 
     public CompressionInfo Load(AllocationUnitPage page, ushort offset)
     {
@@ -76,7 +76,7 @@ public class CompressionInfoLoader(CompressedDataRecordLoader compressedDataReco
 
         var structure = CreateTableStructure(records);
 
-        var anchorRecord = CompressedDataRecordLoader.Load(page, (ushort)offset, structure);
+        var anchorRecord = CdDataRecordLoader.Load(page, (ushort)offset, structure);
 
         ci.AnchorRecord = anchorRecord;
 

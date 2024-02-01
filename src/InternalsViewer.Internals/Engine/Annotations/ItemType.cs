@@ -73,5 +73,6 @@ public enum ItemType
     FixedLengthField,
     VariableLengthField,
     ShortField,
-    LongField
+    LongField,
+    ColumnDescriptor
 }

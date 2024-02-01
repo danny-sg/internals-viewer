@@ -179,8 +179,7 @@
 
         <selectors:MarkerTemplateSelector x:Key="MarkerTemplateSelector" 
                                        DefaultTemplate="{StaticResource DefaultItemTemplate}"
-                                       PointerTemplate="{StaticResource PointerItemTemplate}"
-                                       VirtualTemplate="{StaticResource VirtualItemTemplate}"/>
+                                       PointerTemplate="{StaticResource PointerItemTemplate}"/>
     </UserControl.Resources>
 
     <ListView BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"

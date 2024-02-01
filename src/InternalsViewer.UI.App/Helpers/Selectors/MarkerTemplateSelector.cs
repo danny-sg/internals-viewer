@@ -8,8 +8,6 @@ public class MarkerTemplateSelector : DataTemplateSelector
 {
     public DataTemplate DefaultTemplate { get; set; } = null!;
 
-    public DataTemplate VirtualTemplate { get; set; } = null!;
-
     public DataTemplate PointerTemplate { get; set; } = null!;
 
     protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
@@ -28,11 +26,6 @@ public class MarkerTemplateSelector : DataTemplateSelector
         if (pointerTypes.Any(p => p == marker?.Type))
         {
             return PointerTemplate;
-        }
-
-        if(marker is { StartPosition: < 0, EndPosition: < 0 })
-        {
-            return VirtualTemplate;
         }
 
         return DefaultTemplate;

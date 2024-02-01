@@ -8,20 +8,20 @@ using InternalsViewer.Internals.Services.Loaders.Records;
 
 namespace InternalsViewer.Internals.Services.Records;
 
-public class RecordService(IndexFixedVarRecordLoader indexFixedVarRecordLoader, DataFixedVarRecordLoader dataFixedVarRecordLoader, CompressedDataRecordLoader compressedDataRecordLoader) : IRecordService
+public class RecordService(IndexFixedVarRecordLoader indexFixedVarRecordLoader, FixedVarRecord fixedVarRecord, CdDataRecordLoader cdDataRecordLoader) : IRecordService
 {
     private IndexFixedVarRecordLoader IndexFixedVarRecordLoader { get; } = indexFixedVarRecordLoader;
 
-    private DataFixedVarRecordLoader DataFixedVarRecordLoader { get; } = dataFixedVarRecordLoader;
+    private FixedVarRecord FixedVarRecord { get; } = fixedVarRecord;
 
-    private CompressedDataRecordLoader CompressedDataRecordLoader { get; } = compressedDataRecordLoader;
+    private CdDataRecordLoader CdDataRecordLoader { get; } = cdDataRecordLoader;
 
     public List<DataRecord> GetDataRecords(DataPage page)
     {
         var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
                                                                  page.PageHeader.AllocationUnitId);
 
-        return page.OffsetTable.Select(s => DataFixedVarRecordLoader.Load(page, s, structure)).ToList();
+        return page.OffsetTable.Select(s => FixedVarRecord.Load(page, s, structure)).ToList();
     }
 
     public List<CompressedDataRecord> GetCompressedDataRecords(DataPage page)
@@ -29,7 +29,7 @@ public class RecordService(IndexFixedVarRecordLoader indexFixedVarRecordLoader, 
         var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
                                                                  page.PageHeader.AllocationUnitId);
 
-        return page.OffsetTable.Select(s => CompressedDataRecordLoader.Load(page, s, structure)).ToList();
+        return page.OffsetTable.Select(s => CdDataRecordLoader.Load(page, s, structure)).ToList();
     }
 
     public List<IndexRecord> GetIndexRecords(IndexPage page)
@@ -45,7 +45,7 @@ public class RecordService(IndexFixedVarRecordLoader indexFixedVarRecordLoader, 
         var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
                                                                  page.PageHeader.AllocationUnitId);
 
-        return DataFixedVarRecordLoader.Load(page, offset, structure);
+        return FixedVarRecord.Load(page, offset, structure);
     }
 
     public IndexRecord GetIndexRecord(IndexPage page, ushort offset)

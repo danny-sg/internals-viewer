@@ -17,9 +17,9 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 /// <remarks>
 /// Microsoft SQL Server 2012 Internals by Kalen Delaney et al. has a good description of the data record structure in Chapter 6.
 /// </remarks>
-public class DataFixedVarRecordLoader(ILogger<DataFixedVarRecordLoader> logger) : FixedVarRecordLoader
+public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoader
 {
-    private ILogger<DataFixedVarRecordLoader> Logger { get; } = logger;
+    private ILogger<FixedVarRecord> Logger { get; } = logger;
 
     /// <summary>
     /// Loads the data record at the given offset

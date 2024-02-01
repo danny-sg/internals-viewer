@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine;
+using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Compression;
 
@@ -40,4 +41,9 @@ public class ColumnDescriptor(byte value) : DataStructure
         ColumnDescriptorFlag.PageSymbol => 1,
         _ => 0
     };
+
+    public override string ToString()
+    {
+        return Value.ToString().SplitCamelCase();
+    }
 }
