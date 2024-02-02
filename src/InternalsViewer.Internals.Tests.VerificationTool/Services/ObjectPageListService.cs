@@ -6,12 +6,13 @@ using System.Text;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Tests.VerificationTool.Helpers;
 using Microsoft.Data.SqlClient;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 
 namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 
 internal class ObjectPageListService
 {
-    public async Task<List<PageAddress>> GetPages(int objectId, int indexId)
+    public async Task<List<PageAddress>> GetPages(int objectId, int indexId, PageType pageType)
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("Default");
 
@@ -20,12 +21,14 @@ internal class ObjectPageListService
         var results = new List<PageAddress>();
 
         var sql = @"SELECT allocated_page_file_id, allocated_page_page_id
-                    FROM   sys.dm_db_database_page_allocations(DB_ID(), @ObjectId, @IndexId, NULL, 'DETAILED')";
+                    FROM   sys.dm_db_database_page_allocations(DB_ID(), @ObjectId, @IndexId, NULL, 'DETAILED')
+                    WHERE  page_type = @PageType";
 
         await using var command = new SqlCommand(sql, sqlConnection);
 
         command.Parameters.AddWithValue("@ObjectId", objectId);
         command.Parameters.AddWithValue("@IndexId", indexId);
+        command.Parameters.AddWithValue("@PageType", (int)pageType);
 
         await sqlConnection.OpenAsync();
 

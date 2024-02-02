@@ -77,7 +77,7 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
 
         var record = new CompressedDataRecord(page.CompressionInfo!)
         {
-            SlotOffset = slotOffset,
+            Offset = slotOffset,
             RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset)
         };
 

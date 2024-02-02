@@ -34,7 +34,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
 
         var record = new DataRecord
         {
-            SlotOffset = slotOffset,
+            Offset = slotOffset,
             RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset)
         };
 
@@ -87,7 +87,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
     private static void LoadRecordStructure(DataRecord dataRecord, byte[] data, TableStructure structure)
     {
         // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
-        var columnCountOffsetPosition = dataRecord.SlotOffset + sizeof(byte) + sizeof(byte);
+        var columnCountOffsetPosition = dataRecord.Offset + sizeof(byte) + sizeof(byte);
 
         // Column count offset determines the offset of the column count after the fixed length data
         dataRecord.ColumnCountOffset = BitConverter.ToInt16(data, columnCountOffsetPosition);
@@ -95,7 +95,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
         dataRecord.MarkProperty(nameof(DataRecord.ColumnCountOffset), columnCountOffsetPosition, sizeof(short));
 
         // Column count 2-byte integer located at the column count offset
-        var columnCountPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset;
+        var columnCountPosition = dataRecord.Offset + dataRecord.ColumnCountOffset;
 
         dataRecord.ColumnCount = BitConverter.ToInt16(data, columnCountPosition);
 
@@ -127,10 +127,10 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
                 var variableLengthColumnCountOffset = dataRecord.ColumnCountOffset + sizeof(short) + dataRecord.NullBitmapSize;
 
                 dataRecord.VariableLengthColumnCount = BitConverter.ToUInt16(data,
-                                                                             dataRecord.SlotOffset + variableLengthColumnCountOffset);
+                                                                             dataRecord.Offset + variableLengthColumnCountOffset);
 
                 dataRecord.MarkProperty(nameof(DataRecord.VariableLengthColumnCount),
-                                        dataRecord.SlotOffset + variableLengthColumnCountOffset,
+                                        dataRecord.Offset + variableLengthColumnCountOffset,
                                         sizeof(short));
 
                 // Offset starts after the variable length column count (2-bytes)
@@ -140,10 +140,10 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
             // Load offset array of 2-byte integers indicating the end offset of each variable length field
             dataRecord.VariableLengthColumnOffsetArray = RecordHelpers.GetOffsetArray(data,
                                                                      dataRecord.VariableLengthColumnCount,
-                                                                     dataRecord.SlotOffset + offsetStart);
+                                                                     dataRecord.Offset + offsetStart);
 
             dataRecord.MarkProperty(nameof(DataRecord.VariableLengthColumnOffsetArray),
-                                    dataRecord.SlotOffset + offsetStart,
+                                    dataRecord.Offset + offsetStart,
                                     dataRecord.VariableLengthColumnCount * sizeof(short));
 
             // Variable length data starts after the offset array length (2 byte integers * number of variable length columns)
@@ -164,7 +164,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
         var nullBitmapBytes = new byte[dataRecord.NullBitmapSize];
 
         // Null bitmap located after column count offset + column count 2-byte int
-        var nullBitmapPosition = dataRecord.SlotOffset + dataRecord.ColumnCountOffset + sizeof(short);
+        var nullBitmapPosition = dataRecord.Offset + dataRecord.ColumnCountOffset + sizeof(short);
 
         Array.Copy(data,
                    nullBitmapPosition,
@@ -197,7 +197,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
 
         var sparseRecord = new byte[endOffset - startOffset];
 
-        Array.Copy(pageData, dataRecord.SlotOffset + startOffset, sparseRecord, 0, endOffset - startOffset);
+        Array.Copy(pageData, dataRecord.Offset + startOffset, sparseRecord, 0, endOffset - startOffset);
 
         dataRecord.MarkProperty(nameof(DataRecord.SparseVector));
 
@@ -278,13 +278,13 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
 
         var data = new byte[length];
 
-        Array.Copy(pageData, column.LeafOffset + dataRecord.SlotOffset, data, 0, length);
+        Array.Copy(pageData, column.LeafOffset + dataRecord.Offset, data, 0, length);
 
         field.Offset = offset;
         field.Length = length;
         field.Data = data;
 
-        dataRecord.MarkValue(ItemType.FixedLengthValue, column.ColumnName, field, dataRecord.SlotOffset + field.Offset, field.Length);
+        dataRecord.MarkValue(ItemType.FixedLengthValue, column.ColumnName, field, dataRecord.Offset + field.Offset, field.Length);
 
         return field;
     }
@@ -337,7 +337,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
 
         var data = new byte[length];
 
-        Array.Copy(pageData, dataRecord.SlotOffset + offset, data, 0, length);
+        Array.Copy(pageData, dataRecord.Offset + offset, data, 0, length);
 
         field.Offset = offset;
         field.Length = length;
@@ -346,14 +346,14 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
 
         if (isLob)
         {
-            LoadLobField(field, data, dataRecord.SlotOffset + offset);
+            LoadLobField(field, data, dataRecord.Offset + offset);
         }
         else
         {
             dataRecord.MarkValue(ItemType.VariableLengthValue, 
                                  column.ColumnName, 
                                  field, 
-                                 dataRecord.SlotOffset + field.Offset, 
+                                 dataRecord.Offset + field.Offset, 
                                  field.Length);
         }
 
@@ -365,9 +365,9 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
     /// </summary>
     private void LoadStatusBitsB(DataRecord record, byte[] data)
     {
-        record.StatusBitsB = data[record.SlotOffset + 1];
+        record.StatusBitsB = data[record.Offset + 1];
 
-        record.MarkProperty(nameof(DataRecord.StatusBitsB), record.SlotOffset + sizeof(byte), sizeof(byte));
+        record.MarkProperty(nameof(DataRecord.StatusBitsB), record.Offset + sizeof(byte), sizeof(byte));
     }
 
     /// <summary>
@@ -386,10 +386,10 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
     {
         var forwardingRecord = new byte[8];
 
-        Array.Copy(data, dataRecord.SlotOffset + sizeof(byte), forwardingRecord, 0, 6);
+        Array.Copy(data, dataRecord.Offset + sizeof(byte), forwardingRecord, 0, 6);
 
         dataRecord.ForwardingStub = new RowIdentifier(forwardingRecord);
 
-        dataRecord.MarkProperty(nameof(DataRecord.ForwardingStub), dataRecord.SlotOffset + sizeof(byte), 6);
+        dataRecord.MarkProperty(nameof(DataRecord.ForwardingStub), dataRecord.Offset + sizeof(byte), 6);
     }
 }

@@ -15,31 +15,31 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
     /// </summary>
     internal static void Load(BlobRecord record, Page page, ushort offset)
     {
-        record.SlotOffset = offset;
+        record.Offset = offset;
 
-        var statusByte = page.Data[record.SlotOffset];
+        var statusByte = page.Data[record.Offset];
 
         var data = page.Data;
 
-        record.MarkProperty(nameof(BlobRecord.StatusBitsA), record.SlotOffset, sizeof(byte));
+        record.MarkProperty(nameof(BlobRecord.StatusBitsA), record.Offset, sizeof(byte));
 
         record.StatusBitsA = statusByte;
 
-        record.MarkProperty(nameof(BlobRecord.StatusBitsB), record.SlotOffset + sizeof(byte), sizeof(byte));
+        record.MarkProperty(nameof(BlobRecord.StatusBitsB), record.Offset + sizeof(byte), sizeof(byte));
 
         record.RecordType = (RecordType)(statusByte >> 1 & 7);
 
-        record.MarkProperty(nameof(BlobRecord.Length), record.SlotOffset + BlobRecord.LengthOffset, sizeof(short));
+        record.MarkProperty(nameof(BlobRecord.Length), record.Offset + BlobRecord.LengthOffset, sizeof(short));
 
-        record.Length = BitConverter.ToInt16(data, record.SlotOffset + BlobRecord.LengthOffset);
+        record.Length = BitConverter.ToInt16(data, record.Offset + BlobRecord.LengthOffset);
 
-        record.MarkProperty(nameof(BlobRecord.BlobId), record.SlotOffset + BlobRecord.IdOffset, sizeof(long));
+        record.MarkProperty(nameof(BlobRecord.BlobId), record.Offset + BlobRecord.IdOffset, sizeof(long));
 
-        record.BlobId = BitConverter.ToInt64(data, record.SlotOffset + BlobRecord.IdOffset);
+        record.BlobId = BitConverter.ToInt64(data, record.Offset + BlobRecord.IdOffset);
 
-        record.MarkProperty(nameof(BlobRecord.BlobType), record.SlotOffset + BlobRecord.TypeOffset, sizeof(short));
+        record.MarkProperty(nameof(BlobRecord.BlobType), record.Offset + BlobRecord.TypeOffset, sizeof(short));
 
-        record.BlobType = (BlobType)data[record.SlotOffset + BlobRecord.TypeOffset];
+        record.BlobType = (BlobType)data[record.Offset + BlobRecord.TypeOffset];
 
         switch (record.BlobType)
         {
@@ -65,17 +65,17 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
     {
         record.BlobChildren = new List<BlobChildLink>();
 
-        record.MarkProperty(nameof(BlobRecord.MaxLinks), record.SlotOffset + BlobRecord.MaxLinksOffset, sizeof(short));
+        record.MarkProperty(nameof(BlobRecord.MaxLinks), record.Offset + BlobRecord.MaxLinksOffset, sizeof(short));
 
-        record.MaxLinks = BitConverter.ToInt16(data, record.SlotOffset + BlobRecord.MaxLinksOffset);
+        record.MaxLinks = BitConverter.ToInt16(data, record.Offset + BlobRecord.MaxLinksOffset);
 
-        record.MarkProperty(nameof(BlobRecord.CurLinks), record.SlotOffset + BlobRecord.CurLinksOffset, sizeof(short));
+        record.MarkProperty(nameof(BlobRecord.CurLinks), record.Offset + BlobRecord.CurLinksOffset, sizeof(short));
 
-        record.CurLinks = BitConverter.ToInt16(data, record.SlotOffset + BlobRecord.CurLinksOffset);
+        record.CurLinks = BitConverter.ToInt16(data, record.Offset + BlobRecord.CurLinksOffset);
 
-        record.MarkProperty(nameof(BlobRecord.Level), record.SlotOffset + BlobRecord.RootLevelOffset, sizeof(short));
+        record.MarkProperty(nameof(BlobRecord.Level), record.Offset + BlobRecord.RootLevelOffset, sizeof(short));
 
-        record.Level = BitConverter.ToInt16(data, record.SlotOffset + BlobRecord.RootLevelOffset);
+        record.Level = BitConverter.ToInt16(data, record.Offset + BlobRecord.RootLevelOffset);
 
         for (var i = 0; i < record.CurLinks; i++)
         {
@@ -98,16 +98,16 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
 
     private static void LoadSmallRoot(BlobRecord record, byte[] data)
     {
-        record.MarkProperty(nameof(BlobRecord.Size), record.SlotOffset + BlobRecord.MaxLinksOffset, sizeof(short));
+        record.MarkProperty(nameof(BlobRecord.Size), record.Offset + BlobRecord.MaxLinksOffset, sizeof(short));
 
-        record.Size = BitConverter.ToInt16(data, record.SlotOffset + BlobRecord.MaxLinksOffset);
+        record.Size = BitConverter.ToInt16(data, record.Offset + BlobRecord.MaxLinksOffset);
 
         record.Data = new byte[record.Size];
 
-        record.MarkProperty(nameof(BlobRecord.Data), record.SlotOffset + BlobRecord.SmallDataOffset, record.Size);
+        record.MarkProperty(nameof(BlobRecord.Data), record.Offset + BlobRecord.SmallDataOffset, record.Size);
 
         Array.Copy(data,
-                   record.SlotOffset + BlobRecord.SmallDataOffset,
+                   record.Offset + BlobRecord.SmallDataOffset,
                    record.Data,
                    0,
                    record.Size);
@@ -115,12 +115,12 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
 
     private static void LoadData(BlobRecord blobRecord, byte[] data)
     {
-        blobRecord.MarkProperty(nameof(BlobRecord.Data), blobRecord.SlotOffset + BlobRecord.DataOffset, blobRecord.Length);
+        blobRecord.MarkProperty(nameof(BlobRecord.Data), blobRecord.Offset + BlobRecord.DataOffset, blobRecord.Length);
 
         blobRecord.Data = new byte[blobRecord.Length];
 
         Array.Copy(data,
-                   blobRecord.SlotOffset + BlobRecord.DataOffset,
+                   blobRecord.Offset + BlobRecord.DataOffset,
                    blobRecord.Data,
                    0,
                    blobRecord.Length);
@@ -129,12 +129,12 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
     private static BlobChildLink LoadInternalBlobChild(BlobRecord blobRecord, int index, byte[] data)
     {
         var offset = BitConverter.ToInt32(data,
-            blobRecord.SlotOffset + BlobRecord.InternalChildOffset + index * 16);
+            blobRecord.Offset + BlobRecord.InternalChildOffset + index * 16);
 
         var rowData = new byte[8];
 
         Array.Copy(data,
-            blobRecord.SlotOffset + BlobRecord.InternalChildOffset + index * 16 + 8,
+            blobRecord.Offset + BlobRecord.InternalChildOffset + index * 16 + 8,
             rowData,
             0,
             8);
@@ -148,7 +148,7 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
     {
         var blobChildLink = new BlobChildLink();
 
-        var offsetPosition = record.SlotOffset + BlobRecord.RootChildOffset + index * 12;
+        var offsetPosition = record.Offset + BlobRecord.RootChildOffset + index * 12;
 
         blobChildLink.MarkProperty(nameof(BlobChildLink.Offset), offsetPosition, sizeof(int));
 
@@ -156,7 +156,7 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
 
         var rowData = new byte[8];
 
-        var rowIdPosition = record.SlotOffset + BlobRecord.RootChildOffset + index * 12 + 4;
+        var rowIdPosition = record.Offset + BlobRecord.RootChildOffset + index * 12 + 4;
 
         blobChildLink.MarkProperty(nameof(BlobChildLink.RowIdentifier), rowIdPosition, 8);
 

@@ -7,7 +7,9 @@ namespace InternalsViewer.Internals.Engine.Records;
 /// </summary>
 public abstract class Record : DataStructure
 {
-    public ushort SlotOffset { get; set; }
+    public int Slot { get; set; }
+
+    public ushort Offset { get; set; }
 
     public List<RecordField> Fields { get; } = new();
 

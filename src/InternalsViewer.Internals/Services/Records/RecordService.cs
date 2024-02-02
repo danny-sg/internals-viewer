@@ -21,7 +21,14 @@ public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, 
         var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
                                                                  page.PageHeader.AllocationUnitId);
 
-        return page.OffsetTable.Select(s => FixedVarRecord.Load(page, s, structure)).ToList();
+        return page.OffsetTable.Select((s, index) =>
+        {
+            var record = FixedVarRecord.Load(page, s, structure);
+
+            record.Slot = index;
+
+            return record;
+        }).ToList();
     }
 
     public List<CompressedDataRecord> GetCompressedDataRecords(DataPage page)
@@ -29,15 +36,33 @@ public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, 
         var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
                                                                  page.PageHeader.AllocationUnitId);
 
-        return page.OffsetTable.Select(s => CdDataRecordLoader.Load(page, s, structure)).ToList();
+        return page.OffsetTable
+                   .Select((s, index) =>
+                    {
+                        var record = CdDataRecordLoader.Load(page, s, structure);
+                    
+                        record.Slot = index;
+                    
+                        return record;
+                    })
+                   .ToList();
     }
 
     public List<IndexRecord> GetIndexRecords(IndexPage page)
     {
         var structure = IndexStructureProvider.GetIndexStructure(page.Database.Metadata,
-            page.PageHeader.AllocationUnitId);
+                                                                 page.PageHeader.AllocationUnitId);
 
-        return page.OffsetTable.Select(s => FixedVarIndexRecordLoader.Load(page, s, structure)).ToList();
+        return page.OffsetTable
+                   .Select((s, index) =>
+                           {
+                               var record = FixedVarIndexRecordLoader.Load(page, s, structure);
+
+                               record.Slot = index;
+
+                               return record;
+                           })
+                    .ToList();
     }
 
     public DataRecord GetDataRecord(DataPage page, ushort offset)

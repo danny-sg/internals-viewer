@@ -182,7 +182,7 @@ public class IndexStructureProvider
             var column = columns.FirstOrDefault(c => c.ColumnId == indexColumn?.ColumnId);
 
             // As an alternative to the index column mapping, the column seems to be mappable via the Ordlock field (needs confirming)
-            var tableColumn = structure.TableStructure?.Columns.FirstOrDefault(c => c.ColumnId == layout.Ordlock);
+            var tableColumn = structure.TableStructure?.Columns.FirstOrDefault(c => c.ColumnId == (layout.Ordlock ?? layout.TableColumnId -1));
 
             // The 2nd bit of the status field indicates if the column has been dropped
             var isDropped = Convert.ToBoolean(layout.Status & 2);

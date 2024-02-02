@@ -10,7 +10,7 @@
   <Identity
     Name="32309danny-sg.InternalsViewer"
     Publisher="CN=3E074FF0-C5EC-4E5D-8061-9E8C2EFC6369"
-    Version="2.0.28.0" />
+    Version="2.0.29.0" />
 
   <mp:PhoneIdentity PhoneProductId="6ef3154e-3db7-4c50-9201-c2c78ea60eab" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 

@@ -51,7 +51,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         var record = new IndexRecord
         {
-            SlotOffset = offset,
+            Offset = offset,
             NodeType = nodeType
         };
 
@@ -163,7 +163,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         //Last 6 bytes of the fixed slot
         var address = new byte[PageAddress.Size];
 
-        var downPagePointerOffset = record.SlotOffset + page.PageHeader.FixedLengthSize - PageAddress.Size;
+        var downPagePointerOffset = record.Offset + page.PageHeader.FixedLengthSize - PageAddress.Size;
 
         Array.Copy(page.Data, downPagePointerOffset, address, 0, PageAddress.Size);
 
@@ -187,14 +187,14 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
     private static void LoadColumnOffsetArray(IndexRecord record, int varColStartIndex, Page page)
     {
-        var variableColumnCountOffset = record.SlotOffset + page.PageHeader.FixedLengthSize + varColStartIndex;
+        var variableColumnCountOffset = record.Offset + page.PageHeader.FixedLengthSize + varColStartIndex;
 
         record.VariableLengthColumnCount = BitConverter.ToUInt16(page.Data, variableColumnCountOffset);
 
         record.MarkProperty(nameof(IndexRecord.VariableLengthColumnCount), variableColumnCountOffset, sizeof(short));
         
         var offset =
-            record.SlotOffset + page.PageHeader.FixedLengthSize + sizeof(short) + varColStartIndex;
+            record.Offset + page.PageHeader.FixedLengthSize + sizeof(short) + varColStartIndex;
 
         // Load offset array of 2-byte integers indicating the end offset of each variable length field
         record.VariableLengthColumnOffsetArray = RecordHelpers.GetOffsetArray(page.Data,
@@ -248,11 +248,11 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
     {
         var ridAddress = new byte[8];
 
-        Array.Copy(pageData, record.SlotOffset + offset, ridAddress, 0, RowIdentifier.Size);
+        Array.Copy(pageData, record.Offset + offset, ridAddress, 0, RowIdentifier.Size);
 
         record.Rid = new RowIdentifier(ridAddress);
 
-        record.MarkProperty(nameof(IndexRecord.Rid), record.SlotOffset + offset, RowIdentifier.Size);
+        record.MarkProperty(nameof(IndexRecord.Rid), record.Offset + offset, RowIdentifier.Size);
     }
 
     private FixedVarRecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, IndexRecord record, byte[] pageData)
@@ -276,14 +276,14 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         var data = new byte[length];
 
-        Array.Copy(pageData, offset + record.SlotOffset, data, 0, length);
+        Array.Copy(pageData, offset + record.Offset, data, 0, length);
 
         field.Offset = offset;
         field.Length = length;
         field.Data = data;
         field.VariableOffset = variableIndex;
 
-        record.MarkValue(ItemType.VariableLengthValue, column.ColumnName, field, record.SlotOffset + field.Offset, field.Length);
+        record.MarkValue(ItemType.VariableLengthValue, column.ColumnName, field, record.Offset + field.Offset, field.Length);
 
         return field;
     }
@@ -325,13 +325,13 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         var data = new byte[length];
 
-        Array.Copy(pageData, offset + record.SlotOffset, data, 0, length);
+        Array.Copy(pageData, offset + record.Offset, data, 0, length);
 
         field.Offset = offset;
         field.Length = length;
         field.Data = data;
 
-        record.MarkValue(ItemType.UniquifierIndex, "Uniqueifier", field, record.SlotOffset + field.Offset, field.Length);
+        record.MarkValue(ItemType.UniquifierIndex, "Uniqueifier", field, record.Offset + field.Offset, field.Length);
 
         return field;
     }
@@ -351,7 +351,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         var data = new byte[length];
 
-        Array.Copy(pageData, column.LeafOffset + record.SlotOffset, data, 0, length);
+        Array.Copy(pageData, column.LeafOffset + record.Offset, data, 0, length);
 
         field.Offset = offset;
         field.Length = length;
@@ -360,7 +360,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         record.MarkValue(ItemType.FixedLengthValue, 
                          column.ColumnName, 
                          field, 
-                         record.SlotOffset + field.Offset, 
+                         record.Offset + field.Offset, 
                          field.Length);
 
         return field;
@@ -370,7 +370,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
     {
         record.NullBitmapSize = (short)((structure.Columns.Count - 1) / 8 + 1);
 
-        var columnCountPosition = record.SlotOffset + page.PageHeader.FixedLengthSize;
+        var columnCountPosition = record.Offset + page.PageHeader.FixedLengthSize;
 
         record.ColumnCount = BitConverter.ToInt16(page.Data, columnCountPosition);
 
@@ -378,7 +378,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         var nullBitmapBytes = new byte[record.NullBitmapSize];
 
-        var nullBitmapPosition = record.SlotOffset + page.PageHeader.FixedLengthSize + sizeof(short);
+        var nullBitmapPosition = record.Offset + page.PageHeader.FixedLengthSize + sizeof(short);
 
         Array.Copy(page.Data,
                    nullBitmapPosition,

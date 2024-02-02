@@ -432,7 +432,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     {
         MarkerTabName = $"Slot {pageSlot.Description}";
 
-        var record = Records.FirstOrDefault(r => r.SlotOffset == pageSlot.Offset);
+        var record = Records.FirstOrDefault(r => r.Offset == pageSlot.Offset);
 
         if (record is null)
         {

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using InternalsViewer.Internals.Engine.Address;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,7 +24,7 @@ internal record DatabaseIndexRow
 
     public int ChildPageId { get; set; }
 
-    public string[] Values { get; set; } = Array.Empty<string>();
+    public List<DatabaseIndexField> Values { get; set; } = new();
 
     public short RowSize { get; set; }
 }
@@ -39,4 +40,24 @@ internal record DatabaseIndex
     public string[] Fields { get; set; } = Array.Empty<string>();
 
     public List<DatabaseIndexRow> Rows { get; set; } = new();
+}
+
+internal record DatabaseIndexField
+{
+    public string Name { get; set; } = string.Empty;
+
+    public string? Value { get; set; }
+}
+
+internal record VerificationResult
+{
+    public PageAddress PageAddress { get; set; }
+
+    public int Slot { get; set; }
+
+    public bool IsVerified { get; set; }
+
+    public int PassCount { get; set; }
+
+    public int FailCount { get; set; }
 }

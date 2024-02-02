@@ -11,7 +11,7 @@ class SparseVectorLoader
     /// <param name="sparseVector">The sparse vector.</param>
     internal static void Load(SparseVector sparseVector)
     {
-        var vectorOffset = sparseVector.ParentRecord.SlotOffset + sparseVector.RecordOffset;
+        var vectorOffset = sparseVector.ParentRecord.Offset + sparseVector.RecordOffset;
 
         sparseVector.ComplexHeader = BitConverter.ToInt16(sparseVector.Data, 0);
 
