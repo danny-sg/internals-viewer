@@ -175,14 +175,22 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0" 
                            Text="{x:Bind Value}"
                            Style="{StaticResource ListTextBlock}"
                            TextTrimming="WordEllipsis"/>
-
-                <GridView Grid.Column="1"
+                
+                <controls1:CopyButton Content="&#xE8C8;" 
+                                      Grid.Column="1"
+                                      ToolTipService.ToolTip="Copy value to clipboard"
+                                      Tag="{x:Bind Value}"
+                                      Foreground="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                      Click="CopyButton_Click" />
+                
+                <GridView Grid.Column="2"
                           SelectionMode="None"
                           ItemsSource="{x:Bind Tags}" 
                           x:Name="TagsItemView"
@@ -205,6 +213,8 @@
                         </DataTemplate>
                     </GridView.ItemTemplate>
                 </GridView>
+                
+
             </Grid>
         </DataTemplate>
 
@@ -246,32 +256,27 @@
                     <!--Value Column-->
                     <ContentControl ContentTemplateSelector="{StaticResource ValueTemplateSelector}" 
                                       Content="{x:Bind Mode=OneWay}"/>
-
-                    <controls1:CopyButton Content="&#xE8C8;" 
-                                          ToolTipService.ToolTip="Copy to clipboard"
-                                          Tag="{x:Bind Value}"
-                                          Click="CopyButton_Click" />
-                    
                 </controls:DataRow>
             </TreeViewItem>
         </DataTemplate>
     </UserControl.Resources>
-    
-    <controls:HeaderedTreeView x:Name="TreeView"
-                               ItemsSource="{x:Bind Markers, Mode=OneWay}" 
-                               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                               BorderThickness="1,0,1,1"
-                               SelectionMode="Single"
-                               SelectedItem="{x:Bind SelectedMarker, Mode=TwoWay}"
-                               Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                               VerticalAlignment="Stretch"
-                               ItemTemplate="{StaticResource TreeViewItemTemplate}">
+
+    <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1,0,1,1">
+        <controls:HeaderedTreeView 
+                                   x:Name="TreeView"
+                                   ItemsSource="{x:Bind Markers, Mode=OneWay}" 
+                                   SelectionMode="Single"
+                                   SelectedItem="{x:Bind SelectedMarker, Mode=TwoWay}"
+                                   Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                   VerticalAlignment="Stretch"
+                                   ItemTemplate="{StaticResource TreeViewItemTemplate}">
         <controls:HeaderedTreeView.Header>
             <controls:DataTable ColumnSpacing="2">
-                <controls:DataColumn Content="Name" MinWidth="120" CanResize="True" DesiredWidth="*" />
+                <controls:DataColumn Content="Name" MinWidth="120" CanResize="True" DesiredWidth="200" />
                 <controls:DataColumn Content="Value" DesiredWidth="*" CanResize="True"/>
-                <controls:DataColumn DesiredWidth="30" />
             </controls:DataTable>
         </controls:HeaderedTreeView.Header>
     </controls:HeaderedTreeView>
+    </Border>
 </UserControl>

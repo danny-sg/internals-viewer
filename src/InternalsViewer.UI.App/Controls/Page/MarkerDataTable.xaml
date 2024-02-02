@@ -108,7 +108,7 @@
                             </ItemsPanelTemplate>
                         </GridView.ItemsPanel>
                         <GridView.ItemTemplate>
-                            <DataTemplate x:Key="ImageTemplate" x:DataType="x:String">
+                            <DataTemplate x:DataType="x:String">
                                 <ItemContainer Style="{StaticResource TagContainerStyle}">
                                     <TextBlock Text="{x:Bind}" Style="{StaticResource TagTextBlockStyle}" />
                                 </ItemContainer>

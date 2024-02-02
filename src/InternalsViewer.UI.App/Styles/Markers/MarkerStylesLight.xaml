@@ -9,9 +9,9 @@
     <models:MarkStyle x:Key="PageAddressMarkerStyle" ForeColour="LightBlue" BackColour="Green" Name="Page Address"/>
 
     <!--Header-->
-    <models:MarkStyle x:Key="AllocationUnitIdMarkerStyle" ForeColour="#D50000" BackColour="#EDE7F6" Name="Page Address"/>
+    <models:MarkStyle x:Key="AllocationUnitIdMarkerStyle" ForeColour="#D50000" BackColour="#EDE7F6" Name="Allocation Unit"/>
 
-    <models:MarkStyle x:Key="HeaderPageAddressMarkerStyle" ForeColour="#D50000" BackColour="#EDE7F6" Name="Page Address"/>
+    <models:MarkStyle x:Key="HeaderPageAddressMarkerStyle" ForeColour="Navy" BackColour="#EDE7F6" Name="Page Address"/>
     <models:MarkStyle x:Key="PageTypeMarkerStyle" ForeColour="#C51162" BackColour="#E3F2FD" Name="Page Type"/>
     <models:MarkStyle x:Key="NextPageMarkerStyle" ForeColour="#AA00FF" BackColour="#EDE7F6" Name="Next Page"/>
     <models:MarkStyle x:Key="PreviousPageMarkerStyle" ForeColour="#6200EA" BackColour="#EDE7F6" Name="Previous Page"/>

@@ -24,11 +24,6 @@
             <Setter Property="FontFamily" Value="Consolas"/>
         </Style>
 
-        <Style x:Key="HexTextBlockStyle" TargetType="TextBlock">
-     
-            <Setter Property="FontFamily" Value="Consolas"/>
-        </Style>
-
         <Style TargetType="Border">
             <Setter Property="Margin" Value="-1,-3,-1,-5"/>
         </Style>
@@ -129,24 +124,37 @@
         </ScrollViewer>
         <Grid Grid.Row="1"       
               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+              Background="{ThemeResource LayerFillColorDefaultBrush}"
               BorderThickness="1,0,1,1"
-              Padding="8">
+              VerticalAlignment="Top"
+              Height="30"
+              Padding="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="40*"/>
+                <ColumnDefinition Width="30*"/>
+                <ColumnDefinition Width="70*"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="Offset" Margin="0,0,4,0"/>
-            <TextBlock Grid.Column="1" Text="{x:Bind MouseOver.Offset, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:0000}'}"
-                 
+            <TextBlock Grid.Column="0" 
+                       Padding="4,0,0,0"
+                       VerticalAlignment="Center"
+                       Text="Offset" FontSize="12"/>
+            <TextBlock Grid.Column="1" 
+                       Padding="4,0,0,0"
+                       Margin="0,1,0,0"
+                       VerticalAlignment="Center"
+                       FontSize="14"
+                       FontFamily="Consolas"
+                       Text="{x:Bind MouseOver.Offset, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:0000}'}"
                        Style="{StaticResource HexTextBlockStyle}"/>
-            <Border Grid.Column="2" Background="{x:Bind MouseOver.Marker.BackColour,Mode=OneWay,Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
+            <Border Grid.Column="3" Background="{x:Bind MouseOver.Marker.BackColour,Mode=OneWay,Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
                     Visibility="{x:Bind MouseOver.HasMarker, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                     Padding="0"
-                    Margin="10,0,10,0"
+                    Margin="4,0,4,0"
                     VerticalAlignment="Center">
                 <TextBlock Text="{x:Bind MouseOver.Marker.Name, Mode=OneWay}" 
-                         
+                           TextAlignment="Center"
+                           Padding="4"
                            Foreground="{x:Bind MouseOver.Marker.ForeColour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"/>
             </Border>
         </Grid>

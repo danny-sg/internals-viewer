@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Converters;
-using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
