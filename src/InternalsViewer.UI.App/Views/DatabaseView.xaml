@@ -23,6 +23,8 @@
                                               FileId="{x:Bind FileId, Mode=OneWay}"
                                               BorderColor="{ThemeResource CardStrokeColorDefault}"
                                               GridColor="{ThemeResource AllocationBorderColor}"
+                                              PfsChain="{x:Bind Parent.PfsChain, Mode=OneWay}"
+                                              IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
                                               PageClicked="OnPageSelected"
                                               x:Name="Allocations"/>
             </Grid>
@@ -58,6 +60,8 @@
                                     Checked="AppBarToggleButton_Changed"
                                     Unchecked="AppBarToggleButton_Changed"
                                     IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
+                <AppBarToggleButton Label="PFS" 
+                                    IsChecked="{x:Bind TabViewModel.IsPfsVisible, Mode=TwoWay}" />
                 <AppBarButton Label="Refresh" 
                               Icon="Refresh" 
                               Command="{x:Bind TabViewModel.RefreshCommand}"/>

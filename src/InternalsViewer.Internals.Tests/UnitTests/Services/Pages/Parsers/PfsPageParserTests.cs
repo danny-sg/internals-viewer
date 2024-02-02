@@ -14,13 +14,13 @@ public class PfsPageParserTests(ITestOutputHelper testOutput)
 
         var page = parser.Parse(pageData);
 
-        Assert.Equal(new PfsByte { Allocated = true, PageSpaceFree = SpaceFree.OneHundredPercent, Iam = false, Mixed = false },
+        Assert.Equal(new PfsByte { IsAllocated = true, PageSpaceFree = SpaceFree.OneHundredPercent, IsIam = false, IsMixed = false },
             page.PfsBytes[0]);
 
-        Assert.Equal(new PfsByte { Allocated = true, PageSpaceFree = SpaceFree.OneHundredPercent, Iam = false, Mixed = false },
+        Assert.Equal(new PfsByte { IsAllocated = true, PageSpaceFree = SpaceFree.OneHundredPercent, IsIam = false, IsMixed = false },
             page.PfsBytes[1]);
 
-        Assert.Equal(new PfsByte { Allocated = true, PageSpaceFree = SpaceFree.Empty, Iam = true, Mixed = true },
+        Assert.Equal(new PfsByte { IsAllocated = true, PageSpaceFree = SpaceFree.Empty, IsIam = true, IsMixed = true },
             page.PfsBytes[100]);
     }
 }

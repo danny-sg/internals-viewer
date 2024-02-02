@@ -2,12 +2,16 @@ using System;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
+using Windows.System;
+using Windows.UI.Core;
 using AllocationOverViewModel = InternalsViewer.UI.App.ViewModels.Allocation.AllocationOverViewModel;
 using Color = Windows.UI.Color;
 
@@ -15,7 +19,12 @@ namespace InternalsViewer.UI.App.Controls.Allocation;
 
 public sealed partial class AllocationControl
 {
-    private static readonly Size ExtentSize = new(80, 10);
+    private const double MinimumZoom = 0.2;
+    private const double MaximumZoom = 4;
+
+    private const double MinimumZoomForLines = 0.4;
+
+    private Size ExtentSize => new((int)(80 * Zoom), (int)(10 * Zoom));
 
     private ExtentLayout Layout { get; set; } = new();
 
@@ -105,7 +114,43 @@ public sealed partial class AllocationControl
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
-    public AllocationOverViewModel AllocationOver { get; set; } = new();
+    public PfsChain PfsChain
+    {
+        get => (PfsChain)GetValue(PfsChainProperty);
+        set => SetValue(PfsChainProperty, value);
+    }
+
+    public static readonly DependencyProperty PfsChainProperty
+        = DependencyProperty.Register(nameof(PfsChain),
+                                      typeof(PfsChain),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(default, OnPropertyChanged));
+
+    public bool IsPfsVisible
+    {
+        get => (bool)GetValue(IsPfsVisibleProperty);
+        set => SetValue(IsPfsVisibleProperty, value);
+    }
+
+    public static readonly DependencyProperty IsPfsVisibleProperty
+        = DependencyProperty.Register(nameof(IsPfsVisible),
+                                      typeof(bool),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(default, OnPropertyChanged));
+
+    public double Zoom
+    {
+        get => (double)GetValue(ZoomProperty);
+        set => SetValue(ZoomProperty, value);
+    }
+
+    public static readonly DependencyProperty ZoomProperty
+        = DependencyProperty.Register(nameof(Zoom),
+                                      typeof(double),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(1D, OnPropertyChanged));
+
+    public AllocationOverViewModel AllocationOver { get; } = new();
 
     private int PageCount => Size * 8;
 
@@ -140,7 +185,23 @@ public sealed partial class AllocationControl
 
     private void AllocationControl_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        ScrollBar.Value -= e.GetCurrentPoint(this).Properties.MouseWheelDelta;
+        var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
+
+        var isControlPressed = state.HasFlag(CoreVirtualKeyStates.Down);
+
+        if (isControlPressed)
+        {
+            var newZoom = Zoom + e.GetCurrentPoint(this).Properties.MouseWheelDelta / 1000D;
+
+            if (newZoom is >= MinimumZoom and <= MaximumZoom)
+            {
+                Zoom = newZoom;
+            }
+        }
+        else
+        {
+            ScrollBar.Value -= e.GetCurrentPoint(this).Properties.MouseWheelDelta;
+        }
     }
 
     private void AllocationCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -180,7 +241,16 @@ public sealed partial class AllocationControl
 
         DrawExtents(canvas, extentRenderer, Layout);
 
-        extentRenderer.DrawPageLines(canvas, Layout.HorizontalCount, Layout.VerticalCount, Layout.RemainingCount);
+        if (IsPfsVisible)
+        {
+            using var pfsRenderer = new PfsRenderer(ExtentSize with { Width = ExtentSize.Width / 8 });
+
+            DrawPfs(canvas, pfsRenderer, Layout);
+        }
+        if (Zoom >= MinimumZoomForLines)
+        {
+            extentRenderer.DrawPageLines(canvas, Layout.HorizontalCount, Layout.VerticalCount, Layout.RemainingCount);
+        }
 
         if (SelectedLayer is not null)
         {
@@ -264,6 +334,20 @@ public sealed partial class AllocationControl
                     renderer.DrawPage(canvas, GetPagePosition(page.PageId - ScrollPosition * 8, layout));
                 }
             }
+        }
+    }
+
+    private void DrawPfs(SKCanvas canvas, PfsRenderer renderer, ExtentLayout layout)
+    {
+        for (var i = 0; i <= layout.VisibleCount * 8; i++)
+        {
+            var pageId = i + (ScrollPosition * 8);
+
+            var pfs = PfsChain.GetPageStatus(pageId);
+
+            var position = GetPagePosition(i, layout);
+
+            renderer.DrawPfs(canvas, position, pfs);
         }
     }
 
@@ -378,7 +462,7 @@ public sealed partial class AllocationControl
         var pageId = GetPageAtPosition((int)position.X, (int)position.Y);
         var extentId = GetExtentAtPosition((int)position.X, (int)position.Y);
 
-        var layer = Layers.FirstOrDefault(l => l.Allocations.Any(a => a.FileId == FileId && a.ExtentId == extentId) 
+        var layer = Layers.FirstOrDefault(l => l.Allocations.Any(a => a.FileId == FileId && a.ExtentId == extentId)
                                                || l.SinglePages.Any(p => p.PageId == pageId && p.FileId == FileId));
 
         string layerName;
@@ -410,13 +494,14 @@ public sealed partial class AllocationControl
                 layerName = "Bulk Change Map";
                 break;
             default:
-                layerName = $"{layer?.Name ?? "Unallocated"}";
+                layerName = $"{layer?.Name ?? string.Empty}";
                 break;
         }
 
         AllocationOver.ExtentId = extentId;
         AllocationOver.PageId = pageId;
         AllocationOver.LayerName = layerName;
+        AllocationOver.PfsValue = PfsChain.GetPageStatus(pageId);
 
         if (IsTooltipEnabled)
         {
@@ -474,6 +559,9 @@ public class ExtentLayout
 
     public int RemainingCount { get; init; }
 
+    /// <summary>
+    /// Number of extents visible
+    /// </summary>
     public int VisibleCount { get; init; }
 
     public bool IsInitialized { get; set; }

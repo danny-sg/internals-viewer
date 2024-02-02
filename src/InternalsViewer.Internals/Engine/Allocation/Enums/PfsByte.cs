@@ -10,41 +10,41 @@ namespace InternalsViewer.Internals.Engine.Allocation.Enums;
 /// </remarks>
 public record PfsByte
 {
-    public static readonly PfsByte Unknown = new() { Byte = 0 };
+    public static readonly PfsByte Unknown = new() { Value = 0 };
 
-    public byte Byte { get; set; }
+    public byte Value { get; init; }
 
-    public SpaceFree PageSpaceFree { get; set; }
+    public SpaceFree PageSpaceFree { get; init; }
 
-    public bool GhostRecords { get; set; }
+    public bool GhostRecords { get; init; }
 
-    public bool Iam { get; set; }
+    public bool IsIam { get; init; }
 
-    public bool Mixed { get; set; }
+    public bool IsMixed { get; init; }
 
-    public bool Allocated { get; set; }
+    public bool IsAllocated { get; init; }
 
     public override string ToString()
     {
-        var stringBuilder = new StringBuilder($"PFS Status");
+        var stringBuilder = new StringBuilder($"0x{Value:X2} ");
 
-        if (Allocated)
+        if (IsAllocated)
         {
-            stringBuilder.Append(": Allocated");
+            stringBuilder.Append("Allocated");
         }
         else
         {
-            stringBuilder.Append(": Not Allocated");
+            stringBuilder.Append("Not Allocated");
         }
 
-        stringBuilder.Append($" | {SpaceFreeDescription(PageSpaceFree)} Full");
+        stringBuilder.Append($" | {GetSpaceFreeDescription(PageSpaceFree)} Full");
 
-        if (Iam)
+        if (IsIam)
         {
             stringBuilder.Append(" | IAM Page");
         }
 
-        if (Mixed)
+        if (IsMixed)
         {
             stringBuilder.Append(" | Mixed Extent");
         }
@@ -57,7 +57,7 @@ public record PfsByte
         return stringBuilder.ToString();
     }
 
-    public static string SpaceFreeDescription(SpaceFree spaceFree)
+    private static string GetSpaceFreeDescription(SpaceFree spaceFree)
     {
         switch (spaceFree)
         {

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.UI.App.Messages;
@@ -39,6 +40,9 @@ public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseLoad
     private ObservableCollection<AllocationLayer> allocationLayers = new();
 
     [ObservableProperty]
+    private PfsChain pfsChain = new();
+
+    [ObservableProperty]
     private AllocationLayer? selectedLayer;
 
     [ObservableProperty]
@@ -53,6 +57,9 @@ public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseLoad
 
     [ObservableProperty]
     private bool isDetailVisible = true;
+
+    [ObservableProperty]
+    private bool isPfsVisible = false;
 
     [ObservableProperty]
     private bool isTooltipEnabled;
@@ -85,6 +92,7 @@ public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseLoad
 
         ExtentCount = database.GetFileSize(1) / 8;
         AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
+        PfsChain = database.Pfs.First().Value;
 
         IsLoading = false;
     }

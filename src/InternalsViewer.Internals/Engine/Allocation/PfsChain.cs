@@ -28,6 +28,11 @@ public class PfsChain
         // Where in the byte map is the page
         var pfsByteIndex = page % PfsPage.PfsInterval;
 
-        return PfsPages[pfsPageIndex].PfsBytes[pfsByteIndex];
+        // Check the PFS byte exists
+        var result = PfsPages.Count > pfsPageIndex && PfsPages[pfsPageIndex].PfsBytes.Count > pfsByteIndex
+                     ? PfsPages[pfsPageIndex].PfsBytes[pfsByteIndex]
+                     : PfsByte.Unknown;
+
+        return result;
     }
 }

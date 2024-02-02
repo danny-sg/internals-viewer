@@ -37,9 +37,9 @@ public class PfsByteParserTests(ITestOutputHelper output)
         var pfsByte = PfsByteParser.Parse(input);
 
         Assert.Equal(expectedSpaceFree, pfsByte.PageSpaceFree);
-        Assert.Equal(expectedAllocated, pfsByte.Allocated);
-        Assert.Equal(expectedMixed, pfsByte.Mixed);
-        Assert.Equal(expectedIam, pfsByte.Iam);
+        Assert.Equal(expectedAllocated, pfsByte.IsAllocated);
+        Assert.Equal(expectedMixed, pfsByte.IsMixed);
+        Assert.Equal(expectedIam, pfsByte.IsIam);
         Assert.Equal(expectedGhostRecords, pfsByte.GhostRecords);
     }
 
@@ -68,9 +68,9 @@ public class PfsByteParserTests(ITestOutputHelper output)
         var pfsByte = new PfsByte
         {
             PageSpaceFree = spaceFree,
-            Allocated = allocated,
-            Mixed = mixed,
-            Iam = iam,
+            IsAllocated = allocated,
+            IsMixed = mixed,
+            IsIam = iam,
             GhostRecords = ghostRecords
         };
 

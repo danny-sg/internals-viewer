@@ -20,9 +20,9 @@ public class PfsByteTests
         {
             PageSpaceFree = pageSpaceFree,
             GhostRecords = ghostRecords,
-            Iam = iam,
-            Mixed = mixed,
-            Allocated = allocation
+            IsIam = iam,
+            IsMixed = mixed,
+            IsAllocated = allocation
         };
 
         var result = pfsPage.ToString();

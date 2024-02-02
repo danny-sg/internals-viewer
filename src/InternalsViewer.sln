@@ -18,6 +18,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.Internals.T
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.UI.App", "InternalsViewer.UI.App\InternalsViewer.UI.App.csproj", "{4A460EA3-6C4E-4022-8E9C-7ED88B0A7EE6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.Internals.Tests.VerificationTool", "InternalsViewer.Internals.Tests.VerificationTool\InternalsViewer.Internals.Tests.VerificationTool.csproj", "{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -100,6 +102,22 @@ Global
 		{4A460EA3-6C4E-4022-8E9C-7ED88B0A7EE6}.Release|x86.ActiveCfg = Release|x86
 		{4A460EA3-6C4E-4022-8E9C-7ED88B0A7EE6}.Release|x86.Build.0 = Release|x86
 		{4A460EA3-6C4E-4022-8E9C-7ED88B0A7EE6}.Release|x86.Deploy.0 = Release|x86
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Debug|x64.Build.0 = Debug|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Debug|x86.Build.0 = Debug|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Release|ARM64.Build.0 = Release|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Release|x64.ActiveCfg = Release|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Release|x64.Build.0 = Release|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Release|x86.ActiveCfg = Release|Any CPU
+		{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

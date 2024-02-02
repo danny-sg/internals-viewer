@@ -146,7 +146,7 @@
                        FontSize="14"
                        FontFamily="Consolas"
                        Text="{x:Bind MouseOver.Offset, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:0000}'}"
-                       Style="{StaticResource HexTextBlockStyle}"/>
+                      />
             <Border Grid.Column="3" Background="{x:Bind MouseOver.Marker.BackColour,Mode=OneWay,Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
                     Visibility="{x:Bind MouseOver.HasMarker, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                     Padding="0"

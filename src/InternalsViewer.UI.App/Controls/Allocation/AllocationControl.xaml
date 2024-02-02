@@ -58,6 +58,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -80,19 +81,31 @@
                                    Style="{StaticResource TooltipKeyStyle}">
                             Extent
                         </TextBlock>
+
                         <TextBlock Grid.Row="1" 
                                    Grid.Column="1" 
                                    Name="ExtentTextBox" 
                                    Style="{StaticResource TooltipValueStyle}"
                                    Text="{x:Bind AllocationOver.ExtentId, Mode=OneWay}"/>
+
                         <TextBlock Grid.Row="2" 
+                                   Grid.Column="0"
+                                   Style="{StaticResource TooltipKeyStyle}">
+                            PFS
+                        </TextBlock>
+                        <TextBlock Grid.Row="2" 
+                                   Grid.Column="1"
+                                   x:Name="PfsTextBox" 
+                                   Style="{StaticResource TooltipValueStyle}"
+                                   Text="{x:Bind AllocationOver.PfsValue, Mode=OneWay}"/>
+                        <TextBlock Grid.Row="3" 
                                    Grid.Column="0"
                                    Grid.ColumnSpan="2" 
                                    x:Name="NameTextBox" 
                                    Style="{StaticResource TooltipValueStyle}"
                                    Text="{x:Bind AllocationOver.LayerName, Mode=OneWay}"/>
                     </Grid>
-               
+
                 </Border>
             </Grid>
         </Popup>

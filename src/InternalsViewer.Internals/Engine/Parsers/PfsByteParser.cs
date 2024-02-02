@@ -39,10 +39,11 @@ public class PfsByteParser
 
         var pfsByte = new PfsByte
         {
+            Value = pageByte,
             GhostRecords = bitArray[3],
-            Iam = bitArray[4],
-            Mixed = bitArray[5],
-            Allocated = bitArray[6],
+            IsIam = bitArray[4],
+            IsMixed = bitArray[5],
+            IsAllocated = bitArray[6],
             PageSpaceFree = (SpaceFree)(pageByte & 7)
         };
 
@@ -54,9 +55,9 @@ public class PfsByteParser
         var bitArray = new BitArray(new [] { (byte)pfsByte.PageSpaceFree });
 
         bitArray[3] = pfsByte.GhostRecords;
-        bitArray[4] = pfsByte.Iam;
-        bitArray[5] = pfsByte.Mixed;
-        bitArray[6] = pfsByte.Allocated;
+        bitArray[4] = pfsByte.IsIam;
+        bitArray[5] = pfsByte.IsMixed;
+        bitArray[6] = pfsByte.IsAllocated;
 
         var returnByte = new byte[1];
 
