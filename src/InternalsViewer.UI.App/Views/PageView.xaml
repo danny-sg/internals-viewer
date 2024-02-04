@@ -106,7 +106,7 @@
                                   Command="{x:Bind ViewModel.RefreshCommand}"/>
                     <AppBarSeparator />
                     <AppBarElementContainer />
-                    <CommandBar.SecondaryCommands>
+                    <!--<CommandBar.SecondaryCommands>
                         <AppBarButton Label="Add Bookmark">
                             <AppBarButton.Icon>
                                 <ImageIcon Source="ms-appx:///Assets/Bookmark.svg"/>
@@ -121,7 +121,7 @@
                                       Icon="Next" 
                                       Command="{x:Bind ViewModel.LoadPageCommand}"
                                       CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
-                    </CommandBar.SecondaryCommands>
+                    </CommandBar.SecondaryCommands>-->
                     <CommandBar.Content>
 
                     </CommandBar.Content>

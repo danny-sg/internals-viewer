@@ -53,7 +53,7 @@ namespace InternalsViewer.UI.App.Controls
             }
         }
 
-        private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
+        private void MenuFlyoutItem_DbccPage_Click(object sender, RoutedEventArgs e)
         {
             PageAddressParser.TryParse(TextBox.Text, out var pageAddress);
 
@@ -70,6 +70,22 @@ namespace InternalsViewer.UI.App.Controls
             package.SetText(text);
 
             Clipboard.SetContent(package);
+        }
+
+        private void MenuFlyoutItem_Next_Click(object sender, RoutedEventArgs e)
+        {
+            if (PageAddressParser.TryParse(TextBox.Text, out var pageAddress))
+            {
+                AddressChanged?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId + 1));
+            }
+        }
+
+        private void MenuFlyoutItem_Previous_Click(object sender, RoutedEventArgs e)
+        {
+            if (PageAddressParser.TryParse(TextBox.Text, out var pageAddress) && pageAddress.PageId > 1)
+            {
+                AddressChanged?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId - 1));
+            }
         }
     }
 }

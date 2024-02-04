@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
+using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
@@ -23,6 +24,14 @@ public partial class MainViewModel(SettingsService settingsService)
         if (recent != null)
         {
             RecentConnections = new ObservableCollection<RecentConnection>(recent);
+        }
+
+
+        var bookmarks = await SettingsService.ReadSettingAsync<PageBookmark[]>("PageBookmarks");
+
+        if (bookmarks != null)
+        {
+            PageBookmarks = new ObservableCollection<PageBookmark>(bookmarks);
         }
     }
 
@@ -80,6 +89,28 @@ public partial class MainViewModel(SettingsService settingsService)
         }
     }
 
+    [RelayCommand]
+    private async Task AddBookmark(PageBookmark bookmark)
+    {
+        if (PageBookmarks.All(b => b != bookmark))
+        {
+            PageBookmarks.Add(bookmark);
+
+            await SettingsService.SaveSettingAsync("PageBookmarks", PageBookmarks.ToArray());
+        }
+    }
+
+    [RelayCommand]
+    private async Task RemoveBookmark(PageBookmark bookmark)
+    {
+        PageBookmarks.Remove(bookmark);
+
+        await SettingsService.SaveSettingAsync("PageBookmarks", PageBookmarks.ToArray());
+    }
+
     [ObservableProperty]
     private ObservableCollection<RecentConnection> recentConnections = new();
+
+    [ObservableProperty]
+    private ObservableCollection<PageBookmark> pageBookmarks = new();
 }

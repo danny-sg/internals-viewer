@@ -29,11 +29,13 @@
             <TextBox.ContextFlyout>
                 <MenuFlyout>
                     <MenuFlyoutSubItem Text="Copy DBCC PAGE command to clipboard">
-                        <MenuFlyoutItem Text="Option 0 - Header" Click="MenuFlyoutItem_Click" Tag="0"/>
-                        <MenuFlyoutItem Text="Option 1 - Per-row hex dump" Click="MenuFlyoutItem_Click" Tag="1"/>
-                        <MenuFlyoutItem Text="Option 2 - Hex dump" Click="MenuFlyoutItem_Click" Tag="2"/>
-                        <MenuFlyoutItem Text="Option 3 - Per-row interpretation" Click="MenuFlyoutItem_Click" Tag="3"/>
+                        <MenuFlyoutItem Text="Option 0 - Header" Click="MenuFlyoutItem_DbccPage_Click" Tag="0"/>
+                        <MenuFlyoutItem Text="Option 1 - Per-row hex dump" Click="MenuFlyoutItem_DbccPage_Click" Tag="1"/>
+                        <MenuFlyoutItem Text="Option 2 - Hex dump" Click="MenuFlyoutItem_DbccPage_Click" Tag="2"/>
+                        <MenuFlyoutItem Text="Option 3 - Per-row interpretation" Click="MenuFlyoutItem_DbccPage_Click" Tag="3"/>
                     </MenuFlyoutSubItem>
+                    <MenuFlyoutItem Text="Page + 1" Click="MenuFlyoutItem_Next_Click" />
+                    <MenuFlyoutItem Text="Page - 1" Click="MenuFlyoutItem_Previous_Click" />
                 </MenuFlyout>
             </TextBox.ContextFlyout>
         </TextBox>
