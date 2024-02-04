@@ -56,6 +56,12 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private string objectName = string.Empty;
 
     [ObservableProperty]
+    private int objectId;
+
+    [ObservableProperty]
+    private int indexId;
+
+    [ObservableProperty]
     private string indexName = string.Empty;
 
     [ObservableProperty]
@@ -346,8 +352,11 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private void SetAllocationUnitDescription(AllocationUnit allocationUnit)
     {
         ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
+        ObjectId = allocationUnit.ObjectId;
 
         IndexName = allocationUnit.IndexName;
+        IndexId = allocationUnit.IndexId;
+
         IndexType = allocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
                                                          ? "Non-Clustered"
                                                          : string.Empty;

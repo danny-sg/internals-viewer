@@ -14,7 +14,7 @@
         <Setter Property="Foreground" Value="{ThemeResource ButtonForeground}" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="6" />
+        <Setter Property="Padding" Value="6,0,6,0" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="AutomationProperties.Name" Value="Copy to clipboard" />
         <Setter Property="ToolTipService.ToolTip" Value="Copy to clipboard" />

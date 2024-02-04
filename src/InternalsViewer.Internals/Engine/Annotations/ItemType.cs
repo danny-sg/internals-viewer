@@ -128,9 +128,11 @@ public enum ItemType
     CompressionDictionary,
 
     // Dictionary
-    DictionaryColumnOffsetArray,
-    EntryCount,
+    DictionaryColumnOffsets,
+    DictionaryEntryCount,
     DictionaryValue,
+    DictionaryEntries,
+    DictionarySymbol,
 
     // Blob
     BlobId,
@@ -159,5 +161,4 @@ public enum ItemType
     OverflowLength,
     Unused,
     UpdateSeq
-
 }

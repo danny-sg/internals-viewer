@@ -224,6 +224,9 @@
                           Padding="8,0,0,0"
                           Margin="0"
                           Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                          ScrollViewer.HorizontalScrollMode="Enabled"
+                          ScrollViewer.HorizontalScrollBarVisibility="Visible"
+                          ScrollViewer.IsHorizontalRailEnabled="True"
                           HorizontalAlignment="Left">
                 <controls:DataRow>
                     <!--Name Column-->

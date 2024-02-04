@@ -42,6 +42,7 @@
         <None Remove="Controls\Connections\BackupFileConnectionControl.xaml" />
         <None Remove="Controls\ConnectTile.xaml" />
         <None Remove="Controls\CopyButton.xaml" />
+        <None Remove="Controls\CopyTextBlock.xaml" />
         <None Remove="Controls\ExceptionDialog.xaml" />
         <None Remove="Controls\HeaderTile.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
@@ -265,6 +266,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\CopyTextBlock.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\Page\MarkerTreeView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>

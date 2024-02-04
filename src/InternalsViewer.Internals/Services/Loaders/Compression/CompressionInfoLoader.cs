@@ -16,7 +16,7 @@ public class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
 
     public CompressionInfo Load(AllocationUnitPage page, ushort offset)
     {
-        var ci = new CompressionInfo();
+        var ci = new CompressionInfo(offset);
 
         ParseHeader(ci, page.Data, offset);
 
@@ -67,7 +67,7 @@ public class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
     {
         ci.CompressionDictionary = DictionaryLoader.Load(data, offset);
 
-        ci.MarkProperty(nameof(ci.CompressionDictionary), offset, ci.Size);
+        ci.MarkProperty(nameof(ci.CompressionDictionary), offset, ci.Offset + ci.Size - offset);
     }
 
     private void LoadAnchor(CompressionInfo ci, AllocationUnitPage page, int offset)

@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Engine;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -166,7 +167,7 @@ public static class MarkerBuilder
                     marker.Value = field.Value;
                     break;
                 case (byte[] bytes, _):
-                    marker.Value = DataConverter.BinaryToString(bytes, SqlDbType.VarChar);
+                    marker.Value = "0x" + bytes.ToHexString();
                     break;
                 case (BitArray bitArray, _):
                     marker.Value = StringHelpers.GetBitArrayString(bitArray);

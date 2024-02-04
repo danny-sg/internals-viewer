@@ -6,7 +6,8 @@ namespace InternalsViewer.Internals.Compression;
 
 public class DictionaryEntry(int symbol, ushort offset, byte[] data) : DataStructure
 {
-    public int Symbol { get; set; } = symbol;
+    [DataStructureItem(ItemType.DictionarySymbol)]
+    public int Symbol { get; } = symbol;
 
     [DataStructureItem(ItemType.DictionaryValue)]
     public byte[] Data { get; } = data;

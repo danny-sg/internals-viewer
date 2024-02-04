@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Converters;
 
-public class DateTimeConverters
+public static class DateTimeConverters
 {
     /// <summary>
     /// Decodes SMALLDATETIME data type
@@ -59,6 +59,9 @@ public class DateTimeConverters
         return returnDate;
     }
 
+    /// <summary>
+    /// Finds the closest number to the given number from a list of 0, 3 and 7
+    /// </summary>
     private static int ClosestTo(int number)
     {
         var targets = new[] { 0, 3, 7 };

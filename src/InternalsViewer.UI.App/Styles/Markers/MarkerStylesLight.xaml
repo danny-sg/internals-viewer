@@ -71,4 +71,12 @@
     <models:MarkStyle x:Key="LengthMarkerStyle" ForeColour="White" BackColour="#26994C" Name="Length"/>
     <models:MarkStyle x:Key="AnchorRecordMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Anchor Record"/>
 
+    <!--Dictionary-->
+    <models:MarkStyle x:Key="SizeMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Size"/>
+    <models:MarkStyle x:Key="DictionaryEntryCountMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Dictionary Entry Count"/>
+    <models:MarkStyle x:Key="DictionaryColumnOffsetsMarkerStyle" ForeColour="White" BackColour="#BC8F8F" Name="Dictionary Column Offsets"/>
+    <models:MarkStyle x:Key="DictionaryEntriesMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Dictionary Entries"/>
+    <models:MarkStyle x:Key="DictionaryValueMarkerStyle" ForeColour="Black" BackColour="#FFA500" Name="Dictionary Value"/>
+    <models:MarkStyle x:Key="DictionarySymbolMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Dictionary Symbol"/>
+    <models:MarkStyle x:Key="CompressionDictionaryMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Compression Dictionary"/>
 </ResourceDictionary>

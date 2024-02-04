@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Annotations;
 
 namespace InternalsViewer.Internals.Services.Loaders.Compression;
 
@@ -22,36 +23,42 @@ public static class DictionaryLoader
 
         dictionary.EntryCount = entryCount;
 
-        dictionary.MarkProperty("EntryCount", offset, sizeof(short));
+        dictionary.MarkProperty(nameof(Dictionary.EntryCount), offset, sizeof(short));
 
-        dictionary.EntryOffset = new ushort[entryCount];
+        dictionary.EntryOffsets = new ushort[entryCount];
 
-        var dataOffset = sizeof(short) + sizeof(short) * entryCount;
+        var startEntryOffset = sizeof(short) + sizeof(short) * entryCount;
 
-        dictionary.MarkProperty("EntryOffsetArrayDescription", offset + sizeof(short), entryCount * sizeof(short));
+        var currentOffset = startEntryOffset;
+
+        dictionary.MarkProperty(nameof(Dictionary.EntryOffsets), offset + sizeof(short), entryCount * sizeof(short));
+
+        var entries = new DictionaryEntry[entryCount];
 
         for (var i = 0; i < entryCount; i++)
         {
-            dictionary.EntryOffset[i] = BitConverter.ToUInt16(data, offset + sizeof(short) + sizeof(short) * i);
+            dictionary.EntryOffsets[i] = BitConverter.ToUInt16(data, offset + sizeof(short) + sizeof(short) * i);
 
-            var length = dictionary.EntryOffset[i] - dataOffset;
+            var length = dictionary.EntryOffsets[i] - currentOffset;
 
             var dictionaryData = new byte[length];
 
-            var entryOffset = offset + dataOffset;
+            var entryOffset = offset + currentOffset;
 
             Array.Copy(data, entryOffset, dictionaryData, 0, length);
 
-            dictionary.MarkProperty("DictionaryEntriesArray", "Dictionary Entry " + i, i);
-
             var entry = new DictionaryEntry(i, (ushort)entryOffset, dictionaryData);
 
-            entry.MarkProperty("Data", offset + dataOffset, length);
+            entry.MarkValue(ItemType.DictionaryValue, $"Dictionary Entry {i}", dictionaryData, offset + currentOffset, length);
 
-            dictionary.DictionaryEntries.Add(entry);
+            entries[i] = entry;
 
-            dataOffset = dictionary.EntryOffset[i];
+            currentOffset = dictionary.EntryOffsets[i];
         }
+
+        dictionary.DictionaryEntries = entries;
+
+        dictionary.MarkProperty(nameof(Dictionary.DictionaryEntries), offset + startEntryOffset, currentOffset - startEntryOffset); 
 
         return dictionary;
     }

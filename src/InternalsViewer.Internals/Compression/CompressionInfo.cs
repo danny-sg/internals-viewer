@@ -19,7 +19,7 @@ namespace InternalsViewer.Internals.Compression;
 ///         - Anchor Record
 ///         - Dictionary
 /// </remarks>
-public class CompressionInfo : DataStructure
+public class CompressionInfo(int offset) : DataStructure
 {
     [DataStructureItem(ItemType.PageModificationCount)]
     public short PageModificationCount { get; set; }
@@ -44,4 +44,6 @@ public class CompressionInfo : DataStructure
     public bool HasAnchorRecord { get; set; }
 
     public bool HasDictionary { get; set; }
+
+    public int Offset { get; set; } = offset;
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.CopyTextBlock"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:InternalsViewer.UI.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <StackPanel Orientation="Horizontal" Padding="0">
+        <TextBlock x:Name="Text" Margin="5,0,0,0" Text="{x:Bind Value, Mode=OneWay}"/>
+        <local:CopyButton Content="&#xE8C8;" 
+                          ToolTipService.ToolTip="Copy value to clipboard"
+                          Tag="{x:Bind Value, Mode=OneWay}"
+                          Margin="0"
+                          Foreground="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                          Click="CopyButton_Click" />
+    </StackPanel>
+</UserControl>
