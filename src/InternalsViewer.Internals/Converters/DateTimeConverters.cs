@@ -178,9 +178,7 @@ public class DateTimeConverters
 
         var offsetTime = new DateTime().AddMinutes(Math.Abs(time));
 
-        string sign;
-
-        sign = time >= 0 ? "+" : "-";
+        var sign = time >= 0 ? "+" : "-";
 
         return $"{returnDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
     }

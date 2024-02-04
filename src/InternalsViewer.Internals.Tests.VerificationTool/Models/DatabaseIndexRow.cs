@@ -24,9 +24,22 @@ internal record DatabaseIndexRow
 
     public int ChildPageId { get; set; }
 
-    public List<DatabaseIndexField> Values { get; set; } = new();
+    public List<DatabaseField> Values { get; set; } = new();
 
     public short RowSize { get; set; }
+    
+    public RowIdentifier? Rid { get; set; }
+}
+
+internal record DatabaseTableRow
+{
+    public short FileId { get; set; }
+
+    public int PageId { get; set; }
+
+    public short Row { get; set; }
+
+    public List<DatabaseField> Values { get; set; } = new();
 }
 
 internal record DatabaseIndex
@@ -42,7 +55,7 @@ internal record DatabaseIndex
     public List<DatabaseIndexRow> Rows { get; set; } = new();
 }
 
-internal record DatabaseIndexField
+internal record DatabaseField
 {
     public string Name { get; set; } = string.Empty;
 

@@ -12,7 +12,7 @@ namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 
 internal class ObjectPageListService
 {
-    public async Task<List<PageAddress>> GetPages(int objectId, int indexId, PageType pageType)
+    public async Task<List<PageAddress>> GetPages(int objectId, int? indexId, PageType pageType, bool isCompressed = false)
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("Default");
 
@@ -22,12 +22,23 @@ internal class ObjectPageListService
 
         var sql = @"SELECT allocated_page_file_id, allocated_page_page_id
                     FROM   sys.dm_db_database_page_allocations(DB_ID(), @ObjectId, @IndexId, NULL, 'DETAILED')
-                    WHERE  page_type = @PageType";
+                    WHERE  page_type = @PageType AND is_page_compressed = @IsCompressed";
 
         await using var command = new SqlCommand(sql, sqlConnection);
 
         command.Parameters.AddWithValue("@ObjectId", objectId);
-        command.Parameters.AddWithValue("@IndexId", indexId);
+        
+        if (indexId.HasValue)
+        {
+            command.Parameters.AddWithValue("@IndexId", indexId);
+        }
+        else
+        {
+            command.Parameters.AddWithValue("@IndexId", DBNull.Value);
+        }
+
+        command.Parameters.AddWithValue("@IsCompressed", isCompressed);
+
         command.Parameters.AddWithValue("@PageType", (int)pageType);
 
         await sqlConnection.OpenAsync();

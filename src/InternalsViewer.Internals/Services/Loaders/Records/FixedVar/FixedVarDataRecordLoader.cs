@@ -9,7 +9,7 @@ using InternalsViewer.Internals.Metadata.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Records;
 
-namespace InternalsViewer.Internals.Services.Loaders.Records;
+namespace InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 /// <summary>
 /// Loads a Data Record using a combination of the table structure and the record structure
@@ -17,9 +17,9 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 /// <remarks>
 /// Microsoft SQL Server 2012 Internals by Kalen Delaney et al. has a good description of the data record structure in Chapter 6.
 /// </remarks>
-public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoader
+public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) : FixedVarRecordLoader
 {
-    private ILogger<FixedVarRecord> Logger { get; } = logger;
+    private ILogger<FixedVarDataRecordLoader> Logger { get; } = logger;
 
     /// <summary>
     /// Loads the data record at the given offset
@@ -237,7 +237,7 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
                     {
                         // Sees to be a case where instead of the null bitmap a field is null via the existence of a variable length column
                         // with the absence of a variable length record flag. In this case the null bitmap needs offsetting.
-                        nullBitmapOffset -= 1;
+                        //nullBitmapOffset -= 1;
                     }
 
                     // Null bitmap set
@@ -350,10 +350,10 @@ public class FixedVarRecord(ILogger<FixedVarRecord> logger) : FixedVarRecordLoad
         }
         else
         {
-            dataRecord.MarkValue(ItemType.VariableLengthValue, 
-                                 column.ColumnName, 
-                                 field, 
-                                 dataRecord.Offset + field.Offset, 
+            dataRecord.MarkValue(ItemType.VariableLengthValue,
+                                 column.ColumnName,
+                                 field,
+                                 dataRecord.Offset + field.Offset,
                                  field.Length);
         }
 

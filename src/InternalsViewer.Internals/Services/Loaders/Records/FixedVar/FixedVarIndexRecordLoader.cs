@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Diagnostics;
+using System.Xml.Linq;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -10,7 +11,7 @@ using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Metadata.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
 
-namespace InternalsViewer.Internals.Services.Loaders.Records;
+namespace InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 /// <summary>
 /// Loads an Index Record using a combination of the table structure and the record structure
@@ -32,6 +33,35 @@ namespace InternalsViewer.Internals.Services.Loaders.Records;
 ///     - Unique / Non-Unique
 ///     - Includes columns
 ///     
+///         ┌───────────────┬────────┬───────────┬──────────┐
+///         │     Type      │ Unique │ Node Type │ Includes │
+///         ├───────────────┼────────┼───────────┼──────────┤
+///         │ Clustered     │ Yes    │ Root      │ No       │
+///         │ Clustered     │ Yes    │ Node      │ No       │
+///         │ Clustered     │ Yes    │ Leaf      │ No       │
+///         │ Clustered     │ No     │ Root      │ No       │
+///         │ Clustered     │ No     │ Node      │ No       │
+///         │ Clustered     │ No     │ Leaf      │ No       │
+///         │ Clustered     │ Yes    │ Root      │ Yes      │
+///         │ Clustered     │ Yes    │ Node      │ Yes      │
+///         │ Clustered     │ Yes    │ Leaf      │ Yes      │
+///         │ Clustered     │ No     │ Root      │ Yes      │
+///         │ Clustered     │ No     │ Node      │ Yes      │
+///         │ Clustered     │ No     │ Leaf      │ Yes      │
+///         │ Non-Clustered │ Yes    │ Root      │ No       │
+///         │ Non-Clustered │ Yes    │ Node      │ No       │
+///         │ Non-Clustered │ Yes    │ Leaf      │ No       │
+///         │ Non-Clustered │ No     │ Root      │ No       │
+///         │ Non-Clustered │ No     │ Node      │ No       │
+///         │ Non-Clustered │ No     │ Leaf      │ No       │
+///         │ Non-Clustered │ Yes    │ Root      │ Yes      │
+///         │ Non-Clustered │ Yes    │ Node      │ Yes      │
+///         │ Non-Clustered │ Yes    │ Leaf      │ Yes      │
+///         │ Non-Clustered │ No     │ Root      │ Yes      │
+///         │ Non-Clustered │ No     │ Node      │ Yes      │
+///         │ Non-Clustered │ No     │ Leaf      │ Yes      │
+///         └───────────────┴────────┴───────────┴──────────┘
+///     
 /// This is in addition to the variable/fixed length record fields.
 /// </remarks>
 public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger) : FixedVarRecordLoader
@@ -41,17 +71,23 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
     /// <summary>
     /// Load an Index record at the specified offset
     /// </summary>
-    public IndexRecord Load(IndexPage page, ushort offset, IndexStructure structure)
+    public IndexRecord Load(IndexPage page, ushort offset, int slot, IndexStructure structure)
     {
         Logger.BeginScope("Index Record Loader: {FileId}:{PageId}:{Offset}", page.PageAddress.FileId, page.PageAddress.PageId, offset);
 
         Logger.LogDebug(structure.ToDetailString());
 
-        var nodeType = page.PageHeader.Level > 0 ? NodeType.Node : NodeType.Leaf;
+        var nodeType = page.PageHeader.Level switch
+        {
+            0 => NodeType.Leaf,
+            1 => NodeType.Root,
+            _ => NodeType.Node,
+        };
 
         var record = new IndexRecord
         {
             Offset = offset,
+            Slot = slot,
             NodeType = nodeType
         };
 
@@ -91,29 +127,48 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
                         page.AllocationUnit.IndexType,
                         structure.TableStructure?.IndexType ?? structure.IndexType);
 
-        if (nodeType == NodeType.Node)
+        switch (nodeType)
         {
-            Logger.LogDebug("Loading Node Record");
+            case NodeType.Root:
+                Logger.LogDebug("Loading Root Record");
 
-            // A node will have a down page pointer to the next level in the b-tree
-            LoadDownPagePointer(record, page);
+                LoadDownPagePointer(record, page);
 
-            if (structure.IndexType == IndexType.Clustered)
-            {
-                LoadClusteredNode(record, page, structure);
-            }
-            else
-            {
-                LoadNonClusteredNode(record, page, structure);
-            }
-        }
-        else
-        {
-            Logger.LogDebug("Loading Leaf Record");
+                if (structure.IndexType == IndexType.Clustered)
+                {
+                    LoadClusteredNode(record, page, structure);
+                }
+                else
+                {
+                    LoadNonClusteredRoot(record, page, structure);
+                }
 
-            Debug.Assert(structure.IndexType == IndexType.NonClustered, "Leaf level on Index type pages should always be non-clustered");
+                break;
+            case NodeType.Node:
+                {
+                    Logger.LogDebug("Loading Node Record");
 
-            LoadNonClusteredLeaf(record, page, structure);
+                    // A node will have a down page pointer to the next level in the b-tree
+                    LoadDownPagePointer(record, page);
+
+                    if (structure.IndexType == IndexType.Clustered)
+                    {
+                        LoadClusteredNode(record, page, structure);
+                    }
+                    else
+                    {
+                        LoadNonClusteredNode(record, page, structure);
+                    }
+
+                    break;
+                }
+            case NodeType.Leaf:
+                Logger.LogDebug("Loading Leaf Record");
+
+                Debug.Assert(structure.IndexType == IndexType.NonClustered, "Leaf level on Index type pages should always be non-clustered");
+
+                LoadNonClusteredLeaf(record, page, structure);
+                break;
         }
 
         return record;
@@ -129,7 +184,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
     {
         var columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
 
-        LoadColumnValues(record, page, columns, NodeType.Node);
+        LoadColumnValues(record, page, columns, NodeType.Node, structure.IsUnique);
     }
 
     private void LoadNonClusteredNode(IndexRecord record, PageData page, IndexStructure structure)
@@ -145,14 +200,31 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
             columns = structure.Columns;
         }
 
-        LoadColumnValues(record, page, columns, NodeType.Node);
+        LoadColumnValues(record, page, columns, NodeType.Node, structure.IsUnique);
+    }
+
+    private void LoadNonClusteredRoot(IndexRecord record, PageData page, IndexStructure structure)
+    {
+        List<IndexColumnStructure> columns;
+
+        if (structure.TableStructure?.IndexType == IndexType.Clustered && !structure.IsUnique)
+        {
+            columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
+        }
+        else
+        {
+            // Unique non-clustered indexes do not contain the clustered index keys in the root
+            columns = structure.Columns.Where(c => c.IsIndexKey).ToList();
+        }
+
+        LoadColumnValues(record, page, columns, NodeType.Root, structure.IsUnique);
     }
 
     private void LoadNonClusteredLeaf(IndexRecord record, PageData page, IndexStructure structure)
     {
         var columns = structure.Columns;
 
-        LoadColumnValues(record, page, columns, NodeType.Leaf);
+        LoadColumnValues(record, page, columns, NodeType.Leaf, structure.IsUnique);
     }
 
     /// <summary>
@@ -192,7 +264,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         record.VariableLengthColumnCount = BitConverter.ToUInt16(page.Data, variableColumnCountOffset);
 
         record.MarkProperty(nameof(IndexRecord.VariableLengthColumnCount), variableColumnCountOffset, sizeof(short));
-        
+
         var offset =
             record.Offset + page.PageHeader.FixedLengthSize + sizeof(short) + varColStartIndex;
 
@@ -202,11 +274,15 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
                                                              offset);
 
         record.MarkProperty(nameof(IndexRecord.VariableLengthColumnOffsetArray),
-                            variableColumnCountOffset + sizeof(short), 
+                            variableColumnCountOffset + sizeof(short),
                             record.VariableLengthColumnCount * sizeof(short));
     }
 
-    private void LoadColumnValues(IndexRecord record, PageData page, List<IndexColumnStructure> columns, NodeType nodeType)
+    private void LoadColumnValues(IndexRecord record,
+                                  PageData page,
+                                  List<IndexColumnStructure> columns,
+                                  NodeType nodeType,
+                                  bool isUniqueIndex)
     {
         var columnValues = new List<FixedVarRecordField>();
 
@@ -216,7 +292,17 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
             var field = new FixedVarRecordField(column);
 
-            if (columnOffset >= 0)
+            if (record.HasNullBitmap && record.IsNullBitmapSet(column, 0))
+            {
+                // Null bitmap is set
+                field = LoadNullField(column);
+            }
+            else if ((nodeType == NodeType.Root || nodeType == NodeType.Node) && record.Slot == 0)
+            {
+                // The first slot in a root (level 1) index page is always null for non-unique indexes
+                field = LoadNullField(column);
+            }
+            else if (columnOffset >= 0)
             {
                 if (IsRowIdentifier(column, nodeType, page.PageHeader.FixedLengthSize))
                 {
@@ -242,6 +328,15 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         }
 
         record.Fields.AddRange(columnValues);
+    }
+
+    private FixedVarRecordField LoadNullField(IndexColumnStructure column)
+    {
+        var nullField = new FixedVarRecordField(column);
+
+        nullField.MarkProperty(nameof(FixedVarRecordField.Value));
+
+        return nullField;
     }
 
     private static void LoadRidField(int offset, IndexRecord record, byte[] pageData)
@@ -331,7 +426,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         field.Length = length;
         field.Data = data;
 
-        record.MarkValue(ItemType.UniquifierIndex, "Uniqueifier", field, record.Offset + field.Offset, field.Length);
+        record.MarkValue(ItemType.UniquifierIndex, "Uniquifier", field, record.Offset + field.Offset, field.Length);
 
         return field;
     }
@@ -351,16 +446,17 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         var data = new byte[length];
 
-        Array.Copy(pageData, column.LeafOffset + record.Offset, data, 0, length);
-
         field.Offset = offset;
         field.Length = length;
+
+        Array.Copy(pageData, record.Offset + field.Offset, data, 0, length);
+
         field.Data = data;
 
-        record.MarkValue(ItemType.FixedLengthValue, 
-                         column.ColumnName, 
-                         field, 
-                         record.Offset + field.Offset, 
+        record.MarkValue(ItemType.FixedLengthValue,
+                         column.ColumnName,
+                         field,
+                         record.Offset + field.Offset,
                          field.Length);
 
         return field;

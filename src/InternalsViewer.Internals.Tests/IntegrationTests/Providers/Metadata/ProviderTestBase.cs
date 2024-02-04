@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Engine;
-using InternalsViewer.Internals.Services.Loaders.Records;
+using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Tests.Helpers;
 using Microsoft.Extensions.Logging;
 
@@ -26,7 +26,7 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
 
         var pageService = ServiceHelper.CreatePageService(TestOutput);
 
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(TestOutput), pageService, loader);
 

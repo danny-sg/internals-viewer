@@ -5,6 +5,7 @@ GO
 
 EXEC sp_attach_db @dbname = N'TestDatabase', @filename1 = 'C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER\MSSQL\DATA\TestDatabase.mdf'
 GO  
+
 CHECKPOINT
 DBCC SHRINKFILE (1, 1)
 -- Create a test database 

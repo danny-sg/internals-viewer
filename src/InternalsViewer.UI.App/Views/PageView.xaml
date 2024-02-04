@@ -112,11 +112,11 @@
                             </AppBarButton.Icon>
                         </AppBarButton>
                         <AppBarSeparator />
-                        <AppBarButton Label="Page + 1" 
+                        <AppBarButton Label="Page - 1" 
                                       Icon="Previous" 
                                       Command="{x:Bind ViewModel.LoadPageCommand}" 
                                       CommandParameter="{x:Bind ViewModel.PreviousPage, Mode=OneWay}"/>
-                        <AppBarButton Label="Page - 1" 
+                        <AppBarButton Label="Page + 1" 
                                       Icon="Next" 
                                       Command="{x:Bind ViewModel.LoadPageCommand}"
                                       CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
@@ -126,7 +126,7 @@
                     </CommandBar.Content>
                 </CommandBar>
                 
-                <CommandBar Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Right">
+                <CommandBar Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left">
                     <AppBarElementContainer>
                         <Grid Margin="8" Padding="0">
                             <Grid.RowDefinitions>
@@ -145,7 +145,7 @@
                                                Margin="0"  
                                                Foreground="BlueViolet"
                                                Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}" />
-                                </Grid >
+                                </Grid>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Grid.Row="1">
                                 <TextBlock x:Name="IndexName"

@@ -5,14 +5,15 @@ using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Services.Loaders.Records;
+using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 namespace InternalsViewer.Internals.Services.Records;
 
-public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, FixedVarRecord fixedVarRecord, CdDataRecordLoader cdDataRecordLoader) : IRecordService
+public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, FixedVarDataRecordLoader fixedVarDataRecordLoader, CdDataRecordLoader cdDataRecordLoader) : IRecordService
 {
     private FixedVarIndexRecordLoader FixedVarIndexRecordLoader { get; } = fixedVarIndexRecordLoader;
 
-    private FixedVarRecord FixedVarRecord { get; } = fixedVarRecord;
+    private FixedVarDataRecordLoader FixedVarDataRecordLoader { get; } = fixedVarDataRecordLoader;
 
     private CdDataRecordLoader CdDataRecordLoader { get; } = cdDataRecordLoader;
 
@@ -23,7 +24,7 @@ public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, 
 
         return page.OffsetTable.Select((s, index) =>
         {
-            var record = FixedVarRecord.Load(page, s, structure);
+            var record = FixedVarDataRecordLoader.Load(page, s, structure);
 
             record.Slot = index;
 
@@ -54,14 +55,7 @@ public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, 
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
-                   .Select((s, index) =>
-                           {
-                               var record = FixedVarIndexRecordLoader.Load(page, s, structure);
-
-                               record.Slot = index;
-
-                               return record;
-                           })
+                   .Select((s, index) => FixedVarIndexRecordLoader.Load(page, s, index, structure))
                     .ToList();
     }
 
@@ -70,14 +64,14 @@ public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, 
         var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
                                                                  page.PageHeader.AllocationUnitId);
 
-        return FixedVarRecord.Load(page, offset, structure);
+        return FixedVarDataRecordLoader.Load(page, offset, structure);
     }
 
-    public IndexRecord GetIndexRecord(IndexPage page, ushort offset)
+    public IndexRecord GetIndexRecord(IndexPage page, ushort offset, int slot)
     {
         var structure = IndexStructureProvider.GetIndexStructure(page.Database.Metadata,
                                                                  page.PageHeader.AllocationUnitId);
 
-        return FixedVarIndexRecordLoader.Load(page, offset, structure);
+        return FixedVarIndexRecordLoader.Load(page, offset, slot, structure);
     }
 }

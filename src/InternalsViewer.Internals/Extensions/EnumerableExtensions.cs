@@ -15,4 +15,18 @@ public static class EnumerableExtensions
             collection.Add(item);
         }
     }
+
+    public static T? Pop<T>(this List<T> collection, Func<T, bool> predicate)
+    {
+        if (collection.Count(predicate) > 0)
+        {
+            var result = collection.Where(predicate).First();
+
+            collection.Remove(result);
+            
+            return result;
+        }
+
+        return default;
+    }
 }

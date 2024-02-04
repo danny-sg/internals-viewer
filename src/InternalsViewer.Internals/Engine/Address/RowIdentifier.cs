@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Engine.Address;
 /// <summary>
 /// Row Identifier (RID)
 /// </summary>
-public struct RowIdentifier
+public record RowIdentifier
 {
     public const int Size = sizeof(short) + sizeof(short) + sizeof(int);
 

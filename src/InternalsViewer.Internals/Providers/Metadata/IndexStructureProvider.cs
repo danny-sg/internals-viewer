@@ -2,13 +2,15 @@
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Structures;
 using System.Data;
+using InternalsViewer.Internals.Extensions;
+using InternalsViewer.Internals.Metadata.Internals.Tables;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
 
 /// <summary>
 /// Provider responsible for providing index structure information from the metadata collection
 /// </summary>
-public class IndexStructureProvider
+public static class IndexStructureProvider
 {
     /// <summary>
     /// Gets the index structure for the specified allocation unit
@@ -70,7 +72,7 @@ public class IndexStructureProvider
         }
 
         var parentAllocationUnitId = GetParentAllocationUnitId(rowSet.ObjectId, rowSet.PartitionNumber, metadata);
-        
+
         if (parentAllocationUnitId.HasValue)
         {
             var baseStructure = TableStructureProvider.GetTableStructure(metadata, parentAllocationUnitId.Value);
@@ -123,24 +125,24 @@ public class IndexStructureProvider
                         .Columns
                         .Where(c => c.IsKey || c.IsUniqueifier)
                         .Select(s => new IndexColumnStructure
-                                {
-                                    ColumnId = s.ColumnId,
-                                    ColumnName = s.ColumnName,
-                                    DataType = s.DataType,
-                                    LeafOffset = s.LeafOffset,
-                                    NodeOffset = s.NodeOffset,
-                                    Precision = s.Precision,
-                                    DataLength = s.DataLength,
-                                    Scale = s.Scale,
-                                    IsDropped = s.IsDropped,
-                                    IsUniqueifier = s.IsUniqueifier,
-                                    IsSparse = s.IsSparse,
-                                    NullBitIndex = s.NullBitIndex,
-                                    BitPosition = s.BitPosition,
-                                    IsIncludeColumn = false,
-                                    IndexColumnId = 0,
-                                    IsKey = s.IsKey
-                                })
+                        {
+                            ColumnId = s.ColumnId,
+                            ColumnName = s.ColumnName,
+                            DataType = s.DataType,
+                            LeafOffset = s.LeafOffset,
+                            NodeOffset = s.NodeOffset,
+                            Precision = s.Precision,
+                            DataLength = s.DataLength,
+                            Scale = s.Scale,
+                            IsDropped = s.IsDropped,
+                            IsUniqueifier = s.IsUniqueifier,
+                            IsSparse = s.IsSparse,
+                            NullBitIndex = s.NullBitIndex,
+                            BitPosition = s.BitPosition,
+                            IsIncludeColumn = false,
+                            IndexColumnId = 0,
+                            IsKey = s.IsKey
+                        })
                         .ToList();
     }
 
@@ -164,77 +166,104 @@ public class IndexStructureProvider
                                                && c.IndexId == structure.IndexId)
                                    .ToList();
 
-        var result = columnLayouts.Select(layout =>
+        var keyStack = new List<ColumnStructure>();
+
+        if (structure.TableStructure != null)
         {
-            /*
-                The Offset field is a 4 byte integer, the first 2 bytes represent the leaf offset (offset in a leaf index page), the second
-                2 bytes represent the node offset (offset in a node/non-leaf index page).
-            */
-            var leafOffset = (short)(layout.Offset & 0xffff);
-            var nodeOffset = (short)(layout.Offset >> 16);
+            keyStack.AddRange(structure.TableStructure.Columns.Where(c => c.IsKey).OrderBy(o => o.ColumnId));
+        }
 
-            var typeInfo = layout.TypeInfo.ToTypeInfo();
-
-            // If the index is explicitly defined on a column there should be a matching index column mapped via Index Column Id
-            var indexColumn = indexColumns.FirstOrDefault(c => c.IndexColumnId == layout.ColumnId);
-
-            // An index column will map to a table column
-            var column = columns.FirstOrDefault(c => c.ColumnId == indexColumn?.ColumnId);
-
-            // As an alternative to the index column mapping, the column seems to be mappable via the Ordlock field (needs confirming)
-            var tableColumn = structure.TableStructure?.Columns.FirstOrDefault(c => c.ColumnId == (layout.Ordlock ?? layout.TableColumnId -1));
-
-            // The 2nd bit of the status field indicates if the column has been dropped
-            var isDropped = Convert.ToBoolean(layout.Status & 2);
-
-            var isUniqueifier = IsUniqueifier(layout.Status, structure.IndexType, typeInfo.DataType, leafOffset);
-
-            // The 5th bit of the status field indicates if the column is an include column
-            var isIncludeColumn = Convert.ToBoolean(indexColumn?.Status & 0x10);
-
-            string name;
-
-            if (isDropped)
-            {
-                name = "(DROPPED)";
-            }
-            else if (isUniqueifier)
-            {
-                name = "(UNIQUEIFER)";
-            }
-            else
-            {
-                // First choice is the mapped index column, then the table column, then "Unknown"
-                name = column?.Name ?? tableColumn?.ColumnName ?? $"Unknown column: {layout.ColumnId}";
-            }
-
-            // Is Key is defined by if the column has been found IN the index columns list or if the table column is a key column
-            var isKey = indexColumn?.KeyOrdinal > 0 || tableColumn?.IsKey == true;
-
-            var columnStructure = new IndexColumnStructure
-            {
-                ColumnId = layout.ColumnId,
-                ColumnName = name,
-                DataType = typeInfo.DataType,
-                LeafOffset = leafOffset,
-                NodeOffset = nodeOffset,
-                Precision = typeInfo.Precision,
-                DataLength = typeInfo.MaxLength,
-                Scale = typeInfo.Scale,
-                IsDropped = isDropped,
-                IsUniqueifier = isUniqueifier,
-                IsSparse = (layout.Status & 256) != 0,
-                NullBitIndex = (short)(layout.NullBit & 0xffff),
-                BitPosition = layout.BitPosition,
-                IsIncludeColumn = isIncludeColumn,
-                IndexColumnId = indexColumn?.IndexColumnId ?? 0,
-                IsKey = isKey
-            };
-
-            return columnStructure;
-        }).ToList();
+        var result = columnLayouts.Select(layout => ToIndexColumnStructure(layout, structure, indexColumns, columns, keyStack)).ToList();
 
         return result;
+    }
+
+    private static IndexColumnStructure ToIndexColumnStructure(InternalColumnLayout layout,
+                                                               IndexStructure structure,
+                                                               List<InternalIndexColumn> indexColumns,
+                                                               List<InternalColumn> columns,
+                                                               List<ColumnStructure> keyStack)
+    {
+        /*
+            The Offset field is a 4 byte integer, the first 2 bytes represent the leaf offset (offset in a leaf index page), the second
+            2 bytes represent the node offset (offset in a node/non-leaf index page).
+        */
+        var leafOffset = (short)(layout.Offset & 0xffff);
+        var nodeOffset = (short)(layout.Offset >> 16);
+
+        var typeInfo = layout.TypeInfo.ToTypeInfo();
+
+        // If the index is explicitly defined on a column there should be a matching index column mapped via Index Column Id
+        var indexColumn = indexColumns.FirstOrDefault(c => c.IndexColumnId == layout.ColumnId);
+
+        // An index column will map to a table column
+        var column = columns.FirstOrDefault(c => c.ColumnId == indexColumn?.ColumnId);
+
+        // Check if the column is a key column and remove it from the available key columns in the stack
+        var key = keyStack.FirstOrDefault(f => f.ColumnId == indexColumn?.ColumnId);
+
+        if (key != null)
+        {
+            keyStack.Remove(key);
+        }
+
+        // If there is no index column found assume it's the key and take the next available key column from the stack
+        ColumnStructure? keyColumn = null;
+
+        if (column == null)
+        {
+            keyColumn = keyStack.Pop(k => k.DataType == typeInfo.DataType);
+        }
+
+        // The 2nd bit of the status field indicates if the column has been dropped
+        var isDropped = Convert.ToBoolean(layout.Status & 2);
+
+        var isUniqueifier = IsUniqueifier(layout.Status, structure.IndexType, typeInfo.DataType, leafOffset);
+
+        // The 5th bit of the status field indicates if the column is an include column
+        var isIncludeColumn = Convert.ToBoolean(indexColumn?.Status & 0x10);
+
+        string name;
+
+        if (isDropped)
+        {
+            name = "(DROPPED)";
+        }
+        else if (isUniqueifier)
+        {
+            name = "UNIQUIFIER";
+        }
+        else
+        {
+            // First choice is the mapped index column, then the table column, then "Unknown"
+            name = column?.Name ?? keyColumn?.ColumnName ?? $"Unknown column: {layout.ColumnId}";
+        }
+
+        // Is Key is defined by if the column has been found IN the index columns list or if the table column is a key column
+        var isKey = indexColumn?.KeyOrdinal > 0 || keyColumn?.IsKey == true;
+
+        var columnStructure = new IndexColumnStructure
+        {
+            ColumnId = layout.ColumnId,
+            ColumnName = name,
+            DataType = typeInfo.DataType,
+            LeafOffset = leafOffset,
+            NodeOffset = nodeOffset,
+            Precision = typeInfo.Precision,
+            DataLength = typeInfo.MaxLength,
+            Scale = typeInfo.Scale,
+            IsDropped = isDropped,
+            IsUniqueifier = isUniqueifier,
+            IsSparse = (layout.Status & 256) != 0,
+            NullBitIndex = (short)(layout.NullBit & 0xffff),
+            BitPosition = layout.BitPosition,
+            IsIncludeColumn = isIncludeColumn,
+            IndexColumnId = indexColumn?.IndexColumnId ?? 0,
+            IsKey = isKey,
+            IsIndexKey = indexColumn?.KeyOrdinal > 0
+        };
+
+        return columnStructure;
     }
 
     /// <summary>

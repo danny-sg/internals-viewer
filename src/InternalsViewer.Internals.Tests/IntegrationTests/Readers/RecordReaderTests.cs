@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Readers.Internals;
-using InternalsViewer.Internals.Services.Loaders.Records;
+using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Readers;
@@ -20,7 +20,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
       
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
@@ -40,7 +40,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
 
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
@@ -60,7 +60,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
 
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 
@@ -80,7 +80,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
 
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
 

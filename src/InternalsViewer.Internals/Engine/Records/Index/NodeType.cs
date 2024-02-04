@@ -2,6 +2,7 @@
 
 public enum NodeType
 {
-    Node = 1,
-    Leaf = 2
+    Node,
+    Leaf,
+    Root,
 }

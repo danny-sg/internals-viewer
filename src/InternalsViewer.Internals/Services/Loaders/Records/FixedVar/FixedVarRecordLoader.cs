@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Services.Loaders.Records.Fields;
 
-namespace InternalsViewer.Internals.Services.Loaders.Records;
+namespace InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 /// <summary>
 /// Loads a record in the FixedVar format
@@ -13,7 +13,7 @@ public abstract class FixedVarRecordLoader
     /// <summary>
     /// Loads Status Bits A, part of the two byte record header
     /// </summary>
-    protected static void LoadStatusBitsA(Internals.Engine.Records.FixedVarRecord record, byte[] data)
+    protected static void LoadStatusBitsA(FixedVarRecord record, byte[] data)
     {
         var statusA = data[record.Offset];
 
@@ -33,7 +33,7 @@ public abstract class FixedVarRecordLoader
         tags.AddIf("Has Variable Length Columns", record.HasVariableLengthColumns);
         tags.AddIf("Has Row Versioning", record.HasRowVersioning);
 
-        record.MarkProperty(nameof(Internals.Engine.Records.FixedVarRecord.StatusBitsA), record.Offset, 1, tags);
+        record.MarkProperty(nameof(FixedVarRecord.StatusBitsA), record.Offset, 1, tags);
     }
 
     /// <summary>

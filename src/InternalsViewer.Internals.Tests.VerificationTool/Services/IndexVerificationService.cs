@@ -5,26 +5,26 @@ using Microsoft.Data.SqlClient;
 using InternalsViewer.Internals.Tests.VerificationTool.Helpers;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Services.Loaders.Engine;
-using InternalsViewer.Internals.Services.Pages.Loaders;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
-using InternalsViewer.Internals.Services.Loaders.Records;
-using InternalsViewer.Internals.Services.Records;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Engine.Records.Index;
+using InternalsViewer.Internals.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 
 internal class IndexVerificationService(ILogger<IndexVerificationService> logger,
+                                        ObjectService objectService,
                                         ObjectPageListService objectPageListService,
                                         IDatabaseLoader databaseLoader,
                                         IPageService pageService,
                                         IRecordService recordService)
 {
     private ILogger<IndexVerificationService> Logger { get; } = logger;
+
+    private ObjectService ObjectService { get; } = objectService;
 
     private ObjectPageListService ObjectPageListService { get; } = objectPageListService;
 
@@ -34,13 +34,42 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
     private IRecordService RecordService { get; } = recordService;
 
-    public async Task VerifyIndex(int objectId, short indexId)
+    public async Task VerifyIndexes()
+    {
+        var database = await CreateDatabase();
+
+        var results = new List<VerificationResult>();
+
+        var indexes = await ObjectService.GetIndexes();
+
+        foreach (var index in indexes)
+        {
+            results.AddRange(await VerifyIndex(index.ObjectId, index.IndexId, database));
+        }
+
+        WriteSummary(results);
+    }
+
+    private void WriteSummary(List<VerificationResult> results)
+    {
+        WriteMessage($"Verification complete. {results.Count} result(s)");
+
+        WriteSuccess($"{results.Sum(r => r.PassCount)} passed");
+        WriteError($"{results.Sum(r => r.FailCount)} failed");
+    }
+
+    public async Task<List<VerificationResult>> VerifyIndex(int objectId, int indexId)
+    {
+        var database = await CreateDatabase();
+
+        return await VerifyIndex(objectId, indexId, database);
+    }
+
+    private async Task<List<VerificationResult>> VerifyIndex(int objectId, int indexId, DatabaseSource database)
     {
         var results = new List<VerificationResult>();
 
         WriteMessage($"Verifying index {objectId}.{indexId}");
-
-        var database = await CreateDatabase();
 
         var pages = await ObjectPageListService.GetPages(objectId, indexId, Engine.Pages.Enums.PageType.Index);
 
@@ -51,27 +80,20 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
             results.AddRange(await VerifyPage(page, database));
         }
 
-        WriteMessage($"Verification complete. {results.Count} result(s)");
-        WriteSuccess($"{results.Sum(r => r.PassCount)} passed");
-        WriteError($"{results.Sum(r => r.FailCount)} failed");
+        return results;
     }
 
     private async Task<List<VerificationResult>> VerifyPage(PageAddress page, DatabaseSource database)
     {
         var results = new List<VerificationResult>();
 
-        Logger.LogInformation($"Verifying page {page}");
-
         var databaseVersions = await GetDatabaseRows(page);
 
         var internalsVersions = await GetInternalsRows(page, database);
 
-        Logger.LogInformation($"Database version:  {databaseVersions.Count} row(s)");
-        Logger.LogInformation($"Internals version: {internalsVersions.Count} row(s)");
-
         if (databaseVersions.Count != internalsVersions.Count)
         {
-            Logger.LogError("Row count mismatch");
+            WriteError($"Row count mismatch, Database version: {databaseVersions.Count} vs Internals {internalsVersions.Count}");
         }
 
         foreach (var databaseVersion in databaseVersions)
@@ -104,17 +126,25 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
                 if (internalsField == null)
                 {
                     result.FailCount += 1;
-                    WriteError($"Field {sanitizedField} not found in Internals version");
+                    WriteError($"{result.PageAddress}:{result.Slot} - Field {sanitizedField} not found in Internals version");
                 }
                 else if (!internalsField.Value.Equals(field.Value, StringComparison.OrdinalIgnoreCase))
                 {
                     result.FailCount += 1;
-                    WriteError($"Field {field.Name} value mismatch");
+                    WriteError($"{result.PageAddress}:{result.Slot} Field {field.Name} value mismatch" +
+                               $" - Database: {field.Value ?? "(null)"} vs Internals: {internalsField.Value}");
                 }
                 else
                 {
                     result.PassCount += 1;
                 }
+            }
+
+            if (databaseVersion.Rid != null && databaseVersion.Rid != internalsVersion.Rid)
+            {
+                result.FailCount += 1;
+
+                WriteError($"{result.PageAddress}:{result.Slot} - RID mismatch - {databaseVersion.Rid} vs {internalsVersion.Rid}");
             }
 
             results.Add(result);
@@ -150,15 +180,13 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
         var connection = ServerConnectionFactory.Create(config => config.ConnectionString = connectionString);
 
-        var database = await DatabaseLoader.Load("AdventureWorks2022", connection);
+        var database = await DatabaseLoader.Load("TestDatabase", connection);
 
         return database;
     }
 
     private async Task<List<IndexRecord>> GetInternalsRows(PageAddress pageAddress, DatabaseSource database)
     {
-        Logger.LogInformation($"Getting index rows from Internals Viewer {pageAddress}");
-
         var page = await PageService.GetPage<IndexPage>(database, pageAddress);
 
         var rows = RecordService.GetIndexRecords(page);
@@ -172,8 +200,6 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
         try
         {
-            Logger.LogInformation($"Getting index rows from database {page} (DBCC PAGE version)");
-
             results.AddRange(await GetIndexRows(page));
         }
         catch (Exception e)
@@ -212,6 +238,7 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
         {
             var fields = Enumerable.Range(0, reader.FieldCount).Select(s => reader.GetName(s)).ToList();
 
+            RowIdentifier? rid = null;
 
             while (reader.Read())
             {
@@ -237,11 +264,43 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
                     offset++;
                 }
 
-                var values = new List<DatabaseIndexField>();
+                var values = new List<DatabaseField>();
 
                 for (var i = offset; i < reader.FieldCount - 2; i++)
                 {
-                    values.Add(new() { Name = reader.GetName(i), Value = reader.GetValue(i).ToString() });
+                    var name = reader.GetName(i);
+
+                    if (name == "HEAP RID")
+                    {
+                        var ridData = new byte[RowIdentifier.Size];
+
+                        reader.GetBytes(i, 0, ridData, 0, RowIdentifier.Size);
+
+                        rid = new RowIdentifier(ridData);
+                    }
+                    else
+                    {
+                        var value = reader.GetValue(i);
+
+                        var dataType = reader.GetDataTypeName(i);
+
+                        switch (dataType, reader.IsDBNull(i))
+                        {
+                            case (_, true):
+                                values.Add(new DatabaseField { Name = name, Value = string.Empty });
+                                break;
+                            case ("binary", _):
+                            case ("varbinary", _):
+                                values.Add(new DatabaseField { Name = name, Value = "0x" + StringHelpers.ToHexString((byte[])value) });
+                                break;
+                            case ("date", _):
+                                values.Add(new DatabaseField { Name = name, Value = $"{value:dd/MM/yyyy}" });
+                                break;
+                            default:
+                                values.Add(new DatabaseField { Name = name, Value = value?.ToString() });
+                                break;
+                        }
+                    }
                 }
 
                 var keyHash = reader.GetValue(reader.FieldCount - 2);
@@ -256,7 +315,8 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
                     ChildFileId = childFileId,
                     ChildPageId = childPageId,
                     Values = values,
-                    RowSize = rowSize
+                    RowSize = rowSize,
+                    Rid = rid
                 });
             }
 

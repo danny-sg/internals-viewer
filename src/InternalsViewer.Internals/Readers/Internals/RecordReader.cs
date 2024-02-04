@@ -4,18 +4,18 @@ using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
-using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Metadata.Structures;
+using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 namespace InternalsViewer.Internals.Readers.Internals;
 
-public class RecordReader(ILogger<RecordReader> logger, IPageService pageService, FixedVarRecord fixedVarRecord) : IRecordReader
+public class RecordReader(ILogger<RecordReader> logger, IPageService pageService, FixedVarDataRecordLoader fixedVarDataRecordLoader) : IRecordReader
 {
     public ILogger<RecordReader> Logger { get; } = logger;
 
     public IPageService PageService { get; } = pageService;
 
-    public FixedVarRecord FixedVarRecord { get; } = fixedVarRecord;
+    public FixedVarDataRecordLoader FixedVarDataRecordLoader { get; } = fixedVarDataRecordLoader;
 
     public async Task<List<DataRecord>> Read(DatabaseSource database, PageAddress startPage, TableStructure structure)
     {
@@ -34,7 +34,7 @@ public class RecordReader(ILogger<RecordReader> logger, IPageService pageService
                                 page.PageHeader.PageAddress.PageId, 
                                 offset);
 
-                return FixedVarRecord.Load(page, offset, structure);
+                return FixedVarDataRecordLoader.Load(page, offset, structure);
             }));
             
             var nextPage = page.PageHeader.NextPage;

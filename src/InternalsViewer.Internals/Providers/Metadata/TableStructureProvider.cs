@@ -72,7 +72,7 @@ public class TableStructureProvider
             }
             else if(isUniqueifer)
             {
-                name = "(Uniqueifer)";
+                name = "UNIQUIFIER";
             }
             else
             {

@@ -2,8 +2,7 @@
 using System.Data;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Helpers;
-using InternalsViewer.Internals.Services.Loaders.Records;
-using FixedVarRecord = InternalsViewer.Internals.Services.Loaders.Records.FixedVarRecord;
+using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records;
 
@@ -27,7 +26,7 @@ namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records;
 ///                LEFT JOIN sys.all_columns c ON column_id = partition_column_id AND c.object_id = p.object_id
 ///         WHERE  o.name = 'DataRecordLoaderTests_VariableFixed_NotNull'
 /// </remarks>
-public class FixedVarRecordTests(ITestOutputHelper testOutputHelper)
+public class FixedVarDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutput { get; set; } = testOutputHelper;
 
@@ -110,7 +109,7 @@ public class FixedVarRecordTests(ITestOutputHelper testOutputHelper)
             NullBitIndex = 3
         });
 
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
@@ -185,7 +184,7 @@ public class FixedVarRecordTests(ITestOutputHelper testOutputHelper)
             NullBitIndex = 2
         });
 
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
@@ -294,7 +293,7 @@ public class FixedVarRecordTests(ITestOutputHelper testOutputHelper)
             NullBitIndex = 4
         });
 
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
@@ -321,7 +320,7 @@ public class FixedVarRecordTests(ITestOutputHelper testOutputHelper)
 
         var structure = new TableStructure(100);
 
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
 
@@ -392,7 +391,7 @@ public class FixedVarRecordTests(ITestOutputHelper testOutputHelper)
         structure.Columns.Add(new ColumnStructure { ColumnName = "Column3", ColumnId = 3, DataType = SqlDbType.VarChar, LeafOffset = -2, Precision = 0, NullBitIndex = 3 });
         structure.Columns.Add(new ColumnStructure { ColumnName = "Column4", ColumnId = 4, DataType = SqlDbType.VarChar, LeafOffset = -3, Precision = 0, NullBitIndex = 4 });
 
-        var loader = new FixedVarRecord(TestLogger.GetLogger<FixedVarRecord>(TestOutput));
+        var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
         var record = loader.Load(new DataPage { Data = data }, 0, structure);
     }
