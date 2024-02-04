@@ -5,7 +5,6 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{43A61A9A-21FE-418D-8DBC-7C741668B4A6}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
-		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}"
@@ -18,7 +17,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.Internals.T
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.UI.App", "InternalsViewer.UI.App\InternalsViewer.UI.App.csproj", "{4A460EA3-6C4E-4022-8E9C-7ED88B0A7EE6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.Internals.Tests.VerificationTool", "InternalsViewer.Internals.Tests.VerificationTool\InternalsViewer.Internals.Tests.VerificationTool.csproj", "{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternalsViewer.Internals.Tests.VerificationTool", "InternalsViewer.Internals.Tests.VerificationTool\InternalsViewer.Internals.Tests.VerificationTool.csproj", "{4DCF1138-2AA5-4F39-B88C-ECBCCBF61417}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -126,7 +125,7 @@ Global
 		{6287614D-C687-4E85-A883-921761ED700B} = {22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		VisualSVNWorkingCopyRoot = 
 		SolutionGuid = {12A1406C-1C68-4A7F-A0FF-E4E7A65AECAE}
+		VisualSVNWorkingCopyRoot = 
 	EndGlobalSection
 EndGlobal

@@ -9,28 +9,28 @@
     <models:MarkStyle x:Key="PageAddressMarkerStyle" ForeColour="LightBlue" BackColour="Green" Name="Page Address"/>
 
     <!--Header-->
-    <models:MarkStyle x:Key="AllocationUnitIdMarkerStyle" ForeColour="#D50000" BackColour="#EDE7F6" Name="Allocation Unit"/>
-
-    <models:MarkStyle x:Key="HeaderPageAddressMarkerStyle" ForeColour="Navy" BackColour="#EDE7F6" Name="Page Address"/>
-    <models:MarkStyle x:Key="PageTypeMarkerStyle" ForeColour="#C51162" BackColour="#E3F2FD" Name="Page Type"/>
-    <models:MarkStyle x:Key="NextPageMarkerStyle" ForeColour="#AA00FF" BackColour="#EDE7F6" Name="Next Page"/>
-    <models:MarkStyle x:Key="PreviousPageMarkerStyle" ForeColour="#6200EA" BackColour="#EDE7F6" Name="Previous Page"/>
-    <models:MarkStyle x:Key="InternalObjectIdMarkerStyle" ForeColour="#304FFE" BackColour="#BBDEFB" Name="Internal Object Id"/>
-    <models:MarkStyle x:Key="InternalIndexIdMarkerStyle" ForeColour="#2962FF" BackColour="#BBDEFB" Name="Internal Index Id"/>
-    <models:MarkStyle x:Key="IndexLevelMarkerStyle" ForeColour="#0277BD" BackColour="#E3F2FD" Name="Index Level"/>
-    <models:MarkStyle x:Key="SlotCountMarkerStyle" ForeColour="#004D40" BackColour="#E3F2FD" Name="Slot Count"/>
-    <models:MarkStyle x:Key="FixedLengthSizeMarkerStyle" ForeColour="#00C853" BackColour="#E3F2FD" Name="Fixed Length Size"/>
-    <models:MarkStyle x:Key="FreeCountMarkerStyle" ForeColour="#1B5E20" BackColour="#E3F2FD" Name="Free Count"/>
-    <models:MarkStyle x:Key="FreeDataOffsetMarkerStyle" ForeColour="#F9A825" BackColour="#E3F2FD" Name="Free Data Offset"/>
-    <models:MarkStyle x:Key="ReservedCountMarkerStyle" ForeColour="#827717" BackColour="#E3F2FD" Name="Reserved Count"/>
-    <models:MarkStyle x:Key="TransactionReservedMarkerStyle" ForeColour="#FF6D00" BackColour="#E3F2FD" Name="Transaction Reserved"/>
-    <models:MarkStyle x:Key="TornBitsMarkerStyle" ForeColour="#DD2C00" BackColour="#E3F2FD" Name="Torn Bits"/>
-    <models:MarkStyle x:Key="FlagBitsMarkerStyle" ForeColour="#212121" BackColour="#E3F2FD" Name="Flag Bits"/>
-    <models:MarkStyle x:Key="LsnMarkerStyle" ForeColour="#263238" BackColour="#E3F2FD" Name="LSN"/>
-    <models:MarkStyle x:Key="HeaderVersionMarkerStyle" ForeColour="#455A64" BackColour="#E3F2FD" Name="Header Version"/>
-    <models:MarkStyle x:Key="GhostRecordCountMarkerStyle" ForeColour="#546E7A" BackColour="#E3F2FD" Name="Ghost Record Count"/>
-    <models:MarkStyle x:Key="TypeFlagBitsMarkerStyle" ForeColour="#546E7A" BackColour="#E3F2FD" Name="Type Flag Bits"/>
-    <models:MarkStyle x:Key="InternalTransactionIdMarkerStyle" ForeColour="#6D4C41" BackColour="#E3F2FD" Name="Internal Transaction Id"/>
+    <models:MarkStyle x:Key="AllocationUnitIdMarkerStyle" ForeColour="#D50000" BackColour="#EDE7F6" Name="Allocation Unit" Ordinal="1"/>
+    <models:MarkStyle x:Key="PageTypeMarkerStyle" ForeColour="#C51162" BackColour="#E3F2FD" Name="Page Type" Ordinal="10"/>
+    <models:MarkStyle x:Key="HeaderPageAddressMarkerStyle" ForeColour="Navy" BackColour="#EDE7F6" Name="Page Address" Ordinal="21"/>
+    
+    <models:MarkStyle x:Key="NextPageMarkerStyle" ForeColour="#AA00FF" BackColour="#EDE7F6" Name="Next Page" Ordinal="22"/>
+    <models:MarkStyle x:Key="PreviousPageMarkerStyle" ForeColour="#6200EA" BackColour="#EDE7F6" Name="Previous Page" Ordinal="23"/>
+    <models:MarkStyle x:Key="InternalObjectIdMarkerStyle" ForeColour="#304FFE" BackColour="#BBDEFB" Name="Internal Object Id" Ordinal="31"/>
+    <models:MarkStyle x:Key="InternalIndexIdMarkerStyle" ForeColour="#2962FF" BackColour="#BBDEFB" Name="Internal Index Id" Ordinal="32"/>
+    <models:MarkStyle x:Key="IndexLevelMarkerStyle" ForeColour="#0277BD" BackColour="#E3F2FD" Name="Index Level" Ordinal="40"/>
+    <models:MarkStyle x:Key="SlotCountMarkerStyle" ForeColour="#004D40" BackColour="#E3F2FD" Name="Slot Count" Ordinal="50"/>
+    <models:MarkStyle x:Key="FixedLengthSizeMarkerStyle" ForeColour="#00C853" BackColour="#E3F2FD" Name="Fixed Length Size" Ordinal="60"/>
+    <models:MarkStyle x:Key="FreeCountMarkerStyle" ForeColour="#1B5E20" BackColour="#E3F2FD" Name="Free Count" Ordinal="70"/>
+    <models:MarkStyle x:Key="FreeDataOffsetMarkerStyle" ForeColour="#F9A825" BackColour="#E3F2FD" Name="Free Data Offset" Ordinal="80"/>
+    <models:MarkStyle x:Key="ReservedCountMarkerStyle" ForeColour="#827717" BackColour="#E3F2FD" Name="Reserved Count" Ordinal="90"/>
+    <models:MarkStyle x:Key="TransactionReservedMarkerStyle" ForeColour="#FF6D00" BackColour="#E3F2FD" Name="Transaction Reserved" Ordinal="100"/>
+    <models:MarkStyle x:Key="TornBitsMarkerStyle" ForeColour="#DD2C00" BackColour="#E3F2FD" Name="Torn Bits" Ordinal="110"/>
+    <models:MarkStyle x:Key="FlagBitsMarkerStyle" ForeColour="#212121" BackColour="#E3F2FD" Name="Flag Bits" Ordinal="120"/>
+    <models:MarkStyle x:Key="LsnMarkerStyle" ForeColour="#263238" BackColour="#E3F2FD" Name="Log Sequence Number" Ordinal="130"/>
+    <models:MarkStyle x:Key="HeaderVersionMarkerStyle" ForeColour="#455A64" BackColour="#E3F2FD" Name="Header Version" Ordinal="140"/>
+    <models:MarkStyle x:Key="GhostRecordCountMarkerStyle" ForeColour="#546E7A" BackColour="#E3F2FD" Name="Ghost Record Count" Ordinal="150"/>
+    <models:MarkStyle x:Key="TypeFlagBitsMarkerStyle" ForeColour="#546E7A" BackColour="#E3F2FD" Name="Type Flag Bits" Ordinal="160"/>
+    <models:MarkStyle x:Key="InternalTransactionIdMarkerStyle" ForeColour="#6D4C41" BackColour="#E3F2FD" Name="Internal Transaction Id" Ordinal="170"/>
 
     <!--FixedVar Format-->
 

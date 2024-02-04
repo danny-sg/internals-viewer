@@ -17,7 +17,7 @@
             <Grid>
                 <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
                                               Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
-                                              Size="{x:Bind Size, Mode=OneWay}" 
+                                              Size="{x:Bind Parent.ExtentCount, Mode=OneWay}" 
                                               Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
                                               SelectedLayer="{x:Bind Parent.SelectedLayer, Mode=OneWay}"
                                               FileId="{x:Bind FileId, Mode=OneWay}"

@@ -1,11 +1,35 @@
+
+
+# Internals Viewer 2024
+
+## Installation
+
+### Microsoft Store
+
+The easiest way to install and recieve automatic updates is to use the Microsoft Store.
+
+Click this link or search for Internals Viewer in the Microsoft Store:
+
 <a href="https://apps.microsoft.com/detail/Internals%20Viewer/9MSW42CQMK2V?launch=true
 	&mode=mini">
 	<img src="https://get.microsoft.com/images/en-gb%20dark.svg" width="200"/>
 </a>
 
-# Internals Viewer 2024
+### Manual Installation
 
->This is based on the codebase for Internals Viewer from 2007. The code has been upgraded to .NET Core 8 and I've started modernizing things. I'll hopefully be able to refactor and add testing to bring the 16 year old code back to life and up to scratch.
+The releases on GitHub are built from its source code.
+
+The application is packaged as an .msix file. Windows will only install a package that has been signed. The version from the Microsoft Store is signed with a Microsoft certificate as it has been through a verification process.
+
+The version on Github uses a self-signing certificate that needs to be installed first before the application is installed.
+
+The script `Install.ps1` installs the certificate and then installs the .msix package.
+
+Steps:
+1. Download the latest release artifacts from [Releases](https://github.com/danny-sg/internals-viewer/releases)
+2. Extract the files to a folder and navigate to \internals-viewer-msix-platform\artifacts\msix-package-platform\InternalsViewer.UI.App_version\
+3. Run `powershell -ExecutionPolicy Bypass -File Install.ps1`
+4. You will be prompted to install the certificate. Accept prompts to continue.
 
 ## Introduction
 
@@ -20,44 +44,3 @@ To get answers to these questions and to learn about internals if you want to se
 When I started doing this I found a couple of things. The first thing was it's not complicated! I was suprised at how accesible all of the information was. The second thing I found was the techniques to view internals were cumbersome. You have to query sys tables, take values and convert them from binary, run a DBCC command, view the results, follow to another page, run another command etc.
 
 Internals Viewer started to make it easier to navigate around the internals of a database and view the data structures. Over time it has implemented more of the interpretation to help with explanation of structures in the user interface.
-
-## Concepts
-
-# Pages
-
-Data[^1] is managed inside SQL Server with 8KB chunks of data called Pages. All pages have a 96 byte header that give detail about the page, including things like the page type and links to other pages.
-
-Pages types include allocation structures, index data, table data etc.
-
-[^1]: This applies to the MDF/NDF database files. Functionality such as the In-Memory OLTP use different data structures
-
-## Page Address
-
-Pages are identified with a page address in the format File Id:Page Id. This is where the page is located in the database (MDF/NDF) files.
-
-# Allocations
-
-![Extents and oages on the Allocation Map](/docs/images/readme/allocation-map-pages-and-extents.png)
-
-The first thing you see when you open Internals Viewer is the Allocation Map. This is a visualisation of the internal structures SQL Server uses to track the physical location of objects.
-
-Each block represents a page. Pages are tracked in groups of 8 pages called extents. An extent covers 64 KB in the file.
-
-The different colours in the Allocation Map represent different objects.
-
-Clicking on a page will open it in the Page Viewer.
-
-## Resources
-
-### Websites
-- [Paul S. Randal - In Recovery... Blog](https://www.sqlskills.com/blogs/paul/category/inside-the-storage-engine/)
-- [Microsoft Learn - Page and Extents Architecture Guide](https://learn.microsoft.com/en-us/sql/relational-databases/pages-and-extents-architecture-guide)
-
-### Books
-
-- [Microsoft SQL Server 2012 Internals (Developer Reference) by Kalen Delaney and Craig Freeman](https://www.amazon.co.uk/Microsoft-SQL-Server-2012-Internals-ebook/dp/B00JDMQJYC)
-
-## Future Development
-I've added a test winforms app to get it running. Once I've done a bit more refactoring I'll look into adding it in as a SSMS extension again.
-
-After that I'll look into if any new features since SQL Server 2008 can be added, for example if Column Store indexes.

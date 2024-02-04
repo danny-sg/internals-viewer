@@ -30,8 +30,7 @@
                            PointerMoved="AllocationCanvas_PointerMoved" 
                            PointerExited="AllocationCanvas_PointerExited"
                            PointerEntered="AllocationCanvas_PointerEntered"
-                           PointerPressed="AllocationCanvas_PointerPressed"
-                           />
+                           PointerPressed="AllocationCanvas_PointerPressed" />
 
         <ScrollBar Grid.Column="1" 
                    Orientation="Vertical" 

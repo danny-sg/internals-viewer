@@ -111,9 +111,6 @@
         <None Remove="Views\Connect\ConnectFilePage.xaml" />
         <None Remove="Views\Connect\ConnectServerPage.xaml" />
         <None Remove="Views\Connect\ConnectStartPage.xaml" />
-        <None Remove="Views\DatabaseView.xaml" />
-        <None Remove="Views\PageView.xaml" />
-        <None Remove="Views\SettingsPage.xaml" />
     </ItemGroup>
     <ItemGroup>
       <Content Include="Images\LargeTile.scale-100.png" />
@@ -265,6 +262,15 @@
       </None>
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Views\DatabaseView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </None>
+      <None Update="Views\PageView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </None>
+      <None Update="Views\SettingsPage.xaml">
+        <Generator>MSBuild:Compile</Generator>
       </None>
       <Page Update="Controls\CopyTextBlock.xaml">
         <Generator>MSBuild:Compile</Generator>
