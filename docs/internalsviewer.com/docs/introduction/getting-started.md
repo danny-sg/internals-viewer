@@ -33,8 +33,3 @@ When you open the application the Start page will bring up the different options
 - For Database either type in the name of the database or expand the drop down list to see a list of databases on the server
 - Click Connect
 
----
-next:
-  text: 'Database view'
-  link: '/introduction/database-view'
----

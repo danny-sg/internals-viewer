@@ -10,6 +10,10 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
     ],
+    docFooter: {
+      prev: false,
+      next: false,
+    },
 
     sidebar: [
       {

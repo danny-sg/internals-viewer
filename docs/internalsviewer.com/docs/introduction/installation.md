@@ -14,7 +14,3 @@ Steps:
 2. Extract the files to a folder and navigate to `\internals-viewer-msix-platform\artifacts\msix-package-platform\InternalsViewer.UI.App_version\`
 3. Run `powershell -ExecutionPolicy Bypass -File Install.ps1`
 - You will be prompted to install the certificate. Accept prompts to continue.
-
----
-next: false
----
