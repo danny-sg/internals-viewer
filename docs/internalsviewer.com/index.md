@@ -10,15 +10,8 @@ hero:
       text: Getting started
       link: /docs/introduction/getting-started
     - theme: alt
-      text: Technical details
-      link: /docs/technical-details/
+      text: Tutorial
+      link: /docs/tutorial/0-introduction
 
-features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
 ---
 

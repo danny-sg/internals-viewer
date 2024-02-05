@@ -1,4 +1,4 @@
-# Database View
+# Database view
 
 A database will open to the Database view.
 

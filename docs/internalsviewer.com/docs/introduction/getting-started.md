@@ -10,7 +10,7 @@ Internals Viewer will run on Windows 10/11 (version 17763.0 or higher).
 
 SQL Server 2022 or 2019 is required when connecting to a SQL Server database or file.
 
-You will need `sysadmin` permissions for a SQL Server connection, see [Permissions](/docs/introduction/permissions).
+`sysadmin` permissions are required for a SQL Server connection, see [Permissions](/docs/introduction/permissions).
 
 ## Installation
 
@@ -23,7 +23,6 @@ The easiest way to install Internals Viewer is to get it from the Microsoft Stor
 
 To install manually see [Installation](/docs/introduction/installation.md)
 
-
 ## Connecting
 
 When you open the application the Start page will bring up the different options to connect.
@@ -33,3 +32,9 @@ When you open the application the Start page will bring up the different options
 - Choose either Active Directory Integrated or SQL Password for the Authentication type
 - For Database either type in the name of the database or expand the drop down list to see a list of databases on the server
 - Click Connect
+
+---
+next:
+  text: 'Database view'
+  link: '/introduction/database-view'
+---

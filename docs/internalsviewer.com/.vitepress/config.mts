@@ -17,12 +17,19 @@ export default defineConfig({
         items: [
           { text: 'Getting Started', link: 'docs/introduction/getting-started' },
           { text: 'Installation', link: 'docs/introduction/installation' },
+          { text: 'Database', link: 'docs/introduction/database-view' },
+          { text: 'Page Viewer', link: 'docs/introduction/page-viewer' },
           { text: 'Background', link: 'docs/introduction/background' }
         ]
       },
       {
-        text: 'Concepts',
-        items: []
+        text: 'Tutorial',
+        items: [
+          { text: 'Introduction', link: 'docs/tutorial/0-introduction' },
+          { text: 'Connecting and allocations', link: 'docs/tutorial/1-connecting-and-allocations' },
+          { text: 'Viewing pages', link: 'docs/tutorial/2-viewing-pages' },
+          { text: 'Indexes', link: 'docs/tutorial/3-indexes' },
+        ]
       },
       {
         text: 'Reference',
