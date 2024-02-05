@@ -31,6 +31,11 @@ Steps:
 3. Run `powershell -ExecutionPolicy Bypass -File Install.ps1`
 4. You will be prompted to install the certificate. Accept prompts to continue.
 
+### Compatability
+
+- Windows 10 version 17763.0 or higher
+- Tested on SQL Server 2019 - 2022
+
 ## Introduction
 
 Internals Viewer is a visualisation tool for viewing the internals of the SQL Server Storage Engine.

@@ -1,14 +1,4 @@
-# Tutorial
-
-For this tutorial we will create a database from scratch. We'll run DDL (Data Definition Language) SQL to create objects, then run DML (Data Manipulation Language) SQL to insert and modify data to see the affect on the database storage internals.
-
-This tutorial will cover:
-
-- Viewing object allocations in the database
-- How to find object entry points
-- How to view pages
-- How to view records in pages
-- How pages are linked together
+# Connecting to a database
 
 ## Step 1 - Create the database
 
@@ -82,7 +72,7 @@ If you toggle the Tooltip button and put the cursor over the extent it will tell
 > [!NOTE]
 > The allocation status of each page is tracked by PFS (Page Free Space) pages. The PFS would show that only the first page of the extent is allocated. 
 >
->PFS status is not currently available on the allocations view but will be added in a future release.
+> The PFS can be added to the allocation map by toggling the PFS toolbar button. 
 
 ## Step 4 - Finding the data
 

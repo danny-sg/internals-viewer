@@ -33,3 +33,12 @@
 |<MarkerKey foreground="#ffffff" background="#B28D8A">00</MarkerKey>|Long Data Offset Array
 |<MarkerKey foreground="#ffffff" background="#735a6d">00</MarkerKey>|Long Data Cluster Array
 |<MarkerKey foreground="#00" background="#e2bbe8">00</MarkerKey>|Long Field Value
+
+## Sparse Vector
+
+|Key|Name|Description|
+|---|----|-----------|
+|<MarkerKey foreground="#ffffff" background="#7ea597">00</MarkerKey>|Sparse Columns
+|<MarkerKey foreground="#ffffff" background="#7ea597">00</MarkerKey>|Sparse Column Offsets
+|<MarkerKey foreground="#ffffff" background="#7ea597">00</MarkerKey>|Sparse Column Count
+|<MarkerKey foreground="#ffffff" background="#7ea597">00</MarkerKey>|Complex Header
