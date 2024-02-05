@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress'
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "Internals Viewer",
+  base: "/internals-viewer/",
   description: "Internals Viewer Documentation",
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
