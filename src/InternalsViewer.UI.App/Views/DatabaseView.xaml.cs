@@ -33,7 +33,7 @@ public sealed partial class DatabaseView
         var isChecked = sender is AppBarToggleButton { IsChecked: true };
         AllocationLayerGridRow.Height = isChecked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
-        if(isChecked)
+        if (isChecked)
         {
             AllocationLayerGrid.Height = Height / 2;
         }
@@ -41,16 +41,23 @@ public sealed partial class DatabaseView
 
     private void OnParentSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if(AllocationItemRepeater.ItemsSource is IList items)
+        if (AllocationItemRepeater.ItemsSource is IList items)
         {
             var itemCount = items.Count;
 
-            if(itemCount > 0)
+            if (itemCount > 0)
             {
                 var itemHeight = AllocationItemRepeater.ActualHeight / itemCount;
 
                 TabViewModel.AllocationMapHeight = itemHeight;
             }
         }
+    }
+
+    private void OnViewIndexClicked(object? sender, PageNavigationEventArgs e)
+    {
+        var pageAddress = new PageAddress(e.FileId, e.PageId);
+
+        WeakReferenceMessenger.Default.Send(new OpenIndexMessage(new OpenIndexRequest(TabViewModel.Database, pageAddress)));
     }
 }

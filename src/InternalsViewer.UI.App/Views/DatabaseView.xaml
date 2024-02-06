@@ -90,6 +90,7 @@
                                         x:Name="AllocationLayerGrid"
                                         SelectedLayer="{x:Bind TabViewModel.SelectedLayer, Mode=TwoWay}"
                                         PageClicked="OnPageSelected"
+                                        ViewIndexClicked="OnViewIndexClicked"
                                         Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
 
         <toolkit:GridSplitter Grid.Row="2"

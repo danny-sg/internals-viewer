@@ -116,6 +116,18 @@
                         </toolkit:DataGridTemplateColumn.CellTemplate>
                     </toolkit:DataGridTemplateColumn>
 
+                    <toolkit:DataGridTemplateColumn Header="View Index">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid>
+                                    <HyperlinkButton Content="View"
+                                                     Click="ViewIndexButton_Click"
+                                                     Style="{StaticResource PageAddressStyle}"
+                                                     Tag="{x:Bind RootPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
                 </toolkit:DataGrid.Columns>
             </toolkit:DataGrid>
         </Grid>

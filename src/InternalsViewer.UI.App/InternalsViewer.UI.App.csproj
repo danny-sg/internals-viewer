@@ -45,6 +45,7 @@
         <None Remove="Controls\CopyTextBlock.xaml" />
         <None Remove="Controls\ExceptionDialog.xaml" />
         <None Remove="Controls\HeaderTile.xaml" />
+        <None Remove="Controls\Index\IndexControl.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
         <None Remove="Controls\PageAddressTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
@@ -111,6 +112,7 @@
         <None Remove="Views\Connect\ConnectFilePage.xaml" />
         <None Remove="Views\Connect\ConnectServerPage.xaml" />
         <None Remove="Views\Connect\ConnectStartPage.xaml" />
+        <None Remove="Views\IndexView.xaml" />
     </ItemGroup>
     <ItemGroup>
       <Content Include="Images\LargeTile.scale-100.png" />
@@ -263,6 +265,12 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Views\IndexView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Controls\Index\IndexControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <None Update="Views\DatabaseView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </None>

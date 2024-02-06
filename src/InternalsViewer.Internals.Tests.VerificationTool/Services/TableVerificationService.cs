@@ -18,7 +18,7 @@ namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 internal class TableVerificationService(ILogger<TableVerificationService> logger,
                                         ObjectService objectService,
                                         ObjectPageListService objectPageListService,
-                                        IDatabaseLoader databaseLoader,
+                                        IDatabaseService databaseService,
                                         IPageService pageService,
                                         IRecordService recordService)
 {
@@ -28,7 +28,7 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
 
     private ObjectPageListService ObjectPageListService { get; } = objectPageListService;
 
-    private IDatabaseLoader DatabaseLoader { get; } = databaseLoader;
+    private IDatabaseService DatabaseService { get; } = databaseService;
 
     private IPageService PageService { get; } = pageService;
 
@@ -245,7 +245,7 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
 
         var connection = ServerConnectionFactory.Create(config => config.ConnectionString = connectionString);
 
-        var database = await DatabaseLoader.Load("AdventureWorks2022", connection);
+        var database = await DatabaseService.Load("AdventureWorks2022", connection);
 
         return database;
     }

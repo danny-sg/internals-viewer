@@ -16,9 +16,9 @@ namespace InternalsViewer.Internals.Services.Loaders.Engine;
 public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader recordReader)
     : IMetadataLoader
 {
-    public ILogger<MetadataLoader> Logger { get; } = logger;
+    private ILogger<MetadataLoader> Logger { get; } = logger;
 
-    public IRecordReader RecordReader { get; } = recordReader;
+    private IRecordReader RecordReader { get; } = recordReader;
 
     /// <summary>
     /// Builds the metadata for database from the raw page data

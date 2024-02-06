@@ -2,7 +2,6 @@
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
-using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
@@ -13,30 +12,27 @@ using InternalsViewer.Internals.Interfaces.Connections;
 namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
 /// <summary>
-/// Service responsible for loading Database information
+/// Service responsible for loading Databases
 /// </summary>
-public class DatabaseLoader(ILogger<DatabaseLoader> logger,
-                            IServerInfoProvider serverInfoProvider,
-                            IMetadataLoader metadataLoader,
-                            IPageService pageService,
-                            IAllocationChainService allocationChainService,
-                            IIamChainService iamChainService,
-                            IPfsChainService pfsChainService)
-    : IDatabaseLoader
+public class DatabaseService(ILogger<DatabaseService> logger,
+                             IMetadataLoader metadataLoader,
+                             IPageService pageService,
+                             IAllocationChainService allocationChainService,
+                             IIamChainService iamChainService,
+                             IPfsChainService pfsChainService)
+    : IDatabaseService
 {
-    public ILogger<DatabaseLoader> Logger { get; } = logger;
+    private ILogger<DatabaseService> Logger { get; } = logger;
 
-    public IServerInfoProvider ServerInfoProvider { get; } = serverInfoProvider;
+    private IMetadataLoader MetadataLoader { get; } = metadataLoader;
 
-    public IMetadataLoader MetadataLoader { get; } = metadataLoader;
+    private IPageService PageService { get; } = pageService;
 
-    public IPageService PageService { get; } = pageService;
+    private IAllocationChainService AllocationChainService { get; } = allocationChainService;
 
-    public IAllocationChainService AllocationChainService { get; } = allocationChainService;
+    private IIamChainService IamChainService { get; } = iamChainService;
 
-    public IIamChainService IamChainService { get; } = iamChainService;
-
-    public IPfsChainService PfsChainService { get; } = pfsChainService;
+    private IPfsChainService PfsChainService { get; } = pfsChainService;
 
     /// <summary>
     /// Create and load a Database object for the given database name

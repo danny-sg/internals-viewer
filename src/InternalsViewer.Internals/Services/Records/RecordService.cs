@@ -9,7 +9,12 @@ using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 namespace InternalsViewer.Internals.Services.Records;
 
-public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, FixedVarDataRecordLoader fixedVarDataRecordLoader, CdDataRecordLoader cdDataRecordLoader) : IRecordService
+/// <summary>
+/// Service responsible for loading records from pages
+/// </summary>
+public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader, 
+                           FixedVarDataRecordLoader fixedVarDataRecordLoader, 
+                           CdDataRecordLoader cdDataRecordLoader) : IRecordService
 {
     private FixedVarIndexRecordLoader FixedVarIndexRecordLoader { get; } = fixedVarIndexRecordLoader;
 

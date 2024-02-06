@@ -18,17 +18,17 @@ using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Database;
 
-public class DatabaseTabViewModelFactory(IDatabaseLoader databaseLoader)
+public class DatabaseTabViewModelFactory(IDatabaseService databaseService)
 {
-    private IDatabaseLoader DatabaseLoader { get; } = databaseLoader;
+    private IDatabaseService DatabaseService { get; } = databaseService;
 
     public DatabaseTabViewModel Create(DatabaseSource database)
-        => new(database, DatabaseLoader);
+        => new(database, DatabaseService);
 }
 
-public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseLoader databaseLoader): TabViewModel
+public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService): TabViewModel
 {
-    private IDatabaseLoader DatabaseLoader { get; } = databaseLoader;
+    private IDatabaseService DatabaseService { get; } = databaseService;
 
     [ObservableProperty]
     private DatabaseSource database = database;
@@ -100,7 +100,7 @@ public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseLoad
     [RelayCommand]
     private async Task Refresh()
     {
-        Database = await DatabaseLoader.Load(database.Name, database.Connection);
+        Database = await DatabaseService.Load(database.Name, database.Connection);
 
         Load(Database.Name);
     }

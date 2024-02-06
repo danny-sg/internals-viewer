@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers.Server;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Readers.Pages;
+using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Internals.Services.Loaders.Chains;
 using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders.Engine;
@@ -29,14 +30,12 @@ public static class ServiceRegistration
     {
         services.AddTransient<IPageReader, QueryPageReader>();
 
-        services.AddTransient<IServerInfoProvider, ServerInfoProvider>();
-
         //        services.AddTransient<ITransactionLogProvider, TransactionLogProvider>();
         services.AddTransient<IBufferPoolInfoProvider, BufferPoolInfoProvider>();
 
         services.AddTransient<IMetadataLoader, MetadataLoader>();
 
-        services.AddTransient<IDatabaseLoader, DatabaseLoader>();
+        services.AddTransient<IDatabaseService, DatabaseService>();
 
         services.AddTransient<IRecordReader, RecordReader>();
 
@@ -55,6 +54,8 @@ public static class ServiceRegistration
         services.AddTransient<FixedVarDataRecordLoader>();
         services.AddTransient<CdDataRecordLoader>();
         services.AddTransient<FixedVarIndexRecordLoader>();
+
+        services.AddTransient<IndexService>();
 
         RegisterPageParsers(services);
     }

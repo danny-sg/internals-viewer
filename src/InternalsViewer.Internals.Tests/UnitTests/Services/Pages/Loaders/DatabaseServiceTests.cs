@@ -13,7 +13,7 @@ using Moq;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Pages.Loaders;
 
-public class DatabaseLoaderTests(ITestOutputHelper testOutput)
+public class DatabaseServiceTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutputHelper { get; set; } = testOutput;
 
@@ -22,25 +22,10 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
     public async Task Get_Database_Adds_Allocation_Chains()
     {
         // Create a database service using mocks
-        var databaseInfoProvider = new Mock<IServerInfoProvider>();
         var allocationChainService = new Mock<IAllocationChainService>();
         var iamChainService = new Mock<IIamChainService>();
         var pfsChainService = new Mock<IPfsChainService>();
         var pageService = new Mock<IPageService>();
-
-        var databaseInfo = new DatabaseSummary
-        {
-            DatabaseId = 1,
-            Name = "TestDatabase",
-            State = DatabaseState.Online,
-            CompatibilityLevel = 170,
-        };
-
-        var files = new List<DatabaseFile>
-        {
-            new(1) { Name = "File 1.mdf", PhysicalName = @"C:\TestDatabase_1.mdf", Size = 8192 },
-            new(2) { Name = "File 2.mdf", PhysicalName = @"C:\TestDatabase_2.mdf", Size = 8192 },
-        };
 
         var metadata = new InternalMetadata();
 
@@ -52,8 +37,7 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
         allocationChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>(), It.IsAny<PageType>()))
             .ReturnsAsync(new AllocationChain());
 
-        var databaseService = new DatabaseLoader(TestLogger.GetLogger<DatabaseLoader>(TestOutputHelper),
-                                                  databaseInfoProvider.Object,
+        var databaseService = new DatabaseService(TestLogger.GetLogger<DatabaseService>(TestOutputHelper),
                                                   metadataProvider.Object,
                                                   pageService.Object,
                                                   allocationChainService.Object,
@@ -80,7 +64,6 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
     public async Task Get_Database_Adds_Pfs_Chains()
     {
         // Create a database service using mocks
-        var databaseInfoProvider = new Mock<IServerInfoProvider>();
 
         var bootPageService = new Mock<IPageService>();
         var allocationChainService = new Mock<IAllocationChainService>();
@@ -91,8 +74,7 @@ public class DatabaseLoaderTests(ITestOutputHelper testOutput)
         pfsChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>()))
             .ReturnsAsync(new PfsChain());
 
-        var databaseService = new DatabaseLoader(TestLogger.GetLogger<DatabaseLoader>(testOutput),
-                                                  databaseInfoProvider.Object,
+        var databaseService = new DatabaseService(TestLogger.GetLogger<DatabaseService>(testOutput),
                                                   metadataLoader.Object,
                                                   bootPageService.Object,
                                                   allocationChainService.Object,
