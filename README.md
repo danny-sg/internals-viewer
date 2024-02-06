@@ -6,7 +6,7 @@ Internals Viewer is a visualisation tool for viewing the internals of the SQL Se
 
 ### Microsoft Store
 
-The easiest way to install and recieve automatic updates is to use the Microsoft Store.
+The easiest way to install and receive automatic updates is to use the Microsoft Store.
 
 Click this link or search for Internals Viewer in the Microsoft Store:
 
@@ -31,7 +31,13 @@ Steps:
 3. Run `powershell -ExecutionPolicy Bypass -File Install.ps1`
 4. You will be prompted to install the certificate. Accept prompts to continue.
 
-### Compatability
+### Compatibility
 
 - Windows 10 version 17763.0 or higher
 - Tested on SQL Server 2019 - 2022
+
+### Technologies
+
+- C#
+- .NET 8.0
+- Windows App SDK (WinUI 3)
