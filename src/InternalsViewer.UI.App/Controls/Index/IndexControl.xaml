@@ -10,11 +10,8 @@
     mc:Ignorable="d">
 
     <Grid>
-        <skiaSharp:SKXamlCanvas x:Name="IndexCanvas"
-                           Grid.Column="0"                       
-                           PaintSurface="IndexCanvas_PaintSurface" 
-                           Hwe
-                           IgnorePixelScaling="True">
-        </skiaSharp:SKXamlCanvas>
+        <ScrollViewer x:Name="IndexScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <Canvas x:Name="IndexCanvas" Width="3000" Height="3000"/>
+        </ScrollViewer>
     </Grid>
 </UserControl>
