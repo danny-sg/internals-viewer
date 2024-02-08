@@ -44,6 +44,8 @@ public sealed partial class IndexControl
     private readonly SKPaint hoverPagePaint;
     private readonly SKPaint linePaint;
 
+    private float leafWidth = 0;
+
     private readonly List<(float X, float Y, PageAddress PageAddress)> nodePositions = new();
 
     private List<PageAddress> hoverNodes = new();
@@ -81,7 +83,7 @@ public sealed partial class IndexControl
             Style = SKPaintStyle.Stroke,
             Color = SKColors.IndianRed,
             IsAntialias = true,
-            StrokeWidth = 2f
+            StrokeWidth = 1f
         };
     }
 
@@ -97,70 +99,139 @@ public sealed partial class IndexControl
 
         Debug.Print($"Level Count: {levelCount}");
 
-        var totalWidth = (levelNodeCounts[levelCount] * (NodeWidth + HorizontalMargin)) + (HorizontalMargin * 2);
-
-        IndexCanvas.Width = totalWidth;
-        // IndexCanvas.Height = totalHeight;
-
+        // Draw levels from the bottom up
         for (var i = levelCount; i >= 0; i--)
         {
-            DrawLevel(i, e.Surface.Canvas, Nodes, totalWidth, levelNodeCounts);
+            var width = DrawLevel(i, i == levelCount, e.Surface.Canvas, Nodes, levelNodeCounts);
+
+            if (i == levelCount)
+            {
+                leafWidth = width;
+            }
         }
+
+        IndexCanvas.Width = leafWidth;
     }
 
-    private void DrawLevel(int level,
-                           SKCanvas canvas,
-                           List<IndexNode> nodes,
-                           float totalWidth,
-                           Dictionary<int, int> levelNodeCounts)
+    /// <summary>
+    /// Draws a level of nodes
+    /// </summary>
+    /// <remarks>
+    /// Levels are drawn from the bottom up as the layout is based on the widest part of the tree with the most nodes.
+    /// 
+    /// The indexes come out flat and wide, so if necessary the last level is organised into rows and columns.
+    /// 
+    /// Nodes are placed vertically per VerticalNodeCount but if the parent is different a new column is started.
+    /// </remarks>
+    private float DrawLevel(int level,
+                            bool isFirstLevel,
+                            SKCanvas canvas,
+                            List<IndexNode> nodes,
+                            Dictionary<int, int> levelNodeCounts)
     {
+        var verticalNodeCount = isFirstLevel ? 10 : 1;
+
         Debug.Print($"Level 1: {level}, Count: {levelNodeCounts[level]}");
 
         var levelWidth = levelNodeCounts[level] * (NodeWidth + HorizontalMargin);
 
         float nextLevelStartX = 0;
 
-        if (level > 0)
-        {
-            var nextLevelWidth = levelNodeCounts[level - 1] * (NodeWidth + HorizontalMargin);
-
-            nextLevelStartX = (totalWidth - nextLevelWidth) / 2;
-        }
-
-        var startX = (totalWidth - levelWidth) / 2;
-
-        var y = GetNodeY(level);
+        var startX = isFirstLevel ? HorizontalMargin : (leafWidth - levelWidth) / 2;
 
         var levelNodes = nodes.Where(n => n.Level == level).ToList();
 
-        var n = 0;
+        var column = 1;
+        var row = 1;
+
+        IndexNode? previousNode = null;
 
         foreach (var node in levelNodes)
         {
-            var x = startX + GetNodeX(n);
+            if (previousNode != null && !previousNode.Parents.SequenceEqual(node.Parents))
+            {
+                // Start a new column, leaving a gap of a column as the parent node has changed
+                row = 1;
+                column += 2;
+            }
+            else if (row % verticalNodeCount == 0)
+            {
+                // Start a new column
+                row = 1;
+                column++;
+            }
+            else
+            {
+                // Move to the next row
+                row++;
+            }
+
+            var y = GetNodeY(level, row - 1);
+
+            var x = startX + GetNodeX(column - 1);
 
             nodePositions.Add((X: x, Y: y, node.PageAddress));
 
             if (selectedNodes.Any(h => h == node.PageAddress))
             {
-                DrawNode(canvas, x, y, hoverPagePaint, node.PageAddress.ToString());
+                DrawIndexPage(canvas, x, y, hoverPagePaint, node.PageAddress.ToString());
             }
             else if (hoverNodes.Any(h => h == node.PageAddress))
             {
-                DrawNode(canvas, x, y, hoverPagePaint, node.PageAddress.ToString());
+                DrawIndexPage(canvas, x, y, hoverPagePaint, node.PageAddress.ToString());
             }
             else
             {
-                DrawNode(canvas, x, y, pagePaint, node.PageAddress.ToString());
+                DrawIndexPage(canvas, x, y, pagePaint, node.PageAddress.ToString());
             }
 
-            DrawLines(canvas, node, x, y, nextLevelStartX);
-
-            n++;
+            previousNode = node;
         }
+
+        if (level > 0)
+        {
+            var nextLevelWidth = levelNodeCounts[level - 1] * (NodeWidth + HorizontalMargin);
+
+            nextLevelStartX = (leafWidth - nextLevelWidth) / 2;
+        }
+
+        // Second pass for the lines
+        previousNode = null;
+        column = 1;
+        row = 1;
+
+        foreach (var node in levelNodes)
+        {
+            if (previousNode != null && !previousNode.Parents.SequenceEqual(node.Parents))
+            {
+                // Start a new column, leaving a gap of a column as the parent node has changed
+                row = 1;
+                column += 2;
+            }
+            else if (row % verticalNodeCount == 0)
+            {
+                // Start a new column
+                row = 1;
+                column++;
+            }
+            else
+            {
+                // Move to the next row
+                row++;
+            }
+
+            var y = GetNodeY(level, row - 1);
+            var x = startX + GetNodeX(column - 1);
+
+            DrawLines(canvas, node, row, x, y, nextLevelStartX);
+
+            previousNode = node;
+        }
+
+        return startX + GetNodeX(column);
     }
 
-    private void DrawLines(SKCanvas canvas, IndexNode node, float x, float y, float nextLevelStartX)
+    private void DrawLines(SKCanvas canvas, IndexNode node, int row, float x, float y, float nextLevelStartX)
     {
         // Draws line(s) to parent node(s)
         //
@@ -174,16 +245,16 @@ public sealed partial class IndexControl
         {
             var parentOrdinal = Nodes.First(n => n.PageAddress == parent).Ordinal;
 
-            var parentX = nextLevelStartX + GetNodeX(parentOrdinal - 1);
+            var parentX = nextLevelStartX + GetNodeX(parentOrdinal);
 
             var y1Line1 = y + PageHeight / 2;
             var x2Line1 = x - HorizontalMargin / 2;
 
-            var y2Line2 = y - PageHeight / 2;
+            var y2Line2 = GetNodeY(node.Level - 1, 0) + PageHeight + (VerticalMargin / 4f);
 
             var x2Line3 = parentX + (NodeWidth / 2);
 
-            var y2Line4 = GetNodeY(node.Level - 1) + PageHeight;
+            var y2Line4 = GetNodeY(node.Level - 1, 0) + PageHeight;
 
             var path = new SKPath();
 
@@ -193,30 +264,41 @@ public sealed partial class IndexControl
             path.LineTo(x2Line3, y2Line2);
             path.LineTo(x2Line3, y2Line4);
 
-            
             canvas.DrawPath(path, linePaint);
         }
     }
 
     private float GetNodeX(int n) => (NodeWidth + HorizontalMargin) * n;
 
-    private float GetNodeY(int level) => PageHeight + VerticalMargin * level;
+    private float GetNodeY(int level, int row) => (PageHeight + VerticalMargin * level) + (PageHeight + VerticalMargin * row);
 
-    private void DrawNode(SKCanvas canvas, float x, float y, SKPaint paint, string label)
+    private void DrawIndexPage(SKCanvas canvas, float x, float y, SKPaint paint, string label)
     {
         var rect = new SKRect(x, y, x + NodeWidth, y + PageHeight);
 
+        paint.Style = SKPaintStyle.Fill;
+        paint.Color = SKColors.White;
+
         canvas.DrawRect(rect, paint);
 
-        if (!string.IsNullOrEmpty(label))
-        {
-            var textPaint = new SKPaint
-            {
-                Color = SKColors.Black,
-                TextSize = 10 * Zoom
-            };
+        paint.Style = SKPaintStyle.Stroke;
+        paint.Color = SKColors.Gray;
+        paint.StrokeWidth = 1;
 
-            canvas.DrawText(label, x - 2, y + PageHeight + 12, textPaint);
+        canvas.DrawRect(rect, paint);
+
+        var verticalMargin = PageHeight / 6;
+        var horizontalMargin = NodeWidth * .1f;
+
+        paint.Color = SKColors.LightGray;
+
+        for (var i = 1; i < 6; i++)
+        {
+            canvas.DrawLine(x + horizontalMargin,
+                            y + verticalMargin * i,
+                            x + NodeWidth - horizontalMargin,
+                            y + verticalMargin * i
+                            , paint);
         }
     }
 

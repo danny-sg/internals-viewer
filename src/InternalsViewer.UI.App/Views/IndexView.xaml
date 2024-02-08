@@ -8,8 +8,8 @@
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     PointerWheelChanged="IndexView_PointerWheelChanged"
     mc:Ignorable="d">
-    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-        <ScrollView x:Name="IndexScrollView" ContentOrientation="Horizontal">
+    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <ScrollView x:Name="IndexScrollView" ContentOrientation="Both" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
             <index:IndexControl 
                 Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
