@@ -23,6 +23,18 @@ public sealed partial class IndexControl
                                       typeof(IndexControl),
                                       new PropertyMetadata(1F, OnPropertyChanged));
 
+    public PageAddress? HoverPageAddress
+    {
+        get => (PageAddress?)GetValue(HoverPageAddressProperty);
+        set => SetValue(HoverPageAddressProperty, value);
+    }
+
+    public static readonly DependencyProperty HoverPageAddressProperty
+        = DependencyProperty.Register(nameof(HoverPageAddress),
+                                      typeof(PageAddress?),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
+
     private float IndexPageWidth => 20 * Zoom;
     private float PageHeight => 30 * Zoom;
     private float HorizontalMargin => 20 * Zoom;
@@ -45,8 +57,7 @@ public sealed partial class IndexControl
 
     private readonly List<(IndexNode Node, float X, float Y, int Row, int Column)> nodePositions = new();
 
-    private List<PageAddress> hoverNodes = new();
-    private List<PageAddress> selectedNodes = new();
+    private float[] levelOffsets = Array.Empty<float>();
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -105,7 +116,7 @@ public sealed partial class IndexControl
 
     private float GetNodeX(int n) => (IndexPageWidth + HorizontalMargin) * n;
 
-    private float GetNodeY(int level, int row) => (PageHeight + VerticalMargin * level) + (PageHeight + VerticalMargin * row);
+    private float GetNodeY(int level, int row) => PageHeight + VerticalMargin * level + (PageHeight + VerticalMargin * row);
 
     private void BuildIndexTree()
     {
@@ -117,6 +128,8 @@ public sealed partial class IndexControl
         }
 
         var levelCount = Nodes.Max(n => n.Level);
+
+        levelOffsets = new float[levelCount + 1];
 
         for (var i = levelCount; i >= 0; i--)
         {
@@ -180,6 +193,8 @@ public sealed partial class IndexControl
 
         var startX = (maxWidth - levelWidth) / 2;
         var nextLevelStartX = (maxWidth - nextLevelWidth) / 2;
+
+        levelOffsets[level] = startX;
 
         var levelNodes = nodePositions.Where(n => n.Node.Level == level).ToList();
 
@@ -290,10 +305,33 @@ public sealed partial class IndexControl
 
         var isClick = e.Pointer.IsInContact;
 
-        var node = nodePositions.FirstOrDefault(n => position.X >= n.X
-                                                     && position.X <= n.X + IndexPageWidth
+        var level = nodePositions.FirstOrDefault(n => position.Y >= n.Y && position.Y <= n.Y + PageHeight).Node?.Level;
+
+        if(level is null)
+        {
+            return;
+        }
+
+        var xOffset = levelOffsets[level.Value];
+                                                 
+        var node = nodePositions.FirstOrDefault(n => position.X >= xOffset + n.X
+                                                     && position.X <= xOffset + n.X + IndexPageWidth
                                                      && position.Y >= n.Y
                                                      && position.Y <= n.Y + PageHeight);
+
+        if (node.Node is not null)
+        {
+            TooltipPopup.IsOpen = true;
+            HoverPageAddress = node.Node.PageAddress;
+
+            TooltipPopup.HorizontalOffset = position.X + 10;
+            TooltipPopup.VerticalOffset = position.Y + 10;
+        }
+        else
+        {
+            TooltipPopup.IsOpen = false;
+            HoverPageAddress = null;
+        }
 
     }
 

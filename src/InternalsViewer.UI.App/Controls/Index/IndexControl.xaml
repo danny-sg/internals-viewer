@@ -9,7 +9,16 @@
     xmlns:skiaSharp="using:SkiaSharp.Views.Windows"
     SizeChanged="UserControl_SizeChanged"
     mc:Ignorable="d">
-
+    <UserControl.Resources>
+        <Style x:Key="TooltipValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style x:Key="TooltipKeyStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,4,4" />
+        </Style>
+    </UserControl.Resources>
     <Grid HorizontalAlignment="Stretch">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
@@ -34,18 +43,56 @@
                    Orientation="Vertical" 
                    Maximum="100" 
                    Minimum="0" 
-                   Value="0" 
-            
+                   Value="0"          
                    IndicatorMode="MouseIndicator"
                    Scroll="ScrollBar_OnScroll"/>
         <ScrollBar x:Name="HorizontalScrollBar" 
                    Grid.Column="0" 
                    Grid.Row="1"
                    Orientation="Horizontal" 
-                   Maximum="1000" 
+                   Maximum="100" 
                    Minimum="0" 
                    Value="0" 
                    IndicatorMode="MouseIndicator"
                    Scroll="ScrollBar_OnScroll"/>
+        <Popup x:Name="TooltipPopup"
+               Grid.Row="0" Grid.Column="0"
+               DesiredPlacement="Auto"
+               ShouldConstrainToRootBounds="False"
+               PlacementTarget="{x:Bind IndexCanvas}"
+               IsOpen="False">
+            <Grid>
+                <Border x:Name="ShadowTarget" />
+                <Border x:Name="SelectionInfoPopupBorder"
+                        CornerRadius="1">
+                    <Border.Background>
+                        <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" Opacity="0.9"/>
+                    </Border.Background>
+                    <Grid Padding="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" 
+                                   Grid.Column="0"
+                                   Style="{StaticResource TooltipKeyStyle}">
+                            Page
+                        </TextBlock>
+                        <TextBlock Grid.Row="0" 
+                                   Grid.Column="1"
+                                   x:Name="PageAddressTextBox" 
+                                   Style="{StaticResource TooltipValueStyle}"
+                                   Text="{x:Bind HoverPageAddress, Mode=OneWay}"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Popup>
     </Grid>
 </UserControl>
