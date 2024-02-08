@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
 using InternalsViewer.Internals.Engine.Address;
+using System.Collections.Generic;
 
 namespace InternalsViewer.UI.App.ViewModels.Index;
 
@@ -23,11 +24,14 @@ public partial class IndexTabViewModel(IndexService indexService, DatabaseSource
     private DatabaseSource Database { get; } = database;
 
     [ObservableProperty]
-    private IndexNode? rootNode;
+    private float zoom = 1;
+
+    [ObservableProperty]
+    private List<IndexNode> nodes = new();
 
     public async Task LoadIndex(PageAddress rootPage)
     {
-        RootNode = await IndexService.GetNodes(Database, rootPage);
+        Nodes = await IndexService.GetNodes(Database, rootPage);
 
         Name = "Index: " + rootPage; 
     }   

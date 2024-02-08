@@ -13,38 +13,56 @@ public class IndexService(IPageService pageService, IRecordService recordService
 
     private IRecordService RecordService { get; } = recordService;
 
-    public async Task<IndexNode> GetNodes(DatabaseSource database, PageAddress rootPage)
+    public async Task<List<IndexNode>> GetNodes(DatabaseSource database, PageAddress rootPage)
     {
-        var result = await GetIndexNodes(database, rootPage, 0);
+        var nodes = new List<IndexNode>();
 
-        return result;
+        var rootNode = new IndexNode(rootPage) { Ordinal = 1 };
+
+        nodes.Add(rootNode);
+
+        await GetIndexNodes(nodes, database, rootPage, null, 0);
+
+        return nodes;
     }
 
-    private async Task<IndexNode> GetIndexNodes(DatabaseSource database,
-                                                PageAddress rootPage,
-                                                int level)
+    private async Task GetIndexNodes(ICollection<IndexNode> nodes,
+                                     DatabaseSource database,
+                                     PageAddress pageAddress,
+                                     PageAddress? parentPageAddress,
+                                     int level)
     {
-        var node = new IndexNode(rootPage);
 
-        node.Level = level;
+        var node = nodes.FirstOrDefault(n => n.PageAddress == pageAddress);
 
-        var page = await PageService.GetPage<IndexPage>(database, rootPage);
-
-        var records = RecordService.GetIndexRecords(page);
-
-        var downPagePointers = records.Select(r => r.DownPagePointer)
-                                      .Where(p => p != PageAddress.Empty)
-                                      .Distinct()
-                                      .ToList();
-
-        if (page.PageHeader.Level >= 1)
+        if (node is null)
         {
-            foreach (var childNode in downPagePointers)
-            {
-                node.Children.Add(await GetIndexNodes(database, childNode, level + 1));
-            }
+            node = new IndexNode(pageAddress) { Level = level, Ordinal = nodes.Count(n => n.Level == level) + 1 };
+            nodes.Add(node);
         }
 
-        return node;
+        if (parentPageAddress != null && !node.Parents.Contains(parentPageAddress.Value))
+        {
+            node.Parents.Add(parentPageAddress.Value);
+        }
+
+        var page = await PageService.GetPage(database, pageAddress);
+
+        if (page is IndexPage indexPage)
+        {
+            var records = RecordService.GetIndexRecords(indexPage);
+
+            var downPagePointers = records.Select(r => r.DownPagePointer)
+                                          .Where(p => p != PageAddress.Empty)
+                                          .ToList();
+
+            if (page.PageHeader.Level >= 1)
+            {
+                foreach (var childNode in downPagePointers)
+                {
+                    await GetIndexNodes(nodes, database, childNode, pageAddress, level + 1);
+                }
+            }
+        }
     }
 }

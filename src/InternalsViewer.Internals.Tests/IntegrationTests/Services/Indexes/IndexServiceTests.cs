@@ -32,7 +32,7 @@ public class IndexServiceTests(ITestOutputHelper testOutput)
 
         var database = await databaseService.Load("TestDatabase", connection);
 
-        var result = await service.GetNodes(database, 72057594055098368);
+        var result = await service.GetNodes(database, new PageAddress(1,1688));
 
     }
 }
