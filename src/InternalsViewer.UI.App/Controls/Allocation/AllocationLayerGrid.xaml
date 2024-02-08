@@ -116,10 +116,10 @@
                         </toolkit:DataGridTemplateColumn.CellTemplate>
                     </toolkit:DataGridTemplateColumn>
 
-                    <toolkit:DataGridTemplateColumn Header="View Index">
+                    <toolkit:DataGridTemplateColumn Header="Index">
                         <toolkit:DataGridTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
-                                <Grid>
+                                <Grid HorizontalAlignment="Center">
                                     <HyperlinkButton Content="View"
                                                      Click="ViewIndexButton_Click"
                                                      Style="{StaticResource PageAddressStyle}"
