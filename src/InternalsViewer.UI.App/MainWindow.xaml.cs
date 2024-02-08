@@ -49,7 +49,7 @@ public sealed partial class MainWindow
                       MainViewModel mainViewModel,
                       PageTabViewModelFactory pageTabViewModelFactory,
                       DatabaseTabViewModelFactory databaseTabViewModelFactory,
-                      ConnectServerViewModelFactory connectServerViewModelFactory, 
+                      ConnectServerViewModelFactory connectServerViewModelFactory,
                       IndexTabViewModelFactory indexTabViewModelFactory)
     {
         Title = "Internals Viewer";
@@ -125,7 +125,7 @@ public sealed partial class MainWindow
         {
             var result = await ShowPasswordDialog();
 
-            if(string.IsNullOrEmpty(result))
+            if (string.IsNullOrEmpty(result))
             {
                 return false;
             }
@@ -189,11 +189,11 @@ public sealed partial class MainWindow
         return true;
     }
 
-    private async Task<bool> OpenIndex(DatabaseSource database,PageAddress rootPageAddress)
+    private async Task<bool> OpenIndex(DatabaseSource database, PageAddress rootPageAddress)
     {
         var viewModel = IndexTabViewModelFactory.Create(database);
 
-        await viewModel.LoadIndex(rootPageAddress);
+        viewModel.RootPage = rootPageAddress;
 
         var content = new IndexView();
 

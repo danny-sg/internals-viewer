@@ -7,14 +7,31 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     PointerWheelChanged="IndexView_PointerWheelChanged"
+    Loaded="UserControl_Loaded"
     mc:Ignorable="d">
     <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{ThemeResource LayerFillColorDefaultBrush}">
-        <ScrollView x:Name="IndexScrollView" ContentOrientation="Both" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-            <index:IndexControl 
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <CommandBar IsOpen="False" 
+                    DefaultLabelPosition="Right"
+                    Grid.Row="0"
+                    HorizontalAlignment="Left"
+                    Background="Transparent"
+                    BorderThickness="0,0,0,10" 
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <AppBarButton Label="Refresh" Icon="Refresh" />
+        </CommandBar>
+        <ProgressRing HorizontalAlignment="Left"
+                      Grid.Row="1"
+                      IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"/>
+        <index:IndexControl 
+                Grid.Row="2"
                 Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
                 VerticalAlignment="Stretch"
                 HorizontalAlignment="Stretch"/>
-        </ScrollView>
     </Grid>
 </UserControl>

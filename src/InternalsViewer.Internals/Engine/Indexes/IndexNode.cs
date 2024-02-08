@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +11,8 @@ namespace InternalsViewer.Internals.Engine.Indexes;
 public class IndexNode(PageAddress pageAddress)
 {
     public PageAddress PageAddress { get; set; } = pageAddress;
+
+    public PageType PageType { get; set; }
 
     public List<PageAddress> Parents { get; set; } = new();
 

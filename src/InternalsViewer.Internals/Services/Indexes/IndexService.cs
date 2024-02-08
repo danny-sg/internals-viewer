@@ -37,7 +37,11 @@ public class IndexService(IPageService pageService, IRecordService recordService
 
         if (node is null)
         {
-            node = new IndexNode(pageAddress) { Level = level, Ordinal = nodes.Count(n => n.Level == level) + 1 };
+            node = new IndexNode(pageAddress)
+            {
+                Level = level,
+                Ordinal = nodes.Count(n => n.Level == level) + 1
+            };
             nodes.Add(node);
         }
 
@@ -47,6 +51,8 @@ public class IndexService(IPageService pageService, IRecordService recordService
         }
 
         var page = await PageService.GetPage(database, pageAddress);
+
+        node.PageType = page.PageHeader.PageType;
 
         if (page is IndexPage indexPage)
         {

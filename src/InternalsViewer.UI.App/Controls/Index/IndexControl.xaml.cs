@@ -6,6 +6,7 @@ using SkiaSharp;
 using SkiaSharp.Views.Windows;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Address;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
@@ -91,6 +92,11 @@ public sealed partial class IndexControl
     {
         nodePositions.Clear();
 
+        if(!Nodes.Any())
+        {
+            return;
+        }
+
         e.Surface.Canvas.Clear(SKColors.Transparent);
 
         var levelCount = Nodes.Max(n => n.Level);
@@ -110,7 +116,23 @@ public sealed partial class IndexControl
             }
         }
 
-        IndexCanvas.Width = leafWidth;
+        SetScrollbars(leafWidth);
+    }
+
+    private void SetScrollbars(float maxWidth)
+    {
+        if(maxWidth < IndexCanvas.ActualSize.X)
+        {
+            HorizontalScrollBar.Visibility = Visibility.Collapsed;
+            HorizontalScrollBar.Value = 0;
+        }
+        else
+        {
+            HorizontalScrollBar.Visibility = Visibility.Visible;
+            HorizontalScrollBar.Maximum = maxWidth;
+            HorizontalScrollBar.SmallChange = 1;
+            HorizontalScrollBar.LargeChange = NodeWidth + HorizontalMargin;
+        }
     }
 
     /// <summary>
@@ -129,6 +151,9 @@ public sealed partial class IndexControl
                             List<IndexNode> nodes,
                             Dictionary<int, int> levelNodeCounts)
     {
+        var xScrollOffset = (float)HorizontalScrollBar.Value;
+        var yScrollOffset = (float)VerticalScrollBar.Value;
+
         var verticalNodeCount = isFirstLevel ? 10 : 1;
 
         Debug.Print($"Level 1: {level}, Count: {levelNodeCounts[level]}");
@@ -166,23 +191,15 @@ public sealed partial class IndexControl
                 row++;
             }
 
-            var y = GetNodeY(level, row - 1);
+            var y = GetNodeY(level, row - 1) - yScrollOffset;
 
-            var x = startX + GetNodeX(column - 1);
+            var x = startX + GetNodeX(column - 1) - xScrollOffset;
 
             nodePositions.Add((X: x, Y: y, node.PageAddress));
 
-            if (selectedNodes.Any(h => h == node.PageAddress))
+            if(canvas.LocalClipBounds.Contains(x, y))
             {
-                DrawIndexPage(canvas, x, y, hoverPagePaint, node.PageAddress.ToString());
-            }
-            else if (hoverNodes.Any(h => h == node.PageAddress))
-            {
-                DrawIndexPage(canvas, x, y, hoverPagePaint, node.PageAddress.ToString());
-            }
-            else
-            {
-                DrawIndexPage(canvas, x, y, pagePaint, node.PageAddress.ToString());
+                DrawIndexPage(canvas, x, y, pagePaint);
             }
 
             previousNode = node;
@@ -220,10 +237,12 @@ public sealed partial class IndexControl
                 row++;
             }
 
-            var y = GetNodeY(level, row - 1);
-            var x = startX + GetNodeX(column - 1);
+            var y = GetNodeY(level, row - 1) - yScrollOffset;
+            var x = startX + GetNodeX(column - 1) - xScrollOffset;
 
-            DrawLines(canvas, node, row, x, y, nextLevelStartX);
+            var renderNextLevelStartX = nextLevelStartX - xScrollOffset;
+
+            DrawLines(canvas, node, row, x, y, renderNextLevelStartX, xScrollOffset, yScrollOffset);
 
             previousNode = node;
         }
@@ -231,7 +250,7 @@ public sealed partial class IndexControl
         return startX + GetNodeX(column);
     }
 
-    private void DrawLines(SKCanvas canvas, IndexNode node, int row, float x, float y, float nextLevelStartX)
+    private void DrawLines(SKCanvas canvas, IndexNode node, int row, float x, float y, float nextLevelStartX, float xScrollOffset, float yScrollOffset)
     {
         // Draws line(s) to parent node(s)
         //
@@ -250,11 +269,11 @@ public sealed partial class IndexControl
             var y1Line1 = y + PageHeight / 2;
             var x2Line1 = x - HorizontalMargin / 2;
 
-            var y2Line2 = GetNodeY(node.Level - 1, 0) + PageHeight + (VerticalMargin / 4f);
+            var y2Line2 = GetNodeY(node.Level - 1, 0) + PageHeight + (VerticalMargin / 4f) - yScrollOffset;
 
             var x2Line3 = parentX + (NodeWidth / 2);
 
-            var y2Line4 = GetNodeY(node.Level - 1, 0) + PageHeight;
+            var y2Line4 = GetNodeY(node.Level - 1, 0) + PageHeight - yScrollOffset;
 
             var path = new SKPath();
 
@@ -272,7 +291,7 @@ public sealed partial class IndexControl
 
     private float GetNodeY(int level, int row) => (PageHeight + VerticalMargin * level) + (PageHeight + VerticalMargin * row);
 
-    private void DrawIndexPage(SKCanvas canvas, float x, float y, SKPaint paint, string label)
+    private void DrawIndexPage(SKCanvas canvas, float x, float y, SKPaint paint)
     {
         var rect = new SKRect(x, y, x + NodeWidth, y + PageHeight);
 
@@ -353,6 +372,16 @@ public sealed partial class IndexControl
             parents = Nodes.Where(n => parents.Contains(n.PageAddress)).SelectMany(n => n.Parents).ToList();
         }
 
+        IndexCanvas.Invalidate();
+    }
+
+    private void VerticalScrollBar_OnScroll(object sender, ScrollEventArgs e)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void ScrollBar_OnScroll(object sender, ScrollEventArgs e)
+    {
         IndexCanvas.Invalidate();
     }
 }

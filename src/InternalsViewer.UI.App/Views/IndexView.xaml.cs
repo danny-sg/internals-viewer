@@ -36,9 +36,14 @@ public sealed partial class IndexView
         }
         else
         {
-            var offset = IndexScrollView.HorizontalOffset - (e.GetCurrentPoint(this).Properties.MouseWheelDelta * 4);
+            //var offset = IndexScrollView.HorizontalOffset - (e.GetCurrentPoint(this).Properties.MouseWheelDelta * 4);
 
-            IndexScrollView.ScrollTo(horizontalOffset: offset, 0);
+            //IndexScrollView.ScrollTo(horizontalOffset: offset, 0);
         }
+    }
+
+    private async void UserControl_Loaded(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.Initialize();
     }
 }

@@ -9,12 +9,42 @@
     xmlns:skiaSharp="using:SkiaSharp.Views.Windows"
     mc:Ignorable="d">
 
-    <Grid>
+    <Grid HorizontalAlignment="Stretch">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
         <skiaSharp:SKXamlCanvas x:Name="IndexCanvas"
-                                Grid.Column="0"                       
+                                Grid.Column="0"      
+                                Grid.Row="0"
                                 PaintSurface="IndexCanvas_PaintSurface" 
                                 IgnorePixelScaling="True"
+                                VerticalAlignment="Stretch"
+                                HorizontalAlignment="Stretch"
                                 PointerPressed="IndexCanvas_PointerAction"
                                 PointerMoved="IndexCanvas_PointerAction"/>
+        <ScrollBar x:Name="VerticalScrollBar" 
+                   Grid.Column="1" 
+                   Grid.Row="0"
+                   Orientation="Vertical" 
+                   Maximum="100" 
+                   Minimum="0" 
+                   Value="0" 
+            
+                   IndicatorMode="MouseIndicator"
+                   Scroll="ScrollBar_OnScroll"/>
+        <ScrollBar x:Name="HorizontalScrollBar" 
+                   Grid.Column="0" 
+                   Grid.Row="1"
+                   Orientation="Horizontal" 
+                   Maximum="1000" 
+                   Minimum="0" 
+                   Value="0" 
+                   IndicatorMode="MouseIndicator"
+                   Scroll="ScrollBar_OnScroll"/>
     </Grid>
 </UserControl>
