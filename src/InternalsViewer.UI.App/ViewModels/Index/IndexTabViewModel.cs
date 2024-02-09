@@ -22,7 +22,7 @@ public partial class IndexTabViewModel(IndexService indexService, DatabaseSource
 {
     private IndexService IndexService { get; } = indexService;
 
-    private DatabaseSource Database { get; } = database;
+    public DatabaseSource Database { get; } = database;
 
     [ObservableProperty]
     private float zoom = 1;
@@ -53,6 +53,9 @@ public partial class IndexTabViewModel(IndexService indexService, DatabaseSource
 
     [ObservableProperty]
     private string indexType = string.Empty;
+
+    [ObservableProperty]
+    private bool isTooltipEnabled;
 
     partial void OnRootPageChanged(PageAddress value)
     {

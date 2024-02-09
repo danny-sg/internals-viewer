@@ -549,6 +549,8 @@ public class PageNavigationEventArgs(short fileId, int pageId) : EventArgs
     public int PageId { get; } = pageId;
 
     public ushort? Slot { get; init; }
+
+    public string Tag { get; set; } = string.Empty;
 }
 
 public class ExtentLayout

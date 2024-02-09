@@ -121,6 +121,7 @@
                             <DataTemplate x:DataType="models:AllocationLayer">
                                 <Grid HorizontalAlignment="Center">
                                     <HyperlinkButton Content="View"
+                                                     Visibility="{x:Bind IsIndex, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                                      Click="ViewIndexButton_Click"
                                                      Style="{StaticResource PageAddressStyle}"
                                                      Tag="{x:Bind RootPage}"/>

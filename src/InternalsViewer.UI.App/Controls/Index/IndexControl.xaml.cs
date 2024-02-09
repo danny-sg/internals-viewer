@@ -6,11 +6,15 @@ using SkiaSharp;
 using SkiaSharp.Views.Windows;
 using InternalsViewer.Internals.Engine.Address;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using InternalsViewer.UI.App.Controls.Allocation;
+using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
 public sealed partial class IndexControl
 {
+    public event EventHandler<PageNavigationEventArgs>? PageClicked;
+
     public float Zoom
     {
         get => (float)GetValue(ZoomProperty);
@@ -23,6 +27,18 @@ public sealed partial class IndexControl
                                       typeof(IndexControl),
                                       new PropertyMetadata(1F, OnPropertyChanged));
 
+    public PageAddress? SelectedPageAddress
+    {
+        get => (PageAddress?)GetValue(SelectedPageAddressProperty);
+        set => SetValue(SelectedPageAddressProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedPageAddressProperty
+        = DependencyProperty.Register(nameof(SelectedPageAddress),
+                                      typeof(PageAddress?),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
+
     public PageAddress? HoverPageAddress
     {
         get => (PageAddress?)GetValue(HoverPageAddressProperty);
@@ -31,9 +47,21 @@ public sealed partial class IndexControl
 
     public static readonly DependencyProperty HoverPageAddressProperty
         = DependencyProperty.Register(nameof(HoverPageAddress),
-                                      typeof(PageAddress?),
-                                      typeof(IndexControl),
-                                      new PropertyMetadata(null, OnPropertyChanged));
+            typeof(PageAddress?),
+            typeof(IndexControl),
+            new PropertyMetadata(null, OnPropertyChanged));
+
+    public bool IsTooltipEnabled
+    {
+        get => (bool)GetValue(IsTooltipEnabledProperty);
+        set => SetValue(IsTooltipEnabledProperty, value);
+    }
+
+    public static readonly DependencyProperty IsTooltipEnabledProperty
+        = DependencyProperty.Register(nameof(IsTooltipEnabled),
+            typeof(bool),
+            typeof(AllocationControl),
+            null);
 
     private float IndexPageWidth => 20 * Zoom;
     private float PageHeight => 30 * Zoom;
@@ -54,6 +82,7 @@ public sealed partial class IndexControl
 
     private readonly SKPaint indexPagePaint;
     private readonly SKPaint linePaint;
+    private readonly SKPaint shadowPaint;
 
     private readonly List<(IndexNode Node, float X, float Y, int Row, int Column)> nodePositions = new();
 
@@ -63,7 +92,10 @@ public sealed partial class IndexControl
     {
         var control = (IndexControl)d;
 
-        control.BuildIndexTree();
+        if (e.Property == ZoomProperty || e.Property == NodesProperty)
+        {
+            control.BuildIndexTree();
+        }
 
         control.IndexCanvas.Invalidate();
     }
@@ -71,6 +103,20 @@ public sealed partial class IndexControl
     public IndexControl()
     {
         InitializeComponent();
+
+        shadowPaint = new SKPaint
+        {
+
+            Style = SKPaintStyle.Fill,
+            Color = new SKColor(0, 0, 0, 70),
+            IsAntialias = true,
+            StrokeWidth = 1
+        };
+
+        float sigmaX = 5;
+        float sigmaY = 5;
+
+        shadowPaint.ImageFilter = SKImageFilter.CreateBlur(sigmaX, sigmaY);
 
         indexPagePaint = new SKPaint
         {
@@ -118,6 +164,9 @@ public sealed partial class IndexControl
 
     private float GetNodeY(int level, int row) => PageHeight + VerticalMargin * level + (PageHeight + VerticalMargin * row);
 
+    /// <summary>
+    /// Build a virtual structure of the tree per level
+    /// </summary>
     private void BuildIndexTree()
     {
         nodePositions.Clear();
@@ -189,7 +238,8 @@ public sealed partial class IndexControl
 
         var levelWidth = nodePositions.Where(n => n.Node.Level == level).Max(n => n.X) + IndexPageWidth;
 
-        var nextLevelWidth = level > 0 ? nodePositions.Where(n => n.Node.Level == level - 1).Max(n => n.X) + IndexPageWidth : 0;
+        var nextLevelWidth = level > 0 ? nodePositions.Where(n => n.Node.Level == level - 1)
+                                                      .Max(n => n.X) + IndexPageWidth : 0;
 
         var startX = (maxWidth - levelWidth) / 2;
         var nextLevelStartX = (maxWidth - nextLevelWidth) / 2;
@@ -204,27 +254,55 @@ public sealed partial class IndexControl
 
             var renderY = (node.Y - yScrollOffset);
 
+            // Only draw the page if it is visible
             if (canvas.LocalClipBounds.Contains(renderX, renderY))
             {
                 DrawIndexPage(canvas, renderX, renderY, indexPagePaint);
+            }
+
+            var renderNextLevelStartX = (nextLevelStartX - xScrollOffset);
+
+            DrawLines(canvas, node.Node, renderX, renderY, renderNextLevelStartX, yScrollOffset, false);
+        }
+
+        // Draw selected page lines on top of existing lines
+        if (SelectedPageAddress != null)
+        {
+            var node = nodePositions.FirstOrDefault(n => n.Node.PageAddress == SelectedPageAddress
+                                                         && n.Node.Level == level);
+
+            if (node.Node != null)
+            {
+                var renderX = (startX + node.X - xScrollOffset);
+
+                var renderY = (node.Y - yScrollOffset);
 
                 var renderNextLevelStartX = (nextLevelStartX - xScrollOffset);
 
-                DrawLines(canvas, node.Node, renderX, renderY, renderNextLevelStartX, yScrollOffset);
+                DrawLines(canvas, node.Node, renderX, renderY, renderNextLevelStartX, yScrollOffset, true);
             }
         }
     }
 
+    /// <summary>
+    /// Draws line(s) to parent node(s)
+    /// </summary>
     private void DrawLines(SKCanvas canvas,
-                           IndexNode node, float x, float y, float nextLevelStartX, float yScrollOffset)
+                           IndexNode node,
+                           float x, float y,
+                           float nextLevelStartX,
+                           float yScrollOffset,
+                           bool isSelected)
     {
-        // Draws line(s) to parent node(s)
-        //
         //            X         Parent Node 
         //            | Line 4
         //      ------  Line 3  
         //      |       Line 2
         //      --X     Line 1  Node    
+
+        linePaint.Color = isSelected ? SKColors.Green : SKColors.Gray;
+        linePaint.StrokeWidth = isSelected ? 4 : 1;
+        linePaint.StrokeJoin = SKStrokeJoin.Round;
 
         foreach (var parent in node.Parents)
         {
@@ -255,18 +333,20 @@ public sealed partial class IndexControl
 
     private void DrawIndexPage(SKCanvas canvas, float x, float y, SKPaint paint)
     {
-        var rect = new SKRect(x, y, x + IndexPageWidth, y + PageHeight);
+        var indexPageRect = new SKRect(x, y, x + IndexPageWidth, y + PageHeight);
+        var shadowRect = new SKRect(x + 5, y + 5, x + IndexPageWidth, y + PageHeight);
 
         paint.Style = SKPaintStyle.Fill;
         paint.Color = SKColors.White;
 
-        canvas.DrawRect(rect, paint);
+        canvas.DrawRect(shadowRect, shadowPaint);
+        canvas.DrawRect(indexPageRect, paint);
 
         paint.Style = SKPaintStyle.Stroke;
         paint.Color = SKColors.Gray;
         paint.StrokeWidth = 1;
 
-        canvas.DrawRect(rect, paint);
+        canvas.DrawRect(indexPageRect, paint);
 
         var verticalMargin = PageHeight / 6;
         var horizontalMargin = IndexPageWidth * .1f;
@@ -292,47 +372,16 @@ public sealed partial class IndexControl
         }
         else
         {
+            var previousValue = HorizontalScrollBar.Maximum;
+
             HorizontalScrollBar.Visibility = Visibility.Visible;
-            HorizontalScrollBar.Maximum = maxWidth;
-            HorizontalScrollBar.SmallChange = 1;
-            HorizontalScrollBar.LargeChange = IndexPageWidth + HorizontalMargin;
+            HorizontalScrollBar.Maximum = maxWidth - IndexCanvas.ActualWidth;
+
+            if (previousValue <= 1)
+            {
+                HorizontalScrollBar.Value = HorizontalScrollBar.Maximum / 2;
+            }
         }
-    }
-
-    private void IndexCanvas_PointerAction(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        var position = e.GetCurrentPoint(this).Position;
-
-        var isClick = e.Pointer.IsInContact;
-
-        var level = nodePositions.FirstOrDefault(n => position.Y >= n.Y && position.Y <= n.Y + PageHeight).Node?.Level;
-
-        if(level is null)
-        {
-            return;
-        }
-
-        var xOffset = levelOffsets[level.Value];
-                                                 
-        var node = nodePositions.FirstOrDefault(n => position.X >= xOffset + n.X
-                                                     && position.X <= xOffset + n.X + IndexPageWidth
-                                                     && position.Y >= n.Y
-                                                     && position.Y <= n.Y + PageHeight);
-
-        if (node.Node is not null)
-        {
-            TooltipPopup.IsOpen = true;
-            HoverPageAddress = node.Node.PageAddress;
-
-            TooltipPopup.HorizontalOffset = position.X + 10;
-            TooltipPopup.VerticalOffset = position.Y + 10;
-        }
-        else
-        {
-            TooltipPopup.IsOpen = false;
-            HoverPageAddress = null;
-        }
-
     }
 
     private void ScrollBar_OnScroll(object sender, ScrollEventArgs e)
@@ -344,11 +393,70 @@ public sealed partial class IndexControl
     {
         if (nodePositions.Any())
         {
-            SetScrollbars(nodePositions.Max(n => n.X) + IndexPageWidth);
+            SetScrollbars(nodePositions.Max(n => n.X) + IndexPageWidth + (HorizontalMargin * 2));
         }
     }
-}
 
+    private void IndexCanvas_OnPointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        TooltipPopup.IsOpen = false;
+    }
+
+    private void IndexCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var position = e.GetCurrentPoint(this).Position;
+
+        var node = GetIndexNodeAtPosition(position.X, position.Y);
+
+        SelectedPageAddress = node?.PageAddress;
+
+        IndexCanvas.Invalidate();
+    }
+
+    private void IndexCanvas_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        var position = e.GetCurrentPoint(this).Position;
+        var node = GetIndexNodeAtPosition(position.X, position.Y);
+
+        if (node is not null)
+        {
+            HoverPageAddress = node.PageAddress;
+
+            TooltipPopup.HorizontalOffset = position.X + 10;
+            TooltipPopup.VerticalOffset = position.Y + 10;
+            TooltipPopup.IsOpen = true;
+        }
+        else
+        {
+            TooltipPopup.IsOpen = false;
+            HoverPageAddress = null;
+        }
+    }
+
+    private IndexNode? GetIndexNodeAtPosition(double x, double y)
+    {
+        // Find the level first as the level offsets are used to center the tree
+        var level = nodePositions.FirstOrDefault(n => y >= n.Y && y <= n.Y + PageHeight).Node?.Level;
+
+        if (level is null)
+        {
+            return null;
+        }
+
+        var xScrollOffset = (float)HorizontalScrollBar.Value;
+        var yScrollOffset = (float)VerticalScrollBar.Value;
+
+        var xOffset = levelOffsets[level.Value] - xScrollOffset;
+        var yOffset = yScrollOffset;
+
+        var node = nodePositions.FirstOrDefault(n => x >= xOffset + n.X
+                                                     && x <= xOffset + n.X + IndexPageWidth
+                                                     && y >= yOffset + n.Y
+                                                     && y <= yOffset + n.Y + PageHeight);
+
+        return node.Node;
+    }
+}
 public class ViewIndexEventArgs(long allocationUnitId) : EventArgs
 {
     public long AllocationUnitId { get; } = allocationUnitId;

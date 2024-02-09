@@ -3,7 +3,9 @@ using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
 using Windows.UI.Core;
-using Microsoft.UI.Xaml.Controls;
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.Views;
 
@@ -34,16 +36,17 @@ public sealed partial class IndexView
                 ViewModel.Zoom = newZoom;
             }
         }
-        else
-        {
-            //var offset = IndexScrollView.HorizontalOffset - (e.GetCurrentPoint(this).Properties.MouseWheelDelta * 4);
-
-            //IndexScrollView.ScrollTo(horizontalOffset: offset, 0);
-        }
     }
 
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
         await ViewModel.Initialize();
+    }
+
+    private void IndexControl_PageClicked(object sender, Controls.Allocation.PageNavigationEventArgs e)
+    {
+        var pageAddress = new PageAddress(e.FileId, e.PageId);
+
+        WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
     }
 }

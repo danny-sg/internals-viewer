@@ -6,12 +6,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
+    xmlns:controls="using:InternalsViewer.UI.App.Controls"
     PointerWheelChanged="IndexView_PointerWheelChanged"
     Loaded="UserControl_Loaded"
     mc:Ignorable="d">
     <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
@@ -20,17 +20,101 @@
                     Grid.Row="0"
                     HorizontalAlignment="Left"
                     Background="Transparent"
-                    BorderThickness="0,0,0,10" 
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    BorderThickness="1" 
+                    BorderBrush="Blue">
+            <AppBarToggleButton  Label="Tooltip" IsChecked="{x:Bind ViewModel.IsTooltipEnabled, Mode=TwoWay}" >
+                <AppBarToggleButton.Icon>
+                    <FontIcon Glyph="&#xE759;"/>
+                </AppBarToggleButton.Icon>
+            </AppBarToggleButton>
             <AppBarButton Label="Refresh" Icon="Refresh" />
+            <AppBarSeparator />
+            <AppBarElementContainer>
+                <Grid Margin="8" Padding="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0">
+                        <TextBlock x:Name="ObjectName"
+                     
+                         Margin="0,0,10,0"  
+                         Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}" />
+                        <Grid 
+                         Margin="0"
+                         Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                            <TextBlock x:Name="ObjectIndexType"
+                             Margin="0"  
+                             Foreground="BlueViolet"
+                             Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0">
+                        <TextBlock x:Name="IndexName"
+                         Margin="0,0,10,0"  
+                         FontWeight="Bold"
+                         Text="{x:Bind ViewModel.IndexName, Mode=OneWay}" />
+                        <Grid Margin="0"
+                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                            <TextBlock x:Name="IndexType"
+                             Margin="0"  
+                             Foreground="DarkGreen"
+                             Text="{x:Bind ViewModel.IndexType, Mode=OneWay}" />
+                        </Grid >
+                    </StackPanel>
+
+                    <TextBlock x:Name="ObjectIdNameTextBlock"
+                     Margin="14,0,0,0"  
+                     Grid.Row="0"
+                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                     Grid.Column="1"
+                     Text="Object Id" />
+
+                    <TextBlock x:Name="IndexIdNameTextBlock"
+                     Margin="14,0,0,0" 
+                     Grid.Row="1"
+                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                     Grid.Column="1"
+                     Text="Index Id" />
+
+                    <controls:CopyTextBlock x:Name="ObjectIdTextBlock"
+                         Margin="14,0,0,0"  
+                         Grid.Row="0"
+                         Grid.Column="2"
+                         Value="{x:Bind ViewModel.ObjectId, Mode=OneWay}" />
+
+                    <controls:CopyTextBlock x:Name="IndexIdTextBlock"
+                         Margin="14,0,0,0"  
+                         Grid.Row="1"
+                         Grid.Column="2"
+                         Value="{x:Bind ViewModel.IndexId, Mode=OneWay}" />
+                </Grid>
+            </AppBarElementContainer>
         </CommandBar>
-        <ProgressRing HorizontalAlignment="Left"
-                      Grid.Row="1"
-                      IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"/>
+        <StackPanel Grid.Row="1" 
+                    Padding="10"
+                    VerticalAlignment="Stretch" 
+                    HorizontalAlignment="Center"
+                    
+                    Orientation="Horizontal"
+                    Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}">
+            <ProgressRing HorizontalAlignment="Left"
+                          IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"/>
+            <TextBlock Margin="10,0,0,0">Loading Index...</TextBlock>
+        </StackPanel>
         <index:IndexControl 
-                Grid.Row="2"
+                x:Name="IndexControl"
+                Grid.Row="1"
+                Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                 Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
+                IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
+                PageClicked="IndexControl_PageClicked"
                 VerticalAlignment="Stretch"
                 HorizontalAlignment="Stretch"/>
     </Grid>
