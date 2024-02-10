@@ -11,7 +11,6 @@
     x:Name="Root"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <CollectionViewSource x:Name="LayersCollectionViewSource" Source="{x:Bind Layers}"/>
         <Style x:Key="PageAddressStyle" TargetType="HyperlinkButton">
             <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
             <Setter Property="FontSize" Value="12"/>
@@ -116,6 +115,19 @@
                         </toolkit:DataGridTemplateColumn.CellTemplate>
                     </toolkit:DataGridTemplateColumn>
 
+                    <toolkit:DataGridTemplateColumn Header="Index">
+                        <toolkit:DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid HorizontalAlignment="Center">
+                                    <HyperlinkButton Content="View"
+                                                     Visibility="{x:Bind IsIndex, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                     Click="ViewIndexButton_Click"
+                                                     Style="{StaticResource PageAddressStyle}"
+                                                     Tag="{x:Bind RootPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </toolkit:DataGridTemplateColumn.CellTemplate>
+                    </toolkit:DataGridTemplateColumn>
                 </toolkit:DataGrid.Columns>
             </toolkit:DataGrid>
         </Grid>

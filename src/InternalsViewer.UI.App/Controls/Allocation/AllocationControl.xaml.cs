@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -28,7 +29,7 @@ public sealed partial class AllocationControl
 
     private ExtentLayout Layout { get; set; } = new();
 
-    public event EventHandler<PageNavigationEventArgs>? PageClicked;
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
 
     public Color BorderColor
     {
@@ -527,7 +528,7 @@ public sealed partial class AllocationControl
 
         if (pageId <= PageCount)
         {
-            PageClicked?.Invoke(this, new PageNavigationEventArgs(FileId, pageId));
+            PageClicked?.Invoke(this, new PageAddressEventArgs(FileId, pageId));
         }
     }
 
@@ -542,13 +543,22 @@ public sealed partial class AllocationControl
     }
 }
 
-public class PageNavigationEventArgs(short fileId, int pageId) : EventArgs
+public class PageAddressEventArgs(short fileId, int pageId) : EventArgs
 {
+    public PageAddressEventArgs(PageAddress pageAddress)
+        : this(pageAddress.FileId, pageAddress.PageId)
+    {
+    }
+
     public short FileId { get; } = fileId;
 
     public int PageId { get; } = pageId;
 
     public ushort? Slot { get; init; }
+
+    public string Tag { get; set; } = string.Empty;
+
+    public PageAddress PageAddress => new(FileId, PageId);
 }
 
 public class ExtentLayout

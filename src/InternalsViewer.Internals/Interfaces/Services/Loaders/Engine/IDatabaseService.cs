@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Interfaces.Connections;
 
 namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 
-public interface IDatabaseLoader
+public interface IDatabaseService
 {
     Task<DatabaseSource> Load(string name, IConnectionType connection);
 }

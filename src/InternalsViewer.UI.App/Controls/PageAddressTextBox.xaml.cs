@@ -11,7 +11,7 @@ namespace InternalsViewer.UI.App.Controls
 {
     public sealed partial class PageAddressTextBox
     {
-        public event EventHandler<PageNavigationEventArgs>? AddressChanged;
+        public event EventHandler<PageAddressEventArgs>? AddressChanged;
 
         public PageAddress? PageAddress
         {
@@ -48,7 +48,7 @@ namespace InternalsViewer.UI.App.Controls
             {
                 if (PageAddressParser.TryParse(TextBox.Text, out var pageAddress))
                 {
-                    AddressChanged?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId));
+                    AddressChanged?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId));
                 }
             }
         }
@@ -76,7 +76,7 @@ namespace InternalsViewer.UI.App.Controls
         {
             if (PageAddressParser.TryParse(TextBox.Text, out var pageAddress))
             {
-                AddressChanged?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId + 1));
+                AddressChanged?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId + 1));
             }
         }
 
@@ -84,7 +84,7 @@ namespace InternalsViewer.UI.App.Controls
         {
             if (PageAddressParser.TryParse(TextBox.Text, out var pageAddress) && pageAddress.PageId > 1)
             {
-                AddressChanged?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId - 1));
+                AddressChanged?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId - 1));
             }
         }
     }

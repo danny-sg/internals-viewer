@@ -8,6 +8,8 @@ namespace InternalsViewer.Internals.Engine.Address;
 /// </summary>
 public record RowIdentifier
 {
+    public static readonly RowIdentifier Empty = new(PageAddress.Empty, 0);
+
     public const int Size = sizeof(short) + sizeof(short) + sizeof(int);
 
     public PageAddress PageAddress { get; set; }

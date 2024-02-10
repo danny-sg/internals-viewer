@@ -10,6 +10,10 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
     ],
+    siteTitle:false,
+    search: {
+      provider: 'local'
+    },
     docFooter: {
       prev: false,
       next: false,
@@ -50,6 +54,6 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com/danny-sg/internals-viewer' }
     ],
 
-    logo: 'logo.png'
+    logo: '/docs/logo.svg'
   }
 })

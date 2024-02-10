@@ -18,7 +18,7 @@ namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 internal class IndexVerificationService(ILogger<IndexVerificationService> logger,
                                         ObjectService objectService,
                                         ObjectPageListService objectPageListService,
-                                        IDatabaseLoader databaseLoader,
+                                        IDatabaseService databaseService,
                                         IPageService pageService,
                                         IRecordService recordService)
 {
@@ -28,7 +28,7 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
     private ObjectPageListService ObjectPageListService { get; } = objectPageListService;
 
-    private IDatabaseLoader DatabaseLoader { get; } = databaseLoader;
+    private IDatabaseService DatabaseService { get; } = databaseService;
 
     private IPageService PageService { get; } = pageService;
 
@@ -180,7 +180,7 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
         var connection = ServerConnectionFactory.Create(config => config.ConnectionString = connectionString);
 
-        var database = await DatabaseLoader.Load("TestDatabase", connection);
+        var database = await DatabaseService.Load("TestDatabase", connection);
 
         return database;
     }

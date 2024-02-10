@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.IndexView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
+    xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
+    PointerWheelChanged="IndexView_PointerWheelChanged"
+    Loaded="UserControl_Loaded"
+    mc:Ignorable="d">
+    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <CommandBar IsOpen="False" 
+                    DefaultLabelPosition="Right"
+                    Grid.Row="0"
+                    HorizontalAlignment="Left"
+                    Background="Transparent">
+            <AppBarToggleButton  Label="Tooltip" IsChecked="{x:Bind ViewModel.IsTooltipEnabled, Mode=TwoWay}" >
+                <AppBarToggleButton.Icon>
+                    <FontIcon Glyph="&#xE759;"/>
+                </AppBarToggleButton.Icon>
+            </AppBarToggleButton>
+            <AppBarButton Label="Refresh" Icon="Refresh" />
+            <AppBarSeparator />
+            <AppBarElementContainer>
+                <Grid Margin="8" Padding="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0">
+                        <TextBlock x:Name="ObjectName"
+                     
+                         Margin="0,0,10,0"  
+                         Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}" />
+                        <Grid 
+                         Margin="0"
+                         Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                            <TextBlock x:Name="ObjectIndexType"
+                             Margin="0"  
+                             Foreground="BlueViolet"
+                             Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0">
+                        <TextBlock x:Name="IndexName"
+                         Margin="0,0,10,0"  
+                         FontWeight="Bold"
+                         Text="{x:Bind ViewModel.IndexName, Mode=OneWay}" />
+                        <Grid Margin="0"
+                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                            <TextBlock x:Name="IndexType"
+                             Margin="0"  
+                             Foreground="DarkGreen"
+                             Text="{x:Bind ViewModel.IndexType, Mode=OneWay}" />
+                        </Grid >
+                    </StackPanel>
+
+                    <TextBlock x:Name="ObjectIdNameTextBlock"
+                     Margin="14,0,0,0"  
+                     Grid.Row="0"
+                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                     Grid.Column="1"
+                     Text="Object Id" />
+
+                    <TextBlock x:Name="IndexIdNameTextBlock"
+                     Margin="14,0,0,0" 
+                     Grid.Row="1"
+                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                     Grid.Column="1"
+                     Text="Index Id" />
+
+                    <controls:CopyTextBlock x:Name="ObjectIdTextBlock"
+                         Margin="14,0,0,0"  
+                         Grid.Row="0"
+                         Grid.Column="2"
+                         Value="{x:Bind ViewModel.ObjectId, Mode=OneWay}" />
+
+                    <controls:CopyTextBlock x:Name="IndexIdTextBlock"
+                         Margin="14,0,0,0"  
+                         Grid.Row="1"
+                         Grid.Column="2"
+                         Value="{x:Bind ViewModel.IndexId, Mode=OneWay}" />
+                </Grid>
+            </AppBarElementContainer>
+        </CommandBar>
+        <Grid Grid.Row="1"
+              BorderThickness="0,1,0,0" 
+              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Padding="10"
+                        VerticalAlignment="Stretch" 
+                        HorizontalAlignment="Center"
+                        Grid.Column="0"
+                        Orientation="Horizontal"
+                        Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}">
+                <ProgressRing HorizontalAlignment="Left"
+                          IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"/>
+                <TextBlock Margin="10,0,0,0">Loading Index...</TextBlock>
+            </StackPanel>
+            <index:IndexControl x:Name="IndexControl"
+                                Grid.Column="0"
+                                Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
+                                Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
+                                IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
+                                HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
+                                SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
+                                PageClicked="IndexView_PageClicked"
+                                VerticalAlignment="Stretch"
+                                HorizontalAlignment="Stretch"/>
+            <index:RecordGrid Grid.Column="1" 
+                              Visibility="{x:Bind ViewModel.RecordsVisibility, Mode=OneWay}"
+                              Records="{x:Bind ViewModel.Records, Mode=OneWay}" 
+                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                              PageOver="RecordGrid_OnPageOver"
+                              PageClicked="IndexView_PageClicked"
+                              BorderThickness="1,0,0,0" />
+            <controls1:GridSplitter Width="4"
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Left"
+                                    ResizeBehavior="BasedOnAlignment"
+                                    ResizeDirection="Columns">
+                <controls1:GridSplitter.RenderTransform>
+                    <TranslateTransform X="-7" />
+                </controls1:GridSplitter.RenderTransform>
+            </controls1:GridSplitter>
+        </Grid>
+
+
+
+    </Grid>
+</UserControl>

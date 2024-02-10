@@ -23,7 +23,10 @@ public partial class AllocationLayer : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IndexTypeDescription))]
+    [NotifyPropertyChangedFor(nameof(IsIndex))]
     private IndexType indexType;
+
+    public bool IsIndex => IndexType is IndexType.Clustered or IndexType.NonClustered;
 
     public string IndexTypeDescription => isSystemObject ? string.Empty : IndexType.ToString().SplitCamelCase("-");
 

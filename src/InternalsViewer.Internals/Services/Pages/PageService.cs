@@ -5,11 +5,14 @@ using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Internals.Services.Pages;
 
+/// <summary>
+/// Service responsible for getting and parsing pages
+/// </summary>
 public class PageService(ILogger<PageService> logger, 
                          IPageLoader loader, 
                          IEnumerable<IPageParser> parsers) : IPageService
 {
-    public ILogger<PageService> Logger { get; } = logger;
+    private ILogger<PageService> Logger { get; } = logger;
 
     public async Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress)
     {

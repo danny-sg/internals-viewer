@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.UI.App.Controls.Index;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
@@ -13,6 +14,10 @@ namespace InternalsViewer.UI.App.Controls.Allocation;
 
 public sealed partial class AllocationLayerGrid
 {
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
+
+    public event EventHandler<PageAddressEventArgs>? ViewIndexClicked;
+
     public AllocationLayerGridViewModel ViewModel { get; } = new();
 
     public ObservableCollection<AllocationLayer> Layers
@@ -37,8 +42,6 @@ public sealed partial class AllocationLayerGrid
             typeof(AllocationLayer),
             typeof(AllocationLayerGrid),
             new PropertyMetadata(default, OnPropertyChanged));
-
-    public event EventHandler<PageNavigationEventArgs>? PageClicked;
 
     public AllocationLayerGrid()
     {
@@ -89,6 +92,13 @@ public sealed partial class AllocationLayerGrid
     {
         var pageAddress = (PageAddress)((HyperlinkButton)sender).Tag;
 
-        PageClicked?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId));
+        PageClicked?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId));
+    }
+
+    private void ViewIndexButton_Click(object sender, RoutedEventArgs e)
+    {
+        var pageAddress = (PageAddress)((HyperlinkButton)sender).Tag;
+
+        ViewIndexClicked?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId));
     }
 }

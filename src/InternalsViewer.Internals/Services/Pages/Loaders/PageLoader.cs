@@ -36,7 +36,7 @@ public class PageLoader : IPageLoader
     /// <summary>
     /// Load the offset table with a given slot count from the page data
     /// </summary>
-    public static List<ushort> LoadOffsetTable(byte[] data, int slotCount)
+    private static List<ushort> LoadOffsetTable(byte[] data, int slotCount)
     {
         var offsetTable = new List<ushort>();
 

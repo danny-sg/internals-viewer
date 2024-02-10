@@ -12,6 +12,7 @@ using InternalsViewer.UI.App.ViewModels.Page;
 using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
+using InternalsViewer.UI.App.ViewModels.Index;
 
 namespace InternalsViewer.UI.App;
 
@@ -55,6 +56,7 @@ public partial class App
             services.AddTransient<ConnectServerViewModelFactory>();
             services.AddTransient<DatabaseTabViewModelFactory>();
             services.AddTransient<PageTabViewModelFactory>();
+            services.AddTransient<IndexTabViewModelFactory>();
 
             services.AddTransient<MainViewModel>();
 

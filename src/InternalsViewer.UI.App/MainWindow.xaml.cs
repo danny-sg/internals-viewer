@@ -25,12 +25,13 @@ using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using WinUIEx;
+using InternalsViewer.UI.App.ViewModels.Index;
 
 namespace InternalsViewer.UI.App;
 
 public sealed partial class MainWindow
 {
-    private IDatabaseLoader DatabaseLoader { get; }
+    private IDatabaseService DatabaseService { get; }
 
     private TabViewItem? ConnectTab { get; set; }
 
@@ -40,22 +41,26 @@ public sealed partial class MainWindow
 
     private DatabaseTabViewModelFactory DatabaseTabViewModelFactory { get; }
 
+    private IndexTabViewModelFactory IndexTabViewModelFactory { get; }
+
     private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
-    public MainWindow(IDatabaseLoader databaseLoader,
+    public MainWindow(IDatabaseService databaseService,
                       MainViewModel mainViewModel,
                       PageTabViewModelFactory pageTabViewModelFactory,
                       DatabaseTabViewModelFactory databaseTabViewModelFactory,
-                      ConnectServerViewModelFactory connectServerViewModelFactory)
+                      ConnectServerViewModelFactory connectServerViewModelFactory,
+                      IndexTabViewModelFactory indexTabViewModelFactory)
     {
         Title = "Internals Viewer";
 
-        DatabaseLoader = databaseLoader;
+        DatabaseService = databaseService;
 
         ViewModel = mainViewModel;
         PageTabViewModelFactory = pageTabViewModelFactory;
         DatabaseTabViewModelFactory = databaseTabViewModelFactory;
         ConnectServerViewModelFactory = connectServerViewModelFactory;
+        IndexTabViewModelFactory = indexTabViewModelFactory;
 
         ExtendsContentIntoTitleBar = true;
 
@@ -73,6 +78,9 @@ public sealed partial class MainWindow
 
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, (_, m)
             => m.Reply(OpenPage(m.Request.Database, m.Request.PageAddress)));
+
+        WeakReferenceMessenger.Default.Register<OpenIndexMessage>(this, (_, m)
+            => m.Reply(OpenIndex(m.Request.Database, m.Request.RootPageAddress)));
 
         WeakReferenceMessenger.Default.Register<ExceptionMessage>(this, (_, m)
                        => ShowExceptionDialog(m.Value));
@@ -117,7 +125,7 @@ public sealed partial class MainWindow
         {
             var result = await ShowPasswordDialog();
 
-            if(string.IsNullOrEmpty(result))
+            if (string.IsNullOrEmpty(result))
             {
                 return false;
             }
@@ -181,6 +189,35 @@ public sealed partial class MainWindow
         return true;
     }
 
+    private async Task<bool> OpenIndex(DatabaseSource database, PageAddress rootPageAddress)
+    {
+        var viewModel = IndexTabViewModelFactory.Create(database);
+
+        viewModel.RootPage = rootPageAddress;
+
+        var content = new IndexView();
+
+        content.DataContext = viewModel;
+
+        var title = $"Index";
+
+        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/IndexTabIcon.svg"));
+
+        var tab = new TabViewItem
+        {
+            Name = title,
+            Content = content,
+            IconSource = new ImageIconSource { ImageSource = svg },
+        };
+
+        BindTabTitle(viewModel, tab);
+
+        WindowTabView.TabItems.Add(tab);
+        WindowTabView.SelectedItem = tab;
+
+        return true;
+    }
+
     private void BindTabTitle(TabViewModel viewModel, TabViewItem tab)
     {
         var titleBinding = new Binding { Mode = BindingMode.OneWay };
@@ -194,7 +231,7 @@ public sealed partial class MainWindow
 
     private async Task AddConnection(IConnectionType connection)
     {
-        var database = await DatabaseLoader.Load(connection.Name, connection);
+        var database = await DatabaseService.Load(connection.Name, connection);
 
         var viewModel = DatabaseTabViewModelFactory.Create(database);
 

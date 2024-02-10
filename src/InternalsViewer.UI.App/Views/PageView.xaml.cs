@@ -20,12 +20,12 @@ public sealed partial class PageView
         InitializeComponent();
     }
 
-    private void PageAddressTextBox_Changed(object sender, PageNavigationEventArgs args)
+    private void PageAddressTextBox_Changed(object sender, PageAddressEventArgs args)
     {
         ViewModel.LoadPageCommand.Execute(new PageAddress(args.FileId, args.PageId));
     }
 
-    private void Control_PageClicked(object sender, PageNavigationEventArgs e)
+    private void Control_PageClicked(object sender, PageAddressEventArgs e)
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
