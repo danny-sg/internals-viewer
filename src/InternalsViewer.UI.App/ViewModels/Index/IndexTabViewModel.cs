@@ -7,20 +7,42 @@ using InternalsViewer.Internals.Engine.Indexes;
 using InternalsViewer.Internals.Engine.Address;
 using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Internals.Interfaces.Services.Records;
+using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using System.Collections.ObjectModel;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.Index;
+using InternalsViewer.UI.App.Models.Index;
+using InternalsViewer.Internals.Engine.Records.Data;
 
 namespace InternalsViewer.UI.App.ViewModels.Index;
 
-public class IndexTabViewModelFactory(IndexService indexService)
+public class IndexTabViewModelFactory(IndexService indexService,
+                                      IPageService pageService,
+                                      IRecordService recordService)
 {
     public IndexService IndexService { get; } = indexService;
-    
+
+    public IPageService PageService { get; } = pageService;
+
+    public IRecordService RecordService { get; } = recordService;
+
     public IndexTabViewModel Create(DatabaseSource database)
-        => new(indexService, database);
+        => new(indexService, recordService, pageService, database);
 }
 
-public partial class IndexTabViewModel(IndexService indexService, DatabaseSource database) : TabViewModel
+public partial class IndexTabViewModel(IndexService indexService,
+                                       IRecordService recordService,
+                                       IPageService pageService,
+                                       DatabaseSource database) : TabViewModel
 {
     private IndexService IndexService { get; } = indexService;
+
+    private IRecordService RecordService { get; } = recordService;
+
+    private IPageService PageService { get; } = pageService;
 
     public DatabaseSource Database { get; } = database;
 
@@ -57,11 +79,23 @@ public partial class IndexTabViewModel(IndexService indexService, DatabaseSource
     [ObservableProperty]
     private bool isTooltipEnabled;
 
+    [ObservableProperty]
+    private Visibility recordsVisibility = Visibility.Collapsed;
+
+    [ObservableProperty]
+    private ObservableCollection<IndexRecordModel> records = new();
+
+    [ObservableProperty]
+    private PageAddress? selectedPageAddress;
+
+    [ObservableProperty]
+    private ObservableCollection<PageAddress> highlightedPages = new();
+
     partial void OnRootPageChanged(PageAddress value)
     {
         var allocationUnit = Database.AllocationUnits.FirstOrDefault(a => a.RootPage == value);
-        
-        if(allocationUnit != null)
+
+        if (allocationUnit != null)
         {
             SetAllocationUnitDescription(allocationUnit);
         }
@@ -90,5 +124,82 @@ public partial class IndexTabViewModel(IndexService indexService, DatabaseSource
         Nodes = await IndexService.GetNodes(Database, RootPage);
 
         IsInitialized = true;
-    }   
+    }
+
+    [RelayCommand]
+    private async Task LoadPage(PageAddress pageAddress)
+    {
+        SelectedPageAddress = pageAddress;
+
+        if (pageAddress == PageAddress.Empty)
+        {
+            RecordsVisibility = Visibility.Collapsed;
+            Records.Clear();
+
+            return;
+        }
+
+        IsInitialized = false;
+
+        var page = await PageService.GetPage(Database, pageAddress);
+
+        if (page is IndexPage indexPage)
+        {
+            Records = GetIndexRecordModels(RecordService.GetIndexRecords(indexPage));
+        }
+        else if (page is DataPage dataPage)
+        {
+            Records = GetDataRecordModels(RecordService.GetDataRecords(dataPage));
+        }
+
+        IsInitialized = true;
+
+        RecordsVisibility = Visibility.Visible;
+    }
+
+    private ObservableCollection<IndexRecordModel> GetIndexRecordModels(IEnumerable<IndexRecord> source)
+    {
+        var models = source.Select(r => new IndexRecordModel
+        {
+            Slot = r.Slot,
+            DownPagePointer = r.DownPagePointer,
+            RowIdentifier = r.Rid,
+            Fields = r.Fields.Select(f => new IndexRecordFieldModel
+            {
+                Name = f.Name,
+                Value = f.Value,
+                DataType = f.ColumnStructure.DataType
+            }).ToList()
+        });
+
+        return new ObservableCollection<IndexRecordModel>(models);
+    }
+
+    private ObservableCollection<IndexRecordModel> GetDataRecordModels(IEnumerable<DataRecord> source)
+    {
+        var models = source.Select(r => new IndexRecordModel
+        {
+            Slot = r.Slot,
+            Fields = r.Fields.Select(f => new IndexRecordFieldModel
+            {
+                Name = f.Name,
+                Value = f.Value,
+                DataType = f.ColumnStructure.DataType
+            }).ToList()
+        });
+
+        return new ObservableCollection<IndexRecordModel>(models);
+    }
+
+    public void SetHighlightedPage(PageAddress pageAddress)
+    {
+        if (pageAddress != PageAddress.Empty)
+        {
+            HighlightedPages = new ObservableCollection<PageAddress> { pageAddress };
+        }
+        else
+        {
+            HighlightedPages = new ObservableCollection<PageAddress>();
+        }
+    }
 }

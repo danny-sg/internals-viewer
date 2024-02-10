@@ -12,7 +12,7 @@ namespace InternalsViewer.UI.App.Controls.Page;
 
 public sealed partial class MarkerTreeView
 {
-    public event EventHandler<PageNavigationEventArgs>? PageClicked;
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
 
     public ObservableCollection<Marker>? Markers
     {
@@ -51,7 +51,7 @@ public sealed partial class MarkerTreeView
         {
             var rowIdentifier = RowIdentifier.Parse(value);
 
-            var eventArgs = new PageNavigationEventArgs(rowIdentifier.PageAddress.FileId, rowIdentifier.PageAddress.PageId)
+            var eventArgs = new PageAddressEventArgs(rowIdentifier.PageAddress.FileId, rowIdentifier.PageAddress.PageId)
             {
                 Slot = rowIdentifier.SlotId
             };

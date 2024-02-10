@@ -21,7 +21,7 @@ public sealed partial class DatabaseView
 
     public double AllocationMapHeight { get; set; }
 
-    private void OnPageSelected(object? sender, PageNavigationEventArgs e)
+    private void OnPageSelected(object? sender, PageAddressEventArgs e)
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
@@ -54,7 +54,7 @@ public sealed partial class DatabaseView
         }
     }
 
-    private void OnViewIndexClicked(object? sender, PageNavigationEventArgs e)
+    private void OnViewIndexClicked(object? sender, PageAddressEventArgs e)
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 

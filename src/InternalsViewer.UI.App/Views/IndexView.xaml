@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
     PointerWheelChanged="IndexView_PointerWheelChanged"
     Loaded="UserControl_Loaded"
     mc:Ignorable="d">
@@ -19,9 +20,7 @@
                     DefaultLabelPosition="Right"
                     Grid.Row="0"
                     HorizontalAlignment="Left"
-                    Background="Transparent"
-                    BorderThickness="1" 
-                    BorderBrush="Blue">
+                    Background="Transparent">
             <AppBarToggleButton  Label="Tooltip" IsChecked="{x:Bind ViewModel.IsTooltipEnabled, Mode=TwoWay}" >
                 <AppBarToggleButton.Icon>
                     <FontIcon Glyph="&#xE759;"/>
@@ -96,26 +95,54 @@
                 </Grid>
             </AppBarElementContainer>
         </CommandBar>
-        <StackPanel Grid.Row="1" 
-                    Padding="10"
-                    VerticalAlignment="Stretch" 
-                    HorizontalAlignment="Center"
-                    
-                    Orientation="Horizontal"
-                    Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}">
-            <ProgressRing HorizontalAlignment="Left"
+        <Grid Grid.Row="1"
+              BorderThickness="0,1,0,0" 
+              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Padding="10"
+                        VerticalAlignment="Stretch" 
+                        HorizontalAlignment="Center"
+                        Grid.Column="0"
+                        Orientation="Horizontal"
+                        Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}">
+                <ProgressRing HorizontalAlignment="Left"
                           IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"/>
-            <TextBlock Margin="10,0,0,0">Loading Index...</TextBlock>
-        </StackPanel>
-        <index:IndexControl 
-                x:Name="IndexControl"
-                Grid.Row="1"
-                Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
-                Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
-                IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
-                PageClicked="IndexControl_PageClicked"
-                VerticalAlignment="Stretch"
-                HorizontalAlignment="Stretch"/>
+                <TextBlock Margin="10,0,0,0">Loading Index...</TextBlock>
+            </StackPanel>
+            <index:IndexControl x:Name="IndexControl"
+                                Grid.Column="0"
+                                Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
+                                Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
+                                IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
+                                HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
+                                SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
+                                PageClicked="IndexView_PageClicked"
+                                VerticalAlignment="Stretch"
+                                HorizontalAlignment="Stretch"/>
+            <index:RecordGrid Grid.Column="1" 
+                              Visibility="{x:Bind ViewModel.RecordsVisibility, Mode=OneWay}"
+                              Records="{x:Bind ViewModel.Records, Mode=OneWay}" 
+                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                              PageOver="RecordGrid_OnPageOver"
+                              PageClicked="IndexView_PageClicked"
+                              BorderThickness="1,0,0,0" />
+            <controls1:GridSplitter Width="4"
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Left"
+                                    ResizeBehavior="BasedOnAlignment"
+                                    ResizeDirection="Columns">
+                <controls1:GridSplitter.RenderTransform>
+                    <TranslateTransform X="-7" />
+                </controls1:GridSplitter.RenderTransform>
+            </controls1:GridSplitter>
+        </Grid>
+
+
+
     </Grid>
 </UserControl>

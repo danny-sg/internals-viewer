@@ -5,6 +5,7 @@ using Windows.System;
 using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.Views;
@@ -43,10 +44,22 @@ public sealed partial class IndexView
         await ViewModel.Initialize();
     }
 
-    private void IndexControl_PageClicked(object sender, Controls.Allocation.PageNavigationEventArgs e)
+    private void RecordGrid_OnPageOver(object? sender, PageAddressEventArgs e)
+    {
+        ViewModel.SetHighlightedPage(e.PageAddress);
+    }
+
+    private async void IndexView_PageClicked(object? sender, PageAddressEventArgs e)
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
-        WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+        if (e.Tag == "Open")
+        {
+            WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+        }
+        else
+        {
+            await ViewModel.LoadPageCommand.ExecuteAsync(pageAddress);
+        }
     }
 }

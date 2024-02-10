@@ -199,9 +199,9 @@ public sealed partial class MainWindow
 
         content.DataContext = viewModel;
 
-        var title = $"Index TODO";
+        var title = $"Index";
 
-        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
+        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/IndexTabIcon.svg"));
 
         var tab = new TabViewItem
         {

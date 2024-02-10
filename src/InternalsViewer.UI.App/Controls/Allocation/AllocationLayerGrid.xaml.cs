@@ -14,9 +14,9 @@ namespace InternalsViewer.UI.App.Controls.Allocation;
 
 public sealed partial class AllocationLayerGrid
 {
-    public event EventHandler<PageNavigationEventArgs>? PageClicked;
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
 
-    public event EventHandler<PageNavigationEventArgs>? ViewIndexClicked;
+    public event EventHandler<PageAddressEventArgs>? ViewIndexClicked;
 
     public AllocationLayerGridViewModel ViewModel { get; } = new();
 
@@ -92,13 +92,13 @@ public sealed partial class AllocationLayerGrid
     {
         var pageAddress = (PageAddress)((HyperlinkButton)sender).Tag;
 
-        PageClicked?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId));
+        PageClicked?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId));
     }
 
     private void ViewIndexButton_Click(object sender, RoutedEventArgs e)
     {
         var pageAddress = (PageAddress)((HyperlinkButton)sender).Tag;
 
-        ViewIndexClicked?.Invoke(this, new PageNavigationEventArgs(pageAddress.FileId, pageAddress.PageId));
+        ViewIndexClicked?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId));
     }
 }
