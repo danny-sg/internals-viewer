@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Internals.Compression;
-using InternalsViewer.Internals.Engine.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 
 namespace InternalsViewer.Internals.Services.Loaders.Compression;
 

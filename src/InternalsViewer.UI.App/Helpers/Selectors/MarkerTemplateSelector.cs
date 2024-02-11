@@ -1,4 +1,5 @@
-﻿using InternalsViewer.UI.App.Models;
+﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Controls;
 using System.Linq;
 
@@ -16,11 +17,11 @@ public class MarkerTemplateSelector : DataTemplateSelector
 
         var pointerTypes = new[]
         {
-            Internals.Engine.Annotations.ItemType.DownPagePointer,
-            Internals.Engine.Annotations.ItemType.Rid,
-            Internals.Engine.Annotations.ItemType.HeaderPageAddress,
-            Internals.Engine.Annotations.ItemType.NextPage,
-            Internals.Engine.Annotations.ItemType.PreviousPage,
+            ItemType.DownPagePointer,
+            ItemType.Rid,
+            ItemType.HeaderPageAddress,
+            ItemType.NextPage,
+            ItemType.PreviousPage,
         };
 
         if (pointerTypes.Any(p => p == marker?.Type))

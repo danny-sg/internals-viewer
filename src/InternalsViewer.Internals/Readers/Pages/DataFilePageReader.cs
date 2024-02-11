@@ -11,7 +11,7 @@ namespace InternalsViewer.Internals.Readers.Pages;
 /// <param name="path"></param>
 public class DataFilePageReader(string path) : PageReader, IPageReader
 {
-    public string FilePath { get; } = path;
+    private string FilePath { get; } = path;
 
     /// <summary>
     /// Reads a page from a SQL Server data file

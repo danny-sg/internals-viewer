@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using InternalsViewer.Internals.Engine.Annotations;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Services.Markers;
 using Windows.UI;
 

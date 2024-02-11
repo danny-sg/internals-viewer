@@ -1,5 +1,5 @@
 ﻿using System.Data;
-using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Generators;
 
 // ReSharper disable StringLiteralTypo

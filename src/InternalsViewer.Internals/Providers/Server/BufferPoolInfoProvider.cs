@@ -7,10 +7,9 @@ namespace InternalsViewer.Internals.Providers.Server;
 
 public class BufferPoolInfoProvider(string connectionString): IBufferPoolInfoProvider
 {
-    public string ConnectionString { get; } = connectionString;
+    private string ConnectionString { get; } = connectionString;
 
-    public static readonly string BufferPoolCommand =
-        @" -- Query Buffer Pool
+    private const string BufferPoolCommand = @" -- Query Buffer Pool
         SELECT CONVERT(SMALLINT, file_id) AS FileId
               ,page_id                    AS PageId
               ,is_modified                AS IsModified

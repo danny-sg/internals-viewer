@@ -71,5 +71,6 @@ public class BootPageParser : PageParser, IPageParser<BootPage>
 
     private void SetHeaderMarkers(BootPage page)
     {
+        //TODO: Add markers
     }
 }

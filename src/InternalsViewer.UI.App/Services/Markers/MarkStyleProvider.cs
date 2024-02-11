@@ -1,5 +1,5 @@
 ﻿using CommunityToolkit.WinUI.Helpers;
-using InternalsViewer.Internals.Engine.Annotations;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Models;
 using System.Diagnostics;
 

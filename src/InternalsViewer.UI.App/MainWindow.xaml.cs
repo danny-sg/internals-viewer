@@ -189,7 +189,7 @@ public sealed partial class MainWindow
         return true;
     }
 
-    private async Task<bool> OpenIndex(DatabaseSource database, PageAddress rootPageAddress)
+    private bool OpenIndex(DatabaseSource database, PageAddress rootPageAddress)
     {
         var viewModel = IndexTabViewModelFactory.Create(database);
 

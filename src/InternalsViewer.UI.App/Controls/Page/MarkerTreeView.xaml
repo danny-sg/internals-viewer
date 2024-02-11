@@ -189,7 +189,7 @@
                                       Tag="{x:Bind Value}"
                                       Foreground="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                       Click="CopyButton_Click" />
-                
+
                 <GridView Grid.Column="2"
                           SelectionMode="None"
                           ItemsSource="{x:Bind Tags}" 
@@ -213,8 +213,6 @@
                         </DataTemplate>
                     </GridView.ItemTemplate>
                 </GridView>
-                
-
             </Grid>
         </DataTemplate>
 

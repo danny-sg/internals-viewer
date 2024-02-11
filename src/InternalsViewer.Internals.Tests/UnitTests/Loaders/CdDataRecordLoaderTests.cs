@@ -1,8 +1,8 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Engine.Records.Compressed;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Helpers;
-using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Loaders;

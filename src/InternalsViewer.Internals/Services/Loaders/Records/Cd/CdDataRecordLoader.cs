@@ -1,14 +1,13 @@
 ﻿using System.Data;
-using InternalsViewer.Internals.Compression;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Engine.Records.Compressed;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Metadata.Structures;
 
-namespace InternalsViewer.Internals.Services.Loaders.Records;
+namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 
 /// <summary>
 /// Loader for records in the CD (Column Descriptor) format
@@ -185,7 +184,7 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
         LoadLongFields(currentPosition, record, anchorRecord, structure, data);
     }
 
-    private void ParseLongDataClusterArray(CompressedDataRecord record, byte[] data, int offset)
+    private static void ParseLongDataClusterArray(CompressedDataRecord record, byte[] data, int offset)
     {
         var longDataClusterArraySize = (record.ColumnCount - 1) / ClusterSize;
 
@@ -197,7 +196,7 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
         }
     }
 
-    private void ParseShortDataClusterArray(CompressedDataRecord record, byte[] data, int offset)
+    private static void ParseShortDataClusterArray(CompressedDataRecord record, byte[] data, int offset)
     {
         var shortDataClusterArraySize = (record.ColumnCount - 1) / ClusterSize;
 
@@ -216,7 +215,7 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
     /// Bit 0 - CD Record Field Flag
     /// Bit 1 - If the record uses row versioning
     /// Bit 2 - 4 - Record Type - <see cref="CompressedRecordType"/>"
-    /// Bit 5 - If the record has a a long data region
+    /// Bit 5 - If the record has a long data region
     /// </remarks>
     public void LoadHeader(CompressedDataRecord record, byte[] data, int offset)
     {

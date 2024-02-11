@@ -1,5 +1,6 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 
 namespace InternalsViewer.Internals.Engine.Records.Index;
 
@@ -15,7 +16,7 @@ public class IndexRecord : FixedVarRecord
     /// RID (Row Identifier) the index is pointing to
     /// </summary>
     [DataStructureItem(ItemType.Rid)]
-    public RowIdentifier Rid { get; set; }
+    public RowIdentifier? Rid { get; set; }
 
     public bool IncludeKey { get; set; }
     

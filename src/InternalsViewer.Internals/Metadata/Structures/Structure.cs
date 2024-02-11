@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Internals.Compression;
-using InternalsViewer.Internals.Engine.Database.Enums;
+﻿using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 
 namespace InternalsViewer.Internals.Metadata.Structures;
 

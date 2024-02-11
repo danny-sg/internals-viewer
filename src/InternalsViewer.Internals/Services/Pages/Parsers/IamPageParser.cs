@@ -1,5 +1,5 @@
 ﻿using System.Collections;
-using InternalsViewer.Internals.Engine;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;

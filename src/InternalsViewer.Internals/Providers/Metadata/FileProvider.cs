@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 /// <summary>
 /// Provider responsible for providing file information from the metadata collection
 /// </summary>
-public class FileProvider
+public static class FileProvider
 {
     public static List<DatabaseFile> GetFiles(InternalMetadata metadata)
     {

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using InternalsViewer.Internals.Engine;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -19,10 +18,11 @@ using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI;
 using Windows.UI;
-using InternalsViewer.Internals.Compression;
 using InternalsViewer.Internals.Helpers;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 using InternalsViewer.UI.App.Services.Markers;
+using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 

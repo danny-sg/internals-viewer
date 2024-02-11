@@ -32,7 +32,7 @@
                           Background="{ThemeResource LayerFillColorDefaultBrush}"
                           ItemsSource="{x:Bind Records, Mode=OneWay}">
             <toolkit:DataGrid.Resources>
-                <StaticResource x:Key="DataGridRowSelectedBackgroundColor" ResourceKey="{ThemeResource LayerFillColorDefaultBrush}"/>
+                
                 <ui:Color x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundColor">Transparent</ui:Color>
                 <ui:Color x:Key="DataGridRowSelectedUnfocusedBackgroundColor">Transparent</ui:Color>
 

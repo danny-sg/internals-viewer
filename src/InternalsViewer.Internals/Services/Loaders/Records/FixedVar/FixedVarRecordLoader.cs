@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
+using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Services.Loaders.Records.Fields;
 

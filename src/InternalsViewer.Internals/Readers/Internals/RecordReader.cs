@@ -9,13 +9,14 @@ using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 namespace InternalsViewer.Internals.Readers.Internals;
 
-public class RecordReader(ILogger<RecordReader> logger, IPageService pageService, FixedVarDataRecordLoader fixedVarDataRecordLoader) : IRecordReader
+public class RecordReader(ILogger<RecordReader> logger, IPageService pageService, FixedVarDataRecordLoader fixedVarDataRecordLoader)
+    : IRecordReader
 {
-    public ILogger<RecordReader> Logger { get; } = logger;
+    private ILogger<RecordReader> Logger { get; } = logger;
 
-    public IPageService PageService { get; } = pageService;
+    private IPageService PageService { get; } = pageService;
 
-    public FixedVarDataRecordLoader FixedVarDataRecordLoader { get; } = fixedVarDataRecordLoader;
+    private FixedVarDataRecordLoader FixedVarDataRecordLoader { get; } = fixedVarDataRecordLoader;
 
     public async Task<List<DataRecord>> Read(DatabaseSource database, PageAddress startPage, TableStructure structure)
     {
@@ -29,14 +30,14 @@ public class RecordReader(ILogger<RecordReader> logger, IPageService pageService
         {
             records.AddRange(page.OffsetTable.Select(offset =>
             {
-                Logger.LogTrace("Loading record {FileId}:{PageId}:{Offset}", 
-                                page.PageHeader.PageAddress.FileId, 
-                                page.PageHeader.PageAddress.PageId, 
+                Logger.LogTrace("Loading record {FileId}:{PageId}:{Offset}",
+                                page.PageHeader.PageAddress.FileId,
+                                page.PageHeader.PageAddress.PageId,
                                 offset);
 
                 return FixedVarDataRecordLoader.Load(page, offset, structure);
             }));
-            
+
             var nextPage = page.PageHeader.NextPage;
 
             if (nextPage == PageAddress.Empty)

@@ -1,6 +1,6 @@
-﻿using InternalsViewer.Internals.Engine.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
-using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 
 namespace InternalsViewer.Internals.Engine.Records.Blob;
 
@@ -19,7 +19,7 @@ public class BlobRecord : FixedVarRecord
     public const short TypeOffset = 12;
 
     [DataStructureItem(ItemType.StatusBitsA)]
-    public new string StatusBitsADescription => "TODO";
+    public string StatusBitsADescription => "TODO";
 
     [DataStructureItem(ItemType.StatusBitsB)]
     public string StatusBitsBDescription => string.Empty;

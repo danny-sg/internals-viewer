@@ -1,9 +1,10 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Engine.Records.Data;
+using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records;
 
-class SparseVectorLoader
+public class SparseVectorLoader
 {
     /// <summary>
     /// Loads a sparse vector.

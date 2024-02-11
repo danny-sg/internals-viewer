@@ -53,6 +53,8 @@ public class IndexService(IPageService pageService, IRecordService recordService
         var page = await PageService.GetPage(database, pageAddress);
 
         node.PageType = page.PageHeader.PageType;
+        node.PreviousPage  = page.PageHeader.PreviousPage;
+        node.NextPage = page.PageHeader.NextPage;
 
         if (page is IndexPage indexPage)
         {
@@ -64,9 +66,11 @@ public class IndexService(IPageService pageService, IRecordService recordService
 
             if (page.PageHeader.Level >= 1)
             {
-                foreach (var childNode in downPagePointers)
+                foreach (var childPageAddress in downPagePointers)
                 {
-                    await GetIndexNodes(nodes, database, childNode, pageAddress, level + 1);
+                    node.Children.Add(childPageAddress);
+
+                    await GetIndexNodes(nodes, database, childPageAddress, pageAddress, level + 1);
                 }
             }
         }

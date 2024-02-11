@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using InternalsViewer.Internals.Engine.Annotations;
+using InternalsViewer.Internals.Annotations;
 
 namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 

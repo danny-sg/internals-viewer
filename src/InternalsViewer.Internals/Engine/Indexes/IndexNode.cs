@@ -16,6 +16,12 @@ public class IndexNode(PageAddress pageAddress)
 
     public List<PageAddress> Parents { get; set; } = new();
 
+    public List<PageAddress> Children { get; set; } = new();
+
+    public PageAddress NextPage { get; set; }
+
+    public PageAddress PreviousPage { get; set; }
+
     public int Level { get; set; }
 
     public int Ordinal { get; set; }

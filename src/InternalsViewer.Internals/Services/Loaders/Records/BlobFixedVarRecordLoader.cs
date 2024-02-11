@@ -4,7 +4,6 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Blob;
 using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
-using InternalsViewer.Internals.Records;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records;

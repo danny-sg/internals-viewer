@@ -1,13 +1,13 @@
 ﻿using System.Collections;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
+using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Metadata.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
-using InternalsViewer.Internals.Records;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
@@ -266,7 +266,7 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
     /// <remarks>
     /// Fixed length fields are based on the length of the field defined in the table structure.
     /// </remarks>
-    private FixedVarRecordField LoadFixedLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
+    private static FixedVarRecordField LoadFixedLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
     {
         var field = new FixedVarRecordField(column);
 
@@ -300,7 +300,7 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
     /// If the first bit is set in the offset array entry, the field is a LOB field. Instead of the value the data will be a pointer to 
     /// the LOB root.
     /// </remarks>
-    private FixedVarRecordField LoadVariableLengthField(ColumnStructure column, DataRecord dataRecord, byte[] pageData)
+    private static FixedVarRecordField LoadVariableLengthField(ColumnStructure column, DataRecord dataRecord, byte[] pageData)
     {
         var field = new FixedVarRecordField(column);
 
@@ -363,7 +363,7 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
     /// <summary>
     /// Loads Status bits B
     /// </summary>
-    private void LoadStatusBitsB(DataRecord record, byte[] data)
+    private static void LoadStatusBitsB(DataRecord record, byte[] data)
     {
         record.StatusBitsB = data[record.Offset + 1];
 
@@ -375,14 +375,14 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
     /// </summary>
     /// <remarks>
     /// Forwarding stubs are used when a record is moved to a new page in a heap.
-    /// F
+    /// 
     /// An example would be two VARCHAR(8000) columns in one table. A record could start where the total size of column 1 + column 2 is 
     /// less than the size of the page, but a subsequent update could push it over the page size. The record would then be moved to a new 
     /// page with a forwarding stub left in its place.
     /// 
     /// Record stubs are RID/Row Identifier structures that point to the new location of the record via File Id:Page Id:Slot Id.
     /// </remarks>
-    private void LoadForwardingStub(DataRecord dataRecord, byte[] data)
+    private static void LoadForwardingStub(DataRecord dataRecord, byte[] data)
     {
         var forwardingRecord = new byte[8];
 

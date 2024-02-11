@@ -1,12 +1,12 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Internals.Engine.Pages;
 
 public class IamPage : AllocationPage
 {
-    public const int StartPageOffset = 136;
+    public static readonly int StartPageOffset = 136;
 
     public int SequenceNumber { get; set; }
 

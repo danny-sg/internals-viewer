@@ -1,7 +1,7 @@
-﻿using InternalsViewer.Internals.Converters;
+﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Annotations;
-using InternalsViewer.Internals.Records;
+using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 
 namespace InternalsViewer.Internals.Engine.Records.Data;
 
@@ -13,9 +13,9 @@ public class DataRecord : FixedVarRecord
     public string StatusBitsBDescription => "";
 
     [DataStructureItem(ItemType.ForwardingStub)]
-    public RowIdentifier ForwardingStub { get; set; }
+    public RowIdentifier? ForwardingStub { get; set; }
 
-    public RowIdentifier RowIdentifier { get; set; }
+    public RowIdentifier? RowIdentifier { get; set; }
 
     public T? GetValue<T>(string columnName)
     {
@@ -26,7 +26,7 @@ public class DataRecord : FixedVarRecord
             throw new ArgumentException($"Column {columnName} not found");
         }
 
-        if(field.Data.Length == 0)
+        if (field.Data.Length == 0)
         {
             return default;
         }

@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
@@ -17,7 +17,7 @@ public class BlobChildLink : DataStructure
     }
 
     [DataStructureItem(ItemType.Rid)]
-    public RowIdentifier RowIdentifier { get; set; }
+    public RowIdentifier? RowIdentifier { get; set; }
 
     [DataStructureItem(ItemType.BlobChildOffset)]
     public int Offset { get; set; }

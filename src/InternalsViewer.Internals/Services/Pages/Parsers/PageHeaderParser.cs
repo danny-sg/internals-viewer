@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Internals.Engine;
+﻿using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;

@@ -1,9 +1,9 @@
-﻿using InternalsViewer.Internals.Compression;
-using InternalsViewer.Internals.Metadata.Internals;
+﻿using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Engine.Parsers;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
 

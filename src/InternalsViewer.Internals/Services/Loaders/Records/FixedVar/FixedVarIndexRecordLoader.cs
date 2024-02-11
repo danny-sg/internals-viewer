@@ -1,12 +1,13 @@
 ﻿using System.Collections;
 using System.Diagnostics;
 using System.Xml.Linq;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Annotations;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Metadata.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
@@ -330,7 +331,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         record.Fields.AddRange(columnValues);
     }
 
-    private FixedVarRecordField LoadNullField(IndexColumnStructure column)
+    private static FixedVarRecordField LoadNullField(IndexColumnStructure column)
     {
         var nullField = new FixedVarRecordField(column);
 
@@ -350,7 +351,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         record.MarkProperty(nameof(IndexRecord.Rid), record.Offset + offset, RowIdentifier.Size);
     }
 
-    private FixedVarRecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, IndexRecord record, byte[] pageData)
+    private static FixedVarRecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, IndexRecord record, byte[] pageData)
     {
         int length;
 
@@ -401,7 +402,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         return offset;
     }
 
-    private FixedVarRecordField LoadUniqueifier(short columnOffset, IndexColumnStructure column, IndexRecord record, byte[] pageData)
+    private static FixedVarRecordField LoadUniqueifier(short columnOffset, IndexColumnStructure column, IndexRecord record, byte[] pageData)
     {
         var field = new FixedVarRecordField(column);
 
@@ -462,7 +463,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         return field;
     }
 
-    private void LoadNullBitmap(IndexRecord record, PageData page, IndexStructure structure)
+    private static void LoadNullBitmap(IndexRecord record, PageData page, IndexStructure structure)
     {
         record.NullBitmapSize = (short)((structure.Columns.Count - 1) / 8 + 1);
 
