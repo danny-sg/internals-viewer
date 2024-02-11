@@ -2,6 +2,7 @@ using InternalsViewer.Internals.Engine.Indexes;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using Windows.System;
 using SkiaSharp;
@@ -114,22 +115,9 @@ public sealed partial class IndexControl
     private readonly SKColor lineColour = SKColors.Gray;
     private readonly SKColor selectedLineColour = SKColors.Navy;
 
-
-    private readonly List<(IndexNode Node, float X, float Y, int Row, int Column)> nodePositions = new();
+    private readonly List<IndexTreeNode> nodePositions = new();
 
     private float[] levelOffsets = Array.Empty<float>();
-
-    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (IndexControl)d;
-
-        if (e.Property == ZoomProperty || e.Property == NodesProperty)
-        {
-            control.BuildIndexTree();
-        }
-
-        control.IndexCanvas.Invalidate();
-    }
 
     public IndexControl()
     {
@@ -166,12 +154,26 @@ public sealed partial class IndexControl
         };
     }
 
+    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (IndexControl)d;
+
+        if (e.Property == ZoomProperty || e.Property == NodesProperty)
+        {
+            control.BuildIndexTree();
+        }
+
+        control.IndexCanvas.Invalidate();
+    }
+
     private void IndexCanvas_PaintSurface(object sender, SKPaintSurfaceEventArgs e)
     {
         if (!nodePositions.Any())
         {
             return;
         }
+
+        var stopwatch = new Stopwatch();
 
         e.Surface.Canvas.Clear(SKColors.Transparent);
 
@@ -183,6 +185,8 @@ public sealed partial class IndexControl
         {
             maxWidth = IndexCanvas.ActualSize.X;
         }
+
+        Debug.WriteLine($"Calculated dimensions in {stopwatch.Elapsed}");
 
         //// Draw levels from the bottom up
         for (var i = levelCount; i >= 0; i--)
@@ -254,7 +258,7 @@ public sealed partial class IndexControl
 
             var x = GetNodeX(column - 1);
 
-            nodePositions.Add((Node: node, X: x, Y: y, Row: row, Column: column));
+            nodePositions.Add(new IndexTreeNode(node, x, y, row, column));
 
             previousNode = node;
         }
@@ -264,6 +268,8 @@ public sealed partial class IndexControl
                                float maxWidth,
                                SKCanvas canvas)
     {
+        var stopwatch = new Stopwatch();
+
         var xScrollOffset = (float)HorizontalScrollBar.Value;
         var yScrollOffset = (float)VerticalScrollBar.Value;
 
@@ -277,10 +283,20 @@ public sealed partial class IndexControl
 
         levelOffsets[level] = startX;
 
+        Debug.WriteLine($"Calculated level dimensions in {stopwatch.Elapsed}");
+
+        stopwatch.Restart();
+
         var levelNodes = nodePositions.Where(n => n.Node.Level == level).ToList();
+
+        Debug.WriteLine($"Got nodes in {stopwatch.Elapsed}");
+
+        stopwatch.Restart();
 
         foreach (var node in levelNodes)
         {
+            stopwatch.Restart();
+
             var renderX = (startX + node.X - xScrollOffset);
 
             var renderY = (node.Y - yScrollOffset);
@@ -293,7 +309,7 @@ public sealed partial class IndexControl
 
                 DrawPage(canvas, renderX, renderY, indexPagePaint, isSelected, isHighlighted);
 
-                if(node.Node.PageType == PageType.Index)
+                if (node.Node.PageType == PageType.Index)
                 {
                     DrawIndex(canvas, renderX, renderY, indexPagePaint);
                 }
@@ -306,7 +322,12 @@ public sealed partial class IndexControl
             var renderNextLevelStartX = (nextLevelStartX - xScrollOffset);
 
             DrawLines(canvas, node.Node, renderX, renderY, renderNextLevelStartX, yScrollOffset, false, false);
+
         }
+
+        Debug.WriteLine($"Node/Line Draw in {stopwatch.Elapsed}");
+
+        stopwatch.Restart();
 
         // Draw highlighted page lines on top of existing lines
         if (HighlightedPageAddresses.Any())
@@ -316,7 +337,7 @@ public sealed partial class IndexControl
                 var node = nodePositions.FirstOrDefault(n => n.Node.PageAddress == pageAddress
                                                               && n.Node.Level == level);
 
-                if (node.Node != null)
+                if (node != null)
                 {
                     var renderX = (startX + node.X - xScrollOffset);
 
@@ -329,13 +350,19 @@ public sealed partial class IndexControl
             }
         }
 
+        Debug.WriteLine($"Page highlight in {stopwatch.Elapsed}");
+
+        stopwatch.Restart();
+
         // Draw selected page lines on top of existing lines
         if (SelectedPageAddress != null)
         {
+            stopwatch.Restart();
+
             var node = nodePositions.FirstOrDefault(n => n.Node.PageAddress == SelectedPageAddress
                                                          && n.Node.Level == level);
 
-            if (node.Node != null)
+            if (node != null)
             {
                 var renderX = (startX + node.X - xScrollOffset);
 
@@ -346,6 +373,8 @@ public sealed partial class IndexControl
                 DrawLines(canvas, node.Node, renderX, renderY, renderNextLevelStartX, yScrollOffset, true, false);
             }
         }
+
+        Debug.WriteLine($"Selected page in {stopwatch.Elapsed}");
     }
 
     /// <summary>
@@ -476,7 +505,7 @@ public sealed partial class IndexControl
                           SKPaint paint)
     {
         var verticalMargin = PageHeight * .1f;
-        var horizontalMargin = PageWidth / 4;  
+        var horizontalMargin = PageWidth / 4;
 
         paint.Color = SKColors.LightGray;
 
@@ -578,7 +607,7 @@ public sealed partial class IndexControl
     private IndexNode? GetIndexNodeAtPosition(double x, double y)
     {
         // Find the level first as the level offsets are used to center the tree
-        var level = nodePositions.FirstOrDefault(n => y >= n.Y && y <= n.Y + PageHeight).Node?.Level;
+        var level = nodePositions.FirstOrDefault(n => y >= n.Y && y <= n.Y + PageHeight)?.Node.Level;
 
         if (level is null)
         {
@@ -596,10 +625,13 @@ public sealed partial class IndexControl
                                                      && y >= yOffset + n.Y
                                                      && y <= yOffset + n.Y + PageHeight);
 
-        return node.Node;
+        return node?.Node;
     }
 }
+
 public class ViewIndexEventArgs(long allocationUnitId) : EventArgs
 {
     public long AllocationUnitId { get; } = allocationUnitId;
 }
+
+public record IndexTreeNode(IndexNode Node, float X, float Y, int Row, int Column);

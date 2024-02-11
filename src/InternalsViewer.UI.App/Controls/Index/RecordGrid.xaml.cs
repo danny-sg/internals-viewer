@@ -11,7 +11,6 @@ using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
@@ -108,36 +107,16 @@ public sealed partial class RecordGrid
         }
     }
 
-    private void DataGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+    private void DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        e.Row.PointerMoved += Row_PointerMoved;
-    }
+        var grid = sender as DataGrid;
 
-    private void Row_PointerMoved(object sender, PointerRoutedEventArgs e)
-    {
-        var row = sender as DataGridRow;
-
-        if (row != null)
+        if (grid?.SelectedItem is IndexRecordModel row)
         {
-            var indexRecordModel = row.DataContext as IndexRecordModel;
+            var address = row.DownPagePointer;
 
-            if (indexRecordModel?.DownPagePointer != null)
-            {
-                var address = indexRecordModel.DownPagePointer;
-
-                PageOver?.Invoke(this, new PageAddressEventArgs(address));
-            }
+            PageOver?.Invoke(this, new PageAddressEventArgs(address));
         }
-    }
-
-    private void DataGrid_UnloadingRow(object? sender, DataGridRowEventArgs e)
-    {
-        e.Row.PointerMoved -= Row_PointerMoved;
-    }
-
-    private void DataGrid_OnPointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        PageOver?.Invoke(this, new PageAddressEventArgs(PageAddress.Empty));
     }
 }
 

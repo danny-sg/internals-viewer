@@ -55,7 +55,7 @@ public sealed partial class IndexView
 
         if (e.Tag == "Open")
         {
-            WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+            await WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
         }
         else
         {

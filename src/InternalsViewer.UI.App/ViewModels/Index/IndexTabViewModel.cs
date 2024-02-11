@@ -23,14 +23,14 @@ public class IndexTabViewModelFactory(IndexService indexService,
                                       IPageService pageService,
                                       IRecordService recordService)
 {
-    public IndexService IndexService { get; } = indexService;
+    private IndexService IndexService { get; } = indexService;
 
-    public IPageService PageService { get; } = pageService;
+    private IPageService PageService { get; } = pageService;
 
-    public IRecordService RecordService { get; } = recordService;
+    private IRecordService RecordService { get; } = recordService;
 
     public IndexTabViewModel Create(DatabaseSource database)
-        => new(indexService, recordService, pageService, database);
+        => new(IndexService, RecordService, PageService, database);
 }
 
 public partial class IndexTabViewModel(IndexService indexService,

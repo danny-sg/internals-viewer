@@ -28,20 +28,19 @@
                           SelectionMode="Single"
                           IsReadOnly="True"
                           GridLinesVisibility="Vertical"
-                          LoadingRow="DataGrid_LoadingRow"
-                          UnloadingRow="DataGrid_UnloadingRow"
-                          PointerExited="DataGrid_OnPointerExited"
+                          SelectionChanged="DataGrid_SelectionChanged"
                           Background="{ThemeResource LayerFillColorDefaultBrush}"
                           ItemsSource="{x:Bind Records, Mode=OneWay}">
             <toolkit:DataGrid.Resources>
-
-                <ui:Color x:Key="DataGridRowSelectedBackgroundColor">Transparent</ui:Color>
+                <StaticResource x:Key="DataGridRowSelectedBackgroundColor" ResourceKey="{ThemeResource LayerFillColorDefaultBrush}"/>
                 <ui:Color x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundColor">Transparent</ui:Color>
                 <ui:Color x:Key="DataGridRowSelectedUnfocusedBackgroundColor">Transparent</ui:Color>
 
                 <StaticResource
                         x:Key="DataGridRowSelectedHoveredBackgroundColor"
                         ResourceKey="SystemListLowColor" />
+                
+                
 
             </toolkit:DataGrid.Resources>
         </toolkit:DataGrid>

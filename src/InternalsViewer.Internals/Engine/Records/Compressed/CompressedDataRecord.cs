@@ -11,7 +11,7 @@ public class CompressedDataRecord(CompressionInfo compressionInfo) : Record
 {
     public CompressedRecordType RecordType { get; set; }
 
-    public RowIdentifier RowIdentifier { get; set; }
+    public RowIdentifier? RowIdentifier { get; set; }
 
     [DataStructureItem(ItemType.ColumnDescriptors)]
     public ColumnDescriptor[] ColumnDescriptors { get; set; } = Array.Empty<ColumnDescriptor>();
