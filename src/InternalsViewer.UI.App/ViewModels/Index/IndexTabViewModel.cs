@@ -80,13 +80,22 @@ public partial class IndexTabViewModel(IndexService indexService,
     private bool isTooltipEnabled;
 
     [ObservableProperty]
-    private Visibility recordsVisibility = Visibility.Collapsed;
+    private Visibility indexDetailVisibility = Visibility.Collapsed;
 
     [ObservableProperty]
     private ObservableCollection<IndexRecordModel> records = new();
 
     [ObservableProperty]
     private PageAddress? selectedPageAddress;
+
+    [ObservableProperty]
+    private PageAddress? selectedNextPage;
+
+    [ObservableProperty]
+    private PageAddress? selectedPreviousPage;
+
+    [ObservableProperty]
+    private int? selectedLevel;
 
     [ObservableProperty]
     private ObservableCollection<PageAddress> highlightedPages = new();
@@ -133,7 +142,13 @@ public partial class IndexTabViewModel(IndexService indexService,
 
         if (pageAddress == PageAddress.Empty)
         {
-            RecordsVisibility = Visibility.Collapsed;
+            IndexDetailVisibility = Visibility.Collapsed;
+            
+            SelectedLevel = null;
+            SelectedNextPage = null;
+            SelectedPreviousPage = null;
+
+            HighlightedPages.Clear();
             Records.Clear();
 
             return;
@@ -142,6 +157,10 @@ public partial class IndexTabViewModel(IndexService indexService,
         IsInitialized = false;
 
         var page = await PageService.GetPage(Database, pageAddress);
+
+        SelectedLevel = page.PageHeader.Level;
+        SelectedNextPage = page.PageHeader.NextPage;
+        SelectedPreviousPage = page.PageHeader.PreviousPage;
 
         if (page is IndexPage indexPage)
         {
@@ -154,7 +173,7 @@ public partial class IndexTabViewModel(IndexService indexService,
 
         IsInitialized = true;
 
-        RecordsVisibility = Visibility.Visible;
+        IndexDetailVisibility = Visibility.Visible;
     }
 
     private ObservableCollection<IndexRecordModel> GetIndexRecordModels(IEnumerable<IndexRecord> source)

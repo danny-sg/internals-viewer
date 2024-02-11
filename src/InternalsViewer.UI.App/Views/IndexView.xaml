@@ -11,6 +11,14 @@
     PointerWheelChanged="IndexView_PointerWheelChanged"
     Loaded="UserControl_Loaded"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="PageAddressStyle" TargetType="HyperlinkButton">
+            <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
+    </UserControl.Resources>
     <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -21,11 +29,6 @@
                     Grid.Row="0"
                     HorizontalAlignment="Left"
                     Background="Transparent">
-            <AppBarToggleButton  Label="Tooltip" IsChecked="{x:Bind ViewModel.IsTooltipEnabled, Mode=TwoWay}" >
-                <AppBarToggleButton.Icon>
-                    <FontIcon Glyph="&#xE759;"/>
-                </AppBarToggleButton.Icon>
-            </AppBarToggleButton>
             <AppBarButton Label="Refresh" Icon="Refresh" />
             <AppBarSeparator />
             <AppBarElementContainer>
@@ -107,15 +110,21 @@
                         VerticalAlignment="Stretch" 
                         HorizontalAlignment="Center"
                         Grid.Column="0"
+                        Background="Transparent"
                         Orientation="Horizontal"
-                        Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}">
+                        Visibility="{x:Bind ViewModel.IsInitialized, 
+                                        Mode=OneWay, 
+                                        Converter={StaticResource BoolToVisibilityConverter}, 
+                                        ConverterParameter=True}">
                 <ProgressRing HorizontalAlignment="Left"
                           IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"/>
                 <TextBlock Margin="10,0,0,0">Loading Index...</TextBlock>
             </StackPanel>
             <index:IndexControl x:Name="IndexControl"
                                 Grid.Column="0"
-                                Visibility="{x:Bind ViewModel.IsInitialized,Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Visibility="{x:Bind ViewModel.IsInitialized,
+                                                Mode=OneWay, 
+                                                Converter={StaticResource BoolToVisibilityConverter}}"
                                 Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
                                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
                                 IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
@@ -124,13 +133,51 @@
                                 PageClicked="IndexView_PageClicked"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"/>
-            <index:RecordGrid Grid.Column="1" 
-                              Visibility="{x:Bind ViewModel.RecordsVisibility, Mode=OneWay}"
-                              Records="{x:Bind ViewModel.Records, Mode=OneWay}" 
-                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                              PageOver="RecordGrid_OnPageOver"
-                              PageClicked="IndexView_PageClicked"
-                              BorderThickness="1,0,0,0" />
+            <Grid Grid.Column="1" 
+                  Visibility="{x:Bind ViewModel.IndexDetailVisibility, Mode=OneWay}"      
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                  BorderThickness="1,0,0,0" >
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" Grid.Row="0" VerticalAlignment="Center"
+                            Padding="8"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                            BorderThickness="0,0,0,1" >
+                    <TextBlock Margin="4,0,0,1">Page Address</TextBlock>
+                    <HyperlinkButton x:Name="PageAddressLink"
+                                     Margin="4,0,0,0"
+                                     Style="{StaticResource PageAddressStyle}"
+                                     Content="{x:Bind ViewModel.SelectedPageAddress, Mode=OneWay}" />
+                    <TextBlock Margin="4,0,0,1">Previous Page</TextBlock>
+                    <HyperlinkButton x:Name="PreviousPageAddressLink"
+                                     Margin="4,0,0,0"
+                                     PointerEntered="PageAddressLink_PointerEntered"
+                                     PointerExited="PageAddressLink_PointerExited"
+                                     Click="PageAddressLink_OnClick"
+                                     Style="{StaticResource PageAddressStyle}"
+                                     Content="{x:Bind ViewModel.SelectedPreviousPage, Mode=OneWay, FallbackValue='(0:0)'}" />
+
+                    <TextBlock Margin="4,0,0,1">Next Page</TextBlock>
+                    <HyperlinkButton x:Name="NextPageAddressLink"
+                                     Margin="4,0,0,0"
+                                     PointerEntered="PageAddressLink_PointerEntered"
+                                     PointerExited="PageAddressLink_PointerExited"
+                                     Click="PageAddressLink_OnClick"
+                                     Style="{StaticResource PageAddressStyle}"
+                                     Content="{x:Bind ViewModel.SelectedNextPage, Mode=OneWay, FallbackValue='(0:0)'}" />
+                    <!--<TextBlock     Margin="4">Level</TextBlock>
+                    <TextBlock Text="{x:Bind ViewModel.SelectedLevel, Mode=OneWay, FallbackValue=0}"  
+                               Margin="4"/>-->
+                </StackPanel>
+                <index:RecordGrid Grid.Row="1"
+                                  Records="{x:Bind ViewModel.Records, Mode=OneWay}" 
+                                  PageOver="RecordGrid_OnPageOver"
+                                  PageClicked="IndexView_PageClicked"
+                                  BorderThickness="0"
+                             />
+            </Grid>
             <controls1:GridSplitter Width="4"
                                     Grid.Column="1"
                                     HorizontalAlignment="Left"
@@ -141,8 +188,5 @@
                 </controls1:GridSplitter.RenderTransform>
             </controls1:GridSplitter>
         </Grid>
-
-
-
     </Grid>
 </UserControl>

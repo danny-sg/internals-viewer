@@ -21,7 +21,7 @@
             <Setter Property="Margin" Value="0,0,4,0"/>
         </Style>
     </UserControl.Resources>
-    <Grid BorderBrush="{x:Bind BorderBrush}" BorderThickness="{x:Bind BorderThickness}">
+    <Grid>
         <toolkit:DataGrid x:Name="DataGrid"                       
                           AutoGenerateColumns="False"
                           CanUserSortColumns="True"

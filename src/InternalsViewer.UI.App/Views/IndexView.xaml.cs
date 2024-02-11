@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
+using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views;
 
@@ -54,6 +55,40 @@ public sealed partial class IndexView
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
         if (e.Tag == "Open")
+        {
+            await WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+        }
+        else
+        {
+            await ViewModel.LoadPageCommand.ExecuteAsync(pageAddress);
+        }
+    }
+
+    private void PageAddressLink_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        var link = (HyperlinkButton)sender; 
+
+        var pageAddress = (PageAddress)link.Content;    
+
+        ViewModel.SetHighlightedPage(pageAddress);
+    }
+
+    private void PageAddressLink_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        ViewModel.SetHighlightedPage(PageAddress.Empty);
+    }
+
+    private async void PageAddressLink_OnClick(object sender, RoutedEventArgs e)
+    {
+        var link = (HyperlinkButton)sender;
+
+        var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+
+        var isShiftPressed = state.HasFlag(CoreVirtualKeyStates.Down);
+
+        var pageAddress = (PageAddress)link.Content;
+
+        if (isShiftPressed)
         {
             await WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
         }
