@@ -55,6 +55,7 @@ public class IndexService(IPageService pageService, IRecordService recordService
         node.PageType = page.PageHeader.PageType;
         node.PreviousPage  = page.PageHeader.PreviousPage;
         node.NextPage = page.PageHeader.NextPage;
+        node.IndexLevel = page.PageHeader.Level;
 
         if (page is IndexPage indexPage)
         {

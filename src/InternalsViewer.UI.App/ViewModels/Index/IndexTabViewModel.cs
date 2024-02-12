@@ -100,32 +100,12 @@ public partial class IndexTabViewModel(IndexService indexService,
     [ObservableProperty]
     private ObservableCollection<PageAddress> highlightedPages = new();
 
-    partial void OnRootPageChanged(PageAddress value)
+    [RelayCommand]
+    private async Task Refresh()
     {
-        var allocationUnit = Database.AllocationUnits.FirstOrDefault(a => a.RootPage == value);
+        IsInitialized = false;
 
-        if (allocationUnit != null)
-        {
-            SetAllocationUnitDescription(allocationUnit);
-        }
-    }
-
-    private void SetAllocationUnitDescription(AllocationUnit allocationUnit)
-    {
-        ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
-        ObjectId = allocationUnit.ObjectId;
-
-        IndexName = allocationUnit.IndexName;
-        IndexId = allocationUnit.IndexId;
-
-        IndexType = allocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
-            ? "Non-Clustered"
-            : string.Empty;
-        ObjectIndexType = allocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
-            ? "Clustered"
-            : "Heap";
-
-        Name = "Index: " + IndexName;
+        await Initialize();
     }
 
     public async Task Initialize()
@@ -176,7 +156,35 @@ public partial class IndexTabViewModel(IndexService indexService,
         IndexDetailVisibility = Visibility.Visible;
     }
 
-    private ObservableCollection<IndexRecordModel> GetIndexRecordModels(IEnumerable<IndexRecord> source)
+    partial void OnRootPageChanged(PageAddress value)
+    {
+        var allocationUnit = Database.AllocationUnits.FirstOrDefault(a => a.RootPage == value);
+
+        if (allocationUnit != null)
+        {
+            SetAllocationUnitDescription(allocationUnit);
+        }
+    }
+
+    private void SetAllocationUnitDescription(AllocationUnit allocationUnit)
+    {
+        ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
+        ObjectId = allocationUnit.ObjectId;
+
+        IndexName = allocationUnit.IndexName;
+        IndexId = allocationUnit.IndexId;
+
+        IndexType = allocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
+            ? "Non-Clustered"
+            : string.Empty;
+        ObjectIndexType = allocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
+            ? "Clustered"
+            : "Heap";
+
+        Name = "Index: " + IndexName;
+    }
+
+    private static ObservableCollection<IndexRecordModel> GetIndexRecordModels(IEnumerable<IndexRecord> source)
     {
         var models = source.Select(r => new IndexRecordModel
         {
@@ -194,7 +202,7 @@ public partial class IndexTabViewModel(IndexService indexService,
         return new ObservableCollection<IndexRecordModel>(models);
     }
 
-    private ObservableCollection<IndexRecordModel> GetDataRecordModels(IEnumerable<DataRecord> source)
+    private static ObservableCollection<IndexRecordModel> GetDataRecordModels(IEnumerable<DataRecord> source)
     {
         var models = source.Select(r => new IndexRecordModel
         {
@@ -214,11 +222,11 @@ public partial class IndexTabViewModel(IndexService indexService,
     {
         if (pageAddress != PageAddress.Empty)
         {
-            HighlightedPages = new ObservableCollection<PageAddress> { pageAddress };
+            HighlightedPages = [pageAddress];
         }
         else
         {
-            HighlightedPages = new ObservableCollection<PageAddress>();
+            HighlightedPages = [];
         }
     }
 }

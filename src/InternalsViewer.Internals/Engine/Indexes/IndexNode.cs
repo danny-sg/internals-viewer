@@ -25,4 +25,6 @@ public class IndexNode(PageAddress pageAddress)
     public int Level { get; set; }
 
     public int Ordinal { get; set; }
+    
+    public int IndexLevel { get; set; }
 }

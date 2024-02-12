@@ -105,29 +105,22 @@
                                   Icon="Refresh" 
                                   Command="{x:Bind ViewModel.RefreshCommand}"/>
                     <AppBarSeparator />
-                    <AppBarElementContainer />
-                    <!--<CommandBar.SecondaryCommands>
-                        <AppBarButton Label="Add Bookmark">
-                            <AppBarButton.Icon>
-                                <ImageIcon Source="ms-appx:///Assets/Bookmark.svg"/>
-                            </AppBarButton.Icon>
-                        </AppBarButton>
-                        <AppBarSeparator />
-                        <AppBarButton Label="Page - 1" 
-                                      Icon="Previous" 
-                                      Command="{x:Bind ViewModel.LoadPageCommand}" 
-                                      CommandParameter="{x:Bind ViewModel.PreviousPage, Mode=OneWay}"/>
-                        <AppBarButton Label="Page + 1" 
-                                      Icon="Next" 
-                                      Command="{x:Bind ViewModel.LoadPageCommand}"
-                                      CommandParameter="{x:Bind ViewModel.NextPage, Mode=OneWay}"/>
-                    </CommandBar.SecondaryCommands>-->
-                    <CommandBar.Content>
 
-                    </CommandBar.Content>
+                    <AppBarButton Label="Index" Command="{x:Bind ViewModel.OpenIndexViewCommand}">
+                        <AppBarButton.Icon>
+                            <BitmapIcon UriSource="ms-appx:///Assets/Index32.png"/>
+                        </AppBarButton.Icon>
+                    </AppBarButton>
+
+                    <AppBarSeparator />
                 </CommandBar>
 
-                <CommandBar Grid.Column="1" HorizontalContentAlignment="Left"  HorizontalAlignment="Left">
+                <CommandBar Grid.Column="1"         
+                            Background="Transparent" 
+                            IsOpen="False"       
+                            DefaultLabelPosition="Right" 
+                            HorizontalAlignment="Left">
+
                     <AppBarElementContainer>
                         <Grid Margin="8" Padding="0">
                             <Grid.RowDefinitions>
@@ -180,19 +173,23 @@
                                        Grid.Column="1"
                                        Text="Index Id" />
 
-                            <controls:CopyTextBlock x:Name="ObjectIdTextBlock"
+                            <controls:CopyTextBlock 
+                                           x:Name="ObjectIdTextBlock"
                                            Margin="14,0,0,0"  
                                            Grid.Row="0"
                                            Grid.Column="2"
                                            Value="{x:Bind ViewModel.ObjectId, Mode=OneWay}" />
 
-                            <controls:CopyTextBlock x:Name="IndexIdTextBlock"
+                            <controls:CopyTextBlock 
+                                           x:Name="IndexIdTextBlock"
                                            Margin="14,0,0,0"  
                                            Grid.Row="1"
                                            Grid.Column="2"
                                            Value="{x:Bind ViewModel.IndexId, Mode=OneWay}" />
                         </Grid>
                     </AppBarElementContainer>
+
+
                 </CommandBar>
             </Grid>
 

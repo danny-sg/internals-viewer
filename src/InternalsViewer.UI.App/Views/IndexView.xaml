@@ -9,6 +9,7 @@
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
     PointerWheelChanged="IndexView_PointerWheelChanged"
+    SizeChanged="IndexView_SizeChanged"
     Loaded="UserControl_Loaded"
     mc:Ignorable="d">
     <UserControl.Resources>
@@ -29,7 +30,7 @@
                     Grid.Row="0"
                     HorizontalAlignment="Left"
                     Background="Transparent">
-            <AppBarButton Label="Refresh" Icon="Refresh" />
+            <AppBarButton Label="Refresh" Icon="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" />
             <AppBarSeparator />
             <AppBarElementContainer>
                 <Grid Margin="8" Padding="0">
@@ -99,6 +100,7 @@
             </AppBarElementContainer>
         </CommandBar>
         <Grid Grid.Row="1"
+              x:Name="ContainerGrid"
               BorderThickness="0,1,0,0" 
               Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
@@ -134,6 +136,7 @@
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"/>
             <Grid Grid.Column="1" 
+                  x:Name="IndexGrid"
                   Visibility="{x:Bind ViewModel.IndexDetailVisibility, Mode=OneWay}"      
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
                   BorderThickness="1,0,0,0" >
@@ -145,12 +148,12 @@
                             Padding="8"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
                             BorderThickness="0,0,0,1" >
-                    <TextBlock Margin="4,0,0,1">Page Address</TextBlock>
+                    <TextBlock Margin="4,0,0,1" FontWeight="Bold">Page Address</TextBlock>
                     <HyperlinkButton x:Name="PageAddressLink"
                                      Margin="4,0,0,0"
                                      Style="{StaticResource PageAddressStyle}"
                                      Content="{x:Bind ViewModel.SelectedPageAddress, Mode=OneWay}" />
-                    <TextBlock Margin="4,0,0,1">Previous Page</TextBlock>
+                    <TextBlock Margin="4,0,0,1" FontWeight="Bold">Previous Page</TextBlock>
                     <HyperlinkButton x:Name="PreviousPageAddressLink"
                                      Margin="4,0,0,0"
                                      PointerEntered="PageAddressLink_PointerEntered"
@@ -159,7 +162,7 @@
                                      Style="{StaticResource PageAddressStyle}"
                                      Content="{x:Bind ViewModel.SelectedPreviousPage, Mode=OneWay, FallbackValue='(0:0)'}" />
 
-                    <TextBlock Margin="4,0,0,1">Next Page</TextBlock>
+                    <TextBlock Margin="4,0,0,1" FontWeight="Bold">Next Page</TextBlock>
                     <HyperlinkButton x:Name="NextPageAddressLink"
                                      Margin="4,0,0,0"
                                      PointerEntered="PageAddressLink_PointerEntered"
@@ -167,9 +170,6 @@
                                      Click="PageAddressLink_OnClick"
                                      Style="{StaticResource PageAddressStyle}"
                                      Content="{x:Bind ViewModel.SelectedNextPage, Mode=OneWay, FallbackValue='(0:0)'}" />
-                    <!--<TextBlock     Margin="4">Level</TextBlock>
-                    <TextBlock Text="{x:Bind ViewModel.SelectedLevel, Mode=OneWay, FallbackValue=0}"  
-                               Margin="4"/>-->
                 </StackPanel>
                 <index:RecordGrid Grid.Row="1"
                                   Records="{x:Bind ViewModel.Records, Mode=OneWay}" 
@@ -180,6 +180,7 @@
             </Grid>
             <controls1:GridSplitter Width="4"
                                     Grid.Column="1"
+                                    x:Name="IndexGridSplitter"
                                     HorizontalAlignment="Left"
                                     ResizeBehavior="BasedOnAlignment"
                                     ResizeDirection="Columns">

@@ -8,6 +8,7 @@ using Windows.System;
 using Windows.UI.Core;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.Controls.Allocation;
+using InternalsViewer.UI.App.ViewModels.Tabs;
 
 namespace InternalsViewer.UI.App.Views;
 

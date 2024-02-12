@@ -54,10 +54,10 @@ public sealed partial class DatabaseView
         }
     }
 
-    private void OnViewIndexClicked(object? sender, PageAddressEventArgs e)
+    private async void OnViewIndexClicked(object? sender, PageAddressEventArgs e)
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
-        WeakReferenceMessenger.Default.Send(new OpenIndexMessage(new OpenIndexRequest(TabViewModel.Database, pageAddress)));
+        await WeakReferenceMessenger.Default.Send(new OpenIndexMessage(new OpenIndexRequest(TabViewModel.Database, pageAddress)));
     }
 }

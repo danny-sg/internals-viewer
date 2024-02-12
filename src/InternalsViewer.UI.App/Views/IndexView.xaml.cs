@@ -80,6 +80,8 @@ public sealed partial class IndexView
 
     private async void PageAddressLink_OnClick(object sender, RoutedEventArgs e)
     {
+        ViewModel.SetHighlightedPage(PageAddress.Empty);
+
         var link = (HyperlinkButton)sender;
 
         var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
@@ -96,5 +98,14 @@ public sealed partial class IndexView
         {
             await ViewModel.LoadPageCommand.ExecuteAsync(pageAddress);
         }
+    }
+
+    private void IndexView_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var maxWidth = e.NewSize.Width / 2;
+
+        // Set max width of the index grid to 50% (grid doesn't accept MaxWidth=50* so we have to do it in code)
+        ContainerGrid.ColumnDefinitions[1].MaxWidth = maxWidth;
+        IndexGrid.MaxWidth = maxWidth;
     }
 }

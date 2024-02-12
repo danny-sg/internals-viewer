@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:skiaSharp="using:SkiaSharp.Views.Windows"
     SizeChanged="UserControl_SizeChanged"
-    Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
+    Background="Transparent"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="TooltipValueStyle" TargetType="TextBlock">
@@ -91,7 +91,29 @@
                                    Grid.Column="1"
                                    x:Name="PageAddressTextBox" 
                                    Style="{StaticResource TooltipValueStyle}"
-                                   Text="{x:Bind HoverPageAddress, Mode=OneWay}"/>
+                                   Text="{x:Bind HoverNode.PageAddress, Mode=OneWay, FallbackValue=''}"/>
+
+                        <TextBlock Grid.Row="1" 
+                                   Grid.Column="0"
+                                   Style="{StaticResource TooltipKeyStyle}">
+                            Level
+                        </TextBlock>
+                        <TextBlock Grid.Row="1" 
+                                   Grid.Column="1"
+                                   x:Name="LevelTextBox" 
+                                   Style="{StaticResource TooltipValueStyle}"
+                                   Text="{x:Bind HoverNode.IndexLevel, Mode=OneWay, FallbackValue=''}"/>
+
+                        <TextBlock Grid.Row="2" 
+                                   Grid.Column="0"
+                                   Style="{StaticResource TooltipKeyStyle}">
+                            Page Type
+                        </TextBlock>
+                        <TextBlock Grid.Row="2" 
+                                   Grid.Column="1"
+                                   x:Name="PageTypeTextBox" 
+                                   Style="{StaticResource TooltipValueStyle}"
+                                   Text="{x:Bind HoverNode.PageType, Mode=OneWay, FallbackValue=''}"/>
                     </Grid>
                 </Border>
             </Grid>

@@ -89,6 +89,7 @@ public sealed partial class RecordGrid
                 ElementStyle = (Style)Resources["PageAddressStyle"],
             };
 
+            
             column.PageClicked += (sender, args) => PageClicked?.Invoke(this, args);
 
             DataGrid.Columns.Add(column);

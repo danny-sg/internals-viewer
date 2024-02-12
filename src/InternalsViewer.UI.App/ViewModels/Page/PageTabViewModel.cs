@@ -23,6 +23,8 @@ using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 using InternalsViewer.UI.App.Services.Markers;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
@@ -199,7 +201,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         {
             Index = CompressionInfoSlot,
             Description = "Compression Info"
-        };  
+        };
 
         slots.Insert(0, headerSlot);
 
@@ -208,7 +210,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             case AllocationUnitPage allocationUnitPage:
                 DisplayAllocationUnitPage(allocationUnitPage);
 
-                if(allocationUnitPage.CompressionInfo != null)
+                if (allocationUnitPage.CompressionInfo != null)
                 {
                     slots.Insert(1, compressionInfoSlot);
                 }
@@ -279,6 +281,20 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     {
         await LoadPage(PageAddress);
     }
+
+    [RelayCommand(CanExecute = nameof(CanOpenIndexView))]
+    private async Task OpenIndexView()
+    {
+        if (Page is AllocationUnitPage allocationUnitPage)
+        {
+            var rootPage = allocationUnitPage.AllocationUnit.RootPage;
+
+            await WeakReferenceMessenger.Default.Send(new OpenIndexMessage(new OpenIndexRequest(Database, rootPage)));
+        }
+    }
+
+    private bool CanOpenIndexView() => Page is AllocationUnitPage allocationUnitPage
+                                       && allocationUnitPage.AllocationUnit.IndexType != Internals.Engine.Database.Enums.IndexType.Heap;
 
     private bool CanGoForward() => History.CanGoForward();
 
