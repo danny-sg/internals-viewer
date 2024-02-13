@@ -92,8 +92,7 @@
                     <AppBarElementContainer>
                         <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
                                                      PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 
-                                                     DatabaseName="{x:Bind ViewModel.Database.Name, Mode=OneWay}"
-                                                     AddressChanged="PageAddressTextBox_Changed"/>
+                                                     DatabaseName="{x:Bind ViewModel.Database.Name, Mode=OneWay}" />
                     </AppBarElementContainer>
                     <AppBarButton Label="Back" 
                                   Icon="Previous" 
@@ -260,9 +259,9 @@
                         <TextBlock Text="{x:Bind ViewModel.MarkerTabName, Mode=OneWay}"/>
                     </TabViewItem.Header>
 
-                    <page:MarkerTreeView Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
-                                         SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
-                                         PageClicked="Control_PageClicked"/>
+                    <page:MarkerTreeView x:Name="MarkerTreeView"
+                                         Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                         SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
                 </TabViewItem>
 
                 <TabViewItem IsClosable="False" 
@@ -273,8 +272,8 @@
                     <TabViewItem.Header>
                         Allocations
                     </TabViewItem.Header>
-                    <allocation:AllocationControl Size="63903" 
-                                                  PageClicked="Control_PageClicked"
+                    <allocation:AllocationControl x:Name="AllocationControl"
+                                                  Size="63903" 
                                                   IsTooltipEnabled="True"
                                                   BorderColor="{ThemeResource CardStrokeColorDefault}"
                                                   GridColor="{ThemeResource AllocationBorderColor}"

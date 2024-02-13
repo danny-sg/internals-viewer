@@ -8,30 +8,34 @@ using Windows.System;
 using Windows.UI.Core;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.Controls.Allocation;
-using InternalsViewer.UI.App.ViewModels.Tabs;
+using System;
 
 namespace InternalsViewer.UI.App.Views;
 
-public sealed partial class PageView
+public sealed partial class PageView : IDisposable
 {
     public PageTabViewModel ViewModel => (PageTabViewModel)DataContext;
 
     public PageView()
     {
         InitializeComponent();
+
+        PageAddressTextBox.AddressChanged += PageAddressTextBox_Changed;
+        MarkerTreeView.PageClicked += Control_PageClicked;
+        AllocationControl.PageClicked += Control_PageClicked;
     }
 
-    private void PageAddressTextBox_Changed(object sender, PageAddressEventArgs args)
+    private void PageAddressTextBox_Changed(object? sender, PageAddressEventArgs args)
     {
         ViewModel.LoadPageCommand.Execute(new PageAddress(args.FileId, args.PageId));
     }
 
-    private void Control_PageClicked(object sender, PageAddressEventArgs e)
+    private void Control_PageClicked(object? sender, PageAddressEventArgs e)
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
         var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-        
+
         var isShiftPressed = state.HasFlag(CoreVirtualKeyStates.Down);
 
         if (isShiftPressed)
@@ -46,7 +50,7 @@ public sealed partial class PageView
         }
     }
 
-        private void OffsetTableListView_ItemClick(object sender, ItemClickEventArgs e)
+    private void OffsetTableListView_ItemClick(object sender, ItemClickEventArgs e)
     {
         var listView = sender as ListView;
 
@@ -56,5 +60,12 @@ public sealed partial class PageView
             listView.DeselectAll();
             ViewModel.SelectedSlot = null;
         }
+    }
+
+    public void Dispose()
+    {
+        PageAddressTextBox.AddressChanged -= PageAddressTextBox_Changed;
+        MarkerTreeView.PageClicked -= Control_PageClicked;
+        AllocationControl.PageClicked -= Control_PageClicked;
     }
 }

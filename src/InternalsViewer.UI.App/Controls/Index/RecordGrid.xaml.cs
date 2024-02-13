@@ -14,7 +14,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
-public sealed partial class RecordGrid
+public sealed partial class RecordGrid: IDisposable
 {
     public AllocationLayerGridViewModel ViewModel { get; } = new();
 
@@ -37,6 +37,8 @@ public sealed partial class RecordGrid
     public RecordGrid()
     {
         InitializeComponent();
+
+        DataGrid.SelectionChanged += DataGrid_SelectionChanged;
     }
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -51,6 +53,8 @@ public sealed partial class RecordGrid
 
     private void AddColumns()
     {
+        RemoveEventHandlers();
+
         DataGrid.Columns.Clear();
 
         var slotColumn = new DataGridTextColumn
@@ -89,8 +93,7 @@ public sealed partial class RecordGrid
                 ElementStyle = (Style)Resources["PageAddressStyle"],
             };
 
-            
-            column.PageClicked += (sender, args) => PageClicked?.Invoke(this, args);
+            column.PageClicked += OnPageClicked;
 
             DataGrid.Columns.Add(column);
         }
@@ -108,6 +111,25 @@ public sealed partial class RecordGrid
         }
     }
 
+    /// <summary>
+    /// Cleans up the event handlers as they seem to be compound on each refresh
+    /// </summary>
+    private void RemoveEventHandlers()
+    {
+        foreach(var column in DataGrid.Columns)
+        {
+            if (column is PageAddressLinkButtonColumn<IndexRecordModel> linkButtonColumn)
+            {
+                linkButtonColumn.PageClicked -= OnPageClicked;
+            }
+        }
+    }
+
+    private void OnPageClicked(object? sender, PageAddressEventArgs e)
+    {
+        PageClicked?.Invoke(this, e);
+    }
+
     private void DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         var grid = sender as DataGrid;
@@ -118,6 +140,13 @@ public sealed partial class RecordGrid
 
             PageOver?.Invoke(this, new PageAddressEventArgs(address));
         }
+    }
+
+    public void Dispose()
+    {
+        RemoveEventHandlers();
+
+        DataGrid.SelectionChanged -= DataGrid_SelectionChanged;
     }
 }
 

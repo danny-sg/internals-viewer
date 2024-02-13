@@ -19,7 +19,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
-public sealed partial class IndexControl
+public sealed partial class IndexControl : IDisposable
 {
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
@@ -121,6 +121,11 @@ public sealed partial class IndexControl
     {
         InitializeComponent();
 
+        IndexCanvas.PaintSurface += IndexCanvas_PaintSurface;
+        IndexCanvas.PointerMoved += IndexCanvas_PointerMoved;
+        IndexCanvas.PointerExited += IndexCanvas_OnPointerExited;
+        IndexCanvas.PointerPressed += IndexCanvas_PointerPressed;
+
         shadowPaint = new SKPaint
         {
 
@@ -164,7 +169,7 @@ public sealed partial class IndexControl
         control.IndexCanvas.Invalidate();
     }
 
-    private void IndexCanvas_PaintSurface(object sender, SKPaintSurfaceEventArgs e)
+    private void IndexCanvas_PaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
         if (!nodePositions.Any())
         {
@@ -597,6 +602,18 @@ public sealed partial class IndexControl
                                                      && y <= yOffset + n.Y + PageHeight);
 
         return node?.Node;
+    }
+
+    public void Dispose()
+    {
+        indexPagePaint.Dispose();
+        linePaint.Dispose();
+        shadowPaint.Dispose();
+
+        IndexCanvas.PaintSurface -= IndexCanvas_PaintSurface;
+        IndexCanvas.PointerMoved -= IndexCanvas_PointerMoved;
+        IndexCanvas.PointerExited -= IndexCanvas_OnPointerExited;
+        IndexCanvas.PointerPressed -= IndexCanvas_PointerPressed;
     }
 }
 

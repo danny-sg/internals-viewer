@@ -13,12 +13,13 @@ using SkiaSharp;
 using SkiaSharp.Views.Windows;
 using Windows.System;
 using Windows.UI.Core;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
 using AllocationOverViewModel = InternalsViewer.UI.App.ViewModels.Allocation.AllocationOverViewModel;
 using Color = Windows.UI.Color;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
 
-public sealed partial class AllocationControl
+public sealed partial class AllocationControl : IDisposable
 {
     private const double MinimumZoom = 0.2;
     private const double MaximumZoom = 4;
@@ -145,7 +146,7 @@ public sealed partial class AllocationControl
         set => SetValue(ZoomProperty, value);
     }
 
-    public static readonly DependencyProperty ZoomProperty
+    private static readonly DependencyProperty ZoomProperty
         = DependencyProperty.Register(nameof(Zoom),
                                       typeof(double),
                                       typeof(AllocationControl),
@@ -165,6 +166,22 @@ public sealed partial class AllocationControl
 
     private int ScrollPosition { get; set; }
 
+    public AllocationControl()
+    {
+        InitializeComponent();
+
+        AllocationCanvas.PaintSurface += AllocationCanvas_PaintSurface;
+        AllocationCanvas.PointerMoved += AllocationCanvas_PointerMoved;
+        AllocationCanvas.PointerPressed += AllocationCanvas_PointerPressed;
+        AllocationCanvas.PointerExited += AllocationCanvas_PointerExited;
+        AllocationCanvas.PointerEntered += AllocationCanvas_PointerEntered;
+        AllocationCanvas.SizeChanged += AllocationCanvas_SizeChanged;
+
+        PointerWheelChanged += AllocationControl_PointerWheelChanged;
+
+        SetScrollBarValues();
+    }
+
     private void Refresh()
     {
         Layout = GetExtentLayout(Size, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
@@ -172,16 +189,6 @@ public sealed partial class AllocationControl
         SetScrollBarValues();
 
         AllocationCanvas.Invalidate();
-    }
-
-    public AllocationControl()
-    {
-        InitializeComponent();
-
-        AllocationCanvas.SizeChanged += AllocationCanvas_SizeChanged;
-        PointerWheelChanged += AllocationControl_PointerWheelChanged;
-
-        SetScrollBarValues();
     }
 
     private void AllocationControl_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
@@ -225,7 +232,7 @@ public sealed partial class AllocationControl
         ScrollBar.Maximum = Size + Size % Layout.HorizontalCount;
     }
 
-    private void AllocationCanvas_PaintSurface(object sender, SKPaintSurfaceEventArgs e)
+    private void AllocationCanvas_PaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
         var surface = e.Surface;
         var canvas = surface.Canvas;
@@ -502,7 +509,7 @@ public sealed partial class AllocationControl
         AllocationOver.ExtentId = extentId;
         AllocationOver.PageId = pageId;
         AllocationOver.LayerName = layerName;
-        AllocationOver.PfsValue = PfsChain.GetPageStatus(pageId);
+        AllocationOver.PfsValue = PfsChain?.GetPageStatus(pageId) ?? PfsByte.Unknown;
 
         if (IsTooltipEnabled)
         {
@@ -540,6 +547,18 @@ public sealed partial class AllocationControl
     private void AllocationCanvas_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
         AllocationOver.IsOpen = IsTooltipEnabled;
+    }
+
+    public void Dispose()
+    {
+        AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
+        PointerWheelChanged -= AllocationControl_PointerWheelChanged;
+        AllocationCanvas.PaintSurface -= AllocationCanvas_PaintSurface;
+        AllocationCanvas.PointerMoved -= AllocationCanvas_PointerMoved;
+        AllocationCanvas.PointerPressed -= AllocationCanvas_PointerPressed;
+        AllocationCanvas.PointerExited -= AllocationCanvas_PointerExited;
+        AllocationCanvas.PointerEntered -= AllocationCanvas_PointerEntered;
+        AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
     }
 }
 

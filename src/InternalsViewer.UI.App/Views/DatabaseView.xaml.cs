@@ -5,21 +5,29 @@ using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Database;
 using Microsoft.UI.Xaml.Controls;
 using InternalsViewer.Internals.Engine.Address;
+using System;
+using CommunityToolkit.WinUI;
 
 namespace InternalsViewer.UI.App.Views;
 
-public sealed partial class DatabaseView
+public sealed partial class DatabaseView : IDisposable
 {
+    public DatabaseTabViewModel TabViewModel => (DatabaseTabViewModel)DataContext;
+
+    public double AllocationMapHeight { get; set; }
+
     public DatabaseView()
     {
         InitializeComponent();
 
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
+        AllocationLayerGrid.ViewIndexClicked += OnViewIndexClicked;
+        PageAddressTextBox.AddressChanged += OnPageSelected;
+        AllocationLayerGrid.PageClicked += OnPageSelected;
+
+        AllocationInfoAppBarToggleButton.Checked += AppBarToggleButton_Changed;
+        AllocationInfoAppBarToggleButton.Unchecked += AppBarToggleButton_Changed;
     }
-
-    public DatabaseTabViewModel TabViewModel => (DatabaseTabViewModel)DataContext;
-
-    public double AllocationMapHeight { get; set; }
 
     private void OnPageSelected(object? sender, PageAddressEventArgs e)
     {
@@ -59,5 +67,22 @@ public sealed partial class DatabaseView
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
         await WeakReferenceMessenger.Default.Send(new OpenIndexMessage(new OpenIndexRequest(TabViewModel.Database, pageAddress)));
+    }
+
+    public void Dispose()
+    {
+        foreach(var child in AllocationItemRepeater.FindChildren())
+        {
+            if (child is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
+        AllocationItemRepeater.SizeChanged -= OnParentSizeChanged;
+        AllocationLayerGrid.PageClicked -= OnPageSelected;
+        AllocationLayerGrid.ViewIndexClicked -= OnViewIndexClicked;
+        AllocationInfoAppBarToggleButton.Checked -= AppBarToggleButton_Changed;
+        AllocationInfoAppBarToggleButton.Unchecked -= AppBarToggleButton_Changed;;
     }
 }

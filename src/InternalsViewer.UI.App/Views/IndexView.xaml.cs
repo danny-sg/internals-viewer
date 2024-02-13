@@ -1,3 +1,4 @@
+using System;
 using InternalsViewer.UI.App.ViewModels.Index;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Input;
@@ -8,10 +9,11 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.UI.App.Controls.Index;
 
 namespace InternalsViewer.UI.App.Views;
 
-public sealed partial class IndexView
+public sealed partial class IndexView: IDisposable
 {
     private const float MinimumZoom = 0.001f;
     private const float MaximumZoom = 10f;
@@ -21,6 +23,26 @@ public sealed partial class IndexView
     public IndexView()
     {
         InitializeComponent();
+
+        // Clicking on the Index View selects the page and reads the records
+        IndexControl.PageClicked += IndexView_PageClicked;
+
+        // Clicking Previous Page or Next Page links loads the previous or next page
+        PreviousPageAddressLink.Click += PageAddressLink_OnClick;
+        NextPageAddressLink.Click += PageAddressLink_OnClick;
+
+        // Hovering over a Previous or Next page highlights the page to show the double linked list
+        PreviousPageAddressLink.PointerEntered += PageAddressLink_PointerEntered;
+        PreviousPageAddressLink.PointerExited += PageAddressLink_PointerExited;
+
+        NextPageAddressLink.PointerEntered += PageAddressLink_PointerEntered;
+        NextPageAddressLink.PointerExited += PageAddressLink_PointerExited;
+
+        // Displays the page location
+        RecordGrid.PageOver += RecordGrid_PageOver;
+
+        // Opens the page from the grid
+        RecordGrid.PageClicked += IndexView_PageClicked;
     }
 
     private void IndexView_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
@@ -42,33 +64,47 @@ public sealed partial class IndexView
 
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
-        await ViewModel.Initialize();
+        try
+        {
+            await ViewModel.Refresh();
+        }
+        catch (Exception ex)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+        }
     }
 
-    private void RecordGrid_OnPageOver(object? sender, PageAddressEventArgs e)
+    private void RecordGrid_PageOver(object? sender, PageAddressEventArgs e)
     {
         ViewModel.SetHighlightedPage(e.PageAddress);
     }
 
     private async void IndexView_PageClicked(object? sender, PageAddressEventArgs e)
     {
-        var pageAddress = new PageAddress(e.FileId, e.PageId);
+        try
+        {
+            var pageAddress = new PageAddress(e.FileId, e.PageId);
 
-        if (e.Tag == "Open")
-        {
-            await WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+            if (e.Tag == "Open")
+            {
+                await WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+            }
+            else
+            {
+                await ViewModel.LoadPageCommand.ExecuteAsync(pageAddress);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await ViewModel.LoadPageCommand.ExecuteAsync(pageAddress);
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
         }
     }
 
     private void PageAddressLink_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        var link = (HyperlinkButton)sender; 
+        var link = (HyperlinkButton)sender;
 
-        var pageAddress = (PageAddress)link.Content;    
+        var pageAddress = (PageAddress)link.Content;
 
         ViewModel.SetHighlightedPage(pageAddress);
     }
@@ -80,23 +116,30 @@ public sealed partial class IndexView
 
     private async void PageAddressLink_OnClick(object sender, RoutedEventArgs e)
     {
-        ViewModel.SetHighlightedPage(PageAddress.Empty);
-
-        var link = (HyperlinkButton)sender;
-
-        var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-
-        var isShiftPressed = state.HasFlag(CoreVirtualKeyStates.Down);
-
-        var pageAddress = (PageAddress)link.Content;
-
-        if (isShiftPressed)
+        try
         {
-            await WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+            ViewModel.SetHighlightedPage(PageAddress.Empty);
+
+            var link = (HyperlinkButton)sender;
+
+            var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+
+            var isShiftPressed = state.HasFlag(CoreVirtualKeyStates.Down);
+
+            var pageAddress = (PageAddress)link.Content;
+
+            if (isShiftPressed)
+            {
+                await WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+            }
+            else
+            {
+                await ViewModel.LoadPage(pageAddress);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await ViewModel.LoadPageCommand.ExecuteAsync(pageAddress);
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
         }
     }
 
@@ -107,5 +150,26 @@ public sealed partial class IndexView
         // Set max width of the index grid to 50% (grid doesn't accept MaxWidth=50* so we have to do it in code)
         ContainerGrid.ColumnDefinitions[1].MaxWidth = maxWidth;
         IndexGrid.MaxWidth = maxWidth;
+    }
+
+    public void Dispose()
+    {
+        IndexControl.PageClicked -= IndexView_PageClicked;
+
+        PreviousPageAddressLink.Click -= PageAddressLink_OnClick;
+        NextPageAddressLink.Click -= PageAddressLink_OnClick;
+
+        PreviousPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
+        PreviousPageAddressLink.PointerExited -= PageAddressLink_PointerExited;
+
+        NextPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
+        NextPageAddressLink.PointerExited -= PageAddressLink_PointerExited;
+
+        RecordGrid.PageOver -= RecordGrid_PageOver;
+
+        RecordGrid.PageClicked -= IndexView_PageClicked;
+
+        RecordGrid.Dispose();
+        IndexControl.Dispose();
     }
 }

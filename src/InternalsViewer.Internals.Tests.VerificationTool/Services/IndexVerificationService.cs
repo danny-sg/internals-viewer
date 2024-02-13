@@ -180,7 +180,7 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
         var connection = ServerConnectionFactory.Create(config => config.ConnectionString = connectionString);
 
-        var database = await DatabaseService.Load("TestDatabase", connection);
+        var database = await DatabaseService.LoadAsync("TestDatabase", connection);
 
         return database;
     }

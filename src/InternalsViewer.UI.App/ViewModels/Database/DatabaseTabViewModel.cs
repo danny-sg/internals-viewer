@@ -26,7 +26,7 @@ public class DatabaseTabViewModelFactory(IDatabaseService databaseService)
         => new(database, DatabaseService);
 }
 
-public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService): TabViewModel
+public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService) : TabViewModel
 {
     private IDatabaseService DatabaseService { get; } = databaseService;
 
@@ -100,8 +100,16 @@ public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseServ
     [RelayCommand]
     private async Task Refresh()
     {
-        Database = await DatabaseService.Load(database.Name, database.Connection);
+        await Task.Run(async () =>
+        {
+            var result = await DatabaseService.LoadAsync(database.Name, database.Connection);
 
-        Load(Database.Name);
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                Database = result;
+
+                Load(Database.Name);
+            });
+        });
     }
 }

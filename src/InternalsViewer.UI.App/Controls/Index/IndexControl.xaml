@@ -32,13 +32,9 @@
         <skiaSharp:SKXamlCanvas x:Name="IndexCanvas"
                                 Grid.Column="0"      
                                 Grid.Row="0"
-                                PaintSurface="IndexCanvas_PaintSurface" 
                                 IgnorePixelScaling="True"
                                 VerticalAlignment="Stretch"
-                                HorizontalAlignment="Stretch"
-                                PointerPressed="IndexCanvas_PointerPressed"
-                                PointerMoved="IndexCanvas_PointerMoved"
-                                PointerExited="IndexCanvas_OnPointerExited"/>
+                                HorizontalAlignment="Stretch" />
         <ScrollBar x:Name="VerticalScrollBar" 
                    Grid.Column="1" 
                    Grid.Row="0"

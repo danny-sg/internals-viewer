@@ -45,29 +45,28 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0">
                         <TextBlock x:Name="ObjectName"
-                     
-                         Margin="0,0,10,0"  
-                         Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}" />
+                                   Margin="0,0,10,0"  
+                                   Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}" />
                         <Grid 
                          Margin="0"
                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
                             <TextBlock x:Name="ObjectIndexType"
-                             Margin="0"  
-                             Foreground="BlueViolet"
-                             Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}" />
+                                       Margin="0"  
+                                       Foreground="BlueViolet"
+                                       Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}" />
                         </Grid>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0">
                         <TextBlock x:Name="IndexName"
-                         Margin="0,0,10,0"  
-                         FontWeight="Bold"
-                         Text="{x:Bind ViewModel.IndexName, Mode=OneWay}" />
+                                   Margin="0,0,10,0"  
+                                   FontWeight="Bold"
+                                   Text="{x:Bind ViewModel.IndexName, Mode=OneWay}" />
                         <Grid Margin="0"
-                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
                             <TextBlock x:Name="IndexType"
-                             Margin="0"  
-                             Foreground="DarkGreen"
-                             Text="{x:Bind ViewModel.IndexType, Mode=OneWay}" />
+                                       Margin="0"  
+                                       Foreground="DarkGreen"
+                                       Text="{x:Bind ViewModel.IndexType, Mode=OneWay}" />
                         </Grid >
                     </StackPanel>
 
@@ -79,11 +78,11 @@
                      Text="Object Id" />
 
                     <TextBlock x:Name="IndexIdNameTextBlock"
-                     Margin="14,0,0,0" 
-                     Grid.Row="1"
-                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                     Grid.Column="1"
-                     Text="Index Id" />
+                               Margin="14,0,0,0" 
+                               Grid.Row="1"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               Grid.Column="1"
+                               Text="Index Id" />
 
                     <controls:CopyTextBlock x:Name="ObjectIdTextBlock"
                          Margin="14,0,0,0"  
@@ -132,7 +131,6 @@
                                 IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
                                 HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
                                 SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
-                                PageClicked="IndexView_PageClicked"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"/>
             <Grid Grid.Column="1" 
@@ -156,27 +154,19 @@
                     <TextBlock Margin="4,0,0,1" FontWeight="Bold">Previous Page</TextBlock>
                     <HyperlinkButton x:Name="PreviousPageAddressLink"
                                      Margin="4,0,0,0"
-                                     PointerEntered="PageAddressLink_PointerEntered"
-                                     PointerExited="PageAddressLink_PointerExited"
-                                     Click="PageAddressLink_OnClick"
                                      Style="{StaticResource PageAddressStyle}"
                                      Content="{x:Bind ViewModel.SelectedPreviousPage, Mode=OneWay, FallbackValue='(0:0)'}" />
 
                     <TextBlock Margin="4,0,0,1" FontWeight="Bold">Next Page</TextBlock>
                     <HyperlinkButton x:Name="NextPageAddressLink"
                                      Margin="4,0,0,0"
-                                     PointerEntered="PageAddressLink_PointerEntered"
-                                     PointerExited="PageAddressLink_PointerExited"
-                                     Click="PageAddressLink_OnClick"
                                      Style="{StaticResource PageAddressStyle}"
                                      Content="{x:Bind ViewModel.SelectedNextPage, Mode=OneWay, FallbackValue='(0:0)'}" />
                 </StackPanel>
                 <index:RecordGrid Grid.Row="1"
+                                  x:Name="RecordGrid"
                                   Records="{x:Bind ViewModel.Records, Mode=OneWay}" 
-                                  PageOver="RecordGrid_OnPageOver"
-                                  PageClicked="IndexView_PageClicked"
-                                  BorderThickness="0"
-                             />
+                                  BorderThickness="0" />
             </Grid>
             <controls1:GridSplitter Width="4"
                                     Grid.Column="1"

@@ -245,7 +245,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         }
         catch (Exception ex)
         {
-            WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
 
             return false;
         }

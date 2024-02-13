@@ -44,7 +44,7 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
 
-        var result = await databaseService.Load("", null);
+        var result = await databaseService.LoadAsync("", null);
 
         // Check that all allocations are populated for the two files
         Assert.NotNull(result.Gam[1]);
@@ -81,7 +81,7 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
 
-        var result = await databaseService.Load("TestDatabase", null);
+        var result = await databaseService.LoadAsync("TestDatabase", null);
 
         // Check that all PFS chains are populated for the two files
         Assert.NotNull(result.Pfs[1]);

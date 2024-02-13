@@ -162,29 +162,6 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [RelayCommand]
     public async Task LoadPage(PageAddress address)
     {
-        Logger.LogDebug("Loading Page {Address}", address);
-
-        IsLoading = true;
-
-        Name = $"Loading Page {address}...";
-
-        PageAddress = address;
-
-        var resultPage = await PageService.GetPage(Database, address);
-
-        Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} Page {address}";
-
-        History.Add(pageAddress);
-
-        Logger.LogDebug("Building Offset Table");
-
-        var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
-        {
-            Index = (short)i,
-            Offset = s,
-            Description = $"0x{s:X}"
-        }).ToList();
-
         var headerSlot = new PageSlot
         {
             Index = PageHeaderSlot,
@@ -203,56 +180,89 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             Description = "Compression Info"
         };
 
-        slots.Insert(0, headerSlot);
+        Logger.LogDebug("Loading Page {Address}", address);
 
-        switch (resultPage)
-        {
-            case AllocationUnitPage allocationUnitPage:
-                DisplayAllocationUnitPage(allocationUnitPage);
-
-                if (allocationUnitPage.CompressionInfo != null)
+        await Task.Run(async () =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
                 {
-                    slots.Insert(1, compressionInfoSlot);
-                }
-                break;
-            case IamPage iamPage:
-                DisplayIamPage(iamPage);
+                    IsLoading = true;
 
-                slots.Insert(1, iamHeaderSlot);
+                    Name = $"Loading Page {address}...";
 
-                break;
-            case AllocationPage allocationPage:
-                DisplayAllocationPage(allocationPage);
+                    PageAddress = address;
+                });
 
-                break;
+                var resultPage = await PageService.GetPage(Database, address);
 
-            default:
-                IndexName = string.Empty;
-                ObjectName = string.Empty;
-                IndexType = string.Empty;
-                ObjectIndexType = string.Empty;
-                break;
-        }
+                var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
+                {
+                    Index = (short)i,
+                    Offset = s,
+                    Description = $"0x{s:X}"
+                }).ToList();
 
-        PageSlots = new ObservableCollection<PageSlot>(new[] { headerSlot }.Union(slots));
+                slots.Insert(0, headerSlot);
 
-        SelectedSlot = headerSlot;
-        SelectedMarker = null;
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} Page {address}";
 
-        Page = resultPage;
+                    Logger.LogDebug("Building Offset Table");
 
-        NextPage = new PageAddress(pageAddress.FileId, pageAddress.PageId + 1);
+                    switch (resultPage)
+                    {
+                        case AllocationUnitPage allocationUnitPage:
+                            DisplayAllocationUnitPage(allocationUnitPage);
 
-        if (pageAddress.PageId > 0)
-        {
-            PreviousPage = new PageAddress(pageAddress.FileId, pageAddress.PageId - 1);
-        }
+                            if (allocationUnitPage.CompressionInfo != null)
+                            {
+                                slots.Insert(1, compressionInfoSlot);
+                            }
+                            break;
+                        case IamPage iamPage:
+                            DisplayIamPage(iamPage);
 
-        AddPageMarkers(resultPage);
-        AddPageHeaderMarkers();
+                            slots.Insert(1, iamHeaderSlot);
 
-        IsLoading = false;
+                            break;
+                        case AllocationPage allocationPage:
+                            DisplayAllocationPage(allocationPage);
+
+                            break;
+
+                        default:
+                            IndexName = string.Empty;
+                            ObjectName = string.Empty;
+                            IndexType = string.Empty;
+                            ObjectIndexType = string.Empty;
+                            break;
+                    }
+
+                    PageSlots = new ObservableCollection<PageSlot>(new[] { headerSlot }.Union(slots));
+
+                    SelectedSlot = headerSlot;
+                    SelectedMarker = null;
+
+                    Page = resultPage;
+
+                    NextPage = new PageAddress(pageAddress.FileId, pageAddress.PageId + 1);
+
+                    if (pageAddress.PageId > 0)
+                    {
+                        PreviousPage = new PageAddress(pageAddress.FileId, pageAddress.PageId - 1);
+                    }
+
+                    AddPageMarkers(resultPage);
+                    AddPageHeaderMarkers();
+
+                    IsLoading = false;
+                });
+            });
+
+        History.Add(pageAddress);
     }
+
 
     [RelayCommand(CanExecute = nameof(CanGoBack))]
     private async Task PageBack()

@@ -5,5 +5,5 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 
 public interface IDatabaseService
 {
-    Task<DatabaseSource> Load(string name, IConnectionType connection);
+    Task<DatabaseSource> LoadAsync(string name, IConnectionType connection);
 }

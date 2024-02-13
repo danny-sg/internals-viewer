@@ -37,7 +37,7 @@ public class DatabaseService(ILogger<DatabaseService> logger,
     /// <summary>
     /// Create and load a Database object for the given database name
     /// </summary>
-    public async Task<DatabaseSource> Load(string name, IConnectionType connection)
+    public async Task<DatabaseSource> LoadAsync(string name, IConnectionType connection)
     {
         Logger.LogInformation($"Loading database {name}");
 

@@ -83,12 +83,12 @@ public sealed partial class MainWindow
             => m.Reply(OpenIndex(m.Request.Database, m.Request.RootPageAddress)));
 
         WeakReferenceMessenger.Default.Register<ExceptionMessage>(this, (_, m)
-                       => ShowExceptionDialog(m.Value));
+                       => m.Reply(ShowExceptionDialog(m.Exception)));
 
         SetTitleBar(CustomDragRegion);
     }
 
-    private async void ShowExceptionDialog(Exception exception)
+    private async Task<bool> ShowExceptionDialog(Exception exception)
     {
         var dialog = new ExceptionDialog();
 
@@ -99,6 +99,8 @@ public sealed partial class MainWindow
         dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
 
         await dialog.ShowAsync();
+
+        return true;
     }
 
     private async Task<string> ShowPasswordDialog()
@@ -210,6 +212,9 @@ public sealed partial class MainWindow
             IconSource = new ImageIconSource { ImageSource = svg },
         };
 
+
+        tab.Unloaded += (_, _) => content.Dispose();
+
         BindTabTitle(viewModel, tab);
 
         WindowTabView.TabItems.Add(tab);
@@ -231,29 +236,41 @@ public sealed partial class MainWindow
 
     private async Task AddConnection(IConnectionType connection)
     {
-        var database = await DatabaseService.Load(connection.Name, connection);
+        DatabaseSource database = null!;
+
+        await Task.Run(async () =>
+        {
+            // Worker thread
+            database = await DatabaseService.LoadAsync(connection.Name, connection);
+        });
 
         var viewModel = DatabaseTabViewModelFactory.Create(database);
 
         viewModel.Load(connection.Name);
 
-        var content = new DatabaseView();
-
-        content.DataContext = viewModel;
-
-        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/DatabaseTabIcon.svg"));
-
-        var tab = new TabViewItem
+        DispatcherQueue.TryEnqueue(() =>
         {
-            Name = connection.Name,
-            IconSource = new ImageIconSource { ImageSource = svg },
-            Content = content
-        };
+            // UI thread
+            var content = new DatabaseView();
 
-        BindTabTitle(viewModel, tab);
+            content.DataContext = viewModel;
 
-        WindowTabView.TabItems.Add(tab);
-        WindowTabView.SelectedItem = tab;
+            var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/DatabaseTabIcon.svg"));
+
+            var tab = new TabViewItem
+            {
+                Name = connection.Name,
+                IconSource = new ImageIconSource { ImageSource = svg },
+                Content = content
+            };
+
+            BindTabTitle(viewModel, tab);
+
+            tab.Unloaded += (_, _) => content.Dispose();
+
+            WindowTabView.TabItems.Add(tab);
+            WindowTabView.SelectedItem = tab;
+        });
     }
 
     private void TabView_OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)

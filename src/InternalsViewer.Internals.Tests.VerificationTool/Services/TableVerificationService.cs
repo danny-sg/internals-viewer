@@ -245,7 +245,7 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
 
         var connection = ServerConnectionFactory.Create(config => config.ConnectionString = connectionString);
 
-        var database = await DatabaseService.Load("AdventureWorks2022", connection);
+        var database = await DatabaseService.LoadAsync("AdventureWorks2022", connection);
 
         return database;
     }

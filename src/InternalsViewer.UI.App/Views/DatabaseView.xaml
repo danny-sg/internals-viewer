@@ -26,7 +26,7 @@
                                               PfsChain="{x:Bind Parent.PfsChain, Mode=OneWay}"
                                               IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
                                               PageClicked="OnPageSelected"
-                                              x:Name="Allocations"/>
+                                              x:Name="AllocationControl"/>
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
@@ -55,10 +55,9 @@
                         <FontIcon Glyph="&#xE759;"/>
                     </AppBarToggleButton.Icon>
                 </AppBarToggleButton>
-                <AppBarToggleButton Icon="DockBottom" 
+                <AppBarToggleButton x:Name="AllocationInfoAppBarToggleButton"
+                                    Icon="DockBottom" 
                                     Label="Allocation Info" 
-                                    Checked="AppBarToggleButton_Changed"
-                                    Unchecked="AppBarToggleButton_Changed"
                                     IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
                 <AppBarToggleButton Label="PFS" 
                                     IsChecked="{x:Bind TabViewModel.IsPfsVisible, Mode=TwoWay}" />
@@ -71,8 +70,7 @@
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Right">
                 <AppBarElementContainer>
                     <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
-                                                 DatabaseName="{x:Bind TabViewModel.Database.Name, Mode=OneWay}"
-                                                 AddressChanged="OnPageSelected"/>
+                                                 DatabaseName="{x:Bind TabViewModel.Database.Name, Mode=OneWay}" />
                 </AppBarElementContainer>
             </CommandBar>
         </Grid>
@@ -89,8 +87,6 @@
         <allocation:AllocationLayerGrid Grid.Row="2" 
                                         x:Name="AllocationLayerGrid"
                                         SelectedLayer="{x:Bind TabViewModel.SelectedLayer, Mode=TwoWay}"
-                                        PageClicked="OnPageSelected"
-                                        ViewIndexClicked="OnViewIndexClicked"
                                         Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
 
         <toolkit:GridSplitter Grid.Row="2"

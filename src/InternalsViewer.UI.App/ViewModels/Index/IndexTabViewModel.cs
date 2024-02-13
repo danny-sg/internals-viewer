@@ -12,14 +12,15 @@ using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using System.Collections.ObjectModel;
-using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.Internals.Engine.Records.Data;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Index;
 
-public class IndexTabViewModelFactory(IndexService indexService,
+public class IndexTabViewModelFactory(ILogger<IndexTabViewModel> logger,
+                                      IndexService indexService,
                                       IPageService pageService,
                                       IRecordService recordService)
 {
@@ -30,14 +31,17 @@ public class IndexTabViewModelFactory(IndexService indexService,
     private IRecordService RecordService { get; } = recordService;
 
     public IndexTabViewModel Create(DatabaseSource database)
-        => new(IndexService, RecordService, PageService, database);
+        => new(logger, IndexService, RecordService, PageService, database);
 }
 
-public partial class IndexTabViewModel(IndexService indexService,
+public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
+                                       IndexService indexService,
                                        IRecordService recordService,
                                        IPageService pageService,
                                        DatabaseSource database) : TabViewModel
 {
+    private ILogger<IndexTabViewModel> Logger { get; } = logger;
+
     private IndexService IndexService { get; } = indexService;
 
     private IRecordService RecordService { get; } = recordService;
@@ -101,59 +105,106 @@ public partial class IndexTabViewModel(IndexService indexService,
     private ObservableCollection<PageAddress> highlightedPages = new();
 
     [RelayCommand]
-    private async Task Refresh()
+    public async Task Refresh()
     {
-        IsInitialized = false;
+        Logger.LogDebug("Refreshing Index Tab");
 
-        await Initialize();
-    }
+        // Worker thread
+        await Task.Run(async () =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    IsInitialized = false;
+                });
 
-    public async Task Initialize()
-    {
-        Nodes = await IndexService.GetNodes(Database, RootPage);
+                Logger.LogDebug($"Getting nodes for index from root node: {RootPage}");
 
-        IsInitialized = true;
+                var result = await IndexService.GetNodes(Database, RootPage);
+
+                Logger.LogDebug($"{result.Count} node(s) found");
+
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    Logger.LogDebug($"Updating UI");
+
+                    Nodes = result;
+                    IsInitialized = true;
+                });
+            });
     }
 
     [RelayCommand]
-    private async Task LoadPage(PageAddress pageAddress)
+    public async Task LoadPage(PageAddress pageAddress)
     {
-        SelectedPageAddress = pageAddress;
+        Logger.LogDebug($"Loading Index Page: {pageAddress}");
 
         if (pageAddress == PageAddress.Empty)
         {
-            IndexDetailVisibility = Visibility.Collapsed;
-            
-            SelectedLevel = null;
-            SelectedNextPage = null;
-            SelectedPreviousPage = null;
+            Logger.LogDebug($"(Page Empty)");
 
-            HighlightedPages.Clear();
-            Records.Clear();
+            // Update via UI thread
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                IndexDetailVisibility = Visibility.Collapsed;
+
+                SelectedLevel = null;
+                SelectedNextPage = null;
+                SelectedPreviousPage = null;
+                SelectedPageAddress = pageAddress;
+
+                HighlightedPages.Clear();
+                Records.Clear();
+            });
 
             return;
         }
 
-        IsInitialized = false;
+        // Update via UI thread
+        DispatcherQueue.TryEnqueue(() =>
+            {
+                SelectedPageAddress = pageAddress;
+                IsInitialized = false;
+            });
 
-        var page = await PageService.GetPage(Database, pageAddress);
+        Internals.Engine.Pages.Page? page = null;
 
-        SelectedLevel = page.PageHeader.Level;
-        SelectedNextPage = page.PageHeader.NextPage;
-        SelectedPreviousPage = page.PageHeader.PreviousPage;
+        List<IndexRecordModel> decodedRecords = new();
 
-        if (page is IndexPage indexPage)
+        // Worker thread
+        await Task.Run(async () =>
+            {
+                Logger.LogDebug($"Loading Page: {pageAddress}");
+
+                page = await PageService.GetPage(Database, pageAddress);
+
+                if (page is IndexPage indexPage)
+                {
+                    Logger.LogDebug($"Decoding Index Page records");
+
+                    decodedRecords = GetIndexRecordModels(RecordService.GetIndexRecords(indexPage));
+                }
+                else if (page is DataPage dataPage)
+                {
+                    Logger.LogDebug($"Decoding Data Page records");
+
+                    decodedRecords = GetDataRecordModels(RecordService.GetDataRecords(dataPage));
+                }
+            });
+
+        Logger.LogDebug($"Decoded {records.Count} record(s)");
+
+        // Update via UI thread
+        DispatcherQueue.TryEnqueue(() =>
         {
-            Records = GetIndexRecordModels(RecordService.GetIndexRecords(indexPage));
-        }
-        else if (page is DataPage dataPage)
-        {
-            Records = GetDataRecordModels(RecordService.GetDataRecords(dataPage));
-        }
+            Records = new ObservableCollection<IndexRecordModel>(decodedRecords);
+            SelectedLevel = page?.PageHeader.Level;
+            SelectedNextPage = page?.PageHeader.NextPage;
+            SelectedPreviousPage = page?.PageHeader.PreviousPage;
 
-        IsInitialized = true;
+            IsInitialized = true;
 
-        IndexDetailVisibility = Visibility.Visible;
+            IndexDetailVisibility = Visibility.Visible;
+        });
     }
 
     partial void OnRootPageChanged(PageAddress value)
@@ -184,7 +235,7 @@ public partial class IndexTabViewModel(IndexService indexService,
         Name = "Index: " + IndexName;
     }
 
-    private static ObservableCollection<IndexRecordModel> GetIndexRecordModels(IEnumerable<IndexRecord> source)
+    private static List<IndexRecordModel> GetIndexRecordModels(IEnumerable<IndexRecord> source)
     {
         var models = source.Select(r => new IndexRecordModel
         {
@@ -197,12 +248,12 @@ public partial class IndexTabViewModel(IndexService indexService,
                 Value = f.Value,
                 DataType = f.ColumnStructure.DataType
             }).ToList()
-        });
+        }).ToList();
 
-        return new ObservableCollection<IndexRecordModel>(models);
+        return models;
     }
 
-    private static ObservableCollection<IndexRecordModel> GetDataRecordModels(IEnumerable<DataRecord> source)
+    private static List<IndexRecordModel> GetDataRecordModels(IEnumerable<DataRecord> source)
     {
         var models = source.Select(r => new IndexRecordModel
         {
@@ -213,9 +264,9 @@ public partial class IndexTabViewModel(IndexService indexService,
                 Value = f.Value,
                 DataType = f.ColumnStructure.DataType
             }).ToList()
-        });
+        }).ToList();
 
-        return new ObservableCollection<IndexRecordModel>(models);
+        return models;
     }
 
     public void SetHighlightedPage(PageAddress pageAddress)

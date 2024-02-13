@@ -25,13 +25,8 @@
 
         <skia:SKXamlCanvas x:Name="AllocationCanvas"
                            Grid.Column="0"                       
-                           PaintSurface="AllocationCanvas_PaintSurface" 
-                           IgnorePixelScaling="True"
-                           PointerMoved="AllocationCanvas_PointerMoved" 
-                           PointerExited="AllocationCanvas_PointerExited"
-                           PointerEntered="AllocationCanvas_PointerEntered"
-                           PointerPressed="AllocationCanvas_PointerPressed" />
-
+                           IgnorePixelScaling="True" />
+        
         <ScrollBar Grid.Column="1" 
                    Orientation="Vertical" 
                    Name="ScrollBar" 
@@ -39,6 +34,7 @@
                    Visibility="Visible"
                    ValueChanged="ScrollBar_ValueChanged"
                    IndicatorMode="MouseIndicator"/>
+        
         <Popup x:Name="TooltipPopup" 
                Grid.Column="0"
                DesiredPlacement="Auto"
