@@ -8,18 +8,7 @@
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
-    PointerWheelChanged="IndexView_PointerWheelChanged"
-    SizeChanged="IndexView_SizeChanged"
-    Loaded="UserControl_Loaded"
     mc:Ignorable="d">
-    <UserControl.Resources>
-        <Style x:Key="PageAddressStyle" TargetType="HyperlinkButton">
-            <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="HorizontalAlignment" Value="Right"/>
-            <Setter Property="Margin" Value="0,0,4,0"/>
-        </Style>
-    </UserControl.Resources>
     <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -98,6 +87,21 @@
                 </Grid>
             </AppBarElementContainer>
         </CommandBar>
+
+        <StackPanel Padding="10"
+                    VerticalAlignment="Stretch" 
+                    HorizontalAlignment="Center"
+                    Grid.Row="1"
+                    Orientation="Horizontal"
+                    Visibility="{x:Bind ViewModel.IsInitialized, 
+                            Mode=OneWay, 
+                            Converter={StaticResource BoolToVisibilityConverter}, 
+                            ConverterParameter=True}">
+            <ProgressRing HorizontalAlignment="Left"
+                          IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"/>
+            <TextBlock Margin="10,0,0,0">Loading...</TextBlock>
+        </StackPanel>
+        
         <Grid Grid.Row="1"
               x:Name="ContainerGrid"
               BorderThickness="0,1,0,0" 
@@ -107,20 +111,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Padding="10"
-                        VerticalAlignment="Stretch" 
-                        HorizontalAlignment="Center"
-                        Grid.Column="0"
-                        Background="Transparent"
-                        Orientation="Horizontal"
-                        Visibility="{x:Bind ViewModel.IsInitialized, 
-                                        Mode=OneWay, 
-                                        Converter={StaticResource BoolToVisibilityConverter}, 
-                                        ConverterParameter=True}">
-                <ProgressRing HorizontalAlignment="Left"
-                          IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"/>
-                <TextBlock Margin="10,0,0,0">Loading Index...</TextBlock>
-            </StackPanel>
+            
             <index:IndexControl x:Name="IndexControl"
                                 Grid.Column="0"
                                 Visibility="{x:Bind ViewModel.IsInitialized,
@@ -172,7 +163,7 @@
                                     Grid.Column="1"
                                     x:Name="IndexGridSplitter"
                                     HorizontalAlignment="Left"
-                                    ResizeBehavior="BasedOnAlignment"
+                                    ResizeBehavior="CurrentAndNext"
                                     ResizeDirection="Columns">
                 <controls1:GridSplitter.RenderTransform>
                     <TranslateTransform X="-7" />

@@ -9,7 +9,6 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 using Microsoft.UI.Xaml.Controls;
-using InternalsViewer.UI.App.Controls.Index;
 
 namespace InternalsViewer.UI.App.Views;
 
@@ -24,9 +23,13 @@ public sealed partial class IndexView: IDisposable
     {
         InitializeComponent();
 
+        SizeChanged += IndexView_SizeChanged;
+        PointerWheelChanged += IndexView_PointerWheelChanged;
+        Loaded += UserControl_Loaded;
+
         // Clicking on the Index View selects the page and reads the records
         IndexControl.PageClicked += IndexView_PageClicked;
-
+        
         // Clicking Previous Page or Next Page links loads the previous or next page
         PreviousPageAddressLink.Click += PageAddressLink_OnClick;
         NextPageAddressLink.Click += PageAddressLink_OnClick;

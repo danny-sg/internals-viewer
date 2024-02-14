@@ -89,8 +89,7 @@ public sealed partial class RecordGrid: IDisposable
             var column = new PageAddressLinkButtonColumn<IndexRecordModel>
             {
                 Binding = new Binding { Path = new PropertyPath("DownPagePointer") },
-                Header = "Down Page Pointer",
-                ElementStyle = (Style)Resources["PageAddressStyle"],
+                Header = "Down Page Pointer"
             };
 
             column.PageClicked += OnPageClicked;
@@ -103,8 +102,7 @@ public sealed partial class RecordGrid: IDisposable
             var column = new DataGridTextColumn
             {
                 Binding = new Binding { Path = new PropertyPath("RowIdentifier") },
-                Header = "RID",
-                ElementStyle = (Style)Resources["PageAddressStyle"],
+                Header = "RID"
             };
 
             DataGrid.Columns.Add(column);
@@ -169,6 +167,7 @@ public class PageAddressLinkButtonColumn<T> : DataGridBoundColumn
         var button = new HyperlinkButton
         {
             Content = pageAddress.ToString(),
+            Style = (Style)Application.Current.Resources["PageAddressHyperlinkButtonStyle"],
             Command = new RelayCommand(() =>
             {
                 PageClicked?.Invoke(this, new PageAddressEventArgs(pageAddress));

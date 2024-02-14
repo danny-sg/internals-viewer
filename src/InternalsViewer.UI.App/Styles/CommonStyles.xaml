@@ -35,6 +35,14 @@
         <Setter Property="Margin" Value="0,0,4,0"/>
     </Style>
 
+
+    <Style x:Key="PageAddressHyperlinkButtonStyle" TargetType="HyperlinkButton">
+        <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Margin" Value="0,0,4,0"/>
+    </Style>
+
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
         </ResourceDictionary>
