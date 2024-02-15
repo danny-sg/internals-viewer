@@ -72,7 +72,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
     /// <summary>
     /// Load an Index record at the specified offset
     /// </summary>
-    public IndexRecord Load(IndexPage page, ushort offset, int slot, IndexStructure structure)
+    public FixedVarIndexRecord Load(IndexPage page, ushort offset, int slot, IndexStructure structure)
     {
         Logger.BeginScope("Index Record Loader: {FileId}:{PageId}:{Offset}", page.PageAddress.FileId, page.PageAddress.PageId, offset);
 
@@ -85,7 +85,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
             _ => NodeType.Node,
         };
 
-        var record = new IndexRecord
+        var record = new FixedVarIndexRecord
         {
             Offset = offset,
             Slot = slot,
@@ -181,14 +181,14 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
     /// <remarks>
     /// A clustered index node will contain the clustered key columns and a down page pointer
     /// </remarks>
-    private void LoadClusteredNode(IndexRecord record, PageData page, IndexStructure structure)
+    private void LoadClusteredNode(FixedVarIndexRecord record, PageData page, IndexStructure structure)
     {
         var columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
 
         LoadColumnValues(record, page, columns, NodeType.Node, structure.IsUnique);
     }
 
-    private void LoadNonClusteredNode(IndexRecord record, PageData page, IndexStructure structure)
+    private void LoadNonClusteredNode(FixedVarIndexRecord record, PageData page, IndexStructure structure)
     {
         List<IndexColumnStructure> columns;
 
@@ -204,7 +204,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         LoadColumnValues(record, page, columns, NodeType.Node, structure.IsUnique);
     }
 
-    private void LoadNonClusteredRoot(IndexRecord record, PageData page, IndexStructure structure)
+    private void LoadNonClusteredRoot(FixedVarIndexRecord record, PageData page, IndexStructure structure)
     {
         List<IndexColumnStructure> columns;
 
@@ -221,7 +221,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         LoadColumnValues(record, page, columns, NodeType.Root, structure.IsUnique);
     }
 
-    private void LoadNonClusteredLeaf(IndexRecord record, PageData page, IndexStructure structure)
+    private void LoadNonClusteredLeaf(FixedVarIndexRecord record, PageData page, IndexStructure structure)
     {
         var columns = structure.Columns;
 
@@ -231,7 +231,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
     /// <summary>
     /// Load a down page pointer (page address) pointing to the next level in the b-tree
     /// </summary>
-    private static void LoadDownPagePointer(IndexRecord record, PageData page)
+    private static void LoadDownPagePointer(FixedVarIndexRecord record, PageData page)
     {
         //Last 6 bytes of the fixed slot
         var address = new byte[PageAddress.Size];
@@ -242,7 +242,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         record.DownPagePointer = PageAddressParser.Parse(address);
 
-        record.MarkProperty(nameof(IndexRecord.DownPagePointer), downPagePointerOffset, PageAddress.Size);
+        record.MarkProperty(nameof(FixedVarIndexRecord.DownPagePointer), downPagePointerOffset, PageAddress.Size);
     }
 
     /// <summary>
@@ -258,13 +258,13 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         return isBinaryDataType && hasCorrectDataLength && (hasCorrectLeafOffset || hasCorrectNodeOffset);
     }
 
-    private static void LoadColumnOffsetArray(IndexRecord record, int varColStartIndex, Page page)
+    private static void LoadColumnOffsetArray(FixedVarIndexRecord record, int varColStartIndex, Page page)
     {
         var variableColumnCountOffset = record.Offset + page.PageHeader.FixedLengthSize + varColStartIndex;
 
         record.VariableLengthColumnCount = BitConverter.ToUInt16(page.Data, variableColumnCountOffset);
 
-        record.MarkProperty(nameof(IndexRecord.VariableLengthColumnCount), variableColumnCountOffset, sizeof(short));
+        record.MarkProperty(nameof(FixedVarIndexRecord.VariableLengthColumnCount), variableColumnCountOffset, sizeof(short));
 
         var offset =
             record.Offset + page.PageHeader.FixedLengthSize + sizeof(short) + varColStartIndex;
@@ -274,12 +274,12 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
                                                              record.VariableLengthColumnCount,
                                                              offset);
 
-        record.MarkProperty(nameof(IndexRecord.VariableLengthColumnOffsetArray),
+        record.MarkProperty(nameof(FixedVarIndexRecord.VariableLengthColumnOffsetArray),
                             variableColumnCountOffset + sizeof(short),
                             record.VariableLengthColumnCount * sizeof(short));
     }
 
-    private void LoadColumnValues(IndexRecord record,
+    private void LoadColumnValues(FixedVarIndexRecord record,
                                   PageData page,
                                   List<IndexColumnStructure> columns,
                                   NodeType nodeType,
@@ -340,7 +340,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         return nullField;
     }
 
-    private static void LoadRidField(int offset, IndexRecord record, byte[] pageData)
+    private static void LoadRidField(int offset, FixedVarIndexRecord record, byte[] pageData)
     {
         var ridAddress = new byte[8];
 
@@ -348,10 +348,10 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         record.Rid = new RowIdentifier(ridAddress);
 
-        record.MarkProperty(nameof(IndexRecord.Rid), record.Offset + offset, RowIdentifier.Size);
+        record.MarkProperty(nameof(FixedVarIndexRecord.Rid), record.Offset + offset, RowIdentifier.Size);
     }
 
-    private static FixedVarRecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, IndexRecord record, byte[] pageData)
+    private static FixedVarRecordField LoadVariableLengthField(short columnOffset, ColumnStructure column, FixedVarIndexRecord record, byte[] pageData)
     {
         int length;
 
@@ -384,7 +384,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         return field;
     }
 
-    private static ushort GetVariableLengthOffset(IndexRecord record, int variableIndex)
+    private static ushort GetVariableLengthOffset(FixedVarIndexRecord record, int variableIndex)
     {
         ushort offset;
 
@@ -402,7 +402,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         return offset;
     }
 
-    private static FixedVarRecordField LoadUniqueifier(short columnOffset, IndexColumnStructure column, IndexRecord record, byte[] pageData)
+    private static FixedVarRecordField LoadUniqueifier(short columnOffset, IndexColumnStructure column, FixedVarIndexRecord record, byte[] pageData)
     {
         var field = new FixedVarRecordField(column);
 
@@ -463,7 +463,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         return field;
     }
 
-    private static void LoadNullBitmap(IndexRecord record, PageData page, IndexStructure structure)
+    private static void LoadNullBitmap(FixedVarIndexRecord record, PageData page, IndexStructure structure)
     {
         record.NullBitmapSize = (short)((structure.Columns.Count - 1) / 8 + 1);
 
@@ -471,7 +471,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         record.ColumnCount = BitConverter.ToInt16(page.Data, columnCountPosition);
 
-        record.MarkProperty(nameof(IndexRecord.ColumnCount), columnCountPosition, sizeof(short));
+        record.MarkProperty(nameof(FixedVarIndexRecord.ColumnCount), columnCountPosition, sizeof(short));
 
         var nullBitmapBytes = new byte[record.NullBitmapSize];
 
@@ -485,6 +485,6 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         record.NullBitmap = new BitArray(nullBitmapBytes);
 
-        record.MarkProperty(nameof(IndexRecord.NullBitmap), nullBitmapPosition, record.NullBitmapSize);
+        record.MarkProperty(nameof(FixedVarIndexRecord.NullBitmap), nullBitmapPosition, record.NullBitmapSize);
     }
 }

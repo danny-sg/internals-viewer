@@ -2,16 +2,15 @@
 using System.Data;
 using InternalsViewer.Internals.Engine.Address;
 using Microsoft.Data.SqlClient;
-using InternalsViewer.Internals.Tests.VerificationTool.Helpers;
-using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
-using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Helpers;
 using Microsoft.Extensions.Logging;
+using InternalsViewer.Internals.Interfaces.Engine;
+using InternalsViewer.Internals.Tests.VerificationTool.Helpers;
 
 namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 
@@ -20,7 +19,7 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
                                         ObjectPageListService objectPageListService,
                                         IDatabaseService databaseService,
                                         IPageService pageService,
-                                        IRecordService recordService)
+                                        IRecordService recordService): VerificationService(databaseService)
 {
     private ILogger<IndexVerificationService> Logger { get; } = logger;
 
@@ -34,13 +33,13 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
     private IRecordService RecordService { get; } = recordService;
 
-    public async Task VerifyIndexes()
+    public async Task VerifyIndexes(string databaseName)
     {
-        var database = await CreateDatabase();
+        var database = await CreateDatabase(databaseName);
 
         var results = new List<VerificationResult>();
 
-        var indexes = await ObjectService.GetIndexes();
+        var indexes = await ObjectService.GetIndexes(databaseName);
 
         foreach (var index in indexes)
         {
@@ -58,9 +57,9 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
         WriteError($"{results.Sum(r => r.FailCount)} failed");
     }
 
-    public async Task<List<VerificationResult>> VerifyIndex(int objectId, int indexId)
+    public async Task<List<VerificationResult>> VerifyIndex(string databaseName, int objectId, int indexId)
     {
-        var database = await CreateDatabase();
+        var database = await CreateDatabase(databaseName);
 
         return await VerifyIndex(objectId, indexId, database);
     }
@@ -71,7 +70,7 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
         WriteMessage($"Verifying index {objectId}.{indexId}");
 
-        var pages = await ObjectPageListService.GetPages(objectId, indexId, Engine.Pages.Enums.PageType.Index);
+        var pages = await ObjectPageListService.GetPages(database.Name, objectId, indexId, Engine.Pages.Enums.PageType.Index);
 
         WriteMessage($"{pages.Count} page(s) found");
 
@@ -87,7 +86,7 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
     {
         var results = new List<VerificationResult>();
 
-        var databaseVersions = await GetDatabaseRows(page);
+        var databaseVersions = await GetDatabaseRows(database.Name, page);
 
         var internalsVersions = await GetInternalsRows(page, database);
 
@@ -153,54 +152,22 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
         return results;
     }
 
-    private void WriteSuccess(string message)
-    {
-        Console.ForegroundColor = ConsoleColor.Green;
-
-        Console.WriteLine(message);
-    }
-
-    private void WriteMessage(string message)
-    {
-        Console.ForegroundColor = ConsoleColor.White;
-
-        Console.WriteLine(message);
-    }
-
-    private void WriteError(string message)
-    {
-        Console.ForegroundColor = ConsoleColor.DarkRed;
-
-        Console.WriteLine(message);
-    }
-
-    private async Task<DatabaseSource> CreateDatabase()
-    {
-        var connectionString = ConnectionStringHelper.GetConnectionString("Default");
-
-        var connection = ServerConnectionFactory.Create(config => config.ConnectionString = connectionString);
-
-        var database = await DatabaseService.LoadAsync("TestDatabase", connection);
-
-        return database;
-    }
-
-    private async Task<List<IndexRecord>> GetInternalsRows(PageAddress pageAddress, DatabaseSource database)
+    private async Task<List<IIndexRecord>> GetInternalsRows(PageAddress pageAddress, DatabaseSource database)
     {
         var page = await PageService.GetPage<IndexPage>(database, pageAddress);
 
         var rows = RecordService.GetIndexRecords(page);
 
-        return rows;
+        return rows.ToList();
     }
 
-    private async Task<List<DatabaseIndexRow>> GetDatabaseRows(PageAddress page)
+    private async Task<List<DatabaseIndexRow>> GetDatabaseRows(string databaseName, PageAddress page)
     {
         var results = new List<DatabaseIndexRow>();
 
         try
         {
-            results.AddRange(await GetIndexRows(page));
+            results.AddRange(await GetIndexRows(databaseName, page));
         }
         catch (Exception e)
         {
@@ -212,9 +179,9 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
         return results;
     }
 
-    private async Task<IEnumerable<DatabaseIndexRow>> GetIndexRows(PageAddress page)
+    private async Task<IEnumerable<DatabaseIndexRow>> GetIndexRows(string databaseName, PageAddress page)
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("Default");
+        var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
 
         var connection = new SqlConnection(connectionString);
 

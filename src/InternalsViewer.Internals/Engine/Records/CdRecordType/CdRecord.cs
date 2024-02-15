@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 /// <summary>
 /// Record in the CD (Column Descriptor) format
 /// </summary>
-public class CompressedDataRecord(CompressionInfo compressionInfo) : Record
+public class CdRecord(CompressionInfo compressionInfo) : Record
 {
     public CompressedRecordType RecordType { get; set; }
 
@@ -17,7 +17,7 @@ public class CompressedDataRecord(CompressionInfo compressionInfo) : Record
 
     public short CompressedSize { get; set; }
 
-    public CompressionInfo CompressionInfo { get; set; } = compressionInfo;
+    public CompressionInfo CompressionInfo { get; } = compressionInfo;
 
     [DataStructureItem(ItemType.Header)]
     public byte Header { get; set; }

@@ -1,15 +1,23 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 
 namespace InternalsViewer.Internals.Tests.VerificationTool.Helpers;
 
 internal class ConnectionStringHelper
 {
-    public static string GetConnectionString(string name)
+    public static string GetConnectionString(string databaseName)
     {
         var builder = new ConfigurationBuilder().AddUserSecrets<ConnectionStringHelper>();
 
         var configuration = builder.Build();
 
-        return configuration.GetConnectionString(name) ?? string.Empty;
+        var connectionString = configuration.GetConnectionString("Default");
+
+        var connectionStringBuilder = new SqlConnectionStringBuilder(connectionString)
+        {
+            InitialCatalog = databaseName,
+            CommandTimeout = 60
+        };
+        return connectionStringBuilder.ToString();
     }
 }

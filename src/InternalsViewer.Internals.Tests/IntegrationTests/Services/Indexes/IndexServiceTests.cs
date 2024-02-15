@@ -1,17 +1,7 @@
 ﻿using InternalsViewer.Internals.Services.Indexes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using InternalsViewer.Internals.Connections.File;
-using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
-using InternalsViewer.Internals.Services.Records;
 using InternalsViewer.Internals.Tests.Helpers;
-using InternalsViewer.Internals.Readers.Internals;
-using InternalsViewer.Internals.Services.Loaders.Engine;
-using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Indexes;
 

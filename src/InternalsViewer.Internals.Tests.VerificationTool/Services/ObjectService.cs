@@ -5,9 +5,9 @@ namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 
 internal class ObjectService
 {
-    public async Task<List<(int ObjectId, int IndexId)>> GetIndexes()
+    public async Task<List<(int ObjectId, int IndexId)>> GetIndexes(string databaseName)
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("Default");
+        var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
 
         await using var sqlConnection = new SqlConnection(connectionString);
 
@@ -36,9 +36,9 @@ internal class ObjectService
         return results;
     }
 
-    public async Task<List<int>> GetTables()
+    public async Task<List<int>> GetTables(string databaseName)
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("Default");
+        var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
 
         await using var sqlConnection = new SqlConnection(connectionString);
 

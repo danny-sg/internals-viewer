@@ -33,7 +33,7 @@ public class CompressionInfo(int offset) : DataStructure
     public static ushort SlotOffset => 96;
 
     [DataStructureItem(ItemType.AnchorRecord)]
-    public CompressedDataRecord? AnchorRecord { get; set; }
+    public CdRecord? AnchorRecord { get; set; }
 
     [DataStructureItem(ItemType.CompressionDictionary)]
     public Dictionary? CompressionDictionary { get; set; }

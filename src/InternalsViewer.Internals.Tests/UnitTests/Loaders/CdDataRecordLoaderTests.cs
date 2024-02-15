@@ -1,6 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
-using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Tests.Helpers;
@@ -22,7 +21,7 @@ public class CdDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
                                 CompressedRecordType recordType, 
                                 bool hasLongDataRegion)
     {
-        var record = new CompressedDataRecord(null!);
+        var record = new CdRecord(null!);
 
         var loader = new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutputHelper));
 

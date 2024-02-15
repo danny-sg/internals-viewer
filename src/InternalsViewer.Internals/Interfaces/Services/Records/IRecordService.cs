@@ -1,15 +1,13 @@
 ﻿using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Engine.Records.CdRecordType;
-using InternalsViewer.Internals.Engine.Records.Data;
-using InternalsViewer.Internals.Engine.Records.Index;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Internals.Interfaces.Services.Records;
 
 public interface IRecordService
 {
-    List<DataRecord> GetDataRecords(DataPage page);
+    IEnumerable<IRecord> GetRecords(AllocationUnitPage page);
 
-    List<CompressedDataRecord> GetCompressedDataRecords(DataPage page);
+    IEnumerable<IRecord> GetDataRecords(DataPage page);
 
-    List<IndexRecord> GetIndexRecords(IndexPage page);
+    IEnumerable<IIndexRecord> GetIndexRecords(IndexPage page);
 }

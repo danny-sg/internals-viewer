@@ -1,10 +1,11 @@
 ﻿using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Internals.Engine.Records.Index;
 
-public class IndexRecord : FixedVarRecord
+public class FixedVarIndexRecord : FixedVarRecord, IIndexRecord
 {
     /// <summary>
     /// Down page pointer to the next page in the index

@@ -1,6 +1,8 @@
-﻿namespace InternalsViewer.Internals.Annotations;
+﻿using InternalsViewer.Internals.Interfaces.Annotations;
 
-public class DataStructure
+namespace InternalsViewer.Internals.Annotations;
+
+public class DataStructure: IDataStructure
 {
     /// <summary>
     /// Adds a marker that the given property is a part of the data structure at the offset

@@ -1,9 +1,13 @@
 ﻿using System.Data;
+using Azure;
+using System.Net;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
+using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Metadata.Structures;
 
@@ -61,20 +65,20 @@ namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 ///     
 ///         Indicated by the header byte. It could be a forwarding pointer, back pointer, or version info.
 /// </remarks>
-public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
+public class CdIndexRecordLoader(ILogger<CdIndexRecordLoader> logger)
 {
     /// <summary>
     /// Columns are grouped into clusters of 30 in the short and long data regions
     /// </summary>
     private const int ClusterSize = 30;
 
-    private ILogger<CdDataRecordLoader> Logger { get; } = logger;
+    private ILogger<CdIndexRecordLoader> Logger { get; } = logger;
 
-    public CdRecord Load(AllocationUnitPage page, ushort slotOffset, TableStructure structure)
+    public CdIndexRecord Load(IndexPage page, ushort slotOffset, IndexStructure structure)
     {
         int currentPosition = slotOffset;
 
-        var record = new CdRecord(page.CompressionInfo!)
+        var record = new CdIndexRecord(page.CompressionInfo!)
         {
             Offset = slotOffset,
             RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset)
@@ -126,8 +130,8 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
     /// 
     ///     Short Data Cluster Array | Short Fields
     /// </remarks>
-    private void LoadShortDataRegion(CdRecord record,
-                                     TableStructure structure,
+    private void LoadShortDataRegion(CdIndexRecord record,
+                                     IndexStructure structure,
                                      CdRecord? anchorRecord,
                                      byte[] data,
                                      int offset)
@@ -149,8 +153,8 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
     /// 
     ///     Long Data Header | Long Data Offset Count | Long Data Offset Array | Long Data Cluster Array | Long Data
     /// </remarks>
-    private void LoadLongDataRegion(CdRecord record,
-                                    TableStructure structure,
+    private void LoadLongDataRegion(CdIndexRecord record,
+                                    IndexStructure structure,
                                     CdRecord? anchorRecord,
                                     byte[] data,
                                     int offset)
@@ -214,10 +218,10 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
     /// <remarks>
     /// Bit 0 - CD Record Field Flag
     /// Bit 1 - If the record uses row versioning
-    /// Bit 2 - 4 - Record Type - <see cref="CompressedRecordType"/>"
+    /// Bit 2 - 4 - Record Type - <see cref="CompressedRecordType"/>
     /// Bit 5 - If the record has a long data region
     /// </remarks>
-    public void LoadHeader(CdRecord record, byte[] data, int offset)
+    private void LoadHeader(CdRecord record, byte[] data, int offset)
     {
         record.Header = data[offset];
 
@@ -282,8 +286,8 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
         return size;
     }
 
-    private static void LoadShortFields(CdRecord record,
-                                        TableStructure structure,
+    private static void LoadShortFields(CdIndexRecord record,
+                                        IndexStructure structure,
                                         CdRecord? anchorRecord,
                                         byte[] data,
                                         int offset)
@@ -294,51 +298,79 @@ public class CdDataRecordLoader(ILogger<CdDataRecordLoader> logger)
 
             var columnDescriptor = record.ColumnDescriptors[i];
 
-            if (columnDescriptor.Value != ColumnDescriptorFlag.Long)
+            if (columnDescriptor.Value == ColumnDescriptorFlag.Long)
             {
-                var field = new CdRecordField(structure.Columns[i], record);
-
-                field.Cluster = cluster;
-
-                if (structure.Columns[i].DataType == SqlDbType.Bit)
-                {
-                    field.Length = 1;
-                    field.Data = new[] { (byte)record.ColumnDescriptors[i].Value };
-                }
-                else
-                {
-                    var size = columnDescriptor.Size;
-
-                    field.IsNull = columnDescriptor.Value == ColumnDescriptorFlag.Null;
-                    field.Length = size;
-
-                    field.IsPageSymbol = columnDescriptor.Value == ColumnDescriptorFlag.PageSymbol;
-
-                    if (size > 0)
-                    {
-                        field.Data = new byte[size];
-                        Array.Copy(data, offset, field.Data, 0, size);
-
-                        field.Offset = offset;
-                        offset += size;
-                    }
-                }
-
-                field.AnchorField = anchorRecord?.Fields
-                                                 .Cast<CdRecordField>()
-                                                 .FirstOrDefault(f => f.ColumnStructure.ColumnId == i + 1);
-
-                record.MarkValue(ItemType.ShortFieldValue, field.Name, field, field.Offset, field.Length);
-
-                record.Fields.Add(field);
+                continue;
             }
+
+            if (i >= structure.Columns.Count && columnDescriptor.Value == ColumnDescriptorFlag.SixByteShort)
+            {
+                var address = new byte[PageAddress.Size];
+
+                // 6 bytes post columns is the Down Page Pointer
+                Array.Copy(data, offset, address, 0, PageAddress.Size);
+
+                record.DownPagePointer = PageAddressParser.Parse(address);
+
+                record.MarkProperty(nameof(FixedVarIndexRecord.DownPagePointer), offset, PageAddress.Size);
+
+                continue;
+            }
+
+            var field = new CdRecordField(structure.Columns[i], record);
+
+            field.Cluster = cluster;
+
+            if (structure.Columns[i].DataType == SqlDbType.Bit)
+            {
+                field.Length = 1;
+                field.Data = new[] { (byte)record.ColumnDescriptors[i].Value };
+            }
+            else
+            {
+                var size = columnDescriptor.Size;
+
+                field.IsNull = columnDescriptor.Value == ColumnDescriptorFlag.Null;
+                field.Length = size;
+
+                field.IsPageSymbol = columnDescriptor.Value == ColumnDescriptorFlag.PageSymbol;
+
+                if (size > 0)
+                {
+                    field.Data = new byte[size];
+                    Array.Copy(data, offset, field.Data, 0, size);
+
+                    field.Offset = offset;
+                    offset += size;
+                }
+            }
+
+            field.AnchorField = anchorRecord?.Fields
+                                             .Cast<CdRecordField>()
+                                             .FirstOrDefault(f => f.ColumnStructure.ColumnId == i + 1);
+
+            record.MarkValue(ItemType.ShortFieldValue, field.Name, field, field.Offset, field.Length);
+
+            record.Fields.Add(field);
+
         }
     }
 
+    /// <summary>
+    /// Load a down page pointer (page address) pointing to the next level in the b-tree
+    /// </summary>
+    private static void LoadDownPagePointer(CdIndexRecord record, PageData page)
+    {
+        var address = new byte[PageAddress.Size];
+
+        var downPagePointerOffset = record.Offset + page.PageHeader.FixedLengthSize - PageAddress.Size;
+
+    }
+
     private static void LoadLongFields(int offset,
-                                       CdRecord record,
+                                       CdIndexRecord record,
                                        CdRecord? anchorRecord,
-                                       TableStructure structure,
+                                       IndexStructure structure,
                                        byte[] data)
     {
         var columnIndex = 0;

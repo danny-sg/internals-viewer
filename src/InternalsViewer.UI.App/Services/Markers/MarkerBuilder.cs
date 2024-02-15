@@ -9,6 +9,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Internals.Interfaces.Annotations;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 
@@ -19,7 +20,7 @@ namespace InternalsViewer.UI.App.Services.Markers;
 /// </summary>
 public static class MarkerBuilder
 {
-    public static List<Marker> BuildMarkers(DataStructure markedObject)
+    public static List<Marker> BuildMarkers(IDataStructure markedObject)
     {
         var styleProvider = new MarkStyleProvider();
 
@@ -63,7 +64,7 @@ public static class MarkerBuilder
     }
 
     private static Marker BuildPropertyMarker(PropertyItem item,
-                                              DataStructure markedObject,
+                                              IDataStructure markedObject,
                                               MarkStyleProvider styleProvider)
     {
         var marker = new Marker();

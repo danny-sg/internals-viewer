@@ -1,11 +1,12 @@
 ﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Internals.Engine.Records;
 
 /// <summary>
 /// Database Record Structure
 /// </summary>
-public abstract class Record : DataStructure
+public abstract class Record : DataStructure, IRecord
 {
     public int Slot { get; set; }
 

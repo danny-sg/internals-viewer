@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records.FixedVarRecordType;

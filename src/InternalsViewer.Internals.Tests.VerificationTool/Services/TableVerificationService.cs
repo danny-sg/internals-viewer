@@ -1,10 +1,8 @@
 ﻿using System.Data;
-using InternalsViewer.Internals.Connections.Server;
-using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Engine.Records.Data;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
@@ -20,7 +18,7 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
                                         ObjectPageListService objectPageListService,
                                         IDatabaseService databaseService,
                                         IPageService pageService,
-                                        IRecordService recordService)
+                                        IRecordService recordService): VerificationService(databaseService)
 {
     private ILogger<TableVerificationService> Logger { get; } = logger;
 
@@ -28,19 +26,17 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
 
     private ObjectPageListService ObjectPageListService { get; } = objectPageListService;
 
-    private IDatabaseService DatabaseService { get; } = databaseService;
-
     private IPageService PageService { get; } = pageService;
 
     private IRecordService RecordService { get; } = recordService;
 
-    public async Task VerifyTables()
+    public async Task VerifyTables(string databaseName)
     {
-        var database = await CreateDatabase();
+        var database = await CreateDatabase(databaseName);
 
         var results = new List<VerificationResult>();
 
-        var tables = await ObjectService.GetTables();
+        var tables = await ObjectService.GetTables(databaseName);
 
         foreach (var objectId in tables)
         {
@@ -58,9 +54,9 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
         WriteError($"{results.Sum(r => r.FailCount)} failed");
     }
 
-    public async Task<List<VerificationResult>> VerifyTable(int objectId)
+    public async Task<List<VerificationResult>> VerifyTable(string databaseName, int objectId)
     {
-        var database = await CreateDatabase();
+        var database = await CreateDatabase(databaseName);
 
         return await VerifyTable(objectId, database);
     }
@@ -71,7 +67,7 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
 
         WriteMessage($"Verifying table {objectId}");
 
-        var pages = await ObjectPageListService.GetPages(objectId, null, Engine.Pages.Enums.PageType.Data);
+        var pages = await ObjectPageListService.GetPages(database.Name, objectId, null, Engine.Pages.Enums.PageType.Data);
 
         WriteMessage($"{pages.Count} page(s) found");
 
@@ -87,7 +83,7 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
     {
         var results = new List<VerificationResult>();
 
-        var databaseVersions = await GetDatabaseRows(page);
+        var databaseVersions = await GetDatabaseRows(database.Name, page);
 
         var internalsVersions = await GetInternalsRows(page, database);
 
@@ -152,134 +148,31 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
         return results;
     }
 
-    public string ConvertStringToSqlDbType(string? value, SqlDbType sqlDbType)
-    {
-        if (value == null || value == "[NULL]" || string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        switch (sqlDbType)
-        {
-            case SqlDbType.Int:
-                return int.Parse(value).ToString();
-            case SqlDbType.Float:
-                return float.Parse(value).ToString("0.00");
-
-            case SqlDbType.Bit:
-                {
-                    if (bool.TryParse(value, out var result))
-                    {
-                        return result.ToString();
-                    }
-
-                    return value == "1" ? "True" : "False";
-                }
-            case SqlDbType.SmallInt:
-                return short.Parse(value).ToString();
-            case SqlDbType.BigInt:
-                return long.Parse(value).ToString();
-            case SqlDbType.Real:
-                return float.Parse(value).ToString("0.00");
-            case SqlDbType.Money:
-                return decimal.Parse(value.Replace("$", "")).ToString("0.00");
-            case SqlDbType.SmallMoney:
-                return decimal.Parse(value.Replace("$", "")).ToString("0.00");
-            case SqlDbType.Decimal:
-                return decimal.Parse(value).ToString("0.00");
-            case SqlDbType.TinyInt:
-                return byte.Parse(value).ToString();
-            case SqlDbType.UniqueIdentifier:
-                return Guid.Parse(value).ToString();
-            case SqlDbType.Char:
-            case SqlDbType.NChar:
-            case SqlDbType.VarChar:
-            case SqlDbType.NVarChar:
-            case SqlDbType.Text:
-            case SqlDbType.NText:
-                return value;
-            case SqlDbType.Binary:
-            case SqlDbType.VarBinary:
-            case SqlDbType.Image:
-                return value;
-            case SqlDbType.Date:
-                return DateTime.Parse(value).ToString("yyyy-MM-dd");
-            case SqlDbType.DateTime2:
-            case SqlDbType.DateTimeOffset:
-            case SqlDbType.SmallDateTime:
-            case SqlDbType.DateTime:
-                return DateTime.Parse(value).ToString();
-            case SqlDbType.Time:
-                return TimeSpan.Parse(value).ToString();
-            case SqlDbType.Variant:
-                return value;
-            default:
-                throw new ArgumentException($"Cannot convert to type: {sqlDbType}");
-        }
-    }
-
-    private void WriteSuccess(string message)
-    {
-        Console.ForegroundColor = ConsoleColor.Green;
-
-        Console.WriteLine(message);
-    }
-
-    private void WriteMessage(string message)
-    {
-        Console.ForegroundColor = ConsoleColor.White;
-
-        Console.WriteLine(message);
-    }
-
-    private void WriteError(string message)
-    {
-        Console.ForegroundColor = ConsoleColor.DarkRed;
-
-        Console.WriteLine(message);
-    }
-
-    private async Task<DatabaseSource> CreateDatabase()
-    {
-        var connectionString = ConnectionStringHelper.GetConnectionString("Default");
-
-        var connection = ServerConnectionFactory.Create(config => config.ConnectionString = connectionString);
-
-        var database = await DatabaseService.LoadAsync("AdventureWorks2022", connection);
-
-        return database;
-    }
-
-    private async Task<List<DataRecord>> GetInternalsRows(PageAddress pageAddress, DatabaseSource database)
+    private async Task<List<IRecord>> GetInternalsRows(PageAddress pageAddress, DatabaseSource database)
     {
         var page = await PageService.GetPage<DataPage>(database, pageAddress);
-
-        if (page.IsPageCompressed)
-        {
-            return new List<DataRecord>();
-        }
 
         try
         {
             var rows = RecordService.GetDataRecords(page);
 
-            return rows;
+            return rows.ToList();
         }
         catch (Exception e)
         {
             Console.WriteLine("Error: " + e);
 
-            return new List<DataRecord>();
+            return new List<IRecord>();
         }
     }
 
-    private async Task<List<DatabaseTableRow>> GetDatabaseRows(PageAddress page)
+    private async Task<List<DatabaseTableRow>> GetDatabaseRows(string databaseName, PageAddress page)
     {
         var results = new List<DatabaseTableRow>();
 
         try
         {
-            results.AddRange(await GetTableRows(page));
+            results.AddRange(await GetTableRows(databaseName, page));
         }
         catch (Exception e)
         {
@@ -291,9 +184,9 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
         return results;
     }
 
-    private async Task<IEnumerable<DatabaseTableRow>> GetTableRows(PageAddress page)
+    private async Task<IEnumerable<DatabaseTableRow>> GetTableRows(string databaseName, PageAddress page)
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("Default");
+        var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
 
         var connection = new SqlConnection(connectionString);
 

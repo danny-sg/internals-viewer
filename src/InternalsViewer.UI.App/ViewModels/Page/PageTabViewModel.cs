@@ -24,6 +24,8 @@ using InternalsViewer.UI.App.Services.Markers;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Internals.Interfaces.Annotations;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
@@ -130,7 +132,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private const short IamHeaderSlot = -10;
     private const short CompressionInfoSlot = -90;
 
-    private List<Record> Records { get; } = new();
+    private List<IRecord> Records { get; } = new();
 
     private History<PageAddress> History { get; } = new();
 
@@ -399,24 +401,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         try
         {
-            switch (target)
-            {
-                case { PageHeader.PageType: PageType.Data } and { AllocationUnit.CompressionType: CompressionType.None }:
-
-                    Records.AddRange(RecordService.GetDataRecords((DataPage)target));
-                    break;
-
-                case { PageHeader.PageType: PageType.Data } and not { AllocationUnit.CompressionType: CompressionType.None }:
-
-                    Records.AddRange(RecordService.GetCompressedDataRecords((DataPage)target));
-                    break;
-
-                case { PageHeader.PageType: PageType.Index }:
-                    Logger.LogDebug("Loading Index Records");
-
-                    Records.AddRange(RecordService.GetIndexRecords((IndexPage)target));
-                    break;
-            }
+            Records.AddRange(RecordService.GetRecords(target));
         }
         catch (Exception ex)
         {
@@ -490,7 +475,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         }
     }
 
-    private void AddMarkers(DataStructure source)
+    private void AddMarkers(IDataStructure source)
     {
         var pageMarkers = GetPageMarkers(Page);
 

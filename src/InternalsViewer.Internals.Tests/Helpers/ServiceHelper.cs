@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
-using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Services.Pages;
@@ -10,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Internals.Tests.Helpers;
 
-internal class ServiceHelper
+internal static class ServiceHelper
 {
     internal static PageService CreatePageService(ITestOutputHelper testOutput, LogLevel logLevel = LogLevel.Debug)
     {
@@ -33,7 +32,8 @@ internal class ServiceHelper
     {
         var service = new RecordService(new FixedVarIndexRecordLoader(TestLogger.GetLogger<FixedVarIndexRecordLoader>(testOutput)),
                                         new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(testOutput)),
-                                        new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(testOutput)));
+                                        new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(testOutput)),
+                                        new CdIndexRecordLoader(TestLogger.GetLogger<CdIndexRecordLoader>(testOutput)));
 
         return service;
     }

@@ -7,12 +7,18 @@ using InternalsViewer.Internals.Interfaces.Services.Records;
 
 namespace InternalsViewer.Internals.Services.Indexes;
 
+/// <summary>
+/// Service to provide index structure information
+/// </summary>
 public class IndexService(IPageService pageService, IRecordService recordService)
 {
     private IPageService PageService { get; } = pageService;
 
     private IRecordService RecordService { get; } = recordService;
 
+    /// <summary>
+    /// Gets the index nodes for an index, starting from a root node page address
+    /// </summary>
     public async Task<List<IndexNode>> GetNodes(DatabaseSource database, PageAddress rootPage)
     {
         var nodes = new List<IndexNode>();
@@ -53,7 +59,7 @@ public class IndexService(IPageService pageService, IRecordService recordService
         var page = await PageService.GetPage(database, pageAddress);
 
         node.PageType = page.PageHeader.PageType;
-        node.PreviousPage  = page.PageHeader.PreviousPage;
+        node.PreviousPage = page.PageHeader.PreviousPage;
         node.NextPage = page.PageHeader.NextPage;
         node.IndexLevel = page.PageHeader.Level;
 

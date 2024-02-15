@@ -1,7 +1,7 @@
 ﻿namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 
 /// <summary>
-/// 2008 Page compression type
+/// Page compression type
 /// </summary>
 [Flags]
 public enum CompressionType : byte

@@ -35,6 +35,10 @@ internal static class Program
         var tableService = services.GetRequiredService<TableVerificationService>();
         var indexService = services.GetRequiredService<IndexVerificationService>();
 
+        Console.WriteLine("Database?");
+
+        var databaseName = Console.ReadLine() ?? string.Empty;
+
         Console.WriteLine("Verify Type: Tables (T) or Indexes (I)?");
 
         var verifyType = Console.ReadLine()?.ToLower();
@@ -47,11 +51,25 @@ internal static class Program
 
             if (objectId == "*")
             {
-                await tableService.VerifyTables();
+                try
+                {
+                    await tableService.VerifyTables(databaseName);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
             }
             else if (int.TryParse(objectId, out var id))
             {
-                await tableService.VerifyTable(id);
+                try
+                {
+                    await tableService.VerifyTable(databaseName, id);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
             }
         }
         else
@@ -62,7 +80,14 @@ internal static class Program
 
             if (objectId == "*")
             {
-                await indexService.VerifyIndexes();
+                try
+                {
+                    await indexService.VerifyIndexes(databaseName);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
             }
             else
             {
@@ -70,9 +95,16 @@ internal static class Program
 
                 var indexId = Console.ReadLine();
 
-                if(int.TryParse(objectId, out var id) && int.TryParse(indexId, out var index))
+                if (int.TryParse(objectId, out var id) && int.TryParse(indexId, out var index))
                 {
-                    await indexService.VerifyIndex(id, index);
+                    try
+                    {
+                        await indexService.VerifyIndex(databaseName, id, index);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                    }
                 }
             }
         }

@@ -16,6 +16,7 @@ using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.Internals.Engine.Records.Data;
 using Microsoft.Extensions.Logging;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.UI.App.ViewModels.Index;
 
@@ -235,7 +236,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         Name = "Index: " + IndexName;
     }
 
-    private static List<IndexRecordModel> GetIndexRecordModels(IEnumerable<IndexRecord> source)
+    private static List<IndexRecordModel> GetIndexRecordModels(IEnumerable<IIndexRecord> source)
     {
         var models = source.Select(r => new IndexRecordModel
         {
@@ -253,7 +254,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         return models;
     }
 
-    private static List<IndexRecordModel> GetDataRecordModels(IEnumerable<DataRecord> source)
+    private static List<IndexRecordModel> GetDataRecordModels(IEnumerable<IRecord> source)
     {
         var models = source.Select(r => new IndexRecordModel
         {

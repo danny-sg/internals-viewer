@@ -256,7 +256,7 @@
 
                     <!--Value Column-->
                     <ContentControl ContentTemplateSelector="{StaticResource ValueTemplateSelector}" 
-                                      Content="{x:Bind Mode=OneWay}"/>
+                                      Content="{Binding}"/>
                 </controls:DataRow>
             </TreeViewItem>
         </DataTemplate>

@@ -54,7 +54,9 @@ public static class ServiceRegistration
 
         services.AddTransient<FixedVarDataRecordLoader>();
         services.AddTransient<CdDataRecordLoader>();
+
         services.AddTransient<FixedVarIndexRecordLoader>();
+        services.AddTransient<CdIndexRecordLoader>();
 
         services.AddTransient<IndexService>();
 

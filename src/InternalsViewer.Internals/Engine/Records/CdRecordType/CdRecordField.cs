@@ -4,7 +4,8 @@ using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 
-internal class CompressedRecordField(ColumnStructure columnStructure, CompressedDataRecord parentRecord) : RecordField(columnStructure)
+internal class CdRecordField(ColumnStructure columnStructure, CdRecord parentRecord)
+    : RecordField(columnStructure)
 {
     /// <summary>
     /// Uses the anchor field to expand the compressed data
@@ -21,7 +22,7 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
     /// <param name="fieldData">
     /// The field data representing the length of the anchor and suffix data
     /// </param>
-    public byte[] ExpandAnchor(byte[] fieldData)
+    private byte[] ExpandAnchor(byte[] fieldData)
     {
         AnchorLength = CompressedDataConverter.DecodeInternalInt(fieldData, 0);
 
@@ -47,9 +48,9 @@ internal class CompressedRecordField(ColumnStructure columnStructure, Compressed
 
     public int AnchorLength { get; set; }
 
-    public CompressedRecordField? AnchorField { get; set; }
+    public CdRecordField? AnchorField { get; set; }
 
-    public CompressedDataRecord Record { get; set; } = parentRecord;
+    public CdRecord Record { get; set; } = parentRecord;
 
     public short SymbolOffset { get; set; }
 
