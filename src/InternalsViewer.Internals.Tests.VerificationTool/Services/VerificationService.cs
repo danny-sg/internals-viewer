@@ -9,6 +9,8 @@ namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 
 internal abstract class VerificationService(IDatabaseService databaseService)
 {
+    public string LogFilename { get; set; } = string.Empty;
+
     private IDatabaseService DatabaseService { get; } = databaseService;
 
     protected void WriteSuccess(string message)
@@ -16,6 +18,7 @@ internal abstract class VerificationService(IDatabaseService databaseService)
         Console.ForegroundColor = ConsoleColor.Green;
 
         Console.WriteLine(message);
+        File.AppendAllText(LogFilename, $"SUCCESS: {message}{Environment.NewLine}");
     }
 
     protected void WriteMessage(string message)
@@ -23,6 +26,8 @@ internal abstract class VerificationService(IDatabaseService databaseService)
         Console.ForegroundColor = ConsoleColor.White;
 
         Console.WriteLine(message);
+
+        File.AppendAllText(LogFilename, $"MESSAGE: {message}{Environment.NewLine}");
     }
 
     protected void WriteError(string message)
@@ -30,6 +35,8 @@ internal abstract class VerificationService(IDatabaseService databaseService)
         Console.ForegroundColor = ConsoleColor.DarkRed;
 
         Console.WriteLine(message);
+
+        File.AppendAllText(LogFilename, $"ERROR: {message}{Environment.NewLine}");
     }
 
     protected async Task<DatabaseSource> CreateDatabase(string databaseName)

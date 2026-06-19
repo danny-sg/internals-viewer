@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
-        <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+        <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
         <RootNamespace>InternalsViewer.UI.App</RootNamespace>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <Platforms>x86;x64</Platforms>
@@ -170,32 +170,32 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.DataTable" Version="0.1.230830" />
-        <PackageReference Include="GitVersion.MsBuild" Version="5.12.0">
+        <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.DataTable" Version="0.1.251217-build.2433" />
+        <PackageReference Include="GitVersion.MsBuild" Version="6.7.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.VisualStudio.Sdk.Analyzers" Version="16.10.10" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.9.28">
+        <PackageReference Include="Microsoft.VisualStudio.Sdk.Analyzers" Version="17.7.113" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.240211001" />
-        <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.0.240109" />
-        <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.0.240109" />
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+        <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.2.251219" />
+        <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-        <PackageReference Include="CommunityToolkit.WinUI.Behaviors" Version="8.0.240109" />
-        <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.0.240109" />
-        <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.0.240109" />
-     
-        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-        <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.2428" />
-        <PackageReference Include="SkiaSharp" Version="2.88.7" />
-        <PackageReference Include="SkiaSharp.Views.WinUI" Version="2.88.7" />
-        <PackageReference Include="System.Text.Json" Version="8.0.2" />
-        <PackageReference Include="WinUIEx" Version="2.3.3" />
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+        <PackageReference Include="CommunityToolkit.WinUI.Behaviors" Version="8.2.251219" />
+        <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
+        <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
+
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
+
+        <PackageReference Include="SkiaSharp" Version="3.116.0" />
+        <PackageReference Include="SkiaSharp.Views.WinUI" Version="3.116.0" />
+        <PackageReference Include="WinUIEx" Version="2.9.1" />
         <Manifest Include="$(ApplicationManifest)" />
     </ItemGroup>
 
@@ -402,5 +402,45 @@
         <Page Update="Styles\CommonStyles.xaml">
             <Generator>MSBuild:Compile</Generator>
         </Page>
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.sdk.analyzers\17.7.113\build\AdditionalFiles\BannedSymbols.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.sdk.analyzers\17.7.113\build\AdditionalFiles\vs-mef.ContractNamesAssignability.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.sdk.analyzers\17.7.113\build\AdditionalFiles\vs-threading.LegacyThreadSwitchingMembers.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.LegacyThreadSwitchingMembers.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.sdk.analyzers\17.7.113\build\AdditionalFiles\vs-threading.MainThreadAssertingMethods.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.MainThreadAssertingMethods.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.sdk.analyzers\17.7.113\build\AdditionalFiles\vs-threading.MainThreadSwitchingMethods.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.MainThreadSwitchingMethods.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.sdk.analyzers\17.7.113\build\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
     </ItemGroup>
 </Project>

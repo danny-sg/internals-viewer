@@ -11,7 +11,6 @@ using InternalsViewer.Internals.Engine.Address;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using InternalsViewer.UI.App.Controls.Allocation;
 using Microsoft.UI.Xaml.Input;
-using static System.Windows.Forms.AxHost;
 using Windows.UI.Core;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using Microsoft.UI.Input;

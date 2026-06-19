@@ -11,7 +11,6 @@ internal static class Program
     {
         var builder = Host.CreateApplicationBuilder(args);
 
-
         builder.Services.AddTransient<ObjectService>();
         builder.Services.AddTransient<ObjectPageListService>();
         builder.Services.AddTransient<IndexVerificationService>();
@@ -34,6 +33,11 @@ internal static class Program
 
         var tableService = services.GetRequiredService<TableVerificationService>();
         var indexService = services.GetRequiredService<IndexVerificationService>();
+
+        var logFilename = $"C:\\Temp\\VerificationTool_{DateTime.Now:yyyyMMddHHmm}.log";
+
+        tableService.LogFilename = logFilename;
+        indexService.LogFilename = logFilename;
 
         Console.WriteLine("Database?");
 

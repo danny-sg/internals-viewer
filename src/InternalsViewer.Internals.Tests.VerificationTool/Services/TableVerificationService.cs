@@ -65,11 +65,11 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
     {
         var results = new List<VerificationResult>();
 
-        WriteMessage($"Verifying table {objectId}");
+        var tableName = database.AllocationUnits.FirstOrDefault(a => a.ObjectId == objectId)?.TableName;
 
         var pages = await ObjectPageListService.GetPages(database.Name, objectId, null, Engine.Pages.Enums.PageType.Data);
 
-        WriteMessage($"{pages.Count} page(s) found");
+        WriteMessage($"Table {tableName}, Object Id: {objectId}, Pages: {pages.Count}");
 
         foreach (var page in pages)
         {

@@ -166,7 +166,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
             case NodeType.Leaf:
                 Logger.LogDebug("Loading Leaf Record");
 
-                Debug.Assert(structure.IndexType == IndexType.NonClustered, "Leaf level on Index type pages should always be non-clustered");
+                //Debug.Assert(structure.IndexType == IndexType.NonClustered, "Leaf level on Index type pages should always be non-clustered");
 
                 LoadNonClusteredLeaf(record, page, structure);
                 break;

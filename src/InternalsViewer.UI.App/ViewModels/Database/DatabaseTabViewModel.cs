@@ -18,7 +18,7 @@ using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Database;
 
-public class DatabaseTabViewModelFactory(IDatabaseService databaseService)
+public sealed class DatabaseTabViewModelFactory(IDatabaseService databaseService)
 {
     private IDatabaseService DatabaseService { get; } = databaseService;
 
@@ -26,7 +26,7 @@ public class DatabaseTabViewModelFactory(IDatabaseService databaseService)
         => new(database, DatabaseService);
 }
 
-public partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService) : TabViewModel
+public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService) : TabViewModel
 {
     private IDatabaseService DatabaseService { get; } = databaseService;
 
