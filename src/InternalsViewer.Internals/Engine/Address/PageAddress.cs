@@ -5,7 +5,7 @@ namespace InternalsViewer.Internals.Engine.Address;
 /// <summary>
 /// Page Address that gives a unique address for a page in a database
 /// </summary>
-public record struct PageAddress(short FileId, int PageId)
+public readonly record struct PageAddress(short FileId, int PageId)
 {
     public static readonly PageAddress Empty = new();
 

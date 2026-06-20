@@ -19,7 +19,7 @@ public class QueryCaptureExecutorTests(ITestOutputHelper testOutputHelper)
 
         var executor = new QueryCaptureExecutor(logger);
 
-        var result = await executor.GetQueryEngineEvents(query, connectionString, clearBufferPool: true);
+        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true);
 
         Assert.NotNull(result);
         Assert.NotEmpty(result);

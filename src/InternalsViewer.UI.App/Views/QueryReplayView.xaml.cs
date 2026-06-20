@@ -32,6 +32,8 @@ public sealed partial class QueryReplayView : Page
         DataContextChanged += (_, _) => Bindings.Update();
 
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
+
+        EventGrid.PageClicked += OnPageSelected;
     }
 
     private void OnParentSizeChanged(object sender, SizeChangedEventArgs e)

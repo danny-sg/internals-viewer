@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.QueryReplay.EventGridControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:events="using:InternalsViewer.Replay.Events"
+    xmlns:queryReplay="using:InternalsViewer.UI.App.ViewModels.QueryReplay"
+    x:Name="Root"
+    mc:Ignorable="d">
+    <TabView IsAddTabButtonVisible="False"
+             TabWidthMode="SizeToContent">
+
+        <!-- Tab 1: Events DataGrid -->
+        <TabViewItem Header="Events" IsClosable="False">
+            <Grid>
+                <toolkit:DataGrid x:Name="DataGrid"
+                                  AutoGenerateColumns="False"
+                                  CanUserSortColumns="True"
+                                  SelectionMode="Single"
+                                  IsReadOnly="True"
+                                  GridLinesVisibility="Vertical"
+                                  Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                  ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">
+                    <toolkit:DataGrid.Columns>
+
+                        <toolkit:DataGridTemplateColumn Header="Event" Tag="Event">
+                            <toolkit:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="events:EngineEvent">
+                                    <TextBlock Text="{x:Bind Name, Mode=OneWay}"
+                                               Margin="4,0"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </toolkit:DataGridTemplateColumn.CellTemplate>
+                        </toolkit:DataGridTemplateColumn>
+
+                        <toolkit:DataGridTemplateColumn Header="Type" Tag="Type">
+                            <toolkit:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="events:EngineEvent">
+                                    <TextBlock Text="{x:Bind Description, Mode=OneWay}"
+                                               Margin="4,0"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </toolkit:DataGridTemplateColumn.CellTemplate>
+                        </toolkit:DataGridTemplateColumn>
+
+                        <toolkit:DataGridTemplateColumn Header="Time (ms)" Tag="TimeMs">
+                            <toolkit:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="events:EngineEvent">
+                                    <TextBlock Text="{x:Bind TimeMs, Mode=OneWay}"
+                                               Margin="4,0,10,0"
+                                               TextAlignment="Right"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </toolkit:DataGridTemplateColumn.CellTemplate>
+                        </toolkit:DataGridTemplateColumn>
+
+                        <toolkit:DataGridTemplateColumn Header="Duration (ms)" Tag="Duration">
+                            <toolkit:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="events:EngineEvent">
+                                    <TextBlock Text="{x:Bind Duration, Mode=OneWay}"
+                                               Margin="4,0,10,0"
+                                               TextAlignment="Right"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </toolkit:DataGridTemplateColumn.CellTemplate>
+                        </toolkit:DataGridTemplateColumn>
+
+                        <toolkit:DataGridTemplateColumn Header="Page" Tag="PageAddress">
+                            <toolkit:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="events:EngineEvent">
+                                    <Grid>
+                                        <HyperlinkButton Content="{x:Bind PageAddress, Mode=OneWay}"
+                                                         Style="{StaticResource PageAddressStyle}"
+                                                         Tag="{x:Bind PageAddress}"
+                                                         Click="HyperlinkButton_Click"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </toolkit:DataGridTemplateColumn.CellTemplate>
+                        </toolkit:DataGridTemplateColumn>
+
+                        <toolkit:DataGridTemplateColumn Header="Object" Tag="Object">
+                            <toolkit:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="events:EngineEvent">
+                                    <TextBlock Text="{x:Bind ObjectName, Mode=OneWay}"
+                                               Margin="4,0"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </toolkit:DataGridTemplateColumn.CellTemplate>
+                        </toolkit:DataGridTemplateColumn>
+
+                    </toolkit:DataGrid.Columns>
+                </toolkit:DataGrid>
+            </Grid>
+        </TabViewItem>
+
+        <!-- Tab 2: Event Selection tree -->
+        <TabViewItem Header="Event Selection" IsClosable="False">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <CheckBox Grid.Row="0"
+                          Margin="8,6,8,2"
+                          Content="Include System Objects"
+                          IsChecked="{x:Bind ViewModel.IncludeSystemObjects, Mode=TwoWay}"/>
+
+                <TreeView Grid.Row="1"
+                          x:Name="FilterTreeView"
+                          SelectionMode="None"
+                          ItemsSource="{x:Bind ViewModel.FilterNodes, Mode=OneWay}">
+                    <TreeView.ItemContainerStyle>
+                        <Style TargetType="TreeViewItem">
+                            <Setter Property="MinHeight" Value="0"/>
+                            <Setter Property="Padding" Value="0,1,0,1"/>
+                        </Style>
+                    </TreeView.ItemContainerStyle>
+                    <TreeView.ItemTemplate>
+                        <DataTemplate x:DataType="queryReplay:EventFilterNode">
+                            <TreeViewItem ItemsSource="{x:Bind Children, Mode=OneWay}"
+                                          IsExpanded="True"
+                                          MinHeight="0"
+                                          Padding="0,1,0,1">
+                                <CheckBox Content="{x:Bind Label, Mode=OneWay}"
+                                          IsChecked="{x:Bind IsChecked, Mode=TwoWay}"
+                                          IsThreeState="{x:Bind IsLeaf, Converter={StaticResource BoolNegationConverter}, Mode=OneWay}"
+                                          MinHeight="0"
+                                          Padding="4,2"
+                                          MinWidth="0"
+                                          FontSize="{ThemeResource ControlContentThemeFontSize}"/>
+                            </TreeViewItem>
+                        </DataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </Grid>
+        </TabViewItem>
+
+    </TabView>
+</UserControl>

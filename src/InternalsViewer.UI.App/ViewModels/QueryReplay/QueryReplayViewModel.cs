@@ -21,7 +21,8 @@ using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.QueryReplay;
 
-public sealed class QueryReplayViewModelFactory(ILogger<QueryReplayViewModel> logger, QueryCaptureExecutor queryCaptureExecutor)
+public sealed class QueryReplayViewModelFactory(ILogger<QueryReplayViewModel> logger, 
+                                                QueryCaptureExecutor queryCaptureExecutor)
 {
     public QueryReplayViewModel Create(DatabaseSource database) => new(logger, queryCaptureExecutor, database);
 }
@@ -56,6 +57,15 @@ public sealed partial class QueryReplayViewModel : TabViewModel, IAllocationView
     private bool isQueryExecuting;
 
     [ObservableProperty]
+    private bool includeLocks = false;
+
+    [ObservableProperty]
+    private bool includeIo = false;
+
+    [ObservableProperty]
+    private bool isClearBufferPool = true;
+
+    [ObservableProperty]
     private int extentCount;
 
     [ObservableProperty]
@@ -64,7 +74,15 @@ public sealed partial class QueryReplayViewModel : TabViewModel, IAllocationView
     [ObservableProperty]
     private DatabaseFile[] databaseFiles = [];
 
-    [ObservableProperty] private List<EngineEvent> events = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEvents))]
+    private List<EngineEvent> events = [];
+
+    [ObservableProperty]
+    private HashSet<int> systemObjectIds = [];
+
+    public Microsoft.UI.Xaml.Visibility HasEvents
+        => Events.Count > 0 ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
 
     [ObservableProperty]
     private bool canExecute => !string.IsNullOrWhiteSpace(Sql) && !IsQueryExecuting;
@@ -93,6 +111,11 @@ public sealed partial class QueryReplayViewModel : TabViewModel, IAllocationView
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
 
         PfsChain = database.Pfs.First().Value;
+
+        systemObjectIds = database.AllocationUnits
+            .Where(u => u.IsSystem)
+            .Select(u => u.ObjectId)
+            .ToHashSet();
     }
 
     [RelayCommand]
@@ -100,16 +123,31 @@ public sealed partial class QueryReplayViewModel : TabViewModel, IAllocationView
     {
         IsQueryExecuting = true;
 
-        var results = await QueryCaptureExecutor.GetQueryEngineEvents(Sql,
-                                                                      Database.Connection.GetConnectionString(),
-                                                                      true);
+        var results = await QueryCaptureExecutor.TraceQuery(Sql,
+                                                            Database,
+                                                            clearBufferPool: true);
 
         var layers = GetEventsAllocationLayer(results);
+
+        var names = Database.AllocationUnits
+            .GroupBy(u => u.ObjectId)
+            .ToDictionary(g => g.Key, g => g.First().DisplayName);
+
+        foreach (var e in results.Where(e => e.ObjectId > 0))
+        {
+            e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
+        }
 
         DispatcherQueue.TryEnqueue(() =>
         {
             Events = results;
-            AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers.Union(layers));
+            AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
+
+            foreach (var layer in layers)
+            {
+                AllocationLayers.Add(layer);
+            }
+
             SelectedLayers = new ObservableCollection<AllocationLayer>(layers);
             IsQueryExecuting = false;
         });
@@ -145,30 +183,32 @@ public sealed partial class QueryReplayViewModel : TabViewModel, IAllocationView
             switch (e)
             {
                 case IoEvent ioEvent:
-                    if (ioEvent.FileId <= Database.Files.Count)
+                    if (ioEvent.PageAddress is { FileId: > 0 } && ioEvent.PageAddress.Value.FileId <= Database.Files.Count)
                     {
-                        ioLayer.SinglePages.Add(new PageAddress(ioEvent.FileId, ioEvent.PageId));
+                        ioLayer.PageSpans.Add(new PageSpan(ioEvent.PageAddress.Value, ioEvent.SequenceId));
                     }
 
                     break;
                 case PageEvent pageEvent:
-                    if (pageEvent.FileId <= Database.Files.Count)
+                    if (pageEvent.PageAddress is { FileId: > 0 } && pageEvent.PageAddress.Value.FileId <= Database.Files.Count)
                     {
-                        pageLayer.SinglePages.Add(new PageAddress(pageEvent.FileId, pageEvent.PageId));
+                        pageLayer.PageSpans.Add(new PageSpan(pageEvent.PageAddress.Value, pageEvent.SequenceId));
 
                     }
 
                     break;
                 case LockEvent lockEvent:
-                    if (lockEvent.PageId > 0 && lockEvent.FileId <= maxFileId)
+                    var pageAddress = lockEvent.RowIdentifier?.PageAddress ?? lockEvent.PageAddress;
+
+                    if (pageAddress is { FileId: > 0 } && pageAddress.Value.FileId <= maxFileId)
                     {
-                        lockLayer.SinglePages.Add(new PageAddress(lockEvent.FileId, lockEvent.PageId));
+                        lockLayer.PageSpans.Add(new PageSpan(pageAddress.Value, lockEvent.SequenceId));
                     }
 
                     break;
             }
         }
 
-        return new List<AllocationLayer> { pageLayer, lockLayer };
+        return new List<AllocationLayer> { ioLayer, pageLayer, lockLayer };
     }
 }

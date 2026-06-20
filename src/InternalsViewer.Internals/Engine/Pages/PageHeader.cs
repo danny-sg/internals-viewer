@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Engine.Pages;
 /// <summary>
 /// Page Header
 /// </summary>
-public class PageHeader : DataStructure
+public sealed class PageHeader : DataStructure
 {
     /// <summary>
     /// Page Header is always 96 bytes

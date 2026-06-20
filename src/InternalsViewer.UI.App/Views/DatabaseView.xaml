@@ -63,7 +63,7 @@
                 <AppBarToggleButton Label="PFS" 
                                     IsChecked="{x:Bind TabViewModel.IsPfsVisible, Mode=TwoWay}" />
                 <AppBarButton x:Name="QueryReplayAppBarToggleButton"
-                                    Label="Query Replay" 
+                                    Label="Query" 
                                     Icon="Play"
                                     Command="{x:Bind TabViewModel.OpenQueryReplayCommand}" />
                 <AppBarButton Label="Refresh" 

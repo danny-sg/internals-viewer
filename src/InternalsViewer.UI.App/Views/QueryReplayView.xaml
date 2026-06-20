@@ -11,6 +11,7 @@
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:timeline="using:InternalsViewer.UI.App.Controls.Timeline"
+    xmlns:queryReplay="using:InternalsViewer.UI.App.Controls.QueryReplay"
     mc:Ignorable="d">
     <UserControl.Resources>
         <StackLayout Orientation="Vertical" x:Key="VerticalStackLayout" />
@@ -42,9 +43,11 @@
                     Grid.Row="0"
                     HorizontalAlignment="Left"
                     Background="Transparent">
-            <!--<AppBarButton Label="Execute" Icon="Play"
-                          Command="{x:Bind ViewModel.ExecuteQueryCommand}" />-->
-        </CommandBar>
+            <AppBarToggleButton Label="Locks" 
+                                IsChecked="{x:Bind ViewModel.IncludeLocks, Mode=TwoWay}" />
+            <AppBarToggleButton Label="I/O" 
+                                IsChecked="{x:Bind ViewModel.IncludeIo, Mode=TwoWay}" />
+            </CommandBar>
         <ItemsRepeater
             x:Name="AllocationItemRepeater"
             Grid.Row="1" 
@@ -73,15 +76,43 @@
                     Grid.Row="0"
                     HorizontalAlignment="Left"
                     Background="Transparent">
-            <AppBarButton Label="Execute" Icon="Play"
-                          Command="{x:Bind ViewModel.ExecuteQueryCommand}" />
-        </CommandBar>
-        <sqlEditor:SqlEditorControl Grid.Row="1" 
-                                    x:Name="SqlEditor"
-                                    SqlText="{x:Bind ViewModel.Sql, Mode=OneWay}"
-                                    SqlTextChanged="OnSqlTextChanged"
-                                    Theme="vs-light" />
-        <timeline:EventTimelineControl  Grid.Row="2" Events="{x:Bind ViewModel.Events, Mode=OneWay}" Height="50"/>
+                <AppBarButton Label="Execute" Icon="Play"
+                              Command="{x:Bind ViewModel.ExecuteQueryCommand}" />
+                <AppBarToggleButton Label="Clear Buffer Pool" 
+                                    IsChecked="{x:Bind ViewModel.IsClearBufferPool, Mode=TwoWay}" />
+            </CommandBar>
+
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" x:Name="EditorColumn"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*" x:Name="EventGridColumn"/>
+                </Grid.ColumnDefinitions>
+
+                <sqlEditor:SqlEditorControl Grid.Column="0"
+                                            x:Name="SqlEditor"
+                                            SqlText="{x:Bind ViewModel.Sql, Mode=OneWay}"
+                                            SqlTextChanged="OnSqlTextChanged"
+                                            Theme="vs-light" />
+
+                <controls:GridSplitter Grid.Column="1"
+                                       Width="16"
+                                       HorizontalAlignment="Center"
+                                       Visibility="{x:Bind ViewModel.HasEvents, Mode=OneWay}">
+                    <controls:GridSplitter.RenderTransform>
+                        <TranslateTransform X="-7" />
+                    </controls:GridSplitter.RenderTransform>
+                </controls:GridSplitter>
+
+                <queryReplay:EventGridControl Grid.Column="2"
+                                             x:Name="EventGrid"
+                                             Events="{x:Bind ViewModel.Events, Mode=OneWay}"
+                                             SystemObjectIds="{x:Bind ViewModel.SystemObjectIds, Mode=OneWay}"
+                                             Visibility="{x:Bind ViewModel.HasEvents, Mode=OneWay}"/>
+            </Grid>
+            <timeline:EventTimelineControl Grid.Row="2"
+                                           Events="{x:Bind ViewModel.Events, Mode=OneWay}"
+                                           Height="50"/>
         </Grid>
     </Grid>
 </Page>

@@ -15,7 +15,7 @@ namespace InternalsViewer.Internals.Engine.Database;
 /// <see href="https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-allocation-units-transact-sql"/>, but it
 /// does not include the IAM entry points.
 /// </remarks>
-public record AllocationUnit
+public sealed record AllocationUnit
 {
     public long AllocationUnitId { get; set; }
 

@@ -70,23 +70,34 @@ public sealed partial class AllocationLayerGrid
     {
         var row = LayoutHelpers.FindParent<DataGridRow>(e.OriginalSource as DependencyObject);
 
-        if (row != null)
+        if (row == null) return;
+
+        var layer = (AllocationLayer)row.DataContext;
+
+        // Snapshot selection state before the DataGrid's own handler changes anything
+        var wasSelected = SelectedLayers.Contains(layer);
+
+        var isShiftHeld = (e.KeyModifiers & Windows.System.VirtualKeyModifiers.Shift) != 0;
+
+        if (isShiftHeld)
         {
-            var layer = (AllocationLayer)row.DataContext;
-
-            if (SelectedLayers.Contains(layer))
-            {
+            if (wasSelected)
                 SelectedLayers.Remove(layer);
-                DataGrid.SelectedItem = null;
-            }
             else
-            {
                 SelectedLayers.Add(layer);
-                DataGrid.SelectedItem = layer;
-            }
-
-            e.Handled = true;
         }
+        else
+        {
+            SelectedLayers.Clear();
+
+            if (!wasSelected)
+                SelectedLayers.Add(layer);
+        }
+
+        // Force the DataGrid visual selection to match (it may have changed itself)
+        DataGrid.SelectedItem = SelectedLayers.Count == 1 ? (object)SelectedLayers[0] : null;
+
+        e.Handled = true;
     }
 
     private void HyperlinkButton_Click(object sender, RoutedEventArgs e)

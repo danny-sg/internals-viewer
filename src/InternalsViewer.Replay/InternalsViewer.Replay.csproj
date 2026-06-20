@@ -11,4 +11,8 @@
     <PackageReference Include="Microsoft.SqlServer.Types" Version="170.1000.7" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
+  </ItemGroup>
+
 </Project>

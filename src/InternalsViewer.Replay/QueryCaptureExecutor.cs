@@ -1,5 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Text;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Replay.Events;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +12,55 @@ public sealed record RawResult
     public required string QueryPlan { get; set; }
 
     public required string Events { get; set; }
+}
+
+public sealed class KeyHashLookup(ILogger<KeyHashLookup> logger)
+{
+    private const int BatchSize = 2000;
+
+    public ILogger<KeyHashLookup> Logger { get; } = logger;
+
+    public static async Task<Dictionary<string, RowIdentifier>> GetKeyHashRowIdentifiers(string objectName,
+                                                                                         List<string> hashes,
+                                                                                         string connectionString)
+    {
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        var result = new Dictionary<string, RowIdentifier>();
+
+        for (var offset = 0; offset < hashes.Count; offset += BatchSize)
+        {
+            var batch = hashes.Skip(offset).Take(BatchSize).ToList();
+
+            var paramNames = batch.Select((_, i) => $"@h{i}").ToList();
+
+            var sql = $@"
+SELECT %%physloc%% AS RowIdentifier
+      ,%%lockres%% AS [LockHash]
+FROM   {objectName}
+WHERE  %%lockres%% IN ({string.Join(", ", paramNames)})";
+
+            await using var command = new SqlCommand(sql, connection);
+
+            for (var i = 0; i < batch.Count; i++)
+            {
+                command.Parameters.AddWithValue($"@h{i}", batch[i]);
+            }
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                var rowIdentifier = reader.GetSqlBinary(0);
+                var lockHash = reader.GetString(1);
+
+                result[lockHash] = new RowIdentifier(rowIdentifier.Value);
+            }
+        }
+
+        return result;
+    }
 }
 
 public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
@@ -43,18 +94,76 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
         "sqlserver.plan_handle"
     ];
 
-    public async Task<List<EngineEvent>> GetQueryEngineEvents(string sqlText, 
-                                                              string connectionString, 
-                                                              bool clearBufferPool)
+    public async Task<List<EngineEvent>> TraceQuery(string sqlText,
+                                                    string connectionString,
+                                                    bool clearBufferPool)
     {
         var sessionName = $"QueryReplay_{Guid.NewGuid():N}";
 
         var filePath = await RunQueryWithEventSession(sessionName, sqlText, connectionString, clearBufferPool);
 
-        return await GetEventResults(filePath, connectionString);
+        var events = await ParseEventResults(filePath, connectionString);
+
+        return events;
     }
 
-    private async Task<List<EngineEvent>> GetEventResults(string filePath, string connectionString)
+    public async Task<List<EngineEvent>> TraceQuery(string sqlText,
+                                                    DatabaseSource database,
+                                                    bool clearBufferPool)
+    {
+        var connectionString = database.Connection.GetConnectionString();
+
+        var sessionName = $"QueryReplay_{Guid.NewGuid():N}";
+
+        var filePath = await RunQueryWithEventSession(sessionName, sqlText, connectionString, clearBufferPool);
+
+        var events = await ParseEventResults(filePath, database);
+
+        await GetEventKeyAddresses(events, database.AllocationUnits, connectionString);
+
+        return events;
+    }
+
+    private async Task GetEventKeyAddresses(List<EngineEvent> events,
+                                            List<AllocationUnit> allocationUnits,
+                                            string connectionString)
+    {
+        var keyLockEvents = events.Where(e => e is LockEvent { KeyHash: not null }).Cast<LockEvent>();
+
+        var keyLockEventsByObjectId = keyLockEvents.GroupBy(g => g.ObjectId);
+
+        foreach (var grouping in keyLockEventsByObjectId)
+        {
+            var objectId = grouping.Key;
+
+            var allocationUnit = allocationUnits.FirstOrDefault(f => f.ObjectId == objectId);
+
+            if (allocationUnit is null)
+            {
+                continue;
+            }
+
+            var objectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
+
+            var hashes = grouping.Select(s => s.KeyHash ?? string.Empty).Where(h => !string.IsNullOrEmpty(h)).ToList();
+
+            var keyHashRowIdentifiers = await KeyHashLookup.GetKeyHashRowIdentifiers(objectName,
+                                                                                     hashes,
+                                                                                     connectionString);
+
+            foreach (var lockEvent in grouping)
+            {
+                if (lockEvent.KeyHash is not null 
+                    && keyHashRowIdentifiers.TryGetValue(lockEvent.KeyHash, 
+                                                         out var rowIdentifier))
+                {
+                    lockEvent.RowIdentifier = rowIdentifier;
+                }
+            }
+        }
+    }
+
+    private async Task<List<EngineEvent>> ParseEventResults(string filePath, string connectionString)
     {
         await using var connection = new SqlConnection(connectionString);
 
@@ -63,6 +172,8 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
         var resultsSql = GetResultsSql(filePath);
 
         await connection.OpenAsync();
+
+        var sequenceId = 0;
 
         await using (var reader = await new SqlCommand(resultsSql, connection).ExecuteReaderAsync())
         {
@@ -76,6 +187,7 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
                 if (engineEvent is not null)
                 {
+                    engineEvent.SequenceId = sequenceId++;
                     events.Add(engineEvent);
                 }
             }
@@ -85,7 +197,46 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
         EventParser.SetRelativeTimestamps(events);
 
-        return events.OrderBy(e => e.Timestamp).ToList();
+        return events.OrderBy(e => e.SequenceId).ToList();
+    }
+
+    private async Task<List<EngineEvent>> ParseEventResults(string filePath, DatabaseSource database)
+    {
+        var connectionString = database.Connection.GetConnectionString();
+
+        await using var connection = new SqlConnection(connectionString);
+
+        var events = new List<EngineEvent>();
+
+        var resultsSql = GetResultsSql(filePath);
+
+        await connection.OpenAsync();
+
+        await using (var reader = await new SqlCommand(resultsSql, connection).ExecuteReaderAsync())
+        {
+            Logger.LogDebug("SQL: {Sql}", resultsSql);
+
+            var sequenceId = 0;
+
+            while (await reader.ReadAsync())
+            {
+                var xml = reader.GetString(0);
+
+                var engineEvent = EventParser.ParseEvent(xml, database);
+
+                if (engineEvent is not null)
+                {
+                    engineEvent.SequenceId = sequenceId++;
+                    events.Add(engineEvent);
+                }
+            }
+        }
+
+        connection.Close();
+
+        EventParser.SetRelativeTimestamps(events);
+
+        return events.OrderBy(e => e.SequenceId).ToList();
     }
 
     private async Task<string> RunQueryWithEventSession(string sessionName,

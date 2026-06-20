@@ -147,11 +147,35 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(ZoomProperty, value);
     }
 
+    public long SequenceFrom
+    {
+        get => (long)GetValue(SequenceFromProperty);
+        set => SetValue(SequenceFromProperty, value);
+    }
+
+    public long SequenceTo
+    {
+        get => (long)GetValue(SequenceToProperty);
+        set => SetValue(SequenceToProperty, value);
+    }
+
     private static readonly DependencyProperty ZoomProperty
         = DependencyProperty.Register(nameof(Zoom),
                                       typeof(double),
                                       typeof(AllocationControl),
-                                      new PropertyMetadata(1D, OnPropertyChanged));
+                                      new PropertyMetadata(0L, OnPropertyChanged));
+
+    private static readonly DependencyProperty SequenceFromProperty
+        = DependencyProperty.Register(nameof(SequenceFrom),
+            typeof(long),
+            typeof(AllocationControl),
+            new PropertyMetadata(1L, OnPropertyChanged));
+
+    private static readonly DependencyProperty SequenceToProperty
+        = DependencyProperty.Register(nameof(SequenceTo),
+                                      typeof(long),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(0L, OnPropertyChanged));
 
     public AllocationOverViewModel AllocationOver { get; } = new();
 
@@ -161,9 +185,33 @@ public sealed partial class AllocationControl : IDisposable
     {
         if (d is AllocationControl control)
         {
+            if (e.Property == LayersProperty)
+            {
+                if (e.OldValue is ObservableCollection<AllocationLayer> old)
+                    old.CollectionChanged -= control.OnLayersChanged;
+
+                if (e.NewValue is ObservableCollection<AllocationLayer> next)
+                    next.CollectionChanged += control.OnLayersChanged;
+            }
+
+            if (e.Property == SelectedLayersProperty)
+            {
+                if (e.OldValue is ObservableCollection<AllocationLayer> old)
+                    old.CollectionChanged -= control.OnSelectedLayersChanged;
+
+                if (e.NewValue is ObservableCollection<AllocationLayer> next)
+                    next.CollectionChanged += control.OnSelectedLayersChanged;
+            }
+
             control.Refresh();
         }
     }
+
+    private void OnLayersChanged(object? sender,
+        System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Refresh();
+
+    private void OnSelectedLayersChanged(object? sender,
+        System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Refresh();
 
     private int ScrollPosition { get; set; }
 
@@ -346,6 +394,14 @@ public sealed partial class AllocationControl : IDisposable
                 foreach (var page in layer.SinglePages.Where(l => l.FileId == FileId))
                 {
                     renderer.DrawPage(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout));
+                }
+
+                foreach (var page in layer.PageSpans
+                                          .Where(l => l.Address.FileId == FileId
+                                                      && ((l.SequenceFrom >= SequenceFrom && l.SequenceTo <= SequenceTo)
+                                                          || SequenceFrom == 0 && SequenceTo == 0)))
+                {
+                    renderer.DrawPage(canvas, GetPagePosition(page.Address.PageId - (ScrollPosition * 8), layout));
                 }
             }
         }

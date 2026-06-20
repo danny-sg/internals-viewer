@@ -282,6 +282,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\QueryReplay\EventGridControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Views\QueryReplayView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
@@ -453,4 +456,5 @@
     <ItemGroup>
       <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
     </ItemGroup>
+
 </Project>

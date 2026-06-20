@@ -1,7 +1,12 @@
-﻿namespace InternalsViewer.Replay.Events;
+﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Replay.Locks;
+
+namespace InternalsViewer.Replay.Events;
 
 public record EventResult
 {
+    public int SequenceId { get; set; }
+
     public required string Name { get; set; }
 
     public DateTime Timestamp { get; set; }
@@ -75,6 +80,8 @@ public record EngineEvent
 {
     public int DatabaseId { get; set; }
 
+    public int SequenceId { get; set; }
+
     public DateTime Timestamp { get; set; }
 
     public string Name { get; set; } = string.Empty;
@@ -83,32 +90,48 @@ public record EngineEvent
 
     public double TimeMs { get; set; }
 
-    public short FileId { get; set; }
+    public long Duration { get; set; }
 
-    public int PageId { get; set; }
+    public PageAddress? PageAddress { get; set; }
+
+    public int ObjectId { get; set; }
+
+    public string ObjectName { get; set; } = string.Empty;
+
+    public virtual string Description => string.Empty;
 }
 
 public sealed record IoEvent : EngineEvent
 {
     public bool IsRead { get; init; }
+
+    public override string Description => $"{(IsRead ? "Read" : "Write")}";
 }
 
 
 public sealed record PageEvent : EngineEvent
 {
     public required string Type { get; init; }
+
+    public override string Description => Type;
 }
 
 public sealed record LockEvent : EngineEvent
 {
-    public string Mode { get; init; } = string.Empty;
+    public LockMode LockMode { get; init; }
 
-    public string ResourceType { get; init; } = string.Empty;
+    public LockResourceType ResourceType { get; init; }
+
+    public RowIdentifier? RowIdentifier { get; set; }
+
+    public string? KeyHash { get; set; }
+
+    public override string Description => $"{LockMode}/{ResourceType}";
 }
 
 public sealed record WaitEvent : EngineEvent
 {
-    public string WaitType { get; init; } = string.Empty;
+    public WaitType WaitType { get; set; }
 
-    public long Duration { get; init; }
+    public override string Description => $"{WaitType}";
 }

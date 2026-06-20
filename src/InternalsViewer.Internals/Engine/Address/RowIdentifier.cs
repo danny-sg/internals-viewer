@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Engine.Address;
 /// <summary>
 /// Row Identifier (RID)
 /// </summary>
-public record RowIdentifier
+public sealed record RowIdentifier
 {
     public static readonly RowIdentifier Empty = new(PageAddress.Empty, 0);
 

@@ -44,10 +44,10 @@ public class PageTabViewModelFactory(ILogger<PageTabViewModel> logger, IPageServ
     }
 }
 
-public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
-                                      IPageService pageService,
-                                      IRecordService recordService,
-                                      DatabaseSource database)
+public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
+                                             IPageService pageService,
+                                             IRecordService recordService,
+                                             DatabaseSource database)
     : TabViewModel
 {
     private ILogger<PageTabViewModel> Logger { get; } = logger;
