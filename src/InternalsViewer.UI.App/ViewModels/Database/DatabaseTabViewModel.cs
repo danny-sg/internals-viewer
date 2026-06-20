@@ -15,6 +15,7 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
+using InternalsViewer.UI.App.ViewModels;
 
 namespace InternalsViewer.UI.App.ViewModels.Database;
 
@@ -26,7 +27,8 @@ public sealed class DatabaseTabViewModelFactory(IDatabaseService databaseService
         => new(database, DatabaseService);
 }
 
-public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService) : TabViewModel
+public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService) 
+    : TabViewModel, IAllocationViewModel
 {
     private IDatabaseService DatabaseService { get; } = databaseService;
 
@@ -34,16 +36,16 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     private DatabaseSource database = database;
 
     [ObservableProperty]
-    private DatabaseFile[] databaseFiles = Array.Empty<DatabaseFile>();
+    private DatabaseFile[] databaseFiles = [];
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> allocationLayers = new();
+    private ObservableCollection<AllocationLayer> allocationLayers = [];
 
     [ObservableProperty]
     private PfsChain pfsChain = new();
 
     [ObservableProperty]
-    private AllocationLayer? selectedLayer;
+    private ObservableCollection<AllocationLayer> selectedLayers = [];
 
     [ObservableProperty]
     private int extentCount;
@@ -62,6 +64,9 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     private bool isPfsVisible = false;
 
     [ObservableProperty]
+    private bool isQueryReplayVisible;
+
+    [ObservableProperty]
     private bool isTooltipEnabled;
 
     [ObservableProperty]
@@ -74,6 +79,12 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     private void OpenPage(PageAddress pageAddress)
     {
         WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(database, pageAddress)));
+    }
+
+    [RelayCommand]
+    private void OpenQueryReplay()
+    {
+        WeakReferenceMessenger.Default.Send(new OpenQueryReplayMessage(database));
     }
 
     public List<AllocationLayer> GridAllocationLayers

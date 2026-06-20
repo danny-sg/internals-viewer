@@ -119,7 +119,7 @@ public sealed partial class HexViewControl
 
     private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        SetHexData(e.NewValue as byte[] ?? Array.Empty<byte>(), (HexViewControl)d);
+        SetHexData(e.NewValue as byte[] ?? [], (HexViewControl)d);
     }
 
     private static void OnMarkersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

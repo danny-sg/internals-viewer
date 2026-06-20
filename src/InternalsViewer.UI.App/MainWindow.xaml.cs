@@ -26,6 +26,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using WinUIEx;
 using InternalsViewer.UI.App.ViewModels.Index;
+using InternalsViewer.UI.App.ViewModels.QueryReplay;
 
 namespace InternalsViewer.UI.App;
 
@@ -43,6 +44,8 @@ public sealed partial class MainWindow
 
     private IndexTabViewModelFactory IndexTabViewModelFactory { get; }
 
+    private QueryReplayViewModelFactory QueryReplayViewModelFactory { get;  }
+   
     private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
     public MainWindow(IDatabaseService databaseService,
@@ -50,7 +53,8 @@ public sealed partial class MainWindow
                       PageTabViewModelFactory pageTabViewModelFactory,
                       DatabaseTabViewModelFactory databaseTabViewModelFactory,
                       ConnectServerViewModelFactory connectServerViewModelFactory,
-                      IndexTabViewModelFactory indexTabViewModelFactory)
+                      IndexTabViewModelFactory indexTabViewModelFactory,
+                      QueryReplayViewModelFactory queryReplayViewModelFactory)
     {
         Title = "Internals Viewer";
 
@@ -61,6 +65,7 @@ public sealed partial class MainWindow
         DatabaseTabViewModelFactory = databaseTabViewModelFactory;
         ConnectServerViewModelFactory = connectServerViewModelFactory;
         IndexTabViewModelFactory = indexTabViewModelFactory;
+        QueryReplayViewModelFactory = queryReplayViewModelFactory;
 
         ExtendsContentIntoTitleBar = true;
 
@@ -84,6 +89,9 @@ public sealed partial class MainWindow
 
         WeakReferenceMessenger.Default.Register<ExceptionMessage>(this, (_, m)
                        => m.Reply(ShowExceptionDialog(m.Exception)));
+
+        WeakReferenceMessenger.Default.Register<OpenQueryReplayMessage>(this, (_, m)
+            => m.Reply(OpenQueryReplay(m.Database)));
 
         SetTitleBar(CustomDragRegion);
     }
@@ -175,6 +183,33 @@ public sealed partial class MainWindow
         var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
 
         var title = $"Page {pageAddress.PageId}";
+
+        var tab = new TabViewItem
+        {
+            Name = title,
+            Content = content,
+            IconSource = new ImageIconSource { ImageSource = svg },
+        };
+
+        BindTabTitle(viewModel, tab);
+
+        WindowTabView.TabItems.Add(tab);
+        WindowTabView.SelectedItem = tab;
+
+        return true;
+    }
+
+    private async Task<bool> OpenQueryReplay(DatabaseSource database)
+    {
+        var viewModel = QueryReplayViewModelFactory.Create(database);
+
+        var content = new QueryReplayView();
+
+        content.DataContext = viewModel;
+
+        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
+
+        var title = $"Query Replay";
 
         var tab = new TabViewItem
         {

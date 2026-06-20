@@ -114,7 +114,7 @@ public sealed partial class IndexControl : IDisposable
     private readonly SKColor lineColour = SKColors.Gray;
     private readonly SKColor selectedLineColour = SKColors.Navy;
 
-    private readonly List<IndexTreeNode> nodePositions = new();
+    private readonly List<IndexTreeNode> nodePositions = [];
 
     public IndexControl()
     {

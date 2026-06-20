@@ -7,9 +7,9 @@ using Microsoft.Data.SqlClient;
 namespace InternalsViewer.Internals.Readers.Pages;
 
 /// <summary>
-/// Page Reader for reading a page using a online database with DBCC PAGE
+/// Page Reader for reading a page using an online database with DBCC PAGE
 /// </summary>
-public class QueryPageReader(string connectionString) : PageReader, IPageReader
+public sealed class QueryPageReader(string connectionString) : PageReader, IPageReader
 {
     private const int ParentObjectIndex = 0;
     private const int ObjectIndex = 1;

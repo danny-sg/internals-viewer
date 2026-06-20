@@ -35,14 +35,14 @@ public class Marker: DependencyObject
 
     public int? Ordinal { get; set; }
 
-    public List<string> Tags { get; set; } = new();
+    public List<string> Tags { get; set; } = [];
 
     public static Marker? GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
     {
         return markers.FirstOrDefault(marker => marker.StartPosition >= startPosition & marker.EndPosition <= endPosition);
     }
 
-    public ObservableCollection<Marker> Children { get; set; } = new();
+    public ObservableCollection<Marker> Children { get; set; } = [];
 
     public bool HasKey { get; set; }
 }

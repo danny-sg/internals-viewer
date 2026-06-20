@@ -12,7 +12,7 @@ public partial class HexControlViewModel
     private bool isDataTipOpen;
 
     [ObservableProperty]
-    private ObservableCollection<DecodeResult> decodeResults = new();
+    private ObservableCollection<DecodeResult> decodeResults = [];
 
     [ObservableProperty]
     private int startOffset;

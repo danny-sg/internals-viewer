@@ -15,5 +15,5 @@ public class IndexRecordModel
 
     public RowIdentifier? RowIdentifier { get; set; } = RowIdentifier.Empty;
 
-    public List<IndexRecordFieldModel> Fields { get; set; } = new();
+    public List<IndexRecordFieldModel> Fields { get; set; } = [];
 }

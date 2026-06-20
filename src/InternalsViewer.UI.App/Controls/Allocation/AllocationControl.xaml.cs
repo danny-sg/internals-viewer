@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
@@ -104,15 +105,15 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(default, OnPropertyChanged));
 
-    public AllocationLayer? SelectedLayer
+    public ObservableCollection<AllocationLayer> SelectedLayers
     {
-        get => (AllocationLayer?)GetValue(SelectedLayerProperty);
-        set => SetValue(SelectedLayerProperty, value);
+        get => (ObservableCollection<AllocationLayer>)GetValue(SelectedLayersProperty);
+        set => SetValue(SelectedLayersProperty, value);
     }
 
-    public static readonly DependencyProperty SelectedLayerProperty
-        = DependencyProperty.Register(nameof(SelectedLayer),
-                                      typeof(AllocationLayer),
+    public static readonly DependencyProperty SelectedLayersProperty
+        = DependencyProperty.Register(nameof(SelectedLayers),
+                                      typeof(ObservableCollection<AllocationLayer>),
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
@@ -260,9 +261,12 @@ public sealed partial class AllocationControl : IDisposable
             extentRenderer.DrawPageLines(canvas, Layout.HorizontalCount, Layout.VerticalCount, Layout.RemainingCount);
         }
 
-        if (SelectedLayer is not null)
+        if (SelectedLayers is { Count: > 0 })
         {
-            DrawScrollbarMarkers(canvas, Layout, SelectedLayer, e.Info.Width, e.Info.Height);
+            foreach (var selectedLayer in SelectedLayers)
+            {
+                DrawScrollbarMarkers(canvas, Layout, selectedLayer, e.Info.Width, e.Info.Height);
+            }
         }
 
         using var borderPaint = new SKPaint();
@@ -317,11 +321,13 @@ public sealed partial class AllocationControl : IDisposable
 
     private void DrawExtents(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
     {
-        var hasSelected = SelectedLayer is not null;
+        var hasSelected = SelectedLayers is { Count: > 0 };
+
+        var selectedSet = hasSelected ? new HashSet<AllocationLayer>(SelectedLayers!) : null;
 
         foreach (var layer in Layers)
         {
-            var isSelected = layer == SelectedLayer;
+            var isSelected = selectedSet?.Contains(layer) ?? false;
 
             var alpha = !hasSelected || isSelected ? 255 : 25;
 
@@ -339,7 +345,7 @@ public sealed partial class AllocationControl : IDisposable
 
                 foreach (var page in layer.SinglePages.Where(l => l.FileId == FileId))
                 {
-                    renderer.DrawPage(canvas, GetPagePosition(page.PageId - ScrollPosition * 8, layout));
+                    renderer.DrawPage(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout));
                 }
             }
         }
@@ -407,7 +413,7 @@ public sealed partial class AllocationControl : IDisposable
         return new SKRect(0, 0, ExtentSize.Width, ExtentSize.Height);
     }
 
-    private ExtentLayout GetExtentLayout(int extentCount, Size extentSize, decimal width, decimal height)
+    private static ExtentLayout GetExtentLayout(int extentCount, Size extentSize, decimal width, decimal height)
     {
         // Number of extents horizontally/vertically available if ths screen is full
         var extentsHorizontal = (int)Math.Floor(width / extentSize.Width);
@@ -562,7 +568,7 @@ public sealed partial class AllocationControl : IDisposable
     }
 }
 
-public class PageAddressEventArgs(short fileId, int pageId) : EventArgs
+public sealed class PageAddressEventArgs(short fileId, int pageId) : EventArgs
 {
     public PageAddressEventArgs(PageAddress pageAddress)
         : this(pageAddress.FileId, pageAddress.PageId)
@@ -580,7 +586,7 @@ public class PageAddressEventArgs(short fileId, int pageId) : EventArgs
     public PageAddress PageAddress => new(FileId, PageId);
 }
 
-public class ExtentLayout
+public sealed class ExtentLayout
 {
     public int HorizontalCount { get; init; }
 

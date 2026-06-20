@@ -5,7 +5,7 @@ using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
 
-public class AllocationRenderer : IDisposable
+public sealed class AllocationRenderer : IDisposable
 {
     public AllocationRenderer(Color borderColour,
                               Size extentSize)

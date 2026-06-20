@@ -9,5 +9,10 @@ public class BackupConnectionType(IPageReader pageReader, string name): IConnect
 
     public string Name { get; set; } = name;
 
+    public string GetConnectionString()
+    {
+        throw new NotImplementedException();
+    }
+
     public IPageReader PageReader { get; } = pageReader;
 }

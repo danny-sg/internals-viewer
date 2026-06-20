@@ -58,7 +58,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private PageAddress rootPage;
 
     [ObservableProperty]
-    private List<IndexNode> nodes = new();
+    private List<IndexNode> nodes = [];
 
     [ObservableProperty]
     private bool isInitialized;
@@ -88,7 +88,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private Visibility indexDetailVisibility = Visibility.Collapsed;
 
     [ObservableProperty]
-    private ObservableCollection<IndexRecordModel> records = new();
+    private ObservableCollection<IndexRecordModel> records = [];
 
     [ObservableProperty]
     private PageAddress? selectedPageAddress;
@@ -103,7 +103,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private int? selectedLevel;
 
     [ObservableProperty]
-    private ObservableCollection<PageAddress> highlightedPages = new();
+    private ObservableCollection<PageAddress> highlightedPages = [];
 
     [RelayCommand]
     public async Task Refresh()
@@ -169,7 +169,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         Internals.Engine.Pages.Page? page = null;
 
-        List<IndexRecordModel> decodedRecords = new();
+        List<IndexRecordModel> decodedRecords = [];
 
         // Worker thread
         await Task.Run(async () =>

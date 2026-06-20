@@ -7,7 +7,7 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
 
-public class PfsRenderer : IDisposable
+public sealed class PfsRenderer : IDisposable
 {
     private const string IamFlag = "I";
 

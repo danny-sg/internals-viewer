@@ -9,5 +9,10 @@ public class FileConnectionType(IPageReader pageReader, string name) : IConnecti
 
     public string Name { get; set; } = name;
 
+    public string GetConnectionString()
+    {
+        throw new NotImplementedException();
+    }
+
     public string Identifier => "File";
 }

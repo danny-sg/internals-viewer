@@ -1,6 +1,9 @@
 ﻿using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace InternalsViewer.Internals.Tests.Helpers;
+namespace InternalsViewer.Replay.Tests.Helpers;
 
 internal class ConnectionStringHelper
 {

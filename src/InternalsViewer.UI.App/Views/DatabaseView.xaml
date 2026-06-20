@@ -10,6 +10,7 @@
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:views="using:InternalsViewer.UI.App.Views"
     mc:Ignorable="d">
     <UserControl.Resources>
         <StackLayout Orientation="Vertical" x:Key="VerticalStackLayout" />
@@ -19,7 +20,7 @@
                                               Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
                                               Size="{x:Bind Parent.ExtentCount, Mode=OneWay}" 
                                               Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
-                                              SelectedLayer="{x:Bind Parent.SelectedLayer, Mode=OneWay}"
+                                              SelectedLayers="{x:Bind Parent.SelectedLayers, Mode=OneWay}"
                                               FileId="{x:Bind FileId, Mode=OneWay}"
                                               BorderColor="{ThemeResource CardStrokeColorDefault}"
                                               GridColor="{ThemeResource AllocationBorderColor}"
@@ -50,7 +51,7 @@
                         Grid.Column="0"
                         HorizontalAlignment="Left"
                         Background="Transparent">
-                <AppBarToggleButton  Label="Tooltip" IsChecked="{x:Bind TabViewModel.IsTooltipEnabled, Mode=TwoWay}" >
+                <AppBarToggleButton Label="Tooltip" IsChecked="{x:Bind TabViewModel.IsTooltipEnabled, Mode=TwoWay}" >
                     <AppBarToggleButton.Icon>
                         <FontIcon Glyph="&#xE759;"/>
                     </AppBarToggleButton.Icon>
@@ -61,6 +62,10 @@
                                     IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
                 <AppBarToggleButton Label="PFS" 
                                     IsChecked="{x:Bind TabViewModel.IsPfsVisible, Mode=TwoWay}" />
+                <AppBarButton x:Name="QueryReplayAppBarToggleButton"
+                                    Label="Query Replay" 
+                                    Icon="Play"
+                                    Command="{x:Bind TabViewModel.OpenQueryReplayCommand}" />
                 <AppBarButton Label="Refresh" 
                               Icon="Refresh" 
                               Command="{x:Bind TabViewModel.RefreshCommand}"/>
@@ -86,7 +91,7 @@
 
         <allocation:AllocationLayerGrid Grid.Row="2" 
                                         x:Name="AllocationLayerGrid"
-                                        SelectedLayer="{x:Bind TabViewModel.SelectedLayer, Mode=TwoWay}"
+                                        SelectedLayers="{x:Bind TabViewModel.SelectedLayers, Mode=TwoWay}"
                                         Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
 
         <toolkit:GridSplitter Grid.Row="2"

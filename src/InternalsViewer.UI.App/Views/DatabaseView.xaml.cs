@@ -33,7 +33,8 @@ public sealed partial class DatabaseView : IDisposable
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
-        WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(TabViewModel.Database, pageAddress)));
+        WeakReferenceMessenger.Default
+                              .Send(new OpenPageMessage(new OpenPageRequest(TabViewModel.Database, pageAddress)));
     }
 
     private void AppBarToggleButton_Changed(object sender, RoutedEventArgs e)
@@ -66,7 +67,9 @@ public sealed partial class DatabaseView : IDisposable
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
-        await WeakReferenceMessenger.Default.Send(new OpenIndexMessage(new OpenIndexRequest(TabViewModel.Database, pageAddress)));
+        await WeakReferenceMessenger.Default
+                                    .Send(new OpenIndexMessage(
+                                        new OpenIndexRequest(TabViewModel.Database, pageAddress)));
     }
 
     public void Dispose()

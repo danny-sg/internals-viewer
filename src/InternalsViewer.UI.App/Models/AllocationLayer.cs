@@ -49,10 +49,10 @@ public partial class AllocationLayer : ObservableObject
     private long totalPages;
 
     [ObservableProperty]
-    private List<ExtentAllocation> allocations = new();
+    private List<ExtentAllocation> allocations = [];
 
     [ObservableProperty]
-    private List<PageAddress> singlePages = new();
+    private List<PageAddress> singlePages = [];
 
     [ObservableProperty]
     private bool isVisible;

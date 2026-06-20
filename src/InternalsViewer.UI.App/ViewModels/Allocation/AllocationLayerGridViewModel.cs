@@ -13,16 +13,16 @@ public partial class AllocationLayerGridViewModel
 {
     private readonly string[] refreshProperties = { nameof(Filter), nameof(DataSource) };
 
-    private List<AllocationLayer> Layers { get; set; } = new();
+    private List<AllocationLayer> Layers { get; set; } = [];
 
     [ObservableProperty]
     private string filter = string.Empty;
 
     [ObservableProperty]
-    private AllocationLayer? selectedLayer;
+    private ObservableCollection<AllocationLayer> selectedLayers = [];
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> dataSource = new();
+    private ObservableCollection<AllocationLayer> dataSource = [];
 
     partial void OnFilterChanged(string? oldValue, string newValue)
     {

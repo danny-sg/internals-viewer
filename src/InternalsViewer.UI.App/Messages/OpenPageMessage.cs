@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.Messaging.Messages;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.UI.App.Messages;
 
@@ -28,4 +29,9 @@ public class OpenPageMessage(OpenPageRequest request) : AsyncRequestMessage<bool
 public class OpenIndexMessage(OpenIndexRequest request) : AsyncRequestMessage<bool>
 {
     public OpenIndexRequest Request { get; } = request;
+}
+
+public class OpenQueryReplayMessage(DatabaseSource database) : AsyncRequestMessage<bool>
+{
+    public DatabaseSource Database { get; } = database;
 }

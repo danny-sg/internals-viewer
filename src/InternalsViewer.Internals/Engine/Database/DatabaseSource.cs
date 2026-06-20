@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Metadata.Internals;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
-public class DatabaseSource(IConnectionType connection) : DatabaseSummary
+public sealed class DatabaseSource(IConnectionType connection) : DatabaseSummary
 {
     public IConnectionType Connection { get; set; } = connection;
 

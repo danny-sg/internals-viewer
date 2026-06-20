@@ -95,7 +95,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private DatabaseSource database = database;
 
     [ObservableProperty]
-    private ObservableCollection<PageSlot> pageSlots = new();
+    private ObservableCollection<PageSlot> pageSlots = [];
 
     [ObservableProperty]
     private PageSlot? selectedSlot;
@@ -104,10 +104,10 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private Marker? selectedMarker;
 
     [ObservableProperty]
-    private ObservableCollection<Marker> markers = new();
+    private ObservableCollection<Marker> markers = [];
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> allocationLayers = new();
+    private ObservableCollection<AllocationLayer> allocationLayers = [];
 
     [ObservableProperty]
     private string markerTabName = "Page Header";
@@ -132,7 +132,7 @@ public partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private const short IamHeaderSlot = -10;
     private const short CompressionInfoSlot = -90;
 
-    private List<IRecord> Records { get; } = new();
+    private List<IRecord> Records { get; } = [];
 
     private History<PageAddress> History { get; } = new();
 

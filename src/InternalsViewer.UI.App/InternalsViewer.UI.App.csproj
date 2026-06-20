@@ -14,7 +14,8 @@
         <ApplicationIcon>Assets\InternalsViewer.ico</ApplicationIcon>
         <EnableMsixTooling>true</EnableMsixTooling>
         <PublishProfile>win-$(Platform).pubxml</PublishProfile>
-        <PlatformTarget>AnyCPU</PlatformTarget>
+        <PlatformTarget Condition="'$(Platform)' == 'x86'">x86</PlatformTarget>
+        <PlatformTarget Condition="'$(Platform)' == 'x64'">x64</PlatformTarget>
         <SignAssembly>False</SignAssembly>
         <PackageCertificateKeyFile>InternalsViewer.UI.App_TemporaryKey.pfx</PackageCertificateKeyFile>
         <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
@@ -56,6 +57,7 @@
         <None Remove="Controls\Page\MarkerTreeView.xaml" />
         <None Remove="Controls\PasswordDialog.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
+        <None Remove="Controls\SqlEditor\SqlEditor.xaml" />
         <None Remove="Images\LargeTile.scale-100.png" />
         <None Remove="Images\LargeTile.scale-125.png" />
         <None Remove="Images\LargeTile.scale-150.png" />
@@ -115,6 +117,7 @@
         <None Remove="Views\Connect\ConnectServerPage.xaml" />
         <None Remove="Views\Connect\ConnectStartPage.xaml" />
         <None Remove="Views\IndexView.xaml" />
+        <None Remove="Views\QueryReplayView.xaml" />
     </ItemGroup>
     <ItemGroup>
       <Content Include="Images\LargeTile.scale-100.png" />
@@ -230,6 +233,7 @@
     </PropertyGroup>
     <ItemGroup>
       <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
+      <ProjectReference Include="..\InternalsViewer.Replay\InternalsViewer.Replay.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -278,6 +282,12 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Views\QueryReplayView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Controls\SqlEditor\SqlEditor.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\Index\RecordGrid.xaml">
         <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
       </Page>

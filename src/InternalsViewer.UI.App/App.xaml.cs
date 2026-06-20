@@ -11,8 +11,10 @@ using InternalsViewer.UI.App.ViewModels.Database;
 using InternalsViewer.UI.App.ViewModels.Page;
 using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
 using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Replay;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Index;
+using InternalsViewer.UI.App.ViewModels.QueryReplay;
 
 namespace InternalsViewer.UI.App;
 
@@ -57,6 +59,8 @@ public partial class App
             services.AddTransient<DatabaseTabViewModelFactory>();
             services.AddTransient<PageTabViewModelFactory>();
             services.AddTransient<IndexTabViewModelFactory>();
+            services.AddTransient<QueryReplayViewModelFactory>();
+            services.AddTransient<QueryCaptureExecutor>();
 
             services.AddTransient<MainViewModel>();
 

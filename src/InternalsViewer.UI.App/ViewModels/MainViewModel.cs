@@ -109,8 +109,8 @@ public partial class MainViewModel(SettingsService settingsService)
     }
 
     [ObservableProperty]
-    private ObservableCollection<RecentConnection> recentConnections = new();
+    private ObservableCollection<RecentConnection> recentConnections = [];
 
     [ObservableProperty]
-    private ObservableCollection<PageBookmark> pageBookmarks = new();
+    private ObservableCollection<PageBookmark> pageBookmarks = [];
 }

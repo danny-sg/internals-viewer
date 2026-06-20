@@ -9,4 +9,6 @@ public interface IConnectionType
     string Identifier { get; }
     
     string Name { get; set; }
+
+    string GetConnectionString();
 }

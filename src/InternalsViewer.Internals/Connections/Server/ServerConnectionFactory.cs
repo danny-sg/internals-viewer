@@ -13,10 +13,11 @@ public class ServerConnectionFactory : IConnectionTypeFactory<ServerConnectionCo
         var c = new ServerConnectionConfig();
 
         config.Invoke(c);
+
         var connectionStringBuilder = new SqlConnectionStringBuilder(c.ConnectionString);
 
         var name = connectionStringBuilder.InitialCatalog ?? c.Name;
 
-        return new ServerConnectionType(new QueryPageReader(c.ConnectionString), name);
+        return new ServerConnectionType(new QueryPageReader(c.ConnectionString), name, c.ConnectionString);
     }
 }

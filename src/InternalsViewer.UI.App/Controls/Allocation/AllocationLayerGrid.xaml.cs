@@ -32,16 +32,17 @@ public sealed partial class AllocationLayerGrid
             typeof(AllocationLayerGrid),
             new PropertyMetadata(default, OnPropertyChanged));
 
-    public AllocationLayer? SelectedLayer {
-        get => (AllocationLayer?)GetValue(SelectedLayerProperty);
-        set => SetValue(SelectedLayerProperty, value);
+    public ObservableCollection<AllocationLayer> SelectedLayers
+    {
+        get => (ObservableCollection<AllocationLayer>)GetValue(SelectedLayersProperty);
+        set => SetValue(SelectedLayersProperty, value);
     }
 
-    public static readonly DependencyProperty SelectedLayerProperty
-        = DependencyProperty.Register(nameof(SelectedLayer),
-            typeof(AllocationLayer),
+    public static readonly DependencyProperty SelectedLayersProperty
+        = DependencyProperty.Register(nameof(SelectedLayers),
+            typeof(ObservableCollection<AllocationLayer>),
             typeof(AllocationLayerGrid),
-            new PropertyMetadata(default, OnPropertyChanged));
+            new PropertyMetadata(new ObservableCollection<AllocationLayer>(), OnPropertyChanged));
 
     public AllocationLayerGrid()
     {
@@ -59,9 +60,9 @@ public sealed partial class AllocationLayerGrid
             control.ViewModel.SetLayers(layers.ToList());
         }
 
-        if(e.Property == SelectedLayerProperty)
+        if(e.Property == SelectedLayersProperty)
         {
-            control.ViewModel.SelectedLayer = (AllocationLayer)e.NewValue;
+            control.ViewModel.SelectedLayers = (ObservableCollection<AllocationLayer>)e.NewValue;
         }
     }
 
@@ -73,14 +74,14 @@ public sealed partial class AllocationLayerGrid
         {
             var layer = (AllocationLayer)row.DataContext;
 
-            if (SelectedLayer == layer)
+            if (SelectedLayers.Contains(layer))
             {
-                SelectedLayer = null;
+                SelectedLayers.Remove(layer);
                 DataGrid.SelectedItem = null;
             }
             else
             {
-                SelectedLayer = layer;
+                SelectedLayers.Add(layer);
                 DataGrid.SelectedItem = layer;
             }
 

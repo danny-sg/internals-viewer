@@ -53,7 +53,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     private string database = string.Empty;
 
     [ObservableProperty]
-    private ObservableCollection<string> databases = new();
+    private ObservableCollection<string> databases = [];
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
