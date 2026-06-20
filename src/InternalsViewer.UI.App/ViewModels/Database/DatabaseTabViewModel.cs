@@ -75,6 +75,10 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     [ObservableProperty]
     private double allocationMapHeight = 200;
 
+    public long SequenceFrom => 0;
+
+    public long SequenceTo => 0;
+
     [RelayCommand]
     private void OpenPage(PageAddress pageAddress)
     {

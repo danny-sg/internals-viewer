@@ -20,4 +20,8 @@ public interface IAllocationViewModel : INotifyPropertyChanged
     PfsChain PfsChain { get; }
 
     bool IsPfsVisible { get; }
+
+    long SequenceFrom { get; }
+
+    long SequenceTo { get; }
 }

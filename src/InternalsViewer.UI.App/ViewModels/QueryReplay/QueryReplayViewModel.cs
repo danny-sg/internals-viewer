@@ -81,6 +81,12 @@ public sealed partial class QueryReplayViewModel : TabViewModel, IAllocationView
     [ObservableProperty]
     private HashSet<int> systemObjectIds = [];
 
+    [ObservableProperty]
+    private long sequenceFrom;
+
+    [ObservableProperty]
+    private long sequenceTo;
+
     public Microsoft.UI.Xaml.Visibility HasEvents
         => Events.Count > 0 ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
 

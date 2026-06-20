@@ -163,19 +163,19 @@ public sealed partial class AllocationControl : IDisposable
         = DependencyProperty.Register(nameof(Zoom),
                                       typeof(double),
                                       typeof(AllocationControl),
-                                      new PropertyMetadata(0L, OnPropertyChanged));
+                                      new PropertyMetadata(1D, OnPropertyChanged));
 
     private static readonly DependencyProperty SequenceFromProperty
         = DependencyProperty.Register(nameof(SequenceFrom),
             typeof(long),
             typeof(AllocationControl),
-            new PropertyMetadata(1L, OnPropertyChanged));
+            new PropertyMetadata(null, OnPropertyChanged));
 
     private static readonly DependencyProperty SequenceToProperty
         = DependencyProperty.Register(nameof(SequenceTo),
                                       typeof(long),
                                       typeof(AllocationControl),
-                                      new PropertyMetadata(0L, OnPropertyChanged));
+                                      new PropertyMetadata(null, OnPropertyChanged));
 
     public AllocationOverViewModel AllocationOver { get; } = new();
 

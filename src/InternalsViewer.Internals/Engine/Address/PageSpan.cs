@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Engine.Address;
 
-public record struct PageSpan
+public sealed record PageSpan
 {
     public PageSpan(PageAddress address, long sequenceId)
         : this(address, sequenceId, sequenceId)
@@ -19,7 +19,7 @@ public record struct PageSpan
 
     }
 
-    public PageAddress Address { get; set; }
+    public PageAddress Address { get; set; } = new PageAddress();
 
     public long SequenceFrom { get; set; }
     

@@ -27,6 +27,8 @@
                                               GridColor="{ThemeResource AllocationBorderColor}"
                                               PfsChain="{x:Bind Parent.PfsChain, Mode=OneWay}"
                                               IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
+                                              SequenceFrom="{x:Bind Parent.SequenceFrom, Mode=OneWay}"
+                                              SequenceTo="{x:Bind Parent.SequenceTo, Mode=OneWay}"
                                               PageClicked="OnPageSelected"
                                               x:Name="AllocationControl"/>
             </Grid>
@@ -111,6 +113,7 @@
                                              Visibility="{x:Bind ViewModel.HasEvents, Mode=OneWay}"/>
             </Grid>
             <timeline:EventTimelineControl Grid.Row="2"
+                                           x:Name="EventTimeline"
                                            Events="{x:Bind ViewModel.Events, Mode=OneWay}"
                                            Height="50"/>
         </Grid>

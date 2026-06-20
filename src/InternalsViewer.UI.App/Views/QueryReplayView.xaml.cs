@@ -34,6 +34,8 @@ public sealed partial class QueryReplayView : Page
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
 
         EventGrid.PageClicked += OnPageSelected;
+
+        EventTimeline.SequenceChanged += OnSequenceChanged;
     }
 
     private void OnParentSizeChanged(object sender, SizeChangedEventArgs e)
@@ -57,5 +59,11 @@ public sealed partial class QueryReplayView : Page
     private void OnSqlTextChanged(object? sender, string sql)
     {
         ViewModel.Sql = sql;
+    }
+
+    private void OnSequenceChanged(long sequenceFrom, long sequenceTo)
+    {
+        ViewModel.SequenceFrom = sequenceFrom;
+        ViewModel.SequenceTo   = sequenceTo;
     }
 }
