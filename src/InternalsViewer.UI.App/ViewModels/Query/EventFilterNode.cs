@@ -3,13 +3,13 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace InternalsViewer.UI.App.ViewModels.QueryReplay;
+namespace InternalsViewer.UI.App.ViewModels.Query;
 
-public class EventFilterNode : INotifyPropertyChanged
+public sealed class EventFilterNode : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public string Label { get; init; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
 
     private bool? _isChecked = true;
 
@@ -18,8 +18,13 @@ public class EventFilterNode : INotifyPropertyChanged
         get => _isChecked;
         set
         {
-            if (_isChecked == value) return;
+            if (_isChecked == value)
+            {
+                return;
+            }
+
             _isChecked = value;
+
             OnPropertyChanged();
 
             if (value is not null)

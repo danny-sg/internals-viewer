@@ -8,7 +8,6 @@ using Microsoft.UI.Xaml.Shapes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Windows.Foundation;
 using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
@@ -17,12 +16,19 @@ public sealed class EventTimelineControl : Grid
 {
     private const double HandleWidth = 6;
     private const double CropHandleHitArea = 10;
+    private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(80);
 
     private readonly Canvas _canvas;
     private readonly Line _playhead;
     private readonly Rectangle _cropOverlay;
     private readonly Rectangle _cropHandleLeft;
     private readonly Rectangle _cropHandleRight;
+    private readonly Button _playButton;
+    private readonly DispatcherTimer _playTimer;
+
+    private List<EngineEvent> _sortedEvents = [];
+    private int _playIndex;
+    private bool _isPlaying;
 
     private bool _isDragging;
     private bool _isCropDragging;
@@ -48,12 +54,17 @@ public sealed class EventTimelineControl : Grid
         var control = (EventTimelineControl)d;
         var events = (List<EngineEvent>)e.NewValue;
 
+        control._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
+
         if (events.Count > 0)
         {
             var maxTimeMs = events.Max(m => m.TimeMs);
-            control.PixelsPerMs = control.ActualWidth / maxTimeMs;
+            control.PixelsPerMs = control._canvas.ActualWidth > 0
+                ? control._canvas.ActualWidth / maxTimeMs
+                : control.ActualWidth / maxTimeMs;
         }
 
+        control.StopPlay();
         control._cropStartX = -1;
         control._cropEndX = -1;
         control.CurrentSequenceFrom = 0;
@@ -76,7 +87,24 @@ public sealed class EventTimelineControl : Grid
     {
         Background = new SolidColorBrush(Colors.Black);
 
+        ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        _playButton = new Button
+        {
+            Content = new FontIcon { Glyph = "\uE768", FontSize = 14 },
+            Width = 40,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Padding = new Thickness(0),
+            Background = new SolidColorBrush(Color.FromArgb(255, 30, 30, 30)),
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(0)
+        };
+        _playButton.Click += OnPlayButtonClick;
+        Grid.SetColumn(_playButton, 0);
+        Children.Add(_playButton);
         _canvas = new Canvas();
+        Grid.SetColumn(_canvas, 1);
         Children.Add(_canvas);
 
         _cropOverlay = new Rectangle
@@ -112,19 +140,19 @@ public sealed class EventTimelineControl : Grid
         _canvas.Children.Add(_cropHandleRight);
         _canvas.Children.Add(_playhead);
 
-        PointerPressed += OnPointerPressed;
-        PointerMoved += OnPointerMoved;
-        PointerReleased += OnPointerReleased;
+        // ── Timer ─────────────────────────────────────────────────────────────
+        _playTimer = new DispatcherTimer { Interval = PlayInterval };
+        _playTimer.Tick += OnPlayTimerTick;
 
-        SizeChanged += (_, _) =>
+        // ── Pointer & resize ──────────────────────────────────────────────────
+        _canvas.PointerPressed   += OnPointerPressed;
+        _canvas.PointerMoved     += OnPointerMoved;
+        _canvas.PointerReleased  += OnPointerReleased;
+
+        _canvas.SizeChanged += (_, _) =>
         {
-            _canvas.Width = ActualWidth;
-            _canvas.Height = ActualHeight;
-            if (Events?.Count > 0)
-            {
-                PixelsPerMs = ActualWidth / Events.Max(m => m.TimeMs);
-            }
-
+            if (Events?.Count > 0 && _canvas.ActualWidth > 0)
+                PixelsPerMs = _canvas.ActualWidth / Events.Max(m => m.TimeMs);
             UpdateOverlays();
         };
     }
@@ -144,13 +172,12 @@ public sealed class EventTimelineControl : Grid
             var marker = new Rectangle
             {
                 Width = 3,
-                Height = ActualHeight,
+                Height = _canvas.ActualHeight,
                 Fill = new SolidColorBrush(GetColor(e))
             };
 
             Canvas.SetLeft(marker, x);
             Canvas.SetTop(marker, 0);
-
             _canvas.Children.Add(marker);
         }
 
@@ -159,28 +186,24 @@ public sealed class EventTimelineControl : Grid
         UpdateOverlays();
     }
 
-    private Color GetColor(EngineEvent e) => e switch
+    private static Color GetColor(EngineEvent e) => e switch
     {
-        IoEvent   
-            => Colors.CornflowerBlue,
-        LockEvent 
-            => Colors.Red,
-        WaitEvent 
-            => Colors.Orange,
-        PageEvent 
-            => Colors.LimeGreen,
-        _         
-            => Colors.Gray
+        IoEvent   => Colors.CornflowerBlue,
+        LockEvent => Colors.Red,
+        WaitEvent => Colors.Orange,
+        PageEvent => Colors.LimeGreen,
+        _         => Colors.Gray
     };
 
     private void UpdatePlayhead()
     {
         double x = CurrentTimeMs * PixelsPerMs;
+        var h = _canvas.ActualHeight;
 
         _playhead.X1 = x;
         _playhead.X2 = x;
         _playhead.Y1 = 0;
-        _playhead.Y2 = ActualHeight;
+        _playhead.Y2 = h;
     }
 
     private bool HasCrop => _cropStartX >= 0 && _cropEndX >= 0;
@@ -199,7 +222,7 @@ public sealed class EventTimelineControl : Grid
 
         var left  = Math.Min(_cropStartX, _cropEndX);
         var right = Math.Max(_cropStartX, _cropEndX);
-        var h = ActualHeight;
+        var h = _canvas.ActualHeight;
 
         _cropOverlay.Width  = Math.Max(0, right - left);
         _cropOverlay.Height = h;
@@ -284,7 +307,7 @@ public sealed class EventTimelineControl : Grid
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        CapturePointer(e.Pointer);
+        _canvas.CapturePointer(e.Pointer);
 
         var position = e.GetCurrentPoint(_canvas).Position;
 
@@ -308,7 +331,7 @@ public sealed class EventTimelineControl : Grid
         }
 
         var pos = e.GetCurrentPoint(_canvas).Position;
-        var x = Math.Clamp(pos.X, 0, ActualWidth);
+        var x = Math.Clamp(pos.X, 0, _canvas.ActualWidth);
 
         _isCropDragging = true;
 
@@ -340,7 +363,7 @@ public sealed class EventTimelineControl : Grid
 
             case CropDragTarget.Body:
                 var width = Math.Abs(_cropEndX - _cropStartX);
-                var newLeft = Math.Clamp(x - width / 2, 0, ActualWidth - width);
+                var newLeft = Math.Clamp(x - width / 2, 0, _canvas.ActualWidth - width);
                 _cropStartX = newLeft;
                 _cropEndX = newLeft + width;
                 UpdateOverlays();
@@ -351,7 +374,7 @@ public sealed class EventTimelineControl : Grid
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        ReleasePointerCaptures();
+        _canvas.ReleasePointerCaptures();
 
         if (!_isDragging)
         {
@@ -359,11 +382,10 @@ public sealed class EventTimelineControl : Grid
         }
 
         var pos = e.GetCurrentPoint(_canvas).Position;
-        var x   = Math.Clamp(pos.X, 0, ActualWidth);
+        var x   = Math.Clamp(pos.X, 0, _canvas.ActualWidth);
 
         if (!_isCropDragging)
         {
-            // Plain click with no drag: scrub to this position (clear any crop)
             _cropStartX = -1;
             _cropEndX = -1;
 
@@ -378,7 +400,6 @@ public sealed class EventTimelineControl : Grid
         }
         else if (_cropDragTarget == CropDragTarget.NewCrop && Math.Abs(_cropEndX - _cropStartX) <= 2)
         {
-            // Tiny drag treated as a click
             _cropStartX = -1;
             _cropEndX   = -1;
 
@@ -393,5 +414,63 @@ public sealed class EventTimelineControl : Grid
 
         _isDragging = false;
         _isCropDragging = false;
+    }
+
+    private void OnPlayButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (_isPlaying)
+            StopPlay();
+        else
+            StartPlay();
+    }
+
+    private void StartPlay()
+    {
+        if (_sortedEvents.Count == 0) return;
+
+        _playIndex = 0;
+        _isPlaying = true;
+
+        _cropStartX = -1;
+        _cropEndX   = -1;
+        CurrentSequenceFrom = 0;
+        CurrentSequenceTo = 0;
+
+        SetPlayButtonIcon(isPlaying: true);
+        _playTimer.Start();
+    }
+
+    private void StopPlay()
+    {
+        _playTimer.Stop();
+        _isPlaying = false;
+        SetPlayButtonIcon(isPlaying: false);
+    }
+
+    private void SetPlayButtonIcon(bool isPlaying)
+    {
+        if (_playButton.Content is FontIcon icon)
+            icon.Glyph = isPlaying ? "\uE769" : "\uE768";  // Stop : Play
+    }
+
+    private void OnPlayTimerTick(object? sender, object e)
+    {
+        if (_playIndex >= _sortedEvents.Count)
+        {
+            StopPlay();
+            return;
+        }
+
+        var ev = _sortedEvents[_playIndex];
+
+        CurrentSequenceFrom = 0;
+        CurrentSequenceTo   = ev.SequenceId;
+        CurrentTimeMs       = ev.TimeMs;
+
+        UpdateOverlays();
+
+        SequenceChanged?.Invoke(CurrentSequenceFrom, CurrentSequenceTo);
+
+        _playIndex++;
     }
 }

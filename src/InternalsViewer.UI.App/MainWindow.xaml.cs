@@ -26,7 +26,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using WinUIEx;
 using InternalsViewer.UI.App.ViewModels.Index;
-using InternalsViewer.UI.App.ViewModels.QueryReplay;
+using InternalsViewer.UI.App.ViewModels.Query;
 
 namespace InternalsViewer.UI.App;
 
@@ -44,7 +44,7 @@ public sealed partial class MainWindow
 
     private IndexTabViewModelFactory IndexTabViewModelFactory { get; }
 
-    private QueryReplayViewModelFactory QueryReplayViewModelFactory { get;  }
+    private QueryViewModelFactory QueryViewModelFactory { get;  }
    
     private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
@@ -54,7 +54,7 @@ public sealed partial class MainWindow
                       DatabaseTabViewModelFactory databaseTabViewModelFactory,
                       ConnectServerViewModelFactory connectServerViewModelFactory,
                       IndexTabViewModelFactory indexTabViewModelFactory,
-                      QueryReplayViewModelFactory queryReplayViewModelFactory)
+                      QueryViewModelFactory queryViewModelFactory)
     {
         Title = "Internals Viewer";
 
@@ -65,7 +65,7 @@ public sealed partial class MainWindow
         DatabaseTabViewModelFactory = databaseTabViewModelFactory;
         ConnectServerViewModelFactory = connectServerViewModelFactory;
         IndexTabViewModelFactory = indexTabViewModelFactory;
-        QueryReplayViewModelFactory = queryReplayViewModelFactory;
+        QueryViewModelFactory = queryViewModelFactory;
 
         ExtendsContentIntoTitleBar = true;
 
@@ -201,7 +201,7 @@ public sealed partial class MainWindow
 
     private async Task<bool> OpenQueryReplay(DatabaseSource database)
     {
-        var viewModel = QueryReplayViewModelFactory.Create(database);
+        var viewModel = QueryViewModelFactory.Create(database);
 
         var content = new QueryReplayView();
 
@@ -209,7 +209,7 @@ public sealed partial class MainWindow
 
         var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
 
-        var title = $"Query Replay";
+        var title = $"Query";
 
         var tab = new TabViewItem
         {

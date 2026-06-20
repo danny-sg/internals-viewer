@@ -88,7 +88,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" x:Name="EditorColumn"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*" x:Name="EventGridColumn"/>
+                    <ColumnDefinition Width="*" x:Name="EventColumn"/>
                 </Grid.ColumnDefinitions>
 
                 <sqlEditor:SqlEditorControl Grid.Column="0"
@@ -106,15 +106,31 @@
                     </controls:GridSplitter.RenderTransform>
                 </controls:GridSplitter>
 
-                <queryReplay:EventGridControl Grid.Column="2"
-                                             x:Name="EventGrid"
-                                             Events="{x:Bind ViewModel.Events, Mode=OneWay}"
-                                             SystemObjectIds="{x:Bind ViewModel.SystemObjectIds, Mode=OneWay}"
-                                             Visibility="{x:Bind ViewModel.HasEvents, Mode=OneWay}"/>
+                <!-- Right panel: Events grid + filter tree in tabs -->
+                <TabView Grid.Column="2"
+                         IsAddTabButtonVisible="False"
+                         TabWidthMode="SizeToContent"
+                         Visibility="{x:Bind ViewModel.HasEvents, Mode=OneWay}">
+
+                    <TabViewItem Header="Events" IsClosable="False">
+                        <queryReplay:EventGridControl x:Name="EventGrid"
+                                                      Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
+                                                      SequenceFrom="{x:Bind ViewModel.SequenceFrom, Mode=OneWay}"
+                                                      SequenceTo="{x:Bind ViewModel.SequenceTo, Mode=OneWay}"
+                                                      PageClicked="OnPageSelected"/>
+                    </TabViewItem>
+
+                    <TabViewItem Header="Event Selection" IsClosable="False">
+                        <queryReplay:EventFilterControl FilterNodes="{x:Bind ViewModel.FilterNodes, Mode=OneWay}"
+                                                        IncludeSystemObjects="{x:Bind ViewModel.IncludeSystemObjects, Mode=TwoWay}"/>
+                    </TabViewItem>
+
+                </TabView>
             </Grid>
+
             <timeline:EventTimelineControl Grid.Row="2"
                                            x:Name="EventTimeline"
-                                           Events="{x:Bind ViewModel.Events, Mode=OneWay}"
+                                           Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
                                            Height="50"/>
         </Grid>
     </Grid>

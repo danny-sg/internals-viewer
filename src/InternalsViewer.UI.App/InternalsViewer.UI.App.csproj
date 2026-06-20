@@ -117,7 +117,6 @@
         <None Remove="Views\Connect\ConnectServerPage.xaml" />
         <None Remove="Views\Connect\ConnectStartPage.xaml" />
         <None Remove="Views\IndexView.xaml" />
-        <None Remove="Views\QueryReplayView.xaml" />
     </ItemGroup>
     <ItemGroup>
       <Content Include="Images\LargeTile.scale-100.png" />
@@ -282,10 +281,13 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\EventGrid\EventFilterControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\QueryReplay\EventGridControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Views\QueryReplayView.xaml">
+      <Page Update="Views\QueryView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\SqlEditor\SqlEditor.xaml">
@@ -457,4 +459,5 @@
       <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
     </ItemGroup>
 
-</Project>
+
+    </Project>

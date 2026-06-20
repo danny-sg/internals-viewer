@@ -17,13 +17,13 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
-using InternalsViewer.UI.App.ViewModels.QueryReplay;
+using InternalsViewer.UI.App.ViewModels.Query;
 
 namespace InternalsViewer.UI.App.Views;
 
 public sealed partial class QueryReplayView : Page
 {
-    public QueryReplayViewModel ViewModel => (QueryReplayViewModel)DataContext;
+    public QueryViewModel ViewModel => (QueryViewModel)DataContext;
 
     public QueryReplayView()
     {
@@ -32,8 +32,6 @@ public sealed partial class QueryReplayView : Page
         DataContextChanged += (_, _) => Bindings.Update();
 
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
-
-        EventGrid.PageClicked += OnPageSelected;
 
         EventTimeline.SequenceChanged += OnSequenceChanged;
     }
@@ -64,6 +62,6 @@ public sealed partial class QueryReplayView : Page
     private void OnSequenceChanged(long sequenceFrom, long sequenceTo)
     {
         ViewModel.SequenceFrom = sequenceFrom;
-        ViewModel.SequenceTo   = sequenceTo;
+        ViewModel.SequenceTo = sequenceTo;
     }
 }
