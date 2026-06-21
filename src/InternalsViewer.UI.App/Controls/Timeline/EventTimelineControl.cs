@@ -121,6 +121,9 @@ public sealed class EventTimelineControl : Grid
 
     public event Action<long, long>? SequenceChanged;
 
+    /// <summary>Raised when auto-play starts (true) or stops (false).</summary>
+    public event Action<bool>? PlayStateChanged;
+
     public EventTimelineControl()
     {
         Background = new SolidColorBrush(Colors.Transparent);
@@ -452,13 +455,22 @@ public sealed class EventTimelineControl : Grid
 
         SetPlayButtonIcon(isPlaying: true);
         _playTimer.Start();
+
+        PlayStateChanged?.Invoke(true);
     }
 
     private void StopPlay()
     {
+        var wasPlaying = _isPlaying;
+
         _playTimer.Stop();
         _isPlaying = false;
         SetPlayButtonIcon(isPlaying: false);
+
+        if (wasPlaying)
+        {
+            PlayStateChanged?.Invoke(false);
+        }
     }
 
     private void SetPlayButtonIcon(bool isPlaying)

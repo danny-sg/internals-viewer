@@ -16,9 +16,13 @@ using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Replay;
 using InternalsViewer.Replay.Events;
+using InternalsViewer.Replay.Plans;
+using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Services;
 using Microsoft.UI;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -76,7 +80,23 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool isTooltipEnabled = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ExecuteLabel))]
+    [NotifyPropertyChangedFor(nameof(IsNotExecuting))]
+    [NotifyPropertyChangedFor(nameof(ExecutingVisibility))]
+    [NotifyPropertyChangedFor(nameof(NotExecutingVisibility))]
     private bool isQueryExecuting;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
+    private bool isTimelinePlaying;
+
+    public string ExecuteLabel => IsQueryExecuting ? "Executing" : "Execute";
+
+    public bool IsNotExecuting => !IsQueryExecuting;
+
+    public Visibility ExecutingVisibility => IsQueryExecuting ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility NotExecutingVisibility => IsQueryExecuting ? Visibility.Collapsed : Visibility.Visible;
 
     [ObservableProperty]
     private bool includeLocks = false;
@@ -90,10 +110,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private int extentCount;
 
-    [ObservableProperty] 
+    [ObservableProperty]
     private string message;
 
-    [ObservableProperty] 
+    [ObservableProperty]
     public bool isError;
 
     partial void OnIsErrorChanged(bool value) => OnPropertyChanged(nameof(ResultBrush));
@@ -122,6 +142,75 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private ObservableCollection<EventFilterNode> filterNodes = [];
+
+    [ObservableProperty]
+    private ObservableCollection<ExecutionPlan> executionPlans = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveOperatorName))]
+    [NotifyPropertyChangedFor(nameof(ActiveOperatorObject))]
+    [NotifyPropertyChangedFor(nameof(ActiveOperatorIcon))]
+    [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
+    private PlanNode? activePlanNode;
+
+    partial void OnSequenceToChanged(long value) => UpdateActiveOperator(value);
+
+    public string ActiveOperatorName => ActivePlanNode?.PhysicalOperator ?? string.Empty;
+
+    public string ActiveOperatorObject
+    {
+        get
+        {
+            if (ActivePlanNode is null)
+            {
+                return string.Empty;
+            }
+
+            var table = ActivePlanNode.Table?.Trim('[', ']');
+
+            if (string.IsNullOrEmpty(table))
+            {
+                return string.Empty;
+            }
+
+            var index = ActivePlanNode.Index?.Trim('[', ']');
+
+            return string.IsNullOrEmpty(index) ? table : $"{table}.{index}";
+        }
+    }
+
+    public ImageSource? ActiveOperatorIcon
+        => ActivePlanNode is null ? null : new SvgImageSource(PlanIconResolver.Resolve(ActivePlanNode));
+
+    public Visibility ActiveOperatorVisibility
+        => ActivePlanNode is not null && IsTimelinePlaying ? Visibility.Visible : Visibility.Collapsed;
+
+    private void UpdateActiveOperator(long sequenceTo)
+    {
+        if (sequenceTo <= 0)
+        {
+            ActivePlanNode = null;
+            return;
+        }
+
+        var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
+
+        var identifier = source
+            .Where(e => e.SequenceId <= sequenceTo && e.PlanNodeIdentifier is not null)
+            .OrderByDescending(e => e.SequenceId)
+            .Select(e => e.PlanNodeIdentifier)
+            .FirstOrDefault();
+
+        ActivePlanNode = identifier is null ? null : ResolvePlanNode(identifier);
+    }
+
+    private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
+    {
+        var plan = ExecutionPlans.FirstOrDefault(p => p.PlanHandle == identifier.PlanHandle)
+                   ?? ExecutionPlans.FirstOrDefault();
+
+        return plan is not null && plan.NodesById.TryGetValue(identifier.NodeId, out var node) ? node : null;
+    }
 
     [ObservableProperty]
     private bool includeSystemObjects;
@@ -173,7 +262,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand]
     private async Task ExecuteQuery()
     {
+        if (IsQueryExecuting)
+        {
+            return;
+        }
+
         IsQueryExecuting = true;
+
+        ClearResults();
 
         var results = await QueryCaptureExecutor.TraceQuery(Sql, Database, clearBufferPool: true);
 
@@ -202,12 +298,33 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             Events = results.EngineEvents;
 
+            ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
+
             IsQueryExecuting = false;
 
             await BuildFilterTreeAsync();
         });
 
         RefreshLayers(results.EngineEvents);
+    }
+    
+    private void ClearResults()
+    {
+        IsError = false;
+        Message = string.Empty;
+
+        SequenceFrom = 0;
+        SequenceTo = 0;
+        IsTimelinePlaying = false;
+        ActivePlanNode = null;
+
+        Events = [];
+        FilteredEvents = [];
+        ExecutionPlans = [];
+        FilterNodes = [];
+
+        AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
+        SelectedLayers = [];
     }
 
     private void RefreshLayers(List<EngineEvent> engineEvents)

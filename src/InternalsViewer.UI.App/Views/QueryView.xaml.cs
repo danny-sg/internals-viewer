@@ -13,9 +13,11 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
+using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Query;
 
@@ -25,15 +27,74 @@ public sealed partial class QueryReplayView : Page
 {
     public QueryViewModel ViewModel => (QueryViewModel)DataContext;
 
+    private QueryViewModel? _subscribedViewModel;
+
     public QueryReplayView()
     {
         InitializeComponent();
 
-        DataContextChanged += (_, _) => Bindings.Update();
+        DataContextChanged += OnDataContextChanged;
 
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
 
         EventTimeline.SequenceChanged += OnSequenceChanged;
+        EventTimeline.PlayStateChanged += OnPlayStateChanged;
+
+        PlanRepeater.ElementPrepared += OnPlanElementPrepared;
+    }
+
+    private void OnPlayStateChanged(bool isPlaying)
+    {
+        if (DataContext is QueryViewModel viewModel)
+        {
+            viewModel.IsTimelinePlaying = isPlaying;
+        }
+    }
+
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        Bindings.Update();
+
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
+        _subscribedViewModel = DataContext as QueryViewModel;
+
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QueryViewModel.ActivePlanNode))
+        {
+            ApplyActiveNodeToPlans();
+        }
+    }
+
+    private void OnPlanElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs args)
+    {
+        if (args.Element is ExecutionPlanControl planControl)
+        {
+            planControl.ActiveNode = ViewModel.ActivePlanNode;
+        }
+    }
+
+    private void ApplyActiveNodeToPlans()
+    {
+        var node = ViewModel.ActivePlanNode;
+
+        for (var i = 0; i < ViewModel.ExecutionPlans.Count; i++)
+        {
+            if (PlanRepeater.TryGetElement(i) is ExecutionPlanControl planControl)
+            {
+                planControl.ActiveNode = node;
+            }
+        }
     }
 
     private void OnParentSizeChanged(object sender, SizeChangedEventArgs e)

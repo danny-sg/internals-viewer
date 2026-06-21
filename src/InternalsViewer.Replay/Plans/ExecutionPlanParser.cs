@@ -23,13 +23,15 @@ public static class ExecutionPlanParser
 
         var rootRelOps = queryPlan
             .Elements()
-            .Where(e => e.Name.LocalName == "RelOp");
+            .Where(e => e.Name.LocalName == "RelOp")
+            .Select(ParseRelationalOperator)
+            .ToList();
 
-        foreach (var relOp in rootRelOps)
-        {
-            var node = ParseRelationalOperator(relOp);
-            plan.Roots.Add(node);
-        }
+        // The statement node (StmtSimple etc.) is the parent of QueryPlan and becomes the SSMS-style
+        // SELECT/INSERT/... root that the relational operator tree hangs off.
+        var statementNode = BuildStatementNode(queryPlan.Parent, rootRelOps);
+
+        plan.Roots.Add(statementNode);
 
         foreach (var root in plan.Roots)
         {
@@ -37,6 +39,25 @@ public static class ExecutionPlanParser
         }
 
         return plan;
+    }
+
+    private static PlanNode BuildStatementNode(XElement? statementElement, List<PlanNode> rootRelOps)
+    {
+        var statementType = statementElement is null
+            ? string.Empty
+            : GetStringAttribute(statementElement, "StatementType");
+
+        var subtreeCost = (statementElement is null ? null : GetDoubleAttribute(statementElement, "StatementSubTreeCost"))
+                          ?? rootRelOps.Sum(r => r.EstimatedCost ?? 0);
+
+        return new PlanNode
+        {
+            NodeId = -1,
+            IsStatement = true,
+            PhysicalOperator = string.IsNullOrEmpty(statementType) ? "Statement" : statementType,
+            EstimatedCost = subtreeCost,
+            Children = rootRelOps
+        };
     }
 
 
@@ -102,7 +123,7 @@ public static class ExecutionPlanParser
         => (int?)e.Attribute(name) ?? 0;
 
     private static string GetStringAttribute(XElement e, string name)
-        => (string)e.Attribute(name) ?? string.Empty;
+        => (string?)e.Attribute(name) ?? string.Empty;
 
     private static double? GetDoubleAttribute(XElement e, string name)
         => (double?)e.Attribute(name);

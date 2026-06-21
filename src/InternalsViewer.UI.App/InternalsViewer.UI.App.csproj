@@ -36,6 +36,12 @@
       <Content Remove="Assets\DatabaseFile.svg" />
     </ItemGroup>
     <ItemGroup>
+      <!-- Execution plan operator icons are addressed via ms-appx and must be packaged as content. -->
+      <Content Include="Controls\Plan\Icons\*.svg">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+    <ItemGroup>
         <None Remove="Assets\AppLogo-16.svg" />
         <None Remove="Assets\AppLogo.svg" />
         <None Remove="Assets\TabIcons\IndexTabIcon.svg" />
@@ -281,9 +287,6 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-      <None Update="Views\QueryReplayView.xaml">
-        <Generator>MSBuild:Compile</Generator>
-      </None>
       <Page Update="Controls\EventGrid\EventFilterControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
@@ -460,10 +463,6 @@
 
     <ItemGroup>
       <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Page Remove="Views\QueryReplayView.xaml" />
     </ItemGroup>
 
 

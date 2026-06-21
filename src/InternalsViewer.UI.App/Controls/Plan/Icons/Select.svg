@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+    <!-- Placeholder statement icon for Select - replace with final artwork -->
+    <g id="sql-execution-plan-Select-placeholder">
+        <rect x="3.5" y="6" width="25" height="20" rx="3" ry="3"
+              fill="#EAF4EA" stroke="#3C8C3C" stroke-width="1.5" stroke-dasharray="3 2" />
+        <path d="M 8 12 H 24 M 8 16 H 24 M 8 20 H 18" stroke="#3C8C3C" stroke-width="1.5" stroke-linecap="round" />
+    </g>
+</svg>
