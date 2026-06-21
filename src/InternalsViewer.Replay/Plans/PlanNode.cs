@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace InternalsViewer.Replay.Plans;
-
+﻿namespace InternalsViewer.Replay.Plans;
 
 public sealed class PlanNode
 {
@@ -13,10 +8,7 @@ public sealed class PlanNode
 
     public string LogicalOperator { get; set; } = string.Empty;
 
-    public List<PlanNode> Children { get; set; } = new();
-
-    // runtime attachment (your engine)
-    public OperatorExecution Execution { get; set; }
+    public List<PlanNode> Children { get; set; } = [];
 
     public string? Schema { get; set; }
 
@@ -25,4 +17,11 @@ public sealed class PlanNode
     public string? Index { get; set; }
 
     public double? EstimatedCost { get; set; }
+}
+
+public record PlanNodeIdentifier
+{
+    public string PlanHandle { get; set; }
+
+    public int NodeId { get; set; }
 }

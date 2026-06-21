@@ -1,0 +1,21 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <g id="sql-execution-plan-btree-icon">
+    <g id="btree-structural-paths" stroke="#424242" stroke-width="2" fill="none" stroke-linejoin="round">
+      <path id="btree-central-trunk-path" d="M 16 5 L 16 25" />
+      <path id="btree-left-branch-path" d="M 16 13 L 8 13 L 8 25" />
+      <path id="btree-right-branch-path" d="M 16 13 L 24 13 L 24 25" />
+    </g>
+
+    <g id="btree-data-nodes" fill="#424242">
+      <circle id="btree-root-node-circle" cx="16" cy="5" r="2" />
+      <circle id="btree-leaf-node-left-circle" cx="8" cy="25" r="2" />
+      <circle id="btree-leaf-node-center-circle" cx="16" cy="25" r="2" />
+      <circle id="btree-leaf-node-right-circle" cx="24" cy="25" r="2" />
+    </g>
+    
+    <g id="execution-flow-arrow" fill="#0078D4">
+      <path id="execution-arrow-stem-path" d="M 16 2 L 16 13 L 24 13 L 24 25.5" fill="none" stroke="#0078D4" stroke-width="2" stroke-linejoin="round" />
+      <polygon id="execution-arrow-head-polygon" points="21,25.5 24,30 27,25.5" />
+    </g>
+  </g>
+</svg>

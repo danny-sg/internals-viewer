@@ -235,7 +235,11 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
         EventParser.SetRelativeTimestamps(events);
 
-        return (events.OrderBy(e => e.SequenceId).ToList(), executionPlans);
+        var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
+
+        PlanNodeMatcher.Match(orderedEvents, executionPlans);
+
+        return (orderedEvents, executionPlans);
     }
 
     private async Task<(List<EngineEvent>, List<ExecutionPlan>)> ParseResults(string filePath, DatabaseSource database)
@@ -287,7 +291,11 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
         EventParser.SetRelativeTimestamps(events);
 
-        return (events.OrderBy(e => e.SequenceId).ToList(), executionPlans);
+        var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
+
+        PlanNodeMatcher.Match(orderedEvents, executionPlans);
+
+        return (orderedEvents, executionPlans);
     }
 
     private async Task<(string, long)> RunQueryWithEventSession(string sessionName,

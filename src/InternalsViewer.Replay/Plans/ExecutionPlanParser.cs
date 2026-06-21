@@ -17,7 +17,9 @@ public static class ExecutionPlanParser
             throw new InvalidOperationException("QueryPlan element not found.");
         }
 
-        var plan = new ExecutionPlan();
+        var planHandle = GetPlanHandle(doc);
+
+        var plan = new ExecutionPlan(planHandle);
 
         var rootRelOps = queryPlan
             .Elements()
@@ -37,6 +39,18 @@ public static class ExecutionPlanParser
         return plan;
     }
 
+
+    public static string GetPlanHandle(XDocument doc)
+    {
+        var action = doc
+            .Descendants()
+            .FirstOrDefault(e =>
+                e.Name.LocalName == "action" &&
+                (string?)e.Attribute("name") == "plan_handle");
+
+        return action?.Element("value")?.Value ?? string.Empty;
+    }
+
     private static PlanNode ParseRelationalOperator(XElement element)
     {
         var node = new PlanNode
@@ -46,16 +60,11 @@ public static class ExecutionPlanParser
             LogicalOperator = GetStringAttribute(element, "LogicalOp")
         };
 
-        // Optional: estimated cost
         node.EstimatedCost = GetDoubleAttribute(element, "EstimatedTotalSubtreeCost");
 
-        // ✅ Optional: extract object info (table/index)
         ExtractObjectInfo(element, node);
 
-        // ✅ Recursively parse children
-        var children = element
-            .Elements()
-            .Where(e => e.Name.LocalName == "RelOp");
+        var children = GetChildRelOps(element);
 
         foreach (var child in children)
         {
@@ -74,6 +83,20 @@ public static class ExecutionPlanParser
             IndexNodes(child, dict);
         }
     }
+
+
+    private static IEnumerable<XElement> GetChildRelOps(XElement element)
+    {
+        // Look through known container nodes (Hash, NestedLoops, etc.)
+        return element
+            .Elements()
+            .SelectMany(e =>
+                    e.Name.LocalName == "RelOp"
+                        ? new[] { e }                           // direct child
+                        : e.Elements().Where(c => c.Name.LocalName == "RelOp") // nested under operator container
+            );
+    }
+
 
     private static int GetIntAttribute(XElement e, string name)
         => (int?)e.Attribute(name) ?? 0;
@@ -95,8 +118,8 @@ public static class ExecutionPlanParser
             return;
         }
 
-        node.Schema = (string)obj.Attribute("Schema");
-        node.Table = (string)obj.Attribute("Table");
-        node.Index = (string)obj.Attribute("Index");
+        node.Schema = ((string?)obj.Attribute("Schema"))?.Trim('[', ']');
+        node.Table = ((string?)obj.Attribute("Table"))?.Trim('[', ']');
+        node.Index = ((string?)obj.Attribute("Index"))?.Trim('[', ']');
     }
 }

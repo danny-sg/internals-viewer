@@ -84,7 +84,15 @@
                         </DataTemplate>
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
-
+                <toolkit:DataGridTemplateColumn Header="Node Id" Tag="NodeId">
+                    <toolkit:DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="events:EngineEvent">
+                            <TextBlock Text="{x:Bind PlanNodeIdentifier, Mode=OneWay}"
+                                       Margin="4,0"
+                                       VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </toolkit:DataGridTemplateColumn.CellTemplate>
+                </toolkit:DataGridTemplateColumn>
             </toolkit:DataGrid.Columns>
         </toolkit:DataGrid>
     </Grid>

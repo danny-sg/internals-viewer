@@ -117,6 +117,11 @@ internal class EventParser
 
         engineEvent.SequenceId = e.SequenceId;
 
+        if (e.Actions.TryGetValue("plan_handle", out var planHandle) && planHandle is not null)
+        {
+            engineEvent.PlanHandle = planHandle.ToString() ?? string.Empty;
+        }
+
         if (database is null)
         {
             return engineEvent;
@@ -129,15 +134,39 @@ internal class EventParser
             engineEvent.ObjectId = allocationUnit?.ObjectId ?? 0;
             engineEvent.ObjectName = allocationUnit?.DisplayName
                                      ?? TryGetPageName(engineEvent.PageAddress.Value) ?? string.Empty;
+
+            // A page belongs to exactly one allocation unit, so the index identity here is
+            // reliable and lets storage events be matched to a specific seek/scan operator.
+            ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: true);
         }
         else if (engineEvent.ObjectId > 0)
         {
             var allocationUnit = database.AllocationUnits.FirstOrDefault(f => f.ObjectId == engineEvent.ObjectId);
 
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? $"(Object Id {engineEvent.ObjectId})";
+
+            // Resolved by object id alone (e.g. object-level locks); the specific index is
+            // ambiguous, so only the table identity is trusted - match falls back to table level.
+            ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: false);
         }
 
         return engineEvent;
+    }
+
+    private static void ApplyObjectIdentity(EngineEvent engineEvent, AllocationUnit? allocationUnit, bool includeIndex)
+    {
+        if (allocationUnit is null)
+        {
+            return;
+        }
+
+        engineEvent.SchemaName = allocationUnit.SchemaName;
+        engineEvent.TableName = allocationUnit.TableName;
+
+        if (includeIndex)
+        {
+            engineEvent.IndexName = allocationUnit.IndexName;
+        }
     }
 
     private static string? TryGetPageName(PageAddress pageAddress)
