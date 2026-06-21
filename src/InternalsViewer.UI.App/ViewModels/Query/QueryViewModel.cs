@@ -17,6 +17,8 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Replay;
 using InternalsViewer.Replay.Events;
 using InternalsViewer.UI.App.Services;
+using Microsoft.UI;
+using Microsoft.UI.Xaml.Media;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -25,9 +27,9 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           QueryCaptureExecutor queryCaptureExecutor,
                                           SettingsService settingsService)
 {
-    public QueryViewModel Create(DatabaseSource database) => new(logger, 
-                                                                 queryCaptureExecutor, 
-                                                                 settingsService, 
+    public QueryViewModel Create(DatabaseSource database) => new(logger,
+                                                                 queryCaptureExecutor,
+                                                                 settingsService,
                                                                  database);
 }
 
@@ -48,9 +50,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     ];
 
     public ILogger<QueryViewModel> Logger { get; }
-    
+
     public QueryCaptureExecutor QueryCaptureExecutor { get; }
-    
+
     public DatabaseSource Database { get; }
 
     private SettingsService SettingsService { get; }
@@ -83,10 +85,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool includeIo = false;
 
     [ObservableProperty]
-    private bool isClearBufferPool = true;
+    private bool isClearBufferPool = false;
 
     [ObservableProperty]
     private int extentCount;
+
+    [ObservableProperty] 
+    private string message;
+
+    [ObservableProperty] 
+    public bool isError;
+
+    partial void OnIsErrorChanged(bool value) => OnPropertyChanged(nameof(ResultBrush));
 
     [ObservableProperty]
     private double allocationMapHeight = 200;
@@ -121,15 +131,19 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public Microsoft.UI.Xaml.Visibility HasEvents
         => Events.Count > 0 ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
 
+    public SolidColorBrush ResultBrush => IsError
+        ? new SolidColorBrush(Colors.Red)
+        : (SolidColorBrush)Application.Current.Resources["TextFillColorPrimaryBrush"];
+
     [ObservableProperty]
     private bool canExecute => !string.IsNullOrWhiteSpace(Sql) && !IsQueryExecuting;
 
     private List<AllocationLayer> ObjectLayers { get; set; }
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
-                                QueryCaptureExecutor queryCaptureExecutor,
-                                SettingsService settingsService,
-                                DatabaseSource database)
+                          QueryCaptureExecutor queryCaptureExecutor,
+                          SettingsService settingsService,
+                          DatabaseSource database)
     {
         Logger = logger;
         QueryCaptureExecutor = queryCaptureExecutor;
@@ -163,20 +177,45 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var results = await QueryCaptureExecutor.TraceQuery(Sql, Database, clearBufferPool: true);
 
-        var layers = GetEventsAllocationLayer(results);
+        if (!results.IsSuccess)
+        {
+            IsError = true;
+            Message = results.Message;
+
+            IsQueryExecuting = false;
+            return;
+        }
+
+        IsError = false;
+        Message = $"({results.RowCount} rows affected)";
 
         var names = Database.AllocationUnits
-            .GroupBy(u => u.ObjectId)
-            .ToDictionary(g => g.Key, g => g.First().DisplayName);
+                            .GroupBy(u => u.ObjectId)
+                            .ToDictionary(g => g.Key, g => g.First().DisplayName);
 
-        foreach (var e in results.Where(e => e.ObjectId > 0))
+        foreach (var e in results.EngineEvents.Where(e => e.ObjectId > 0))
         {
             e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
         }
 
+        DispatcherQueue.TryEnqueue(async void () =>
+        {
+            Events = results.EngineEvents;
+
+            IsQueryExecuting = false;
+
+            await BuildFilterTreeAsync();
+        });
+
+        RefreshLayers(results.EngineEvents);
+    }
+
+    private void RefreshLayers(List<EngineEvent> engineEvents)
+    {
+        var layers = GetEventsAllocationLayer(engineEvents);
+
         DispatcherQueue.TryEnqueue(async () =>
         {
-            Events = results;
             AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
 
             foreach (var layer in layers)
@@ -185,9 +224,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             }
 
             SelectedLayers = new ObservableCollection<AllocationLayer>(layers);
-            IsQueryExecuting = false;
-
-            await BuildFilterTreeAsync();
         });
     }
 
@@ -324,47 +360,73 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             : Events.AsEnumerable();
 
         FilteredEvents = [.. ApplyNodeFilter(source)];
+
+        RefreshLayers(FilteredEvents);
     }
 
     private List<AllocationLayer> GetEventsAllocationLayer(List<EngineEvent> engineEvents)
     {
         var maxFileId = databaseFiles.Max(d => d.FileId);
 
-        var ioLayer   = new AllocationLayer { Name = "I/O",  Colour = Color.Navy,    IsVisible = true };
-        var pageLayer = new AllocationLayer { Name = "Page", Colour = Color.DarkCyan, IsVisible = true };
-        var lockLayer = new AllocationLayer { Name = "Lock", Colour = Color.DarkRed,  IsVisible = true };
+        var ioLayer = new AllocationLayer { Name = "I/O", Colour = ColourConstants.IoColour, IsVisible = true };
+        var pageLayer = new AllocationLayer { Name = "Page", Colour = ColourConstants.PageColour, IsVisible = true };
+        var lockLayer = new AllocationLayer { Name = "Lock", Colour = ColourConstants.LockColour, IsVisible = true };
+
+        var systemIoLayer = new AllocationLayer { Name = "I/O (System)", Colour = ColourConstants.SystemIoColour, IsVisible = true };
+        var systemPageLayer = new AllocationLayer { Name = "Page (System)", Colour = ColourConstants.SystemPageColour, IsVisible = true };
+        var systemLockLayer = new AllocationLayer { Name = "Lock (System)", Colour = ColourConstants.SystemLockColour, IsVisible = true };
 
         foreach (var e in engineEvents)
         {
-            switch (e)
+            if (e.PageAddress is { FileId: > 0 }
+                && e.PageAddress.Value.FileId <= maxFileId)
             {
-                case IoEvent ioEvent:
-                    if (ioEvent.PageAddress is { FileId: > 0 } && ioEvent.PageAddress.Value.FileId <= Database.Files.Count)
-                    {
-                        ioLayer.PageSpans.Add(new PageSpan(ioEvent.PageAddress.Value, ioEvent.SequenceId));
-                    }
+                var isSystemObject = SystemObjectIds.Contains(e.ObjectId);
 
-                    break;
+                switch (e)
+                {
+                    case IoEvent ioEvent:
+                        if (isSystemObject)
+                        {
+                            systemIoLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId));
+                        }
+                        else
+                        {
+                            ioLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId));
+                        }
 
-                case PageEvent pageEvent:
-                    if (pageEvent.PageAddress is { FileId: > 0 } && pageEvent.PageAddress.Value.FileId <= Database.Files.Count)
-                    {
-                        pageLayer.PageSpans.Add(new PageSpan(pageEvent.PageAddress.Value, pageEvent.SequenceId));
-                    }
+                        break;
 
-                    break;
+                    case PageEvent pageEvent:
+                        if (isSystemObject)
+                        {
+                            systemPageLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId));
+                        }
+                        else
+                        {
+                            pageLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId));
+                        }
 
-                case LockEvent lockEvent:
-                    var pageAddress = lockEvent.RowIdentifier?.PageAddress ?? lockEvent.PageAddress;
-                    if (pageAddress is { FileId: > 0 } && pageAddress.Value.FileId <= maxFileId)
-                    {
-                        lockLayer.PageSpans.Add(new PageSpan(pageAddress.Value, lockEvent.SequenceId));
-                    }
+                        break;
+                    case WaitEvent waitEvent:
+                        break;
 
-                    break;
+                    case LockEvent lockEvent:
+                        if (isSystemObject)
+                        {
+                            systemLockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId));
+                        }
+                        else
+                        {
+                            lockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId));
+                        }
+
+                        break;
+                }
             }
+
         }
 
-        return [ioLayer, pageLayer, lockLayer];
+        return [ioLayer, pageLayer, lockLayer, systemIoLayer, systemPageLayer, systemLockLayer];
     }
 }

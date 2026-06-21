@@ -49,7 +49,7 @@
                                 IsChecked="{x:Bind ViewModel.IncludeLocks, Mode=TwoWay}" />
             <AppBarToggleButton Label="I/O" 
                                 IsChecked="{x:Bind ViewModel.IncludeIo, Mode=TwoWay}" />
-            </CommandBar>
+        </CommandBar>
         <ItemsRepeater
             x:Name="AllocationItemRepeater"
             Grid.Row="1" 
@@ -73,16 +73,7 @@
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <CommandBar IsOpen="False" 
-                    DefaultLabelPosition="Right"
-                    Grid.Row="0"
-                    HorizontalAlignment="Left"
-                    Background="Transparent">
-                <AppBarButton Label="Execute" Icon="Play"
-                              Command="{x:Bind ViewModel.ExecuteQueryCommand}" />
-                <AppBarToggleButton Label="Clear Buffer Pool" 
-                                    IsChecked="{x:Bind ViewModel.IsClearBufferPool, Mode=TwoWay}" />
-            </CommandBar>
+
 
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
@@ -91,11 +82,27 @@
                     <ColumnDefinition Width="*" x:Name="EventColumn"/>
                 </Grid.ColumnDefinitions>
 
-                <sqlEditor:SqlEditorControl Grid.Column="0"
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <CommandBar IsOpen="False" 
+                                DefaultLabelPosition="Right"
+                                Grid.Row="0"
+                                HorizontalAlignment="Left"
+                                Background="Transparent">
+                        <AppBarButton Label="Execute" Icon="Play"
+                                      Command="{x:Bind ViewModel.ExecuteQueryCommand}" />
+                        <AppBarToggleButton Label="Clear Buffer Pool" 
+                                            IsChecked="{x:Bind ViewModel.IsClearBufferPool, Mode=TwoWay}" />
+                    </CommandBar>
+                    <sqlEditor:SqlEditorControl Grid.Row="1"
                                             x:Name="SqlEditor"
                                             SqlText="{x:Bind ViewModel.Sql, Mode=OneWay}"
                                             SqlTextChanged="OnSqlTextChanged"
                                             Theme="vs-light" />
+                </Grid>
 
                 <controls:GridSplitter Grid.Column="1"
                                        Width="16"
@@ -109,9 +116,19 @@
                 <!-- Right panel: Events grid + filter tree in tabs -->
                 <TabView Grid.Column="2"
                          IsAddTabButtonVisible="False"
-                         TabWidthMode="SizeToContent"
-                         Visibility="{x:Bind ViewModel.HasEvents, Mode=OneWay}">
+                         VerticalAlignment="Stretch"
+                         TabWidthMode="SizeToContent">
+                    <TabViewItem Header="Messages" IsClosable="False">
+                        <Border Background="White" Padding="8" VerticalAlignment="Stretch">
 
+                            <TextBlock x:Name="ResultMessage"
+                                   Text="{x:Bind ViewModel.Message, Mode=OneWay}"      
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Top"
+                                   FontFamily="Courier New"
+                                   Foreground="{x:Bind ViewModel.ResultBrush, Mode=OneWay}" />
+                        </Border>
+                    </TabViewItem>
                     <TabViewItem Header="Events" IsClosable="False">
                         <queryReplay:EventGridControl x:Name="EventGrid"
                                                       Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
@@ -126,6 +143,7 @@
                     </TabViewItem>
 
                 </TabView>
+
             </Grid>
 
             <timeline:EventTimelineControl Grid.Row="2"

@@ -292,7 +292,10 @@ public sealed partial class AllocationControl : IDisposable
 
         extentRenderer.IsDrawBorder = true;
 
-        extentRenderer.DrawBackgroundExtents(canvas, Layout.HorizontalCount, Layout.VerticalCount, Layout.RemainingCount);
+        extentRenderer.DrawBackgroundExtents(canvas, 
+                                             Layout.HorizontalCount, 
+                                             Layout.VerticalCount, 
+                                             Layout.RemainingCount);
 
         var width = Layout.HorizontalCount * ExtentSize.Width;
 
@@ -327,7 +330,11 @@ public sealed partial class AllocationControl : IDisposable
         canvas.DrawLine(width, 0, width, e.Info.Height, borderPaint);
     }
 
-    private void DrawScrollbarMarkers(SKCanvas canvas, ExtentLayout layout, AllocationLayer layer, int width, int height)
+    private void DrawScrollbarMarkers(SKCanvas canvas, 
+                                      ExtentLayout layout, 
+                                      AllocationLayer layer, 
+                                      int width, 
+                                      int height)
     {
         // Offset accounting for the scrollbar buttons
         var offset = 18;

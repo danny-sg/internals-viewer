@@ -1,13 +1,9 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Replay.Locks;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
 using System.Xml.Linq;
+using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Replay.Events;
 
@@ -16,7 +12,9 @@ internal class EventParser
     public static void SetRelativeTimestamps(List<EngineEvent> events)
     {
         if (events.Count == 0)
+        {
             return;
+        }
 
         var ordered = events.OrderBy(e => e.SequenceId).ToList();
 
@@ -38,7 +36,9 @@ internal class EventParser
         var result = ToEventResult(element);
 
         if (result == null)
+        {
             return null;
+        }
 
         if (result.Actions.TryGetValue("sql_text", out var value) && $"{value}".StartsWith("ALTER EVENT SESSION"))
         {
@@ -55,7 +55,9 @@ internal class EventParser
         var result = ToEventResult(element);
 
         if (result == null)
+        {
             return null;
+        }
 
         if (result.Actions.TryGetValue("sql_text", out var value) && $"{value}".StartsWith("ALTER EVENT SESSION"))
         {
@@ -73,22 +75,26 @@ internal class EventParser
         var timestamp = e.Attribute("timestamp")?.Value;
 
         if (name is null || timestamp is null)
+        {
             return null;
+        }
+
+        var data = e.Elements("data")
+            .ToDictionary(
+                d => d.Attribute("name")?.Value ?? string.Empty, object? (d) => d.Element("value")?.Value
+            );
+
+        var actions = e.Elements("action")
+            .ToDictionary(
+                a => a.Attribute("name")?.Value ?? string.Empty, object? (a) => a.Element("value")?.Value
+            );
 
         return new EventResult
         {
             Name = name,
             Timestamp = DateTime.Parse(timestamp),
-            Data = e.Elements("data")
-                .ToDictionary(
-                    d => d.Attribute("name")?.Value ?? string.Empty,
-                    d => (object?)d.Element("value")?.Value
-                ),
-            Actions = e.Elements("action")
-                .ToDictionary(
-                    a => a.Attribute("name")?.Value ?? string.Empty,
-                    a => (object?)a.Element("value")?.Value
-                )
+            Data = data,
+            Actions = actions
         };
     }
 
@@ -101,7 +107,7 @@ internal class EventParser
             var n when n.Contains("page") => MapPageEvent(e),
             var n when n.Contains("lock_") => MapLock(e),
             var n when n.Contains("wait") => MapWait(e),
-
+            var n when n.Equals("query_thread_profile") => MapQueryThread(e),
             _ => new EngineEvent
             {
                 Name = e.Name,
@@ -121,7 +127,8 @@ internal class EventParser
             var allocationUnit = database.FindPageAllocationUnit(engineEvent.PageAddress.Value);
 
             engineEvent.ObjectId = allocationUnit?.ObjectId ?? 0;
-            engineEvent.ObjectName = allocationUnit?.DisplayName ?? TryGetPageName(engineEvent.PageAddress.Value) ?? string.Empty;
+            engineEvent.ObjectName = allocationUnit?.DisplayName
+                                     ?? TryGetPageName(engineEvent.PageAddress.Value) ?? string.Empty;
         }
         else if (engineEvent.ObjectId > 0)
         {
@@ -139,30 +146,34 @@ internal class EventParser
         {
             case 0:
                 return "File Header";
-            
-            case 1:
-                return  "PFS";
-            case 2:
-              return "GAM";
-
-            case 3:
-                return "SGAM";
-
-            case 4:
-                return "DCM";
-
-            case 5:
-                return "BCM";
-
-            case 6:
-                return "Differential Change Map";
-
-            case 7:
-                return  "Bulk Change Map";
             case 9:
                 return "Boot page";
-
             default:
+                if (PageHelpers.IsBcm(pageAddress.PageId))
+                {
+                    return "BCM";
+                }
+
+                if (PageHelpers.IsDcm(pageAddress.PageId))
+                {
+                    return "DCM";
+                }
+
+                if (PageHelpers.IsGam(pageAddress.PageId))
+                {
+                    return "GAM";
+                }
+
+                if (PageHelpers.IsSgam(pageAddress.PageId))
+                {
+                    return "SGAM";
+                }
+
+                if (PageHelpers.IsPfs(pageAddress.PageId))
+                {
+                    return "PFS";
+                }
+
                 return null;
         }
     }
@@ -178,6 +189,22 @@ internal class EventParser
             DatabaseId = e.GetDatabaseId(),
             WaitType = waitType,
             Duration = e.GetLong("duration") ?? 0
+        };
+    }
+
+    private static EngineEvent MapQueryThread(EventResult e)
+    {
+        var threadId = (e.GetInt("thread_id") ?? 0);
+        var nodeId = (e.GetInt("node_id") ?? 0);
+
+        return new QueryThreadEvent()
+        {
+            Name = e.Name,
+            Timestamp = e.Timestamp,
+            DatabaseId = e.GetDatabaseId(),
+            ThreadId = threadId,
+            NodeId = nodeId,
+            Duration = e.GetLong("total_time_us") / 1000 ?? 0
         };
     }
 
@@ -225,7 +252,6 @@ internal class EventParser
     private static PageEvent MapPageEvent(EventResult e)
     {
         var location = e.GetUlong("page_location") ?? 0;
-
 
         var fileId = (short)(location >> 32);
 

@@ -21,12 +21,29 @@ public class QueryCaptureExecutorTests(ITestOutputHelper testOutputHelper)
 
         var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true);
 
-        Assert.NotNull(result);
-        Assert.NotEmpty(result);
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.EngineEvents);
+        Assert.NotEmpty(result.EngineEvents);
 
-        foreach(var e in result)
+        foreach (var e in result.EngineEvents)
         {
-          TestOutputHelper.WriteLine(e.ToString());
+            TestOutputHelper.WriteLine(e.ToString());
         }
+    }
+
+    [Fact]
+    public async Task Invalid_Query_Gives_IsSuccess_False()
+    {
+        var logger = TestLogger.GetLogger<QueryCaptureExecutor>(TestOutputHelper);
+
+        var connectionString = ConnectionStringHelper.GetConnectionString("Local");
+
+        var query = "SELECT * FROM Person.AddressZZZ";
+
+        var executor = new QueryCaptureExecutor(logger);
+
+        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true);
+
+        Assert.False(result.IsSuccess);
     }
 }

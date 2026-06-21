@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Pages.Enums;
+﻿using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 
 namespace InternalsViewer.Internals.Helpers;
 
@@ -53,4 +54,19 @@ public static class PageHelpers
             _ => "Unknown"
         };
     }
+
+    public static bool IsGam(int pageId) 
+        => (pageId - AllocationPage.FirstGamPage) % AllocationPage.AllocationInterval == 0;
+    
+    public static bool IsSgam(int pageId) 
+        => (pageId - AllocationPage.FirstSgamPage) % AllocationPage.AllocationInterval == 0;
+    
+    public static bool IsDcm(int pageId) 
+        => (pageId - AllocationPage.FirstDcmPage) % AllocationPage.AllocationInterval == 0;
+    
+    public static bool IsBcm(int pageId) 
+        => (pageId - AllocationPage.FirstBcmPage) % AllocationPage.AllocationInterval == 0;
+    
+    public static bool IsPfs(int pageId) 
+        => pageId == 1 || (pageId % PfsPage.PfsInterval == 1);
 }

@@ -14,7 +14,7 @@ namespace InternalsViewer.UI.App.Controls.QueryReplay;
 public sealed partial class EventGridControl : UserControl
 {
     private static readonly SolidColorBrush InScopeBrush =
-        new(Windows.UI.Color.FromArgb(60, 255, 200, 0));
+        new(Windows.UI.Color.FromArgb(20, 121, 251, 155));
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 

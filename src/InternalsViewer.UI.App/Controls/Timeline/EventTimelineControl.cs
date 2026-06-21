@@ -1,10 +1,13 @@
-﻿using InternalsViewer.Replay.Events;
+using InternalsViewer.Replay.Events;
+using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Shapes;
+using SkiaSharp;
+using SkiaSharp.Views.Windows;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,28 +17,73 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed class EventTimelineControl : Grid
 {
-    private const double HandleWidth = 6;
+    private const float HandleWidth = 6f;
     private const double CropHandleHitArea = 10;
+    private const double MaxResolutionMs = 10.0;
+    private const float RowLabelWidth = 36f;
+    private const float RowPadding = 2f;
+    private const float MarkerWidth = 2f;
+
     private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(80);
 
-    private readonly Canvas _canvas;
-    private readonly Line _playhead;
-    private readonly Rectangle _cropOverlay;
-    private readonly Rectangle _cropHandleLeft;
-    private readonly Rectangle _cropHandleRight;
+    private static readonly (Type EventType, string Label, SKColor Color)[] Rows =
+    [
+        (typeof(IoEvent),   "I/O",   ColourConstants.IoColour.ToSkColor().WithAlpha(255)),
+        (typeof(PageEvent), "Page", ColourConstants.PageColour.ToSkColor().WithAlpha(255)),
+        (typeof(LockEvent), "Lock", ColourConstants.LockColour.ToSkColor().WithAlpha(255)),
+        (typeof(WaitEvent), "Wait", ColourConstants.WaitColour.ToSkColor().WithAlpha(255)),
+    ];
+
     private readonly Button _playButton;
-    private readonly DispatcherTimer _playTimer;
+    private readonly SKXamlCanvas _skCanvas;
+    private readonly Canvas _overlay;
+
+    private readonly SKPaint _labelPaint = new()
+    {
+        Color = SKColors.LightGray,
+        TextSize = 10,
+        IsAntialias = true,
+        Typeface = SKTypeface.Default,
+    };
+
+    private readonly SKPaint _rowBgPaint = new() { Style = SKPaintStyle.Fill };
+    private readonly SKPaint _markerPaint = new() { Style = SKPaintStyle.Fill };
+    private readonly SKPaint _playheadPaint = new()
+    {
+        Color = SKColors.IndianRed,
+        StrokeWidth = 2,
+        Style = SKPaintStyle.Stroke,
+        IsAntialias = false,
+    };
+    private readonly SKPaint _cropOverlayPaint = new()
+    {
+        Color = new SKColor(255, 255, 255, 55),
+        Style = SKPaintStyle.Fill,
+    };
+    private readonly SKPaint _cropHandlePaint = new()
+    {
+        Color = new SKColor(255, 255, 255, 200),
+        Style = SKPaintStyle.Fill,
+    };
 
     private List<EngineEvent> _sortedEvents = [];
+    private List<double> _effectiveTimes = [];
+
+    private double _minTime;
+    private double _maxTime;
+    private double _timeRange;
+
     private int _playIndex;
+    private int _displayIndex;
     private bool _isPlaying;
+    private readonly DispatcherTimer _playTimer;
 
     private bool _isDragging;
     private bool _isCropDragging;
     private CropDragTarget _cropDragTarget;
 
-    private double _cropStartX = -1;
-    private double _cropEndX = -1;
+    private double _cropStartTime = -1;
+    private double _cropEndTime = -1;
 
     private enum CropDragTarget { None, Left, Right, Body, NewCrop }
 
@@ -51,41 +99,31 @@ public sealed class EventTimelineControl : Grid
 
     private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (EventTimelineControl)d;
+        var ctrl = (EventTimelineControl)d;
         var events = (List<EngineEvent>)e.NewValue;
 
-        control._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
+        ctrl._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
+        ctrl.BuildEffectiveTimes();
 
-        if (events.Count > 0)
-        {
-            var maxTimeMs = events.Max(m => m.TimeMs);
-            control.PixelsPerMs = control._canvas.ActualWidth > 0
-                ? control._canvas.ActualWidth / maxTimeMs
-                : control.ActualWidth / maxTimeMs;
-        }
+        ctrl.StopPlay();
+        ctrl._cropStartTime = -1;
+        ctrl._cropEndTime = -1;
+        ctrl.CurrentSequenceFrom = 0;
+        ctrl.CurrentSequenceTo = 0;
+        ctrl._playIndex = 0;
+        ctrl._displayIndex = 0;
 
-        control.StopPlay();
-        control._cropStartX = -1;
-        control._cropEndX = -1;
-        control.CurrentSequenceFrom = 0;
-        control.CurrentSequenceTo = 0;
-
-        control.Render();
+        ctrl._skCanvas.Invalidate();
     }
 
-    public double PixelsPerMs { get; set; } = 0.2;
-
-    public double CurrentTimeMs { get; private set; }
-
     public long CurrentSequenceFrom { get; private set; }
-
     public long CurrentSequenceTo { get; private set; }
 
     public event Action<long, long>? SequenceChanged;
 
     public EventTimelineControl()
     {
-        Background = new SolidColorBrush(Colors.Black);
+        Background = new SolidColorBrush(Colors.Transparent);
 
         ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -96,319 +134,296 @@ public sealed class EventTimelineControl : Grid
             Width = 40,
             VerticalAlignment = VerticalAlignment.Stretch,
             Padding = new Thickness(0),
-            Background = new SolidColorBrush(Color.FromArgb(255, 30, 30, 30)),
+            Background = new SolidColorBrush(Color.FromArgb(0, 30, 30, 30)),
             BorderThickness = new Thickness(0),
-            CornerRadius = new CornerRadius(0)
+            CornerRadius = new CornerRadius(0),
         };
         _playButton.Click += OnPlayButtonClick;
         Grid.SetColumn(_playButton, 0);
         Children.Add(_playButton);
-        _canvas = new Canvas();
-        Grid.SetColumn(_canvas, 1);
-        Children.Add(_canvas);
 
-        _cropOverlay = new Rectangle
-        {
-            Fill = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
-            IsHitTestVisible = false
-        };
+        _skCanvas = new SKXamlCanvas { IgnorePixelScaling = true };
+        _skCanvas.PaintSurface += OnPaintSurface;
+        Grid.SetColumn(_skCanvas, 1);
+        Children.Add(_skCanvas);
 
-        _cropHandleLeft = new Rectangle
-        {
-            Width = HandleWidth,
-            Fill = new SolidColorBrush(Colors.White),
-            Opacity = 0.8,
-            IsHitTestVisible = false
-        };
+        _overlay = new Canvas { Background = new SolidColorBrush(Colors.Transparent) };
+        Grid.SetColumn(_overlay, 1);
+        Children.Add(_overlay);
 
-        _cropHandleRight = new Rectangle
-        {
-            Width = HandleWidth,
-            Fill = new SolidColorBrush(Colors.White),
-            Opacity = 0.8,
-            IsHitTestVisible = false
-        };
+        _overlay.PointerPressed += OnPointerPressed;
+        _overlay.PointerMoved += OnPointerMoved;
+        _overlay.PointerReleased += OnPointerReleased;
+        _overlay.SizeChanged += (_, _) => _skCanvas.Invalidate();
 
-        _playhead = new Line
-        {
-            Stroke = new SolidColorBrush(Colors.Yellow),
-            StrokeThickness = 2
-        };
-
-        _canvas.Children.Add(_cropOverlay);
-        _canvas.Children.Add(_cropHandleLeft);
-        _canvas.Children.Add(_cropHandleRight);
-        _canvas.Children.Add(_playhead);
-
-        // ── Timer ─────────────────────────────────────────────────────────────
         _playTimer = new DispatcherTimer { Interval = PlayInterval };
         _playTimer.Tick += OnPlayTimerTick;
-
-        // ── Pointer & resize ──────────────────────────────────────────────────
-        _canvas.PointerPressed   += OnPointerPressed;
-        _canvas.PointerMoved     += OnPointerMoved;
-        _canvas.PointerReleased  += OnPointerReleased;
-
-        _canvas.SizeChanged += (_, _) =>
-        {
-            if (Events?.Count > 0 && _canvas.ActualWidth > 0)
-                PixelsPerMs = _canvas.ActualWidth / Events.Max(m => m.TimeMs);
-            UpdateOverlays();
-        };
     }
 
-    public void Render()
+    private void BuildEffectiveTimes()
     {
-        _canvas.Children.Clear();
+        _effectiveTimes = new List<double>(_sortedEvents.Count);
 
-        _canvas.Children.Add(_cropOverlay);
-        _canvas.Children.Add(_cropHandleLeft);
-        _canvas.Children.Add(_cropHandleRight);
-
-        foreach (var e in Events.OrderBy(e => e.TimeMs))
+        if (_sortedEvents.Count == 0)
         {
-            double x = e.TimeMs * PixelsPerMs;
-
-            var marker = new Rectangle
-            {
-                Width = 3,
-                Height = _canvas.ActualHeight,
-                Fill = new SolidColorBrush(GetColor(e))
-            };
-
-            Canvas.SetLeft(marker, x);
-            Canvas.SetTop(marker, 0);
-            _canvas.Children.Add(marker);
-        }
-
-        _canvas.Children.Add(_playhead);
-
-        UpdateOverlays();
-    }
-
-    private static Color GetColor(EngineEvent e) => e switch
-    {
-        IoEvent   => Colors.CornflowerBlue,
-        LockEvent => Colors.Red,
-        WaitEvent => Colors.Orange,
-        PageEvent => Colors.LimeGreen,
-        _         => Colors.Gray
-    };
-
-    private void UpdatePlayhead()
-    {
-        double x = CurrentTimeMs * PixelsPerMs;
-        var h = _canvas.ActualHeight;
-
-        _playhead.X1 = x;
-        _playhead.X2 = x;
-        _playhead.Y1 = 0;
-        _playhead.Y2 = h;
-    }
-
-    private bool HasCrop => _cropStartX >= 0 && _cropEndX >= 0;
-
-    private void UpdateOverlays()
-    {
-        UpdatePlayhead();
-
-        if (!HasCrop)
-        {
-            _cropOverlay.Visibility = Visibility.Collapsed;
-            _cropHandleLeft.Visibility = Visibility.Collapsed;
-            _cropHandleRight.Visibility = Visibility.Collapsed;
+            _minTime = 0;
+            _maxTime = 1;
+            _timeRange = 1;
             return;
         }
 
-        var left  = Math.Min(_cropStartX, _cropEndX);
-        var right = Math.Max(_cropStartX, _cropEndX);
-        var h = _canvas.ActualHeight;
-
-        _cropOverlay.Width  = Math.Max(0, right - left);
-        _cropOverlay.Height = h;
-        Canvas.SetLeft(_cropOverlay, left);
-        Canvas.SetTop(_cropOverlay, 0);
-        _cropOverlay.Visibility = Visibility.Visible;
-
-        _cropHandleLeft.Height = h;
-        Canvas.SetLeft(_cropHandleLeft, left - HandleWidth / 2);
-        Canvas.SetTop(_cropHandleLeft, 0);
-        _cropHandleLeft.Visibility = Visibility.Visible;
-
-        _cropHandleRight.Height = h;
-        Canvas.SetLeft(_cropHandleRight, right - HandleWidth / 2);
-        Canvas.SetTop(_cropHandleRight, 0);
-        _cropHandleRight.Visibility = Visibility.Visible;
-    }
-
-    private long XToSequenceId(double x)
-    {
-        if (Events.Count == 0)
+        var bucketCounts = new Dictionary<long, int>();
+        foreach (var ev in _sortedEvents)
         {
-            return 0;
+            var bucket = (long)Math.Floor(ev.TimeMs / MaxResolutionMs);
+            bucketCounts[bucket] = bucketCounts.TryGetValue(bucket, out var c) ? c + 1 : 1;
         }
 
-        var timeMs = x / PixelsPerMs;
-
-        var nearest = Events.MinBy(e => Math.Abs(e.TimeMs - timeMs));
-
-        return nearest?.SequenceId ?? 0;
-    }
-
-    private double SequenceIdToX(long sequenceId)
-    {
-        if (Events.Count == 0)
+        var bucketIndex = new Dictionary<long, int>();
+        foreach (var ev in _sortedEvents)
         {
-            return 0;
+            var bucket = (long)Math.Floor(ev.TimeMs / MaxResolutionMs);
+            var bucketStart = bucket * MaxResolutionMs;
+            bucketIndex.TryGetValue(bucket, out var idx);
+            var count = bucketCounts[bucket];
+            var step = count > 1 ? MaxResolutionMs / count : 0.0;
+            _effectiveTimes.Add(bucketStart + idx * step);
+            bucketIndex[bucket] = idx + 1;
         }
 
-        var e = Events.FirstOrDefault(ev => ev.SequenceId == sequenceId);
-        return e != null ? e.TimeMs * PixelsPerMs : 0;
+        _minTime = _effectiveTimes.Min();
+        _maxTime = _effectiveTimes.Max();
+        _timeRange = Math.Max(_maxTime - _minTime, 1.0);
     }
 
-    private void FireSequenceChanged(double fromX, double toX)
-    {
-        var left  = Math.Min(fromX, toX);
-        var right = Math.Max(fromX, toX);
+    private float CanvasWidth => (float)_overlay.ActualWidth;
+    private float CanvasHeight => (float)_overlay.ActualHeight;
+    private float DrawWidth => CanvasWidth - RowLabelWidth;
 
-        CurrentSequenceFrom = XToSequenceId(left);
-        CurrentSequenceTo   = XToSequenceId(right);
+    private float TimeToX(double effectiveTimeMs)
+        => RowLabelWidth + (float)((effectiveTimeMs - _minTime) / _timeRange * DrawWidth);
+
+    private double XToTime(double x)
+        => _minTime + Math.Max(0, x - RowLabelWidth) / DrawWidth * _timeRange;
+
+    private int XToEventIndex(double x)
+    {
+        if (_sortedEvents.Count == 0) return 0;
+        var t = XToTime(x);
+        var best = 0;
+        var bestDist = double.MaxValue;
+        for (var i = 0; i < _effectiveTimes.Count; i++)
+        {
+            var d = Math.Abs(_effectiveTimes[i] - t);
+            if (d < bestDist) { bestDist = d; best = i; }
+        }
+        return best;
+    }
+
+    private float RowY(int rowIndex, float rowHeight) => rowIndex * rowHeight + RowPadding;
+    private float RowH(float rowHeight) => rowHeight - RowPadding * 2;
+
+    private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
+    {
+        var canvas = e.Surface.Canvas;
+        canvas.Clear(SKColors.Transparent);
+
+        var w = e.Info.Width;
+        var h = e.Info.Height;
+
+        if (_sortedEvents.Count == 0 || w <= 0 || h <= 0) return;
+
+        var rowCount = Rows.Length;
+        var rowHeight = (float)h / rowCount;
+
+        for (var r = 0; r < rowCount; r++)
+        {
+            var (_, label, _) = Rows[r];
+            var y = r * rowHeight;
+
+            _rowBgPaint.Color = r % 2 == 0
+                ? new SKColor(30, 30, 30, 220)
+                : new SKColor(20, 20, 20, 220);
+            canvas.DrawRect(0, y, w, rowHeight, _rowBgPaint);
+
+            canvas.DrawText(label, 2, y + rowHeight / 2 + _labelPaint.TextSize / 2, _labelPaint);
+
+            using var sepPaint = new SKPaint { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
+            canvas.DrawLine(0, y + rowHeight, w, y + rowHeight, sepPaint);
+        }
+
+        for (var i = 0; i < _sortedEvents.Count; i++)
+        {
+            var ev = _sortedEvents[i];
+            var x = TimeToX(_effectiveTimes[i]);
+            var rowIndex = GetRowIndex(ev);
+            if (rowIndex < 0) continue;
+
+            _markerPaint.Color = Rows[rowIndex].Color;
+            canvas.DrawRect(x, RowY(rowIndex, rowHeight), MarkerWidth, RowH(rowHeight), _markerPaint);
+        }
+
+        if (HasCrop)
+        {
+            var leftX = (float)TimeToX(Math.Min(_cropStartTime, _cropEndTime));
+            var rightX = (float)TimeToX(Math.Max(_cropStartTime, _cropEndTime));
+
+            canvas.DrawRect(leftX, 0, rightX - leftX, h, _cropOverlayPaint);
+            canvas.DrawRect(leftX - HandleWidth / 2, 0, HandleWidth, h, _cropHandlePaint);
+            canvas.DrawRect(rightX - HandleWidth / 2, 0, HandleWidth, h, _cropHandlePaint);
+        }
+
+        if (_displayIndex < _effectiveTimes.Count)
+        {
+            var px = TimeToX(_effectiveTimes[_displayIndex]);
+            canvas.DrawLine(px, 0, px, h, _playheadPaint);
+        }
+    }
+
+    private static int GetRowIndex(EngineEvent ev)
+    {
+        for (var i = 0; i < Rows.Length; i++)
+            if (Rows[i].EventType.IsInstanceOfType(ev)) return i;
+        return -1;
+    }
+
+    private bool HasCrop => _cropStartTime >= 0 && _cropEndTime >= 0
+                         && Math.Abs(_cropEndTime - _cropStartTime) > 0.0001;
+
+    private void FireSequenceChanged(double fromTime, double toTime)
+    {
+        var left = Math.Min(fromTime, toTime);
+        var right = Math.Max(fromTime, toTime);
+
+        CurrentSequenceFrom = SequenceIdAtOrAfter(left);
+        CurrentSequenceTo = SequenceIdAtOrBefore(right);
+
+        if (CurrentSequenceFrom > CurrentSequenceTo)
+        {
+            var nearest = NearestSequenceId((left + right) / 2);
+            CurrentSequenceFrom = nearest;
+            CurrentSequenceTo = nearest;
+        }
 
         SequenceChanged?.Invoke(CurrentSequenceFrom, CurrentSequenceTo);
     }
 
+    private long NearestSequenceId(double effectiveTimeMs)
+    {
+        if (_sortedEvents.Count == 0) return 0;
+        var best = 0;
+        var bestDist = double.MaxValue;
+        for (var i = 0; i < _effectiveTimes.Count; i++)
+        {
+            var d = Math.Abs(_effectiveTimes[i] - effectiveTimeMs);
+            if (d < bestDist) { bestDist = d; best = i; }
+        }
+        return _sortedEvents[best].SequenceId;
+    }
+
+    private long SequenceIdAtOrAfter(double t)
+    {
+        if (_sortedEvents.Count == 0) return 0;
+        for (var i = 0; i < _effectiveTimes.Count; i++)
+            if (_effectiveTimes[i] >= t) return _sortedEvents[i].SequenceId;
+        return _sortedEvents[^1].SequenceId;
+    }
+
+    private long SequenceIdAtOrBefore(double t)
+    {
+        if (_sortedEvents.Count == 0) return 0;
+        for (var i = _effectiveTimes.Count - 1; i >= 0; i--)
+            if (_effectiveTimes[i] <= t) return _sortedEvents[i].SequenceId;
+        return _sortedEvents[0].SequenceId;
+    }
+
     private CropDragTarget HitTest(double x)
     {
-        if (!HasCrop)
-        {
-            return CropDragTarget.NewCrop;
-        }
+        if (!HasCrop) return CropDragTarget.NewCrop;
 
-        var left  = Math.Min(_cropStartX, _cropEndX);
-        var right = Math.Max(_cropStartX, _cropEndX);
+        var leftX = TimeToX(Math.Min(_cropStartTime, _cropEndTime));
+        var rightX = TimeToX(Math.Max(_cropStartTime, _cropEndTime));
 
-        if (Math.Abs(x - left)  <= CropHandleHitArea)
-        {
-            return CropDragTarget.Left;
-        }
-
-        if (Math.Abs(x - right) <= CropHandleHitArea)
-        {
-            return CropDragTarget.Right;
-        }
-
-        if (x > left && x < right)
-        {
-            return CropDragTarget.Body;
-        }
+        if (Math.Abs(x - leftX) <= CropHandleHitArea) return CropDragTarget.Left;
+        if (Math.Abs(x - rightX) <= CropHandleHitArea) return CropDragTarget.Right;
+        if (x > leftX && x < rightX) return CropDragTarget.Body;
 
         return CropDragTarget.NewCrop;
     }
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        _canvas.CapturePointer(e.Pointer);
+        _overlay.CapturePointer(e.Pointer);
+        var x = e.GetCurrentPoint(_overlay).Position.X;
 
-        var position = e.GetCurrentPoint(_canvas).Position;
-
-        _cropDragTarget = HitTest(position.X);
-
+        _cropDragTarget = HitTest(x);
         _isDragging = true;
         _isCropDragging = false;
 
         if (_cropDragTarget == CropDragTarget.NewCrop)
         {
-            _cropStartX = position.X;
-            _cropEndX = position.X;
+            var t = XToTime(x);
+            _cropStartTime = t;
+            _cropEndTime = t;
         }
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (!_isDragging)
-        {
-            return;
-        }
+        if (!_isDragging) return;
 
-        var pos = e.GetCurrentPoint(_canvas).Position;
-        var x = Math.Clamp(pos.X, 0, _canvas.ActualWidth);
+        var x = Math.Clamp(e.GetCurrentPoint(_overlay).Position.X, RowLabelWidth, CanvasWidth);
+        var t = XToTime(x);
 
         _isCropDragging = true;
 
         switch (_cropDragTarget)
         {
             case CropDragTarget.NewCrop:
-                _cropEndX = x;
-                
-                UpdateOverlays();
-
-                if (Math.Abs(_cropEndX - _cropStartX) > 2)
-                {
-                    FireSequenceChanged(_cropStartX, _cropEndX);
-                }
-
+                _cropEndTime = t;
+                if (HasCrop) FireSequenceChanged(_cropStartTime, _cropEndTime);
                 break;
 
             case CropDragTarget.Left:
-                _cropStartX = x;
-                UpdateOverlays();
-                FireSequenceChanged(_cropStartX, _cropEndX);
+                _cropStartTime = t;
+                FireSequenceChanged(_cropStartTime, _cropEndTime);
                 break;
 
             case CropDragTarget.Right:
-                _cropEndX = x;
-                UpdateOverlays();
-                FireSequenceChanged(_cropStartX, _cropEndX);
+                _cropEndTime = t;
+                FireSequenceChanged(_cropStartTime, _cropEndTime);
                 break;
 
             case CropDragTarget.Body:
-                var width = Math.Abs(_cropEndX - _cropStartX);
-                var newLeft = Math.Clamp(x - width / 2, 0, _canvas.ActualWidth - width);
-                _cropStartX = newLeft;
-                _cropEndX = newLeft + width;
-                UpdateOverlays();
-                FireSequenceChanged(_cropStartX, _cropEndX);
+                var span = _cropEndTime - _cropStartTime;
+                var newLeft = Math.Clamp(t - span / 2, _minTime, _maxTime - span);
+                _cropStartTime = newLeft;
+                _cropEndTime = newLeft + span;
+                FireSequenceChanged(_cropStartTime, _cropEndTime);
                 break;
         }
+
+        _skCanvas.Invalidate();
     }
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        _canvas.ReleasePointerCaptures();
+        _overlay.ReleasePointerCaptures();
+        if (!_isDragging) return;
 
-        if (!_isDragging)
+        var x = Math.Clamp(e.GetCurrentPoint(_overlay).Position.X, RowLabelWidth, CanvasWidth);
+
+        if (!_isCropDragging || (_cropDragTarget == CropDragTarget.NewCrop && !HasCrop))
         {
-            return;
-        }
+            _cropStartTime = -1;
+            _cropEndTime = -1;
 
-        var pos = e.GetCurrentPoint(_canvas).Position;
-        var x   = Math.Clamp(pos.X, 0, _canvas.ActualWidth);
-
-        if (!_isCropDragging)
-        {
-            _cropStartX = -1;
-            _cropEndX = -1;
-
+            _displayIndex = XToEventIndex(x);
+            _playIndex = _displayIndex;
             CurrentSequenceFrom = 0;
-            CurrentSequenceTo = XToSequenceId(x);
+            CurrentSequenceTo = _sortedEvents.Count > 0 ? _sortedEvents[_displayIndex].SequenceId : 0;
 
-            CurrentTimeMs = x / PixelsPerMs;
-
-            UpdateOverlays();
-
-            SequenceChanged?.Invoke(CurrentSequenceFrom, CurrentSequenceTo);
-        }
-        else if (_cropDragTarget == CropDragTarget.NewCrop && Math.Abs(_cropEndX - _cropStartX) <= 2)
-        {
-            _cropStartX = -1;
-            _cropEndX   = -1;
-
-            CurrentSequenceFrom = 0;
-            CurrentSequenceTo   = XToSequenceId(x);
-
-            CurrentTimeMs = x / PixelsPerMs;
-
-            UpdateOverlays();
+            _skCanvas.Invalidate();
             SequenceChanged?.Invoke(CurrentSequenceFrom, CurrentSequenceTo);
         }
 
@@ -418,10 +433,8 @@ public sealed class EventTimelineControl : Grid
 
     private void OnPlayButtonClick(object sender, RoutedEventArgs e)
     {
-        if (_isPlaying)
-            StopPlay();
-        else
-            StartPlay();
+        if (_isPlaying) StopPlay();
+        else StartPlay();
     }
 
     private void StartPlay()
@@ -429,10 +442,11 @@ public sealed class EventTimelineControl : Grid
         if (_sortedEvents.Count == 0) return;
 
         _playIndex = 0;
+        _displayIndex = 0;
         _isPlaying = true;
 
-        _cropStartX = -1;
-        _cropEndX   = -1;
+        _cropStartTime = -1;
+        _cropEndTime = -1;
         CurrentSequenceFrom = 0;
         CurrentSequenceTo = 0;
 
@@ -450,7 +464,7 @@ public sealed class EventTimelineControl : Grid
     private void SetPlayButtonIcon(bool isPlaying)
     {
         if (_playButton.Content is FontIcon icon)
-            icon.Glyph = isPlaying ? "\uE769" : "\uE768";  // Stop : Play
+            icon.Glyph = isPlaying ? "\uE769" : "\uE768";
     }
 
     private void OnPlayTimerTick(object? sender, object e)
@@ -461,14 +475,11 @@ public sealed class EventTimelineControl : Grid
             return;
         }
 
-        var ev = _sortedEvents[_playIndex];
-
+        _displayIndex = _playIndex;
         CurrentSequenceFrom = 0;
-        CurrentSequenceTo   = ev.SequenceId;
-        CurrentTimeMs       = ev.TimeMs;
+        CurrentSequenceTo = _sortedEvents[_displayIndex].SequenceId;
 
-        UpdateOverlays();
-
+        _skCanvas.Invalidate();
         SequenceChanged?.Invoke(CurrentSequenceFrom, CurrentSequenceTo);
 
         _playIndex++;
