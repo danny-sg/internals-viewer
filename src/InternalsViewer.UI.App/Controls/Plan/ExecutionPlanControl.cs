@@ -20,7 +20,7 @@ public sealed class ExecutionPlanControl : Canvas
     private const double NodeHeight = 100;
     private const double HorizontalGap = 46;
     private const double VerticalGap = 22;
-    private const double Margin = 24;
+    private const double CanvasMargin = 24;
 
     private const double ColumnPitch = NodeWidth + HorizontalGap;
     private const double RowPitch = NodeHeight + VerticalGap;
@@ -122,8 +122,8 @@ public sealed class ExecutionPlanControl : Canvas
         var maxX = positions.Values.Max(p => p.X);
         var maxY = positions.Values.Max(p => p.Y);
 
-        Width = maxX + NodeWidth + Margin;
-        Height = maxY + NodeHeight + Margin;
+        Width = maxX + NodeWidth + CanvasMargin;
+        Height = maxY + NodeHeight + CanvasMargin;
 
         SelectByNode(ActiveNode);
     }
@@ -133,12 +133,12 @@ public sealed class ExecutionPlanControl : Canvas
                                           Dictionary<PlanNode, Point> positions,
                                           LeafCursor leaf)
     {
-        var x = Margin + depth * ColumnPitch;
+        var x = CanvasMargin + depth * ColumnPitch;
         double y;
 
         if (node.Children.Count == 0)
         {
-            y = Margin + leaf.Next * RowPitch;
+            y = CanvasMargin + leaf.Next * RowPitch;
             leaf.Next++;
         }
         else

@@ -17,6 +17,8 @@ public sealed class PfsRenderer : IDisposable
 
     private SKPaint SpaceFreePaint { get; }
 
+    private SKFont IamFlagFont { get; }
+
     private SKPaint IamFlagPaint { get; }
 
     public PfsRenderer(Size pageSize)
@@ -24,23 +26,23 @@ public sealed class PfsRenderer : IDisposable
         PageSize = pageSize;
         SpaceFreePaint = GetSpaceFreePaint(Color.FromArgb(120, 255, 255, 255));
 
-        IamFlagPaint = new()
-        {
-            Color = SKColors.Gray,
-            IsAntialias = true,
-            TextSize = pageSize.Height,
-            Typeface = SKTypeface.FromFamilyName(
+        IamFlagFont = new SKFont(
+            SKTypeface.FromFamilyName(
                 familyName: "Consolas",
                 weight: SKFontStyleWeight.SemiBold,
                 width: SKFontStyleWidth.Normal,
                 slant: SKFontStyleSlant.Upright),
+            size: pageSize.Height);
+
+        IamFlagPaint = new()
+        {
+            Color = SKColors.Gray,
+            IsAntialias = true,
         };
 
-        SKRect textSize = new();
+        IamFlagFont.MeasureText(IamFlag, out SKRect textBounds);
 
-        IamFlagPaint.MeasureText(IamFlag, ref textSize);
-
-        IamFlagSize = new Size((int)textSize.Width, (int)textSize.Height);
+        IamFlagSize = new Size((int)textBounds.Width, (int)textBounds.Height);
     }
 
     public void DrawPfs(SKCanvas canvas, SKRect position, PfsByte value)
@@ -75,7 +77,7 @@ public sealed class PfsRenderer : IDisposable
             var leftOffset = (position.Width - IamFlagSize.Width) / 2F;
             var bottomOffset = (position.Height + IamFlagSize.Height) / 2F;
 
-            canvas.DrawText("I", position.Left + leftOffset, position.Top + bottomOffset, IamFlagPaint);
+            canvas.DrawText("I", position.Left + leftOffset, position.Top + bottomOffset, SKTextAlign.Left, IamFlagFont, IamFlagPaint);
         }
     }
 
@@ -93,6 +95,7 @@ public sealed class PfsRenderer : IDisposable
     public void Dispose()
     {
         SpaceFreePaint.Dispose();
+        IamFlagFont.Dispose();
         IamFlagPaint.Dispose();
     }
 }

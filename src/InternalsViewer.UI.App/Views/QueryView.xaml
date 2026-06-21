@@ -46,6 +46,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
+        <!--Top Command Bar-->
         <CommandBar IsOpen="False"
                     DefaultLabelPosition="Right"
                     Grid.Row="0"
@@ -70,24 +71,56 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </CommandBar.Content>
-            <AppBarToggleButton Label="Locks"
-                                IsChecked="{x:Bind ViewModel.IncludeLocks, Mode=TwoWay}" />
-            <AppBarToggleButton Label="I/O"
-                                IsChecked="{x:Bind ViewModel.IncludeIo, Mode=TwoWay}" />
+            <AppBarButton Label="Index" Command="{x:Bind ViewModel.OpenIndexViewCommand}">
+                <AppBarButton.Icon>
+                    <BitmapIcon UriSource="ms-appx:///Assets/Index32.png"/>
+                </AppBarButton.Icon>
+            </AppBarButton>
         </CommandBar>
-        <ItemsRepeater
-            x:Name="AllocationItemRepeater"
-            Grid.Row="1" 
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch"
-            ItemsSource="{x:Bind ViewModel.DatabaseFiles}"
-            Layout="{StaticResource VerticalStackLayout}"
-            ItemTemplate="{StaticResource AllocationFileTemplate}" />
 
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ItemsRepeater
+               x:Name="AllocationItemRepeater"
+               Grid.Column="0"
+               HorizontalAlignment="Stretch"
+               VerticalAlignment="Stretch"
+               ItemsSource="{x:Bind ViewModel.DatabaseFiles}"
+               Layout="{StaticResource VerticalStackLayout}"
+               ItemTemplate="{StaticResource AllocationFileTemplate}" />
+
+            <controls:GridSplitter Grid.Column="1"
+                                       Width="2"
+                                       ResizeDirection="Columns"
+                                       Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <controls:GridSplitter.Template>
+                    <ControlTemplate TargetType="controls:GridSplitter">
+                        <Grid Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </controls:GridSplitter.Template>
+                <controls:GridSplitter.RenderTransform>
+                    <TranslateTransform Y="-7" />
+                </controls:GridSplitter.RenderTransform>
+            </controls:GridSplitter>
+
+            <Grid Grid.Column="2">
+                <TextBlock Text="INDEX" Margin="12,12,0,0" Style="{StaticResource BaseTextBlockStyle}"/>
+            </Grid>
+        </Grid>
         <controls:GridSplitter Grid.Row="2"
                               Grid.ColumnSpan="1"
-                              Height="16"
+                              Height="2"
+                              Background="{ThemeResource ControlStrokeColorDefaultBrush}"
                               VerticalAlignment="Top">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
             <controls:GridSplitter.RenderTransform>
                 <TranslateTransform Y="-7" />
             </controls:GridSplitter.RenderTransform>
@@ -147,11 +180,16 @@
                 </Grid>
 
                 <controls:GridSplitter Grid.Column="1"
-                                       Width="16"
-                                       HorizontalAlignment="Center"
-                                       Visibility="{x:Bind ViewModel.HasEvents, Mode=OneWay}">
+                                       Width="2"
+                                       ResizeDirection="Columns"
+                                       Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                    <controls:GridSplitter.Template>
+                        <ControlTemplate TargetType="controls:GridSplitter">
+                            <Grid Background="{TemplateBinding Background}" />
+                        </ControlTemplate>
+                    </controls:GridSplitter.Template>
                     <controls:GridSplitter.RenderTransform>
-                        <TranslateTransform X="-7" />
+                        <TranslateTransform Y="0" />
                     </controls:GridSplitter.RenderTransform>
                 </controls:GridSplitter>
 

@@ -1,28 +1,31 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Replay;
+using InternalsViewer.Replay.Events;
+using InternalsViewer.Replay.Plans;
+using InternalsViewer.UI.App.Controls.Plan;
+using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
-using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Replay;
-using InternalsViewer.Replay.Events;
-using InternalsViewer.Replay.Plans;
-using InternalsViewer.UI.App.Controls.Plan;
-using InternalsViewer.UI.App.Services;
-using Microsoft.UI;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -238,6 +241,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         QueryCaptureExecutor = queryCaptureExecutor;
         SettingsService = settingsService;
         Database = database;
+        Message = string.Empty;
 
         Name = "Query";
 
@@ -245,7 +249,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
             .ToArray();
 
-        ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true);
+        ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, true);
 
         ExtentCount = database.GetFileSize(1) / 8;
 
@@ -257,6 +261,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             .Where(u => u.IsSystem)
             .Select(u => u.ObjectId)
             .ToHashSet();
+    }
+
+    [RelayCommand]
+    private async Task OpenIndexView()
+    {
+        //if (Page is AllocationUnitPage allocationUnitPage)
+        //{
+        //    var rootPage = allocationUnitPage.AllocationUnit.RootPage;
+
+        //    await WeakReferenceMessenger.Default.Send(new OpenIndexMessage(new OpenIndexRequest(Database, rootPage)));
+        //}
     }
 
     [RelayCommand]

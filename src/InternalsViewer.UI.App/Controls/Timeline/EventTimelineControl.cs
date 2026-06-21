@@ -38,12 +38,12 @@ public sealed class EventTimelineControl : Grid
     private readonly SKXamlCanvas _skCanvas;
     private readonly Canvas _overlay;
 
+    private readonly SKFont _labelFont = new(SKTypeface.Default, 10f);
+
     private readonly SKPaint _labelPaint = new()
     {
         Color = SKColors.LightGray,
-        TextSize = 10,
         IsAntialias = true,
-        Typeface = SKTypeface.Default,
     };
 
     private readonly SKPaint _rowBgPaint = new() { Style = SKPaintStyle.Fill };
@@ -249,7 +249,7 @@ public sealed class EventTimelineControl : Grid
                 : new SKColor(20, 20, 20, 220);
             canvas.DrawRect(0, y, w, rowHeight, _rowBgPaint);
 
-            canvas.DrawText(label, 2, y + rowHeight / 2 + _labelPaint.TextSize / 2, _labelPaint);
+            canvas.DrawText(label, 2, y + rowHeight / 2 + _labelFont.Size / 2, SKTextAlign.Left, _labelFont, _labelPaint);
 
             using var sepPaint = new SKPaint { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
             canvas.DrawLine(0, y + rowHeight, w, y + rowHeight, sepPaint);

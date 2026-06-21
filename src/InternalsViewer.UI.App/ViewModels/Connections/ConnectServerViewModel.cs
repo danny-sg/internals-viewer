@@ -75,12 +75,14 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         base.OnPropertyChanged(e);
     }
 
+    #pragma warning disable CS0618
     public List<AuthenticationTypeOption> AuthenticationTypes => new()
     {
         new ((int)SqlAuthenticationMethod.ActiveDirectoryIntegrated, "Active Directory Integrated"),
         new ((int)SqlAuthenticationMethod.SqlPassword, "SQL Password"),
         new ((int)SqlAuthenticationMethod.ActiveDirectoryPassword, "Active Directory Password")
     };
+#pragma warning restore CS0618
 
     partial void OnAuthenticationTypeChanged(int value)
     {
@@ -90,7 +92,9 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         {
             case { Authentication: SqlAuthenticationMethod.SqlPassword }:
             case { Authentication: SqlAuthenticationMethod.ActiveDirectoryServicePrincipal }:
+#pragma warning disable CS0618
             case { Authentication: SqlAuthenticationMethod.ActiveDirectoryPassword }:
+#pragma warning restore CS0618
                 IsUserIdEnabled = true;
                 IsPasswordEnabled = true;
                 break;

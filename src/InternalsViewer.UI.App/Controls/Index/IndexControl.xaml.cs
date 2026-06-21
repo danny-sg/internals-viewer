@@ -116,6 +116,27 @@ public sealed partial class IndexControl : IDisposable
 
     private readonly List<IndexTreeNode> nodePositions = [];
 
+    // Caches rebuilt only when the tree changes (Nodes/Zoom), so the per-frame paint avoids
+    // repeated O(N) LINQ scans and O(N) parent lookups.
+    private readonly Dictionary<int, List<IndexTreeNode>> nodesByLevel = [];
+    private readonly Dictionary<int, float> levelMaxX = [];
+    private readonly Dictionary<PageAddress, int> ordinalByAddress = [];
+    private float globalMaxX;
+    private int levelCount;
+
+    // Reused across line draws to avoid allocating an SKPath per parent on every frame.
+    private readonly SKPath linePath = new();
+
+    private const float MinZoom = 0.2f;
+    private const float MaxZoom = 3.0f;
+    private const double DragThreshold = 4;
+
+    private bool isPointerDown;
+    private bool isDragging;
+    private Windows.Foundation.Point dragStart;
+    private double dragStartHorizontal;
+    private double dragStartVertical;
+
     public IndexControl()
     {
         InitializeComponent();
@@ -124,6 +145,9 @@ public sealed partial class IndexControl : IDisposable
         IndexCanvas.PointerMoved += IndexCanvas_PointerMoved;
         IndexCanvas.PointerExited += IndexCanvas_OnPointerExited;
         IndexCanvas.PointerPressed += IndexCanvas_PointerPressed;
+        IndexCanvas.PointerReleased += IndexCanvas_PointerReleased;
+        IndexCanvas.PointerCaptureLost += IndexCanvas_PointerReleased;
+        IndexCanvas.PointerWheelChanged += IndexCanvas_PointerWheelChanged;
 
         shadowPaint = new SKPaint
         {
@@ -160,9 +184,17 @@ public sealed partial class IndexControl : IDisposable
     {
         var control = (IndexControl)d;
 
+        // The hover node only drives the XAML tooltip - repainting the Skia surface for every
+        // pointer move was the main cause of lag on large trees.
+        if (e.Property == HoverNodeProperty)
+        {
+            return;
+        }
+
         if (e.Property == ZoomProperty || e.Property == NodesProperty)
         {
             control.BuildIndexTree();
+            control.UpdateScrollbars();
         }
 
         control.IndexCanvas.Invalidate();
@@ -170,14 +202,12 @@ public sealed partial class IndexControl : IDisposable
 
     private void IndexCanvas_PaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
-        if (!nodePositions.Any())
+        if (nodePositions.Count == 0)
         {
             return;
         }
 
         e.Surface.Canvas.Clear(SKColors.Transparent);
-
-        var levelCount = Nodes.Max(n => n.Level);
 
         //// Draw levels from the bottom up
         for (var i = levelCount; i >= 0; i--)
@@ -196,17 +226,52 @@ public sealed partial class IndexControl : IDisposable
     private void BuildIndexTree()
     {
         nodePositions.Clear();
+        nodesByLevel.Clear();
+        levelMaxX.Clear();
+        ordinalByAddress.Clear();
+        globalMaxX = 0;
+        levelCount = 0;
 
-        if (!Nodes.Any())
+        if (Nodes.Count == 0)
         {
             return;
         }
 
-        var levelCount = Nodes.Max(n => n.Level);
+        levelCount = Nodes.Max(n => n.Level);
+
+        // Address -> ordinal lookup so DrawLines can resolve parents in O(1) rather than scanning.
+        foreach (var node in Nodes)
+        {
+            ordinalByAddress[node.PageAddress] = node.Ordinal;
+        }
 
         for (var i = levelCount; i >= 0; i--)
         {
             BuildIndexTreeLevel(i, Nodes);
+        }
+
+        // Group positions by level and record per-level / global extents once for the paint loop.
+        foreach (var treeNode in nodePositions)
+        {
+            var level = treeNode.Node.Level;
+
+            if (!nodesByLevel.TryGetValue(level, out var list))
+            {
+                list = [];
+                nodesByLevel[level] = list;
+            }
+
+            list.Add(treeNode);
+
+            if (!levelMaxX.TryGetValue(level, out var max) || treeNode.X > max)
+            {
+                levelMaxX[level] = treeNode.X;
+            }
+
+            if (treeNode.X > globalMaxX)
+            {
+                globalMaxX = treeNode.X;
+            }
         }
     }
 
@@ -282,8 +347,8 @@ public sealed partial class IndexControl : IDisposable
 
         var canvasWidth = IndexCanvas.ActualSize.X;
 
-        var maxWidth = nodePositions.Max(n => n.X) + PageWidth + HorizontalMargin;
-        var levelWidth = nodePositions.Where(n => n.Node.Level == level).Max(n => n.X) + HorizontalMargin;
+        var maxWidth = globalMaxX + PageWidth + HorizontalMargin;
+        var levelWidth = (levelMaxX.TryGetValue(level, out var max) ? max : 0) + HorizontalMargin;
 
         if (maxWidth < canvasWidth)
         {
@@ -298,11 +363,13 @@ public sealed partial class IndexControl : IDisposable
         var xScrollOffset = (float)HorizontalScrollBar.Value;
         var yScrollOffset = (float)VerticalScrollBar.Value;
 
+        if (!nodesByLevel.TryGetValue(level, out var levelNodes))
+        {
+            return;
+        }
+
         var startX = GetLevelStartX(level);
         var nextLevelStartX = GetLevelStartX(level - 1);
-
-        // Nodes for this level
-        var levelNodes = nodePositions.Where(n => n.Node.Level == level).ToList();
 
         // X position of the next level used to draw lines from the page to the parent
         var renderNextLevelStartX = (nextLevelStartX - xScrollOffset);
@@ -374,7 +441,10 @@ public sealed partial class IndexControl : IDisposable
 
         foreach (var parent in node.Parents)
         {
-            var parentOrdinal = Nodes.First(n => n.PageAddress == parent).Ordinal;
+            if (!ordinalByAddress.TryGetValue(parent, out var parentOrdinal))
+            {
+                continue;
+            }
 
             var parentX = nextLevelStartX + GetNodeX(parentOrdinal);
 
@@ -388,15 +458,15 @@ public sealed partial class IndexControl : IDisposable
 
             var y2Line4 = (float)Math.Floor(GetNodeY(node.Level - 1, 0) + PageHeight - yScrollOffset);
 
-            var path = new SKPath();
+            linePath.Reset();
 
-            path.MoveTo(x, y1Line1);
-            path.LineTo(x2Line1, y1Line1);
-            path.LineTo(x2Line1, y2Line2);
-            path.LineTo(x2Line3, y2Line2);
-            path.LineTo(x2Line3, y2Line4);
+            linePath.MoveTo(x, y1Line1);
+            linePath.LineTo(x2Line1, y1Line1);
+            linePath.LineTo(x2Line1, y2Line2);
+            linePath.LineTo(x2Line3, y2Line2);
+            linePath.LineTo(x2Line3, y2Line4);
 
-            canvas.DrawPath(path, linePaint);
+            canvas.DrawPath(linePath, linePaint);
         }
     }
 
@@ -493,11 +563,26 @@ public sealed partial class IndexControl : IDisposable
         }
     }
 
-    private void SetScrollbars(float maxWidth)
+    private void UpdateScrollbars()
     {
-        if (maxWidth < IndexCanvas.ActualSize.X)
+        if (nodePositions.Count == 0)
         {
             HorizontalScrollBar.Visibility = Visibility.Collapsed;
+            HorizontalScrollBar.Maximum = 0;
+            HorizontalScrollBar.Value = 0;
+            VerticalScrollBar.Visibility = Visibility.Collapsed;
+            VerticalScrollBar.Maximum = 0;
+            VerticalScrollBar.Value = 0;
+            return;
+        }
+
+        var maxWidth = globalMaxX + PageWidth + (HorizontalMargin * 2);
+        var maxHeight = nodePositions.Max(n => n.Y) + PageHeight + VerticalMargin;
+
+        if (maxWidth < IndexCanvas.ActualWidth)
+        {
+            HorizontalScrollBar.Visibility = Visibility.Collapsed;
+            HorizontalScrollBar.Maximum = 0;
             HorizontalScrollBar.Value = 0;
         }
         else
@@ -511,6 +596,23 @@ public sealed partial class IndexControl : IDisposable
             {
                 HorizontalScrollBar.Value = HorizontalScrollBar.Maximum / 2;
             }
+            else
+            {
+                HorizontalScrollBar.Value = Math.Min(HorizontalScrollBar.Value, HorizontalScrollBar.Maximum);
+            }
+        }
+
+        if (maxHeight < IndexCanvas.ActualHeight)
+        {
+            VerticalScrollBar.Visibility = Visibility.Collapsed;
+            VerticalScrollBar.Maximum = 0;
+            VerticalScrollBar.Value = 0;
+        }
+        else
+        {
+            VerticalScrollBar.Visibility = Visibility.Visible;
+            VerticalScrollBar.Maximum = maxHeight - IndexCanvas.ActualHeight;
+            VerticalScrollBar.Value = Math.Min(VerticalScrollBar.Value, VerticalScrollBar.Maximum);
         }
     }
 
@@ -521,10 +623,7 @@ public sealed partial class IndexControl : IDisposable
 
     private void UserControl_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (nodePositions.Any())
-        {
-            SetScrollbars(nodePositions.Max(n => n.X) + PageWidth + (HorizontalMargin * 2));
-        }
+        UpdateScrollbars();
     }
 
     private void IndexCanvas_OnPointerExited(object sender, PointerRoutedEventArgs e)
@@ -536,6 +635,36 @@ public sealed partial class IndexControl : IDisposable
     {
         var position = e.GetCurrentPoint(this).Position;
 
+        isPointerDown = true;
+        isDragging = false;
+        dragStart = position;
+        dragStartHorizontal = HorizontalScrollBar.Value;
+        dragStartVertical = VerticalScrollBar.Value;
+
+        IndexCanvas.CapturePointer(e.Pointer);
+    }
+
+    private void IndexCanvas_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (isPointerDown && !isDragging)
+        {
+            // A press with no drag is a click - select the node under the pointer.
+            HandleClick(e.GetCurrentPoint(this).Position);
+        }
+
+        if (isDragging)
+        {
+            ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+        }
+
+        isPointerDown = false;
+        isDragging = false;
+
+        IndexCanvas.ReleasePointerCapture(e.Pointer);
+    }
+
+    private void HandleClick(Windows.Foundation.Point position)
+    {
         var node = GetIndexNodeAtPosition(position.X, position.Y);
 
         SelectedPageAddress = node?.PageAddress;
@@ -557,11 +686,33 @@ public sealed partial class IndexControl : IDisposable
     }
 
     /// <summary>
-    /// Check if the pointer is over a node and display the tooltip
+    /// Pans the view while dragging, otherwise tracks the hovered node to drive the tooltip.
     /// </summary>
     private void IndexCanvas_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
         var position = e.GetCurrentPoint(this).Position;
+
+        if (isPointerDown)
+        {
+            var deltaX = position.X - dragStart.X;
+            var deltaY = position.Y - dragStart.Y;
+
+            if (!isDragging && (Math.Abs(deltaX) > DragThreshold || Math.Abs(deltaY) > DragThreshold))
+            {
+                isDragging = true;
+                TooltipPopup.IsOpen = false;
+                HoverNode = null;
+                ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeAll);
+            }
+
+            if (isDragging)
+            {
+                Pan(dragStartHorizontal - deltaX, dragStartVertical - deltaY);
+            }
+
+            return;
+        }
+
         var node = GetIndexNodeAtPosition(position.X, position.Y);
 
         if (node is not null)
@@ -579,26 +730,78 @@ public sealed partial class IndexControl : IDisposable
         }
     }
 
+    private void Pan(double horizontal, double vertical)
+    {
+        if (HorizontalScrollBar.Maximum > 0)
+        {
+            HorizontalScrollBar.Value = Math.Clamp(horizontal, 0, HorizontalScrollBar.Maximum);
+        }
+
+        if (VerticalScrollBar.Maximum > 0)
+        {
+            VerticalScrollBar.Value = Math.Clamp(vertical, 0, VerticalScrollBar.Maximum);
+        }
+
+        IndexCanvas.Invalidate();
+    }
+
+    private void IndexCanvas_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        var delta = e.GetCurrentPoint(IndexCanvas).Properties.MouseWheelDelta;
+
+        if (delta == 0)
+        {
+            return;
+        }
+
+        var oldZoom = Zoom;
+        var factor = delta > 0 ? 1.1f : 1f / 1.1f;
+        var newZoom = Math.Clamp(oldZoom * factor, MinZoom, MaxZoom);
+
+        e.Handled = true;
+
+        if (Math.Abs(newZoom - oldZoom) < 0.0001f)
+        {
+            return;
+        }
+
+        // Preserve the scroll ratio so the viewport's centre stays roughly stable across the zoom.
+        var horizontalRatio = HorizontalScrollBar.Maximum > 0
+            ? HorizontalScrollBar.Value / HorizontalScrollBar.Maximum
+            : 0;
+        var verticalRatio = VerticalScrollBar.Maximum > 0
+            ? VerticalScrollBar.Value / VerticalScrollBar.Maximum
+            : 0;
+
+        // Setting Zoom rebuilds the tree and refreshes the scrollbar extents.
+        Zoom = newZoom;
+
+        HorizontalScrollBar.Value = HorizontalScrollBar.Maximum * horizontalRatio;
+        VerticalScrollBar.Value = VerticalScrollBar.Maximum * verticalRatio;
+
+        IndexCanvas.Invalidate();
+    }
+
     private IndexNode? GetIndexNodeAtPosition(double x, double y)
     {
-        // Find the level first as the level offsets are used to center the tree
-        var level = nodePositions.FirstOrDefault(n => y >= n.Y && y <= n.Y + PageHeight)?.Node.Level;
+        var xScrollOffset = (float)HorizontalScrollBar.Value;
+        var yScrollOffset = (float)VerticalScrollBar.Value;
+
+        // Find the level first as the level offsets are used to center the tree.
+        var level = nodePositions.FirstOrDefault(n => y >= n.Y - yScrollOffset
+                                                      && y <= n.Y - yScrollOffset + PageHeight)?.Node.Level;
 
         if (level is null)
         {
             return null;
         }
 
-        var xScrollOffset = (float)HorizontalScrollBar.Value;
-        var yScrollOffset = (float)VerticalScrollBar.Value;
-
         var xOffset = GetLevelStartX(level.Value) - xScrollOffset;
-        var yOffset = yScrollOffset;
 
         var node = nodePositions.FirstOrDefault(n => x >= xOffset + n.X
                                                      && x <= xOffset + n.X + PageWidth
-                                                     && y >= yOffset + n.Y
-                                                     && y <= yOffset + n.Y + PageHeight);
+                                                     && y >= n.Y - yScrollOffset
+                                                     && y <= n.Y - yScrollOffset + PageHeight);
 
         return node?.Node;
     }
@@ -608,11 +811,15 @@ public sealed partial class IndexControl : IDisposable
         indexPagePaint.Dispose();
         linePaint.Dispose();
         shadowPaint.Dispose();
+        linePath.Dispose();
 
         IndexCanvas.PaintSurface -= IndexCanvas_PaintSurface;
         IndexCanvas.PointerMoved -= IndexCanvas_PointerMoved;
         IndexCanvas.PointerExited -= IndexCanvas_OnPointerExited;
         IndexCanvas.PointerPressed -= IndexCanvas_PointerPressed;
+        IndexCanvas.PointerReleased -= IndexCanvas_PointerReleased;
+        IndexCanvas.PointerCaptureLost -= IndexCanvas_PointerReleased;
+        IndexCanvas.PointerWheelChanged -= IndexCanvas_PointerWheelChanged;
     }
 }
 

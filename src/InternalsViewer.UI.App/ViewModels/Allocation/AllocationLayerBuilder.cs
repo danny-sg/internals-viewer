@@ -18,7 +18,7 @@ internal static class AllocationLayerBuilder
     private const int UserSaturation = 150;
     private const int UserValue = 220;
 
-    public static List<AllocationLayer> GenerateLayers(DatabaseSource database, bool separateIndexes)
+    public static List<AllocationLayer> GenerateLayers(DatabaseSource database, bool separateIndexes, bool isGreyScale = false)
     {
         var layers = new List<AllocationLayer>();
 
@@ -34,7 +34,11 @@ internal static class AllocationLayerBuilder
 
             if (layers.LastOrDefault()?.Name != currentObjectName)
             {
-                var layer = CreateNewLayer(allocationUnit, currentObjectName, userObjectCount, ref colourIndex);
+                var layer = CreateNewLayer(allocationUnit, 
+                                           currentObjectName, 
+                                           userObjectCount, 
+                                           isGreyScale,
+                                           ref colourIndex);
 
                 layers.Add(layer);
             }
@@ -122,6 +126,7 @@ internal static class AllocationLayerBuilder
     private static AllocationLayer CreateNewLayer(AllocationUnit allocationUnit,
                                                   string currentObjectName,
                                                   int userObjectCount,
+                                                  bool isGreyScale,
                                                   ref int colourIndex)
     {
         var layer = new AllocationLayer
@@ -136,14 +141,17 @@ internal static class AllocationLayerBuilder
             TotalPages = allocationUnit.TotalPages,
             IndexType = allocationUnit.IndexType,
             IsSystemObject = allocationUnit.IsSystem,
-            Colour = GetLayerColour(allocationUnit, userObjectCount, ref colourIndex),
+            Colour = GetLayerColour(allocationUnit, userObjectCount, isGreyScale, ref colourIndex),
             IsVisible = true
         };
 
         return layer;
     }
 
-    private static Color GetLayerColour(AllocationUnit allocationUnit, int userObjectCount, ref int colourIndex)
+    private static Color GetLayerColour(AllocationUnit allocationUnit, 
+                                        int userObjectCount, 
+                                        bool isGreyScale, 
+                                        ref int colourIndex)
     {
         if (allocationUnit.IsSystem)
         {
@@ -152,6 +160,18 @@ internal static class AllocationLayerBuilder
 
         colourIndex += userObjectCount > ColourCount ? 1 : (int)Math.Floor(ColourCount / (double)userObjectCount);
 
-        return ColourHelpers.HsvToColor(colourIndex, UserSaturation, UserValue);
+        return isGreyScale
+            ? GetGreyscaleColour(colourIndex)
+            : ColourHelpers.HsvToColor(colourIndex, UserSaturation, UserValue);
+    }
+
+    private static Color GetGreyscaleColour(int colourIndex)
+    {
+        const int minBrightness = 60;
+        const int maxBrightness = 140;
+
+        var grey = minBrightness + (int)((double)colourIndex / ColourCount * (maxBrightness - minBrightness));
+
+        return Color.FromArgb(255, Math.Clamp(grey, 0, 255), Math.Clamp(grey, 0, 255), Math.Clamp(grey, 0, 255));
     }
 }

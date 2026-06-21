@@ -14,6 +14,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
+        <!--Top command bar-->
         <CommandBar IsOpen="False" 
                     DefaultLabelPosition="Right"
                     Grid.Row="0"
