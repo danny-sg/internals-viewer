@@ -18,17 +18,13 @@ public sealed class PlanNode
 
     public double? EstimatedCost { get; set; }
 
-    /// <summary>
-    /// True for the synthetic statement node (the SSMS SELECT/INSERT/... root) that sits to the
-    /// left of the top relational operator. Its <see cref="PhysicalOperator"/> holds the statement
-    /// type and its <see cref="Children"/> are the query plan's root relational operators.
-    /// </summary>
+    public long EstimatedRows { get; set; }
+
     public bool IsStatement { get; set; }
-}
 
-public record PlanNodeIdentifier
-{
-    public string PlanHandle { get; set; }
+    public int NodeLevel { get; set; }
 
-    public int NodeId { get; set; }
+    public HashInfo? HashInfo { get; set; }
+
+    public HashSet<string> Outputs { get; set; } = [];
 }

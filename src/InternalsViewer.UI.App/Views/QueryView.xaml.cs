@@ -16,6 +16,7 @@ using Windows.Foundation.Collections;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Replay.Plans;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Messages;
@@ -38,6 +39,8 @@ public sealed partial class QueryReplayView : Page
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
 
         EventTimeline.SequenceChanged += OnSequenceChanged;
+        EventTimeline.PlayheadChanged += OnPlayheadChanged;
+        EventTimeline.PlanNodeSelected += OnTimelinePlanNodeSelected;
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
         PlanRepeater.ElementPrepared += OnPlanElementPrepared;
@@ -124,5 +127,18 @@ public sealed partial class QueryReplayView : Page
     {
         ViewModel.SequenceFrom = sequenceFrom;
         ViewModel.SequenceTo = sequenceTo;
+    }
+
+    private void OnPlayheadChanged(long playheadSequence)
+    {
+        ViewModel.PlayheadSequence = playheadSequence;
+    }
+
+    private void OnTimelinePlanNodeSelected(PlanNodeIdentifier identifier)
+    {
+        ViewModel.SelectPlanNode(identifier);
+
+        // Bring the plan into view so the selected operator is visible.
+        ResultsTabView.SelectedItem = ExecutionPlanTab;
     }
 }

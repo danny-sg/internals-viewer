@@ -1,4 +1,4 @@
-using InternalsViewer.Replay.Events;
+using InternalsViewer.Replay.Events.EventTypes;
 
 namespace InternalsViewer.Replay.Plans;
 

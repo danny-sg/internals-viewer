@@ -89,7 +89,7 @@ public sealed class ExecutionPlanControl : Canvas
         _selectedControl = null;
         SelectedNode = null;
 
-        if (Plan is null || Plan.Roots.Count == 0)
+        if (Plan is null || Plan.Root.Count == 0)
         {
             Width = 0;
             Height = 0;
@@ -99,12 +99,12 @@ public sealed class ExecutionPlanControl : Canvas
         var positions = new Dictionary<PlanNode, Point>();
         var leaf = new LeafCursor();
 
-        foreach (var root in Plan.Roots)
+        foreach (var root in Plan.Root)
         {
             AssignPositions(root, depth: 0, positions, leaf);
         }
 
-        var totalCost = Plan.Roots.Sum(r => r.EstimatedCost ?? 0);
+        var totalCost = Plan.Root.Sum(r => r.EstimatedCost ?? 0);
 
         foreach (var (node, point) in positions)
         {

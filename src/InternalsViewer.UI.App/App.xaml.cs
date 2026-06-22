@@ -60,7 +60,7 @@ public partial class App
             services.AddTransient<PageTabViewModelFactory>();
             services.AddTransient<IndexTabViewModelFactory>();
             services.AddTransient<QueryViewModelFactory>();
-            services.AddTransient<QueryCaptureExecutor>();
+            services.AddTransient<QueryCapture>();
 
             services.AddTransient<MainViewModel>();
 

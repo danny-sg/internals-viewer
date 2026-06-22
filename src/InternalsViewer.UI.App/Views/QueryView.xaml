@@ -111,6 +111,7 @@
                 <TextBlock Text="INDEX" Margin="12,12,0,0" Style="{StaticResource BaseTextBlockStyle}"/>
             </Grid>
         </Grid>
+
         <controls:GridSplitter Grid.Row="2"
                               Grid.ColumnSpan="1"
                               Height="2"
@@ -129,7 +130,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition MinHeight="160"/>
             </Grid.RowDefinitions>
 
 
@@ -171,6 +172,8 @@
                         </AppBarElementContainer>
                         <AppBarToggleButton Label="Clear Buffer Pool"
                                             IsChecked="{x:Bind ViewModel.IsClearBufferPool, Mode=TwoWay}" />
+                        <AppBarToggleButton Label="Disable Read-Ahead"
+                                            IsChecked="{x:Bind ViewModel.IsDisableReadAhead, Mode=TwoWay}" />
                     </CommandBar>
                     <sqlEditor:SqlEditorControl Grid.Row="1"
                                             x:Name="SqlEditor"
@@ -195,6 +198,7 @@
 
                 <!-- Right panel: Events grid + filter tree in tabs -->
                 <TabView Grid.Column="2"
+                         x:Name="ResultsTabView"
                          IsAddTabButtonVisible="False"
                          VerticalAlignment="Stretch"
                          TabWidthMode="SizeToContent">
@@ -222,7 +226,7 @@
                                                         IncludeSystemObjects="{x:Bind ViewModel.IncludeSystemObjects, Mode=TwoWay}"/>
                     </TabViewItem>
 
-                    <TabViewItem Header="Execution Plan" IsClosable="False">
+                    <TabViewItem Header="Execution Plan" IsClosable="False" x:Name="ExecutionPlanTab">
                         <ScrollViewer HorizontalScrollBarVisibility="Auto"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollMode="Enabled"
@@ -243,10 +247,27 @@
 
             </Grid>
 
+            <controls:GridSplitter Grid.Row="2"
+                                   Grid.ColumnSpan="1"
+                                   Height="2"
+                                   Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                   ResizeDirection="Columns"
+                                   ResizeBehavior="BasedOnAlignment"
+                                   VerticalAlignment="Top">
+                <controls:GridSplitter.Template>
+                    <ControlTemplate TargetType="controls:GridSplitter">
+                        <Grid Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </controls:GridSplitter.Template>
+                <!--<controls:GridSplitter.RenderTransform>
+                    <TranslateTransform Y="7" />
+                </controls:GridSplitter.RenderTransform>-->
+            </controls:GridSplitter>
+
             <timeline:EventTimelineControl Grid.Row="2"
                                            x:Name="EventTimeline"
                                            Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
-                                           Height="50"/>
+                                           />
         </Grid>
     </Grid>
 </Page>

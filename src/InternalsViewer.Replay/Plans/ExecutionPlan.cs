@@ -4,7 +4,7 @@ public sealed class ExecutionPlan(string planHandle)
 {
     public string PlanHandle { get; init; } = planHandle;
 
-    public List<PlanNode> Roots { get; set; } = new();
+    public List<PlanNode> Root { get; set; } = [];
 
     public Dictionary<int, PlanNode> NodesById { get; set; } = new();
 }

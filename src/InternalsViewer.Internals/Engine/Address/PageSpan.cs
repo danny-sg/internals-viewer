@@ -1,4 +1,6 @@
-﻿namespace InternalsViewer.Internals.Engine.Address;
+﻿using System.Drawing;
+
+namespace InternalsViewer.Internals.Engine.Address;
 
 public sealed record PageSpan
 {
@@ -18,6 +20,8 @@ public sealed record PageSpan
     {
 
     }
+
+    public Color? DisplayColour { get; set; }
 
     public PageAddress Address { get; set; } = new PageAddress();
 

@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Replay.Events;
 
-public record EventResult
+public sealed record EventResult
 {
     public int SequenceId { get; set; }
 

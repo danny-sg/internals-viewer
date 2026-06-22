@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Replay.Events;
+using InternalsViewer.Replay.Events.EventTypes;
 using InternalsViewer.Replay.Plans;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -7,9 +8,9 @@ using System.Text;
 
 namespace InternalsViewer.Replay;
 
-public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
+public sealed class QueryCapture(ILogger<QueryCapture> logger)
 {
-    public ILogger<QueryCaptureExecutor> Logger { get; } = logger;
+    public ILogger<QueryCapture> Logger { get; } = logger;
 
     private readonly string[] _events =
     [
@@ -27,7 +28,8 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
         "sqlserver.query_thread_profile",
         "sqlserver.physical_page_read",
         "sqlserver.physical_page_write",
-        "sqlserver.query_post_execution_showplan"
+        "sqlserver.query_post_execution_showplan",
+        "sqlserver.query_memory_grant_usage"
     ];
 
     private readonly string[] _actions =
@@ -41,7 +43,8 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
     public async Task<QueryResult> TraceQuery(string sqlText,
                                               string connectionString,
-                                              bool clearBufferPool)
+                                              bool clearBufferPool,
+                                              bool disableReadAhead)
     {
         long rowCount = 0;
         var sessionId = $"QueryReplay_{Guid.NewGuid():N}";
@@ -51,10 +54,13 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
         try
         {
-            (var filePath, rowCount) =
-                await RunQueryWithEventSession(sessionId, sqlText, connectionString, clearBufferPool);
+            (var filePath, rowCount) = await RunQueryWithEventSession(sessionId, 
+                                                                      sqlText, 
+                                                                      connectionString, 
+                                                                      clearBufferPool, 
+                                                                      disableReadAhead);
 
-            (events, executionPlans) = await ParseResults(filePath, connectionString);
+            (events, executionPlans) = await ParseResults(filePath, connectionString, null);
         }
         catch (SqlException ex)
         {
@@ -94,7 +100,8 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
     public async Task<QueryResult> TraceQuery(string sqlText,
                                               DatabaseSource database,
-                                              bool clearBufferPool)
+                                              bool clearBufferPool,
+                                              bool disableReadAhead)
     {
         var connectionString = database.Connection.GetConnectionString();
 
@@ -106,12 +113,13 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
         try
         {
-            (var filePath, rowCount) = await RunQueryWithEventSession(sessionId, 
-                                                                      sqlText, 
-                                                                      connectionString, 
-                                                                      clearBufferPool);
+            (var filePath, rowCount) = await RunQueryWithEventSession(sessionId,
+                                                                      sqlText,
+                                                                      connectionString,
+                                                                      clearBufferPool,
+                                                                      disableReadAhead);
 
-            (events, executionPlans) = await ParseResults(filePath, database);
+            (events, executionPlans) = await ParseResults(filePath, connectionString, database);
 
             await GetEventKeyAddresses(events, database.AllocationUnits, connectionString);
         }
@@ -180,8 +188,8 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
             foreach (var lockEvent in grouping)
             {
-                if (lockEvent.KeyHash is not null 
-                    && keyHashRowIdentifiers.TryGetValue(lockEvent.KeyHash, 
+                if (lockEvent.KeyHash is not null
+                    && keyHashRowIdentifiers.TryGetValue(lockEvent.KeyHash,
                                                          out var rowIdentifier))
                 {
                     lockEvent.RowIdentifier = rowIdentifier;
@@ -190,62 +198,10 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
         }
     }
 
-    private async Task<(List<EngineEvent>, List<ExecutionPlan>)> ParseResults(string filePath, string connectionString)
+    private async Task<(List<EngineEvent>, List<ExecutionPlan>)> ParseResults(string filePath, 
+                                                                              string connectionString,
+                                                                              DatabaseSource? database)
     {
-        await using var connection = new SqlConnection(connectionString);
-
-        var events = new List<EngineEvent>();
-        var executionPlans = new List<ExecutionPlan>();
-
-        var resultsSql = GetResultsSql(filePath);
-
-        await connection.OpenAsync();
-
-        var sequenceId = 0;
-
-        await using (var reader = await new SqlCommand(resultsSql, connection).ExecuteReaderAsync())
-        {
-            Logger.LogDebug("SQL: {Sql}", resultsSql);
-
-            while (await reader.ReadAsync())
-            {
-                var eventName = reader.GetString(0);
-                var xml = reader.GetString(1);
-
-                if (eventName == "query_post_execution_showplan")
-                {
-                    var plan = ExecutionPlanParser.Parse(xml);
-
-                    executionPlans.Add(plan);
-                }
-                else
-                {
-                    var engineEvent = EventParser.ParseEvent(xml);
-
-                    if (engineEvent is not null)
-                    {
-                        engineEvent.SequenceId = sequenceId++;
-                        events.Add(engineEvent);
-                    }
-                }
-            }
-        }
-
-        connection.Close();
-
-        EventParser.SetRelativeTimestamps(events);
-
-        var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
-
-        PlanNodeMatcher.Match(orderedEvents, executionPlans);
-
-        return (orderedEvents, executionPlans);
-    }
-
-    private async Task<(List<EngineEvent>, List<ExecutionPlan>)> ParseResults(string filePath, DatabaseSource database)
-    {
-        var connectionString = database.Connection.GetConnectionString();
-
         await using var connection = new SqlConnection(connectionString);
 
         var events = new List<EngineEvent>();
@@ -255,6 +211,8 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
         var resultsSql = GetResultsSql(filePath);
 
         await connection.OpenAsync();
+
+        DateTime? startTimeStamp = null;
 
         await using (var reader = await new SqlCommand(resultsSql, connection).ExecuteReaderAsync())
         {
@@ -279,7 +237,13 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
                     if (engineEvent is not null)
                     {
+                        if (startTimeStamp is null)
+                        {
+                            startTimeStamp = engineEvent.Timestamp;
+                        }
+
                         engineEvent.SequenceId = sequenceId++;
+                        engineEvent.TimeMs = (long)(engineEvent.Timestamp - startTimeStamp.Value).TotalMilliseconds;
 
                         events.Add(engineEvent);
                     }
@@ -289,11 +253,11 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
 
         connection.Close();
 
-        EventParser.SetRelativeTimestamps(events);
-
         var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
 
         PlanNodeMatcher.Match(orderedEvents, executionPlans);
+
+        ExecutionPlanParser.MergePlanEvents(orderedEvents, executionPlans);
 
         return (orderedEvents, executionPlans);
     }
@@ -301,7 +265,8 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
     private async Task<(string, long)> RunQueryWithEventSession(string sessionName,
                                                         string sqlText,
                                                         string connectionString,
-                                                        bool clearBufferPool)
+                                                        bool clearBufferPool,
+                                                        bool disableReadAhead)
     {
         long rowCount = 0;
 
@@ -325,6 +290,11 @@ public sealed class QueryCaptureExecutor(ILogger<QueryCaptureExecutor> logger)
         {
             await ExecuteSql("CHECKPOINT", connection);
             await ExecuteSql("DBCC DROPCLEANBUFFERS", connection);
+        }
+
+        if (disableReadAhead)
+        {
+            await ExecuteSql("DBCC TRACEON(652)", connection);
         }
 
         try

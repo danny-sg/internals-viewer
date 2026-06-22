@@ -14,5 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
   </ItemGroup>
-
+    <ItemGroup>
+        <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+    </ItemGroup>
 </Project>

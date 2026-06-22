@@ -14,7 +14,7 @@ using System.ComponentModel;
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 
-public class ConnectServerViewModelFactory(SettingsService settingsService)
+public sealed class ConnectServerViewModelFactory(SettingsService settingsService)
 {
     private SettingsService SettingsService { get; } = settingsService;
 
@@ -323,7 +323,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     }
 }
 
-public class AuthenticationTypeOption(int id, string name)
+public sealed class AuthenticationTypeOption(int id, string name)
 {
     public int Id { get; set; } = id;
 

@@ -6,7 +6,7 @@ using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Replay;
-using InternalsViewer.Replay.Events;
+using InternalsViewer.Replay.Events.EventTypes;
 using InternalsViewer.Replay.Plans;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Messages;
@@ -31,11 +31,11 @@ using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
 public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
-                                          QueryCaptureExecutor queryCaptureExecutor,
+                                          QueryCapture queryCapture,
                                           SettingsService settingsService)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
-                                                                 queryCaptureExecutor,
+                                                                 queryCapture,
                                                                  settingsService,
                                                                  database);
 }
@@ -58,7 +58,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public ILogger<QueryViewModel> Logger { get; }
 
-    public QueryCaptureExecutor QueryCaptureExecutor { get; }
+    public QueryCapture QueryCapture { get; }
 
     public DatabaseSource Database { get; }
 
@@ -111,6 +111,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool isClearBufferPool = false;
 
     [ObservableProperty]
+    private bool isDisableReadAhead = true;
+
+    [ObservableProperty]
     private int extentCount;
 
     [ObservableProperty]
@@ -143,6 +146,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private long sequenceTo;
 
+    /// <summary>Sequence id under the timeline playhead; drives the active operator.</summary>
+    [ObservableProperty]
+    private long playheadSequence;
+
     [ObservableProperty]
     private ObservableCollection<EventFilterNode> filterNodes = [];
 
@@ -156,7 +163,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
     private PlanNode? activePlanNode;
 
-    partial void OnSequenceToChanged(long value) => UpdateActiveOperator(value);
+    partial void OnPlayheadSequenceChanged(long value) => UpdateActiveOperator(value);
 
     public string ActiveOperatorName => ActivePlanNode?.PhysicalOperator ?? string.Empty;
 
@@ -215,6 +222,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return plan is not null && plan.NodesById.TryGetValue(identifier.NodeId, out var node) ? node : null;
     }
 
+    /// <summary>Selects the plan node for the given identifier (e.g. clicked in the timeline).</summary>
+    public void SelectPlanNode(PlanNodeIdentifier identifier)
+    {
+        ActivePlanNode = ResolvePlanNode(identifier);
+    }
+
     [ObservableProperty]
     private bool includeSystemObjects;
 
@@ -233,12 +246,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<AllocationLayer> ObjectLayers { get; set; }
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
-                          QueryCaptureExecutor queryCaptureExecutor,
+                          QueryCapture queryCapture,
                           SettingsService settingsService,
                           DatabaseSource database)
     {
         Logger = logger;
-        QueryCaptureExecutor = queryCaptureExecutor;
+        QueryCapture = queryCapture;
         SettingsService = settingsService;
         Database = database;
         Message = string.Empty;
@@ -286,7 +299,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ClearResults();
 
-        var results = await QueryCaptureExecutor.TraceQuery(Sql, Database, clearBufferPool: true);
+        var results = await QueryCapture.TraceQuery(Sql, Database, IsClearBufferPool, isDisableReadAhead);
 
         if (!results.IsSuccess)
         {
@@ -309,6 +322,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
         }
 
+        EventColourProvider.SetEventColours(results.ExecutionPlans, results.EngineEvents);
+
         DispatcherQueue.TryEnqueue(async void () =>
         {
             Events = results.EngineEvents;
@@ -330,6 +345,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         SequenceFrom = 0;
         SequenceTo = 0;
+        PlayheadSequence = 0;
         IsTimelinePlaying = false;
         ActivePlanNode = null;
 
@@ -418,10 +434,30 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshFilteredEvents();
     }
 
+    private bool _filterRefreshPending;
+    private bool _saveUncheckedPending;
+
     private void OnFilterNodeChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        RefreshFilteredEvents();
-        _ = SaveUncheckedAsync();
+        if (!_filterRefreshPending)
+        {
+            _filterRefreshPending = true;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _filterRefreshPending = false;
+                RefreshFilteredEvents();
+            });
+        }
+
+        if (!_saveUncheckedPending)
+        {
+            _saveUncheckedPending = true;
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                _saveUncheckedPending = false;
+                await SaveUncheckedAsync();
+            });
+        }
     }
 
     private async Task SaveUncheckedAsync()
@@ -460,13 +496,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return [];
         }
 
-        var eventNodes = root.Children;
+        var eventNodesByName = root.Children.ToDictionary(n => n.Label, StringComparer.OrdinalIgnoreCase);
 
         return source.Where(e =>
         {
-            var eventNode = eventNodes.FirstOrDefault(n => n.Label == e.Name);
-
-            if (eventNode is null)
+            if (!eventNodesByName.TryGetValue(e.Name, out var eventNode))
             {
                 return false;
             }
@@ -502,7 +536,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var ioLayer = new AllocationLayer { Name = "I/O", Colour = ColourConstants.IoColour, IsVisible = true };
         var pageLayer = new AllocationLayer { Name = "Page", Colour = ColourConstants.PageColour, IsVisible = true };
-        var lockLayer = new AllocationLayer { Name = "Lock", Colour = ColourConstants.LockColour, IsVisible = true };
+        var lockLayer = new AllocationLayer { Name = "Lock", Colour = Color.Gray, IsVisible = true };
 
         var systemIoLayer = new AllocationLayer { Name = "I/O (System)", Colour = ColourConstants.SystemIoColour, IsVisible = true };
         var systemPageLayer = new AllocationLayer { Name = "Page (System)", Colour = ColourConstants.SystemPageColour, IsVisible = true };
@@ -520,43 +554,31 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                     case IoEvent ioEvent:
                         if (isSystemObject)
                         {
-                            systemIoLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId));
+                            systemIoLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId) 
+                                { DisplayColour = e.DisplayColour});
                         }
                         else
                         {
-                            ioLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId));
+                            ioLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId)
+                                { DisplayColour = e.DisplayColour });
                         }
 
                         break;
-
-                    case PageEvent pageEvent:
-                        if (isSystemObject)
-                        {
-                            systemPageLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId));
-                        }
-                        else
-                        {
-                            pageLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId));
-                        }
-
-                        break;
-                    case WaitEvent waitEvent:
-                        break;
-
                     case LockEvent lockEvent:
                         if (isSystemObject)
                         {
-                            systemLockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId));
+                            systemLockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId)
+                            { DisplayColour = e.DisplayColour });
                         }
                         else
                         {
-                            lockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId));
+                            lockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId)
+                                { DisplayColour = e.DisplayColour });
                         }
 
                         break;
                 }
             }
-
         }
 
         return [ioLayer, pageLayer, lockLayer, systemIoLayer, systemPageLayer, systemLockLayer];

@@ -1,4 +1,5 @@
 ﻿using System.Xml.Linq;
+using InternalsViewer.Replay.Events.EventTypes;
 
 namespace InternalsViewer.Replay.Plans;
 
@@ -8,9 +9,8 @@ public static class ExecutionPlanParser
     {
         var doc = XDocument.Parse(xml);
 
-        var queryPlan = doc
-            .Descendants()
-            .FirstOrDefault(e => e.Name.LocalName == "QueryPlan");
+        var queryPlan = doc.Descendants()
+                           .FirstOrDefault(e => e.Name.LocalName == "QueryPlan");
 
         if (queryPlan == null)
         {
@@ -21,19 +21,16 @@ public static class ExecutionPlanParser
 
         var plan = new ExecutionPlan(planHandle);
 
-        var rootRelOps = queryPlan
-            .Elements()
-            .Where(e => e.Name.LocalName == "RelOp")
-            .Select(ParseRelationalOperator)
-            .ToList();
+        var rootRelationalOperators = queryPlan.Elements()
+                                               .Where(e => e.Name.LocalName == "RelOp")
+                                               .Select(e => ParseRelationalOperator(e, 1))
+                                               .ToList();
 
-        // The statement node (StmtSimple etc.) is the parent of QueryPlan and becomes the SSMS-style
-        // SELECT/INSERT/... root that the relational operator tree hangs off.
-        var statementNode = BuildStatementNode(queryPlan.Parent, rootRelOps);
+        var statementNode = BuildStatementNode(queryPlan.Parent, rootRelationalOperators);
 
-        plan.Roots.Add(statementNode);
+        plan.Root.Add(statementNode);
 
-        foreach (var root in plan.Roots)
+        foreach (var root in plan.Root)
         {
             IndexNodes(root, plan.NodesById);
         }
@@ -72,24 +69,32 @@ public static class ExecutionPlanParser
         return action?.Element("value")?.Value ?? string.Empty;
     }
 
-    private static PlanNode ParseRelationalOperator(XElement element)
+    private static PlanNode ParseRelationalOperator(XElement element, int level = 1)
     {
         var node = new PlanNode
         {
             NodeId = GetIntAttribute(element, "NodeId"),
             PhysicalOperator = GetStringAttribute(element, "PhysicalOp"),
-            LogicalOperator = GetStringAttribute(element, "LogicalOp")
+            LogicalOperator = GetStringAttribute(element, "LogicalOp"),
+            NodeLevel = level
         };
 
         node.EstimatedCost = GetDoubleAttribute(element, "EstimatedTotalSubtreeCost");
 
         ExtractObjectInfo(element, node);
 
-        var children = GetChildRelOps(element);
+        node.Outputs = ExtractTables(element);
+
+        var children = GetChildRelationalOperators(element);
+
+        if (OperatorClassifier.IsHash(node))
+        {
+            node.HashInfo = ParseHashInfo(element);
+        }
 
         foreach (var child in children)
         {
-            node.Children.Add(ParseRelationalOperator(child));
+            node.Children.Add(ParseRelationalOperator(child, level + 1));
         }
 
         return node;
@@ -105,16 +110,14 @@ public static class ExecutionPlanParser
         }
     }
 
-
-    private static IEnumerable<XElement> GetChildRelOps(XElement element)
+    private static IEnumerable<XElement> GetChildRelationalOperators(XElement element)
     {
-        // Look through known container nodes (Hash, NestedLoops, etc.)
         return element
             .Elements()
             .SelectMany(e =>
                     e.Name.LocalName == "RelOp"
-                        ? new[] { e }                           // direct child
-                        : e.Elements().Where(c => c.Name.LocalName == "RelOp") // nested under operator container
+                        ? new[] { e }
+                        : e.Elements().Where(c => c.Name.LocalName == "RelOp")
             );
     }
 
@@ -130,17 +133,122 @@ public static class ExecutionPlanParser
 
     private static void ExtractObjectInfo(XElement element, PlanNode node)
     {
-        var obj = element
+        var objectElement = element
             .Descendants()
             .FirstOrDefault(e => e.Name.LocalName == "Object");
 
-        if (obj == null)
+        if (objectElement == null)
         {
             return;
         }
 
-        node.Schema = ((string?)obj.Attribute("Schema"))?.Trim('[', ']');
-        node.Table = ((string?)obj.Attribute("Table"))?.Trim('[', ']');
-        node.Index = ((string?)obj.Attribute("Index"))?.Trim('[', ']');
+        node.Schema = GetAttribute("Schema", objectElement);
+        node.Table = GetAttribute("Table", objectElement);
+        node.Index = GetAttribute("Index", objectElement);
+    }
+
+    private static string? GetAttribute(string attributeName, XElement element)
+    {
+        return ((string?)element.Attribute(attributeName))?.Trim('[', ']');
+    }
+
+    public static void MergePlanEvents(List<EngineEvent> events, List<ExecutionPlan> executionPlans)
+    {
+        if (executionPlans.Count == 0)
+        {
+            return;
+        }
+
+        var operatorEvents = new List<ExecutionOperatorEvent>();
+
+        foreach (var plan in executionPlans)
+        {
+            var timingCache = new NodeTimingCache(events, plan);
+
+            timingCache.Build();
+
+            // Include the statement (SELECT/INSERT/...) node so the timeline can show it as the
+            // top-level operator spanning the whole query.
+            var nodes = plan.NodesById.Values;
+
+            foreach (var node in nodes)
+            {
+                var startTime = timingCache.GetStartTime(node);
+                var endTime = timingCache.GetEndTime(node);
+
+                var operatorEvent = ToPlanEvent(plan.PlanHandle, node, node.NodeLevel);
+
+                var nearestSequenceId = events.LastOrDefault(e => e.TimeMs < startTime)?.SequenceId ?? 0;
+
+                operatorEvent = operatorEvent with
+                {
+                    TimeMs = startTime,
+                    Duration = endTime - startTime,
+                    PlanHandle = plan.PlanHandle,
+                    SequenceId = nearestSequenceId - 1
+                };
+
+                operatorEvents.Add(operatorEvent);
+            }
+        }
+
+        events.AddRange(operatorEvents);
+    }
+
+    private static HashInfo ParseHashInfo(XElement hashElement)
+    {
+        var info = new HashInfo();
+
+        var build = hashElement.Element("HashKeysBuild");
+        if (build != null)
+        {
+            info.BuildKeys = ParseKeys(build);
+        }
+
+        var probe = hashElement.Element("HashKeysProbe");
+        if (probe != null)
+        {
+            info.ProbeKeys = ParseKeys(probe);
+        }
+
+        return info;
+    }
+    private static List<ColumnRef> ParseKeys(XElement parent)
+    {
+        return parent
+            .Descendants("ColumnReference")
+            .Select(c => new ColumnRef
+            {
+                Database = GetAttribute("Database", c) ?? string.Empty,
+                Schema = GetAttribute("Schema", c) ?? string.Empty,
+                Table = GetAttribute("Table", c) ?? string.Empty,
+                Column = GetAttribute("Column", c) ?? string.Empty
+            })
+            .ToList();
+    }
+
+    private static ExecutionOperatorEvent ToPlanEvent(string planHandle, PlanNode node, int nodeLevel)
+    {
+        return new ExecutionOperatorEvent
+        {
+            Name = node.PhysicalOperator,
+            PlanHandle = planHandle,
+            NodeLevel = nodeLevel,
+            PlanNodeIdentifier = new PlanNodeIdentifier
+            {
+                NodeId = node.NodeId,
+                PlanHandle = planHandle
+            }
+        };
+    }
+
+    public static HashSet<string> ExtractTables(XElement nodeElement)
+    {
+        return nodeElement
+            .Descendants("ColumnReference")
+            .Select(c => $"{GetAttribute("Schema", c)}.{GetAttribute("Table", c)}")
+            .Where(t => !string.IsNullOrEmpty(t))
+            .Select(t => t.ToLowerInvariant())
+            .ToHashSet();
     }
 }

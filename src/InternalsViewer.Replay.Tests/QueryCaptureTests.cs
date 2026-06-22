@@ -4,22 +4,22 @@ using Xunit.Abstractions;
 
 namespace InternalsViewer.Replay.Tests;
 
-public class QueryCaptureExecutorTests(ITestOutputHelper testOutputHelper)
+public class QueryCaptureTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;
 
     [Fact]
     public async Task Can_Run_Simple_Query()
     {
-        var logger = TestLogger.GetLogger<QueryCaptureExecutor>(TestOutputHelper);
+        var logger = TestLogger.GetLogger<QueryCapture>(TestOutputHelper);
 
         var connectionString = ConnectionStringHelper.GetConnectionString("Local");
 
         var query = "SELECT * FROM Person.Address";
 
-        var executor = new QueryCaptureExecutor(logger);
+        var executor = new QueryCapture(logger);
 
-        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true);
+        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.EngineEvents);
@@ -34,15 +34,15 @@ public class QueryCaptureExecutorTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public async Task Invalid_Query_Gives_IsSuccess_False()
     {
-        var logger = TestLogger.GetLogger<QueryCaptureExecutor>(TestOutputHelper);
+        var logger = TestLogger.GetLogger<QueryCapture>(TestOutputHelper);
 
         var connectionString = ConnectionStringHelper.GetConnectionString("Local");
 
         var query = "SELECT * FROM Person.AddressZZZ";
 
-        var executor = new QueryCaptureExecutor(logger);
+        var executor = new QueryCapture(logger);
 
-        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true);
+        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true);
 
         Assert.False(result.IsSuccess);
     }

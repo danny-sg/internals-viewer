@@ -1,8 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-    <!-- Placeholder statement icon for Select - replace with final artwork -->
-    <g id="sql-execution-plan-Select-placeholder">
-        <rect x="3.5" y="6" width="25" height="20" rx="3" ry="3"
-              fill="#EAF4EA" stroke="#3C8C3C" stroke-width="1.5" stroke-dasharray="3 2" />
-        <path d="M 8 12 H 24 M 8 16 H 24 M 8 20 H 18" stroke="#3C8C3C" stroke-width="1.5" stroke-linecap="round" />
+  <g id="data-grid-icon">
+
+    <!-- outer structure -->
+    <g id="grid-structure" stroke="#424242" stroke-width="2" fill="none" stroke-linejoin="round">
+      
+      <!-- outer box -->
+      <rect id="grid-outline" x="6" y="6" width="20" height="20" />
+      
+      <!-- horizontal rows -->
+      <path d="M 6 11 L 26 11" />
+      <path d="M 6 16 L 26 16" />
+      <path d="M 6 21 L 26 21" />
+      
+      <!-- vertical columns -->
+      <path d="M 12 6 L 12 26" />
+      <path d="M 19 6 L 19 26" />
+      <!-- <path d="M 22 6 L 22 26" /> -->
     </g>
+
+    <!-- optional emphasis nodes (keeps consistency with your system language) -->
+    <!-- <g id="grid-nodes" fill="#424242">
+      <circle cx="12" cy="11" r="1.5" />
+      <circle cx="18" cy="16" r="1.5" />
+      <circle cx="22" cy="21" r="1.5" />
+    </g> -->
+
+  </g>
 </svg>

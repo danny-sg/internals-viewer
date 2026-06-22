@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Replay.Locks;
 
-namespace InternalsViewer.Replay.Events;
+namespace InternalsViewer.Replay.Events.EventTypes;
 
 public sealed record LockEvent : EngineEvent
 {
@@ -13,5 +13,5 @@ public sealed record LockEvent : EngineEvent
 
     public string? KeyHash { get; set; }
 
-    public override string Description => $"{LockMode}/{ResourceType}";
+    public override string Description => $"Lock: {LockMode}/{ResourceType}";
 }

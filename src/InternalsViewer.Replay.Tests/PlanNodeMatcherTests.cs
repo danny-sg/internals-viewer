@@ -1,4 +1,5 @@
 using InternalsViewer.Replay.Events;
+using InternalsViewer.Replay.Events.EventTypes;
 using InternalsViewer.Replay.Plans;
 
 namespace InternalsViewer.Replay.Tests;
@@ -119,7 +120,7 @@ public class PlanNodeMatcherTests
 
         foreach (var node in nodes)
         {
-            plan.Roots.Add(node);
+            plan.Root.Add(node);
             plan.NodesById[node.NodeId] = node;
         }
 

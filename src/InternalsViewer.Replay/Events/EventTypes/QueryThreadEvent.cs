@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Replay.Events;
+﻿namespace InternalsViewer.Replay.Events.EventTypes;
 
 public sealed record QueryThreadEvent : EngineEvent
 {

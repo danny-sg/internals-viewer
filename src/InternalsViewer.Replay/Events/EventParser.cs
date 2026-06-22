@@ -4,31 +4,12 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Replay.Locks;
 using System.Xml.Linq;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Replay.Events.EventTypes;
 
 namespace InternalsViewer.Replay.Events;
 
 internal class EventParser
 {
-    public static void SetRelativeTimestamps(List<EngineEvent> events)
-    {
-        if (events.Count == 0)
-        {
-            return;
-        }
-
-        var ordered = events.OrderBy(e => e.SequenceId).ToList();
-
-        var start = ordered[0].Timestamp;
-
-        foreach (var e in ordered)
-        {
-            var delta = e.Timestamp - start;
-
-            e.TimeTicks = delta.Ticks;
-            e.TimeMs = e.TimeTicks / 1000.0;
-        }
-    }
-
     public static EngineEvent? ParseEvent(string xml)
     {
         var element = XElement.Parse(xml);
@@ -48,7 +29,7 @@ internal class EventParser
         return ToEngineEvent(result, null);
     }
 
-    public static EngineEvent? ParseEvent(string xml, DatabaseSource database)
+    public static EngineEvent? ParseEvent(string xml, DatabaseSource? database)
     {
         var element = XElement.Parse(xml);
 
@@ -107,7 +88,8 @@ internal class EventParser
             var n when n.Contains("page") => MapPageEvent(e),
             var n when n.Contains("lock_") => MapLock(e),
             var n when n.Contains("wait") => MapWait(e),
-            var n when n.Equals("query_thread_profile") => MapQueryThread(e),
+            "query_thread_profile" => MapQueryThread(e),
+            "query_memory_grant_usage" => MapMemory(e),
             _ => new EngineEvent
             {
                 Name = e.Name,
@@ -135,8 +117,7 @@ internal class EventParser
             engineEvent.ObjectName = allocationUnit?.DisplayName
                                      ?? TryGetPageName(engineEvent.PageAddress.Value) ?? string.Empty;
 
-            // A page belongs to exactly one allocation unit, so the index identity here is
-            // reliable and lets storage events be matched to a specific seek/scan operator.
+
             ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: true);
         }
         else if (engineEvent.ObjectId > 0)
@@ -145,13 +126,13 @@ internal class EventParser
 
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? $"(Object Id {engineEvent.ObjectId})";
 
-            // Resolved by object id alone (e.g. object-level locks); the specific index is
-            // ambiguous, so only the table identity is trusted - match falls back to table level.
+      
             ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: false);
         }
 
         return engineEvent;
     }
+
 
     private static void ApplyObjectIdentity(EngineEvent engineEvent, AllocationUnit? allocationUnit, bool includeIndex)
     {
@@ -205,6 +186,19 @@ internal class EventParser
 
                 return null;
         }
+    }
+    
+    private static EngineEvent MapMemory(EventResult e)
+    {
+        return new MemoryEvent
+        {
+            Name = e.Name,
+            Timestamp = e.Timestamp,
+            DatabaseId = e.GetDatabaseId(),
+            UsedMemoryKb = e.GetLong("used_memory_kb") ?? 0,
+            GrantedMemoryKb = e.GetLong("granted_memory_kb") ?? 0,
+            Duration = e.GetLong("duration") ?? 0
+        };
     }
 
     private static EngineEvent MapWait(EventResult e)

@@ -12,6 +12,7 @@ public sealed class EventFilterNode : INotifyPropertyChanged
     public string Label { get; set; } = string.Empty;
 
     private bool? _isChecked = true;
+    private bool _suppressNotify;
 
     public bool? IsChecked
     {
@@ -25,13 +26,24 @@ public sealed class EventFilterNode : INotifyPropertyChanged
 
             _isChecked = value;
 
-            OnPropertyChanged();
+            if (!_suppressNotify)
+            {
+                OnPropertyChanged();
+            }
 
             if (value is not null)
             {
                 foreach (var child in Children)
                 {
+                    child._suppressNotify = true;
                     child.IsChecked = value;
+                    child._suppressNotify = false;
+                }
+
+                // Fire once for each child after all are updated
+                foreach (var child in Children)
+                {
+                    child.OnPropertyChanged(nameof(IsChecked));
                 }
             }
 
@@ -50,7 +62,14 @@ public sealed class EventFilterNode : INotifyPropertyChanged
         var allChecked  = Children.All(c => c.IsChecked == true);
         var noneChecked = Children.All(c => c.IsChecked == false);
 
-        _isChecked = allChecked ? true : noneChecked ? false : null;
+        var newValue = allChecked ? true : noneChecked ? (bool?)false : null;
+
+        if (_isChecked == newValue)
+        {
+            return;
+        }
+
+        _isChecked = newValue;
         OnPropertyChanged(nameof(IsChecked));
     }
 
