@@ -20,15 +20,14 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed class EventTimelineControl : Grid
 {
-    private const float RulerBandHeight = 16f;
-    private const float HandleBandHeight = 12f;
+    private const float RulerBandHeight = 18f;
+    private const float HandleBandHeight = 16f;
     private const float MarkerStripHeight = RulerBandHeight + HandleBandHeight;
     private const float HandleWidth = 7f;
-    private const float HandleGap = 9f;
-    private const float TriangleHalfWidth = 6f;
+    private const float HandleGap = 13f;
+    private const float TriangleHalfWidth = 9f;
     private const double HitArea = 7;
     private const long DoubleClickMs = 300;
-    private const double MaxResolutionMs = 10.0;
     private const float RowLabelWidth = 36f;
     private const float RowPadding = 2f;
     private const float MarkerWidth = 2f;
@@ -41,7 +40,10 @@ public sealed class EventTimelineControl : Grid
     // so an operator's duration (in ms) is scaled by this to find its length on the timeline.
     private const double AxisUnitsPerMs = 10.0;
 
-    private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(80);
+    // Small tick for smooth motion; the overall speed is one EventWallMs per in-range event.
+    private const double PlayTickMs = 16;
+    private const double EventWallMs = 80;
+    private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(PlayTickMs);
 
     private static readonly SKColor PlayheadColour = new(230, 60, 60);
     private static readonly SKColor HandleColour = new(95, 95, 95);
@@ -128,15 +130,24 @@ public sealed class EventTimelineControl : Grid
     };
 
     private List<EngineEvent> _sortedEvents = [];
-    private List<double> _effectiveTimes = [];
+    private List<double> _times = [];
+
+    // Render-only time offset (ms) that fans point events sharing a timestamp evenly across the gap
+    // to the next timestamp, so the capture's coarse time resolution doesn't stack them - while
+    // staying within the bucket (and so within the parent operator).
+    private double[] _nudge = [];
 
     private double _minTime;
     private double _maxTime;
     private double _timeRange;
 
-    private int _playIndex;
-    private int _playheadIndex;
+    private double _playheadTime;
+    private double _playEndTime;
+    private double _playStep;
     private bool _isPlaying;
+
+    // True once the user has dragged a handle. While false the start/end handles track the playhead.
+    private bool _selectionActivated;
     private readonly DispatcherTimer _playTimer;
 
     private bool _isDragging;
@@ -169,7 +180,7 @@ public sealed class EventTimelineControl : Grid
         var events = (List<EngineEvent>)e.NewValue;
 
         ctrl._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
-        ctrl.BuildEffectiveTimes();
+        ctrl.BuildTimes();
 
         ctrl.StopPlay();
         ctrl.Reset();
@@ -276,25 +287,29 @@ public sealed class EventTimelineControl : Grid
         _zoom = MinZoom;
         _scrollX = 0;
 
-        // Park the playhead at the end with a collapsed selection: everything is in scope and the
-        // start/end handles cluster on the playhead at the right edge.
-        _playheadIndex = _sortedEvents.Count > 0 ? _sortedEvents.Count - 1 : 0;
-        _playIndex = _playheadIndex;
-
-        var time = _playheadIndex < _effectiveTimes.Count ? _effectiveTimes[_playheadIndex] : 0;
-        _startTime = time;
-        _endTime = time;
+        // Park the playhead at the end with no selection: everything is in scope and the start/end
+        // handles cluster on the playhead at the right edge.
+        _selectionActivated = false;
+        _playheadTime = _maxTime;
+        _startTime = _playheadTime;
+        _endTime = _playheadTime;
 
         CurrentSequenceFrom = 0;
-        CurrentSequenceTo = _sortedEvents.Count > 0 ? _sortedEvents[_playheadIndex].SequenceId : 0;
+        CurrentSequenceTo = SequenceAtTime(_playheadTime);
         CurrentPlayhead = CurrentSequenceTo;
 
         UpdateScrollBar();
     }
 
-    private void BuildEffectiveTimes()
+    /// <summary>
+    /// Positions are simply each event's start time in milliseconds (sequence id is only used for
+    /// ordering). The axis spans the first start to the last end, where an operator's end is its
+    /// start plus its duration.
+    /// </summary>
+    private void BuildTimes()
     {
-        _effectiveTimes = new List<double>(_sortedEvents.Count);
+        _times = new List<double>(_sortedEvents.Count);
+        _nudge = new double[_sortedEvents.Count];
 
         if (_sortedEvents.Count == 0)
         {
@@ -304,32 +319,150 @@ public sealed class EventTimelineControl : Grid
             return;
         }
 
-        var bucketCounts = new Dictionary<long, int>();
+        var min = double.MaxValue;
+        var max = double.MinValue;
 
-        foreach (var ev in _sortedEvents)
+        // Group size per (timestamp, visual lane) - needed up front to space the fan-out evenly.
+        var groupSizes = new Dictionary<(long Time, int Lane), int>();
+
+        // The end of each operator's bar; a point event's fan must never cross its operator's end.
+        var operatorEnds = new Dictionary<PlanNodeIdentifier, double>();
+
+        for (var i = 0; i < _sortedEvents.Count; i++)
         {
-            var bucket = (long)Math.Floor(ev.TimeMs / MaxResolutionMs);
-            bucketCounts[bucket] = bucketCounts.TryGetValue(bucket, out var c) ? c + 1 : 1;
+            var ev = _sortedEvents[i];
+            var start = StartMs(ev);
+            _times.Add(start);
+
+            if (start < min) min = start;
+
+            if (ev is ExecutionOperatorEvent)
+            {
+                // Operators occupy [start, start + duration].
+                var operatorEnd = start + DurationMs(ev);
+                if (operatorEnd > max) max = operatorEnd;
+                if (ev.PlanNodeIdentifier is { } opId) operatorEnds[opId] = operatorEnd;
+            }
+            else
+            {
+                if (start > max) max = start;
+                var key = (ev.TimeMs, RenderLane(ev));
+                groupSizes[key] = groupSizes.TryGetValue(key, out var c) ? c + 1 : 1;
+            }
         }
 
-        var bucketIndex = new Dictionary<long, int>();
-        foreach (var ev in _sortedEvents)
-        {
-            var bucket = (long)Math.Floor(ev.TimeMs / MaxResolutionMs);
-            var bucketStart = bucket * MaxResolutionMs;
-            bucketIndex.TryGetValue(bucket, out var idx);
-            var count = bucketCounts[bucket];
-            var step = count > 1 ? MaxResolutionMs / count : 0.0;
-            _effectiveTimes.Add(bucketStart + idx * step);
-            bucketIndex[bucket] = idx + 1;
-        }
-
-        _minTime = _effectiveTimes.Min();
-        _maxTime = _effectiveTimes.Max();
+        _minTime = min;
+        _maxTime = max;
         _timeRange = Math.Max(_maxTime - _minTime, 1.0);
+
+        // The bucket width: the gap to the next distinct timestamp (the capture's time resolution).
+        var bucket = NextTimestampGaps();
+
+        // Fan each group evenly across its bucket, in sequence-id order, clamped so it never crosses
+        // the parent operator's end.
+        var placed = new Dictionary<(long Time, int Lane), int>();
+
+        for (var i = 0; i < _sortedEvents.Count; i++)
+        {
+            var ev = _sortedEvents[i];
+            if (ev is ExecutionOperatorEvent)
+            {
+                continue;
+            }
+
+            var key = (ev.TimeMs, RenderLane(ev));
+            var size = groupSizes[key];
+
+            placed.TryGetValue(key, out var index);
+            placed[key] = index + 1;
+
+            var t = _times[i];
+
+            if (ev.PlanNodeIdentifier is { } id && operatorEnds.TryGetValue(id, out var opEnd))
+            {
+                // Hard limit: the marker (and its fan) must stay within the operator's bar.
+                var room = opEnd - t;
+                var fanWidth = Math.Max(0, Math.Min(bucket.GetValueOrDefault(t), room));
+                _nudge[i] = Math.Min(size > 1 ? fanWidth * index / size : 0, room);
+            }
+            else if (size > 1)
+            {
+                _nudge[i] = bucket.GetValueOrDefault(t) * index / size;
+            }
+        }
     }
 
-    private bool SelectionActive => Math.Abs(_startTime - _endTime) > 1e-6;
+    /// <summary>Maps each distinct timestamp to the gap to the next one (the bucket width).</summary>
+    private Dictionary<double, double> NextTimestampGaps()
+    {
+        var distinct = _times.Distinct().OrderBy(t => t).ToList();
+        var gaps = new Dictionary<double, double>(distinct.Count);
+
+        if (distinct.Count == 0)
+        {
+            return gaps;
+        }
+
+        // Default bucket for the last timestamp: reuse the smallest gap so it fans consistently.
+        var smallest = double.MaxValue;
+        for (var k = 1; k < distinct.Count; k++)
+        {
+            var gap = distinct[k] - distinct[k - 1];
+            if (gap > 0 && gap < smallest) smallest = gap;
+        }
+        if (smallest == double.MaxValue) smallest = 1.0;
+
+        for (var k = 0; k < distinct.Count; k++)
+        {
+            gaps[distinct[k]] = k + 1 < distinct.Count ? distinct[k + 1] - distinct[k] : smallest;
+        }
+
+        return gaps;
+    }
+
+    // EngineEvent.TimeMs / Duration are stored as Ticks/1000 (10 units per real millisecond).
+    private static double StartMs(EngineEvent ev) => ev.TimeMs / AxisUnitsPerMs;
+
+    private static double DurationMs(EngineEvent ev) => ev.Duration / AxisUnitsPerMs;
+
+    // A point event's visual lane: its row, sub-divided by category band for locks/waits, so only
+    // markers that truly overlap (same row + band) are fanned out.
+    private static int RenderLane(EngineEvent ev)
+    {
+        var category = EventCategoryClassifier.GetCategory(ev);
+        return GetRowIndex(ev) * 8 + (category.HasValue ? (int)category.Value : 7);
+    }
+
+    // The selection only counts once the user has explicitly dragged a handle.
+    private bool SelectionActive => _selectionActivated;
+
+    // While not activated the handles sit on the playhead, so they follow it as it scrubs/plays.
+    private void SyncHandlesToPlayhead()
+    {
+        if (!_selectionActivated)
+        {
+            _startTime = _playheadTime;
+            _endTime = _playheadTime;
+        }
+    }
+
+    /// <summary>Sequence id of the most recent event at or before the given time.</summary>
+    private long SequenceAtTime(double timeMs)
+    {
+        if (_sortedEvents.Count == 0)
+        {
+            return 0;
+        }
+
+        var seq = _sortedEvents[0].SequenceId;
+        for (var i = 0; i < _times.Count; i++)
+            if (_times[i] <= timeMs)
+            {
+                seq = _sortedEvents[i].SequenceId;
+            }
+
+        return seq;
+    }
 
     private float CanvasWidth => (float)_overlay.ActualWidth;
     private float DrawWidth => CanvasWidth - RowLabelWidth;
@@ -342,27 +475,7 @@ public sealed class EventTimelineControl : Grid
     private double XToTime(double x)
         => _minTime + (Math.Max(0, x - RowLabelWidth) + _scrollX) / ContentWidth * _timeRange;
 
-    private int XToEventIndex(double x)
-    {
-        if (_sortedEvents.Count == 0)
-        {
-            return 0;
-        }
-
-        var t = XToTime(x);
-        var best = 0;
-        var bestDist = double.MaxValue;
-        for (var i = 0; i < _effectiveTimes.Count; i++)
-        {
-            var d = Math.Abs(_effectiveTimes[i] - t);
-            if (d < bestDist) { bestDist = d; best = i; }
-        }
-        return best;
-    }
-
-    private float PlayheadX => _playheadIndex < _effectiveTimes.Count
-        ? TimeToX(_effectiveTimes[_playheadIndex])
-        : RowLabelWidth;
+    private float PlayheadX => TimeToX(_playheadTime);
 
     private float StartDrawX => SelectionActive ? TimeToX(_startTime) : TimeToX(_startTime) - HandleGap;
     private float EndDrawX => SelectionActive ? TimeToX(_endTime) : TimeToX(_endTime) + HandleGap;
@@ -427,7 +540,9 @@ public sealed class EventTimelineControl : Grid
                 continue;
             }
 
-            var x = TimeToX(_effectiveTimes[i]);
+            // Fan same-timestamp markers apart within their bucket (render only; the playhead and
+            // selection still use the true time). The offset is in ms, so it scales with zoom.
+            var x = TimeToX(_times[i] + _nudge[i]);
             var rowIndex = GetRowIndex(ev);
             if (rowIndex < 0)
             {
@@ -518,7 +633,7 @@ public sealed class EventTimelineControl : Grid
 
         for (var tickMs = Math.Ceiling(leftMs / interval) * interval; tickMs <= rightMs; tickMs += interval)
         {
-            var x = TimeToX(_minTime + tickMs * AxisUnitsPerMs);
+            var x = TimeToX(_minTime + tickMs);
 
             canvas.DrawLine(x, RulerBandHeight - 4, x, RulerBandHeight, _tickPaint);
             canvas.DrawText(FormatTime(tickMs), x + 2, RulerBandHeight - 6, SKTextAlign.Left, _labelFont, _labelPaint);
@@ -528,12 +643,7 @@ public sealed class EventTimelineControl : Grid
     /// <summary>Draws a red badge showing the playhead's time, on top of the ruler.</summary>
     private void DrawPlayheadTimeBadge(SKCanvas canvas, float px)
     {
-        if (_playheadIndex >= _effectiveTimes.Count)
-        {
-            return;
-        }
-
-        var text = FormatTime(EffectiveToMs(_effectiveTimes[_playheadIndex]));
+        var text = FormatTime(EffectiveToMs(_playheadTime));
 
         const float padding = 4f;
         var badgeWidth = _labelFont.MeasureText(text) + padding * 2;
@@ -547,7 +657,8 @@ public sealed class EventTimelineControl : Grid
         canvas.DrawText(text, bx + padding, baseline, SKTextAlign.Left, _labelFont, _operatorTextPaint);
     }
 
-    private double EffectiveToMs(double effective) => (effective - _minTime) / AxisUnitsPerMs;
+    // The axis is already in milliseconds; this just makes it relative to the first event.
+    private double EffectiveToMs(double effective) => effective - _minTime;
 
     private static double NiceInterval(double raw)
     {
@@ -627,7 +738,7 @@ public sealed class EventTimelineControl : Grid
         foreach (var level in operators.GroupBy(o => o.Op.NodeLevel))
         {
             var ordered = level
-                .OrderBy(o => _effectiveTimes[o.Index])
+                .OrderBy(o => _times[o.Index])
                 .ThenBy(o => o.Op.PlanNodeIdentifier?.NodeId ?? 0)
                 .ToList();
 
@@ -661,8 +772,8 @@ public sealed class EventTimelineControl : Grid
 
         foreach (var (index, op) in operators)
         {
-            var startX = TimeToX(_effectiveTimes[index]);
-            var endX = TimeToX(_effectiveTimes[index] + op.Duration * AxisUnitsPerMs);
+            var startX = TimeToX(_times[index]);
+            var endX = TimeToX(_times[index] + DurationMs(op));
             if (endX < startX + 2)
             {
                 endX = startX + 2;
@@ -808,27 +919,39 @@ public sealed class EventTimelineControl : Grid
     /// </summary>
     private void EmitScope()
     {
+        long from, to;
+
         if (SelectionActive)
         {
-            var lo = Math.Min(_startTime, _endTime);
-            var hi = Math.Max(_startTime, _endTime);
-
-            CurrentSequenceFrom = SequenceIdAtOrAfter(lo);
-            CurrentSequenceTo = SequenceIdAtOrBefore(hi);
+            from = SequenceIdAtOrAfter(Math.Min(_startTime, _endTime));
+            to = SequenceIdAtOrBefore(Math.Max(_startTime, _endTime));
         }
         else
         {
-            CurrentSequenceFrom = 0;
-            CurrentSequenceTo = _sortedEvents.Count > 0 ? _sortedEvents[_playheadIndex].SequenceId : 0;
+            from = 0;
+            to = SequenceAtTime(_playheadTime);
         }
 
-        SequenceChanged?.Invoke(CurrentSequenceFrom, CurrentSequenceTo);
+        // Smooth play ticks many times per event; only notify when the scope actually changes.
+        if (from == CurrentSequenceFrom && to == CurrentSequenceTo)
+        {
+            return;
+        }
+
+        CurrentSequenceFrom = from;
+        CurrentSequenceTo = to;
+        SequenceChanged?.Invoke(from, to);
     }
 
     private void FirePlayhead()
     {
-        CurrentPlayhead = _sortedEvents.Count > 0 ? _sortedEvents[_playheadIndex].SequenceId : 0;
-        PlayheadChanged?.Invoke(CurrentPlayhead);
+        var playhead = SequenceAtTime(_playheadTime);
+
+        if (playhead != CurrentPlayhead)
+        {
+            CurrentPlayhead = playhead;
+            PlayheadChanged?.Invoke(CurrentPlayhead);
+        }
 
         // The scope's right edge tracks the playhead when there's no explicit selection.
         EmitScope();
@@ -841,8 +964,8 @@ public sealed class EventTimelineControl : Grid
             return 0;
         }
 
-        for (var i = 0; i < _effectiveTimes.Count; i++)
-            if (_effectiveTimes[i] >= t)
+        for (var i = 0; i < _times.Count; i++)
+            if (_times[i] >= t)
             {
                 return _sortedEvents[i].SequenceId;
             }
@@ -857,24 +980,13 @@ public sealed class EventTimelineControl : Grid
             return 0;
         }
 
-        for (var i = _effectiveTimes.Count - 1; i >= 0; i--)
-            if (_effectiveTimes[i] <= t)
+        for (var i = _times.Count - 1; i >= 0; i--)
+            if (_times[i] <= t)
             {
                 return _sortedEvents[i].SequenceId;
             }
 
         return _sortedEvents[0].SequenceId;
-    }
-
-    private int IndexAtOrAfterTime(double t)
-    {
-        for (var i = 0; i < _effectiveTimes.Count; i++)
-            if (_effectiveTimes[i] >= t)
-            {
-                return i;
-            }
-
-        return Math.Max(0, _effectiveTimes.Count - 1);
     }
 
     private bool IsOnTriangle(double x, double y)
@@ -888,8 +1000,8 @@ public sealed class EventTimelineControl : Grid
             var dStart = Math.Abs(x - StartDrawX);
             var dEnd = Math.Abs(x - EndDrawX);
 
-            // Nearest handle within reach; the playhead triangle wins ties (it sits on top).
-            if (dPlay <= HitArea && dPlay <= dStart && dPlay <= dEnd)
+            // The triangle sits on top and is wider, so a press anywhere on it grabs the playhead.
+            if (dPlay <= TriangleHalfWidth)
             {
                 return DragTarget.Playhead;
             }
@@ -926,8 +1038,8 @@ public sealed class EventTimelineControl : Grid
 
         if (isDoubleClick && IsOnTriangle(position.X, position.Y))
         {
-            // Collapse the selection back onto the playhead (= select all).
-            CollapseSelectionToPlayhead();
+            // Reset: drop the selection so the handles re-attach to the playhead (= select all).
+            DeactivateSelection();
             _skCanvas.Invalidate();
             return;
         }
@@ -975,11 +1087,13 @@ public sealed class EventTimelineControl : Grid
         switch (_dragTarget)
         {
             case DragTarget.Start:
+                _selectionActivated = true;
                 _startTime = Math.Min(t, _endTime);
                 EmitScope();
                 break;
 
             case DragTarget.End:
+                _selectionActivated = true;
                 _endTime = Math.Max(t, _startTime);
                 EmitScope();
                 break;
@@ -1113,29 +1227,16 @@ public sealed class EventTimelineControl : Grid
 
     private void MovePlayheadToX(double x)
     {
-        // When the collapsed selection sits on the playhead, the handles travel with it so the
-        // "select all" cluster stays under the triangle while scrubbing.
-        var glued = !SelectionActive
-                    && _playheadIndex < _effectiveTimes.Count
-                    && Math.Abs(_startTime - _effectiveTimes[_playheadIndex]) < 1e-6;
-
-        _playheadIndex = XToEventIndex(x);
-        _playIndex = _playheadIndex;
-
-        if (glued && _playheadIndex < _effectiveTimes.Count)
-        {
-            _startTime = _effectiveTimes[_playheadIndex];
-            _endTime = _startTime;
-        }
-
+        _playheadTime = Math.Clamp(XToTime(x), _minTime, _maxTime);
+        SyncHandlesToPlayhead();
         FirePlayhead();
     }
 
-    private void CollapseSelectionToPlayhead()
+    /// <summary>Double-click reset: deactivate the selection and snap the handles to the playhead.</summary>
+    private void DeactivateSelection()
     {
-        var time = _playheadIndex < _effectiveTimes.Count ? _effectiveTimes[_playheadIndex] : _minTime;
-        _startTime = time;
-        _endTime = time;
+        _selectionActivated = false;
+        SyncHandlesToPlayhead();
         EmitScope();
     }
 
@@ -1159,11 +1260,19 @@ public sealed class EventTimelineControl : Grid
         }
 
         var rangeStart = SelectionActive ? Math.Min(_startTime, _endTime) : _minTime;
+        var rangeEnd = SelectionActive ? Math.Max(_startTime, _endTime) : _maxTime;
 
-        _playIndex = IndexAtOrAfterTime(rangeStart);
-        _playheadIndex = _playIndex;
+        _playheadTime = rangeStart;
+        _playEndTime = rangeEnd;
         _isPlaying = true;
 
+        // Advance the playhead smoothly: cover the range over (events in range) * EventWallMs of wall
+        // time, so the overall speed matches the old per-event play but in small, even time steps.
+        var rangeMs = Math.Max(rangeEnd - rangeStart, 1e-6);
+        var eventsInRange = Math.Max(1, _times.Count(t => t >= rangeStart && t <= rangeEnd));
+        _playStep = rangeMs * PlayTickMs / (eventsInRange * EventWallMs);
+
+        SyncHandlesToPlayhead();
         FirePlayhead();
 
         SetPlayButtonIcon(isPlaying: true);
@@ -1198,20 +1307,21 @@ public sealed class EventTimelineControl : Grid
 
     private void OnPlayTimerTick(object? sender, object e)
     {
-        var rangeEnd = SelectionActive ? Math.Max(_startTime, _endTime) : _maxTime;
+        _playheadTime += _playStep;
 
-        if (_playIndex >= _sortedEvents.Count || _effectiveTimes[_playIndex] > rangeEnd)
+        var ended = _playheadTime >= _playEndTime;
+        if (ended)
         {
-            StopPlay();
-            return;
+            _playheadTime = _playEndTime;
         }
 
-        _playheadIndex = _playIndex;
-
+        SyncHandlesToPlayhead();
         FirePlayhead();
-
         _skCanvas.Invalidate();
 
-        _playIndex++;
+        if (ended)
+        {
+            StopPlay();
+        }
     }
 }

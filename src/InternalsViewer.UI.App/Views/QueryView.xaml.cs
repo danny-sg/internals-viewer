@@ -137,8 +137,5 @@ public sealed partial class QueryReplayView : Page
     private void OnTimelinePlanNodeSelected(PlanNodeIdentifier identifier)
     {
         ViewModel.SelectPlanNode(identifier);
-
-        // Bring the plan into view so the selected operator is visible.
-        ResultsTabView.SelectedItem = ExecutionPlanTab;
     }
 }

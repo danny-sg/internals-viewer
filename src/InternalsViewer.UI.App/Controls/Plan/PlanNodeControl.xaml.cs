@@ -25,7 +25,6 @@ public sealed partial class PlanNodeControl : UserControl
         DependencyProperty.Register(nameof(Node), typeof(PlanNode), typeof(PlanNodeControl),
             new PropertyMetadata(null, OnNodeChanged));
 
-    /// <summary>Operator cost as a fraction of the whole plan (0-1). Negative hides the label.</summary>
     public double CostPercent
     {
         get => (double)GetValue(CostPercentProperty);
@@ -59,12 +58,10 @@ public sealed partial class PlanNodeControl : UserControl
             var accent = (Color)Application.Current.Resources["SystemAccentColor"];
 
             NodeBorder.BorderBrush = new SolidColorBrush(accent);
-            NodeBorder.BorderThickness = new Thickness(1);
             NodeBorder.Background = new SolidColorBrush(Color.FromArgb(40, accent.R, accent.G, accent.B));
         }
         else
         {
-            NodeBorder.BorderThickness = new Thickness(0);
             NodeBorder.Background = null;
         }
     }
