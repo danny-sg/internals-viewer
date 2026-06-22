@@ -30,19 +30,24 @@ public sealed class EventTimelineControl : Grid
     private const long DoubleClickMs = 300;
     private const float RowLabelWidth = 36f;
     private const float RowPadding = 2f;
-    private const float MarkerWidth = 2f;
+    private const float MarkerWidth = 1f;
 
     private const double MinZoom = 1.0;
     private const double MaxZoom = 50.0;
     private const double ZoomStep = 1.15;
 
-    // The relative-time axis (EngineEvent.TimeMs) is Ticks/1000, i.e. 10 units per real millisecond,
-    // so an operator's duration (in ms) is scaled by this to find its length on the timeline.
-    private const double AxisUnitsPerMs = 10.0;
+    private const double AxisUnitsPerMs = 1.0;
 
     // Small tick for smooth motion; the overall speed is one EventWallMs per in-range event.
     private const double PlayTickMs = 16;
     private const double EventWallMs = 80;
+
+    // Gaps that would take longer than this many ticks to glide across are skipped: play snaps
+    // the playhead straight to the next event instead of crawling through dead air.
+    private const double GapSkipTicks = 8;
+
+    // Playback speed multipliers cycled by the speed toggle button.
+    private static readonly double[] PlaySpeeds = [0.5, 1.0, 2.0, 4.0];
     private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(PlayTickMs);
 
     private static readonly SKColor PlayheadColour = new(230, 60, 60);
@@ -63,6 +68,7 @@ public sealed class EventTimelineControl : Grid
     ];
 
     private readonly Button _playButton;
+    private readonly Button _speedButton;
     private readonly SKXamlCanvas _skCanvas;
     private readonly Canvas _overlay;
     private readonly ScrollBar _scrollBar;
@@ -142,8 +148,11 @@ public sealed class EventTimelineControl : Grid
     private double _timeRange;
 
     private double _playheadTime;
+    private double _playStartTime;
     private double _playEndTime;
     private double _playStep;
+    private double _basePlayStep;
+    private int _speedIndex = 1;
     private bool _isPlaying;
 
     // True once the user has dragged a handle. While false the start/end handles track the playhead.
@@ -188,6 +197,55 @@ public sealed class EventTimelineControl : Grid
         ctrl._skCanvas.Invalidate();
     }
 
+    /// <summary>
+    /// Optional crop (milliseconds): when set the timeline axis spans only [<see cref="StartTime"/>,
+    /// <see cref="EndTime"/>], hiding activity before/after the cropped window. <c>null</c> means
+    /// "no crop" and the axis uses the full event range.
+    /// </summary>
+    public double? StartTime
+    {
+        get => (double?)GetValue(StartTimeProperty);
+        set => SetValue(StartTimeProperty, value);
+    }
+
+    public static readonly DependencyProperty StartTimeProperty =
+        DependencyProperty.Register(nameof(StartTime), typeof(double?), typeof(EventTimelineControl),
+            new PropertyMetadata(null, OnCropChanged));
+
+    public double? EndTime
+    {
+        get => (double?)GetValue(EndTimeProperty);
+        set => SetValue(EndTimeProperty, value);
+    }
+
+    public static readonly DependencyProperty EndTimeProperty =
+        DependencyProperty.Register(nameof(EndTime), typeof(double?), typeof(EventTimelineControl),
+            new PropertyMetadata(null, OnCropChanged));
+
+    private static void OnCropChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var ctrl = (EventTimelineControl)d;
+
+        ctrl.BuildTimes();
+
+        if (ctrl._sortedEvents.Count > 0)
+        {
+            // Pull the playhead (and any non-activated handles) back into the cropped range, then
+            // re-emit so the scope/active operator the other views show follows the clamped position.
+            var clamped = Math.Clamp(ctrl._playheadTime, ctrl._minTime, ctrl._maxTime);
+
+            if (clamped != ctrl._playheadTime)
+            {
+                ctrl._playheadTime = clamped;
+                ctrl.SyncHandlesToPlayhead();
+                ctrl.FirePlayhead();
+            }
+        }
+
+        ctrl.UpdateScrollBar();
+        ctrl._skCanvas.Invalidate();
+    }
+
     public long CurrentSequenceFrom { get; private set; }
     public long CurrentSequenceTo { get; private set; }
     public long CurrentPlayhead { get; private set; }
@@ -225,9 +283,28 @@ public sealed class EventTimelineControl : Grid
             CornerRadius = new CornerRadius(0),
         };
         _playButton.Click += OnPlayButtonClick;
-        Grid.SetColumn(_playButton, 0);
-        Grid.SetRowSpan(_playButton, 2);
-        Children.Add(_playButton);
+
+        // Skip-to-previous / skip-to-next glyphs (Segoe Fluent Icons).
+        var stepBackButton = MakeTransportButton(new FontIcon { Glyph = "", FontSize = 12 }, 30);
+        stepBackButton.Click += OnStepBackButtonClick;
+
+        var stepForwardButton = MakeTransportButton(new FontIcon { Glyph = "", FontSize = 12 }, 30);
+        stepForwardButton.Click += OnStepForwardButtonClick;
+
+        _speedButton = MakeTransportButton(
+            new TextBlock { FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center }, 36);
+        _speedButton.Click += OnSpeedButtonClick;
+        UpdateSpeedLabel();
+
+        var transport = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Stretch };
+        transport.Children.Add(stepBackButton);
+        transport.Children.Add(_playButton);
+        transport.Children.Add(stepForwardButton);
+        transport.Children.Add(_speedButton);
+
+        Grid.SetColumn(transport, 0);
+        Grid.SetRowSpan(transport, 2);
+        Children.Add(transport);
 
         _skCanvas = new SKXamlCanvas { IgnorePixelScaling = true };
         _skCanvas.PaintSurface += OnPaintSurface;
@@ -280,6 +357,93 @@ public sealed class EventTimelineControl : Grid
 
         _playTimer = new DispatcherTimer { Interval = PlayInterval };
         _playTimer.Tick += OnPlayTimerTick;
+    }
+
+    private static Button MakeTransportButton(FrameworkElement content, double width) => new()
+    {
+        Content = content,
+        Width = width,
+        VerticalAlignment = VerticalAlignment.Stretch,
+        Padding = new Thickness(0),
+        Background = new SolidColorBrush(Color.FromArgb(0, 30, 30, 30)),
+        BorderThickness = new Thickness(0),
+        CornerRadius = new CornerRadius(0),
+    };
+
+    private double SpeedMultiplier => PlaySpeeds[_speedIndex];
+
+    private void UpdateSpeedLabel()
+    {
+        if (_speedButton.Content is TextBlock label)
+        {
+            var speed = SpeedMultiplier;
+            label.Text = (speed % 1 == 0 ? speed.ToString("0") : speed.ToString("0.#")) + "x";
+        }
+    }
+
+    private void OnSpeedButtonClick(object sender, RoutedEventArgs e)
+    {
+        _speedIndex = (_speedIndex + 1) % PlaySpeeds.Length;
+        UpdateSpeedLabel();
+
+        // Re-scale the in-flight step so a speed change takes effect immediately while playing.
+        if (_isPlaying)
+        {
+            _playStep = _basePlayStep * SpeedMultiplier;
+        }
+    }
+
+    private void OnStepBackButtonClick(object sender, RoutedEventArgs e) => StepToAdjacentEvent(forward: false);
+
+    private void OnStepForwardButtonClick(object sender, RoutedEventArgs e) => StepToAdjacentEvent(forward: true);
+
+    /// <summary>Pauses play and moves the playhead to the previous/next distinct event time.</summary>
+    private void StepToAdjacentEvent(bool forward)
+    {
+        if (_sortedEvents.Count == 0)
+        {
+            return;
+        }
+
+        StopPlay();
+
+        var target = forward
+            ? NextEventTime(_playheadTime, _maxTime)
+            : PrevEventTime(_playheadTime, _minTime);
+
+        if (target is not { } time)
+        {
+            return;
+        }
+
+        _playheadTime = Math.Clamp(time, _minTime, _maxTime);
+        SyncHandlesToPlayhead();
+        FirePlayhead();
+        EnsurePlayheadVisible();
+        _skCanvas.Invalidate();
+    }
+
+    /// <summary>When zoomed in, scrolls so the playhead stays within the visible content window.</summary>
+    private void EnsurePlayheadVisible()
+    {
+        if (MaxScroll <= 0)
+        {
+            return;
+        }
+
+        var contentX = (_playheadTime - _minTime) / _timeRange * ContentWidth;
+        const double margin = 24;
+
+        if (contentX < _scrollX + margin)
+        {
+            _scrollX = Math.Clamp(contentX - margin, 0, MaxScroll);
+        }
+        else if (contentX > _scrollX + DrawWidth - margin)
+        {
+            _scrollX = Math.Clamp(contentX - DrawWidth + margin, 0, MaxScroll);
+        }
+
+        _scrollBar.Value = _scrollX;
     }
 
     private void Reset()
@@ -351,8 +515,10 @@ public sealed class EventTimelineControl : Grid
             }
         }
 
-        _minTime = min;
-        _maxTime = max;
+        // Apply the optional crop: a set Start/EndTime overrides the natural event extent so that
+        // pre/post activity outside the cropped window falls off the axis (clipped by the canvas).
+        _minTime = StartTime ?? min;
+        _maxTime = EndTime ?? max;
         _timeRange = Math.Max(_maxTime - _minTime, 1.0);
 
         // The bucket width: the gap to the next distinct timestamp (the capture's time resolution).
@@ -420,7 +586,7 @@ public sealed class EventTimelineControl : Grid
         return gaps;
     }
 
-    // EngineEvent.TimeMs / Duration are stored as Ticks/1000 (10 units per real millisecond).
+    // EngineEvent.TimeMs / Duration are real milliseconds (AxisUnitsPerMs is 1).
     private static double StartMs(EngineEvent ev) => ev.TimeMs / AxisUnitsPerMs;
 
     private static double DurationMs(EngineEvent ev) => ev.Duration / AxisUnitsPerMs;
@@ -462,6 +628,42 @@ public sealed class EventTimelineControl : Grid
             }
 
         return seq;
+    }
+
+    /// <summary>Earliest event time strictly after <paramref name="timeMs"/> up to <paramref name="upper"/>, or null.</summary>
+    private double? NextEventTime(double timeMs, double upper)
+    {
+        double? next = null;
+
+        for (var i = 0; i < _times.Count; i++)
+        {
+            var t = _times[i];
+
+            if (t > timeMs && t <= upper && (next is null || t < next))
+            {
+                next = t;
+            }
+        }
+
+        return next;
+    }
+
+    /// <summary>Latest event time strictly before <paramref name="timeMs"/> down to <paramref name="lower"/>, or null.</summary>
+    private double? PrevEventTime(double timeMs, double lower)
+    {
+        double? prev = null;
+
+        for (var i = 0; i < _times.Count; i++)
+        {
+            var t = _times[i];
+
+            if (t < timeMs && t >= lower && (prev is null || t > prev))
+            {
+                prev = t;
+            }
+        }
+
+        return prev;
     }
 
     private float CanvasWidth => (float)_overlay.ActualWidth;
@@ -810,9 +1012,23 @@ public sealed class EventTimelineControl : Grid
             var lineWidth = Math.Max(1f, slotHeight - OperatorLineMargin);
             var cornerRadius = Math.Min(lineWidth / 2f, 3f);
 
+            var barTop = y - lineWidth / 2f;
+            var barBottom = y + lineWidth / 2f;
+
+            // Subtle top-lit sheen: lighten the top edge, darken the bottom edge of the bar.
+            var gradient = SKShader.CreateLinearGradient(
+                new SKPoint(startX, barTop),
+                new SKPoint(startX, barBottom),
+                [Scale(barColour, 1f + GradientLift), Scale(barColour, 1f - GradientLift)],
+                null,
+                SKShaderTileMode.Clamp);
+
             _operatorPaint.Color = barColour;
-            canvas.DrawRoundRect(new SKRect(startX, y - lineWidth / 2f, endX, y + lineWidth / 2f),
+            _operatorPaint.Shader = gradient;
+            canvas.DrawRoundRect(new SKRect(startX, barTop, endX, barBottom),
                                  cornerRadius, cornerRadius, _operatorPaint);
+            _operatorPaint.Shader = null;
+            gradient.Dispose();
 
             if (lineWidth >= MinLabelBarHeight && endX - startX >= MinLabelBarWidth)
             {
@@ -826,6 +1042,9 @@ public sealed class EventTimelineControl : Grid
     // The statement (SELECT) band is half the height of an operator level band.
     private const float StatementBandWeight = 0.5f;
 
+    // RGB lift/drop for the subtle vertical sheen on operator bars (±14%).
+    private const float GradientLift = 0.08f;
+
     private static float LevelWeight(int level) => level == 0 ? StatementBandWeight : 1f;
 
     /// <summary>Draws the operator name and target inside the bar, clipped to it, in a contrasting colour.</summary>
@@ -838,16 +1057,18 @@ public sealed class EventTimelineControl : Grid
             return;
         }
 
-        _operatorTextPaint.Color = ContrastingColour(barColour);
+        // Hide the label entirely when it would overflow the bar rather than clipping it mid-word.
+        const float textPadX = 4f;
+        if (_labelFont.MeasureText(label) > endX - startX - textPadX * 2)
+        {
+            return;
+        }
 
-        canvas.Save();
-        canvas.ClipRect(new SKRect(startX, y - barHeight / 2f, endX, y + barHeight / 2f));
+        _operatorTextPaint.Color = ContrastingColour(barColour);
 
         // Centre the text vertically within the bar.
         var baseline = y + _labelFont.Size * 0.35f;
-        canvas.DrawText(label, startX + 4, baseline, SKTextAlign.Left, _labelFont, _operatorTextPaint);
-
-        canvas.Restore();
+        canvas.DrawText(label, startX + textPadX, baseline, SKTextAlign.Left, _labelFont, _operatorTextPaint);
     }
 
     private static string BuildOperatorLabel(ExecutionOperatorEvent op)
@@ -901,16 +1122,14 @@ public sealed class EventTimelineControl : Grid
         return -1;
     }
 
-    private static SKColor TintByCategory(SKColor colour, int category)
-    {
-        var factor = CategoryShade[category];
+    private static SKColor TintByCategory(SKColor colour, int category) => Scale(colour, CategoryShade[category]);
 
-        return new SKColor(
-            (byte)Math.Clamp(colour.Red * factor, 0, 255),
-            (byte)Math.Clamp(colour.Green * factor, 0, 255),
-            (byte)Math.Clamp(colour.Blue * factor, 0, 255),
-            colour.Alpha);
-    }
+    /// <summary>Scales a colour's RGB channels by <paramref name="factor"/> (clamped), preserving alpha.</summary>
+    private static SKColor Scale(SKColor colour, float factor) => new(
+        (byte)Math.Clamp(colour.Red * factor, 0, 255),
+        (byte)Math.Clamp(colour.Green * factor, 0, 255),
+        (byte)Math.Clamp(colour.Blue * factor, 0, 255),
+        colour.Alpha);
 
     /// <summary>
     /// Emits the in-scope window the other views highlight. With an explicit selection that is the
@@ -1262,15 +1481,24 @@ public sealed class EventTimelineControl : Grid
         var rangeStart = SelectionActive ? Math.Min(_startTime, _endTime) : _minTime;
         var rangeEnd = SelectionActive ? Math.Max(_startTime, _endTime) : _maxTime;
 
-        _playheadTime = rangeStart;
+        _playStartTime = rangeStart;
         _playEndTime = rangeEnd;
+
+        // Resume from the current playhead position; only snap to the start if it sits outside the
+        // range (e.g. parked at the end after a previous run). Playback loops back here at the end.
+        if (_playheadTime < rangeStart || _playheadTime >= rangeEnd)
+        {
+            _playheadTime = rangeStart;
+        }
+
         _isPlaying = true;
 
         // Advance the playhead smoothly: cover the range over (events in range) * EventWallMs of wall
         // time, so the overall speed matches the old per-event play but in small, even time steps.
         var rangeMs = Math.Max(rangeEnd - rangeStart, 1e-6);
         var eventsInRange = Math.Max(1, _times.Count(t => t >= rangeStart && t <= rangeEnd));
-        _playStep = rangeMs * PlayTickMs / (eventsInRange * EventWallMs);
+        _basePlayStep = rangeMs * PlayTickMs / (eventsInRange * EventWallMs);
+        _playStep = _basePlayStep * SpeedMultiplier;
 
         SyncHandlesToPlayhead();
         FirePlayhead();
@@ -1309,19 +1537,21 @@ public sealed class EventTimelineControl : Grid
     {
         _playheadTime += _playStep;
 
-        var ended = _playheadTime >= _playEndTime;
-        if (ended)
+        // Loop continuously: when the playhead reaches the end of the range it wraps back to the
+        // start and keeps playing until the user presses stop.
+        if (_playheadTime >= _playEndTime)
         {
-            _playheadTime = _playEndTime;
+            _playheadTime = _playStartTime;
+        }
+        else if (NextEventTime(_playheadTime, _playEndTime) is { } next && next - _playheadTime > _basePlayStep * GapSkipTicks)
+        {
+            // Dead air ahead: jump straight to the next activity rather than gliding across the gap.
+            // The gap threshold uses the base step so skipping behaves the same at every speed.
+            _playheadTime = next;
         }
 
         SyncHandlesToPlayhead();
         FirePlayhead();
         _skCanvas.Invalidate();
-
-        if (ended)
-        {
-            StopPlay();
-        }
     }
 }

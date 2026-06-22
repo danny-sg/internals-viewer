@@ -33,6 +33,13 @@ internal class EventColourProvider
 
         foreach (var engineEvent in events)
         {
+            // Operators are coloured by their category (data access / join / transformation / buffer).
+            if (engineEvent is ExecutionOperatorEvent op)
+            {
+                engineEvent.DisplayColour = GetOperatorCategoryColour(op.Category);
+                continue;
+            }
+
             // Locks and waits can be linked to an operator's object (e.g. a SCH_S/Object lock) without
             // representing that operator's IO, so they keep their own colour rather than being tinted
             // like the data-access events.
@@ -46,6 +53,18 @@ internal class EventColourProvider
 
             engineEvent.DisplayColour = GetEventColour(engineEvent);
         }
+    }
+
+    private static Color GetOperatorCategoryColour(OperatorCategory category)
+    {
+        return category switch
+        {
+            OperatorCategory.DataAccess => ColourConstants.DataAccessColour,
+            OperatorCategory.Join => ColourConstants.JoinColour,
+            OperatorCategory.Transformation => ColourConstants.TransformationColour,
+            OperatorCategory.Buffer => ColourConstants.BufferColour,
+            _ => Color.Gray
+        };
     }
 
     private static Color GetEventColour(EngineEvent engineEvent)

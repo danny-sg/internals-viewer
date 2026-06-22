@@ -10,6 +10,12 @@ internal static class ColourConstants
     public static readonly Color LockColour = Color.FromArgb(0, 249, 120, 120);
     public static readonly Color WaitColour = Color.FromArgb(0, 236, 249, 119);
 
+    // Operator category colours (full alpha). Data access reuses the existing IO blue.
+    public static readonly Color DataAccessColour = Color.FromArgb(255, 97, 176, 227);
+    public static readonly Color JoinColour = Color.FromArgb(255, 96, 200, 120);
+    public static readonly Color TransformationColour = Color.FromArgb(255, 232, 150, 70);
+    public static readonly Color BufferColour = Color.FromArgb(255, 170, 120, 220);
+
     public static readonly Color SystemIoColour = Desaturate(IoColour, 0.20);
     public static readonly Color SystemPageColour = Desaturate(PageColour, 0.20);
     public static readonly Color SystemLockColour = Desaturate(LockColour, 0.20);

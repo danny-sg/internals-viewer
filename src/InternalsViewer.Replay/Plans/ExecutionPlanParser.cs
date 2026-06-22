@@ -232,6 +232,7 @@ public static class ExecutionPlanParser
         return new ExecutionOperatorEvent
         {
             Name = node.PhysicalOperator,
+            Category = OperatorClassifier.GetCategory(node),
             PlanHandle = planHandle,
             NodeLevel = nodeLevel,
             PlanNodeIdentifier = new PlanNodeIdentifier

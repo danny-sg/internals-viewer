@@ -143,6 +143,43 @@ public static class OperatorClassifier
         return NodeEventHelper.GetFirstActivityTime(events, identifier) ?? 0;
     }
 
+    public static OperatorCategory GetCategory(PlanNode n)
+    {
+        // Aggregates reshape rows. Checked first because a Hash Aggregate shares the "Hash Match"
+        // physical operator with a hash join and would otherwise be miscategorised as a join.
+        if (Contains(n.LogicalOperator, "Aggregate"))
+        {
+            return OperatorCategory.Transformation;
+        }
+
+        // Data access (IO): scans, seeks and key/RID lookups read pages.
+        if (IsScan(n) || IsSeek(n) || IsLookup(n))
+        {
+            return OperatorCategory.DataAccess;
+        }
+
+        // Joins.
+        if (IsHash(n) || IsNestedLoop(n) || IsMergeJoin(n))
+        {
+            return OperatorCategory.Join;
+        }
+
+        // Buffering / blocking: spools, sort (materialises rows) and exchange (parallelism buffers).
+        if (IsSpool(n) || IsSort(n) || IsExchange(n))
+        {
+            return OperatorCategory.Buffer;
+        }
+
+        // Explicit transformations.
+        if (IsFilter(n) || IsComputeScalar(n))
+        {
+            return OperatorCategory.Transformation;
+        }
+
+        // Fallback: Top, Concatenation, Segment, Window, and other row-shaping operators.
+        return OperatorCategory.Transformation;
+    }
+
     public static OperatorKind GetKind(PlanNode n)
     {
         if (IsHash(n))
@@ -285,8 +322,8 @@ public static class OperatorClassifier
         }
 
         return hash.Children
-            .OrderBy(c => c.EstimatedRows)
-            .First();
+                   .OrderBy(c => c.EstimatedRows)
+                   .First();
     }
 
 

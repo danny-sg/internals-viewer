@@ -122,6 +122,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     public bool isError;
 
+    [ObservableProperty]
+    public bool cropToQuery = true;
+
     partial void OnIsErrorChanged(bool value) => OnPropertyChanged(nameof(ResultBrush));
 
     [ObservableProperty]
@@ -146,9 +149,41 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private long sequenceTo;
 
+    [ObservableProperty]
+    public double? startTime;
+
+    [ObservableProperty]
+    public double? endTime;
+
     /// <summary>Sequence id under the timeline playhead; drives the active operator.</summary>
     [ObservableProperty]
     private long playheadSequence;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SqlPaneRowHeight))]
+    [NotifyPropertyChangedFor(nameof(SqlSplitterVisibility))]
+    [NotifyPropertyChangedFor(nameof(TimelineSplitterVisibility))]
+    private bool isSqlPaneVisible = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TimelineRowHeight))]
+    [NotifyPropertyChangedFor(nameof(TimelineSplitterVisibility))]
+    private bool isTimelineVisible = true;
+
+    public GridLength SqlPaneRowHeight
+        => IsSqlPaneVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility SqlSplitterVisibility
+        => IsSqlPaneVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    public GridLength TimelineRowHeight
+        => IsTimelineVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility TimelineSplitterVisibility
+        => IsSqlPaneVisible && IsTimelineVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    [ObservableProperty]
+    private bool isEventSelectionPanelOpen;
 
     [ObservableProperty]
     private ObservableCollection<EventFilterNode> filterNodes = [];
@@ -233,8 +268,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     partial void OnIncludeSystemObjectsChanged(bool value) => RefreshFilteredEvents();
 
-    public Microsoft.UI.Xaml.Visibility HasEvents
-        => Events.Count > 0 ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+    public Visibility HasEvents
+        => Events.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
     public SolidColorBrush ResultBrush => IsError
         ? new SolidColorBrush(Colors.Red)
@@ -310,34 +345,46 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        IsError = false;
-        Message = $"({results.RowCount} rows affected)";
-
-        var names = Database.AllocationUnits
-                            .GroupBy(u => u.ObjectId)
-                            .ToDictionary(g => g.Key, g => g.First().DisplayName);
-
-        foreach (var e in results.EngineEvents.Where(e => e.ObjectId > 0))
+        if (cropToQuery)
         {
-            e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
+            var queryNode = results.EngineEvents.FirstOrDefault(e =>
+                e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 });
+
+            if (queryNode != null)
+            {
+                StartTime = queryNode.TimeMs;
+                EndTime = queryNode.TimeMs + queryNode.Duration;
+            }
+
+            IsError = false;
+            Message = $"({results.RowCount} rows affected)";
+
+            var names = Database.AllocationUnits
+                .GroupBy(u => u.ObjectId)
+                .ToDictionary(g => g.Key, g => g.First().DisplayName);
+
+            foreach (var e in results.EngineEvents.Where(e => e.ObjectId > 0))
+            {
+                e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
+            }
+
+            EventColourProvider.SetEventColours(results.ExecutionPlans, results.EngineEvents);
+
+            DispatcherQueue.TryEnqueue(async void () =>
+            {
+                Events = results.EngineEvents;
+
+                ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
+
+                IsQueryExecuting = false;
+
+                await BuildFilterTreeAsync();
+            });
+
+            RefreshLayers(results.EngineEvents);
         }
-
-        EventColourProvider.SetEventColours(results.ExecutionPlans, results.EngineEvents);
-
-        DispatcherQueue.TryEnqueue(async void () =>
-        {
-            Events = results.EngineEvents;
-
-            ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
-
-            IsQueryExecuting = false;
-
-            await BuildFilterTreeAsync();
-        });
-
-        RefreshLayers(results.EngineEvents);
     }
-    
+
     private void ClearResults()
     {
         IsError = false;
@@ -474,7 +521,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 .Select(c => $"{eventNode.Label}/{c.Label}"))
             .ToList();
 
-        foreach (var eventNode in root.Children.Where(n => n.IsChecked == false && n.Children.Count == 0))
+        foreach (var eventNode in root.Children.Where(n => n is { IsChecked: false, Children.Count: 0 }))
         {
             uncheckedPaths.Add(eventNode.Label);
         }
@@ -554,13 +601,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                     case IoEvent ioEvent:
                         if (isSystemObject)
                         {
-                            systemIoLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId) 
-                                { DisplayColour = e.DisplayColour});
+                            systemIoLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId)
+                            { DisplayColour = e.DisplayColour });
                         }
                         else
                         {
                             ioLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId)
-                                { DisplayColour = e.DisplayColour });
+                            { DisplayColour = e.DisplayColour });
                         }
 
                         break;
@@ -573,7 +620,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                         else
                         {
                             lockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId)
-                                { DisplayColour = e.DisplayColour });
+                            { DisplayColour = e.DisplayColour });
                         }
 
                         break;
