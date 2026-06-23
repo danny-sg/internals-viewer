@@ -126,16 +126,18 @@ public static class OperatorClassifier
             }
         }
 
-        // 3. Leaf (data access) → first underlying IO; fall back to thread activity only when the
-        //    operator did no IO. Taking the IO directly (rather than min'ing it with activity) keeps
-        //    the start anchored to the first page read instead of an earlier operator-open event.
+        // 3. Leaf (data access) → first underlying IO; for a data modification, the equivalent signal
+        //    is the first transaction-log write (when the t-log first gets modified). Anchor to the
+        //    earliest of whichever applies, falling back to thread activity only when neither occurred.
         if (IsLeaf(node))
         {
             var io = NodeEventHelper.GetFirstIoTime(events, identifier);
+            var write = IsDataModification(node) ? NodeEventHelper.GetFirstLogTime(events, identifier) : null;
+            var first = MinNullable(io, write);
 
-            if (io.HasValue)
+            if (first.HasValue)
             {
-                return io.Value;
+                return first.Value;
             }
 
             var activity = NodeEventHelper.GetFirstActivityTime(events, identifier);
@@ -173,10 +175,16 @@ public static class OperatorClassifier
             return OperatorCategory.DataAccess;
         }
 
-        // Joins.
+        // Joins. Checked before modification so a "Merge Join" isn't caught by the "Merge" rule below.
         if (IsHash(n) || IsNestedLoop(n) || IsMergeJoin(n))
         {
             return OperatorCategory.Join;
+        }
+
+        // Data modification: insert/update/delete/merge write to the table and transaction log.
+        if (IsDataModification(n))
+        {
+            return OperatorCategory.Modification;
         }
 
         // Buffering / blocking: spools, sort (materialises rows) and exchange (parallelism buffers).
@@ -264,15 +272,17 @@ public static class OperatorClassifier
         if (IsLeaf(node))
         {
             var lastIo = NodeEventHelper.GetLastIoTime(events, identifier);
+            var lastWrite = IsDataModification(node) ? NodeEventHelper.GetLastLogTime(events, identifier) : null;
+            var last = MaxNullable(lastIo, lastWrite);
 
-            // The operator's close (thread profile) is authoritative; bound the IO end by it so reads
-            // on the same object that land after the operator finished (late read-ahead, or the object
-            // being touched again later) don't stretch the operator to the end of the query.
+            // The operator's close (thread profile) is authoritative; bound the IO/log end by it so
+            // work on the same object that lands after the operator finished (late read-ahead, a later
+            // log flush, or the object being touched again) doesn't stretch it to the end of the query.
             var close = NodeEventHelper.GetLastActivityTime(events, identifier);
 
-            if (lastIo.HasValue)
+            if (last.HasValue)
             {
-                return close.HasValue ? Math.Min(lastIo.Value, close.Value) : lastIo.Value;
+                return close.HasValue ? Math.Min(last.Value, close.Value) : last.Value;
             }
 
             return close ?? 0;
@@ -307,6 +317,12 @@ public static class OperatorClassifier
 
         return end;
     }
+
+    private static long? MinNullable(long? a, long? b) =>
+        a.HasValue ? (b.HasValue ? Math.Min(a.Value, b.Value) : a) : b;
+
+    private static long? MaxNullable(long? a, long? b) =>
+        a.HasValue ? (b.HasValue ? Math.Max(a.Value, b.Value) : a) : b;
 
     private static bool Contains(string s, string v) =>
         s?.IndexOf(v, StringComparison.OrdinalIgnoreCase) >= 0;

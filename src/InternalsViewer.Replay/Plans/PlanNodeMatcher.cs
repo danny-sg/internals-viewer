@@ -109,9 +109,9 @@ public static class PlanNodeMatcher
 
             if (node is not null)
             {
-                if (!IsIoOperator(node.PhysicalOperator))
+                if (IsReadOperator(node.PhysicalOperator))
                 {
-                    node = FindIoTarget(node) ?? node;
+                    node = FindReadTarget(node) ?? node;
                 }
 
                 engineEvent.PlanNodeIdentifier = new PlanNodeIdentifier
@@ -181,23 +181,31 @@ public static class PlanNodeMatcher
         return Choose(strong, engineEvent, windows) ?? Choose(weak, engineEvent, windows);
     }
 
-    private static bool IsIoOperator(string op)
+    private static bool IsReadOperator(string op)
     {
         return op.Contains("Scan") ||
                op.Contains("Seek") ||
                op.Contains("Lookup");
     }
 
-    private static PlanNode? FindIoTarget(PlanNode node)
+    private static bool IsLogOperator(string op)
     {
-        if (IsIoOperator(node.PhysicalOperator))
+        return op.Contains("Insert") ||
+               op.Contains("Update") ||
+               op.Contains("Delete") ||
+               op.Contains("Merge");
+    }
+
+    private static PlanNode? FindReadTarget(PlanNode node)
+    {
+        if (IsReadOperator(node.PhysicalOperator))
         {
             return node;
         }
 
         foreach (var child in node.Children)
         {
-            var result = FindIoTarget(child);
+            var result = FindReadTarget(child);
 
             if (result != null)
             {

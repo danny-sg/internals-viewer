@@ -40,6 +40,13 @@ internal class EventColourProvider
                 continue;
             }
 
+            // Transaction-log writes are red, and don't get tinted by any linked operator's object.
+            if (engineEvent is TransactionLogEvent)
+            {
+                engineEvent.DisplayColour = ColourConstants.LogColour;
+                continue;
+            }
+
             // Locks and waits can be linked to an operator's object (e.g. a SCH_S/Object lock) without
             // representing that operator's IO, so they keep their own colour rather than being tinted
             // like the data-access events.
@@ -63,6 +70,7 @@ internal class EventColourProvider
             OperatorCategory.Join => ColourConstants.JoinColour,
             OperatorCategory.Transformation => ColourConstants.TransformationColour,
             OperatorCategory.Buffer => ColourConstants.BufferColour,
+            OperatorCategory.Modification => ColourConstants.LogColour,
             _ => Color.Gray
         };
     }
@@ -73,6 +81,7 @@ internal class EventColourProvider
         {
             LockEvent => ColourConstants.LockColour,
             WaitEvent => ColourConstants.WaitColour,
+            TransactionLogEvent => ColourConstants.LogColour,
             _ => Color.Gray
         };
     }

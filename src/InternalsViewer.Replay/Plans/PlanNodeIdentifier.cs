@@ -16,4 +16,9 @@ public sealed record PlanNodeIdentifier
     public string PlanHandle { get; set; } = string.Empty;
 
     public int NodeId { get; set; }
+
+    public override string ToString()
+    {
+        return $"{PlanHandle}:{NodeId}";
+    }
 }

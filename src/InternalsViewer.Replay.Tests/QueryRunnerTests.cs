@@ -4,20 +4,20 @@ using Xunit.Abstractions;
 
 namespace InternalsViewer.Replay.Tests;
 
-public class QueryCaptureTests(ITestOutputHelper testOutputHelper)
+public class QueryRunnerTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;
 
     [Fact]
     public async Task Can_Run_Simple_Query()
     {
-        var logger = TestLogger.GetLogger<QueryCapture>(TestOutputHelper);
+        var logger = TestLogger.GetLogger<QueryRunner>(TestOutputHelper);
 
         var connectionString = ConnectionStringHelper.GetConnectionString("Local");
 
         var query = "SELECT * FROM Person.Address";
 
-        var executor = new QueryCapture(logger);
+        var executor = new QueryRunner(logger);
 
         var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true);
 
@@ -34,13 +34,13 @@ public class QueryCaptureTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public async Task Invalid_Query_Gives_IsSuccess_False()
     {
-        var logger = TestLogger.GetLogger<QueryCapture>(TestOutputHelper);
+        var logger = TestLogger.GetLogger<QueryRunner>(TestOutputHelper);
 
         var connectionString = ConnectionStringHelper.GetConnectionString("Local");
 
         var query = "SELECT * FROM Person.AddressZZZ";
 
-        var executor = new QueryCapture(logger);
+        var executor = new QueryRunner(logger);
 
         var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true);
 

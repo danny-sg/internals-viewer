@@ -35,5 +35,19 @@ public static class NodeEventHelper
                      .Max();
     }
 
+    // Transaction-log writes are the modification equivalent of read IO: they mark when the operator
+    // first/last touches the log.
+    public static long? GetFirstLogTime(List<EngineEvent> events, PlanNodeIdentifier identifier)
+    {
+        return events.Where(e => e.PlanNodeIdentifier == identifier && e is TransactionLogEvent)
+                     .Select(e => (long?)e.TimeMs)
+                     .Min();
+    }
 
+    public static long? GetLastLogTime(List<EngineEvent> events, PlanNodeIdentifier identifier)
+    {
+        return events.Where(e => e.PlanNodeIdentifier == identifier && e is TransactionLogEvent)
+                     .Select(e => (long?)e.TimeMs)
+                     .Max();
+    }
 }

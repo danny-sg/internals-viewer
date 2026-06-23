@@ -50,59 +50,61 @@
                   Padding="12,8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0"
                            Text="Query Settings"
                            Style="{StaticResource SubtitleTextBlockStyle}"
                            Margin="0,0,0,8"/>
-                <queryReplay:EventFilterControl Grid.Row="1"
+                <CheckBox Grid.Row="1" IsChecked="{x:Bind ViewModel.CropToQuery, Mode=TwoWay}">Crop</CheckBox>
+                <queryReplay:EventFilterControl Grid.Row="2"
                                                FilterNodes="{x:Bind ViewModel.FilterNodes, Mode=OneWay}"
                                                IncludeSystemObjects="{x:Bind ViewModel.IncludeSystemObjects, Mode=TwoWay}"/>
             </Grid>
         </SplitView.Pane>
         <SplitView.Content>
-    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="{x:Bind ViewModel.SqlPaneRowHeight, Mode=OneWay}"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="{x:Bind ViewModel.TimelineRowHeight, Mode=OneWay}"/>
-        </Grid.RowDefinitions>
+            <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="{x:Bind ViewModel.SqlPaneRowHeight, Mode=OneWay}"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="{x:Bind ViewModel.TimelineRowHeight, Mode=OneWay}"/>
+                </Grid.RowDefinitions>
 
-        <!--Top Command Bar-->
-        <CommandBar IsOpen="False"
+                <!--Top Command Bar-->
+                <CommandBar IsOpen="False"
                     DefaultLabelPosition="Right"
                     Grid.Row="0"
                     HorizontalAlignment="Stretch"
                     Background="Transparent">
-            <CommandBar.Content>
-                <StackPanel Orientation="Horizontal"
+                    <CommandBar.Content>
+                        <StackPanel Orientation="Horizontal"
                             Height="48"
                             VerticalAlignment="Center"
                             Spacing="8"
                             Margin="12,0,0,0"
                             Visibility="{x:Bind ViewModel.ActiveOperatorVisibility, Mode=OneWay}">
-                    <Image Source="{x:Bind ViewModel.ActiveOperatorIcon, Mode=OneWay}"
+                            <Image Source="{x:Bind ViewModel.ActiveOperatorIcon, Mode=OneWay}"
                            Width="20"
                            Height="20"
                            VerticalAlignment="Center" />
-                    <TextBlock Text="{x:Bind ViewModel.ActiveOperatorName, Mode=OneWay}"
+                            <TextBlock Text="{x:Bind ViewModel.ActiveOperatorName, Mode=OneWay}"
                                VerticalAlignment="Center"
                                FontWeight="SemiBold" />
-                    <TextBlock Text="{x:Bind ViewModel.ActiveOperatorObject, Mode=OneWay}"
+                            <TextBlock Text="{x:Bind ViewModel.ActiveOperatorObject, Mode=OneWay}"
                                VerticalAlignment="Center"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
-            </CommandBar.Content>
-          
-            <AppBarButton Label="Index" Command="{x:Bind ViewModel.OpenIndexViewCommand}">
-                <AppBarButton.Icon>
-                    <BitmapIcon UriSource="ms-appx:///Assets/Index32.png"/>
-                </AppBarButton.Icon>
-            </AppBarButton>
+                        </StackPanel>
+                    </CommandBar.Content>
+
+                    <AppBarButton Label="Index" Command="{x:Bind ViewModel.OpenIndexViewCommand}">
+                        <AppBarButton.Icon>
+                            <BitmapIcon UriSource="ms-appx:///Assets/Index32.png"/>
+                        </AppBarButton.Icon>
+                    </AppBarButton>
                     <AppBarToggleButton Label="SQL"
                                         IsChecked="{x:Bind ViewModel.IsSqlPaneVisible, Mode=TwoWay}">
                         <AppBarToggleButton.Icon>
@@ -123,14 +125,14 @@
                     </AppBarToggleButton>
                 </CommandBar>
 
-        <!--Allocations/Indexes/Execution Plan-->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <ItemsRepeater
+                <!--Allocations/Indexes/Execution Plan-->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <ItemsRepeater
                x:Name="AllocationItemRepeater"
                Grid.Column="0"
                HorizontalAlignment="Stretch"
@@ -139,20 +141,20 @@
                Layout="{StaticResource VerticalStackLayout}"
                ItemTemplate="{StaticResource AllocationFileTemplate}" />
 
-            <controls:GridSplitter Grid.Column="1"
+                    <controls:GridSplitter Grid.Column="1"
                                        Width="1"
                                        ResizeDirection="Columns"
                                        Background="{ThemeResource ControlStrokeColorDefaultBrush}">
-                <controls:GridSplitter.Template>
-                    <ControlTemplate TargetType="controls:GridSplitter">
-                        <Grid Background="{TemplateBinding Background}" />
-                    </ControlTemplate>
-                </controls:GridSplitter.Template>
+                        <controls:GridSplitter.Template>
+                            <ControlTemplate TargetType="controls:GridSplitter">
+                                <Grid Background="{TemplateBinding Background}" />
+                            </ControlTemplate>
+                        </controls:GridSplitter.Template>
 
-            </controls:GridSplitter>
+                    </controls:GridSplitter>
 
-            <Grid Grid.Column="2">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                    <Grid Grid.Column="2">
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Enabled"
                               VerticalScrollMode="Enabled"
@@ -161,139 +163,141 @@
                               MaxZoomFactor="2.0"
                               Background="White"
                               Padding="8">
-                    <ItemsRepeater x:Name="PlanRepeater"
+                            <ItemsRepeater x:Name="PlanRepeater"
                                    ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
                                    Layout="{StaticResource PlanStackLayout}"
                                    ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
-                </ScrollViewer>
-            </Grid>
-        </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
 
-        <!--Query Editor/Tabs-->
-        <controls:GridSplitter Grid.Row="2"
+                <!--Query Editor/Tabs-->
+                <controls:GridSplitter Grid.Row="2"
                               Grid.ColumnSpan="1"
                               Height="2"
                               Visibility="{x:Bind ViewModel.SqlSplitterVisibility, Mode=OneWay}"
                               Background="{ThemeResource ControlStrokeColorDefaultBrush}"
                               VerticalAlignment="Stretch">
-            <controls:GridSplitter.Template>
-                <ControlTemplate TargetType="controls:GridSplitter">
-                    <Grid Background="{TemplateBinding Background}" />
-                </ControlTemplate>
-            </controls:GridSplitter.Template>
-        </controls:GridSplitter>
+                    <controls:GridSplitter.Template>
+                        <ControlTemplate TargetType="controls:GridSplitter">
+                            <Grid Background="{TemplateBinding Background}" />
+                        </ControlTemplate>
+                    </controls:GridSplitter.Template>
+                </controls:GridSplitter>
 
-        <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" Grid.Row="3">
+                <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" Grid.Row="3">
 
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*" x:Name="EditorColumn"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*" x:Name="EventColumn"/>
-            </Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*" x:Name="EditorColumn"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*" x:Name="EventColumn"/>
+                    </Grid.ColumnDefinitions>
 
-                <CommandBar IsOpen="False" 
+                    <CommandBar IsOpen="False" 
                                 DefaultLabelPosition="Right"
                                 Grid.Column="0"
                                 Grid.ColumnSpan="2"
                                 Grid.Row="0"
                                 HorizontalAlignment="Left"
                                 Background="Transparent">
-                    <AppBarElementContainer VerticalContentAlignment="Center">
-                        <Button Command="{x:Bind ViewModel.ExecuteQueryCommand}"
+                        <AppBarElementContainer VerticalContentAlignment="Center">
+                            <Button Command="{x:Bind ViewModel.ExecuteQueryCommand}"
                                     IsEnabled="{x:Bind ViewModel.IsNotExecuting, Mode=OneWay}"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Padding="12,0">
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <ProgressRing Width="16"
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <ProgressRing Width="16"
                                                   Height="16"
                                                   IsActive="{x:Bind ViewModel.IsQueryExecuting, Mode=OneWay}"
                                                   Visibility="{x:Bind ViewModel.ExecutingVisibility, Mode=OneWay}" />
-                                <FontIcon Glyph="&#xE768;"
+                                    <FontIcon Glyph="&#xE768;"
                                               FontSize="14"
                                               Visibility="{x:Bind ViewModel.NotExecutingVisibility, Mode=OneWay}" />
-                                <TextBlock Text="{x:Bind ViewModel.ExecuteLabel, Mode=OneWay}"
+                                    <TextBlock Text="{x:Bind ViewModel.ExecuteLabel, Mode=OneWay}"
                                                VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                    </AppBarElementContainer>
-                    <AppBarToggleButton Label="Clear Buffer Pool"
+                                </StackPanel>
+                            </Button>
+                        </AppBarElementContainer>
+                        <AppBarToggleButton Label="Clear Buffer Pool"
+                                            Padding="0"
                                             IsChecked="{x:Bind ViewModel.IsClearBufferPool, Mode=TwoWay}" />
-                    <AppBarToggleButton Label="Disable Read-Ahead"
+                        <AppBarToggleButton Label="Disable Read-Ahead"
                                             IsChecked="{x:Bind ViewModel.IsDisableReadAhead, Mode=TwoWay}" />
-                    <AppBarToggleButton Label="Replay Mode"
-                                        IsChecked="{x:Bind ViewModel.IsReplayMode, Mode=TwoWay}" />
+                        <AppBarToggleButton Label="Replay Mode"
+                                            Padding="0"
+                                            IsChecked="{x:Bind ViewModel.IsReplayMode, Mode=TwoWay}" />
                     </CommandBar>
-                <sqlEditor:SqlEditorControl Grid.Row="1"
+                    <sqlEditor:SqlEditorControl Grid.Row="1"
                                             Grid.Column="0"
                                             x:Name="SqlEditor"
                                             SqlText="{x:Bind ViewModel.Sql, Mode=OneWay}"
                                             SqlTextChanged="OnSqlTextChanged"
                                             Theme="vs-light" />
-         
-            <controls:GridSplitter Grid.Column="1"
+
+                    <controls:GridSplitter Grid.Column="1"
                                    Grid.Row="1"
                                        Width="2"
                                        ResizeDirection="Columns"
                                        Background="{ThemeResource ControlStrokeColorDefaultBrush}">
-                <controls:GridSplitter.Template>
-                    <ControlTemplate TargetType="controls:GridSplitter">
-                        <Grid Background="{TemplateBinding Background}" />
-                    </ControlTemplate>
-                </controls:GridSplitter.Template>
-                <controls:GridSplitter.RenderTransform>
-                    <TranslateTransform Y="0" />
-                </controls:GridSplitter.RenderTransform>
-            </controls:GridSplitter>
+                        <controls:GridSplitter.Template>
+                            <ControlTemplate TargetType="controls:GridSplitter">
+                                <Grid Background="{TemplateBinding Background}" />
+                            </ControlTemplate>
+                        </controls:GridSplitter.Template>
+                        <controls:GridSplitter.RenderTransform>
+                            <TranslateTransform Y="0" />
+                        </controls:GridSplitter.RenderTransform>
+                    </controls:GridSplitter>
 
-            <!-- Right panel: Events grid + filter tree in tabs -->
-            <TabView Grid.Column="2"
+                    <!-- Right panel: Events grid + filter tree in tabs -->
+                    <TabView Grid.Column="2"
                      Grid.Row="1"
                          x:Name="ResultsTabView"
                          IsAddTabButtonVisible="False"
                          VerticalAlignment="Stretch"
                          TabWidthMode="SizeToContent">
-                <TabViewItem Header="Messages" IsClosable="False">
-                    <Border Background="White" Padding="8" VerticalAlignment="Stretch">
+                        <TabViewItem Header="Messages" IsClosable="False">
+                            <Border Background="White" Padding="8" VerticalAlignment="Stretch">
 
-                        <TextBlock x:Name="ResultMessage"
+                                <TextBlock x:Name="ResultMessage"
                                    Text="{x:Bind ViewModel.Message, Mode=OneWay}"      
                                    TextWrapping="Wrap"
                                    VerticalAlignment="Top"
                                    FontFamily="Courier New"
                                    Foreground="{x:Bind ViewModel.ResultBrush, Mode=OneWay}" />
-                    </Border>
-                </TabViewItem>
-                <TabViewItem Header="Events" IsClosable="False">
-                    <queryReplay:EventGridControl x:Name="EventGrid"
+                            </Border>
+                        </TabViewItem>
+                        <TabViewItem Header="Events" IsClosable="False">
+                            <queryReplay:EventGridControl x:Name="EventGrid"
                                                       Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
                                                       SequenceFrom="{x:Bind ViewModel.SequenceFrom, Mode=OneWay}"
                                                       SequenceTo="{x:Bind ViewModel.SequenceTo, Mode=OneWay}"
                                                       PageClicked="OnPageSelected"/>
-                </TabViewItem>
+                        </TabViewItem>
 
-                </TabView>
-        </Grid>
+                    </TabView>
+                </Grid>
 
-        <controls:GridSplitter Grid.Row="4"
+                <controls:GridSplitter Grid.Row="4"
                                Grid.ColumnSpan="1"
                                Height="2"
                                Visibility="{x:Bind ViewModel.TimelineSplitterVisibility, Mode=OneWay}"
                                Background="{ThemeResource ControlStrokeColorDefaultBrush}"
                                VerticalAlignment="Stretch">
-            <controls:GridSplitter.Template>
-                <ControlTemplate TargetType="controls:GridSplitter">
-                    <Grid Background="{TemplateBinding Background}" />
-                </ControlTemplate>
-            </controls:GridSplitter.Template>
-        </controls:GridSplitter>
+                    <controls:GridSplitter.Template>
+                        <ControlTemplate TargetType="controls:GridSplitter">
+                            <Grid Background="{TemplateBinding Background}" />
+                        </ControlTemplate>
+                    </controls:GridSplitter.Template>
+                </controls:GridSplitter>
 
-        <!--Timeline-->
-        <timeline:EventTimelineControl Grid.Row="5"
+                <!--Timeline-->
+                <timeline:EventTimelineControl Grid.Row="5"
                                        x:Name="EventTimeline"
                                        VerticalAlignment="Stretch"
                                        HorizontalAlignment="Stretch"
@@ -301,7 +305,7 @@
                                        EndTime="{x:Bind ViewModel.EndTime, Mode=OneWay}"
                                        Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
         />
-    </Grid>
+            </Grid>
         </SplitView.Content>
     </SplitView>
 </Page>

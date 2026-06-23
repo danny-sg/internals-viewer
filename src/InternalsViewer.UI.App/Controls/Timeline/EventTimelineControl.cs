@@ -31,13 +31,18 @@ public sealed class EventTimelineControl : Grid
     private const float RowLabelWidth = 36f;
     private const float RowPadding = 2f;
     private const float MarkerWidth = 1f;
+
+    // Rows with few events use a wider marker so the sparse ticks are easier to see.
+    private const float SparseMarkerWidth = 2f;
+    private const int SparseRowThreshold = 25;
+
     private const double TransportButtonHeight = 26;
 
     // Opacity of the I/O trace extensions (Trace I/O mode) — faint so they read as a background hint.
     private const byte TraceAlpha = 90;
 
     private const double MinZoom = 1.0;
-    private const double MaxZoom = 50.0;
+    private const double MaxZoom = 100.0;
     private const double ZoomStep = 1.15;
 
     private const double AxisUnitsPerMs = 1.0;
@@ -51,7 +56,7 @@ public sealed class EventTimelineControl : Grid
     private const double GapSkipTicks = 8;
 
     // Playback speed multipliers cycled by the speed toggle button.
-    private static readonly double[] PlaySpeeds = [0.5, 1.0, 2.0, 4.0];
+    private static readonly double[] PlaySpeeds = [0.25, 0.5, 1.0, 2.0, 4.0];
     private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(PlayTickMs);
 
     private static readonly SKColor PlayheadColour = new(230, 60, 60);
@@ -65,14 +70,22 @@ public sealed class EventTimelineControl : Grid
     private static readonly float[] CategoryShade = [0.70f, 0.85f, 1.0f, 1.15f];
 
     // Operator events span a duration and are drawn as lines; the row is given extra weight so the
-    // per-level tracks have room.
-    private static readonly (Type EventType, string Label, SKColor Color, float Weight)[] Rows =
+    // per-level tracks have room. The Log row is only shown when there are transaction-log events
+    // (see _activeRows); the rest are always present.
+    private static readonly (Type EventType, string Label, SKColor Color, float Weight)[] AllRows =
     [
+        (typeof(TransactionLogEvent), "Log",  ColourConstants.LogColour.ToSkColor().WithAlpha(255),  0.5f),
         (typeof(ExecutionOperatorEvent), "Plan", SKColors.LimeGreen, 3f),
-        (typeof(IoEvent),   "I/O",  ColourConstants.IoColour.ToSkColor().WithAlpha(255),   0.5f),
+        (typeof(IoEvent),   "Read", ColourConstants.IoColour.ToSkColor().WithAlpha(255),   0.5f),
         (typeof(LockEvent), "Lock", ColourConstants.LockColour.ToSkColor().WithAlpha(255), 0.5f),
         (typeof(WaitEvent), "Wait", ColourConstants.WaitColour.ToSkColor().WithAlpha(255), 0.5f),
     ];
+
+    // The rows actually rendered: AllRows minus the Log lane when there are no log events.
+    private (Type EventType, string Label, SKColor Color, float Weight)[] _activeRows = AllRows;
+
+    // Event count per active row, used to widen markers on sparse rows.
+    private int[] _rowEventCounts = [];
 
     private readonly Button _playButton;
     private readonly Button _speedButton;
@@ -124,7 +137,7 @@ public sealed class EventTimelineControl : Grid
     private const float MinLabelBarWidth = 26f;
 
     // Operator labels scale up to this size when the bar has room, and are hidden below the minimum.
-    private const float OperatorMaxFont = 10f;
+    private const float OperatorMaxFont = 11f;
     private const float OperatorMinFont = 7f;
 
     private readonly SKPaint _operatorTextPaint = new() { IsAntialias = true };
@@ -214,6 +227,7 @@ public sealed class EventTimelineControl : Grid
         var events = (List<EngineEvent>)e.NewValue;
 
         ctrl._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
+        ctrl.BuildActiveRows();
         ctrl.BuildTimes();
 
         ctrl.StopPlay();
@@ -661,7 +675,7 @@ public sealed class EventTimelineControl : Grid
 
     // A point event's visual lane: its row, sub-divided by category band for locks/waits, so only
     // markers that truly overlap (same row + band) are fanned out.
-    private static int RenderLane(EngineEvent ev)
+    private int RenderLane(EngineEvent ev)
     {
         var category = EventCategoryClassifier.GetCategory(ev);
         return GetRowIndex(ev) * 8 + (category.HasValue ? (int)category.Value : 7);
@@ -747,22 +761,22 @@ public sealed class EventTimelineControl : Grid
 
         var rowsTop = MarkerStripHeight;
         var rowsHeight = h - rowsTop;
-        var rowCount = Rows.Length;
+        var rowCount = _activeRows.Length;
 
-        var totalWeight = Rows.Sum(r => r.Weight);
+        var totalWeight = _activeRows.Sum(r => r.Weight);
         var rowTops = new float[rowCount];
         var rowHeights = new float[rowCount];
         var acc = rowsTop;
         for (var r = 0; r < rowCount; r++)
         {
             rowTops[r] = acc;
-            rowHeights[r] = rowsHeight * Rows[r].Weight / totalWeight;
+            rowHeights[r] = rowsHeight * _activeRows[r].Weight / totalWeight;
             acc += rowHeights[r];
         }
 
         for (var r = 0; r < rowCount; r++)
         {
-            var (_, label, _, _) = Rows[r];
+            var (_, label, _, _) = _activeRows[r];
             var y = rowTops[r];
             var rowHeight = rowHeights[r];
 
@@ -819,7 +833,7 @@ public sealed class EventTimelineControl : Grid
 
                 markerTop = innerTop + step * stepHeight;
                 markerHeight = Math.Max(2f, stepHeight - 1f);
-                _markerPaint.Color = TintByCategory(Rows[rowIndex].Color, step);
+                _markerPaint.Color = TintByCategory(_activeRows[rowIndex].Color, step);
             }
             else
             {
@@ -828,13 +842,14 @@ public sealed class EventTimelineControl : Grid
                 var displayColour = ev.DisplayColour;
                 markerTop = innerTop;
                 markerHeight = innerHeight;
-                _markerPaint.Color = displayColour.A == 0 ? Rows[rowIndex].Color : displayColour.ToSkColor();
+                _markerPaint.Color = displayColour.A == 0 ? _activeRows[rowIndex].Color : displayColour.ToSkColor();
             }
 
-            canvas.DrawRect(x, markerTop, MarkerWidth, markerHeight, _markerPaint);
+            var markerWidth = RowMarkerWidth(rowIndex);
+            canvas.DrawRect(x, markerTop, markerWidth, markerHeight, _markerPaint);
 
-            // Widen the hit target a little so the 2px markers are easy to hover.
-            _hitRegions.Add((new SKRect(x - 3, markerTop, x + MarkerWidth + 3, markerTop + markerHeight), ev, null));
+            // Widen the hit target a little so the thin markers are easy to hover.
+            _hitRegions.Add((new SKRect(x - 3, markerTop, x + markerWidth + 3, markerTop + markerHeight), ev, null));
         }
 
         DrawOperatorLines(canvas, rowTops, rowHeights);
@@ -964,9 +979,9 @@ public sealed class EventTimelineControl : Grid
     private void DrawOperatorLines(SKCanvas canvas, float[] rowTops, float[] rowHeights)
     {
         var planRow = -1;
-        for (var r = 0; r < Rows.Length; r++)
+        for (var r = 0; r < _activeRows.Length; r++)
         {
-            if (Rows[r].EventType == typeof(ExecutionOperatorEvent)) { planRow = r; break; }
+            if (_activeRows[r].EventType == typeof(ExecutionOperatorEvent)) { planRow = r; break; }
         }
 
         if (planRow < 0)
@@ -1042,9 +1057,9 @@ public sealed class EventTimelineControl : Grid
                 endX = startX + 2;
             }
 
-            // Pad the right edge by the marker width so an I/O event landing on the operator's end
-            // time (its marker drawn rightward from endX) still falls within the bar.
-            endX += MarkerWidth;
+            // Pad the right edge so an I/O event landing on the operator's end time (its marker drawn
+            // rightward from endX) still falls within the bar, allowing for the wider sparse-row marker.
+            endX += SparseMarkerWidth;
 
             var level = op.NodeLevel;
 
@@ -1070,7 +1085,7 @@ public sealed class EventTimelineControl : Grid
 
                 // Fall back to the row colour when the event has no display colour set.
                 var displayColour = op.DisplayColour;
-                barColour = displayColour.A == 0 ? Rows[planRow].Color : displayColour.ToSkColor();
+                barColour = displayColour.A == 0 ? _activeRows[planRow].Color : displayColour.ToSkColor();
             }
 
             // Lay the bar out within the slot. Phased operators reserve a strip above the bar for the
@@ -1165,9 +1180,9 @@ public sealed class EventTimelineControl : Grid
         }
 
         var ioRow = -1;
-        for (var r = 0; r < Rows.Length; r++)
+        for (var r = 0; r < _activeRows.Length; r++)
         {
-            if (Rows[r].EventType == typeof(IoEvent)) { ioRow = r; break; }
+            if (_activeRows[r].EventType == typeof(IoEvent)) { ioRow = r; break; }
         }
 
         if (ioRow < 0)
@@ -1183,6 +1198,9 @@ public sealed class EventTimelineControl : Grid
         // full opacity first, then fades the whole thing once.
         using var layerPaint = new SKPaint { Color = SKColors.White.WithAlpha(TraceAlpha) };
         canvas.SaveLayer(layerPaint);
+
+        // Match the read row's marker width so the extension lines up with the marker it grows from.
+        var traceWidth = RowMarkerWidth(ioRow);
 
         for (var i = 0; i < _sortedEvents.Count; i++)
         {
@@ -1200,10 +1218,10 @@ public sealed class EventTimelineControl : Grid
 
             // Same x as the marker (including its fan offset) so the extension lines up with it.
             var x = TimeToX(_times[i] + _nudge[i]);
-            var colour = io.DisplayColour.A == 0 ? Rows[ioRow].Color : io.DisplayColour.ToSkColor();
+            var colour = io.DisplayColour.A == 0 ? _activeRows[ioRow].Color : io.DisplayColour.ToSkColor();
 
             _markerPaint.Color = colour.WithAlpha(255);
-            canvas.DrawRect(x, barBottom, MarkerWidth, ioTop - barBottom, _markerPaint);
+            canvas.DrawRect(x, barBottom, traceWidth, ioTop - barBottom, _markerPaint);
         }
 
         canvas.Restore();
@@ -1261,7 +1279,7 @@ public sealed class EventTimelineControl : Grid
     private const float StatementBandWeight = 0.5f;
 
     // RGB lift/drop for the subtle vertical sheen on operator bars (±14%).
-    private const float GradientLift = 0.08f;
+    private const float GradientLift = 0.04f;
 
     // Build/probe phase bars: thin lanes above the operator at half opacity. Build is a fixed orange;
     // probe is the operator colour lightened.
@@ -1365,16 +1383,42 @@ public sealed class EventTimelineControl : Grid
         canvas.DrawPath(path, _playheadFill);
     }
 
-    private static int GetRowIndex(EngineEvent ev)
+    private int GetRowIndex(EngineEvent ev)
     {
-        for (var i = 0; i < Rows.Length; i++)
-            if (Rows[i].EventType.IsInstanceOfType(ev))
+        for (var i = 0; i < _activeRows.Length; i++)
+            if (_activeRows[i].EventType.IsInstanceOfType(ev))
             {
                 return i;
             }
 
         return -1;
     }
+
+    // AllRows minus the Log lane unless there are transaction-log events to show.
+    private void BuildActiveRows()
+    {
+        var hasLog = _sortedEvents.Any(e => e is TransactionLogEvent);
+
+        _activeRows = hasLog
+            ? AllRows
+            : AllRows.Where(r => r.EventType != typeof(TransactionLogEvent)).ToArray();
+
+        _rowEventCounts = new int[_activeRows.Length];
+        foreach (var ev in _sortedEvents)
+        {
+            var idx = GetRowIndex(ev);
+            if (idx >= 0)
+            {
+                _rowEventCounts[idx]++;
+            }
+        }
+    }
+
+    // Markers on rows with fewer than SparseRowThreshold events are drawn wider so they stand out.
+    private float RowMarkerWidth(int rowIndex) =>
+        rowIndex >= 0 && rowIndex < _rowEventCounts.Length && _rowEventCounts[rowIndex] < SparseRowThreshold
+            ? SparseMarkerWidth
+            : MarkerWidth;
 
     private static SKColor TintByCategory(SKColor colour, int category) => Scale(colour, CategoryShade[category]);
 

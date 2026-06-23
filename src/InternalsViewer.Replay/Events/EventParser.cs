@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Replay.Locks;
@@ -129,8 +128,18 @@ internal class EventParser
 
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? $"(Object Id {engineEvent.ObjectId})";
 
-      
+
             ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: false);
+        }
+        else if (engineEvent is TransactionLogEvent { AllocationUnitId: > 0 } logEvent)
+        {
+            var allocationUnit = database.AllocationUnits
+                                         .FirstOrDefault(a => a.AllocationUnitId == logEvent.AllocationUnitId);
+
+            engineEvent.ObjectId = allocationUnit?.ObjectId ?? 0;
+            engineEvent.ObjectName = allocationUnit?.DisplayName ?? string.Empty;
+
+            ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: true);
         }
 
         return engineEvent;
@@ -300,7 +309,8 @@ internal class EventParser
         var offset = e.GetLong("offset") ?? 0;
 
         var fileId = e.GetShort("file_id") ?? 0;
-        int pageId = e.GetInt("page_id") ?? (int)(offset / 8192);
+
+        var pageId = e.GetInt("page_id") ?? (int)(offset / 8192);
 
         return new IoEvent
         {

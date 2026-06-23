@@ -31,11 +31,11 @@ using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
 public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
-                                          QueryCapture queryCapture,
+                                          QueryRunner queryRunner,
                                           SettingsService settingsService)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
-                                                                 queryCapture,
+                                                                 queryRunner,
                                                                  settingsService,
                                                                  database);
 }
@@ -58,7 +58,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public ILogger<QueryViewModel> Logger { get; }
 
-    public QueryCapture QueryCapture { get; }
+    public QueryRunner QueryRunner { get; }
 
     public DatabaseSource Database { get; }
 
@@ -284,12 +284,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<AllocationLayer> ObjectLayers { get; set; }
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
-                          QueryCapture queryCapture,
+                          QueryRunner queryRunner,
                           SettingsService settingsService,
                           DatabaseSource database)
     {
         Logger = logger;
-        QueryCapture = queryCapture;
+        QueryRunner = queryRunner;
         SettingsService = settingsService;
         Database = database;
         Message = string.Empty;
@@ -337,10 +337,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ClearResults();
 
-        var results = await QueryCapture.TraceQuery(Sql, 
-                                                    Database, 
-                                                    IsClearBufferPool, 
-                                                    IsDisableReadAhead, 
+        var results = await QueryRunner.TraceQuery(Sql,
+                                                    Database,
+                                                    IsClearBufferPool,
+                                                    IsDisableReadAhead,
                                                     IsReplayMode);
 
         if (!results.IsSuccess)
@@ -362,34 +362,39 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 StartTime = queryNode.TimeMs;
                 EndTime = queryNode.TimeMs + queryNode.Duration;
             }
-
-            IsError = false;
-            Message = $"({results.RowCount} rows affected)";
-
-            var names = Database.AllocationUnits
-                .GroupBy(u => u.ObjectId)
-                .ToDictionary(g => g.Key, g => g.First().DisplayName);
-
-            foreach (var e in results.EngineEvents.Where(e => e.ObjectId > 0))
-            {
-                e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
-            }
-
-            EventColourProvider.SetEventColours(results.ExecutionPlans, results.EngineEvents);
-
-            DispatcherQueue.TryEnqueue(async void () =>
-            {
-                Events = results.EngineEvents;
-
-                ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
-
-                IsQueryExecuting = false;
-
-                await BuildFilterTreeAsync();
-            });
-
-            RefreshLayers(results.EngineEvents);
         }
+        else
+        {
+            StartTime = 0;
+            EndTime = events.DefaultIfEmpty().Max(e => e?.TimeMs + e?.Duration);
+        }
+
+        IsError = false;
+        Message = $"({results.RowCount} rows affected)";
+
+        var names = Database.AllocationUnits
+            .GroupBy(u => u.ObjectId)
+            .ToDictionary(g => g.Key, g => g.First().DisplayName);
+
+        foreach (var e in results.EngineEvents.Where(e => e.ObjectId > 0))
+        {
+            e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
+        }
+
+        EventColourProvider.SetEventColours(results.ExecutionPlans, results.EngineEvents);
+
+        DispatcherQueue.TryEnqueue(async void () =>
+        {
+            Events = results.EngineEvents;
+
+            ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
+
+            IsQueryExecuting = false;
+
+            await BuildFilterTreeAsync();
+        });
+
+        RefreshLayers(results.EngineEvents);
     }
 
     private void ClearResults()

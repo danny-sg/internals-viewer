@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Replay.TransactionLog;
 
-public record LogRecord
+public sealed record LogRecord
 {
     public required LogSequenceNumber Lsn { get; init; }
     

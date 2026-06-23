@@ -32,10 +32,25 @@ public static class EventCategoryClassifier
     {
         var name = waitType.ToString();
 
-        if (IsParallelism(name)) return EventCategory.Parallelism;
-        if (IsIo(name)) return EventCategory.Io;
-        if (IsCpu(name)) return EventCategory.Cpu;
-        if (IsConcurrency(name)) return EventCategory.Concurrency;
+        if (IsParallelism(name))
+        {
+            return EventCategory.Parallelism;
+        }
+
+        if (IsIo(name))
+        {
+            return EventCategory.Io;
+        }
+
+        if (IsCpu(name))
+        {
+            return EventCategory.Cpu;
+        }
+
+        if (IsConcurrency(name))
+        {
+            return EventCategory.Concurrency;
+        }
 
         // Memory grants, compilation, preemptive, etc. fold into CPU as the catch-all.
         return EventCategory.Cpu;
