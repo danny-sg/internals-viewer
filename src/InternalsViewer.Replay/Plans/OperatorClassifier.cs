@@ -41,7 +41,7 @@ public static class OperatorClassifier
         Contains(n.PhysicalOperator, "Delete");
 
     public static bool IsMerge(PlanNode n) =>
-        Contains(n.PhysicalOperator, "Merge");
+        Contains(n.PhysicalOperator, "Merge") && !IsMergeJoin(n);
 
     public static bool IsSeek(PlanNode n) =>
         Contains(n.PhysicalOperator, "Seek");
@@ -51,6 +51,9 @@ public static class OperatorClassifier
 
     public static bool IsDataAccess(PlanNode n) =>
         IsScan(n) || IsSeek(n) || IsLookup(n) || IsDataModification(n);
+
+    public static bool IsRead(PlanNode n) =>
+        IsScan(n) || IsSeek(n) || IsLookup(n);
 
     public static bool IsDataModification(PlanNode n) =>
         IsInsert(n) || IsUpdate(n) || IsDelete(n) || IsMerge(n);
@@ -126,9 +129,6 @@ public static class OperatorClassifier
             }
         }
 
-        // 3. Leaf (data access) → first underlying IO; for a data modification, the equivalent signal
-        //    is the first transaction-log write (when the t-log first gets modified). Anchor to the
-        //    earliest of whichever applies, falling back to thread activity only when neither occurred.
         if (IsLeaf(node))
         {
             var io = NodeEventHelper.GetFirstIoTime(events, identifier);

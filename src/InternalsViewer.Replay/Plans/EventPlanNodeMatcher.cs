@@ -21,7 +21,7 @@ namespace InternalsViewer.Replay.Plans;
 ///    operators in a self-join) the node whose execution window best contains the event timestamp
 ///    is chosen.
 /// </remarks>
-public static class PlanNodeMatcher
+public static class EventPlanNodeMatcher
 {
     public static void Match(IReadOnlyList<EngineEvent> events, IReadOnlyList<ExecutionPlan> plans)
     {
@@ -89,11 +89,12 @@ public static class PlanNodeMatcher
 
         var windows = BuildNodeWindows(events);
 
-        var dataNodes = plan.NodesById.Values
-                            .Where(n => !string.IsNullOrEmpty(n.Table))
+        var readNodes = plan.NodesById
+                            .Values
+                            .Where(OperatorClassifier.IsRead)
                             .ToList();
 
-        if (dataNodes.Count == 0)
+        if (readNodes.Count == 0)
         {
             return;
         }
@@ -105,14 +106,11 @@ public static class PlanNodeMatcher
                 continue;
             }
 
-            var node = ResolveNode(engineEvent, dataNodes, windows);
+            var node = ResolveNode(engineEvent, readNodes, windows);
 
             if (node is not null)
             {
-                if (IsReadOperator(node.PhysicalOperator))
-                {
-                    node = FindReadTarget(node) ?? node;
-                }
+                node = FindReadTarget(node) ?? node;
 
                 engineEvent.PlanNodeIdentifier = new PlanNodeIdentifier
                 {
@@ -193,7 +191,7 @@ public static class PlanNodeMatcher
         return op.Contains("Insert") ||
                op.Contains("Update") ||
                op.Contains("Delete") ||
-               op.Contains("Merge");
+               (op.Contains("Merge") && !op.Contains("Merge Join"));
     }
 
     private static PlanNode? FindReadTarget(PlanNode node)

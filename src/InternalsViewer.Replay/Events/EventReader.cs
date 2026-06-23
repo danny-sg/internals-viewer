@@ -69,7 +69,8 @@ public class EventReader(ILogger<EventReader> logger)
 
         var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
 
-        PlanNodeMatcher.Match(orderedEvents, executionPlans);
+        // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
+        EventPlanNodeMatcher.Match(orderedEvents, executionPlans);
 
         ExecutionPlanParser.MergePlanEvents(orderedEvents, executionPlans);
 

@@ -30,7 +30,7 @@ public sealed partial class EventGridControl : UserControl
 
     private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((EventGridControl)d).RefreshRowHighlights();
+        ((EventGridControl)d).ApplyFilter();
     }
 
     public long SequenceFrom
@@ -123,4 +123,43 @@ public sealed partial class EventGridControl : UserControl
             PageClicked?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId));
         }
     }
+
+    private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        ApplyFilter();
+    }
+
+    /// <summary>Sets the grid's source to the events matching the search box, across all displayed fields.</summary>
+    private void ApplyFilter()
+    {
+        var events = Events;
+
+        if (events is null)
+        {
+            DataGrid.ItemsSource = null;
+            return;
+        }
+
+        var query = SearchBox?.Text?.Trim();
+
+        DataGrid.ItemsSource = string.IsNullOrEmpty(query)
+            ? events
+            : events.Where(ev => Matches(ev, query)).ToList();
+
+        RefreshRowHighlights();
+    }
+
+    private static bool Matches(EngineEvent ev, string query) =>
+        BuildSearchText(ev).Contains(query, StringComparison.OrdinalIgnoreCase);
+
+    // The same fields shown as columns, flattened to one string so a query matches any of them.
+    private static string BuildSearchText(EngineEvent ev) => string.Join(" ",
+        ev.Name,
+        ev.Description,
+        ev.TimeMs,
+        ev.Duration,
+        ev.PageAddress,
+        ev.ObjectName,
+        ev.SequenceId,
+        ev.PlanNodeIdentifier);
 }

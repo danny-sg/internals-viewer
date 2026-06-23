@@ -4,7 +4,7 @@ using InternalsViewer.Replay.Plans;
 
 namespace InternalsViewer.Replay.Tests;
 
-public class PlanNodeMatcherTests
+public class EventPlanNodeMatcherTests
 {
     private const string PlanHandle = "0x06000100ABCD";
 
@@ -22,7 +22,7 @@ public class PlanNodeMatcherTests
             NodeId = 1
         };
 
-        PlanNodeMatcher.Match([threadEvent], [plan]);
+        EventPlanNodeMatcher.Match([threadEvent], [plan]);
 
         Assert.NotNull(threadEvent.PlanNodeIdentifier);
         Assert.Equal(1, threadEvent.PlanNodeIdentifier!.NodeId);
@@ -44,7 +44,7 @@ public class PlanNodeMatcherTests
             IndexName = "IX_Orders_CustomerId"
         };
 
-        PlanNodeMatcher.Match([seekRead], [plan]);
+        EventPlanNodeMatcher.Match([seekRead], [plan]);
 
         Assert.NotNull(seekRead.PlanNodeIdentifier);
         Assert.Equal(0, seekRead.PlanNodeIdentifier!.NodeId);
@@ -89,7 +89,7 @@ public class PlanNodeMatcherTests
             Timestamp = start.AddMilliseconds(25)
         };
 
-        PlanNodeMatcher.Match([profileNode2, profileNode5, read], [plan]);
+        EventPlanNodeMatcher.Match([profileNode2, profileNode5, read], [plan]);
 
         Assert.NotNull(read.PlanNodeIdentifier);
         Assert.Equal(5, read.PlanNodeIdentifier!.NodeId);
@@ -109,7 +109,7 @@ public class PlanNodeMatcherTests
             IndexName = "PK_Customers"
         };
 
-        PlanNodeMatcher.Match([read], [plan]);
+        EventPlanNodeMatcher.Match([read], [plan]);
 
         Assert.Null(read.PlanNodeIdentifier);
     }

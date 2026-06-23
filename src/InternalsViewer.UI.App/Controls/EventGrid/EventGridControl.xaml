@@ -11,14 +11,26 @@
     x:Name="Root"
     mc:Ignorable="d">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <AutoSuggestBox x:Name="SearchBox"
+                        Grid.Row="0"
+                        Margin="0,0,0,4"
+                        PlaceholderText="Search all fields..."
+                        QueryIcon="Find"
+                        TextChanged="OnSearchTextChanged"/>
+
         <toolkit:DataGrid x:Name="DataGrid"
+                          Grid.Row="1"
                           AutoGenerateColumns="False"
                           CanUserSortColumns="True"
                           SelectionMode="Single"
                           IsReadOnly="True"
                           GridLinesVisibility="Vertical"
-                          Background="{ThemeResource LayerFillColorDefaultBrush}"
-                          ItemsSource="{x:Bind Events, Mode=OneWay}">
+                          Background="{ThemeResource LayerFillColorDefaultBrush}">
             <toolkit:DataGrid.Columns>
 
                 <toolkit:DataGridTemplateColumn Header="Event" Tag="Event">

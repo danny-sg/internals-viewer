@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Replay.Plans;
 
-internal sealed class NodeTimingCache(List<EngineEvent> events, ExecutionPlan plan)
+internal sealed class NodeTiming(List<EngineEvent> events, ExecutionPlan plan)
 {
     private List<EngineEvent> Events { get; } = events;
 

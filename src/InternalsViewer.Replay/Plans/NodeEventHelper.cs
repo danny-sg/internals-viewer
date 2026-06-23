@@ -4,8 +4,6 @@ namespace InternalsViewer.Replay.Plans;
 
 public static class NodeEventHelper
 {
-    // Projecting to long? makes Min/Max return null for an empty set, so callers can distinguish
-    // "no matching event" from a genuine time of 0.
     public static long? GetFirstActivityTime(List<EngineEvent> events, PlanNodeIdentifier identifier)
     {
         return events.Where(e => e.PlanNodeIdentifier == identifier && e is QueryThreadEvent)
@@ -19,7 +17,6 @@ public static class NodeEventHelper
                      .Select(e => (long?)e.TimeMs)
                      .Min();
     }
-
 
     public static long? GetLastActivityTime(List<EngineEvent> events, PlanNodeIdentifier identifier)
     {
@@ -35,8 +32,6 @@ public static class NodeEventHelper
                      .Max();
     }
 
-    // Transaction-log writes are the modification equivalent of read IO: they mark when the operator
-    // first/last touches the log.
     public static long? GetFirstLogTime(List<EngineEvent> events, PlanNodeIdentifier identifier)
     {
         return events.Where(e => e.PlanNodeIdentifier == identifier && e is TransactionLogEvent)

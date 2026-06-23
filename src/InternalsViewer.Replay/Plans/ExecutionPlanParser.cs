@@ -45,7 +45,9 @@ public static class ExecutionPlanParser
             ? string.Empty
             : GetStringAttribute(statementElement, "StatementType");
 
-        var subtreeCost = (statementElement is null ? null : GetDoubleAttribute(statementElement, "StatementSubTreeCost"))
+        var subtreeCost = (statementElement is null
+                           ? null 
+                           : GetDoubleAttribute(statementElement, "StatementSubTreeCost"))
                           ?? rootRelOps.Sum(r => r.EstimatedCost ?? 0);
 
         return new PlanNode
@@ -164,7 +166,7 @@ public static class ExecutionPlanParser
 
         foreach (var plan in executionPlans)
         {
-            var timingCache = new NodeTimingCache(events, plan);
+            var timingCache = new NodeTiming(events, plan);
 
             timingCache.Build();
 
@@ -295,7 +297,7 @@ public static class ExecutionPlanParser
     private static ExecutionOperatorEvent ToPlanEvent(string planHandle,
                                                       PlanNode node,
                                                       int nodeLevel,
-                                                      NodeTimingCache timingCache)
+                                                      NodeTiming timing)
     {
         var planEvent = new ExecutionOperatorEvent
         {
@@ -308,8 +310,8 @@ public static class ExecutionPlanParser
                 NodeId = node.NodeId,
                 PlanHandle = planHandle
             },
-            TimeMs = timingCache.GetStartTime(node),
-            Duration = timingCache.GetEndTime(node) - timingCache.GetStartTime(node),
+            TimeMs = timing.GetStartTime(node),
+            Duration = timing.GetEndTime(node) - timing.GetStartTime(node),
         };
 
         return planEvent;
