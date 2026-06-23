@@ -15,11 +15,20 @@ public static class PageAddressParser
             return ParseBytes(address);
         }
 
-        var match = Regex.Match(address, @"(\d+):(\d+)");
+        var decimalMatch = Regex.Match(address, @"^(\d+):(\d+)$");
 
-        if (match.Success)
+        if (decimalMatch.Success)
         {
-            return new PageAddress(short.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
+            return new PageAddress(short.Parse(decimalMatch.Groups[1].Value), int.Parse(decimalMatch.Groups[2].Value));
+        }
+
+        var hexMatch = Regex.Match(address, @"^([0-9A-Fa-f]{4}):([0-9A-Fa-f]{8})$");
+
+        if (hexMatch.Success)
+        {
+            return new PageAddress(
+                Convert.ToInt16(hexMatch.Groups[1].Value, 16),
+                Convert.ToInt32(hexMatch.Groups[2].Value, 16));
         }
 
         throw new ArgumentException("Invalid page address format", nameof(address));

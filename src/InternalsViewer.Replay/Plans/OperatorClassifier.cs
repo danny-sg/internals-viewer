@@ -26,10 +26,22 @@ public static class OperatorClassifier
         Contains(n.PhysicalOperator, "Spool");
 
     public static bool IsExchange(PlanNode n) =>
-        Contains(n.PhysicalOperator, "Exchange");
+        Contains(n.PhysicalOperator, "Exchange") || Contains(n.PhysicalOperator, "Parallelism");
 
     public static bool IsScan(PlanNode n) =>
         Contains(n.PhysicalOperator, "Scan");
+
+    public static bool IsInsert(PlanNode n) =>
+        Contains(n.PhysicalOperator, "Insert");
+
+    public static bool IsUpdate(PlanNode n) =>
+        Contains(n.PhysicalOperator, "Update");
+
+    public static bool IsDelete(PlanNode n) =>
+        Contains(n.PhysicalOperator, "Delete");
+
+    public static bool IsMerge(PlanNode n) =>
+        Contains(n.PhysicalOperator, "Merge");
 
     public static bool IsSeek(PlanNode n) =>
         Contains(n.PhysicalOperator, "Seek");
@@ -38,7 +50,10 @@ public static class OperatorClassifier
         Contains(n.PhysicalOperator, "Lookup");
 
     public static bool IsDataAccess(PlanNode n) =>
-        IsScan(n) || IsSeek(n) || IsLookup(n);
+        IsScan(n) || IsSeek(n) || IsLookup(n) || IsDataModification(n);
+
+    public static bool IsDataModification(PlanNode n) =>
+        IsInsert(n) || IsUpdate(n) || IsDelete(n) || IsMerge(n);
 
     public static bool IsLeaf(PlanNode n) =>
         IsDataAccess(n);

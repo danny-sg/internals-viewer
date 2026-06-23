@@ -1,10 +1,15 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Replay.Events;
 using InternalsViewer.Replay.Events.EventTypes;
 using InternalsViewer.Replay.Plans;
+using InternalsViewer.Replay.TransactionLog;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using System.Data;
 using System.Text;
+using System.Xml;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Replay;
 
@@ -32,6 +37,11 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
         "sqlserver.query_memory_grant_usage"
     ];
 
+    private readonly string[] _logEvents =
+    [
+        "sqlserver.transaction_log"
+    ];
+
     private readonly string[] _actions =
     [
         "sqlserver.session_id",
@@ -44,7 +54,8 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
     public async Task<QueryResult> TraceQuery(string sqlText,
                                               string connectionString,
                                               bool clearBufferPool,
-                                              bool disableReadAhead)
+                                              bool disableReadAhead,
+                                              bool isReplayMode)
     {
         long rowCount = 0;
         var sessionId = $"QueryReplay_{Guid.NewGuid():N}";
@@ -54,13 +65,14 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
 
         try
         {
-            (var filePath, rowCount) = await RunQueryWithEventSession(sessionId, 
-                                                                      sqlText, 
-                                                                      connectionString, 
-                                                                      clearBufferPool, 
-                                                                      disableReadAhead);
+            (var filePath, rowCount, var logRecords) = await RunQueryWithEventSession(sessionId,
+                                                                                      sqlText,
+                                                                                      connectionString,
+                                                                                      clearBufferPool,
+                                                                                      disableReadAhead,
+                                                                                      isReplayMode);
 
-            (events, executionPlans) = await ParseResults(filePath, connectionString, null);
+            (events, executionPlans) = await GetResults(filePath, connectionString, null);
         }
         catch (SqlException ex)
         {
@@ -101,25 +113,28 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
     public async Task<QueryResult> TraceQuery(string sqlText,
                                               DatabaseSource database,
                                               bool clearBufferPool,
-                                              bool disableReadAhead)
+                                              bool disableReadAhead,
+                                              bool isReplayMode)
     {
         var connectionString = database.Connection.GetConnectionString();
 
         var sessionId = $"QueryReplay_{Guid.NewGuid():N}";
 
         long rowCount = 0;
+
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
 
         try
         {
-            (var filePath, rowCount) = await RunQueryWithEventSession(sessionId,
-                                                                      sqlText,
-                                                                      connectionString,
-                                                                      clearBufferPool,
-                                                                      disableReadAhead);
+            (var filePath, rowCount, var logRecords) = await RunQueryWithEventSession(sessionId,
+                                                                                      sqlText,
+                                                                                      connectionString,
+                                                                                      clearBufferPool,
+                                                                                      disableReadAhead,
+                                                                                      isReplayMode);
 
-            (events, executionPlans) = await ParseResults(filePath, connectionString, database);
+            (events, executionPlans) = await GetResults(filePath, connectionString, database);
 
             await GetEventKeyAddresses(events, database.AllocationUnits, connectionString);
         }
@@ -198,7 +213,7 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
         }
     }
 
-    private async Task<(List<EngineEvent>, List<ExecutionPlan>)> ParseResults(string filePath, 
+    private async Task<(List<EngineEvent>, List<ExecutionPlan>)> GetResults(string filePath,
                                                                               string connectionString,
                                                                               DatabaseSource? database)
     {
@@ -262,11 +277,13 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
         return (orderedEvents, executionPlans);
     }
 
-    private async Task<(string, long)> RunQueryWithEventSession(string sessionName,
-                                                        string sqlText,
-                                                        string connectionString,
-                                                        bool clearBufferPool,
-                                                        bool disableReadAhead)
+    private async Task<(string, long, List<LogRecord> logRecords)>
+        RunQueryWithEventSession(string sessionName,
+                                 string sqlText,
+                                 string connectionString,
+                                 bool clearBufferPool,
+                                 bool disableReadAhead,
+                                 bool isReplayMode)
     {
         long rowCount = 0;
 
@@ -278,44 +295,71 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
 
         var filePath = $"{logPath}\\{sessionName}.xel";
 
-        await using var spidCommand = new SqlCommand("SELECT @@SPID", connection);
+        List<LogRecord> logRecords = [];
+        string? startLsn = null;
 
-        var spid = (short)(await spidCommand.ExecuteScalarAsync() ?? 0);
+        var spid = await ExecuteScalar<short>("SELECT @@SPID", connection);
 
-        var createSessionSql = GetCreateSessionSql(sessionName, filePath, spid);
+        var createSessionSql = GetCreateSessionSql(sessionName, filePath, spid, isReplayMode);
 
         await ExecuteSql(createSessionSql, connection);
 
+        if (clearBufferPool | isReplayMode)
+        {
+            // Flush dirty pages either for DROPCLEANBUFFERS or to write the transaction log to disk 
+            await ExecuteSql("CHECKPOINT", connection);
+        }
+
         if (clearBufferPool)
         {
-            await ExecuteSql("CHECKPOINT", connection);
+            // Removes all pages from the buffer pool so pages will come from I/O rather than the cache
             await ExecuteSql("DBCC DROPCLEANBUFFERS", connection);
         }
 
         if (disableReadAhead)
         {
+            // Disable pre-fetching page scans for the session
             await ExecuteSql("DBCC TRACEON(652)", connection);
         }
 
+        if (isReplayMode)
+        {
+            startLsn = await ExecuteScalar<string?>(
+                "SELECT MAX([Current LSN]) FROM fn_dblog(NULL, NULL);", connection);
+        }
+
+        // Session block that should stop the session if there is any failure
         try
         {
             await ExecuteSql(GetStartSessionSql(sessionName), connection);
+
+            if (isReplayMode)
+            {
+                await ExecuteSql("BEGIN TRANSACTION;", connection);
+            }
 
             await Task.Delay(100);
 
             Logger.LogDebug("SQL: {Sql}", sqlText);
 
-            await using (var reader = await new SqlCommand(sqlText, connection).ExecuteReaderAsync())
+            await using var reader = await new SqlCommand(sqlText, connection).ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
             {
-                while (await reader.ReadAsync())
-                {
-                    rowCount++;
-                }
+                rowCount++;
+            }
+
+            await reader.CloseAsync();
+
+            if (isReplayMode)
+            {
+                logRecords = await GetLogRecords(connection, startLsn, sessionName);
+
+                await ExecuteSql("ROLLBACK;", connection);
             }
         }
         finally
         {
-
             try
             {
                 await ExecuteSql(GetStopSessionSql(sessionName), connection);
@@ -335,7 +379,155 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
             }
         }
 
-        return (filePath, rowCount);
+        return (filePath, rowCount, logRecords);
+    }
+
+    private async Task<List<LogRecord>> GetLogRecords(SqlConnection connection, string? startLsn, string sessionName)
+    {
+        Logger.LogDebug("Getting log records since LSN {LSN}", startLsn);
+
+        var records = new List<LogRecord>();
+
+        var commandSql = @$"-- LOG_READ_{sessionName}
+SELECT * FROM fn_dblog(NULL, NULL) WHERE [Current LSN] > @StartLsn
+";
+        var command = new SqlCommand(commandSql, connection);
+
+        command.Parameters.AddWithValue("@StartLsn", startLsn);
+
+        await using var reader = await command.ExecuteReaderAsync();
+
+        var ordinalLsn = reader.GetOrdinal("Current LSN");
+        var ordinalPrevLsn = reader.GetOrdinal("Previous LSN");
+        var ordinalTranId = reader.GetOrdinal("Transaction ID");
+        var ordinalOperation = reader.GetOrdinal("Operation");
+        var ordinalContext = reader.GetOrdinal("Context");
+        var ordinalAllocUnitId = reader.GetOrdinal("AllocUnitId");
+        var ordinalPartitionId = reader.GetOrdinal("PartitionId");
+        var ordinalPageAddress = reader.GetOrdinal("Page ID");
+        var ordinalSlotId = reader.GetOrdinal("Slot ID");
+        var ordinalRow0 = reader.GetOrdinal("RowLog Contents 0");
+        var ordinalRow1 = reader.GetOrdinal("RowLog Contents 1");
+        var ordinalRow2 = reader.GetOrdinal("RowLog Contents 2");
+        var ordinalBeginTime = reader.GetOrdinal("Begin Time");
+
+        while (await reader.ReadAsync())
+        {
+            var pageAddressValue = reader.IsDBNull(ordinalPageAddress)
+                                   ? null
+                                   : reader.GetString(ordinalPageAddress);
+
+            PageAddressParser.TryParse(pageAddressValue ?? string.Empty, out var pageAddress);
+
+            var logRecord = new LogRecord
+            {
+                Lsn = LogSequenceNumberParser.Parse(reader.GetString(ordinalLsn)),
+                PreviousLsn = reader.IsDBNull(ordinalPrevLsn)
+                    ? default
+                    : LogSequenceNumberParser.Parse(reader.GetString(ordinalPrevLsn)),
+
+                LogTransactionId = reader.IsDBNull(ordinalTranId)
+                    ? string.Empty
+                    : reader.GetString(ordinalTranId),
+
+                Operation = reader.IsDBNull(ordinalOperation)
+                    ? string.Empty
+                    : reader.GetString(ordinalOperation),
+
+                Context = reader.IsDBNull(ordinalContext)
+                    ? string.Empty
+                    : reader.GetString(ordinalContext),
+
+                AllocationUnitId = TryGetLong(reader, ordinalAllocUnitId),
+                PartitionId = TryGetLong(reader, ordinalPartitionId),
+                SlotId = TryGetInt(reader, ordinalSlotId),
+                PageAddress = pageAddress,
+
+                RowLogContents0 = TryGetBytes(reader, ordinalRow0),
+                RowLogContents1 = TryGetBytes(reader, ordinalRow1),
+                RowLogContents2 = TryGetBytes(reader, ordinalRow2),
+
+                TransactionId = null,
+                SequenceId = null
+            };
+
+            var beginTimeValue = reader.IsDBNull(ordinalBeginTime) 
+                                 ? null 
+                                 : reader.GetString(ordinalBeginTime);
+
+            if (DateTime.TryParse(beginTimeValue, out var beginTime))
+            {
+                logRecord.ApproximateTime = beginTime;
+            }
+
+            records.Add(logRecord);
+        }
+
+        return records;
+    }
+
+    private static int? SafeGetOrdinal(SqlDataReader reader, string name)
+    {
+        try
+        {
+            return reader.GetOrdinal(name);
+        }
+        catch (IndexOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    private static int? TryGetInt(SqlDataReader reader, int ordinal)
+    {
+        return reader.IsDBNull(ordinal) ? (int?)null : reader.GetInt32(ordinal);
+    }
+
+    private static long? TryGetLong(SqlDataReader reader, int ordinal)
+    {
+        return reader.IsDBNull(ordinal) ? (int?)null : reader.GetInt64(ordinal);
+    }
+
+    private static short? TryGetShort(SqlDataReader reader, int ordinal)
+    {
+        return reader.IsDBNull(ordinal) ? (short?)null : reader.GetInt16(ordinal);
+    }
+
+
+    private static DateTime? TryGetDateTime(SqlDataReader reader, int? ordinal)
+    {
+        if (ordinal == null || reader.IsDBNull(ordinal.Value))
+        {
+            return null;
+        }
+
+        return reader.GetDateTime(ordinal.Value);
+    }
+
+
+    static byte[] TryGetBytes(SqlDataReader reader, int ordinal)
+    {
+        if (reader.IsDBNull(ordinal))
+        {
+            return Array.Empty<byte>();
+        }
+
+        var length = reader.GetBytes(ordinal, 0, null!, 0, 0);
+        var buffer = new byte[length];
+
+        reader.GetBytes(ordinal, 0, buffer, 0, (int)length);
+
+        return buffer;
+    }
+
+
+
+
+    private async Task<T?> ExecuteScalar<T>(string sql, SqlConnection connection)
+    {
+        var result = await new SqlCommand(sql, connection).ExecuteScalarAsync();
+
+        return (T?)result;
     }
 
     private async Task ExecuteSql(string sql, SqlConnection connection)
@@ -380,15 +572,17 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
         return $"ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP;";
     }
 
-    private string GetCreateSessionSql(string sessionName, string filePath, short spid)
+    private string GetCreateSessionSql(string sessionName, string filePath, short spid, bool isReplayMode)
     {
+        var sessionEvents = isReplayMode ? [.. _events, .. _logEvents] : _events;
+
         var stringBuilder = new StringBuilder();
 
         stringBuilder.AppendLine($"CREATE EVENT SESSION [{sessionName}] ON SERVER");
 
-        for (int i = 0; i < _events.Length; i++)
+        for (var i = 0; i < sessionEvents.Length; i++)
         {
-            var eventName = _events[i];
+            var eventName = sessionEvents[i];
 
             stringBuilder.Append($"ADD EVENT {eventName}");
 
@@ -399,12 +593,18 @@ public sealed class QueryCapture(ILogger<QueryCapture> logger)
 
                 stringBuilder.Append(string.Join(", ", _actions));
 
+                stringBuilder.Append(")\n");
+                stringBuilder.Append("    WHERE (");
+
+                stringBuilder.Append($"sqlserver.session_id = {spid}");
+                stringBuilder.Append($" AND sqlserver.sql_text NOT LIKE '%LOG_READ_{sessionName}%'");
+
                 stringBuilder.Append(")");
-                stringBuilder.Append($"\n    WHERE (sqlserver.session_id = {spid})");
+
                 stringBuilder.Append("\n)");
             }
 
-            if (i < _events.Length - 1)
+            if (i < sessionEvents.Length - 1)
             {
                 stringBuilder.AppendLine(",");
             }

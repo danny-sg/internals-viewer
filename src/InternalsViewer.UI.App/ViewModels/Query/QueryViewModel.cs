@@ -114,6 +114,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool isDisableReadAhead = true;
 
     [ObservableProperty]
+    private bool isReplayMode = false;
+
+    [ObservableProperty]
     private int extentCount;
 
     [ObservableProperty]
@@ -334,7 +337,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ClearResults();
 
-        var results = await QueryCapture.TraceQuery(Sql, Database, IsClearBufferPool, isDisableReadAhead);
+        var results = await QueryCapture.TraceQuery(Sql, 
+                                                    Database, 
+                                                    IsClearBufferPool, 
+                                                    IsDisableReadAhead, 
+                                                    IsReplayMode);
 
         if (!results.IsSuccess)
         {

@@ -19,7 +19,7 @@ public class QueryCaptureTests(ITestOutputHelper testOutputHelper)
 
         var executor = new QueryCapture(logger);
 
-        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true);
+        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.EngineEvents);
@@ -42,7 +42,7 @@ public class QueryCaptureTests(ITestOutputHelper testOutputHelper)
 
         var executor = new QueryCapture(logger);
 
-        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true);
+        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true);
 
         Assert.False(result.IsSuccess);
     }

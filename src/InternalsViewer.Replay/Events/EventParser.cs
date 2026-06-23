@@ -1,10 +1,12 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Diagnostics;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Replay.Locks;
 using System.Xml.Linq;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Replay.Events.EventTypes;
+using InternalsViewer.Replay.TransactionLog;
 
 namespace InternalsViewer.Replay.Events;
 
@@ -90,6 +92,7 @@ internal class EventParser
             var n when n.Contains("wait") => MapWait(e),
             "query_thread_profile" => MapQueryThread(e),
             "query_memory_grant_usage" => MapMemory(e),
+            "transaction_log" => MapTransactionLogEvent(e),
             _ => new EngineEvent
             {
                 Name = e.Name,
@@ -279,6 +282,7 @@ internal class EventParser
         var fileId = (short)(location >> 32);
 
         var rawPageId = (uint)(location & 0xFFFFFFFF);
+
         var pageId = rawPageId <= int.MaxValue ? (int)rawPageId : 0;
 
         return new PageEvent
@@ -305,6 +309,19 @@ internal class EventParser
             DatabaseId = e.GetDatabaseId(),
             PageAddress = new PageAddress(fileId, pageId),
             IsRead = e.Name?.Contains("read") ?? false
+        };
+    }
+
+    private static TransactionLogEvent MapTransactionLogEvent(EventResult e)
+    {
+        return new TransactionLogEvent
+        {
+            Name = e.Name,
+            Timestamp = e.Timestamp,
+            DatabaseId = e.GetDatabaseId(),
+            Operation = (LogOperation)(e.GetInt("operation") ?? 0),
+            Context = (LogContext)(e.GetInt("context") ?? 0),
+            AllocationUnitId = e.GetLong("allocation_unit_id") ?? 0
         };
     }
 }

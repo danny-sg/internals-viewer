@@ -225,7 +225,9 @@
                                             IsChecked="{x:Bind ViewModel.IsClearBufferPool, Mode=TwoWay}" />
                     <AppBarToggleButton Label="Disable Read-Ahead"
                                             IsChecked="{x:Bind ViewModel.IsDisableReadAhead, Mode=TwoWay}" />
-                </CommandBar>
+                    <AppBarToggleButton Label="Replay Mode"
+                                        IsChecked="{x:Bind ViewModel.IsReplayMode, Mode=TwoWay}" />
+                    </CommandBar>
                 <sqlEditor:SqlEditorControl Grid.Row="1"
                                             Grid.Column="0"
                                             x:Name="SqlEditor"

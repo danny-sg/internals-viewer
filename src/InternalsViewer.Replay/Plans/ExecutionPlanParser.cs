@@ -1,5 +1,6 @@
-﻿using System.Xml.Linq;
-using InternalsViewer.Replay.Events.EventTypes;
+﻿using InternalsViewer.Replay.Events.EventTypes;
+using System.Timers;
+using System.Xml.Linq;
 
 namespace InternalsViewer.Replay.Plans;
 
@@ -176,14 +177,14 @@ public static class ExecutionPlanParser
                 var startTime = timingCache.GetStartTime(node);
                 var endTime = timingCache.GetEndTime(node);
 
-                var operatorEvent = ToPlanEvent(plan.PlanHandle, node, node.NodeLevel);
+                var operatorEvent = ToPlanEvent(plan.PlanHandle, node, node.NodeLevel, timingCache);
 
                 var nearestSequenceId = events.LastOrDefault(e => e.TimeMs < startTime)?.SequenceId ?? 0;
 
                 operatorEvent = operatorEvent with
                 {
                     TimeMs = startTime,
-                    Duration = endTime - startTime,
+                    Duration = Math.Max(endTime - startTime, 1),
                     PlanHandle = plan.PlanHandle,
                     SequenceId = nearestSequenceId - 1
                 };
@@ -193,13 +194,76 @@ public static class ExecutionPlanParser
         }
 
         events.AddRange(operatorEvents);
+        ComputeHashPhases(operatorEvents, executionPlans);
     }
+
+    private static void ComputeHashPhases(
+        List<ExecutionOperatorEvent> operatorEvents,
+        List<ExecutionPlan> executionPlans)
+    {
+        var execByNodeId = operatorEvents
+            .Where(e => e.PlanNodeIdentifier != null)
+            .ToDictionary(e => e.PlanNodeIdentifier!.NodeId);
+
+        foreach (var plan in executionPlans)
+        {
+            foreach (var node in plan.NodesById.Values)
+            {
+                if (!IsHash(node))
+                    continue;
+
+                var current = execByNodeId[node.NodeId];
+
+                var buildNode = GetHashBuildChild(node);
+                var probeNode = GetHashProbeChild(node);
+
+                if (buildNode == null || probeNode == null)
+                    continue;
+
+                var buildExec = execByNodeId[buildNode.NodeId];
+                var probeExec = execByNodeId[probeNode.NodeId];
+
+                var currentEnd = GetEnd(current);
+                var buildEnd = GetEnd(buildExec);
+
+                var buildStart = GetFirstOutputTime(buildNode, buildExec);
+                var probeStart = GetFirstOutputTime(probeNode, probeExec);
+
+                current.BuildPhaseTimeMs = buildStart;
+                current.ProbePhaseTimeMs = probeStart;
+
+                var buildEndTime = Math.Min(
+                    probeStart > 0 ? probeStart : currentEnd,
+                    buildEnd
+                );
+
+                buildEndTime = Math.Max(buildEndTime, buildStart);
+
+                var probeEndTime = currentEnd;
+
+                probeEndTime = Math.Max(probeEndTime, probeStart);
+
+                current.BuildPhaseDuration =
+                    buildEndTime - buildStart;
+
+                current.ProbePhaseDuration =
+                    probeEndTime - probeStart;
+            }
+        }
+    }
+
+    private static long GetEnd(ExecutionOperatorEvent e)
+    {
+        return e.TimeMs + e.Duration;
+    }
+
 
     private static HashInfo ParseHashInfo(XElement hashElement)
     {
         var info = new HashInfo();
 
         var build = hashElement.Element("HashKeysBuild");
+
         if (build != null)
         {
             info.BuildKeys = ParseKeys(build);
@@ -213,6 +277,7 @@ public static class ExecutionPlanParser
 
         return info;
     }
+
     private static List<ColumnRef> ParseKeys(XElement parent)
     {
         return parent
@@ -227,9 +292,12 @@ public static class ExecutionPlanParser
             .ToList();
     }
 
-    private static ExecutionOperatorEvent ToPlanEvent(string planHandle, PlanNode node, int nodeLevel)
+    private static ExecutionOperatorEvent ToPlanEvent(string planHandle,
+                                                      PlanNode node,
+                                                      int nodeLevel,
+                                                      NodeTimingCache timingCache)
     {
-        return new ExecutionOperatorEvent
+        var planEvent = new ExecutionOperatorEvent
         {
             Name = node.PhysicalOperator,
             Category = OperatorClassifier.GetCategory(node),
@@ -239,8 +307,12 @@ public static class ExecutionPlanParser
             {
                 NodeId = node.NodeId,
                 PlanHandle = planHandle
-            }
+            },
+            TimeMs = timingCache.GetStartTime(node),
+            Duration = timingCache.GetEndTime(node) - timingCache.GetStartTime(node),
         };
+
+        return planEvent;
     }
 
     public static HashSet<string> ExtractTables(XElement nodeElement)
@@ -251,5 +323,106 @@ public static class ExecutionPlanParser
             .Where(t => !string.IsNullOrEmpty(t))
             .Select(t => t.ToLowerInvariant())
             .ToHashSet();
+    }
+
+    public static bool IsHash(PlanNode node)
+    {
+        if (string.IsNullOrEmpty(node.PhysicalOperator))
+            return false;
+
+        return node.PhysicalOperator.Equals("Hash Match",
+                                            StringComparison.OrdinalIgnoreCase);
+    }
+
+
+    private static long GetFirstOutputTime(PlanNode node, ExecutionOperatorEvent exec)
+    {
+        if (IsHash(node))
+        {
+            // Hash join produces rows during probe phase
+            return exec.ProbePhaseTimeMs > 0 ? exec.ProbePhaseTimeMs : exec.TimeMs;
+        }
+
+        // Default: assume streaming
+        return exec.TimeMs;
+    }
+
+
+    public static PlanNode? GetHashBuildChild(PlanNode hash)
+    {
+        if (hash.Children.Count < 2)
+        {
+            return null;
+        }
+
+        if (hash.HashInfo is { BuildKeys.Count: > 0 })
+        {
+            var buildTables = hash.HashInfo
+                                  .BuildKeys
+                                  .Select(k => k.TableKey)
+                                  .Where(t => !string.IsNullOrEmpty(t))
+                                  .ToHashSet();
+
+            var match = FindBestMatchingChild(hash.Children, buildTables);
+
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        // Fallback to table with the lowest estimated rows (if available)
+        var byEstimate = hash.Children
+                             .Where(c => c.EstimatedRows > 0)
+                             .OrderBy(c => c.EstimatedRows)
+                             .FirstOrDefault();
+
+        if (byEstimate != null)
+        {
+            return byEstimate;
+        }
+
+        // Fallback to the first child if no better match is found
+        return hash.Children.First();
+    }
+
+    public static PlanNode? GetHashProbeChild(PlanNode hash)
+    {
+        if (hash.Children.Count < 2)
+        {
+            return null;
+        }
+
+        var build = GetHashBuildChild(hash);
+
+        return hash.Children.FirstOrDefault(c => c != build);
+    }
+
+
+    private static PlanNode? FindBestMatchingChild(List<PlanNode> children,
+                                                   HashSet<string> targetTables)
+    {
+        PlanNode? best = null;
+
+        var bestScore = 0;
+
+        foreach (var child in children)
+        {
+            if (child.Outputs.Count == 0)
+            {
+                continue;
+            }
+
+            var score = child.Outputs
+                .Count(targetTables.Contains);
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = child;
+            }
+        }
+
+        return bestScore > 0 ? best : null;
     }
 }
