@@ -6,13 +6,14 @@ using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Replay.Events;
 
-public class EventReader(ILogger<EventReader> logger)
+public sealed class EventReader(ILogger<EventReader> logger)
 {
     public ILogger<EventReader> Logger { get; } = logger;
 
     public async Task<(List<EngineEvent>, List<ExecutionPlan>)> GetEvents(string filePath,
                                                                           string connectionString,
-                                                                          DatabaseSource? database)
+                                                                          DatabaseSource? database,
+                                                                          Func<EngineEvent, bool>? endMarker = null)
     {
         await using var connection = new SqlConnection(connectionString);
 
@@ -55,9 +56,14 @@ public class EventReader(ILogger<EventReader> logger)
                         }
 
                         // Gaps in sequence ids to allow the plan nodes to be slotted in
-                        engineEvent.SequenceId = sequenceId += 2;
+                        engineEvent.SequenceId = sequenceId += 100;
 
                         engineEvent.TimeMs = (long)(engineEvent.Timestamp - startTimeStamp.Value).TotalMilliseconds;
+
+                        if (endMarker is not null && endMarker(engineEvent))
+                        {
+                            break;
+                        }
 
                         events.Add(engineEvent);
                     }
@@ -67,7 +73,7 @@ public class EventReader(ILogger<EventReader> logger)
 
         connection.Close();
 
-        var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
+        var orderedEvents = events.OrderBy(e => e.Timestamp).ThenBy(e => e.SequenceId).ToList();
 
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
         EventPlanNodeMatcher.Match(orderedEvents, executionPlans);

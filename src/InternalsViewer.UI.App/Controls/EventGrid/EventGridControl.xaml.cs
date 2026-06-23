@@ -60,6 +60,9 @@ public sealed partial class EventGridControl : UserControl
 
     private readonly Dictionary<DataGridRow, EngineEvent> _visibleRows = new();
 
+    private string? _sortTag;
+    private bool _sortAscending = true;
+
     public EventGridControl()
     {
         InitializeComponent();
@@ -116,6 +119,26 @@ public sealed partial class EventGridControl : UserControl
         }
     }
 
+    /// <summary>Selects and scrolls the grid to the given event, clearing the search filter if it hides it.</summary>
+    public void NavigateToEvent(EngineEvent ev)
+    {
+        if (ev is null)
+        {
+            return;
+        }
+
+        if (SearchBox is { Text.Length: > 0 } box &&
+            DataGrid.ItemsSource is IEnumerable<EngineEvent> source && !source.Contains(ev))
+        {
+            box.Text = string.Empty;   // clears the filter (triggers ApplyFilter via OnSearchTextChanged)
+        }
+
+        DataGrid.SelectedItem = ev;
+
+        // Defer the scroll so it runs after any tab switch / filter change has laid the grid out.
+        DispatcherQueue.TryEnqueue(() => DataGrid.ScrollIntoView(ev, null));
+    }
+
     private void HyperlinkButton_Click(object sender, RoutedEventArgs e)
     {
         if (((HyperlinkButton)sender).Tag is PageAddress pageAddress)
@@ -129,7 +152,7 @@ public sealed partial class EventGridControl : UserControl
         ApplyFilter();
     }
 
-    /// <summary>Sets the grid's source to the events matching the search box, across all displayed fields.</summary>
+    /// <summary>Sets the grid's source to the events matching the search box (all fields), in the current sort order.</summary>
     private void ApplyFilter()
     {
         var events = Events;
@@ -140,11 +163,16 @@ public sealed partial class EventGridControl : UserControl
             return;
         }
 
+        IEnumerable<EngineEvent> result = events;
+
         var query = SearchBox?.Text?.Trim();
 
-        DataGrid.ItemsSource = string.IsNullOrEmpty(query)
-            ? events
-            : events.Where(ev => Matches(ev, query)).ToList();
+        if (!string.IsNullOrEmpty(query))
+        {
+            result = result.Where(ev => Matches(ev, query));
+        }
+
+        DataGrid.ItemsSource = ApplySort(result);
 
         RefreshRowHighlights();
     }
@@ -162,4 +190,58 @@ public sealed partial class EventGridControl : UserControl
         ev.ObjectName,
         ev.SequenceId,
         ev.PlanNodeIdentifier);
+
+    private void OnSorting(object? sender, DataGridColumnEventArgs e)
+    {
+        if (e.Column.Tag is not string tag || tag.Length == 0)
+        {
+            return;
+        }
+
+        // First click (or a different column) sorts ascending; clicking the active column flips it.
+        var ascending = e.Column.SortDirection != DataGridSortDirection.Ascending;
+
+        _sortTag = tag;
+        _sortAscending = ascending;
+
+        // Show the sort glyph on the active column and clear it from the rest.
+        foreach (var column in DataGrid.Columns)
+        {
+            column.SortDirection = column == e.Column
+                ? (ascending ? DataGridSortDirection.Ascending : DataGridSortDirection.Descending)
+                : null;
+        }
+
+        ApplyFilter();
+    }
+
+    private List<EngineEvent> ApplySort(IEnumerable<EngineEvent> events)
+    {
+        if (string.IsNullOrEmpty(_sortTag))
+        {
+            return events.ToList();
+        }
+
+        IOrderedEnumerable<EngineEvent> ordered = _sortTag switch
+        {
+            "Event"       => Order(events, e => e.Name),
+            "Type"        => Order(events, e => e.Description),
+            "TimeMs"      => Order(events, e => e.TimeMs),
+            "Duration"    => Order(events, e => e.Duration),
+            "PageAddress" => Order(events, PageSortKey),
+            "Object"      => Order(events, e => e.ObjectName),
+            "SequenceId"  => Order(events, e => e.SequenceId),
+            "NodeId"      => Order(events, e => e.PlanNodeIdentifier?.NodeId),
+            _             => Order(events, e => e.SequenceId),
+        };
+
+        return ordered.ToList();
+    }
+
+    private IOrderedEnumerable<EngineEvent> Order<TKey>(IEnumerable<EngineEvent> events, Func<EngineEvent, TKey> key)
+        => _sortAscending ? events.OrderBy(key) : events.OrderByDescending(key);
+
+    // Sort pages numerically by (file, page) rather than by their textual form.
+    private static long PageSortKey(EngineEvent ev) =>
+        ev.PageAddress is { } page ? ((long)page.FileId << 32) | (uint)page.PageId : long.MinValue;
 }

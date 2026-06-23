@@ -65,6 +65,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
 
+        Func<EngineEvent, bool>? endMarker = null;
+
+        if (isReplayMode)
+        {
+            endMarker = e =>
+                e is BatchStartEvent batchStart &&
+                batchStart.SqlText.Contains($"ROLLBACK TRANSACTION iv_{sessionId[..28]}");
+        }
+
         try
         {
             (var filePath, rowCount, var logRecords) = await RunQueryWithEventSession(sessionId,
@@ -74,7 +83,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                                       disableReadAhead,
                                                                                       isReplayMode);
 
-            (events, executionPlans) = await EventReader.GetEvents(filePath, connectionString, null);
+            (events, executionPlans) = await EventReader.GetEvents(filePath, connectionString, null, endMarker);
         }
         catch (SqlException ex)
         {
@@ -127,6 +136,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
 
+        Func<EngineEvent, bool>? endMarker = null;
+
+        if (isReplayMode)
+        {
+            endMarker = e =>
+                e is BatchStartEvent batchStart &&
+                batchStart.SqlText.Contains($"ROLLBACK TRANSACTION iv_{sessionId[..28]}");
+        }
+
         try
         {
             (var filePath, rowCount, var logRecords) = await RunQueryWithEventSession(sessionId,
@@ -136,7 +154,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                                       disableReadAhead,
                                                                                       isReplayMode);
 
-            (events, executionPlans) = await EventReader.GetEvents(filePath, connectionString, database);
+            (events, executionPlans) = await EventReader.GetEvents(filePath, 
+                                                                   connectionString, 
+                                                                   database,
+                                                                   endMarker);
 
             await GetEventKeyAddresses(events, database.AllocationUnits, connectionString);
         }
@@ -275,7 +296,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             if (isReplayMode)
             {
-                await ExecuteSql("BEGIN TRANSACTION;", connection);
+                await ExecuteSql($"BEGIN TRANSACTION iv_{sessionName[..28]};", connection);
             }
 
             await Task.Delay(100);
@@ -295,7 +316,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             {
                 logRecords = await LogRecordReader.GetLogRecords(connection, startLsn, sessionName);
 
-                await ExecuteSql("ROLLBACK;", connection);
+                await ExecuteSql($"ROLLBACK TRANSACTION iv_{sessionName[..28]};", connection);
             }
         }
         finally

@@ -272,7 +272,7 @@
                                    Foreground="{x:Bind ViewModel.ResultBrush, Mode=OneWay}" />
                             </Border>
                         </TabViewItem>
-                        <TabViewItem Header="Events" IsClosable="False">
+                        <TabViewItem Header="Events" IsClosable="False" x:Name="EventsTab">
                             <queryReplay:EventGridControl x:Name="EventGrid"
                                                       Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
                                                       SequenceFrom="{x:Bind ViewModel.SequenceFrom, Mode=OneWay}"

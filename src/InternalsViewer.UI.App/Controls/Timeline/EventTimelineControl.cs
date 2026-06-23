@@ -33,7 +33,7 @@ public sealed class EventTimelineControl : Grid
     private const float MarkerWidth = 1f;
 
     // Rows with few events use a wider marker so the sparse ticks are easier to see.
-    private const float SparseMarkerWidth = 2f;
+    private const float SparseMarkerWidth = 4f;
     private const int SparseRowThreshold = 25;
 
     private const double TransportButtonHeight = 26;
@@ -47,16 +47,17 @@ public sealed class EventTimelineControl : Grid
 
     private const double AxisUnitsPerMs = 1.0;
 
-    // Small tick for smooth motion; the overall speed is one EventWallMs per in-range event.
+    // Timer tick for smooth motion. Play sweeps the whole range left-to-right over a fixed wall-clock
+    // duration (BasePlayDurationMs at 1x), regardless of how many events or how short the range is.
     private const double PlayTickMs = 16;
-    private const double EventWallMs = 80;
+    private const double BasePlayDurationMs = 10_000;
 
-    // Gaps that would take longer than this many ticks to glide across are skipped: play snaps
-    // the playhead straight to the next event instead of crawling through dead air.
-    private const double GapSkipTicks = 8;
+    // Dead-air gaps wider than this many times the average event spacing are skipped so the sweep
+    // doesn't crawl through empty time. Based on spacing (not the step) so it never skips normal gaps.
+    private const double GapSkipFactor = 6;
 
-    // Playback speed multipliers cycled by the speed toggle button.
-    private static readonly double[] PlaySpeeds = [0.25, 0.5, 1.0, 2.0, 4.0];
+    // Playback speed multipliers cycled by the speed button (1x = BasePlayDurationMs, 2x = half, etc.).
+    private static readonly double[] PlaySpeeds = [0.5, 1.0, 2.0, 4.0];
     private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(PlayTickMs);
 
     private static readonly SKColor PlayheadColour = new(230, 60, 60);
@@ -190,6 +191,7 @@ public sealed class EventTimelineControl : Grid
     private double _playEndTime;
     private double _playStep;
     private double _basePlayStep;
+    private double _gapThreshold;
     private int _speedIndex = 1;
     private bool _isPlaying;
 
@@ -297,6 +299,9 @@ public sealed class EventTimelineControl : Grid
 
     /// <summary>Raised when a plan operator in the timeline is clicked.</summary>
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
+
+    /// <summary>Raised when an individual event marker is clicked (to reveal it in the event grid).</summary>
+    public event Action<EngineEvent>? EventSelected;
 
     /// <summary>Raised when auto-play starts (true) or stops (false).</summary>
     public event Action<bool>? PlayStateChanged;
@@ -430,7 +435,16 @@ public sealed class EventTimelineControl : Grid
         if (_speedButton.Content is TextBlock label)
         {
             var speed = SpeedMultiplier;
-            label.Text = (speed % 1 == 0 ? speed.ToString("0") : speed.ToString("0.#")) + "x";
+
+            switch (speed)
+            {
+                case 0.001:
+                    label.Text = "0.001x";
+                    break;
+                default:
+                    label.Text = (speed % 1 == 0 ? speed.ToString("0") : speed.ToString("0.#")) + "x";
+                    break;
+            }
         }
     }
 
@@ -586,6 +600,7 @@ public sealed class EventTimelineControl : Grid
             {
                 // Operators occupy [start, start + duration].
                 var operatorEnd = start + DurationMs(ev);
+
                 if (operatorEnd > max) max = operatorEnd;
                 if (ev.PlanNodeIdentifier is { } opId) operatorEnds[opId] = operatorEnd;
             }
@@ -809,6 +824,15 @@ public sealed class EventTimelineControl : Grid
             // Fan same-timestamp markers apart within their bucket (render only; the playhead and
             // selection still use the true time). The offset is in ms, so it scales with zoom.
             var x = TimeToX(_times[i] + _nudge[i]);
+
+            // Virtualisation: skip markers that fall outside the visible content. Skia would clip the
+            // pixels anyway, but this also avoids the per-event work and the hit-region entry, which
+            // dominates when zoomed in on a large capture.
+            if (x > w || x < RowLabelWidth - SparseMarkerWidth)
+            {
+                continue;
+            }
+
             var rowIndex = GetRowIndex(ev);
             if (rowIndex < 0)
             {
@@ -1127,14 +1151,22 @@ public sealed class EventTimelineControl : Grid
                                      lineWidth, cornerRadius, y, slotHeight, barColour));
         }
 
-        // Trace I/O: draw the extensions first so the operator bars paint over them.
+        // Trace: draw the extensions first so the operator bars paint over them.
         if (_traceIo)
         {
-            DrawTraces(canvas, bars, rowTops);
+            DrawTraces(canvas, bars, rowTops, rowHeights);
         }
+
+        var rightEdge = CanvasWidth;
 
         foreach (var b in bars)
         {
+            // Virtualisation: skip operators whose bar is entirely off-screen.
+            if (b.EndX < RowLabelWidth || b.StartX > rightEdge)
+            {
+                continue;
+            }
+
             // Subtle top-lit sheen: lighten the top edge, darken the bottom edge of the bar.
             var gradient = SKShader.CreateLinearGradient(
                 new SKPoint(b.StartX, b.BarTop),
@@ -1165,66 +1197,107 @@ public sealed class EventTimelineControl : Grid
     }
 
     /// <summary>
-    /// Trace I/O mode: extends each I/O marker up out of its row to the bottom of the operator that
-    /// used it, at reduced opacity, so the link between an operator and its reads is visible.
+    /// Trace mode: extends point markers out of their row to the operator that produced them, at
+    /// reduced opacity. Reads sit below the plan and extend up to the operator's bottom; log writes
+    /// sit above the plan and extend down to the modification operator's top.
     /// </summary>
-    private void DrawTraces(SKCanvas canvas, List<OperatorBar> bars, float[] rowTops)
+    private void DrawTraces(SKCanvas canvas, List<OperatorBar> bars, float[] rowTops, float[] rowHeights)
     {
-        var bottoms = new Dictionary<PlanNodeIdentifier, float>(bars.Count);
+        var byNode = new Dictionary<PlanNodeIdentifier, OperatorBar>(bars.Count);
         foreach (var b in bars)
         {
             if (b.Op.PlanNodeIdentifier is { } id)
             {
-                bottoms[id] = b.BarBottom;
+                byNode[id] = b;
             }
         }
 
-        var ioRow = -1;
-        for (var r = 0; r < _activeRows.Length; r++)
-        {
-            if (_activeRows[r].EventType == typeof(IoEvent)) { ioRow = r; break; }
-        }
+        var ioRow = RowIndexOf(typeof(IoEvent));
+        var logRow = RowIndexOf(typeof(TransactionLogEvent));
 
-        if (ioRow < 0)
+        if (ioRow < 0 && logRow < 0)
         {
             return;
         }
 
-        var ioTop = rowTops[ioRow] + RowPadding;
-
-        // Composite all extensions through a single layer at reduced opacity. Drawing them directly
-        // with a translucent paint would let overlapping traces (e.g. a cluster of reads pinned to the
-        // operator's end where the fan has no room) stack up to full opacity; the layer merges them at
-        // full opacity first, then fades the whole thing once.
+        // Composite all extensions through a single layer at reduced opacity so overlapping traces
+        // don't stack up to full opacity (the layer merges them first, then fades the whole thing once).
         using var layerPaint = new SKPaint { Color = SKColors.White.WithAlpha(TraceAlpha) };
         canvas.SaveLayer(layerPaint);
 
-        // Match the read row's marker width so the extension lines up with the marker it grows from.
-        var traceWidth = RowMarkerWidth(ioRow);
+        var rightEdge = CanvasWidth;
 
-        for (var i = 0; i < _sortedEvents.Count; i++)
+        if (ioRow >= 0)
         {
-            if (_sortedEvents[i] is not IoEvent io)
+            // Reads are below the plan: extend from the operator's bottom down to the read row.
+            var ioTop = rowTops[ioRow] + RowPadding;
+            var width = RowMarkerWidth(ioRow);
+
+            for (var i = 0; i < _sortedEvents.Count; i++)
             {
-                continue;
-            }
+                if (_sortedEvents[i] is not IoEvent io ||
+                    io.PlanNodeIdentifier is not { } id ||
+                    !byNode.TryGetValue(id, out var b) ||
+                    b.BarBottom >= ioTop)
+                {
+                    continue;
+                }
 
-            if (io.PlanNodeIdentifier is not { } id ||
-                !bottoms.TryGetValue(id, out var barBottom) ||
-                barBottom >= ioTop)
+                var x = TimeToX(_times[i] + _nudge[i]);
+                if (x > rightEdge || x < RowLabelWidth - width)
+                {
+                    continue;
+                }
+
+                _markerPaint.Color = TraceColour(io, ioRow);
+                canvas.DrawRect(x, b.BarBottom, width, ioTop - b.BarBottom, _markerPaint);
+            }
+        }
+
+        if (logRow >= 0)
+        {
+            // Log writes are above the plan: extend from the log row down to the modification operator's top.
+            var logBottom = rowTops[logRow] + rowHeights[logRow] - RowPadding;
+            var width = RowMarkerWidth(logRow);
+
+            for (var i = 0; i < _sortedEvents.Count; i++)
             {
-                continue;
+                if (_sortedEvents[i] is not TransactionLogEvent log ||
+                    log.PlanNodeIdentifier is not { } id ||
+                    !byNode.TryGetValue(id, out var b) ||
+                    b.BarTop <= logBottom)
+                {
+                    continue;
+                }
+
+                var x = TimeToX(_times[i] + _nudge[i]);
+                if (x > rightEdge || x < RowLabelWidth - width)
+                {
+                    continue;
+                }
+
+                _markerPaint.Color = TraceColour(log, logRow);
+                canvas.DrawRect(x, logBottom, width, b.BarTop - logBottom, _markerPaint);
             }
-
-            // Same x as the marker (including its fan offset) so the extension lines up with it.
-            var x = TimeToX(_times[i] + _nudge[i]);
-            var colour = io.DisplayColour.A == 0 ? _activeRows[ioRow].Color : io.DisplayColour.ToSkColor();
-
-            _markerPaint.Color = colour.WithAlpha(255);
-            canvas.DrawRect(x, barBottom, traceWidth, ioTop - barBottom, _markerPaint);
         }
 
         canvas.Restore();
+    }
+
+    private SKColor TraceColour(EngineEvent ev, int rowIndex) =>
+        (ev.DisplayColour.A == 0 ? _activeRows[rowIndex].Color : ev.DisplayColour.ToSkColor()).WithAlpha(255);
+
+    private int RowIndexOf(Type eventType)
+    {
+        for (var r = 0; r < _activeRows.Length; r++)
+        {
+            if (_activeRows[r].EventType == eventType)
+            {
+                return r;
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -1584,9 +1657,21 @@ public sealed class EventTimelineControl : Grid
 
     private void SelectOperatorAt(Windows.Foundation.Point position)
     {
-        if (HitTestRegion(position.X, position.Y) is { Event: ExecutionOperatorEvent { PlanNodeIdentifier: { } node } })
+        var hit = HitTestRegion(position.X, position.Y);
+
+        if (hit is null)
+        {
+            return;
+        }
+
+        if (hit.Value.Event is ExecutionOperatorEvent { PlanNodeIdentifier: { } node })
         {
             PlanNodeSelected?.Invoke(node);
+        }
+        else
+        {
+            // A point marker (read/lock/wait/log): reveal that event in the event grid.
+            EventSelected?.Invoke(hit.Value.Event);
         }
     }
 
@@ -1795,12 +1880,15 @@ public sealed class EventTimelineControl : Grid
 
         _isPlaying = true;
 
-        // Advance the playhead smoothly: cover the range over (events in range) * EventWallMs of wall
-        // time, so the overall speed matches the old per-event play but in small, even time steps.
+        // Sweep the whole range over BasePlayDurationMs (at 1x) so the wall-clock duration is the same
+        // for a 25ms query and a multi-second one - the playhead just moves slower over a short range.
         var rangeMs = Math.Max(rangeEnd - rangeStart, 1e-6);
         var eventsInRange = Math.Max(1, _times.Count(t => t >= rangeStart && t <= rangeEnd));
-        _basePlayStep = rangeMs * PlayTickMs / (eventsInRange * EventWallMs);
+        _basePlayStep = rangeMs * PlayTickMs / BasePlayDurationMs;
         _playStep = _basePlayStep * SpeedMultiplier;
+
+        // Gap-skip threshold from the average event spacing, so only genuine dead air is skipped.
+        _gapThreshold = rangeMs / eventsInRange * GapSkipFactor;
 
         SyncHandlesToPlayhead();
         FirePlayhead();
@@ -1845,10 +1933,9 @@ public sealed class EventTimelineControl : Grid
         {
             _playheadTime = _playStartTime;
         }
-        else if (NextEventTime(_playheadTime, _playEndTime) is { } next && next - _playheadTime > _basePlayStep * GapSkipTicks)
+        else if (NextEventTime(_playheadTime, _playEndTime) is { } next && next - _playheadTime > _gapThreshold)
         {
             // Dead air ahead: jump straight to the next activity rather than gliding across the gap.
-            // The gap threshold uses the base step so skipping behaves the same at every speed.
             _playheadTime = next;
         }
 

@@ -170,9 +170,9 @@ public static class ExecutionPlanParser
 
             timingCache.Build();
 
-            // Include the statement (SELECT/INSERT/...) node so the timeline can show it as the
-            // top-level operator spanning the whole query.
             var nodes = plan.NodesById.Values;
+
+            var offset = 1;
 
             foreach (var node in nodes)
             {
@@ -188,20 +188,22 @@ public static class ExecutionPlanParser
                     TimeMs = startTime,
                     Duration = Math.Max(endTime - startTime, 1),
                     PlanHandle = plan.PlanHandle,
-                    SequenceId = nearestSequenceId - 1
+                    SequenceId = nearestSequenceId - offset,
                 };
+
+                offset++;
 
                 operatorEvents.Add(operatorEvent);
             }
         }
 
         events.AddRange(operatorEvents);
+
         ComputeHashPhases(operatorEvents, executionPlans);
     }
 
-    private static void ComputeHashPhases(
-        List<ExecutionOperatorEvent> operatorEvents,
-        List<ExecutionPlan> executionPlans)
+    private static void ComputeHashPhases(List<ExecutionOperatorEvent> operatorEvents,
+                                          List<ExecutionPlan> executionPlans)
     {
         var execByNodeId = operatorEvents
             .Where(e => e.PlanNodeIdentifier != null)
@@ -312,9 +314,25 @@ public static class ExecutionPlanParser
             },
             TimeMs = timing.GetStartTime(node),
             Duration = timing.GetEndTime(node) - timing.GetStartTime(node),
+            ObjectName = GetNodeObjectName(node)
         };
 
         return planEvent;
+    }
+
+    private static string GetNodeObjectName(PlanNode node)
+    {
+        if (string.IsNullOrEmpty(node.Schema))
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrEmpty(node.Index))
+        {
+            return $"{node.Schema}.{node.Table}";
+        }
+
+        return $"{node.Schema}.{node.Table}.{node.Index}";
     }
 
     public static HashSet<string> ExtractTables(XElement nodeElement)

@@ -16,6 +16,7 @@ using Windows.Foundation.Collections;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Replay.Events.EventTypes;
 using InternalsViewer.Replay.Plans;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Controls.Plan;
@@ -41,6 +42,7 @@ public sealed partial class QueryReplayView : Page
         EventTimeline.SequenceChanged += OnSequenceChanged;
         EventTimeline.PlayheadChanged += OnPlayheadChanged;
         EventTimeline.PlanNodeSelected += OnTimelinePlanNodeSelected;
+        EventTimeline.EventSelected += OnTimelineEventSelected;
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
         PlanRepeater.ElementPrepared += OnPlanElementPrepared;
@@ -77,6 +79,10 @@ public sealed partial class QueryReplayView : Page
         {
             ApplyActiveNodeToPlans();
         }
+        else if (e.PropertyName == nameof(QueryViewModel.IsTimelinePlaying))
+        {
+            ApplyPlayingToPlans();
+        }
     }
 
     private void OnPlanElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs args)
@@ -84,6 +90,7 @@ public sealed partial class QueryReplayView : Page
         if (args.Element is ExecutionPlanControl planControl)
         {
             planControl.ActiveNode = ViewModel.ActivePlanNode;
+            planControl.IsPlaying = ViewModel.IsTimelinePlaying;
         }
     }
 
@@ -96,6 +103,19 @@ public sealed partial class QueryReplayView : Page
             if (PlanRepeater.TryGetElement(i) is ExecutionPlanControl planControl)
             {
                 planControl.ActiveNode = node;
+            }
+        }
+    }
+
+    private void ApplyPlayingToPlans()
+    {
+        var isPlaying = ViewModel.IsTimelinePlaying;
+
+        for (var i = 0; i < ViewModel.ExecutionPlans.Count; i++)
+        {
+            if (PlanRepeater.TryGetElement(i) is ExecutionPlanControl planControl)
+            {
+                planControl.IsPlaying = isPlaying;
             }
         }
     }
@@ -137,5 +157,11 @@ public sealed partial class QueryReplayView : Page
     private void OnTimelinePlanNodeSelected(PlanNodeIdentifier identifier)
     {
         ViewModel.SelectPlanNode(identifier);
+    }
+
+    private void OnTimelineEventSelected(EngineEvent engineEvent)
+    {
+        ResultsTabView.SelectedItem = EventsTab;
+        EventGrid.NavigateToEvent(engineEvent);
     }
 }

@@ -92,6 +92,7 @@ internal class EventParser
             "query_thread_profile" => MapQueryThread(e),
             "query_memory_grant_usage" => MapMemory(e),
             "transaction_log" => MapTransactionLogEvent(e),
+            "sql_batch_starting" => MapBatchStart(e),
             _ => new EngineEvent
             {
                 Name = e.Name,
@@ -145,6 +146,16 @@ internal class EventParser
         return engineEvent;
     }
 
+    private static BatchStartEvent MapBatchStart(EventResult e)
+    {
+        return new BatchStartEvent
+        {
+            Name = e.Name,
+            Timestamp = e.Timestamp,
+            DatabaseId = e.GetDatabaseId(),
+            SqlText = e.GetString("batch_text")
+        };
+    }
 
     private static void ApplyObjectIdentity(EngineEvent engineEvent, AllocationUnit? allocationUnit, bool includeIndex)
     {
@@ -331,7 +342,7 @@ internal class EventParser
             DatabaseId = e.GetDatabaseId(),
             Operation = (LogOperation)(e.GetInt("operation") ?? 0),
             Context = (LogContext)(e.GetInt("context") ?? 0),
-            AllocationUnitId = e.GetLong("allocation_unit_id") ?? 0
+            AllocationUnitId = e.GetLong("alloc_unit_id") ?? 0
         };
     }
 }

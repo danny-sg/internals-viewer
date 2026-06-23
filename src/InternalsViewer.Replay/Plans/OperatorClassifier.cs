@@ -59,7 +59,7 @@ public static class OperatorClassifier
         IsInsert(n) || IsUpdate(n) || IsDelete(n) || IsMerge(n);
 
     public static bool IsLeaf(PlanNode n) =>
-        IsDataAccess(n);
+        IsScan(n) || IsSeek(n) || IsLookup(n);
 
     public static bool IsBlocking(PlanNode n) =>
         IsHash(n) || IsSort(n) || IsSpool(n);
@@ -132,12 +132,10 @@ public static class OperatorClassifier
         if (IsLeaf(node))
         {
             var io = NodeEventHelper.GetFirstIoTime(events, identifier);
-            var write = IsDataModification(node) ? NodeEventHelper.GetFirstLogTime(events, identifier) : null;
-            var first = MinNullable(io, write);
-
-            if (first.HasValue)
+          
+            if (io.HasValue)
             {
-                return first.Value;
+                return io.Value;
             }
 
             var activity = NodeEventHelper.GetFirstActivityTime(events, identifier);
@@ -148,16 +146,20 @@ public static class OperatorClassifier
             }
         }
 
+        var firstActivity = NodeEventHelper.GetFirstActivityTime(events, identifier);
+
         // 4. Streaming → earliest child
         if (node.Children.Count > 0)
         {
-            return node.Children
+            var firstChild = node.Children
                 .Select(getStart)
                 .Min();
+
+            return Math.Min(firstChild, firstActivity ?? long.MaxValue);
         }
 
         // 5. Fallback → activity
-        return NodeEventHelper.GetFirstActivityTime(events, identifier) ?? 0;
+        return firstActivity ?? 0;
     }
 
     public static OperatorCategory GetCategory(PlanNode n)
@@ -272,20 +274,31 @@ public static class OperatorClassifier
         if (IsLeaf(node))
         {
             var lastIo = NodeEventHelper.GetLastIoTime(events, identifier);
-            var lastWrite = IsDataModification(node) ? NodeEventHelper.GetLastLogTime(events, identifier) : null;
-            var last = MaxNullable(lastIo, lastWrite);
 
-            // The operator's close (thread profile) is authoritative; bound the IO/log end by it so
-            // work on the same object that lands after the operator finished (late read-ahead, a later
-            // log flush, or the object being touched again) doesn't stretch it to the end of the query.
             var close = NodeEventHelper.GetLastActivityTime(events, identifier);
 
-            if (last.HasValue)
+            if (lastIo.HasValue)
             {
-                return close.HasValue ? Math.Min(last.Value, close.Value) : last.Value;
+                return close.HasValue ? Math.Min(lastIo.Value, close.Value) : lastIo.Value;
             }
 
-            return close ?? 0;
+            return close ?? 1;
+        }
+
+        if (IsDataModification(node))
+        {
+            long lastChild = 1;
+
+            if (node.Children.Count > 0)
+            {
+                lastChild = node.Children
+                                .Select(getEnd)
+                                .Max();
+            }
+
+            var lastActivityTime = NodeEventHelper.GetLastActivityTime(events) ?? 1;
+
+            return Math.Max(lastChild, lastActivityTime);
         }
 
         long end = 0;

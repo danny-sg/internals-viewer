@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
 using Windows.UI;
@@ -26,6 +27,14 @@ public sealed class ExecutionPlanControl : Canvas
     private const double RowPitch = NodeHeight + VerticalGap;
 
     private static readonly Color ConnectorColor = Color.FromArgb(255, 140, 140, 140);
+
+    // Colour of the animated "data flowing" overlay drawn on the selected node's outgoing connector.
+    private static readonly Color FlowColor = Color.FromArgb(255, 90, 200, 250);
+
+    // Each producer node mapped to the connector that carries its rows to its consumer (parent).
+    private readonly Dictionary<PlanNode, Polyline> _connectorByProducer = new();
+    private Polyline? _flowOverlay;
+    private Storyboard? _flowStoryboard;
 
     private ScrollViewer? _scrollViewer;
     private PlanNodeControl? _selectedControl;
@@ -78,6 +87,20 @@ public sealed class ExecutionPlanControl : Canvas
     private static void OnActiveNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).SelectByNode((PlanNode?)e.NewValue);
 
+    /// <summary>True while the timeline is playing; drives the data-flow animation on the selection.</summary>
+    public bool IsPlaying
+    {
+        get => (bool)GetValue(IsPlayingProperty);
+        set => SetValue(IsPlayingProperty, value);
+    }
+
+    public static readonly DependencyProperty IsPlayingProperty =
+        DependencyProperty.Register(nameof(IsPlaying), typeof(bool), typeof(ExecutionPlanControl),
+            new PropertyMetadata(false, OnIsPlayingChanged));
+
+    private static void OnIsPlayingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).UpdateFlowAnimation();
+
     public event EventHandler<PlanNode?>? NodeSelected;
 
     private static void OnPlanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -85,7 +108,9 @@ public sealed class ExecutionPlanControl : Canvas
 
     private void Rebuild()
     {
+        StopFlow();
         Children.Clear();
+        _connectorByProducer.Clear();
         _selectedControl = null;
         SelectedNode = null;
 
@@ -110,7 +135,7 @@ public sealed class ExecutionPlanControl : Canvas
         {
             foreach (var child in node.Children)
             {
-                DrawConnector(point, positions[child], RelativeCost(child, totalCost));
+                _connectorByProducer[child] = DrawConnector(point, positions[child], RelativeCost(child, totalCost));
             }
         }
 
@@ -126,6 +151,7 @@ public sealed class ExecutionPlanControl : Canvas
         Height = maxY + NodeHeight + CanvasMargin;
 
         SelectByNode(ActiveNode);
+        UpdateFlowAnimation();
     }
 
     private static double AssignPositions(PlanNode node,
@@ -179,7 +205,7 @@ public sealed class ExecutionPlanControl : Canvas
         Children.Add(control);
     }
 
-    private void DrawConnector(Point parent, Point child, double childCostFraction)
+    private Polyline DrawConnector(Point parent, Point child, double childCostFraction)
     {
         var start = new Point(child.X, child.Y + NodeHeight / 2);
         var end = new Point(parent.X + NodeWidth, parent.Y + NodeHeight / 2);
@@ -221,6 +247,8 @@ public sealed class ExecutionPlanControl : Canvas
         };
 
         Children.Add(arrow);
+
+        return connector;
     }
 
     private static double RelativeCost(PlanNode node, double totalCost)
@@ -354,7 +382,77 @@ public sealed class ExecutionPlanControl : Canvas
         }
 
         SelectedNode = nodeControl?.Node;
+        UpdateFlowAnimation();
         return true;
+    }
+
+    /// <summary>
+    /// While the timeline is playing and a node is selected, marches a dashed overlay along that node's
+    /// outgoing connector to show its rows flowing from the producer to its consumer. Otherwise clears it.
+    /// </summary>
+    private void UpdateFlowAnimation()
+    {
+        StopFlow();
+
+        if (!IsPlaying || SelectedNode is null ||
+            !_connectorByProducer.TryGetValue(SelectedNode, out var connector))
+        {
+            return;
+        }
+
+        const double dashOn = 4;
+        const double dashOff = 4;
+        const double period = dashOn + dashOff;
+
+        var overlay = new Polyline
+        {
+            Stroke = new SolidColorBrush(FlowColor),
+            StrokeThickness = 2.5,
+            StrokeLineJoin = PenLineJoin.Round,
+            StrokeDashCap = PenLineCap.Round,
+            StrokeDashArray = new DoubleCollection { dashOn, dashOff },
+            IsHitTestVisible = false
+        };
+
+        foreach (var point in connector.Points)
+        {
+            overlay.Points.Add(point);
+        }
+
+        Children.Add(overlay);
+        _flowOverlay = overlay;
+
+        // March the dashes toward the consumer (the arrowhead end of the connector).
+        var animation = new DoubleAnimation
+        {
+            From = 0,
+            To = -period,
+            Duration = new Duration(TimeSpan.FromSeconds(0.7)),
+            RepeatBehavior = RepeatBehavior.Forever,
+            EnableDependentAnimation = true
+        };
+
+        Storyboard.SetTarget(animation, overlay);
+        Storyboard.SetTargetProperty(animation, "StrokeDashOffset");
+
+        _flowStoryboard = new Storyboard();
+        _flowStoryboard.Children.Add(animation);
+        _flowStoryboard.Begin();
+    }
+
+    private void StopFlow()
+    {
+        if (_flowStoryboard is not null)
+        {
+            _flowStoryboard.Stop();
+            _flowStoryboard = null;
+        }
+
+        if (_flowOverlay is not null)
+        {
+            Children.Remove(_flowOverlay);
+            _flowOverlay = null;
+        }
     }
 
     private static T? FindAncestor<T>(DependencyObject? start) where T : DependencyObject

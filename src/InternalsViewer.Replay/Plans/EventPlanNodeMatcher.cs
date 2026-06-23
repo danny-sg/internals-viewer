@@ -89,30 +89,42 @@ public static class EventPlanNodeMatcher
 
         var windows = BuildNodeWindows(events);
 
-        var readNodes = plan.NodesById
-                            .Values
-                            .Where(OperatorClassifier.IsRead)
-                            .ToList();
+        var readWriteNode = plan.NodesById
+                         .Values
+                         .Where(n => OperatorClassifier.IsRead(n) || OperatorClassifier.IsDataModification(n))
+                         .ToList();
 
-        if (readNodes.Count == 0)
+        if (readWriteNode.Count == 0)
         {
             return;
         }
 
-        foreach (var engineEvent in events)
+        // Log writes belong to the data-modification operator itself, so they only resolve against the
+        // modification nodes (and are not pushed down to a read leaf).
+        var writeNodes = readWriteNode.Where(OperatorClassifier.IsDataModification).ToList();
+
+        foreach (var readWriteEvent in events)
         {
-            if (engineEvent.PlanNodeIdentifier is not null || string.IsNullOrEmpty(engineEvent.TableName))
+            if (readWriteEvent.PlanNodeIdentifier is not null
+                || string.IsNullOrEmpty(readWriteEvent.TableName))
             {
                 continue;
             }
 
-            var node = ResolveNode(engineEvent, readNodes, windows);
+            var isLog = readWriteEvent is TransactionLogEvent;
+
+            var node = ResolveNode(readWriteEvent, isLog ? writeNodes : readWriteNode, windows);
 
             if (node is not null)
             {
-                node = FindReadTarget(node) ?? node;
+                if (!isLog)
+                {
+                    // Reads (and other storage events) resolve to the operator that owns the page and
+                    // are pushed down to the actual read leaf.
+                    node = FindReadTarget(node) ?? node;
+                }
 
-                engineEvent.PlanNodeIdentifier = new PlanNodeIdentifier
+                readWriteEvent.PlanNodeIdentifier = new PlanNodeIdentifier
                 {
                     PlanHandle = plan.PlanHandle,
                     NodeId = node.NodeId

@@ -27,6 +27,7 @@
                           Grid.Row="1"
                           AutoGenerateColumns="False"
                           CanUserSortColumns="True"
+                          Sorting="OnSorting"
                           SelectionMode="Single"
                           IsReadOnly="True"
                           GridLinesVisibility="Vertical"
