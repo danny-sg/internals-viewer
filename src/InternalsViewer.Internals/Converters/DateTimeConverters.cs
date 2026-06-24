@@ -60,35 +60,10 @@ public static class DateTimeConverters
     }
 
     /// <summary>
-    /// Finds the closest number to the given number from a list of 0, 3 and 7
-    /// </summary>
-    private static int ClosestTo(int number)
-    {
-        var targets = new[] { 0, 3, 7 };
-        var nearest = targets[0];
-
-        var smallestDifference = Math.Abs(number - nearest);
-
-        foreach (var target in targets)
-        {
-            var difference = Math.Abs(number - target);
-
-            if (difference < smallestDifference)
-            {
-                nearest = target;
-                smallestDifference = difference;
-            }
-        }
-
-        return nearest;
-    }
-
-    /// <summary>
     /// Decodes the DATETIME2 data type
     /// </summary>
     /// <param name="data">The data.</param>
     /// <param name="scale">The scale.</param>
-    /// <returns></returns>
     public static DateTime DecodeDateTime2(byte[] data, int scale)
     {
         var dateData = new byte[4];
@@ -114,7 +89,6 @@ public static class DateTimeConverters
     /// Decodes the DATE data type
     /// </summary>
     /// <param name="data">The data.</param>
-    /// <returns></returns>
     public static DateOnly DecodeDate(byte[] data)
     {
         var dateData = new byte[4];
@@ -123,7 +97,7 @@ public static class DateTimeConverters
 
         var date = BitConverter.ToInt32(dateData, 0);
 
-        var returnDate = new DateOnly();
+        var returnDate = default(DateOnly);
 
         returnDate = returnDate.AddDays(date);
 
@@ -135,7 +109,6 @@ public static class DateTimeConverters
     /// </summary>
     /// <param name="data">The data.</param>
     /// <param name="scale">The scale.</param>
-    /// <returns></returns>
     public static TimeSpan DecodeTime(byte[] data, int scale)
     {
         var timeData = new byte[8];
@@ -146,7 +119,7 @@ public static class DateTimeConverters
 
         var time = BitConverter.ToInt64(timeData, 0);
 
-        var returnDate = new DateTime();
+        var returnDate = default(DateTime);
         returnDate = returnDate.AddMilliseconds(scaleFactor * time);
 
         return returnDate.TimeOfDay;
@@ -179,10 +152,34 @@ public static class DateTimeConverters
         returnDate = returnDate.AddDays(datePart);
         returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
 
-        var offsetTime = new DateTime().AddMinutes(Math.Abs(time));
+        var offsetTime = default(DateTime).AddMinutes(Math.Abs(time));
 
         var sign = time >= 0 ? "+" : "-";
 
         return $"{returnDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
+    }
+
+    /// <summary>
+    /// Finds the closest number to the given number from a list of 0, 3 and 7
+    /// </summary>
+    private static int ClosestTo(int number)
+    {
+        var targets = new[] { 0, 3, 7 };
+        var nearest = targets[0];
+
+        var smallestDifference = Math.Abs(number - nearest);
+
+        foreach (var target in targets)
+        {
+            var difference = Math.Abs(number - target);
+
+            if (difference < smallestDifference)
+            {
+                nearest = target;
+                smallestDifference = difference;
+            }
+        }
+
+        return nearest;
     }
 }

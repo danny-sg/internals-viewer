@@ -11,7 +11,9 @@ public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutput { get; } = testOutputHelper;
 
-    [Fact]
+    private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
+
+    [RequiresFileFact(MdfPath)]
     public async Task Can_Load_Metadata()
     {
         var database = new DatabaseSource(FileConnectionFactory.Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase.mdf"))

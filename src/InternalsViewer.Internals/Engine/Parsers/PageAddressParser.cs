@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Engine.Parsers;
 
-public static class PageAddressParser
+public static partial class PageAddressParser
 {
     /// <summary>
     /// Parses a page address from a string in number format
@@ -15,14 +15,14 @@ public static class PageAddressParser
             return ParseBytes(address);
         }
 
-        var decimalMatch = Regex.Match(address, @"^(\d+):(\d+)$");
+        var decimalMatch = DecimalFormatRegEx().Match(address);
 
         if (decimalMatch.Success)
         {
             return new PageAddress(short.Parse(decimalMatch.Groups[1].Value), int.Parse(decimalMatch.Groups[2].Value));
         }
 
-        var hexMatch = Regex.Match(address, @"^([0-9A-Fa-f]{4}):([0-9A-Fa-f]{8})$");
+        var hexMatch = HexFormatRegEx().Match(address);
 
         if (hexMatch.Success)
         {
@@ -48,7 +48,7 @@ public static class PageAddressParser
 
             return false;
         }
-    }   
+    }
 
     /// <summary>
     /// Parses a page address from a hex string
@@ -95,11 +95,17 @@ public static class PageAddressParser
             return PageAddress.Empty;
         }
 
-        if(address.Length != PageAddress.Size)
+        if (address.Length != PageAddress.Size)
         {
             throw new ArgumentException("Invalid page address format", nameof(address));
         }
 
         return Parse(address);
     }
+
+    [GeneratedRegex(@"^\(?(\d+):(\d+)\)?$")]
+    private static partial Regex DecimalFormatRegEx();
+
+    [GeneratedRegex(@"^([0-9A-Fa-f]{4}):([0-9A-Fa-f]{8})$")]
+    private static partial Regex HexFormatRegEx();
 }

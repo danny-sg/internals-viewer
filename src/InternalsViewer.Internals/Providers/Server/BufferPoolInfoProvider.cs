@@ -5,16 +5,16 @@ using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Providers.Server;
 
-public class BufferPoolInfoProvider(string connectionString): IBufferPoolInfoProvider
+public sealed class BufferPoolInfoProvider(string connectionString) : IBufferPoolInfoProvider
 {
-    private string ConnectionString { get; } = connectionString;
-
     private const string BufferPoolCommand = @" -- Query Buffer Pool
         SELECT CONVERT(SMALLINT, file_id) AS FileId
               ,page_id                    AS PageId
               ,is_modified                AS IsModified
         FROM   sys.dm_os_buffer_descriptors WITH (NOLOCK)
         WHERE  database_id = DB_ID(@DatabaseName)";
+
+    private string ConnectionString { get; } = connectionString;
 
     public async Task<(List<PageAddress> Clean, List<PageAddress> Dirty)> GetBufferPoolEntries(string databaseName)
     {
@@ -35,7 +35,7 @@ public class BufferPoolInfoProvider(string connectionString): IBufferPoolInfoPro
 
         var reader = await command.ExecuteReaderAsync();
 
-        while (reader.Read())
+        while (await reader.ReadAsync())
         {
             var fileId = reader.GetInt16(0);
             var pageId = reader.GetInt32(1);
@@ -46,7 +46,6 @@ public class BufferPoolInfoProvider(string connectionString): IBufferPoolInfoPro
             {
                 dirtyPages.Add(pageAddress);
             }
-
             else
             {
                 cleanPages.Add(pageAddress);

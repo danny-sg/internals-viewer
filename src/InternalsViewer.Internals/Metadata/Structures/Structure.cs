@@ -3,7 +3,8 @@ using InternalsViewer.Internals.Engine.Records.CdRecordType;
 
 namespace InternalsViewer.Internals.Metadata.Structures;
 
-public abstract record Structure<T>(long AllocationUnitId) where T : ColumnStructure
+public abstract record Structure<T>(long AllocationUnitId) 
+    where T : ColumnStructure
 {
     public int ObjectId { get; set; }
 

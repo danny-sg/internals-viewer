@@ -1,6 +1,4 @@
 ﻿using System.Collections;
-using System.Diagnostics;
-using System.Xml.Linq;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;

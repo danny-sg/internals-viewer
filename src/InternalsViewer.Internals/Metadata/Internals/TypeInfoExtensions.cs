@@ -11,11 +11,12 @@ public static class TypeInfoExtensions
     /// </remarks>
     public static TypeInfo ToTypeInfo(this int value)
     {
-        var sqlType = SqlTypeHelpers.ToSqlType((byte) (value & 0xFF));
+        var sqlType = SqlTypeHelpers.ToSqlType((byte)(value & 0xFF));
 
         return sqlType switch
         {
             SqlDbType.Bit => GetBit(),
+
             // Number types
             SqlDbType.TinyInt => GetTinyInt(),
             SqlDbType.SmallInt => GetSmallInt(),
@@ -119,8 +120,8 @@ public static class TypeInfoExtensions
             DataType = SqlDbType.DateTime2
         };
 
-        typeInfo.Scale = (byte) ((value & 0xFF00) >> 8);
-        typeInfo.Precision = (byte) (20 + typeInfo.Scale);
+        typeInfo.Scale = (byte)((value & 0xFF00) >> 8);
+        typeInfo.Precision = (byte)(20 + typeInfo.Scale);
 
         switch (typeInfo.Scale)
         {
@@ -148,8 +149,8 @@ public static class TypeInfoExtensions
             DataType = SqlDbType.DateTimeOffset
         };
 
-        typeInfo.Scale = (byte) ((value & 0xFF00) >> 8);
-        typeInfo.Precision = (byte) (26 + (typeInfo.Scale > 0 ? typeInfo.Scale + 1 : typeInfo.Scale));
+        typeInfo.Scale = (byte)((value & 0xFF00) >> 8);
+        typeInfo.Precision = (byte)(26 + (typeInfo.Scale > 0 ? typeInfo.Scale + 1 : typeInfo.Scale));
 
         switch (typeInfo.Scale)
         {
@@ -177,8 +178,8 @@ public static class TypeInfoExtensions
             DataType = SqlDbType.Decimal
         };
 
-        typeInfo.Precision = (byte) ((value & 0xFF00) >> 8);
-        typeInfo.Scale = (byte) ((value & 0xFF0000) >> 16);
+        typeInfo.Precision = (byte)((value & 0xFF00) >> 8);
+        typeInfo.Scale = (byte)((value & 0xFF0000) >> 16);
 
         switch (typeInfo.Precision)
         {
@@ -315,8 +316,8 @@ public static class TypeInfoExtensions
             DataType = SqlDbType.Time
         };
 
-        typeInfo.Scale = (byte) ((value & 0xFF00) >> 8);
-        typeInfo.Precision = (byte) (8 + (typeInfo.Scale > 0 ? typeInfo.Scale + 1 : typeInfo.Scale));
+        typeInfo.Scale = (byte)((value & 0xFF00) >> 8);
+        typeInfo.Precision = (byte)(8 + (typeInfo.Scale > 0 ? typeInfo.Scale + 1 : typeInfo.Scale));
 
         switch (typeInfo.Scale)
         {
@@ -381,7 +382,7 @@ public static class TypeInfoExtensions
             DataType = type
         };
 
-        typeInfo.MaxLength = (short) ((value & 0xFFFF00) >> 8);
+        typeInfo.MaxLength = (short)((value & 0xFFFF00) >> 8);
 
         if (typeInfo.MaxLength == 0)
         {

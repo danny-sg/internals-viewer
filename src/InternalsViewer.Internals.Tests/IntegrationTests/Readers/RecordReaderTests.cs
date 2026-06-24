@@ -12,10 +12,12 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
 
-    protected IConnectionType Connection => FileConnectionFactory.Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase.mdf");
+    private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
+
+    protected IConnectionType Connection => FileConnectionFactory.Create(c => c.Filename = MdfPath);
 
 
-    [Fact]
+    [RequiresFileFact(MdfPath)]
     public async Task Can_Read_AllocationUnits_Table()
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
@@ -35,7 +37,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
         Assert.NotEmpty(result);
     }
 
-    [Fact]
+    [RequiresFileFact(MdfPath)]
     public async Task Can_Read_Objects_Table()
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
@@ -55,7 +57,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
         Assert.NotEmpty(result);
     }
 
-    [Fact]
+    [RequiresFileFact(MdfPath)]
     public async Task Can_Read_Columns_Table()
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
@@ -75,7 +77,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
         Assert.NotEmpty(result);
     }
 
-    [Fact]
+    [RequiresFileFact(MdfPath)]
     public async Task Can_Read_RowSet_Table()
     {
         var service = ServiceHelper.CreatePageService(TestOutput);

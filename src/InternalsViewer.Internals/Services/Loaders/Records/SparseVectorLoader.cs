@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Engine.Records.Data;
+﻿using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records;

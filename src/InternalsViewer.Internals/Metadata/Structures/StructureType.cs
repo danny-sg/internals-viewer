@@ -9,6 +9,7 @@ public enum StructureType
     /// Heap - table without a clustered index
     /// </summary>
     Heap,
+
     /// <summary>
     /// B-Tree (Index)
     /// </summary>

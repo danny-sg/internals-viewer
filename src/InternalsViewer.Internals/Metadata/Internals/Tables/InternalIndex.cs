@@ -3,14 +3,13 @@ using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Generators;
 
 // ReSharper disable StringLiteralTypo
-
 namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 
 /// <summary>
 /// sys.sysidxstats
 /// </summary>
 [InternalsMetadata]
-public record InternalIndex
+public sealed record InternalIndex
 {
     [InternalsMetadataColumn("id", 1, SqlDbType.Int, 4, 4, 1)]
     public int ObjectId { get; set; }

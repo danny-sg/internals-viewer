@@ -13,7 +13,6 @@ using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Internals.Services.Loaders.Chains;
 using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders.Engine;
-using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Services.Pages;

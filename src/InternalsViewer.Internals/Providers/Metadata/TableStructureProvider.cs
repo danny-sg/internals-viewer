@@ -19,7 +19,7 @@ public class TableStructureProvider
         var allocationUnit = metadata.AllocationUnits
                                      .FirstOrDefault(a => a.AllocationUnitId == allocationUnitId);
 
-        if(allocationUnit == null)
+        if (allocationUnit == null)
         {
             throw new ArgumentException($"Allocation unit {allocationUnitId} not found");
         }
@@ -27,7 +27,7 @@ public class TableStructureProvider
         var rowSet = metadata.RowSets
                              .FirstOrDefault(p => p.RowSetId == allocationUnit.ContainerId);
 
-        if(rowSet == null)
+        if (rowSet == null)
         {
             throw new ArgumentException($"Row set {allocationUnit.ContainerId} not found");
         }
@@ -50,7 +50,7 @@ public class TableStructureProvider
             var column = columns.FirstOrDefault(c => c.ColumnId == s.ColumnId);
 
             var isDropped = Convert.ToBoolean(s.Status & 2);
-            var isUniqueifer = Convert.ToBoolean(s.Status & 16);   
+            var isUniqueifer = Convert.ToBoolean(s.Status & 16);
             var isKey = indexColumns.Any(c => c.ColumnId == s.ColumnId);
 
             structure.ObjectId = rowSet.ObjectId;
@@ -66,11 +66,11 @@ public class TableStructureProvider
 
             string name;
 
-            if(isDropped)
+            if (isDropped)
             {
                 name = "(Dropped)";
             }
-            else if(isUniqueifer)
+            else if (isUniqueifer)
             {
                 name = "UNIQUIFIER";
             }

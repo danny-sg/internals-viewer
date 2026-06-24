@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Internals.Engine.Pages;
 
-public class EmptyPage : Page
+public sealed class EmptyPage : Page
 {
     public EmptyPage()
     {

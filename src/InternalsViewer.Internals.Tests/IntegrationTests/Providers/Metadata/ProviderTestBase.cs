@@ -18,6 +18,7 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
     protected async Task<InternalMetadata> GetMetadata()
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
+
         var database = new DatabaseSource(ServerConnectionFactory.Create(c => c.ConnectionString = connectionString))
         {
             Name = "AdventureWorks2022",

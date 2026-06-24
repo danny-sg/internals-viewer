@@ -1,10 +1,11 @@
 ﻿using InternalsViewer.Internals.Providers.Metadata;
+using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Providers.Metadata;
 
 public class TableStructureProviderTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
-    [Fact]
+    [RequiresConnectionStringFact("local")]
     public async Task Can_Get_TableStructure_With_Uniqueifier()
     {
         var metadata = await GetMetadata();
@@ -16,7 +17,7 @@ public class TableStructureProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.True(tableStructure.Columns[0].IsUniqueifier);
     }
 
-    [Fact]
+    [RequiresConnectionStringFact("local")]
     public async Task Can_Get_Table_Structure()
     {
         var metadata = await GetMetadata();

@@ -3,7 +3,6 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Metadata.Structures;
-using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 
 namespace InternalsViewer.Internals.Services.Loaders.Compression;

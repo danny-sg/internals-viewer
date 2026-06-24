@@ -10,10 +10,12 @@ public enum CompressionType : byte
     /// No compression (default)
     /// </summary>
     None = 0,
+
     /// <summary>
     /// Row level compressions
     /// </summary>
     Row = 1,
+
     /// <summary>
     /// Page level compression
     /// </summary>

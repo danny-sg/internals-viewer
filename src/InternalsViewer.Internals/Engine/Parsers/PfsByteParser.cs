@@ -52,7 +52,7 @@ public class PfsByteParser
 
     public static byte Parse(PfsByte pfsByte)
     {
-        var bitArray = new BitArray(new [] { (byte)pfsByte.PageSpaceFree });
+        var bitArray = new BitArray([(byte)pfsByte.PageSpaceFree]);
 
         bitArray[3] = pfsByte.GhostRecords;
         bitArray[4] = pfsByte.IsIam;

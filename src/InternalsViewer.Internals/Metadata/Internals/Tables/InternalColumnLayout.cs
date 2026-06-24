@@ -2,7 +2,6 @@
 using InternalsViewer.Internals.Generators;
 
 // ReSharper disable IdentifierTypo
-
 namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 
 /// <summary>
@@ -21,7 +20,7 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 ///     Is Sparse     - status & 0x00000100
 ///     /// </remarks>
 [InternalsMetadata]
-public record InternalColumnLayout
+public sealed record InternalColumnLayout
 {
     [InternalsMetadataColumn("rsid", 1, SqlDbType.BigInt, 8, 4, 1)]
     public long PartitionId { get; set; }

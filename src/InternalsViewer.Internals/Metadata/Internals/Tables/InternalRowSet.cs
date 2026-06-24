@@ -3,7 +3,6 @@ using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Generators;
 
 // ReSharper disable StringLiteralTypo
-
 namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 
 /// <summary>
@@ -12,7 +11,7 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 /// Contains a row for each partition row set for an index or a heap.
 /// </summary>
 [InternalsMetadata]
-public record InternalRowSet
+public sealed record InternalRowSet
 {
     [InternalsMetadataColumn("rowsetid", 1, SqlDbType.BigInt, 8, 4, 1)]
     public long RowSetId { get; set; }
@@ -67,5 +66,4 @@ public record InternalRowSet
 
     [InternalsMetadataColumn("scope_id", 18, SqlDbType.Int, 4, 53, 18)]
     public int? ScopeId { get; set; }
-
 }

@@ -5,12 +5,12 @@ using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 
 namespace InternalsViewer.Internals.Engine.Records.Data;
 
-public class DataRecord : FixedVarRecord
+public sealed class DataRecord : FixedVarRecord
 {
     public SparseVector? SparseVector { get; set; }
 
     [DataStructureItem(ItemType.StatusBitsB)]
-    public string StatusBitsBDescription => "";
+    public string StatusBitsBDescription => string.Empty;
 
     [DataStructureItem(ItemType.ForwardingStub)]
     public RowIdentifier? ForwardingStub { get; set; }
@@ -19,7 +19,8 @@ public class DataRecord : FixedVarRecord
 
     public T? GetValue<T>(string columnName)
     {
-        var field = Fields.FirstOrDefault(f => f.Name.ToLower() == columnName.ToLower());
+        var field = Fields.FirstOrDefault(
+            f => string.Equals(f.Name, columnName, StringComparison.CurrentCultureIgnoreCase));
 
         if (field == null)
         {

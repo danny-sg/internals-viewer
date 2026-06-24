@@ -10,7 +10,9 @@ public class QueryPageReaderTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutputHelper { get; set; } = testOutputHelper;
 
-    [Fact]
+    private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
+
+    [RequiresConnectionStringFact("local")]
     public async Task Can_Read_Database_Page()
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
@@ -22,7 +24,7 @@ public class QueryPageReaderTests(ITestOutputHelper testOutputHelper)
         Assert.NotNull(result);
     }
 
-    [Fact]
+    [RequiresFileFact(MdfPath)]
     public async Task Can_Read_Mdf_Page()
     {
         var service = ServiceHelper.CreatePageService(TestOutputHelper);

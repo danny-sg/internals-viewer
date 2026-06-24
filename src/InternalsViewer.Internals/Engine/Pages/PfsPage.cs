@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Engine.Pages;
 /// <remarks>
 /// Information about page allocation and free space available on pages.
 /// </remarks>
-public class PfsPage : Page
+public sealed class PfsPage : Page
 {
     /// <summary>
     /// Interval between PFS pages = 8088 bytes/pages (1 byte = 1 pfs entry)

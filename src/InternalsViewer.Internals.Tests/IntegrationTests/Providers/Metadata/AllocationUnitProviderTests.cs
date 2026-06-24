@@ -1,10 +1,11 @@
 ﻿using InternalsViewer.Internals.Providers.Metadata;
+using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Providers.Metadata;
 
 public class AllocationUnitProviderTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
-    [Fact]
+    [RequiresConnectionStringFact("local")]
     public async Task Can_Get_AllocationUnits()
     {
         var metadata = await GetMetadata();
@@ -14,7 +15,7 @@ public class AllocationUnitProviderTests(ITestOutputHelper testOutput) : Provide
         Assert.NotEmpty(allocationUnits);
     }
 
-    [Theory]
+    [RequiresConnectionStringTheory("local")]
     [InlineData(72057594060734464)]
     public async Task Can_Get_AllocationUnit(long allocationUnitId)
     {

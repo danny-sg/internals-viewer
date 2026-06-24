@@ -1,6 +1,4 @@
 ﻿using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Engine.Pages.Enums;
-using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;

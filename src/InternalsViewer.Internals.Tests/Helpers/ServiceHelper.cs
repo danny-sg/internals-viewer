@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Services.Pages;
@@ -15,12 +16,20 @@ internal static class ServiceHelper
     {
         var loader = new PageLoader();
 
+        var cdRecordLoader = new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(testOutput, logLevel));
+        var compressionInfoLoader = new CompressionInfoLoader(cdRecordLoader);
+
         var parsers = new IPageParser[]
         {
-         //   new DataPageParser(new Services.Loaders.Compression.CompressionInfoLoader(new Services.Loaders.Records.CompressedDataRecordLoader(TestLogger.GetLogger<CompressedDataRecordLoader>(testOutput, logLevel))),
+            new DataPageParser(compressionInfoLoader),
             new IndexPageParser(),
+            new AllocationPageParser(),
+            new IamPageParser(),
+            new LobPageParser(),
             new PfsPageParser(),
-            new BootPageParser()
+            new BootPageParser(),
+            new FileHeaderPageParser(),
+            new EmptyPageParser()
         };
 
         var service = new PageService(TestLogger.GetLogger<PageService>(testOutput, logLevel), loader, parsers);
