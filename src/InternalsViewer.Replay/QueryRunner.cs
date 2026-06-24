@@ -57,9 +57,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                               string connectionString,
                                               bool clearBufferPool,
                                               bool disableReadAhead,
-                                              bool isReplayMode)
+                                              bool isModification)
     {
-        long rowCount = 0;
+        long rowCount;
         var sessionId = $"QueryReplay_{Guid.NewGuid():N}";
 
         List<EngineEvent>? events;
@@ -67,7 +67,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         Func<EngineEvent, bool>? endMarker = null;
 
-        if (isReplayMode)
+        if (isModification)
         {
             endMarker = e =>
                 e is BatchStartEvent batchStart &&
@@ -81,7 +81,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                                       connectionString,
                                                                                       clearBufferPool,
                                                                                       disableReadAhead,
-                                                                                      isReplayMode);
+                                                                                      isModification);
 
             (events, executionPlans) = await EventReader.GetEvents(filePath, connectionString, null, endMarker);
         }
@@ -125,20 +125,20 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                               DatabaseSource database,
                                               bool clearBufferPool,
                                               bool disableReadAhead,
-                                              bool isReplayMode)
+                                              bool isModification)
     {
         var connectionString = database.Connection.GetConnectionString();
 
         var sessionId = $"QueryReplay_{Guid.NewGuid():N}";
 
-        long rowCount = 0;
+        long rowCount;
 
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
 
         Func<EngineEvent, bool>? endMarker = null;
 
-        if (isReplayMode)
+        if (isModification)
         {
             endMarker = e =>
                 e is BatchStartEvent batchStart &&
@@ -152,7 +152,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                                       connectionString,
                                                                                       clearBufferPool,
                                                                                       disableReadAhead,
-                                                                                      isReplayMode);
+                                                                                      isModification);
 
             (events, executionPlans) = await EventReader.GetEvents(filePath, 
                                                                    connectionString, 

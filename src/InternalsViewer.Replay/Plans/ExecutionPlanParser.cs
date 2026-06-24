@@ -301,12 +301,23 @@ public static class ExecutionPlanParser
                                                       int nodeLevel,
                                                       NodeTiming timing)
     {
+        // The operator's own cost: its subtree cost less the subtree cost of its immediate children,
+        // so a parent doesn't double-count the work of the operators feeding it (matches the plan
+        // view's per-node cost). Clamped at zero to guard against rounding.
+        double? ownCost = null;
+        if (node.EstimatedCost is { } subtree)
+        {
+            var childCost = node.Children.Sum(c => c.EstimatedCost ?? 0);
+            ownCost = Math.Max(0, subtree - childCost);
+        }
+
         var planEvent = new ExecutionOperatorEvent
         {
             Name = node.PhysicalOperator,
             Category = OperatorClassifier.GetCategory(node),
             PlanHandle = planHandle,
             NodeLevel = nodeLevel,
+            Cost = ownCost,
             PlanNodeIdentifier = new PlanNodeIdentifier
             {
                 NodeId = node.NodeId,

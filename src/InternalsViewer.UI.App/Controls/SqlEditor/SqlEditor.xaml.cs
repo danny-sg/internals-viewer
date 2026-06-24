@@ -1,15 +1,49 @@
+using InternalsViewer.UI.App.Controls.Allocation;
+using InternalsViewer.UI.App.Models.Query;
+using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.Web.WebView2.Core;
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.Web.WebView2.Core;
+using System.Windows.Input;
+using InternalsViewer.Replay.Parsing;
 
 namespace InternalsViewer.UI.App.Controls.SqlEditor;
 
+public sealed record ExecuteSqlPayload(string SqlText, QueryOptions QueryOptions, StatementType StatementType);
+
 public sealed partial class SqlEditorControl : UserControl
 {
+    public static readonly DependencyProperty ExecuteCommandProperty =
+        DependencyProperty.Register(
+            nameof(ExecuteCommand),
+            typeof(ICommand),
+            typeof(SqlEditorControl),
+            new PropertyMetadata(null));
+
+    public ICommand? ExecuteCommand
+    {
+        get => (ICommand)GetValue(ExecuteCommandProperty);
+        set => SetValue(ExecuteCommandProperty, value);
+    }
+
+    public static readonly DependencyProperty CancelCommandProperty =
+        DependencyProperty.Register(
+            nameof(CancelCommand),
+            typeof(ICommand),
+            typeof(SqlEditorControl),
+            new PropertyMetadata(null));
+
+    public ICommand CancelCommand
+    {
+        get => (ICommand)GetValue(CancelCommandProperty);
+        set => SetValue(CancelCommandProperty, value);
+    }
+
     public static readonly DependencyProperty SqlTextProperty =
         DependencyProperty.Register(nameof(SqlText), typeof(string), typeof(SqlEditorControl),
             new PropertyMetadata(string.Empty, OnSqlTextChanged));
@@ -18,15 +52,52 @@ public sealed partial class SqlEditorControl : UserControl
         DependencyProperty.Register(nameof(Theme), typeof(string), typeof(SqlEditorControl),
             new PropertyMetadata("vs-dark", OnThemeChanged));
 
+    public static readonly DependencyProperty MessageProperty =
+        DependencyProperty.Register(nameof(Message), typeof(string), typeof(SqlEditorControl),
+            new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty IsErrorProperty =
+        DependencyProperty.Register(nameof(IsError), typeof(bool), typeof(SqlEditorControl),
+            new PropertyMetadata(false));
+
+    public static readonly DependencyProperty QueryOptionsProperty =
+        DependencyProperty.Register(nameof(QueryOptions), typeof(QueryOptions), typeof(SqlEditorControl),
+            new PropertyMetadata(new QueryOptions()));
+
+    public static readonly DependencyProperty IsExecutingProperty =
+        DependencyProperty.Register(nameof(IsExecuting), typeof(bool), typeof(SqlEditorControl),
+            new PropertyMetadata(false));
+
     public string SqlText
     {
         get => (string)GetValue(SqlTextProperty);
         set => SetValue(SqlTextProperty, value);
     }
 
-    /// <summary>
-    /// Monaco theme: "vs", "vs-dark", or "hc-black"
-    /// </summary>
+    public string Message
+    {
+        get => (string)GetValue(MessageProperty);
+        set => SetValue(MessageProperty, value);
+    }
+
+    public bool IsError
+    {
+        get => (bool)GetValue(IsErrorProperty);
+        set => SetValue(IsErrorProperty, value);
+    }
+
+    public bool IsExecuting
+    {
+        get => (bool)GetValue(IsExecutingProperty);
+        set => SetValue(IsExecutingProperty, value);
+    }
+
+    public QueryOptions QueryOptions
+    {
+        get => (QueryOptions)GetValue(QueryOptionsProperty);
+        set => SetValue(QueryOptionsProperty, value);
+    }
+
     public string Theme
     {
         get => (string)GetValue(ThemeProperty);
@@ -35,12 +106,36 @@ public sealed partial class SqlEditorControl : UserControl
 
     public event EventHandler<string>? SqlTextChanged;
 
+    public string ExecuteLabel => IsExecuting ? "Executing" : "Execute";
+
+    public bool IsNotExecuting => !IsExecuting;
+
+    public Visibility ExecutingVisibility => IsExecuting ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility NotExecutingVisibility => IsExecuting ? Visibility.Collapsed : Visibility.Visible;
+
+    public SolidColorBrush ResultBrush => IsError
+        ? new SolidColorBrush(Colors.Red)
+        : (SolidColorBrush)Application.Current.Resources["TextFillColorPrimaryBrush"];
+
     private bool _editorReady;
+
+    private StatementParser statementParser { get; } = new();
 
     public SqlEditorControl()
     {
         InitializeComponent();
         Loaded += OnLoaded;
+    }
+
+    private void HandleExecuteClick()
+    {
+        var payload = new ExecuteSqlPayload(SqlText, QueryOptions, statementParser.GetStatementType(SqlText));
+
+        if (this.ExecuteCommand != null && this.ExecuteCommand.CanExecute(payload))
+        {
+            this.ExecuteCommand.Execute(payload);
+        }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -56,24 +151,25 @@ public sealed partial class SqlEditorControl : UserControl
     {
         var json = e.TryGetWebMessageAsString();
 
-        if (json is null)
-            return;
-
-        var msg = JsonSerializer.Deserialize<EditorMessage>(json);
-
-        switch (msg?.Type)
+        if (json is not null)
         {
-            case "ready":
-                _editorReady = true;
-                break;
+            var msg = JsonSerializer.Deserialize<EditorMessage>(json);
 
-            case "contentChanged":
-                if (SqlText != msg.Value)
-                {
-                    SqlText = msg.Value ?? string.Empty;
-                    SqlTextChanged?.Invoke(this, SqlText);
-                }
-                break;
+            switch (msg?.Type)
+            {
+                case "ready":
+                    _editorReady = true;
+                    break;
+
+                case "contentChanged":
+                    if (SqlText != msg.Value)
+                    {
+                        SqlText = msg.Value ?? string.Empty;
+                        SqlTextChanged?.Invoke(this, SqlText);
+                    }
+
+                    break;
+            }
         }
     }
 
@@ -101,7 +197,7 @@ public sealed partial class SqlEditorControl : UserControl
         }
     }
 
-    private string BuildHtml(string initialSql, string theme)
+    private static string BuildHtml(string initialSql, string theme)
     {
         var escapedSql = JsonSerializer.Serialize(initialSql);
         var escapedTheme = JsonSerializer.Serialize(theme);
@@ -167,5 +263,5 @@ public sealed partial class SqlEditorControl : UserControl
             """;
     }
 
-    private record EditorMessage([property: JsonPropertyName("type")] string Type, [property: JsonPropertyName("value")] string? Value);
+    private sealed record EditorMessage([property: JsonPropertyName("type")] string Type, [property: JsonPropertyName("value")] string? Value);
 }

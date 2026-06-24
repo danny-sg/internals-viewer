@@ -9,6 +9,7 @@ using InternalsViewer.Replay;
 using InternalsViewer.Replay.Events.EventTypes;
 using InternalsViewer.Replay.Plans;
 using InternalsViewer.UI.App.Controls.Plan;
+using InternalsViewer.UI.App.Controls.SqlEditor;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
@@ -26,6 +27,7 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
+using InternalsViewer.Replay.Parsing;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -64,6 +66,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private SettingsService SettingsService { get; }
 
+    [ObservableProperty] 
+    private bool isError;
+
+    [ObservableProperty] 
+    private string message;
+
     [ObservableProperty]
     private string sql = string.Empty;
 
@@ -83,23 +91,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool isTooltipEnabled = true;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ExecuteLabel))]
-    [NotifyPropertyChangedFor(nameof(IsNotExecuting))]
-    [NotifyPropertyChangedFor(nameof(ExecutingVisibility))]
-    [NotifyPropertyChangedFor(nameof(NotExecutingVisibility))]
-    private bool isQueryExecuting;
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
     private bool isTimelinePlaying;
-
-    public string ExecuteLabel => IsQueryExecuting ? "Executing" : "Execute";
-
-    public bool IsNotExecuting => !IsQueryExecuting;
-
-    public Visibility ExecutingVisibility => IsQueryExecuting ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility NotExecutingVisibility => IsQueryExecuting ? Visibility.Collapsed : Visibility.Visible;
 
     [ObservableProperty]
     private bool includeLocks = false;
@@ -108,27 +101,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool includeIo = false;
 
     [ObservableProperty]
-    private bool isClearBufferPool = false;
-
-    [ObservableProperty]
-    private bool isDisableReadAhead = true;
-
-    [ObservableProperty]
-    private bool isReplayMode = false;
-
-    [ObservableProperty]
     private int extentCount;
 
     [ObservableProperty]
-    private string message;
-
-    [ObservableProperty]
-    public bool isError;
-
-    [ObservableProperty]
     public bool cropToQuery = true;
-
-    partial void OnIsErrorChanged(bool value) => OnPropertyChanged(nameof(ResultBrush));
 
     [ObservableProperty]
     private double allocationMapHeight = 200;
@@ -273,14 +249,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public Visibility HasEvents
         => Events.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-
-    public SolidColorBrush ResultBrush => IsError
-        ? new SolidColorBrush(Colors.Red)
-        : (SolidColorBrush)Application.Current.Resources["TextFillColorPrimaryBrush"];
-
-    [ObservableProperty]
-    private bool canExecute => !string.IsNullOrWhiteSpace(Sql) && !IsQueryExecuting;
-
+    
     private List<AllocationLayer> ObjectLayers { get; set; }
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
@@ -326,29 +295,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     [RelayCommand]
-    private async Task ExecuteQuery()
+    private async Task ExecuteQuery(ExecuteSqlPayload payload)
     {
-        if (IsQueryExecuting)
-        {
-            return;
-        }
-
-        IsQueryExecuting = true;
-
         ClearResults();
 
-        var results = await QueryRunner.TraceQuery(Sql,
-                                                    Database,
-                                                    IsClearBufferPool,
-                                                    IsDisableReadAhead,
-                                                    IsReplayMode);
+        var results = await QueryRunner.TraceQuery(payload.SqlText,
+                                                   Database,
+                                                   payload.QueryOptions.ClearBufferPool,
+                                                   payload.QueryOptions.DisableReadAhead,
+                                                   payload.StatementType == StatementType.Modification);
 
         if (!results.IsSuccess)
         {
             IsError = true;
             Message = results.Message;
-
-            IsQueryExecuting = false;
             return;
         }
 
@@ -388,8 +348,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             Events = results.EngineEvents;
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
-
-            IsQueryExecuting = false;
 
             await BuildFilterTreeAsync();
         });

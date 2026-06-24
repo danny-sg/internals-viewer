@@ -996,9 +996,10 @@ public sealed class EventTimelineControl : Grid
         SKColor BarColour);
 
     /// <summary>
-    /// Draws operator events as horizontal lines spanning their duration. Each plan level is a band;
-    /// nodes sharing a level are offset within it, ordered by start time then node id. The per-node
-    /// slot height is anchored to the busiest level so it stays consistent across all levels.
+    /// Draws operator events as horizontal lines spanning their duration. Operators are stacked
+    /// top-to-bottom ordered by plan level (then start time, then node id); each takes an equal
+    /// weighted share of the row height (the statement node a half share), so the hierarchy reads by
+    /// depth with no gaps.
     /// </summary>
     private void DrawOperatorLines(SKCanvas canvas, float[] rowTops, float[] rowHeights)
     {
@@ -1028,46 +1029,55 @@ public sealed class EventTimelineControl : Grid
             return;
         }
 
-        var levels = operators.Max(o => o.Op.NodeLevel) + 1;
-
-        // Order each level by start time (then node id) and record each node's slot within its level.
-        var slotByIndex = new Dictionary<int, int>(operators.Count);
-        var countByLevel = new Dictionary<int, int>();
-        var maxNodesInLevel = 1;
-
-        foreach (var level in operators.GroupBy(o => o.Op.NodeLevel))
-        {
-            var ordered = level
-                .OrderBy(o => _times[o.Index])
-                .ThenBy(o => o.Op.PlanNodeIdentifier?.NodeId ?? 0)
-                .ToList();
-
-            maxNodesInLevel = Math.Max(maxNodesInLevel, ordered.Count);
-            countByLevel[level.Key] = ordered.Count;
-
-            for (var slot = 0; slot < ordered.Count; slot++)
-            {
-                slotByIndex[ordered[slot].Index] = slot;
-            }
-        }
-
         var top = rowTops[planRow] + RowPadding;
         var height = rowHeights[planRow] - RowPadding * 2;
 
-        // Weighted level bands: the statement node (level 0) gets a half-height band, each operator
-        // level a full band. Within a band the slots are sized by the busiest level, so the operator
-        // bars stay consistent.
-        var bandTop = new float[levels];
-        var bandHeight = new float[levels];
-        var totalWeight = 0f;
-        for (var level = 0; level < levels; level++) totalWeight += LevelWeight(level);
+        // Stack the operators top-to-bottom, ordered by plan level (then start time, then node id),
+        // each taking a weighted share of the row height. The share is driven by the operator's cost
+        // so the timeline reads by where the work is rather than by plan depth, with a minimum share
+        // so even the cheapest operator stays legible. The statement (SELECT) node keeps a fixed slim
+        // share. Costs are normalised against the most expensive operator and run through a square
+        // root, compressing the range so a single dominant operator doesn't crush the rest - the bars
+        // indicate relative cost, not exact ratios.
+        var ordered = operators
+            .OrderBy(o => o.Op.NodeLevel)
+            .ThenBy(o => _times[o.Index])
+            .ThenBy(o => o.Op.PlanNodeIdentifier?.NodeId ?? 0)
+            .ToList();
 
-        var bandAcc = top;
-        for (var level = 0; level < levels; level++)
+        var maxCost = operators
+            .Where(o => o.Op.NodeLevel > 0)
+            .Select(o => o.Op.Cost ?? 0)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        float CostWeight(ExecutionOperatorEvent op)
         {
-            bandTop[level] = bandAcc;
-            bandHeight[level] = height * LevelWeight(level) / totalWeight;
-            bandAcc += bandHeight[level];
+            if (op.NodeLevel == 0)
+            {
+                return StatementBandWeight;
+            }
+
+            if (maxCost <= 0)
+            {
+                // No cost information: fall back to an equal share for every operator.
+                return MaxCostWeight;
+            }
+
+            var normalised = (float)Math.Sqrt(Math.Clamp((op.Cost ?? 0) / maxCost, 0, 1));
+            return MinCostWeight + (MaxCostWeight - MinCostWeight) * normalised;
+        }
+
+        var totalWeight = ordered.Sum(o => CostWeight(o.Op));
+        var unit = totalWeight > 0 ? height / totalWeight : height;
+
+        var slotByIndex = new Dictionary<int, (float Y, float Height)>(ordered.Count);
+        var slotAcc = top;
+        foreach (var (index, op) in ordered)
+        {
+            var slot = CostWeight(op) * unit;
+            slotByIndex[index] = (slotAcc + slot / 2f, slot);
+            slotAcc += slot;
         }
 
         var bars = new List<OperatorBar>(operators.Count);
@@ -1086,27 +1096,17 @@ public sealed class EventTimelineControl : Grid
             endX += SparseMarkerWidth;
 
             var level = op.NodeLevel;
+            var (y, slotHeight) = slotByIndex[index];
 
-            float slotHeight;
-            float y;
             SKColor barColour;
 
             if (level == 0)
             {
-                // The statement (SELECT) node fills its half-height band as a single grey bar.
-                slotHeight = bandHeight[level];
-                y = bandTop[level] + slotHeight / 2f;
+                // The statement (SELECT) node is a single grey bar (a half-height slot in the stack).
                 barColour = StatementColour;
             }
             else
             {
-                // Consistent bar thickness across levels (anchored to the busiest level), but spread
-                // the level's nodes evenly across its band so sparse levels centre rather than
-                // top-align with a gap underneath.
-                slotHeight = bandHeight[level] / maxNodesInLevel;
-                var spacing = bandHeight[level] / countByLevel[level];
-                y = bandTop[level] + (slotByIndex[index] + 0.5f) * spacing;
-
                 // Fall back to the row colour when the event has no display colour set.
                 var displayColour = op.DisplayColour;
                 barColour = displayColour.A == 0 ? _activeRows[planRow].Color : displayColour.ToSkColor();
@@ -1348,8 +1348,13 @@ public sealed class EventTimelineControl : Grid
         _hitRegions.Add((rect, op, label));
     }
 
-    // The statement (SELECT) band is half the height of an operator level band.
+    // The statement (SELECT) band is a fixed slim share, independent of cost.
     private const float StatementBandWeight = 0.5f;
+
+    // Operator slot heights scale with cost between these weights: the cheapest operator gets the
+    // minimum share (so it stays legible) and the most expensive gets the maximum.
+    private const float MinCostWeight = 0.35f;
+    private const float MaxCostWeight = 1.5f;
 
     // RGB lift/drop for the subtle vertical sheen on operator bars (±14%).
     private const float GradientLift = 0.04f;
@@ -1365,8 +1370,6 @@ public sealed class EventTimelineControl : Grid
     private const float PhaseLighten = 1.4f;
     private const byte PhaseAlpha = 128;
     private static readonly SKColor PhaseBuildColour = new(240, 150, 60);
-
-    private static float LevelWeight(int level) => level == 0 ? StatementBandWeight : 1f;
 
     // Gap between the bold type and the object name, as a fraction of the font size (scales with it).
     private const float OperatorLabelGapFraction = 0.5f;
