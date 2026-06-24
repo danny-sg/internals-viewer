@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:plan="using:InternalsViewer.UI.App.Controls.Plan"
-    xmlns:plans="using:InternalsViewer.Replay.Plans"
+    xmlns:plans="using:InternalsViewer.Query.Plans"
     mc:Ignorable="d">
     <UserControl.Resources>
         <StackLayout Orientation="Vertical" Spacing="24" x:Key="PlanStackLayout" />

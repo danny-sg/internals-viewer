@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text;
-using InternalsViewer.Replay.Events.EventTypes;
-using InternalsViewer.Replay.Plans;
+using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;

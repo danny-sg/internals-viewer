@@ -11,7 +11,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Compression;
 /// <summary>
 /// Service responsible for loading CI (Compression Information) data structures
 /// </summary>
-public class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
+public sealed class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
 {
     private CdDataRecordLoader CdDataRecordLoader { get; } = cdDataRecordLoader;
 

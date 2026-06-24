@@ -14,12 +14,12 @@ namespace InternalsViewer.Internals.Services.Loaders.Engine;
 /// <summary>
 /// Service responsible for loading Databases
 /// </summary>
-public class DatabaseService(ILogger<DatabaseService> logger,
-                             IMetadataLoader metadataLoader,
-                             IPageService pageService,
-                             IAllocationChainService allocationChainService,
-                             IIamChainService iamChainService,
-                             IPfsChainService pfsChainService)
+public sealed class DatabaseService(ILogger<DatabaseService> logger,
+                                    IMetadataLoader metadataLoader,
+                                    IPageService pageService,
+                                    IAllocationChainService allocationChainService,
+                                    IIamChainService iamChainService,
+                                    IPfsChainService pfsChainService)
     : IDatabaseService
 {
     private ILogger<DatabaseService> Logger { get; } = logger;

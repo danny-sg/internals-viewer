@@ -166,7 +166,9 @@ public static class LchColorScale
             var rgb = LabToRgbRaw(lab);
 
             if (IsValidRgb(rgb))
+            {
                 return ToColor(rgb);
+            }
 
             // reduce chroma progressively
             C *= 0.85;
@@ -383,7 +385,11 @@ public static class LchColorScale
 
     static int ClampToByte(double v)
     {
-        if (double.IsNaN(v)) return 0;
+        if (double.IsNaN(v))
+        {
+            return 0;
+        }
+
         return (int)Math.Max(0, Math.Min(255, Math.Round(v)));
     }
 

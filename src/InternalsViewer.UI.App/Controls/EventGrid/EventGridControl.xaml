@@ -6,8 +6,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
-    xmlns:events="using:InternalsViewer.Replay.Events"
-    xmlns:eventTypes="using:InternalsViewer.Replay.Events.EventTypes"
+    xmlns:events="using:InternalsViewer.Query.Events"
+    xmlns:eventTypes="using:InternalsViewer.Query.Events.EventTypes"
     x:Name="Root"
     mc:Ignorable="d">
     <Grid>

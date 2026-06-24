@@ -2,5 +2,5 @@
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 
-public class CdIndexRecordLoader(ILogger<CdIndexRecordLoader> logger) 
+public sealed class CdIndexRecordLoader(ILogger<CdIndexRecordLoader> logger) 
     : CdRecordLoader<IndexColumnStructure>(logger);

@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Replay.Events.EventTypes;
+using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Controls.QueryReplay;
 using InternalsViewer.UI.App.Messages;

@@ -1,4 +1,4 @@
-using InternalsViewer.Replay.Parsing;
+using InternalsViewer.Query.Parsing;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Models.Query;
 using InternalsViewer.UI.App.Models.Schema;

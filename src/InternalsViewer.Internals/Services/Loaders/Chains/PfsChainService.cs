@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Chains;
 /// <summary>
 /// Service responsible for building PFS chains
 /// </summary>
-public class PfsChainService(IPageService pageService) : IPfsChainService
+public sealed class PfsChainService(IPageService pageService) : IPfsChainService
 {
     public IPageService PageService { get; } = pageService;
 

@@ -15,10 +15,10 @@ namespace InternalsViewer.Internals.Services.Records;
 /// <summary>
 /// Service responsible for loading records from pages
 /// </summary>
-public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader,
-                           FixedVarDataRecordLoader fixedVarDataRecordLoader,
-                           CdDataRecordLoader cdDataRecordLoader,
-                           CdIndexRecordLoader cdIndexRecordLoader) : IRecordService
+public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader,
+                                  FixedVarDataRecordLoader fixedVarDataRecordLoader,
+                                  CdDataRecordLoader cdDataRecordLoader,
+                                  CdIndexRecordLoader cdIndexRecordLoader) : IRecordService
 {
     private FixedVarIndexRecordLoader FixedVarIndexRecordLoader { get; } = fixedVarIndexRecordLoader;
 
@@ -115,7 +115,7 @@ public class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader,
     private IEnumerable<CdIndexRecord> GetCdIndexRecords(IndexPage page)
     {
         var structure = IndexStructureProvider.GetIndexStructure(page.Database.Metadata,
-            page.PageHeader.AllocationUnitId);
+                                                                 page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
             .Select((s, index) =>

@@ -8,9 +8,9 @@ namespace InternalsViewer.Internals.Services.Pages;
 /// <summary>
 /// Service responsible for getting and parsing pages
 /// </summary>
-public class PageService(ILogger<PageService> logger, 
-                         IPageLoader loader, 
-                         IEnumerable<IPageParser> parsers) : IPageService
+public sealed class PageService(ILogger<PageService> logger, 
+                                IPageLoader loader, 
+                                IEnumerable<IPageParser> parsers) : IPageService
 {
     private ILogger<PageService> Logger { get; } = logger;
 

@@ -17,11 +17,11 @@ namespace InternalsViewer.Internals.Services.Loaders.Chains;
 /// 
 /// The GAM interval is sometimes described as 64,000 extents. It is actually 63,904 extents. 
 /// 
-/// - Page header - 96 bytes
-/// - Bitmap size - 7,988 bytes (63,904 bits)
-/// - Unused      - 108 bytes
+///  Page header - 96 bytes
+///  Bitmap size - 7,988 bytes (63,904 bits)
+///  Unused      - 108 bytes
 /// </remarks>
-public class AllocationChainService(IPageService pageService)
+public sealed class AllocationChainService(IPageService pageService)
     : IAllocationChainService
 {
     public async Task<AllocationChain> LoadChain(DatabaseSource database, short fileId, PageType pageType)
@@ -50,7 +50,8 @@ public class AllocationChainService(IPageService pageService)
 
         for (var i = 0; i < pageCount; i++)
         {
-            var address = new PageAddress(startPageAddress.FileId, startPageAddress.PageId + i * AllocationPage.AllocationInterval);
+            var address = new PageAddress(startPageAddress.FileId, 
+                                          startPageAddress.PageId + i * AllocationPage.AllocationInterval);
 
             var page = await pageService.GetPage<AllocationPage>(database, address);
 

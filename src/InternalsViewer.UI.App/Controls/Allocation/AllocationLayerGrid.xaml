@@ -43,12 +43,13 @@
                               IsReadOnly="True"
                               GridLinesVisibility="Vertical"
                               PointerPressed="DataGrid_OnPointerPressed"
+                              Sorting="DataGrid_OnSorting"
                               Background="{ThemeResource LayerFillColorDefaultBrush}"
                               ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">
 
                 <toolkit:DataGrid.Columns>
                     <toolkit:DataGridTemplateColumn Header="Key"
-                                                     Tag="Key">
+                                                     CanUserSort="False">
                         <toolkit:DataGridTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
                                 <Grid>
@@ -61,12 +62,16 @@
                     </toolkit:DataGridTemplateColumn>
 
                     <toolkit:DataGridTextColumn Header="Object Name"
+                                                 Tag="ObjectName"
                                                  Binding="{Binding ObjectName}"/>
                     <toolkit:DataGridTextColumn Header="Index Name"
+                                                  Tag="IndexName"
                                                   Binding="{Binding IndexName}"/>
                     <toolkit:DataGridTextColumn Header="Index Type"
+                                                 Tag="IndexTypeDescription"
                                                  Binding="{Binding IndexTypeDescription}"/>
-                    <toolkit:DataGridTemplateColumn Header="Page Count">
+                    <toolkit:DataGridTemplateColumn Header="Page Count"
+                                                     Tag="TotalPages">
                         <toolkit:DataGridTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
                                 <Grid>
@@ -77,7 +82,8 @@
                             </DataTemplate>
                         </toolkit:DataGridTemplateColumn.CellTemplate>
                     </toolkit:DataGridTemplateColumn>
-                    <toolkit:DataGridTemplateColumn Header="Root Page">
+                    <toolkit:DataGridTemplateColumn Header="Root Page"
+                                                     CanUserSort="False">
                         <toolkit:DataGridTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
                                 <Grid>
@@ -89,7 +95,8 @@
                             </DataTemplate>
                         </toolkit:DataGridTemplateColumn.CellTemplate>
                     </toolkit:DataGridTemplateColumn>
-                    <toolkit:DataGridTemplateColumn Header="First Page">
+                    <toolkit:DataGridTemplateColumn Header="First Page"
+                                                     CanUserSort="False">
                         <toolkit:DataGridTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
                                 <Grid>
@@ -101,7 +108,8 @@
                             </DataTemplate>
                         </toolkit:DataGridTemplateColumn.CellTemplate>
                     </toolkit:DataGridTemplateColumn>
-                    <toolkit:DataGridTemplateColumn Header="First IAM Page">
+                    <toolkit:DataGridTemplateColumn Header="First IAM Page"
+                                                     CanUserSort="False">
                         <toolkit:DataGridTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
                                 <Grid>
@@ -114,7 +122,8 @@
                         </toolkit:DataGridTemplateColumn.CellTemplate>
                     </toolkit:DataGridTemplateColumn>
 
-                    <toolkit:DataGridTemplateColumn Header="Index">
+                    <toolkit:DataGridTemplateColumn Header="Index"
+                                                     CanUserSort="False">
                         <toolkit:DataGridTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
                                 <Grid HorizontalAlignment="Center">

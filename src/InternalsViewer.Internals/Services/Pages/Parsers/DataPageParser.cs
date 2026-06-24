@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// <summary>
 /// Parser for Data pages
 /// </summary>
-public class DataPageParser(CompressionInfoLoader compressionInfoLoader) : PageParser, IPageParser<DataPage>
+public sealed class DataPageParser(CompressionInfoLoader compressionInfoLoader) : PageParser, IPageParser<DataPage>
 {
     private CompressionInfoLoader CompressionInfoLoader { get; } = compressionInfoLoader;
 
@@ -27,7 +27,8 @@ public class DataPageParser(CompressionInfoLoader compressionInfoLoader) : PageP
 
         dataPage.AllocationUnit = dataPage.Database
                                           .AllocationUnits
-                                          .FirstOrDefault(a => a.AllocationUnitId == dataPage.PageHeader.AllocationUnitId)
+                                          .FirstOrDefault(
+                                              a => a.AllocationUnitId == dataPage.PageHeader.AllocationUnitId)
                                   ?? AllocationUnit.Unknown;
 
         if(dataPage.AllocationUnit.CompressionType == CompressionType.Page && dataPage.IsPageCompressed)

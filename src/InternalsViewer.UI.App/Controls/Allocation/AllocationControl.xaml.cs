@@ -188,19 +188,27 @@ public sealed partial class AllocationControl : IDisposable
             if (e.Property == LayersProperty)
             {
                 if (e.OldValue is ObservableCollection<AllocationLayer> old)
+                {
                     old.CollectionChanged -= control.OnLayersChanged;
+                }
 
                 if (e.NewValue is ObservableCollection<AllocationLayer> next)
+                {
                     next.CollectionChanged += control.OnLayersChanged;
+                }
             }
 
             if (e.Property == SelectedLayersProperty)
             {
                 if (e.OldValue is ObservableCollection<AllocationLayer> old)
+                {
                     old.CollectionChanged -= control.OnSelectedLayersChanged;
+                }
 
                 if (e.NewValue is ObservableCollection<AllocationLayer> next)
+                {
                     next.CollectionChanged += control.OnSelectedLayersChanged;
+                }
             }
 
             control.Refresh();

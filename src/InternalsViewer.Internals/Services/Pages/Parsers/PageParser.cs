@@ -4,7 +4,7 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
 public abstract class PageParser
 {
-    protected T CopyToPageType<T>(PageData pageData) where T : Page, new()
+    protected static T CopyToPageType<T>(PageData pageData) where T : Page, new()
     {
         var page = new T
         {

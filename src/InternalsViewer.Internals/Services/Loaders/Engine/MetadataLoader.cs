@@ -13,7 +13,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Engine;
 /// <summary>
 /// Service responsible for loading metadata for a database
 /// </summary>
-public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader recordReader)
+public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader recordReader)
     : IMetadataLoader
 {
     private ILogger<MetadataLoader> Logger { get; } = logger;
@@ -24,20 +24,22 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
     /// Builds the metadata for database from the raw page data
     /// </summary>
     /// <remarks>
-    /// SQL Server has a set of base tables that store internal metadata about the database. All sys/DMVs etc are derived from these 
-    /// tables.
+    /// SQL Server has a set of base tables that store internal metadata about the database. All sys/DMVs etc are
+    /// derived from these tables.
     /// 
     /// <see href="https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/system-base-tables"/> 
     /// (not all tables are mentioned in the article)
     /// 
-    /// The first table to read is sys.sysallocunits. This defines the first page location for each allocation unit in the database. 
+    /// The first table to read is sys.sysallocunits. This defines the first page location for each allocation unit
+    /// in the database. 
     /// 
     /// The first page address for this is stored in the boot page (1:9) in the field dbi_firstSysIndexes 
     /// <see cref="BootPage.FirstAllocationUnitsPage"/>
     /// 
-    /// Once that is loaded in the other tables can be found via their allocation unit id, derived from Object Id + Index Id. 
+    /// Once that is loaded in the other tables can be found via their allocation unit id, derived from
+    /// Object Id + Index Id. 
     /// 
-    /// Object Id/Index Id are constant for the tables - see sys.objects and <see cref="InternalTableConstants"/>."
+    /// Object Id/Index Id are constant for the tables - see sys.objects and <see cref="InternalTableConstants"/>
     /// 
     /// sys.sysallocunits  - <see cref="InternalAllocationUnit"/>
     ///
@@ -140,8 +142,8 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         Logger.LogTrace("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
-                                             pageAddress,
-                                             InternalObjectStructure.GetStructure(-1));
+                                              pageAddress,
+                                              InternalObjectStructure.GetStructure(-1));
 
         Logger.LogTrace("Objects (sys.sysschobjs): {Count} records found. Parsing records...", records.Count);
 
@@ -157,8 +159,8 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
         Logger.LogTrace("Getting Indexes (sys.sysidxstats) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
-                                             pageAddress,
-                                             InternalIndexStructure.GetStructure(-1));
+                                              pageAddress,
+                                              InternalIndexStructure.GetStructure(-1));
 
         Logger.LogTrace("Indexes (sys.sysidxstats): {Count} records found. Parsing records...", records.Count);
 
@@ -243,8 +245,9 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
 
         var pageAddress = databaseDetail.BootPage.FirstAllocationUnitsPage;
 
-        Logger.LogTrace("Getting Allocation Units (sys.sysallocunits) using first page specified in Boot Page (1:9): {PageAddress}",
-                        pageAddress);
+        Logger.LogTrace(
+            "Getting Allocation Units (sys.sysallocunits) using first page specified in Boot Page (1:9): {PageAddress}",
+            pageAddress);
 
         var id = IdHelpers.GetAllocationUnitId(objectId, indexId);
 
@@ -252,7 +255,8 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
                                              databaseDetail.BootPage.FirstAllocationUnitsPage,
                                              InternalAllocationUnitStructure.GetStructure(id));
 
-        Logger.LogTrace("Allocation Units (sys.sysallocunits): {Count} records found. Parsing records...", records.Count);
+        Logger.LogTrace("Allocation Units (sys.sysallocunits): {Count} records found. Parsing records...", 
+                        records.Count);
 
         var rows = records.Select(InternalAllocationUnitLoader.Load).ToList();
 
@@ -267,9 +271,12 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
 
         var allocationUnitId = IdHelpers.GetAllocationUnitId(objectId, indexId);
 
-        var firstPage = allocationUnits.FirstOrDefault(f => f.AllocationUnitId == allocationUnitId)?.FirstPage?.ToPageAddress();
+        var firstPage = allocationUnits.FirstOrDefault(f => f.AllocationUnitId == allocationUnitId)
+                                      ?.FirstPage
+                                      ?.ToPageAddress();
 
-        Logger.LogDebug("Getting first page for Object Id: {ObjectId}, Index Id: {IndexId} (Allocation Unit Id: {AllocationUnitId}) " +
+        Logger.LogDebug("Getting first page for Object Id: {ObjectId}, Index Id: {IndexId} " +
+                        "(Allocation Unit Id: {AllocationUnitId}) " +
                         "=> {FirstPage}",
                         objectId,
                         indexId,
@@ -278,8 +285,8 @@ public class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader record
 
         if (firstPage == null)
         {
-            throw new InvalidOperationException($"Allocation unit not found - Object Id: {objectId}, Index Id: {indexId} " +
-                                                $"=> {allocationUnitId}");
+            throw new InvalidOperationException(
+                $"Allocation unit not found - Object Id: {objectId}, Index Id: {indexId} => {allocationUnitId}");
         }
 
         return firstPage.Value;

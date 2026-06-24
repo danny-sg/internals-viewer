@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Chains;
 /// <summary>
 /// Service responsible for building IAM chains
 /// </summary>
-public class IamChainService(IPageService pageService) : IIamChainService
+public sealed class IamChainService(IPageService pageService) : IIamChainService
 {
     public IPageService PageService { get; } = pageService;
     

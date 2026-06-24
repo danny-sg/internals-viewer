@@ -246,7 +246,7 @@
                      IsAddTabButtonVisible="False"
                      VerticalAlignment="Stretch"
                      HorizontalAlignment="Stretch"
-                     TabWidthMode="Equal">
+                     TabWidthMode="SizeToContent">
                 <TabView.Resources>
                 </TabView.Resources>
 

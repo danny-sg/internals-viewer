@@ -1,0 +1,45 @@
+﻿namespace InternalsViewer.Query.TransactionLog;
+
+// ReSharper disable InconsistentNaming
+// ReSharper disable IdentifierTypo
+public enum LogContext
+{
+    NULL = 0,
+    HEAP = 1,
+    CLUSTERED = 2,
+    INDEX_LEAF = 3,
+    INDEX_INTERIOR = 4,
+    TEXT_MIX = 5,
+    TEXT_TREE = 6,
+    DIAGNOSTICS = 7,
+    GAM = 8,
+    SGAM = 9,
+    IAM = 10,
+    PFS = 11,
+    IDENTITY_VALUE = 12,
+    OBJECT_ID = 13,
+    NONSYS_SPLIT = 14,
+    FILE_HEADER = 17,
+    SCHEMA_VERSION = 18,
+    MARK_AS_GHOST = 19,
+    SYSCONFIG_PAGE = 21,
+    CTR_ABORTED = 22,
+    BOOT_PAGE = 20,
+    BOOT_PAGE_CKPT = 23,
+    DIFF_MAP = 24,
+    ML_MAP = 25,
+    REMOVE_VERSION_INFO = 26,
+    BULK_OPERATION_PAGE = 29,
+    TRACKED_XDES = 30,
+    ENCRYPT_UNALLOC_PAGE = 31,
+    SORT_PAGE = 32,
+    WORK_FILE_PAGE = 33,
+    RESTORE_BAD_UNALLOC_PAGE = 34,
+    OFF_ROW_PVS = 35,
+    CTR_XACT_CLEANUP = 36,
+    TRY_TRANSITION_TO_NON_CTR = 37,
+    CTR_NEST_ABORTED = 38,
+    CTR_LOG_HOLDUP = 39,
+    LEDGER_TRANSACTIONS = 40,
+    UNLINKED_REORG_PAGE = 28
+}

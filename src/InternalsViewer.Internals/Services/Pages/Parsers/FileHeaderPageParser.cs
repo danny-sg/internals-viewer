@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
-public class FileHeaderPageParser: PageParser, IPageParser<FileHeaderPage>
+public sealed class FileHeaderPageParser: PageParser, IPageParser<FileHeaderPage>
 {
     public PageType[] SupportedPageTypes => new[] { PageType.FileHeader };
 

@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
-public class EmptyPageParser : PageParser, IPageParser<EmptyPage>
+public sealed class EmptyPageParser : PageParser, IPageParser<EmptyPage>
 {
     public PageType[] SupportedPageTypes => new[] { PageType.None };
 

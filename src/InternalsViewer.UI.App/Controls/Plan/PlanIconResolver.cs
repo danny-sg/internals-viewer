@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Replay.Plans;
+using InternalsViewer.Query.Plans;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 

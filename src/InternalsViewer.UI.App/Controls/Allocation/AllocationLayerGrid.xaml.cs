@@ -8,6 +8,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
@@ -70,7 +71,10 @@ public sealed partial class AllocationLayerGrid
     {
         var row = LayoutHelpers.FindParent<DataGridRow>(e.OriginalSource as DependencyObject);
 
-        if (row == null) return;
+        if (row == null)
+        {
+            return;
+        }
 
         var layer = (AllocationLayer)row.DataContext;
 
@@ -82,16 +86,22 @@ public sealed partial class AllocationLayerGrid
         if (isShiftHeld)
         {
             if (wasSelected)
+            {
                 SelectedLayers.Remove(layer);
+            }
             else
+            {
                 SelectedLayers.Add(layer);
+            }
         }
         else
         {
             SelectedLayers.Clear();
 
             if (!wasSelected)
+            {
                 SelectedLayers.Add(layer);
+            }
         }
 
         DataGrid.SelectedItem = SelectedLayers.Count == 1 ? (object)SelectedLayers[0] : null;
@@ -111,5 +121,26 @@ public sealed partial class AllocationLayerGrid
         var pageAddress = (PageAddress)((HyperlinkButton)sender).Tag;
 
         ViewIndexClicked?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId));
+    }
+
+    private void DataGrid_OnSorting(object sender, DataGridColumnEventArgs e)
+    {
+        var tag = e.Column.Tag as string;
+
+        if (string.IsNullOrEmpty(tag))
+        {
+            return;
+        }
+
+        var ascending = e.Column.SortDirection != DataGridSortDirection.Ascending;
+
+        foreach (var column in DataGrid.Columns)
+        {
+            column.SortDirection = null;
+        }
+
+        e.Column.SortDirection = ascending ? DataGridSortDirection.Ascending : DataGridSortDirection.Descending;
+
+        ViewModel.Sort(tag, ascending);
     }
 }

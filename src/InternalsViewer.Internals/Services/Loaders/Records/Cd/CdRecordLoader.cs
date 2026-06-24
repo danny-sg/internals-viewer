@@ -27,16 +27,17 @@ namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 ///     - CD (Column Descriptor) Region
 ///         Either 1 or 2 bytes for the number of columns
 ///         
-///         Then 4 bits per column to describe the length of the column data either specifically for the short region or generally for the 
-///         long region
+///         Then 4 bits per column to describe the length of the column data either specifically for the short region
+///         or generally for the long region
 ///         
 ///     - Short Data Region 
 ///         The short data region is for values where the length has been specified in the CD region.
 ///         
 ///         - Short Data Cluster Array
 ///         
-///             Short columns are grouped into clusters of 30. The short data cluster array describes the length of each cluster, a byte 
-///             for each length that can be used to find the offset. This can be used to shortcut finding the column data
+///             Short columns are grouped into clusters of 30. The short data cluster array describes the length of
+///             each cluster, a byte for each length that can be used to find the offset. This can be used to shortcut
+///             finding the column data
 ///             
 ///             The size of the array is (Short Column Count - 1) / 30.
 ///             
@@ -128,11 +129,11 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
     /// 
     ///     Short Data Cluster Array | Short Fields
     /// </remarks>
-    private void LoadShortDataRegion(CdIndexRecord record,
-                                     Structure<TStructure> structure,
-                                     CdRecord? anchorRecord,
-                                     byte[] data,
-                                     int offset)
+    private static void LoadShortDataRegion(CdIndexRecord record,
+                                            Structure<TStructure> structure,
+                                            CdRecord? anchorRecord,
+                                            byte[] data,
+                                            int offset)
     {
         var currentPosition = offset;
 
@@ -151,11 +152,11 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
     /// 
     ///     Long Data Header | Long Data Offset Count | Long Data Offset Array | Long Data Cluster Array | Long Data
     /// </remarks>
-    private void LoadLongDataRegion(CdIndexRecord record,
-                                    Structure<TStructure> structure,
-                                    CdRecord? anchorRecord,
-                                    byte[] data,
-                                    int offset)
+    private static void LoadLongDataRegion(CdIndexRecord record,
+                                           Structure<TStructure> structure,
+                                           CdRecord? anchorRecord,
+                                           byte[] data,
+                                           int offset)
     {
         var currentPosition = offset;
 
@@ -173,13 +174,17 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
         record.LongDataOffsetArray = RecordHelpers.GetOffsetArray(data, record.LongDataOffsetCount, currentPosition);
 
-        record.MarkProperty(nameof(record.LongDataOffsetArray), currentPosition, record.LongDataOffsetCount * sizeof(ushort));
+        record.MarkProperty(nameof(record.LongDataOffsetArray), 
+                            currentPosition, 
+                            record.LongDataOffsetCount * sizeof(ushort));
 
         currentPosition += record.LongDataOffsetCount * sizeof(ushort);
 
         ParseLongDataClusterArray(record, data, currentPosition);
 
-        record.MarkProperty(nameof(record.LongDataClusterArray), currentPosition, record.LongDataClusterArray.Length);
+        record.MarkProperty(nameof(record.LongDataClusterArray), 
+                            currentPosition, 
+                            record.LongDataClusterArray.Length);
 
         currentPosition += record.LongDataClusterArray.Length;
 
@@ -406,7 +411,8 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
     /// Loads the CD (column descriptor) array.
     /// </summary>
     /// <remarks>
-    /// The CD array describes the length of each column in the record. Each column has a 4-bit value, a byte describes two columns.
+    /// The CD array describes the length of each column in the record. Each column has a 4-bit value, a byte describes
+    /// two columns.
     /// </remarks>
     private static void LoadColumnDescriptorArray(CdRecord record, byte[] data, int offset)
     {

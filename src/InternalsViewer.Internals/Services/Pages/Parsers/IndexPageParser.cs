@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// <summary>
 /// Parser for Index pages
 /// </summary>
-public class IndexPageParser : PageParser, IPageParser<IndexPage>
+public sealed class IndexPageParser : PageParser, IPageParser<IndexPage>
 {
     public PageType[] SupportedPageTypes => new[] { PageType.Index };
 

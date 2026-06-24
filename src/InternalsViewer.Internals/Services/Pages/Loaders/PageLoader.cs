@@ -13,7 +13,7 @@ namespace InternalsViewer.Internals.Services.Pages.Loaders;
 /// Page Data is the raw data from the page plus a parsed paged header. These elements are common to all pages. Once the data has been 
 /// loaded further parsing can be performed for specific page types.
 /// </remarks>
-public class PageLoader : IPageLoader
+public sealed class PageLoader : IPageLoader
 {
     public async Task<PageData> Load(DatabaseSource database, PageAddress pageAddress)
     {

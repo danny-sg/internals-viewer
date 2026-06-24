@@ -11,7 +11,9 @@ public class ObjectNameConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, string language)
     {
         if (value is not int objectId || objectId == 0)
+        {
             return string.Empty;
+        }
 
         return Names.TryGetValue(objectId, out var name) ? name : $"(Object Id: {objectId})";
     }

@@ -1,6 +1,6 @@
-using InternalsViewer.Replay.Events;
-using InternalsViewer.Replay.Events.EventTypes;
-using InternalsViewer.Replay.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
@@ -594,19 +594,33 @@ public sealed class EventTimelineControl : Grid
             var start = StartMs(ev);
             _times.Add(start);
 
-            if (start < min) min = start;
+            if (start < min)
+            {
+                min = start;
+            }
 
             if (ev is ExecutionOperatorEvent)
             {
                 // Operators occupy [start, start + duration].
                 var operatorEnd = start + DurationMs(ev);
 
-                if (operatorEnd > max) max = operatorEnd;
-                if (ev.PlanNodeIdentifier is { } opId) operatorEnds[opId] = operatorEnd;
+                if (operatorEnd > max)
+                {
+                    max = operatorEnd;
+                }
+
+                if (ev.PlanNodeIdentifier is { } opId)
+                {
+                    operatorEnds[opId] = operatorEnd;
+                }
             }
             else
             {
-                if (start > max) max = start;
+                if (start > max)
+                {
+                    max = start;
+                }
+
                 var key = (ev.TimeMs, RenderLane(ev));
                 groupSizes[key] = groupSizes.TryGetValue(key, out var c) ? c + 1 : 1;
             }
@@ -671,9 +685,15 @@ public sealed class EventTimelineControl : Grid
         for (var k = 1; k < distinct.Count; k++)
         {
             var gap = distinct[k] - distinct[k - 1];
-            if (gap > 0 && gap < smallest) smallest = gap;
+            if (gap > 0 && gap < smallest)
+            {
+                smallest = gap;
+            }
         }
-        if (smallest == double.MaxValue) smallest = 1.0;
+        if (smallest == double.MaxValue)
+        {
+            smallest = 1.0;
+        }
 
         for (var k = 0; k < distinct.Count; k++)
         {

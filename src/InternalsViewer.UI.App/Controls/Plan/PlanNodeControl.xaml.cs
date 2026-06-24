@@ -1,5 +1,5 @@
 using System.Text;
-using InternalsViewer.Replay.Plans;
+using InternalsViewer.Query.Plans;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;

@@ -11,9 +11,9 @@ public static class DictionaryLoader
     /// <remarks>
     /// Dictionary structure is:
     /// 
-    ///     - Entry Count (2 bytes)
-    ///     - Entry Offset Array (2 bytes * Entry Count)
-    ///     - Dictionary Entries defined by the offset array
+    ///     Entry Count (2 bytes)
+    ///     Entry Offset Array (2 bytes * Entry Count)
+    ///     Dictionary Entries defined by the offset array
     /// </remarks>
     public static Dictionary Load(byte[] data, ushort offset)
     {
@@ -49,7 +49,10 @@ public static class DictionaryLoader
 
             var entry = new DictionaryEntry(i, (ushort)entryOffset, dictionaryData);
 
-            entry.MarkValue(ItemType.DictionaryValue, $"Dictionary Entry {i}", dictionaryData, offset + currentOffset, length);
+            entry.MarkValue(ItemType.DictionaryValue, 
+                            $"Dictionary Entry {i}", 
+                            dictionaryData, 
+                            offset + currentOffset, length);
 
             entries[i] = entry;
 
@@ -58,7 +61,9 @@ public static class DictionaryLoader
 
         dictionary.DictionaryEntries = entries;
 
-        dictionary.MarkProperty(nameof(Dictionary.DictionaryEntries), offset + startEntryOffset, currentOffset - startEntryOffset); 
+        dictionary.MarkProperty(nameof(Dictionary.DictionaryEntries), 
+                                offset + startEntryOffset, 
+                                currentOffset - startEntryOffset); 
 
         return dictionary;
     }

@@ -1,4 +1,4 @@
-# Internals Viewer 2024
+# Internals Viewer 2026
 
 Internals Viewer is a visualisation tool for viewing the internals of the SQL Server Storage Engine.
 
@@ -10,9 +10,8 @@ The easiest way to install and receive automatic updates is to use the Microsoft
 
 Click this link or search for Internals Viewer in the Microsoft Store:
 
-<a href="https://apps.microsoft.com/detail/Internals%20Viewer/9MSW42CQMK2V?launch=true
-	&mode=mini">
-	<img src="https://get.microsoft.com/images/en-gb%20dark.svg" width="200"/>
+<a href="https://get.microsoft.com/installer/download/9MSW42CQMK2V?referrer=appbadge" target="_self" >
+	<img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200"/>
 </a>
 
 ### Manual Installation
@@ -39,5 +38,5 @@ Steps:
 ### Technologies
 
 - C#
-- .NET 8.0
+- .NET 10.0
 - Windows App SDK (WinUI 3)

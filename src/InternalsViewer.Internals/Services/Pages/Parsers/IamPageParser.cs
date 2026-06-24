@@ -12,7 +12,7 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// <summary>
 /// Parser for IAM (Index Allocation Map) pages
 /// </summary>
-public class IamPageParser : PageParser, IPageParser<IamPage>
+public sealed class IamPageParser : PageParser, IPageParser<IamPage>
 {
     public PageType[] SupportedPageTypes => new[] { PageType.Iam };
 
