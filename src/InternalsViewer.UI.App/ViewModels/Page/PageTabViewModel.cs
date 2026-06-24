@@ -30,7 +30,9 @@ using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
-public class PageTabViewModelFactory(ILogger<PageTabViewModel> logger, IPageService pageService, IRecordService recordService)
+public sealed class PageTabViewModelFactory(ILogger<PageTabViewModel> logger, 
+                                            IPageService pageService, 
+                                            IRecordService recordService)
 {
     private ILogger<PageTabViewModel> Logger { get; } = logger;
 

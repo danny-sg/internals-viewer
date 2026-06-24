@@ -94,7 +94,6 @@ public sealed partial class AllocationLayerGrid
                 SelectedLayers.Add(layer);
         }
 
-        // Force the DataGrid visual selection to match (it may have changed itself)
         DataGrid.SelectedItem = SelectedLayers.Count == 1 ? (object)SelectedLayers[0] : null;
 
         e.Handled = true;

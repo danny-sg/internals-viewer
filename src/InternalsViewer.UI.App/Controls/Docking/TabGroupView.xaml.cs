@@ -4,7 +4,6 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
-using InternalsViewer.UI.App.Controls.Query;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -87,30 +86,21 @@ public sealed partial class TabGroupView : UserControl
         syncing = false;
     }
 
-    private TabViewItem CreateTab(DocumentViewModel document)
+    private static TabViewItem CreateTab(DocumentViewModel document)
     {
-        var content = CreateContent(document);
-        content.DataContext = document.Query;
-
-        return new TabViewItem
+        var item = new TabViewItem
         {
             Header = document.Title,
             IsClosable = document.CanClose,
             Tag = document,
-            Content = content,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Stretch
         };
-    }
 
-    private static FrameworkElement CreateContent(DocumentViewModel document) => document.Kind switch
-    {
-        DockDocumentKind.Allocation => new AllocationDocumentView(),
-        DockDocumentKind.Plan => new PlanDocumentView(),
-        DockDocumentKind.Sql => new SqlDocumentView(),
-        DockDocumentKind.Events => new EventsDocumentView(),
-        _ => new ContentControl()
-    };
+        item.Content = document.CreateView();
+
+        return item;
+    }
 
     private void OnDocumentsChanged(object? sender, NotifyCollectionChangedEventArgs e) => BuildTabs();
 
@@ -198,10 +188,14 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
-        if (args.Tab.Tag is DocumentViewModel document)
+        if (args.Tab.Tag is not DocumentViewModel document)
         {
-            Dock?.Close(document);
+            return;
         }
+
+        // Defer: closing rebuilds this TabView's items, which must not happen while the TabView is
+        // still processing its own close event (throws ArgumentException in WinRT).
+        DispatcherQueue.TryEnqueue(() => Dock?.Close(document));
     }
 
     private void OnDropOver(object sender, DragEventArgs e)
@@ -231,9 +225,13 @@ public sealed partial class TabGroupView : UserControl
 
         HideHighlight();
 
-        if (document is not null && Group is not null && Dock is not null)
+        if (document is not null && Group is { } group && Dock is { } dock)
         {
-            Dock.Move(document, Group, GetZone(e.GetPosition(RootArea)));
+            var zone = GetZone(e.GetPosition(RootArea));
+
+            // Defer: the move restructures the layout and rebuilds tab strips, which must not happen
+            // while the drag/drop operation is still in flight (throws ArgumentException in WinRT).
+            DispatcherQueue.TryEnqueue(() => dock.Move(document, group, zone));
         }
 
         DockDragState.End();

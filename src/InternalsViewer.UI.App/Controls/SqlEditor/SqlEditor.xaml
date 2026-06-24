@@ -12,46 +12,67 @@
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition>Auto</RowDefinition>
-            <RowDefinition>*</RowDefinition>
-            <RowDefinition>Auto</RowDefinition>
-            <RowDefinition>*</RowDefinition>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition x:Name="MessagesRow" Height="*"/>
         </Grid.RowDefinitions>
-        <CommandBar IsOpen="False" 
-                    DefaultLabelPosition="Right"
-                    Grid.Column="0"
-                    Grid.Row="0"
-                    HorizontalAlignment="Left"
-                    Background="Transparent">
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <Button Click="{x:Bind HandleExecuteClick}"
-                        IsEnabled="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolConverter }}"
-                                       Background="Transparent"
-                                       BorderThickness="0"
-                                       Padding="12,0">
-                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <ProgressRing Width="16"
-                                      Height="16"
-                                      IsActive="{x:Bind IsExecuting, Mode=OneWay}"
-                                      Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        <FontIcon Glyph="&#xE768;"
-                                  FontSize="14"
-                                  Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
-                        <TextBlock Text="{x:Bind ExecuteLabel, Mode=OneWay}"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-            </AppBarElementContainer>
-            <AppBarToggleButton Label="Clear Buffer Pool"
-                                           Padding="0"
-                                           IsChecked="{x:Bind QueryOptions.ClearBufferPool, Mode=TwoWay}" />
-            <AppBarToggleButton Label="Disable Read-Ahead"
-                                           IsChecked="{x:Bind QueryOptions.DisableReadAhead, Mode=TwoWay}" />
-        </CommandBar>
+
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <CommandBar IsOpen="False"
+                        DefaultLabelPosition="Right"
+                        Grid.Column="0"
+                        HorizontalAlignment="Left"
+                        Background="Transparent">
+                <AppBarElementContainer VerticalContentAlignment="Center">
+                    <Button Click="{x:Bind HandleExecuteClick}"
+                            IsEnabled="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolConverter }}"
+                                           Background="Transparent"
+                                           BorderThickness="0"
+                                           Padding="12,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <ProgressRing Width="16"
+                                          Height="16"
+                                          IsActive="{x:Bind IsExecuting, Mode=OneWay}"
+                                          Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <FontIcon Glyph="&#xE768;"
+                                      FontSize="14"
+                                      Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                            <TextBlock Text="{x:Bind ExecuteLabel, Mode=OneWay}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </AppBarElementContainer>
+                <AppBarToggleButton Label="Clear Buffer Pool"
+                                               Padding="0"
+                                               IsChecked="{x:Bind QueryOptions.ClearBufferPool, Mode=TwoWay}" />
+                <AppBarToggleButton Label="Disable Read-Ahead"
+                                               IsChecked="{x:Bind QueryOptions.DisableReadAhead, Mode=TwoWay}" />
+            </CommandBar>
+
+            <CommandBar IsOpen="False"
+                        DefaultLabelPosition="Right"
+                        Grid.Column="1"
+                        HorizontalAlignment="Right"
+                        Background="Transparent">
+                <AppBarToggleButton Label="Messages"
+                                    IsChecked="{x:Bind IsMessagesVisible, Mode=TwoWay}">
+                    <AppBarToggleButton.Icon>
+                        <FontIcon Glyph="&#xE8A5;"/>
+                    </AppBarToggleButton.Icon>
+                </AppBarToggleButton>
+            </CommandBar>
+        </Grid>
 
         <WebView2 x:Name="WebView" Grid.Row="1" />
 
         <controls:GridSplitter Grid.Row="2"
+                               x:Name="MessagesSplitter"
                                Height="2"
                                Background="{ThemeResource ControlStrokeColorDefaultBrush}"
                                VerticalAlignment="Stretch">
@@ -68,14 +89,25 @@
                  VerticalAlignment="Stretch"
                  TabWidthMode="SizeToContent">
             <TabViewItem Header="Messages" IsClosable="False" x:Name="MessagesTab">
-                <Border Background="White" Padding="8" VerticalAlignment="Stretch">
+                <Border Background="White" VerticalAlignment="Stretch">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                    <TextBlock x:Name="ResultMessage"
-                               TextWrapping="Wrap"
-                               VerticalAlignment="Top"
-                               FontFamily="Courier New"
-                               Text="{x:Bind Message, Mode=OneWay}"
-                               Foreground="{x:Bind ResultBrush, Mode=OneWay}" />
+                        <TextBlock x:Name="ResultMessage"
+                                   Grid.Row="0"
+                                   Padding="8"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Top"
+                                   FontFamily="Courier New"
+                                   Text="{x:Bind Message, Mode=OneWay}"
+                                   Foreground="{x:Bind ResultBrush, Mode=OneWay}" />
+
+                        <ContentPresenter Grid.Row="1"
+                                          Content="{x:Bind AdditionalContent, Mode=OneWay}" />
+                    </Grid>
                 </Border>
             </TabViewItem>
         </TabView>

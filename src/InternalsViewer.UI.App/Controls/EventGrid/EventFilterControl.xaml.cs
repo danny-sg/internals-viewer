@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -7,25 +6,18 @@ namespace InternalsViewer.UI.App.Controls.QueryReplay;
 
 public sealed partial class EventFilterControl : UserControl
 {
-    public ObservableCollection<EventFilterNode> FilterNodes
+    public EventFilterViewModel? ViewModel
     {
-        get => (ObservableCollection<EventFilterNode>)GetValue(FilterNodesProperty);
-        set => SetValue(FilterNodesProperty, value);
+        get => (EventFilterViewModel?)GetValue(ViewModelProperty);
+        set => SetValue(ViewModelProperty, value);
     }
 
-    public static readonly DependencyProperty FilterNodesProperty =
-        DependencyProperty.Register(nameof(FilterNodes), typeof(ObservableCollection<EventFilterNode>), typeof(EventFilterControl),
-            new PropertyMetadata(new ObservableCollection<EventFilterNode>()));
+    public static readonly DependencyProperty ViewModelProperty =
+        DependencyProperty.Register(nameof(ViewModel), typeof(EventFilterViewModel), typeof(EventFilterControl),
+            new PropertyMetadata(null, OnViewModelChanged));
 
-    public bool IncludeSystemObjects
-    {
-        get => (bool)GetValue(IncludeSystemObjectsProperty);
-        set => SetValue(IncludeSystemObjectsProperty, value);
-    }
-
-    public static readonly DependencyProperty IncludeSystemObjectsProperty =
-        DependencyProperty.Register(nameof(IncludeSystemObjects), typeof(bool), typeof(EventFilterControl),
-            new PropertyMetadata(false));
+    private static void OnViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((EventFilterControl)d).Bindings.Update();
 
     public EventFilterControl()
     {

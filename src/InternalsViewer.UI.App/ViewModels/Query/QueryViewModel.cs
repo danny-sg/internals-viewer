@@ -8,7 +8,7 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Replay;
 using InternalsViewer.Replay.Events.EventTypes;
 using InternalsViewer.Replay.Plans;
-using InternalsViewer.UI.App.Controls.Plan;
+using InternalsViewer.UI.App.Views.Query.Tabs;
 using InternalsViewer.UI.App.Controls.SqlEditor;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
@@ -29,6 +29,8 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Replay.Parsing;
+using InternalsViewer.UI.App.Controls.Plan;
+using InternalsViewer.UI.App.Models.Schema;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -45,27 +47,13 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
 
 public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 {
-    private const string UncheckedSettingsKey = "EventFilterUnchecked";
-
-    private static readonly HashSet<string> DefaultUnchecked =
-    [
-        "lock_acquired/SCH_M/Metadata",
-        "lock_acquired/SCH_S/Metadata",
-        "lock_acquired/SCH_S/Object",
-        "lock_acquired/S/Database",
-        "lock_released/SCH_M/Metadata",
-        "lock_released/SCH_S/Metadata",
-        "lock_released/SCH_S/Object",
-        "lock_released/S/Database",
-    ];
-
     public ILogger<QueryViewModel> Logger { get; }
 
     public QueryRunner QueryRunner { get; }
 
     public DatabaseSource Database { get; }
 
-    private SettingsService SettingsService { get; }
+    public EventFilterViewModel EventFilter { get; }
 
     [ObservableProperty] 
     private bool isError;
@@ -135,9 +123,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     public double? endTime;
 
-    /// <summary>Sequence id under the timeline playhead; drives the active operator.</summary>
     [ObservableProperty]
     private long playheadSequence;
+
+    [ObservableProperty]
+    private DatabaseSchema? schema;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TimelineRowHeight))]
@@ -150,27 +140,163 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public Visibility TimelineSplitterVisibility
         => IsTimelineVisible ? Visibility.Visible : Visibility.Collapsed;
 
-    /// <summary>The dock layout (tabs + splits) shown in the document region of the query view.</summary>
-    public DockLayoutViewModel Dock { get; }
+    [ObservableProperty]
+    private bool isSqlEditorVisible = true;
 
-    /// <summary>The Events tab; used to bring it to the front when navigating from the timeline.</summary>
-    private DocumentViewModel EventsDocument { get; }
+    [ObservableProperty]
+    private bool isAllocationsVisible;
 
-    /// <summary>Raised when the timeline asks the events grid to scroll to / select an event.</summary>
-    public event Action<EngineEvent>? EventNavigationRequested;
+    [ObservableProperty]
+    private bool isExecutionPlanVisible;
 
-    /// <summary>Brings the Events tab forward and asks the grid to navigate to the given event.</summary>
-    public void NavigateToEvent(EngineEvent engineEvent)
-    {
-        Dock.Activate(EventsDocument);
-        EventNavigationRequested?.Invoke(engineEvent);
-    }
+    [ObservableProperty]
+    private bool isEventsVisible;
 
     [ObservableProperty]
     private bool isEventSelectionPanelOpen;
 
-    [ObservableProperty]
-    private ObservableCollection<EventFilterNode> filterNodes = [];
+    partial void OnIsSqlEditorVisibleChanged(bool value) => SetDocumentVisible(SqlDocument, value);
+
+    partial void OnIsAllocationsVisibleChanged(bool value) => SetDocumentVisible(AllocationsDocument, value);
+
+    partial void OnIsExecutionPlanVisibleChanged(bool value) => SetDocumentVisible(PlanDocument, value);
+
+    partial void OnIsEventsVisibleChanged(bool value) => SetDocumentVisible(EventsDocument, value);
+
+    partial void OnIsTimelineVisibleChanged(bool value) => ScheduleSaveLayout();
+
+    partial void OnIsEventSelectionPanelOpenChanged(bool value) => ScheduleSaveLayout();
+
+    private void SetDocumentVisible(DocumentViewModel document, bool show)
+    {
+        if (suppressVisibilitySync)
+        {
+            return;
+        }
+
+        if (show)
+        {
+            Dock.Show(document);
+        }
+        else
+        {
+            Dock.Close(document);
+        }
+    }
+
+    private void SyncTabVisibility()
+    {
+        suppressVisibilitySync = true;
+
+        IsSqlEditorVisible = Dock.Contains(SqlDocument);
+        IsAllocationsVisible = Dock.Contains(AllocationsDocument);
+        IsExecutionPlanVisible = Dock.Contains(PlanDocument);
+        IsEventsVisible = Dock.Contains(EventsDocument);
+
+        suppressVisibilitySync = false;
+    }
+
+    public DockLayoutViewModel Dock { get; }
+
+    private DocumentViewModel SqlDocument { get; }
+
+    private DocumentViewModel AllocationsDocument { get; }
+
+    private DocumentViewModel PlanDocument { get; }
+
+    private DocumentViewModel EventsDocument { get; }
+
+    private Dictionary<string, DocumentViewModel> DocumentsByKey { get; }
+
+    public event Action<EngineEvent>? EventNavigationRequested;
+
+    public void NavigateToEvent(EngineEvent engineEvent)
+    {
+        IsEventsVisible = true;
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            Dock.Activate(EventsDocument);
+            EventNavigationRequested?.Invoke(engineEvent);
+        });
+    }
+
+    private const string LayoutSettingKey = "QueryDockLayout";
+
+    private bool suppressVisibilitySync;
+    private bool isRestoringLayout;
+    private bool layoutRestored;
+    private bool saveScheduled;
+
+    private void OnDockLayoutChanged(object? sender, EventArgs e)
+    {
+        SyncTabVisibility();
+        ScheduleSaveLayout();
+    }
+
+    private void ScheduleSaveLayout()
+    {
+        if (isRestoringLayout || suppressVisibilitySync || saveScheduled)
+        {
+            return;
+        }
+
+        saveScheduled = true;
+
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            saveScheduled = false;
+            await SaveLayoutAsync();
+        });
+    }
+
+    public async Task SaveLayoutAsync()
+    {
+        var dto = new QueryLayoutState
+        {
+            Root = DockLayoutSerializer.Serialize(Dock.Root),
+            TimelineVisible = IsTimelineVisible,
+            SettingsOpen = IsEventSelectionPanelOpen
+        };
+
+        await settingsService.SaveSettingAsync(LayoutSettingKey, dto);
+    }
+
+    private async Task RestoreLayoutAsync()
+    {
+        var dto = await settingsService.ReadSettingAsync<QueryLayoutState>(LayoutSettingKey);
+
+        var root = DockLayoutSerializer.Deserialize(dto?.Root, key => DocumentsByKey.GetValueOrDefault(key));
+
+        if (dto is null || root is null)
+        {
+            return;
+        }
+
+        isRestoringLayout = true;
+
+        IsTimelineVisible = dto.TimelineVisible;
+        IsEventSelectionPanelOpen = dto.SettingsOpen;
+
+        Dock.SetRoot(root);
+
+        layoutRestored = true;
+        isRestoringLayout = false;
+
+        SyncTabVisibility();
+    }
+
+    [RelayCommand]
+    private void ResetLayout()
+    {
+        layoutRestored = false;
+        resultTabsOpened = false;
+
+        IsTimelineVisible = true;
+        IsEventSelectionPanelOpen = false;
+
+        Dock.SetRoot(new TabGroupNode(SqlDocument));
+    }
 
     [ObservableProperty]
     private ObservableCollection<ExecutionPlan> executionPlans = [];
@@ -182,9 +308,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
     private PlanNode? activePlanNode;
 
-    partial void OnPlayheadSequenceChanged(long value) => UpdateActiveOperator(value);
+    partial void OnPlayheadSequenceChanged(long value) 
+        => UpdateActiveOperator(value);
 
-    public string ActiveOperatorName => ActivePlanNode?.PhysicalOperator ?? string.Empty;
+    public string ActiveOperatorName 
+        => ActivePlanNode?.PhysicalOperator ?? string.Empty;
 
     public string ActiveOperatorObject
     {
@@ -214,9 +342,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public Visibility ActiveOperatorVisibility
         => ActivePlanNode is not null && IsTimelinePlaying ? Visibility.Visible : Visibility.Collapsed;
 
-    private void UpdateActiveOperator(long sequenceTo)
+    private void UpdateActiveOperator(long operatorSequenceTo)
     {
-        if (sequenceTo <= 0)
+        if (operatorSequenceTo <= 0)
         {
             ActivePlanNode = null;
             return;
@@ -225,7 +353,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
 
         var identifier = source
-            .Where(e => e.SequenceId <= sequenceTo && e.PlanNodeIdentifier is not null)
+            .Where(e => e.SequenceId <= operatorSequenceTo && e.PlanNodeIdentifier is not null)
             .OrderByDescending(e => e.SequenceId)
             .Select(e => e.PlanNodeIdentifier)
             .FirstOrDefault();
@@ -241,16 +369,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return plan is not null && plan.NodesById.TryGetValue(identifier.NodeId, out var node) ? node : null;
     }
 
-    /// <summary>Selects the plan node for the given identifier (e.g. clicked in the timeline).</summary>
     public void SelectPlanNode(PlanNodeIdentifier identifier)
     {
         ActivePlanNode = ResolvePlanNode(identifier);
     }
-
-    [ObservableProperty]
-    private bool includeSystemObjects;
-
-    partial void OnIncludeSystemObjectsChanged(bool value) => RefreshFilteredEvents();
 
     public Visibility HasEvents
         => Events.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -264,11 +386,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         Logger = logger;
         QueryRunner = queryRunner;
-        SettingsService = settingsService;
         Database = database;
+        this.settingsService = settingsService;
         Message = string.Empty;
 
-        Name = "Query";
+        Name = $"{Database.Name}: Query";
 
         DatabaseFiles = database.Files
             .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
@@ -287,13 +409,32 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             .Select(u => u.ObjectId)
             .ToHashSet();
 
-        var sqlDocument = new DocumentViewModel(DockDocumentKind.Sql, "SQL", this, canClose: false);
-        var allocationDocument = new DocumentViewModel(DockDocumentKind.Allocation, "Allocations", this, canClose: false);
-        var planDocument = new DocumentViewModel(DockDocumentKind.Plan, "Execution Plan", this);
-        EventsDocument = new DocumentViewModel(DockDocumentKind.Events, "Events", this);
+        EventFilter = new EventFilterViewModel(settingsService);
+        EventFilter.SetSystemObjectIds(systemObjectIds);
+        EventFilter.FilterChanged += RefreshFilteredEvents;
 
-        Dock = new DockLayoutViewModel(new TabGroupNode(sqlDocument, allocationDocument, planDocument, EventsDocument));
+        Schema = SchemaHelper.ToSqlSchema(database);
+
+        SqlDocument = DocumentViewModel.Create<SqlDocumentView>("SQL", this, keepAlive: true, key: "Sql");
+        AllocationsDocument = DocumentViewModel.Create<AllocationDocumentView>("Allocations", this, keepAlive: true, key: "Allocations");
+        PlanDocument = DocumentViewModel.Create<PlanDocumentView>("Execution Plan", this, keepAlive: true, key: "Plan");
+        EventsDocument = DocumentViewModel.Create<EventsDocumentView>("Events", this, keepAlive: true, key: "Events");
+
+        DocumentsByKey = new Dictionary<string, DocumentViewModel>
+        {
+            [SqlDocument.Key] = SqlDocument,
+            [AllocationsDocument.Key] = AllocationsDocument,
+            [PlanDocument.Key] = PlanDocument,
+            [EventsDocument.Key] = EventsDocument,
+        };
+
+        Dock = new DockLayoutViewModel(new TabGroupNode(SqlDocument));
+        Dock.LayoutChanged += OnDockLayoutChanged;
+
+        DispatcherQueue.TryEnqueue(async () => await RestoreLayoutAsync());
     }
+
+    private readonly SettingsService settingsService;
 
     [RelayCommand]
     private async Task OpenIndexView()
@@ -361,10 +502,28 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
 
-            await BuildFilterTreeAsync();
+            await EventFilter.BuildAsync(Events);
+
+            ShowResultTabsForFirstRun();
         });
 
         RefreshLayers(results.EngineEvents);
+    }
+
+    private bool resultTabsOpened;
+
+    private void ShowResultTabsForFirstRun()
+    {
+        if (layoutRestored || resultTabsOpened)
+        {
+            return;
+        }
+
+        resultTabsOpened = true;
+
+        IsAllocationsVisible = true;
+        IsExecutionPlanVisible = true;
+        IsEventsVisible = true;
     }
 
     private void ClearResults()
@@ -381,7 +540,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Events = [];
         FilteredEvents = [];
         ExecutionPlans = [];
-        FilterNodes = [];
+
+        EventFilter.Clear();
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
         SelectedLayers = [];
@@ -404,157 +564,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         });
     }
 
-    private async Task BuildFilterTreeAsync()
-    {
-        var savedUnchecked = await SettingsService.ReadSettingAsync<List<string>>(UncheckedSettingsKey);
-
-        var uncheckedPaths = savedUnchecked is { Count: > 0 }
-            ? new HashSet<string>(savedUnchecked)
-            : DefaultUnchecked;
-
-        var root = new EventFilterNode { Label = "Events" };
-
-        var eventNodes = Events
-            .GroupBy(e => e.Name)
-            .OrderBy(g => g.Key)
-            .Select(g =>
-            {
-                var eventNode = new EventFilterNode { Label = g.Key, Parent = root };
-
-                var children = g
-                    .Select(e => e.Description)
-                    .Where(d => !string.IsNullOrEmpty(d))
-                    .Distinct()
-                    .OrderBy(d => d)
-                    .Select(d =>
-                    {
-                        var path = $"{g.Key}/{d}";
-                        var child = new EventFilterNode
-                        {
-                            Label = d,
-                            Parent = eventNode,
-                            IsChecked = !uncheckedPaths.Contains(path)
-                        };
-                        child.PropertyChanged += OnFilterNodeChanged;
-                        return child;
-                    });
-
-                foreach (var child in children)
-                {
-                    eventNode.Children.Add(child);
-                }
-
-                eventNode.RefreshCheckedState();
-                eventNode.PropertyChanged += OnFilterNodeChanged;
-
-                return eventNode;
-            });
-
-        foreach (var node in eventNodes)
-        {
-            root.Children.Add(node);
-        }
-
-        root.RefreshCheckedState();
-        root.PropertyChanged += OnFilterNodeChanged;
-
-        FilterNodes = new ObservableCollection<EventFilterNode> { root };
-
-        RefreshFilteredEvents();
-    }
-
-    private bool _filterRefreshPending;
-    private bool _saveUncheckedPending;
-
-    private void OnFilterNodeChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (!_filterRefreshPending)
-        {
-            _filterRefreshPending = true;
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                _filterRefreshPending = false;
-                RefreshFilteredEvents();
-            });
-        }
-
-        if (!_saveUncheckedPending)
-        {
-            _saveUncheckedPending = true;
-            DispatcherQueue.TryEnqueue(async () =>
-            {
-                _saveUncheckedPending = false;
-                await SaveUncheckedAsync();
-            });
-        }
-    }
-
-    private async Task SaveUncheckedAsync()
-    {
-        var root = FilterNodes.FirstOrDefault();
-        if (root is null)
-        {
-            return;
-        }
-
-        var uncheckedPaths = root.Children
-            .SelectMany(eventNode => eventNode.Children
-                .Where(c => c.IsChecked == false)
-                .Select(c => $"{eventNode.Label}/{c.Label}"))
-            .ToList();
-
-        foreach (var eventNode in root.Children.Where(n => n is { IsChecked: false, Children.Count: 0 }))
-        {
-            uncheckedPaths.Add(eventNode.Label);
-        }
-
-        await SettingsService.SaveSettingAsync(UncheckedSettingsKey, uncheckedPaths);
-    }
-
-    private IEnumerable<EngineEvent> ApplyNodeFilter(IEnumerable<EngineEvent> source)
-    {
-        var root = FilterNodes.FirstOrDefault();
-
-        if (root is null || root.IsChecked == true)
-        {
-            return source;
-        }
-
-        if (root.IsChecked == false)
-        {
-            return [];
-        }
-
-        var eventNodesByName = root.Children.ToDictionary(n => n.Label, StringComparer.OrdinalIgnoreCase);
-
-        return source.Where(e =>
-        {
-            if (!eventNodesByName.TryGetValue(e.Name, out var eventNode))
-            {
-                return false;
-            }
-
-            if (eventNode.IsChecked == false)
-            {
-                return false;
-            }
-
-            if (eventNode.IsChecked == true || eventNode.Children.Count == 0)
-            {
-                return true;
-            }
-
-            return eventNode.Children.Any(c => c.IsChecked == true && c.Label == e.Description);
-        });
-    }
-
     public void RefreshFilteredEvents()
     {
-        var source = !IncludeSystemObjects && SystemObjectIds.Count > 0
-            ? Events.Where(e => e.ObjectId == 0 || !SystemObjectIds.Contains(e.ObjectId))
-            : Events.AsEnumerable();
-
-        FilteredEvents = [.. ApplyNodeFilter(source)];
+        FilteredEvents = [.. EventFilter.Apply(Events)];
 
         RefreshLayers(FilteredEvents);
     }

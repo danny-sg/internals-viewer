@@ -1,0 +1,179 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="container" style="width:100%;height:100%;"></div>
+
+    <script src="http://monaco.local/vs/loader.js"></script>
+    <script>
+    require.config({ paths: { 'vs': 'http://monaco.local/vs' } });
+
+    require(['vs/editor/editor.main'], function () {
+        const editor = monaco.editor.create(document.getElementById('container'),
+            {
+                value: '',
+                language: 'sql',
+                theme: 'vs-light',
+                fontSize: 13,
+                fontFamily: "'Cascadia Code', 'Consolas', monospace",
+                fontLigatures: true,
+                minimap: { enabled: false },
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                wordWrap: 'off',
+                lineNumbers: 'on',
+                renderLineHighlight: 'gutter',
+                suggestOnTriggerCharacters: true,
+                quickSuggestions: true
+            });
+
+        editor.onDidChangeModelContent(() => {
+            window.chrome.webview.postMessage(
+                JSON.stringify({ type: 'contentChanged', value: editor.getValue() })
+            );
+        });
+
+        window.setEditorValue = (val) => {
+            if (editor.getValue() !== val) {
+                editor.setValue(val);
+            }
+        };
+
+        let completionProvider; 
+
+        window.setSqlSchema = (data) => {
+            if (completionProvider) {
+                completionProvider.dispose();
+            }
+
+            completionProvider = monaco.languages.registerCompletionItemProvider('sql', {
+                triggerCharacters: ['.'],
+
+                provideCompletionItems: function (model, position) {
+                    const word = model.getWordUntilPosition(position);
+
+                    const range = {
+                        startLineNumber: position.lineNumber,
+                        endLineNumber: position.lineNumber,
+                        startColumn: word.startColumn,
+                        endColumn: word.endColumn
+                    };
+
+                    const textUntilPosition = model.getValueInRange({
+                        startLineNumber: position.lineNumber,
+                        startColumn: 1,
+                        endLineNumber: position.lineNumber,
+                        endColumn: word.startColumn
+                    });
+
+                    const suggestions = [];
+
+                    // Two-part match: schema.table.
+                    const twoPartMatch = textUntilPosition.match(/([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\.$/);
+
+                    if (twoPartMatch) {
+                        const schemaPrefix = twoPartMatch[1].toLowerCase();
+                        const tablePrefix = twoPartMatch[2].toLowerCase();
+
+                        const columns = data.columns.filter(c =>
+                            c.schema.toLowerCase() === schemaPrefix &&
+                            c.table.toLowerCase() === tablePrefix
+                        );
+
+                        columns.forEach(column => {
+                            suggestions.push({
+                                label: column.name,
+                                kind: monaco.languages.CompletionItemKind.Field,
+                                insertText: column.name,
+                                detail: `Column (${twoPartMatch[1]}.${twoPartMatch[2]})`,
+                                range: range
+                            });
+                        });
+
+                        return { suggestions: suggestions };
+                    }
+
+                    // One-part match: schema. or table.
+                    const onePartMatch = textUntilPosition.match(/([a-zA-Z0-9_]+)\.$/);
+
+                    if (onePartMatch) {
+                        const prefix = onePartMatch[1].toLowerCase();
+
+                        const schemaTables = data.tables.filter(t => t.schema.toLowerCase() === prefix);
+
+                        if (schemaTables.length > 0) {
+                            schemaTables.forEach(table => {
+                                suggestions.push({
+                                    label: table.name,
+                                    kind: monaco.languages.CompletionItemKind.Class,
+                                    insertText: table.name,
+                                    detail: `Table (${table.schema})`,
+                                    range: range
+                                });
+                            });
+
+                            return { suggestions: suggestions };
+                        }
+
+                        const tableColumns = data.columns.filter(c => c.table.toLowerCase() === prefix);
+
+                        tableColumns.forEach(column => {
+                            suggestions.push({
+                                label: column.name,
+                                kind: monaco.languages.CompletionItemKind.Field,
+                                insertText: column.name,
+                                detail: `Column`,
+                                range: range
+                            });
+                        });
+
+                        return { suggestions: suggestions };
+                    }
+
+                    // No dot context — suggest schemas and tables
+                    if (data.schemas) {
+                        data.schemas.forEach(schema => {
+                            suggestions.push({
+                                label: schema.name,
+                                kind: monaco.languages.CompletionItemKind.Module,
+                                insertText: schema.name,
+                                detail: 'Schema',
+                                range: range
+                            });
+                        });
+                    }
+
+                    if (data.tables) {
+                        data.tables.forEach(table => {
+                            suggestions.push({
+                                label: table.name,
+                                kind: monaco.languages.CompletionItemKind.Class,
+                                insertText: table.name,
+                                detail: table.schema ? `Table (${table.schema})` : 'Table',
+                                range: range
+                            });
+                        });
+                    }
+
+                    return { suggestions: suggestions };
+                }
+            });
+        };
+
+        window._editorReady = true;
+        window.chrome.webview.postMessage(JSON.stringify({ type: 'ready' }));
+    });
+    </script>
+</body>
+</html>

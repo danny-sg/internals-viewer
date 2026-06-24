@@ -127,7 +127,8 @@ public sealed partial class DockHost : UserControl
         return grid;
     }
 
-    private void CaptureSizes()
+    /// <summary>Writes the live splitter star sizes back into the model (e.g. before persisting the layout).</summary>
+    public void CaptureSizes()
     {
         foreach (var (node, (grid, horizontal)) in grids)
         {

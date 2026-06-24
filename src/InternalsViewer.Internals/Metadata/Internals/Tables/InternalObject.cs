@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 /// SQL Server Allocation Units definitions table - sys.sysschobjs    
 /// </summary>
 [InternalsMetadata]
-public record InternalObject
+public sealed record InternalObject
 {
     [InternalsMetadataColumn("id", 1, SqlDbType.Int, 4, 4, 1)]
     public int ObjectId { get; set; }

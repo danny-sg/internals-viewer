@@ -34,6 +34,14 @@
     <ItemGroup>
       <Content Remove="Assets\Database.svg" />
       <Content Remove="Assets\DatabaseFile.svg" />
+      <Content Remove="Assets\Help\About.md" />
+      <Content Remove="Assets\Help\Allocations.md" />
+      <Content Remove="Assets\Help\Connections.md" />
+      <Content Remove="Assets\Help\Indexes.md" />
+      <Content Remove="Assets\Help\Internals.md" />
+      <Content Remove="Assets\Help\Pages.md" />
+      <Content Remove="Assets\Help\Query.md" />
+      <Content Remove="Assets\Help\Start.md" />
     </ItemGroup>
     <ItemGroup>
       <!-- Execution plan operator icons are addressed via ms-appx and must be packaged as content. -->
@@ -44,6 +52,7 @@
     <ItemGroup>
         <None Remove="Assets\AppLogo-16.svg" />
         <None Remove="Assets\AppLogo.svg" />
+        <None Remove="Assets\Monaco\index.html" />
         <None Remove="Assets\TabIcons\IndexTabIcon.svg" />
         <None Remove="Controls\AllocationControl.xaml" />
         <None Remove="Controls\AllocationDataGridView.xaml" />
@@ -177,6 +186,13 @@
       <Content Include="Images\Wide310x150Logo.scale-400.png" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Remove="Assets\Monaco\**\*" />
+
+        <Content Include="Assets\Monaco\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.DataTable" Version="0.1.251217-build.2433" />
         <PackageReference Include="GitVersion.MsBuild" Version="6.7.0">
@@ -484,6 +500,12 @@
 
     <ItemGroup>
       <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Assets\Help\images\" />
+      <Folder Include="ViewModels\Query\Layout\" />
+      <Folder Include="Views\Query\Tabs\" />
     </ItemGroup>
 
 

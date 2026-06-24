@@ -203,7 +203,7 @@ public sealed partial class MainWindow
     {
         var viewModel = QueryViewModelFactory.Create(database);
 
-        var content = new QueryReplayView();
+        var content = new QueryView();
 
         content.DataContext = viewModel;
 

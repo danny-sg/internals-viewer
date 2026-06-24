@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Internals.Metadata.Internals;
 
-public class InternalMetadata
+public sealed class InternalMetadata
 {
     /// <summary>
     /// Allocation Units table - sys.sysallocunits

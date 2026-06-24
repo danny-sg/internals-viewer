@@ -1,16 +1,19 @@
+using InternalsViewer.Replay.Parsing;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Models.Query;
+using InternalsViewer.UI.App.Models.Schema;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using InternalsViewer.Replay.Parsing;
 
 namespace InternalsViewer.UI.App.Controls.SqlEditor;
 
@@ -44,6 +47,10 @@ public sealed partial class SqlEditorControl : UserControl
         set => SetValue(CancelCommandProperty, value);
     }
 
+    public static readonly DependencyProperty SchemaProperty =
+        DependencyProperty.Register(nameof(Schema), typeof(DatabaseSchema), typeof(SqlEditorControl),
+            new PropertyMetadata(null, OnSchemaChanged));
+
     public static readonly DependencyProperty SqlTextProperty =
         DependencyProperty.Register(nameof(SqlText), typeof(string), typeof(SqlEditorControl),
             new PropertyMetadata(string.Empty, OnSqlTextChanged));
@@ -58,7 +65,26 @@ public sealed partial class SqlEditorControl : UserControl
 
     public static readonly DependencyProperty IsErrorProperty =
         DependencyProperty.Register(nameof(IsError), typeof(bool), typeof(SqlEditorControl),
-            new PropertyMetadata(false));
+            new PropertyMetadata(false, OnIsErrorChanged));
+
+    public static readonly DependencyProperty IsMessagesVisibleProperty =
+        DependencyProperty.Register(nameof(IsMessagesVisible), typeof(bool), typeof(SqlEditorControl),
+            new PropertyMetadata(false, OnIsMessagesVisibleChanged));
+
+    public static readonly DependencyProperty AdditionalContentProperty =
+        DependencyProperty.Register(nameof(AdditionalContent), typeof(object), typeof(SqlEditorControl),
+            new PropertyMetadata(null));
+
+    private static void OnIsErrorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is true)
+        {
+            ((SqlEditorControl)d).IsMessagesVisible = true;
+        }
+    }
+
+    private static void OnIsMessagesVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((SqlEditorControl)d).ApplyMessagesVisibility();
 
     public static readonly DependencyProperty QueryOptionsProperty =
         DependencyProperty.Register(nameof(QueryOptions), typeof(QueryOptions), typeof(SqlEditorControl),
@@ -72,6 +98,12 @@ public sealed partial class SqlEditorControl : UserControl
     {
         get => (string)GetValue(SqlTextProperty);
         set => SetValue(SqlTextProperty, value);
+    }
+
+    public DatabaseSchema? Schema
+    {
+        get => (DatabaseSchema?)GetValue(SchemaProperty);
+        set => SetValue(SchemaProperty, value);
     }
 
     public string Message
@@ -90,6 +122,18 @@ public sealed partial class SqlEditorControl : UserControl
     {
         get => (bool)GetValue(IsExecutingProperty);
         set => SetValue(IsExecutingProperty, value);
+    }
+
+    public bool IsMessagesVisible
+    {
+        get => (bool)GetValue(IsMessagesVisibleProperty);
+        set => SetValue(IsMessagesVisibleProperty, value);
+    }
+
+    public object? AdditionalContent
+    {
+        get => GetValue(AdditionalContentProperty);
+        set => SetValue(AdditionalContentProperty, value);
     }
 
     public QueryOptions QueryOptions
@@ -120,20 +164,31 @@ public sealed partial class SqlEditorControl : UserControl
 
     private bool _editorReady;
 
-    private StatementParser statementParser { get; } = new();
+    private StatementParser StatementParser { get; } = new();
 
     public SqlEditorControl()
     {
         InitializeComponent();
         Loaded += OnLoaded;
+
+        ApplyMessagesVisibility();
+    }
+
+    private void ApplyMessagesVisibility()
+    {
+        MessagesRow.Height = IsMessagesVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        MessagesSplitter.Visibility = IsMessagesVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void HandleExecuteClick()
     {
-        var payload = new ExecuteSqlPayload(SqlText, QueryOptions, statementParser.GetStatementType(SqlText));
+        var payload = new ExecuteSqlPayload(SqlText, QueryOptions, StatementParser.GetStatementType(SqlText));
 
         if (this.ExecuteCommand != null && this.ExecuteCommand.CanExecute(payload))
         {
+            // Reveal the messages panel whenever a query runs.
+            IsMessagesVisible = true;
+
             this.ExecuteCommand.Execute(payload);
         }
     }
@@ -144,10 +199,17 @@ public sealed partial class SqlEditorControl : UserControl
 
         WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
-        WebView.NavigateToString(BuildHtml(SqlText, Theme));
+        var assetsPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Monaco");
+
+        WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            "monaco.local",
+            assetsPath,
+            CoreWebView2HostResourceAccessKind.Allow);
+
+        WebView.CoreWebView2.Navigate("http://monaco.local/index.html");
     }
 
-    private void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
+    private async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
         var json = e.TryGetWebMessageAsString();
 
@@ -159,6 +221,7 @@ public sealed partial class SqlEditorControl : UserControl
             {
                 case "ready":
                     _editorReady = true;
+                    await PushSchemaToEditorAsync();
                     break;
 
                 case "contentChanged":
@@ -173,6 +236,33 @@ public sealed partial class SqlEditorControl : UserControl
         }
     }
 
+    private async Task PushSchemaToEditorAsync()
+    {
+        if (!_editorReady || Schema == null)
+        {
+            return;
+        };
+
+        string jsonSchema = JsonSerializer.Serialize(Schema, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        string script = $"window.setSqlSchema({jsonSchema});";
+
+        await WebView.ExecuteScriptAsync(script);
+    }
+
+    private static void OnSchemaChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (SqlEditorControl)d;
+   
+        if (control._editorReady)
+        {
+            _ = control.PushSchemaToEditorAsync();
+        }
+    }
+
     private static void OnSqlTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (SqlEditorControl)d;
@@ -180,9 +270,9 @@ public sealed partial class SqlEditorControl : UserControl
 
         if (control._editorReady)
         {
-            // Push new content into Monaco without reloading
             var escaped = JsonSerializer.Serialize(newValue);
-            _ = control.WebView.ExecuteScriptAsync($"setEditorValue({escaped})");
+         
+            _ = control.WebView.ExecuteScriptAsync($"window.setEditorValue({escaped})");
         }
     }
 
@@ -195,72 +285,6 @@ public sealed partial class SqlEditorControl : UserControl
             var theme = JsonSerializer.Serialize((string)(e.NewValue ?? "vs-dark"));
             _ = control.WebView.ExecuteScriptAsync($"monaco.editor.setTheme({theme})");
         }
-    }
-
-    private static string BuildHtml(string initialSql, string theme)
-    {
-        var escapedSql = JsonSerializer.Serialize(initialSql);
-        var escapedTheme = JsonSerializer.Serialize(theme);
-
-        return $$"""
-            <!DOCTYPE html>
-            <html style="height:100%;margin:0;padding:0;">
-            <head>
-                <meta charset="UTF-8" />
-                <style>
-                    * { box-sizing: border-box; }
-                    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-                    #container { height: 100%; }
-                </style>
-            </head>
-            <body>
-                <div id="container"></div>
-
-                <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs/loader.js"></script>
-                <script>
-                    require.config({
-                        paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs' }
-                    });
-
-                    require(['vs/editor/editor.main'], function () {
-                        const editor = monaco.editor.create(document.getElementById('container'), {
-                            value: {{escapedSql}},
-                            language: 'sql',
-                            theme: {{escapedTheme}},
-                            fontSize: 13,
-                            fontFamily: "'Cascadia Code', 'Consolas', monospace",
-                            fontLigatures: true,
-                            minimap: { enabled: false },
-                            automaticLayout: true,
-                            scrollBeyondLastLine: false,
-                            wordWrap: 'off',
-                            lineNumbers: 'on',
-                            renderLineHighlight: 'gutter',
-                            suggestOnTriggerCharacters: true,
-                            quickSuggestions: true
-                        });
-
-                        // Notify the host when content changes
-                        editor.onDidChangeModelContent(() => {
-                            window.chrome.webview.postMessage(
-                                JSON.stringify({ type: 'contentChanged', value: editor.getValue() })
-                            );
-                        });
-
-                        // Allow the host to push new content in
-                        window.setEditorValue = (val) => {
-                            if (editor.getValue() !== val) {
-                                editor.setValue(val);
-                            }
-                        };
-
-                        window._editorReady = true;
-                        window.chrome.webview.postMessage(JSON.stringify({ type: 'ready' }));
-                    });
-                </script>
-            </body>
-            </html>
-            """;
     }
 
     private sealed record EditorMessage([property: JsonPropertyName("type")] string Type, [property: JsonPropertyName("value")] string? Value);

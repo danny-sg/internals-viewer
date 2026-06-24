@@ -17,11 +17,11 @@
         <CheckBox Grid.Row="0"
                   Margin="8,6,8,2"
                   Content="Include System Objects"
-                  IsChecked="{x:Bind IncludeSystemObjects, Mode=TwoWay}"/>
+                  IsChecked="{x:Bind ViewModel.IncludeSystemObjects, Mode=TwoWay}"/>
 
         <TreeView Grid.Row="1"
                   SelectionMode="None"
-                  ItemsSource="{x:Bind FilterNodes, Mode=OneWay}">
+                  ItemsSource="{x:Bind ViewModel.FilterNodes, Mode=OneWay}">
             <TreeView.ItemContainerStyle>
                 <Style TargetType="TreeViewItem">
                     <Setter Property="MinHeight" Value="0"/>

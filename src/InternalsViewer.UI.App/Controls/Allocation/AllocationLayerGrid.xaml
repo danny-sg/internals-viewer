@@ -95,7 +95,6 @@
                                 <Grid>
                                     <HyperlinkButton Content="{x:Bind FirstPage, Mode=OneWay}" 
                                                      Click="HyperlinkButton_Click"
-                                             
                                                      Style="{StaticResource PageAddressStyle}"
                                                      Tag="{x:Bind FirstPage}"/>
                                 </Grid>

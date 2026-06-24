@@ -62,13 +62,13 @@
                                     IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
                 <AppBarToggleButton Label="PFS" 
                                     IsChecked="{x:Bind TabViewModel.IsPfsVisible, Mode=TwoWay}" />
-                <AppBarButton x:Name="QueryReplayAppBarToggleButton"
-                                    Label="Query" 
-                                    Icon="Play"
-                                    Command="{x:Bind TabViewModel.OpenQueryReplayCommand}" />
                 <AppBarButton Label="Refresh" 
                               Icon="Refresh" 
                               Command="{x:Bind TabViewModel.RefreshCommand}"/>
+                <AppBarButton x:Name="QueryReplayAppBarToggleButton"
+                              Label="Query" 
+                              Icon="Play"
+                              Command="{x:Bind TabViewModel.OpenQueryReplayCommand}" />
             </CommandBar>
             <CommandBar 
                 Grid.Column="1"
@@ -91,6 +91,8 @@
 
         <allocation:AllocationLayerGrid Grid.Row="2" 
                                         x:Name="AllocationLayerGrid"
+                                        PageClicked="OnPageSelected"
+                                        ViewIndexClicked="OnViewIndexClicked"
                                         SelectedLayers="{x:Bind TabViewModel.SelectedLayers, Mode=TwoWay}"
                                         Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
 

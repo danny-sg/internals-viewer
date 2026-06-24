@@ -12,8 +12,6 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 /// </summary>
 public static class AllocationUnitProvider
 {
-    private const int SchemaClassId = 50;
-
     public static List<AllocationUnit> GetAllocationUnits(InternalMetadata metadata)
     {
         return metadata.AllocationUnits.Select(a => GetAllocationUnit(metadata, a)).ToList();
@@ -28,7 +26,7 @@ public static class AllocationUnitProvider
                                      .First(o => o.ObjectId == rowSet.ObjectId);
 
         var schema = metadata.Entities
-                             .First(s => s.Id == internalObject.SchemaId && s.ClassId == SchemaClassId);
+                             .First(s => s.Id == internalObject.SchemaId && s.ClassId == MetadataConstants.SchemaClassId);
 
         var index = metadata.Indexes
                             .FirstOrDefault(i => i.ObjectId == rowSet.ObjectId && i.IndexId == rowSet.IndexId);

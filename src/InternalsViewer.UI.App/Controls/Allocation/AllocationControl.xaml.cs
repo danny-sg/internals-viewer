@@ -228,6 +228,10 @@ public sealed partial class AllocationControl : IDisposable
 
         PointerWheelChanged += AllocationControl_PointerWheelChanged;
 
+        // The Skia canvas does not repaint itself after being reparented (e.g. when its tab is dragged
+        // into a split). Refresh on (re)load so the map is redrawn.
+        Loaded += (_, _) => Refresh();
+
         SetScrollBarValues();
     }
 
@@ -266,6 +270,8 @@ public sealed partial class AllocationControl : IDisposable
         Layout = GetExtentLayout(Size, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
 
         SetScrollBarValues();
+
+        AllocationCanvas.Invalidate();
     }
 
     private void SetScrollBarValues()

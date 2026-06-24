@@ -26,6 +26,14 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
     private void OnLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Replaces the entire layout tree (e.g. when restoring a persisted layout) and rebuilds.</summary>
+    public void SetRoot(LayoutNode root)
+    {
+        root.Parent = null;
+        Root = root;
+        OnLayoutChanged();
+    }
+
     /// <summary>All tab groups in the tree, depth first.</summary>
     public IEnumerable<TabGroupNode> Groups() => Groups(Root);
 
@@ -53,6 +61,28 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
     public TabGroupNode? FindGroup(DocumentViewModel document)
         => Groups().FirstOrDefault(g => g.Documents.Contains(document));
+
+    public bool Contains(DocumentViewModel document) => FindGroup(document) is not null;
+
+    /// <summary>Ensures <paramref name="document"/> is visible, adding it to the first group if absent, and selects it.</summary>
+    public void Show(DocumentViewModel document)
+    {
+        if (Contains(document))
+        {
+            Activate(document);
+            return;
+        }
+
+        var group = Groups().FirstOrDefault();
+
+        if (group is null)
+        {
+            return;
+        }
+
+        group.Documents.Add(document);
+        group.SelectedDocument = document;
+    }
 
     /// <summary>Selects <paramref name="document"/> in whichever group currently hosts it.</summary>
     public void Activate(DocumentViewModel document)

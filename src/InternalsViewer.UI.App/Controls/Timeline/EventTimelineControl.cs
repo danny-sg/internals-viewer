@@ -769,7 +769,7 @@ public sealed class EventTimelineControl : Grid
         var w = e.Info.Width;
         var h = e.Info.Height;
 
-        if (_sortedEvents.Count == 0 || w <= 0 || h <= 0)
+        if (w <= 0 || h <= 0)
         {
             return;
         }
@@ -806,10 +806,16 @@ public sealed class EventTimelineControl : Grid
             canvas.DrawLine(0, y + rowHeight, w, y + rowHeight, sepPaint);
         }
 
+        _hitRegions.Clear();
+
+        // No events yet — show the empty lane scaffold (rows + labels) rather than a blank control.
+        if (_sortedEvents.Count == 0)
+        {
+            return;
+        }
+
         canvas.Save();
         canvas.ClipRect(new SKRect(RowLabelWidth, 0, w, h));
-
-        _hitRegions.Clear();
 
         for (var i = 0; i < _sortedEvents.Count; i++)
         {
