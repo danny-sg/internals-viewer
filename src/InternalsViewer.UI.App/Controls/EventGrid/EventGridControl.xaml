@@ -19,7 +19,7 @@
         <AutoSuggestBox x:Name="SearchBox"
                         Grid.Row="0"
                         Margin="0,0,0,4"
-                        PlaceholderText="Search all fields..."
+                        PlaceholderText="Search"
                         QueryIcon="Find"
                         TextChanged="OnSearchTextChanged"/>
 

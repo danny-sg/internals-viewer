@@ -426,6 +426,27 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Page Update="Controls\Query\AllocationDocumentView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Controls\Query\PlanDocumentView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Controls\Query\SqlDocumentView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Controls\Query\EventsDocumentView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Controls\Docking\TabGroupView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Controls\Docking\DockHost.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+    </ItemGroup>
+
+    <ItemGroup>
       <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.sdk.analyzers\17.7.113\build\AdditionalFiles\BannedSymbols.txt" />
     </ItemGroup>
 

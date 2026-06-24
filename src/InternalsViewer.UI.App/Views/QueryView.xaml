@@ -6,48 +6,18 @@
     xmlns:local="using:InternalsViewer.UI.App.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:sqlEditor="using:InternalsViewer.UI.App.Controls.SqlEditor"
-    xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
-    xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:timeline="using:InternalsViewer.UI.App.Controls.Timeline"
     xmlns:queryReplay="using:InternalsViewer.UI.App.Controls.QueryReplay"
-    xmlns:plan="using:InternalsViewer.UI.App.Controls.Plan"
-    xmlns:plans="using:InternalsViewer.Replay.Plans"
+    xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     mc:Ignorable="d">
-    <UserControl.Resources>
-        <StackLayout Orientation="Vertical" x:Key="VerticalStackLayout" />
-        <StackLayout Orientation="Vertical" Spacing="24" x:Key="PlanStackLayout" />
-        <DataTemplate x:Key="ExecutionPlanTemplate" x:DataType="plans:ExecutionPlan">
-            <plan:ExecutionPlanControl Plan="{x:Bind}" />
-        </DataTemplate>
-        <DataTemplate x:Key="AllocationFileTemplate" x:DataType="models:DatabaseFile">
-            <Grid>
-                <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
-                                              Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
-                                              Size="{x:Bind Parent.ExtentCount, Mode=OneWay}" 
-                                              Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
-                                              SelectedLayers="{x:Bind Parent.SelectedLayers, Mode=OneWay}"
-                                              FileId="{x:Bind FileId, Mode=OneWay}"
-                                              BorderColor="{ThemeResource CardStrokeColorDefault}"
-                                              GridColor="{ThemeResource AllocationBorderColor}"
-                                              PfsChain="{x:Bind Parent.PfsChain, Mode=OneWay}"
-                                              IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
-                                              SequenceFrom="{x:Bind Parent.SequenceFrom, Mode=OneWay}"
-                                              SequenceTo="{x:Bind Parent.SequenceTo, Mode=OneWay}"
-                                              PageClicked="OnPageSelected"
-                                              x:Name="AllocationControl"/>
-            </Grid>
-        </DataTemplate>
-    </UserControl.Resources>
     <SplitView x:Name="EventSelectionPanel"
                DisplayMode="Overlay"
                PanePlacement="Right"
                OpenPaneLength="320"
                IsPaneOpen="{x:Bind ViewModel.IsEventSelectionPanelOpen, Mode=TwoWay}">
         <SplitView.Pane>
-            <Grid 
-                  Padding="12,8">
+            <Grid Padding="12,8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -67,9 +37,7 @@
             <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="{x:Bind ViewModel.SqlPaneRowHeight, Mode=OneWay}"/>
+                    <RowDefinition Height="2*"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="{x:Bind ViewModel.TimelineRowHeight, Mode=OneWay}"/>
                 </Grid.RowDefinitions>
@@ -105,12 +73,6 @@
                             <BitmapIcon UriSource="ms-appx:///Assets/Index32.png"/>
                         </AppBarButton.Icon>
                     </AppBarButton>
-                    <AppBarToggleButton Label="SQL"
-                                        IsChecked="{x:Bind ViewModel.IsSqlPaneVisible, Mode=TwoWay}">
-                        <AppBarToggleButton.Icon>
-                            <FontIcon Glyph="&#xE943;"/>
-                        </AppBarToggleButton.Icon>
-                    </AppBarToggleButton>
                     <AppBarToggleButton Label="Timeline"
                                         IsChecked="{x:Bind ViewModel.IsTimelineVisible, Mode=TwoWay}">
                         <AppBarToggleButton.Icon>
@@ -125,121 +87,12 @@
                     </AppBarToggleButton>
                 </CommandBar>
 
-                <!--Allocations/Indexes/Execution Plan-->
-                <Grid Grid.Row="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <ItemsRepeater
-               x:Name="AllocationItemRepeater"
-               Grid.Column="0"
-               HorizontalAlignment="Stretch"
-               VerticalAlignment="Stretch"
-               ItemsSource="{x:Bind ViewModel.DatabaseFiles}"
-               Layout="{StaticResource VerticalStackLayout}"
-               ItemTemplate="{StaticResource AllocationFileTemplate}" />
+                <!--Tabs (dockable / splittable document region)-->
+                <docking:DockHost Grid.Row="1"
+                                  Layout="{x:Bind ViewModel.Dock, Mode=OneWay}"/>
 
-                    <controls:GridSplitter Grid.Column="1"
-                                       Width="1"
-                                       ResizeDirection="Columns"
-                                       Background="{ThemeResource ControlStrokeColorDefaultBrush}">
-                        <controls:GridSplitter.Template>
-                            <ControlTemplate TargetType="controls:GridSplitter">
-                                <Grid Background="{TemplateBinding Background}" />
-                            </ControlTemplate>
-                        </controls:GridSplitter.Template>
-
-                    </controls:GridSplitter>
-
-                    <Grid Grid.Column="2">
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollMode="Enabled"
-                              VerticalScrollMode="Enabled"
-                              ZoomMode="Enabled"
-                              MinZoomFactor="0.25"
-                              MaxZoomFactor="2.0"
-                              Background="White"
-                              Padding="8">
-                            <ItemsRepeater x:Name="PlanRepeater"
-                                   ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
-                                   Layout="{StaticResource PlanStackLayout}"
-                                   ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
-                        </ScrollViewer>
-                    </Grid>
-                </Grid>
-
-                <!--Query Editor/Tabs-->
+                <!--Timeline splitter-->
                 <controls:GridSplitter Grid.Row="2"
-                              Grid.ColumnSpan="1"
-                              Height="2"
-                              Visibility="{x:Bind ViewModel.SqlSplitterVisibility, Mode=OneWay}"
-                              Background="{ThemeResource ControlStrokeColorDefaultBrush}"
-                              VerticalAlignment="Stretch">
-                    <controls:GridSplitter.Template>
-                        <ControlTemplate TargetType="controls:GridSplitter">
-                            <Grid Background="{TemplateBinding Background}" />
-                        </ControlTemplate>
-                    </controls:GridSplitter.Template>
-                </controls:GridSplitter>
-
-                <Grid Background="{ThemeResource LayerFillColorDefaultBrush}" Grid.Row="3">
-
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="3*" x:Name="EditorColumn"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*" x:Name="EventColumn"/>
-                    </Grid.ColumnDefinitions>
-
-                    <sqlEditor:SqlEditorControl Grid.Row="0"
-                                                Grid.Column="0"
-                                                x:Name="SqlEditor"
-                                                IsExecuting="{x:Bind ViewModel.ExecuteQueryCommand.IsRunning, Mode=OneWay}"
-                                                ExecuteCommand="{x:Bind ViewModel.ExecuteQueryCommand, Mode=OneWay}"
-                                                Message="{x:Bind ViewModel.Message, Mode=OneWay}"
-                                                IsError="{x:Bind ViewModel.IsError, Mode=OneWay}"
-                                                Theme="vs-light" />
-
-                    <controls:GridSplitter Grid.Column="1"
-                                   Grid.Row="0"
-                                       Width="2"
-                                       ResizeDirection="Columns"
-                                       Background="{ThemeResource ControlStrokeColorDefaultBrush}">
-                        <controls:GridSplitter.Template>
-                            <ControlTemplate TargetType="controls:GridSplitter">
-                                <Grid Background="{TemplateBinding Background}" />
-                            </ControlTemplate>
-                        </controls:GridSplitter.Template>
-                        <controls:GridSplitter.RenderTransform>
-                            <TranslateTransform Y="0" />
-                        </controls:GridSplitter.RenderTransform>
-                    </controls:GridSplitter>
-
-                    <!-- Right panel: Events grid + filter tree in tabs -->
-                    <TabView Grid.Column="2"
-                     Grid.Row="0"
-                         x:Name="ResultsTabView"
-                         IsAddTabButtonVisible="False"
-                         VerticalAlignment="Stretch"
-                         TabWidthMode="SizeToContent">
-                        <TabViewItem Header="Events" IsClosable="False" x:Name="EventsTab">
-                            <queryReplay:EventGridControl x:Name="EventGrid"
-                                                      Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
-                                                      SequenceFrom="{x:Bind ViewModel.SequenceFrom, Mode=OneWay}"
-                                                      SequenceTo="{x:Bind ViewModel.SequenceTo, Mode=OneWay}"
-                                                      PageClicked="OnPageSelected"/>
-                        </TabViewItem>
-
-                    </TabView>
-                </Grid>
-
-                <controls:GridSplitter Grid.Row="4"
-                               Grid.ColumnSpan="1"
                                Height="2"
                                Visibility="{x:Bind ViewModel.TimelineSplitterVisibility, Mode=OneWay}"
                                Background="{ThemeResource ControlStrokeColorDefaultBrush}"
@@ -252,14 +105,13 @@
                 </controls:GridSplitter>
 
                 <!--Timeline-->
-                <timeline:EventTimelineControl Grid.Row="5"
+                <timeline:EventTimelineControl Grid.Row="3"
                                                x:Name="EventTimeline"
                                                VerticalAlignment="Stretch"
                                                HorizontalAlignment="Stretch"
                                                StartTime="{x:Bind ViewModel.StartTime, Mode=OneWay}"
                                                EndTime="{x:Bind ViewModel.EndTime, Mode=OneWay}"
-                                               Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
-        />
+                                               Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}" />
             </Grid>
         </SplitView.Content>
     </SplitView>

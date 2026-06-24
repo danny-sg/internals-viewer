@@ -15,6 +15,7 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Allocation;
+using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI;
@@ -139,27 +140,31 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private long playheadSequence;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SqlPaneRowHeight))]
-    [NotifyPropertyChangedFor(nameof(SqlSplitterVisibility))]
-    [NotifyPropertyChangedFor(nameof(TimelineSplitterVisibility))]
-    private bool isSqlPaneVisible = true;
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TimelineRowHeight))]
     [NotifyPropertyChangedFor(nameof(TimelineSplitterVisibility))]
     private bool isTimelineVisible = true;
-
-    public GridLength SqlPaneRowHeight
-        => IsSqlPaneVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-
-    public Visibility SqlSplitterVisibility
-        => IsSqlPaneVisible ? Visibility.Visible : Visibility.Collapsed;
 
     public GridLength TimelineRowHeight
         => IsTimelineVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
     public Visibility TimelineSplitterVisibility
-        => IsSqlPaneVisible && IsTimelineVisible ? Visibility.Visible : Visibility.Collapsed;
+        => IsTimelineVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>The dock layout (tabs + splits) shown in the document region of the query view.</summary>
+    public DockLayoutViewModel Dock { get; }
+
+    /// <summary>The Events tab; used to bring it to the front when navigating from the timeline.</summary>
+    private DocumentViewModel EventsDocument { get; }
+
+    /// <summary>Raised when the timeline asks the events grid to scroll to / select an event.</summary>
+    public event Action<EngineEvent>? EventNavigationRequested;
+
+    /// <summary>Brings the Events tab forward and asks the grid to navigate to the given event.</summary>
+    public void NavigateToEvent(EngineEvent engineEvent)
+    {
+        Dock.Activate(EventsDocument);
+        EventNavigationRequested?.Invoke(engineEvent);
+    }
 
     [ObservableProperty]
     private bool isEventSelectionPanelOpen;
@@ -281,6 +286,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             .Where(u => u.IsSystem)
             .Select(u => u.ObjectId)
             .ToHashSet();
+
+        var sqlDocument = new DocumentViewModel(DockDocumentKind.Sql, "SQL", this, canClose: false);
+        var allocationDocument = new DocumentViewModel(DockDocumentKind.Allocation, "Allocations", this, canClose: false);
+        var planDocument = new DocumentViewModel(DockDocumentKind.Plan, "Execution Plan", this);
+        EventsDocument = new DocumentViewModel(DockDocumentKind.Events, "Events", this);
+
+        Dock = new DockLayoutViewModel(new TabGroupNode(sqlDocument, allocationDocument, planDocument, EventsDocument));
     }
 
     [RelayCommand]
