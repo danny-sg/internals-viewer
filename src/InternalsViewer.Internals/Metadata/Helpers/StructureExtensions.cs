@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Internals.Metadata.Structures;
-using System.Text;
+﻿using System.Text;
+using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Metadata.Helpers;
 
@@ -48,8 +48,7 @@ public static class StructureExtensions
                           $" {column.LeafOffset,11} |" +
                           $" {column.NodeOffset,11} |" +
                           $" {column.IsDropped,-10} |" +
-                          $" {column.IsUniqueifier,-14} |"
-                          );
+                          $" {column.IsUniqueifier,-14} |");
         }
 
         return sb.ToString();
@@ -104,8 +103,7 @@ public static class StructureExtensions
                           $" {column.LeafOffset,11} |" +
                           $" {column.NodeOffset,11} |" +
                           $" {column.IsDropped,-10} |" +
-                          $" {column.IsUniqueifier,-14} |"
-                          );
+                          $" {column.IsUniqueifier,-14} |");
         }
 
         return sb.ToString();

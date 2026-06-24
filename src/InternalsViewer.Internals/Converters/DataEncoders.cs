@@ -47,8 +47,8 @@ public class DataEncoders
     public static string EncodeDecimal(decimal value)
     {
         var sqlValue = new SqlDecimal(value);
-        //sqlValue.Precision = precision;
-        //sqlValue.Scale = scale;
+        // sqlValue.Precision = precision;
+        // sqlValue.Scale = scale;
 
         return BitConverter.ToString(sqlValue.BinData).Replace("-", " ");
     }
@@ -58,15 +58,14 @@ public class DataEncoders
         var timePart = (int)((value - value.Date).TotalMilliseconds / 3.333333);
         var datePart = (value - new DateTime(1900, 1, 1)).Days;
 
-        return new[] { EncodeInt32(timePart), EncodeInt32(datePart) };
+        return [EncodeInt32(timePart), EncodeInt32(datePart)];
     }
 
     public static string[] EncodeSmallDateTime(DateTime value)
     {
-
-        var timePart = (ushort)((value - value.Date).TotalMinutes);
+        var timePart = (ushort)(value - value.Date).TotalMinutes;
         var datePart = (ushort)(value - new DateTime(1900, 1, 1)).Days;
 
-        return new[] { EncodeUInt16(timePart), EncodeUInt16(datePart) };
+        return [EncodeUInt16(timePart), EncodeUInt16(datePart)];
     }
 }

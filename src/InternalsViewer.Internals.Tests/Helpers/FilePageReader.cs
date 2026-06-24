@@ -3,9 +3,9 @@ using InternalsViewer.Internals.Readers.Pages;
 
 namespace InternalsViewer.Internals.Tests.Helpers;
 
-public class FilePageReader(string path) : PageReader, IPageReader
+public sealed class FilePageReader(string path) : PageReader, IPageReader
 {
-    private byte[] LoadTextPage(string pageText)
+    private static byte[] LoadTextPage(string pageText)
     {
         var offset = 0;
 
@@ -13,7 +13,7 @@ public class FilePageReader(string path) : PageReader, IPageReader
 
         var data = new byte[PageData.Size];
 
-        foreach (var line in pageText.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
+        foreach (var line in pageText.Split([Environment.NewLine], StringSplitOptions.None))
         {
             if (line.StartsWith("OFFSET TABLE"))
             {

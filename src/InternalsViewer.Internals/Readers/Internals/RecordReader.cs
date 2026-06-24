@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Metadata.Structures;
@@ -9,7 +9,9 @@ using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 namespace InternalsViewer.Internals.Readers.Internals;
 
-public class RecordReader(ILogger<RecordReader> logger, IPageService pageService, FixedVarDataRecordLoader fixedVarDataRecordLoader)
+public sealed class RecordReader(ILogger<RecordReader> logger, 
+                                 IPageService pageService, 
+                                 FixedVarDataRecordLoader fixedVarDataRecordLoader)
     : IRecordReader
 {
     private ILogger<RecordReader> Logger { get; } = logger;

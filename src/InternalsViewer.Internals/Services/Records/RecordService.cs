@@ -34,13 +34,13 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
         return page switch
         {
-            DataPage dataPage when !isCompressed 
+            DataPage dataPage when !isCompressed
                 => GetFixedVarDataRecords(dataPage),
-            DataPage dataPage 
+            DataPage dataPage
                 => GetCdDataRecords(dataPage),
-            IndexPage indexPage when !isCompressed 
+            IndexPage indexPage when !isCompressed
                 => GetIndexRecords(indexPage),
-            IndexPage indexPage 
+            IndexPage indexPage
                 => GetCdIndexRecords(indexPage),
             _ => throw new InvalidOperationException("Unknown page type")
         };
@@ -62,7 +62,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
     {
         var isCompressed = page.AllocationUnit.CompressionType != CompressionType.None;
 
-        if(isCompressed)
+        if (isCompressed)
         {
             return GetCdIndexRecords(page);
         }

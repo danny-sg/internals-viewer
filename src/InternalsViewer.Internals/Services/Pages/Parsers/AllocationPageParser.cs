@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// <summary>
 /// Parser for Allocation pages
 /// </summary>
-public class AllocationPageParser : PageParser, IPageParser<AllocationPage>
+public sealed class AllocationPageParser : PageParser, IPageParser<AllocationPage>
 {
     public PageType[] SupportedPageTypes => new[] { PageType.Gam, PageType.Sgam, PageType.Bcm, PageType.Dcm };
 

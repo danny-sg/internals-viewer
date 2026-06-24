@@ -1,7 +1,7 @@
-﻿using InternalsViewer.Internals.Engine.Database;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Internals.Providers.Metadata;
 

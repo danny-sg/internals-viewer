@@ -117,7 +117,6 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         Logger.LogDebug("Files (sys.sysprufiles): {Count} records parsed.", rows.Count);
 
         return rows;
-
     }
 
     private async Task<List<InternalEntityObject>> GetEntities(PageAddress pageAddress, DatabaseSource database)

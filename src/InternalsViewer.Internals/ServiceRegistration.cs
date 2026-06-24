@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Interfaces.MetadataProviders;
+﻿using System.Diagnostics.CodeAnalysis;
+using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
@@ -13,14 +14,13 @@ using InternalsViewer.Internals.Services.Loaders.Chains;
 using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders.Engine;
 using InternalsViewer.Internals.Services.Loaders.Records;
+using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Services.Pages;
 using InternalsViewer.Internals.Services.Pages.Loaders;
 using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Internals.Services.Records;
 using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics.CodeAnalysis;
-using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 
 namespace InternalsViewer.Internals;
 
@@ -31,7 +31,6 @@ public static class ServiceRegistration
     {
         services.AddTransient<IPageReader, QueryPageReader>();
 
-        //        services.AddTransient<ITransactionLogProvider, TransactionLogProvider>();
         services.AddTransient<IBufferPoolInfoProvider, BufferPoolInfoProvider>();
 
         services.AddTransient<IMetadataLoader, MetadataLoader>();

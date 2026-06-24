@@ -1,5 +1,4 @@
-﻿
-namespace InternalsViewer.Internals.Engine.Records;
+﻿namespace InternalsViewer.Internals.Engine.Records;
 
 public enum RecordType
 {

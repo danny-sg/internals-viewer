@@ -43,11 +43,11 @@ public sealed class QueryPageReader(string connectionString) : PageReader, IPage
         {
             await connection.OpenAsync();
 
-            var reader = await command.ExecuteReaderAsync();
+            await using var reader = await command.ExecuteReaderAsync();
 
             if (reader.HasRows)
             {
-                while (reader.Read())
+                while (await reader.ReadAsync())
                 {
                     var parentObject = reader.GetString(ParentObjectIndex);
                     var objectName = reader.GetString(ObjectIndex);
@@ -60,7 +60,7 @@ public sealed class QueryPageReader(string connectionString) : PageReader, IPage
                     }
                 }
 
-                reader.Close();
+                await reader.CloseAsync();
             }
         }
         catch (Exception ex)

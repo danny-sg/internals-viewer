@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Internals.Interfaces.MetadataProviders;
-using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Interfaces.MetadataProviders;
 
 namespace InternalsViewer.Internals.Services;
 

@@ -2,8 +2,10 @@
 
 namespace InternalsViewer.Internals.Annotations;
 
-public class DataStructure: IDataStructure
+public class DataStructure : IDataStructure
 {
+    public List<DataStructureItem> MarkItems { get; } = new();
+
     /// <summary>
     /// Adds a marker that the given property is a part of the data structure at the offset
     /// </summary>
@@ -14,7 +16,7 @@ public class DataStructure: IDataStructure
             PropertyName = propertyName,
             Offset = offset,
             Length = length,
-            Tags = tags ?? new()
+            Tags = tags ?? []
         };
 
         MarkItems.Add(dataStructureItem);
@@ -68,6 +70,4 @@ public class DataStructure: IDataStructure
 
         MarkItems.Add(dataStructureItem);
     }
-
-    public List<DataStructureItem> MarkItems { get; } = new();
 }

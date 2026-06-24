@@ -15,9 +15,10 @@ namespace InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 /// Loads a Data Record using a combination of the table structure and the record structure
 /// </summary>
 /// <remarks>
-/// Microsoft SQL Server 2012 Internals by Kalen Delaney et al. has a good description of the data record structure in Chapter 6.
+/// Microsoft SQL Server 2012 Internals by Kalen Delaney et al. has a good description of the data record structure in
+/// Chapter 6.
 /// </remarks>
-public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) : FixedVarRecordLoader
+public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) : FixedVarRecordLoader
 {
     private ILogger<FixedVarDataRecordLoader> Logger { get; } = logger;
 
@@ -28,7 +29,10 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
     {
         var data = page.Data;
 
-        Logger.BeginScope("Data Record Loader: {FileId}{PageId}:{Offset}", page.PageAddress.FileId, page.PageAddress.PageId, slotOffset);
+        using var scope = Logger.BeginScope("Data Record Loader: {FileId}{PageId}:{Offset}",
+                                            page.PageAddress.FileId,
+                                            page.PageAddress.PageId,
+                                            slotOffset);
 
         Logger.LogTrace(structure.ToDetailString());
 
@@ -70,16 +74,16 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
     /// </summary>
     /// <remarks>
     /// Record structure is as follows:
-    /// 
+    ///
     ///     Status Bits A                              - 1 byte
     ///     Status Bits B                              - 1 byte
     ///     Fixed length data size/column count offset - 2 bytes
     ///     Fixed length data                          - defined by Fixed length data size
     ///     Number of columns                          - 2 bytes
     ///     NULL bitmap                                - Ceiling(Number of non-sparse columns / 8) bytes
-    ///     
+    ///
     ///     If Status Bits A Bit 5 (Has Variable Length Columns) is set:
-    ///     
+    ///
     ///     Number of variable length columns          - 2 bytes
     ///     Column offset array                        - 2 bytes * Number of variable length columns
     ///     Variable length data                       - defined by Column offset array
@@ -101,7 +105,8 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
 
         dataRecord.MarkProperty(nameof(DataRecord.ColumnCount), columnCountPosition, sizeof(short));
 
-        // Calculate the number of bytes required to store the null bitmap for each non-sparse column, rounded up to the nearest byte
+        // Calculate the number of bytes required to store the null bitmap for each non-sparse column,
+        // rounded up to the nearest byte
         dataRecord.NullBitmapSize = (short)Math.Ceiling(structure.Columns.Count(column => !column.IsSparse) / 8.0);
 
         // Has Null Bitmap defined by Status Bits A Bit 4
@@ -124,10 +129,12 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
             else
             {
                 // Number of variable length columns (2-byte int) located after null bitmap
-                var variableLengthColumnCountOffset = dataRecord.ColumnCountOffset + sizeof(short) + dataRecord.NullBitmapSize;
+                var variableLengthColumnCountOffset = dataRecord.ColumnCountOffset
+                                                      + sizeof(short) + dataRecord.NullBitmapSize;
 
-                dataRecord.VariableLengthColumnCount = BitConverter.ToUInt16(data,
-                                                                             dataRecord.Offset + variableLengthColumnCountOffset);
+                dataRecord.VariableLengthColumnCount
+                    = BitConverter.ToUInt16(data,
+                                            dataRecord.Offset + variableLengthColumnCountOffset);
 
                 dataRecord.MarkProperty(nameof(DataRecord.VariableLengthColumnCount),
                                         dataRecord.Offset + variableLengthColumnCountOffset,
@@ -147,7 +154,8 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
                                     dataRecord.VariableLengthColumnCount * sizeof(short));
 
             // Variable length data starts after the offset array length (2 byte integers * number of variable length columns)
-            dataRecord.VariableLengthDataOffset = (ushort)(offsetStart + sizeof(ushort) * dataRecord.VariableLengthColumnCount);
+            dataRecord.VariableLengthDataOffset
+                = (ushort)(offsetStart + (sizeof(ushort) * dataRecord.VariableLengthColumnCount));
         }
         else
         {
@@ -237,7 +245,7 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
                     {
                         // Sees to be a case where instead of the null bitmap a field is null via the existence of a variable length column
                         // with the absence of a variable length record flag. In this case the null bitmap needs offsetting.
-                        //nullBitmapOffset -= 1;
+                        // nullBitmapOffset -= 1;
                     }
 
                     // Null bitmap set
@@ -284,7 +292,11 @@ public class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> logger) 
         field.Length = length;
         field.Data = data;
 
-        dataRecord.MarkValue(ItemType.FixedLengthValue, column.ColumnName, field, dataRecord.Offset + field.Offset, field.Length);
+        dataRecord.MarkValue(ItemType.FixedLengthValue,
+                             column.ColumnName,
+                             field,
+                             dataRecord.Offset + field.Offset,
+                             field.Length);
 
         return field;
     }

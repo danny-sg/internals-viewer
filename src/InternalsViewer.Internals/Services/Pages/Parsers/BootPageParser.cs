@@ -9,9 +9,9 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
 /// <summary>
-/// Parser for Boot pages
+/// Parser for the Boot page
 /// </summary>
-public class BootPageParser : PageParser, IPageParser<BootPage>
+public sealed class BootPageParser : PageParser, IPageParser<BootPage>
 {
     private const int CurrentVersionOffset = 100;
     private const int CreatedVersionOffset = 102;
@@ -50,9 +50,12 @@ public class BootPageParser : PageParser, IPageParser<BootPage>
         page.CreatedVersion = BitConverter.ToInt16(page.Data, CreatedVersionOffset);
 
         page.DatabaseId = BitConverter.ToInt16(page.Data, DatabaseIdOffset);
-        page.DatabaseName = Encoding.Unicode.GetString(page.Data[DatabaseNameOffset..(DatabaseNameOffset + 128 * 2)]).TrimEnd();
+        page.DatabaseName = Encoding.Unicode
+                                    .GetString(page.Data[DatabaseNameOffset..(DatabaseNameOffset + 128 * 2)])
+                                    .TrimEnd();
 
-        page.CreatedDateTime = DateTimeConverters.DecodeDateTime(page.Data[CreatedDateTimeOffset..(CreatedDateTimeOffset + 8)]);
+        page.CreatedDateTime 
+            = DateTimeConverters.DecodeDateTime(page.Data[CreatedDateTimeOffset..(CreatedDateTimeOffset + 8)]);
         page.CompatibilityLevel = BitConverter.ToInt16(page.Data, CompatibilityLevelOffset);
 
         page.MaxLogSpaceUsed = BitConverter.ToInt64(page.Data, MaxLogSpaceUsed);
@@ -63,7 +66,8 @@ public class BootPageParser : PageParser, IPageParser<BootPage>
 
         page.Collation = BitConverter.ToInt32(page.Data, CollationOffset);
 
-        page.FirstAllocationUnitsPage = PageAddressParser.Parse(page.Data[FirstPageOffset..(FirstPageOffset + PageAddress.Size)]);
+        page.FirstAllocationUnitsPage 
+            = PageAddressParser.Parse(page.Data[FirstPageOffset..(FirstPageOffset + PageAddress.Size)]);
 
         page.CheckpointLsn = LogSequenceNumberParser.Parse(
                 page.Data[CheckpointLsnOffset..(CheckpointLsnOffset + LogSequenceNumber.Size)]);
@@ -71,6 +75,6 @@ public class BootPageParser : PageParser, IPageParser<BootPage>
 
     private void SetHeaderMarkers(BootPage page)
     {
-        //TODO: Add markers
+        // TODO: Add markers
     }
 }

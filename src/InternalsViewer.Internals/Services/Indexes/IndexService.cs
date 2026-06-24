@@ -1,8 +1,8 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
-using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 
 namespace InternalsViewer.Internals.Services.Indexes;
@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Services.Indexes;
 /// <summary>
 /// Service to provide index structure information
 /// </summary>
-public class IndexService(IPageService pageService, IRecordService recordService)
+public sealed class IndexService(IPageService pageService, IRecordService recordService)
 {
     private IPageService PageService { get; } = pageService;
 
@@ -38,7 +38,6 @@ public class IndexService(IPageService pageService, IRecordService recordService
                                      PageAddress? parentPageAddress,
                                      int level)
     {
-
         var node = nodes.FirstOrDefault(n => n.PageAddress == pageAddress);
 
         if (node is null)

@@ -1,13 +1,13 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Diagnostics;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Providers.Metadata;
-using System.Diagnostics;
-using InternalsViewer.Internals.Interfaces.Connections;
 
 namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
@@ -39,7 +39,7 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     /// </summary>
     public async Task<DatabaseSource> LoadAsync(string name, IConnectionType connection)
     {
-        Logger.LogInformation($"Loading database {name}");
+        Logger.LogInformation("Loading database {DatabaseName}", name);
 
         Logger.LogDebug("Getting database information");
 
@@ -72,13 +72,6 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
         return database;
     }
 
-    private async Task RefreshMetadata(DatabaseSource database)
-    {
-        var metadata = await MetadataLoader.Load(database);
-
-        database.Metadata = metadata;
-    }
-
     /// <summary>
     /// Refresh the allocation chains/bitmaps for files and allocation units
     /// </summary>
@@ -91,11 +84,18 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
         await RefreshAllocationUnitAllocations(database);
     }
 
+    private async Task RefreshMetadata(DatabaseSource database)
+    {
+        var metadata = await MetadataLoader.Load(database);
+
+        database.Metadata = metadata;
+    }
+
     private async Task RefreshFileAllocations(DatabaseSource databaseDetail)
     {
         Logger.LogDebug("Refreshing file allocations (GAM/SGAM/DCM/BCM)");
 
-        Debug.Assert(databaseDetail.Files.Count > 0);
+        Debug.Assert(databaseDetail.Files.Count > 0, "No files");
 
         databaseDetail.Gam.Clear();
         databaseDetail.SGam.Clear();

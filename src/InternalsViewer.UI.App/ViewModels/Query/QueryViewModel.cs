@@ -243,11 +243,21 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         saveScheduled = true;
 
-        DispatcherQueue.TryEnqueue(async () =>
+#pragma warning disable VSTHRD101 // Avoid unsupported async delegates
+        DispatcherQueue.TryEnqueue(async void () =>
         {
             saveScheduled = false;
-            await SaveLayoutAsync();
+
+            try
+            {
+                await SaveLayoutAsync();
+            }
+            catch (Exception e)
+            {
+                Logger.LogError("Error saving layout - {Message}", e.Message);
+            }
         });
+#pragma warning restore VSTHRD101 // Avoid unsupported async delegates
     }
 
     public async Task SaveLayoutAsync()
@@ -465,7 +475,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        if (cropToQuery)
+        if (CropToQuery)
         {
             var queryNode = results.EngineEvents.FirstOrDefault(e =>
                 e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 });
@@ -479,7 +489,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         else
         {
             StartTime = 0;
-            EndTime = events.DefaultIfEmpty().Max(e => e?.TimeMs + e?.Duration);
+            EndTime = Events.DefaultIfEmpty().Max(e => e?.TimeMs + e?.Duration);
         }
 
         IsError = false;
@@ -551,7 +561,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         var layers = GetEventsAllocationLayer(engineEvents);
 
-        DispatcherQueue.TryEnqueue(async () =>
+        DispatcherQueue.TryEnqueue(() =>
         {
             AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
 
@@ -573,7 +583,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private List<AllocationLayer> GetEventsAllocationLayer(List<EngineEvent> engineEvents)
     {
-        var maxFileId = databaseFiles.Max(d => d.FileId);
+        var maxFileId = DatabaseFiles.Max(d => d.FileId);
 
         var ioLayer = new AllocationLayer { Name = "I/O", Colour = ColourConstants.IoColour, IsVisible = true };
         var pageLayer = new AllocationLayer { Name = "Page", Colour = ColourConstants.PageColour, IsVisible = true };

@@ -12,9 +12,9 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// </summary>
 public sealed class DataPageParser(CompressionInfoLoader compressionInfoLoader) : PageParser, IPageParser<DataPage>
 {
-    private CompressionInfoLoader CompressionInfoLoader { get; } = compressionInfoLoader;
+    public PageType[] SupportedPageTypes => [PageType.Data];
 
-    public PageType[] SupportedPageTypes => new[] { PageType.Data };
+    private CompressionInfoLoader CompressionInfoLoader { get; } = compressionInfoLoader;
 
     Page IPageParser.Parse(PageData page)
     {
@@ -31,7 +31,7 @@ public sealed class DataPageParser(CompressionInfoLoader compressionInfoLoader) 
                                               a => a.AllocationUnitId == dataPage.PageHeader.AllocationUnitId)
                                   ?? AllocationUnit.Unknown;
 
-        if(dataPage.AllocationUnit.CompressionType == CompressionType.Page && dataPage.IsPageCompressed)
+        if (dataPage.AllocationUnit.CompressionType == CompressionType.Page && dataPage.IsPageCompressed)
         {
             dataPage.CompressionInfo = CompressionInfoLoader.Load(dataPage, CompressionInfo.SlotOffset);
         }

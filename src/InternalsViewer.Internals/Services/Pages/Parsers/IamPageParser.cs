@@ -14,7 +14,7 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// </summary>
 public sealed class IamPageParser : PageParser, IPageParser<IamPage>
 {
-    public PageType[] SupportedPageTypes => new[] { PageType.Iam };
+    public PageType[] SupportedPageTypes => [PageType.Iam];
 
     Page IPageParser.Parse(PageData page)
     {
@@ -30,7 +30,7 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
                                         .FirstOrDefault(a => a.AllocationUnitId == iamPage.PageHeader.AllocationUnitId)
                                  ?? AllocationUnit.Unknown;
 
-        var result =  Parse(iamPage);
+        var result = Parse(iamPage);
 
         SetIamMarkers(result);
 
@@ -88,9 +88,13 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
 
         for (var i = 0; i < 8; i++)
         {
-            page.MarkProperty($"SinglePageSlot{i}", AllocationPage.SinglePageSlotOffset + i * PageAddress.Size, PageAddress.Size);
+            page.MarkProperty($"SinglePageSlot{i}",
+                              AllocationPage.SinglePageSlotOffset + i * PageAddress.Size,
+                              PageAddress.Size);
         }
 
-        page.MarkProperty("AllocationMap", AllocationPage.AllocationArrayOffset, AllocationPage.AllocationInterval / 8);
+        page.MarkProperty("AllocationMap",
+                          AllocationPage.AllocationArrayOffset,
+                          AllocationPage.AllocationInterval / 8);
     }
 }

@@ -18,7 +18,6 @@ public static class DataConverter
     /// Converts a binary GUID to string
     /// </summary>
     /// <param name="data">The data.</param>
-    /// <returns></returns>
     public static Guid BinaryToGuid(byte[]? data)
     {
         if (data == null)
@@ -32,6 +31,61 @@ public static class DataConverter
         }
 
         return new Guid(data);
+    }
+
+    public static List<string> DecodeDataString(string data)
+    {
+        var decodedData = new List<string>();
+
+        var binaryData = new byte[data.Length / 2];
+
+        for (var i = 0; i < binaryData.Length; i++)
+        {
+            binaryData[i] = byte.Parse(data.Substring(i * 2, 2),
+                NumberStyles.AllowHexSpecifier,
+                CultureInfo.InvariantCulture);
+        }
+
+        switch (binaryData.Length)
+        {
+            case 1:
+                decodedData.Add(DataString(binaryData, SqlDbType.TinyInt));
+                break;
+            case 2:
+                decodedData.Add(DataString(binaryData, SqlDbType.SmallInt));
+                break;
+            case 4:
+                decodedData.Add(DataString(binaryData, SqlDbType.Int));
+                break;
+            case 8:
+                decodedData.Add(DataString(binaryData, SqlDbType.BigInt));
+                break;
+        }
+
+        if (binaryData.Length == 1)
+        {
+            var bitArray = new BitArray(binaryData);
+
+            var stringBuilder = new StringBuilder();
+
+            for (var i = 0; i < 8; i++)
+            {
+                stringBuilder.Insert(0, bitArray[i] ? "1" : "0");
+            }
+
+            stringBuilder.Insert(0, "binary: ");
+
+            decodedData.Add(stringBuilder.ToString());
+        }
+
+        var varcharData = DataString(binaryData, SqlDbType.VarChar);
+
+        if (!string.IsNullOrEmpty(varcharData))
+        {
+            decodedData.Add(DataString(binaryData, SqlDbType.VarChar));
+        }
+
+        return decodedData;
     }
 
     /// <summary>
@@ -54,19 +108,19 @@ public static class DataConverter
             {
                 // Number types
                 case SqlDbType.TinyInt:
-                    //tinyint is one byte
+                    // tinyint is one byte
                     return ((int)data[0]).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.SmallInt:
-                    //smallint is a two byte (16 bit) integer    
+                    // smallint is a two byte (16 bit) integer    
                     return BitConverter.ToInt16(data, 0).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.Int:
-                    //int is a four byte (32 bit) integer  
+                    // int is a four byte (32 bit) integer  
                     return BitConverter.ToInt32(data, 0).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.BigInt:
-                    //bigint is an eight byte (64 bit) integer  
+                    // bigint is an eight byte (64 bit) integer  
                     return BitConverter.ToInt64(data, 0).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.Decimal:
@@ -113,6 +167,7 @@ public static class DataConverter
 
                         return DateTimeConverters.DecodeTime(data, scale).ToString(format);
                     }
+
                 case SqlDbType.DateTime2:
                     {
                         var format = scale == 0
@@ -121,6 +176,7 @@ public static class DataConverter
 
                         return DateTimeConverters.DecodeDateTime2(data, scale).ToString(format);
                     }
+
                 case SqlDbType.DateTimeOffset:
                     return DateTimeConverters.DecodeDateTimeOffset(data, scale);
 
@@ -149,17 +205,6 @@ public static class DataConverter
         {
             return $"Error converting data - {ex.Message}";
         }
-    }
-
-    /// <summary>
-    /// Gets a bit from a byte
-    /// </summary>
-    /// <remarks>
-    /// Bit Position is the zero based bit position of the field. Bits are stored in bytes, up to 8 per byte
-    /// </remarks>
-    private static string GetBit(byte data, short bitPosition)
-    {
-        return ((data & (1 << bitPosition)) != 0).ToString();
     }
 
     /// <summary>
@@ -198,8 +243,8 @@ public static class DataConverter
                 SqlDbType.Binary => data,
                 SqlDbType.UniqueIdentifier => BinaryToGuid(data),
                 SqlDbType.Decimal => DecodeDecimal(data, precision, scale),
-                SqlDbType.Money => (BitConverter.ToInt64(data, 0) / 10000.0),
-                SqlDbType.SmallMoney => (BitConverter.ToInt64(data, 0) / 10000.0),
+                SqlDbType.Money => BitConverter.ToInt64(data, 0) / 10000M,
+                SqlDbType.SmallMoney => BitConverter.ToInt32(data, 0) / 10000M,
                 SqlDbType.Real => BitConverter.ToSingle(data, 0),
                 SqlDbType.Float => BitConverter.ToDouble(data, 0),
                 SqlDbType.Variant => VariantBinaryToString(data),
@@ -214,6 +259,17 @@ public static class DataConverter
         {
             return "Error converting data";
         }
+    }
+
+    /// <summary>
+    /// Gets a bit from a byte
+    /// </summary>
+    /// <remarks>
+    /// Bit Position is the zero based bit position of the field. Bits are stored in bytes, up to 8 per byte
+    /// </remarks>
+    private static string GetBit(byte data, short bitPosition)
+    {
+        return ((data & (1 << bitPosition)) != 0).ToString();
     }
 
     /// <summary>
@@ -276,7 +332,7 @@ public static class DataConverter
     private static SqlDecimal DecodeDecimal(byte[] data, byte precision, byte scale)
     {
         int index;
-        var positive = (1 == data[0]);
+        var positive = data[0] == 1;
 
         var bits = new int[4];
 
@@ -284,65 +340,10 @@ public static class DataConverter
 
         for (index = 0; index < length; index++)
         {
-            bits[index] = BitConverter.ToInt32(data, 1 + (index * 4));
+            bits[index] = BitConverter.ToInt32(data, 1 + index * 4);
         }
 
         return new SqlDecimal(precision, scale, positive, bits);
-    }
-
-    public static List<string> DecodeDataString(string data)
-    {
-        var decodedData = new List<string>();
-
-        var binaryData = new byte[data.Length / 2];
-
-        for (var i = 0; i < binaryData.Length; i++)
-        {
-            binaryData[i] = byte.Parse(data.Substring(i * 2, 2),
-                                       NumberStyles.AllowHexSpecifier,
-                                       CultureInfo.InvariantCulture);
-        }
-
-        switch (binaryData.Length)
-        {
-            case 1:
-                decodedData.Add(DataString(binaryData, SqlDbType.TinyInt));
-                break;
-            case 2:
-                decodedData.Add(DataString(binaryData, SqlDbType.SmallInt));
-                break;
-            case 4:
-                decodedData.Add(DataString(binaryData, SqlDbType.Int));
-                break;
-            case 8:
-                decodedData.Add(DataString(binaryData, SqlDbType.BigInt));
-                break;
-        }
-
-        if (binaryData.Length == 1)
-        {
-            var bitArray = new BitArray(binaryData);
-
-            var stringBuilder = new StringBuilder();
-
-            for (var i = 0; i < 8; i++)
-            {
-                stringBuilder.Insert(0, bitArray[i] ? "1" : "0");
-            }
-
-            stringBuilder.Insert(0, "binary: ");
-
-            decodedData.Add(stringBuilder.ToString());
-        }
-
-        var varcharData = DataString(binaryData, SqlDbType.VarChar);
-
-        if (!string.IsNullOrEmpty(varcharData))
-        {
-            decodedData.Add(DataString(binaryData, SqlDbType.VarChar));
-        }
-
-        return decodedData;
     }
 
     private static string DataString(byte[] data, SqlDbType sqlType)

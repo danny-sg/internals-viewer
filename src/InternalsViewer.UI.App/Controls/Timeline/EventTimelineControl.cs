@@ -1197,7 +1197,7 @@ public sealed class EventTimelineControl : Grid
             var gradient = SKShader.CreateLinearGradient(
                 new SKPoint(b.StartX, b.BarTop),
                 new SKPoint(b.StartX, b.BarBottom),
-                [Scale(b.BarColour, 1f + GradientLift), Scale(b.BarColour, 1f - GradientLift)],
+                [ColourScale(b.BarColour, 1f + GradientLift), ColourScale(b.BarColour, 1f - GradientLift)],
                 null,
                 SKShaderTileMode.Clamp);
 
@@ -1352,7 +1352,7 @@ public sealed class EventTimelineControl : Grid
         if (op.ProbePhaseDuration != 0)
         {
             DrawPhaseBar(canvas, op, op.ProbePhaseTimeMs, op.ProbePhaseDuration, probeTop, probeBottom,
-                         Scale(barColour, PhaseLighten), "Probe");
+                         ColourScale(barColour, PhaseLighten), "Probe");
         }
     }
 
@@ -1522,10 +1522,11 @@ public sealed class EventTimelineControl : Grid
             ? SparseMarkerWidth
             : MarkerWidth;
 
-    private static SKColor TintByCategory(SKColor colour, int category) => Scale(colour, CategoryShade[category]);
+    private static SKColor TintByCategory(SKColor colour, int category) 
+        => ColourScale(colour, CategoryShade[category]);
 
     /// <summary>Scales a colour's RGB channels by <paramref name="factor"/> (clamped), preserving alpha.</summary>
-    private static SKColor Scale(SKColor colour, float factor) => new(
+    private static SKColor ColourScale(SKColor colour, float factor) => new(
         (byte)Math.Clamp(colour.Red * factor, 0, 255),
         (byte)Math.Clamp(colour.Green * factor, 0, 255),
         (byte)Math.Clamp(colour.Blue * factor, 0, 255),

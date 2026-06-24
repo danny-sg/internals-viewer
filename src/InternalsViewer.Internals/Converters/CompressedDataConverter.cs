@@ -31,6 +31,8 @@ public static class CompressedDataConverter
                     return DecodeInt(data, unsigned);
 
                 case SqlDbType.Money:
+                    return DataConverter.BinaryToString(DecodeInt(data, unsigned, 4), sqlType, precision, scale);
+
                 case SqlDbType.SmallMoney:
                     return DataConverter.BinaryToString(DecodeInt(data, unsigned, 8), sqlType, precision, scale);
 
@@ -43,47 +45,6 @@ public static class CompressedDataConverter
 
                 case SqlDbType.SmallDateTime:
                     return DecodeSmallDateTime(data);
-
-                //case SqlDbType.VarBinary:
-                //case SqlDbType.Binary:
-                //    break;
-
-                //case SqlDbType.UniqueIdentifier:
-                //    break;
-
-                //case SqlDbType.Decimal:
-                //    break;
-
-                //case SqlDbType.Money:
-                //case SqlDbType.SmallMoney:
-
-                //    break;
-
-                //case SqlDbType.Real:
-                //    break;
-
-                //case SqlDbType.Float:
-                //    break;
-
-                //case SqlDbType.Variant:
-                //    break;
-
-                ////New 2008 types (STC)
-                //case SqlDbType.Date:
-                //    break;
-
-                //case SqlDbType.Time:
-
-                //    break;
-
-                //case SqlDbType.DateTime2:
-
-                //    break;
-
-                //case SqlDbType.DateTimeOffset:
-
-                //    break;
-
                 case SqlDbType.Binary:
                 case SqlDbType.Bit:
                 case SqlDbType.Char:
@@ -113,6 +74,24 @@ public static class CompressedDataConverter
         {
             return string.Empty;
         }
+    }
+
+    public static int DecodeInternalInt(byte[] data, int startPosition)
+    {
+        if ((data[startPosition] & 0x80) != 0 && data.Length > 1)
+        {
+            var numberOfColumnsData = new byte[2];
+
+            Array.Copy(data, startPosition, numberOfColumnsData, 0, 2);
+
+            numberOfColumnsData[0] = Convert.ToByte(numberOfColumnsData[0] ^ 0x80);
+
+            Array.Reverse(numberOfColumnsData);
+
+            return BitConverter.ToUInt16(numberOfColumnsData, 0);
+        }
+
+        return data[startPosition];
     }
 
     private static string DecodeBigInt(byte[] data, bool unsigned)
@@ -171,13 +150,12 @@ public static class CompressedDataConverter
 
         if (data.Length < 5)
         {
-            //Time only
+            // Time only
             Array.Copy(DecodeInt(data, unsigned, 4), expandedDateTime, data.Length);
         }
         else
         {
-            //time is always the last 4 bytes
-
+            // time is always the last 4 bytes
             var timePart = new byte[4];
             var datePart = new byte[data.Length - 4];
 
@@ -218,23 +196,5 @@ public static class CompressedDataConverter
         Array.Copy(data, returnData, data.Length);
 
         return returnData;
-    }
-
-    public static int DecodeInternalInt(byte[] data, int startPosition)
-    {
-        if ((data[startPosition] & 0x80) != 0 && data.Length > 1)
-        {
-            var numberOfColumnsData = new byte[2];
-
-            Array.Copy(data, startPosition, numberOfColumnsData, 0, 2);
-
-            numberOfColumnsData[0] = Convert.ToByte(numberOfColumnsData[0] ^ 0x80);
-
-            Array.Reverse(numberOfColumnsData);
-
-            return BitConverter.ToUInt16(numberOfColumnsData, 0);
-        }
-
-        return data[startPosition];
     }
 }

@@ -64,7 +64,8 @@ namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 ///     
 ///         Indicated by the header byte. It could be a forwarding pointer, back pointer, or version info.
 /// </remarks>
-public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logger) where TStructure : ColumnStructure
+public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logger) 
+    where TStructure : ColumnStructure
 {
     /// <summary>
     /// Columns are grouped into clusters of 30 in the short and long data regions
@@ -119,6 +120,38 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
         }
 
         return record;
+    }
+
+    /// <summary>
+    /// Loads the header byte
+    /// </summary>
+    /// <remarks>
+    /// Bit 0 - CD Record Field Flag
+    /// Bit 1 - If the record uses row versioning
+    /// Bit 2 - 4 - Record Type - <see cref="CompressedRecordType"/>
+    /// Bit 5 - If the record has a long data region
+    /// </remarks>
+    public void LoadHeader(CdRecord record, byte[] data, int offset)
+    {
+        record.Header = data[offset];
+
+        record.IsCompressedDataRecord = (record.Header & 0b00000001) != 0;
+        record.HasVersioning = (record.Header & 0b00000010) != 0;
+        record.HasLongDataRegion = (record.Header & 0b00100000) != 0;
+
+        record.RecordType = (CompressedRecordType)((record.Header >> 2) & 7);
+
+        var tags = new List<string>();
+
+        tags.Add(record.RecordType.ToString());
+
+        tags.AddIf("Compressed", record.IsCompressedDataRecord);
+        tags.AddIf("Has Long Data Region", record.HasLongDataRegion);
+        tags.AddIf("Has Versioning", record.HasVersioning);
+
+        record.MarkProperty(nameof(record.Header), offset, sizeof(byte), tags);
+
+        Logger.LogDebug("Record Type: {0}", record.RecordType);
     }
 
     /// <summary>
@@ -213,38 +246,6 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
         {
             record.MarkProperty(nameof(record.ShortDataClusterArray), offset, shortDataClusterArraySize);
         }
-    }
-
-    /// <summary>
-    /// Loads the header byte
-    /// </summary>
-    /// <remarks>
-    /// Bit 0 - CD Record Field Flag
-    /// Bit 1 - If the record uses row versioning
-    /// Bit 2 - 4 - Record Type - <see cref="CompressedRecordType"/>
-    /// Bit 5 - If the record has a long data region
-    /// </remarks>
-    public void LoadHeader(CdRecord record, byte[] data, int offset)
-    {
-        record.Header = data[offset];
-
-        record.IsCompressedDataRecord = (record.Header & 0b00000001) != 0;
-        record.HasVersioning = (record.Header & 0b00000010) != 0;
-        record.HasLongDataRegion = (record.Header & 0b00100000) != 0;
-
-        record.RecordType = (CompressedRecordType)((record.Header >> 2) & 7);
-
-        var tags = new List<string>();
-
-        tags.Add(record.RecordType.ToString());
-
-        tags.AddIf("Compressed", record.IsCompressedDataRecord);
-        tags.AddIf("Has Long Data Region", record.HasLongDataRegion);
-        tags.AddIf("Has Versioning", record.HasVersioning);
-
-        record.MarkProperty(nameof(record.Header), offset, sizeof(byte), tags);
-
-        Logger.LogDebug("Record Type: {0}", record.RecordType);
     }
 
     private static void LoadForwardingRecord(CdRecord record)
@@ -355,7 +356,6 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
             record.MarkValue(ItemType.ShortFieldValue, field.Name, field, field.Offset, field.Length);
 
             record.Fields.Add(field);
-
         }
     }
 
