@@ -52,7 +52,8 @@ public static class ServiceRegistration
 
         services.AddTransient<IRecordService, RecordService>();
 
-        services.AddTransient<IPageService, PageService>();
+        services.AddTransient<PageService>();
+        services.AddTransient<IPageService, CachingPageService>();
 
         services.AddTransient<CompressionInfoLoader>();
 

@@ -28,7 +28,7 @@ public sealed class DatabaseTabViewModelFactory(IDatabaseService databaseService
 }
 
 public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService) 
-    : TabViewModel, IAllocationViewModel
+    : TabViewModel, IAllocationViewModel, IAsyncDisposable
 {
     private IDatabaseService DatabaseService { get; } = databaseService;
 
@@ -127,4 +127,6 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
             });
         });
     }
+
+    public ValueTask DisposeAsync() => Database.Connection.DisposeAsync();
 }

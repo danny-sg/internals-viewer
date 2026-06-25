@@ -8,7 +8,8 @@ namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 /// <summary>
 /// Record in the CD (Column Descriptor) format
 /// </summary>
-public class CdIndexRecord(CompressionInfo compressionInfo) : CdRecord(compressionInfo), IIndexRecord
+public sealed class CdIndexRecord(CompressionInfo compressionInfo) 
+    : CdRecord(compressionInfo), IIndexRecord
 {
     /// <summary>
     /// Down page pointer to the next page in the index

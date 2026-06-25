@@ -15,4 +15,6 @@ public sealed class FileConnectionType(IPageReader pageReader, string name) : IC
     {
         throw new NotImplementedException();
     }
+
+    public ValueTask DisposeAsync() => PageReader.DisposeAsync();
 }

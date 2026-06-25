@@ -9,7 +9,7 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// </summary>
 public sealed class LobPageParser : PageParser, IPageParser<LobPage>
 {
-    public PageType[] SupportedPageTypes => new[] { PageType.Lob3, PageType.Lob4 };
+    public PageType[] SupportedPageTypes => [PageType.Lob3, PageType.Lob4];
 
     Page IPageParser.Parse(PageData page)
     {

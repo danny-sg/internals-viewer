@@ -125,7 +125,7 @@ internal class EventParser
         }
         else if (engineEvent.ObjectId > 0)
         {
-            var allocationUnit = database.AllocationUnits.FirstOrDefault(f => f.ObjectId == engineEvent.ObjectId);
+            var allocationUnit = database.AllocationUnits.Values.FirstOrDefault(f => f.ObjectId == engineEvent.ObjectId);
 
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? $"(Object Id {engineEvent.ObjectId})";
 
@@ -134,9 +134,10 @@ internal class EventParser
         }
         else if (engineEvent is TransactionLogEvent { AllocationUnitId: > 0 } logEvent)
         {
-            var allocationUnit = database.AllocationUnits
-                                         .FirstOrDefault(a => a.AllocationUnitId == logEvent.AllocationUnitId);
-
+            var allocationUnit = database.AllocationUnits.TryGetValue(logEvent.AllocationUnitId, out var value)
+                                 ? value
+                                 : AllocationUnit.Unknown;
+     
             engineEvent.ObjectId = allocationUnit?.ObjectId ?? 0;
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? string.Empty;
 

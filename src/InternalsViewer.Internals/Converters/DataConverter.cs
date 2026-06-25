@@ -3,7 +3,6 @@ using System.Data;
 using System.Data.SqlTypes;
 using System.Globalization;
 using System.Text;
-using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using static System.Text.RegularExpressions.Regex;
 
@@ -212,6 +211,11 @@ public static class DataConverter
         return (T?)GetValue(data, sqlType, precision, scale);
     }
 
+    public static T? GetValue<T>(ReadOnlySpan<byte> data, SqlDbType sqlType, byte precision, byte scale)
+    {
+        return (T?)GetValue(data, sqlType, precision, scale);
+    }
+
     /// <summary>
     /// Gets the value of a byte array in terms of an untyped object based on the SQL type
     /// </summary>
@@ -222,35 +226,41 @@ public static class DataConverter
             return null;
         }
 
+        return GetValue(new ReadOnlySpan<byte>(data), sqlType, precision, scale);
+    }
+
+    /// <summary>
+    /// Gets the value of a span in terms of an untyped object based on the SQL type
+    /// </summary>
+    public static object? GetValue(ReadOnlySpan<byte> data, SqlDbType sqlType, byte precision, byte scale)
+    {
         try
         {
-            ReadOnlySpan<byte> span = data;
-
             return sqlType switch
             {
-                SqlDbType.BigInt => BinaryPrimitives.ReadInt64LittleEndian(span),
-                SqlDbType.Int => BinaryPrimitives.ReadInt32LittleEndian(span),
+                SqlDbType.BigInt => BinaryPrimitives.ReadInt64LittleEndian(data),
+                SqlDbType.Int => BinaryPrimitives.ReadInt32LittleEndian(data),
                 SqlDbType.TinyInt => data[0],
-                SqlDbType.SmallInt => BinaryPrimitives.ReadInt16LittleEndian(span),
-                SqlDbType.Char => Encoding.UTF8.GetString(span),
-                SqlDbType.VarChar => Encoding.UTF8.GetString(span),
-                SqlDbType.NChar => Encoding.Unicode.GetString(span),
-                SqlDbType.NVarChar => Encoding.Unicode.GetString(span),
-                SqlDbType.DateTime => DateTimeConverters.DecodeDateTime(span),
-                SqlDbType.SmallDateTime => DateTimeConverters.DecodeSmallDateTime(span),
-                SqlDbType.VarBinary => data,
-                SqlDbType.Binary => data,
-                SqlDbType.UniqueIdentifier => new Guid(span),
-                SqlDbType.Decimal => DecodeDecimal(span, precision, scale),
-                SqlDbType.Money => BinaryPrimitives.ReadInt64LittleEndian(span) / 10000M,
-                SqlDbType.SmallMoney => BinaryPrimitives.ReadInt32LittleEndian(span) / 10000M,
-                SqlDbType.Real => BinaryPrimitives.ReadSingleLittleEndian(span),
-                SqlDbType.Float => BinaryPrimitives.ReadDoubleLittleEndian(span),
-                SqlDbType.Variant => VariantBinaryToString(span),
-                SqlDbType.Date => DateTimeConverters.DecodeDate(span),
-                SqlDbType.Time => DateTimeConverters.DecodeTime(span, scale),
-                SqlDbType.DateTime2 => DateTimeConverters.DecodeDateTime2(span, scale),
-                SqlDbType.DateTimeOffset => DateTimeConverters.DecodeDateTimeOffset(span, scale),
+                SqlDbType.SmallInt => BinaryPrimitives.ReadInt16LittleEndian(data),
+                SqlDbType.Char => Encoding.UTF8.GetString(data),
+                SqlDbType.VarChar => Encoding.UTF8.GetString(data),
+                SqlDbType.NChar => Encoding.Unicode.GetString(data),
+                SqlDbType.NVarChar => Encoding.Unicode.GetString(data),
+                SqlDbType.DateTime => DateTimeConverters.DecodeDateTime(data),
+                SqlDbType.SmallDateTime => DateTimeConverters.DecodeSmallDateTime(data),
+                SqlDbType.VarBinary => data.ToArray(),
+                SqlDbType.Binary => data.ToArray(),
+                SqlDbType.UniqueIdentifier => new Guid(data),
+                SqlDbType.Decimal => DecodeDecimal(data, precision, scale),
+                SqlDbType.Money => BinaryPrimitives.ReadInt64LittleEndian(data) / 10000M,
+                SqlDbType.SmallMoney => BinaryPrimitives.ReadInt32LittleEndian(data) / 10000M,
+                SqlDbType.Real => BinaryPrimitives.ReadSingleLittleEndian(data),
+                SqlDbType.Float => BinaryPrimitives.ReadDoubleLittleEndian(data),
+                SqlDbType.Variant => VariantBinaryToString(data),
+                SqlDbType.Date => DateTimeConverters.DecodeDate(data),
+                SqlDbType.Time => DateTimeConverters.DecodeTime(data, scale),
+                SqlDbType.DateTime2 => DateTimeConverters.DecodeDateTime2(data, scale),
+                SqlDbType.DateTimeOffset => DateTimeConverters.DecodeDateTimeOffset(data, scale),
                 _ => string.Format(CultureInfo.CurrentCulture, "not yet supported ({0:G})", sqlType)
             };
         }

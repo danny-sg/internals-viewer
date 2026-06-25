@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Buffers.Binary;
+using System.Text.RegularExpressions;
 using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Engine.Parsers;
@@ -31,15 +32,20 @@ public static class LogSequenceNumberParser
 
     public static LogSequenceNumber Parse(byte[] data, int startIndex)
     {
-        var virtualLogFile = BitConverter.ToInt32(data, startIndex);
-        var fileOffset = BitConverter.ToInt32(data, startIndex + 4);
-        var recordSequence = BitConverter.ToInt16(data, startIndex + 8);
+        return Parse(data.AsSpan(startIndex));
+    }
+
+    public static LogSequenceNumber Parse(ReadOnlySpan<byte> data)
+    {
+        var virtualLogFile = BinaryPrimitives.ReadInt32LittleEndian(data);
+        var fileOffset = BinaryPrimitives.ReadInt32LittleEndian(data[4..]);
+        var recordSequence = BinaryPrimitives.ReadInt16LittleEndian(data[8..]);
 
         return new LogSequenceNumber(virtualLogFile, fileOffset, recordSequence);
     }
 
     public static LogSequenceNumber Parse(byte[] value)
     {
-        return Parse(value, 0);
+        return Parse(value.AsSpan());
     }
 }

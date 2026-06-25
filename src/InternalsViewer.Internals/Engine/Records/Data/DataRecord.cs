@@ -32,7 +32,7 @@ public sealed class DataRecord : FixedVarRecord
             return default;
         }
 
-        return DataConverter.GetValue<T>(field.Data.ToArray(),
+        return DataConverter.GetValue<T>(field.Data.Span,
                                          field.ColumnStructure.DataType,
                                          field.ColumnStructure.Precision,
                                          field.ColumnStructure.Scale);

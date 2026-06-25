@@ -75,6 +75,11 @@ public static partial class PageAddressParser
     public static PageAddress Parse(byte[] data, int startAddress) => Parse(data.AsSpan(startAddress));
 
     /// <summary>
+    /// Parses a page address from a span at the given offset
+    /// </summary>
+    public static PageAddress Parse(ReadOnlySpan<byte> data, int startAddress) => Parse(data[startAddress..]);
+
+    /// <summary>
     /// Parses a page address from a span
     /// </summary>
     /// <remarks>

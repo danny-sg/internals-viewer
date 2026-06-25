@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 /// <summary>
 /// FixedVar Record Field
 /// </summary>
-public class FixedVarRecordField(ColumnStructure columnStructure) : RecordField(columnStructure)
+public sealed class FixedVarRecordField(ColumnStructure columnStructure) : RecordField(columnStructure)
 {
     public BlobField? BlobInlineRoot { get; set; }
 

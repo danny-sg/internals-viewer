@@ -15,4 +15,6 @@ public class BackupConnectionType(IPageReader pageReader, string name) : IConnec
     {
         throw new NotImplementedException();
     }
+
+    public ValueTask DisposeAsync() => PageReader.DisposeAsync();
 }

@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Internals.Interfaces.Connections;
 
-public interface IConnectionType
+public interface IConnectionType : IAsyncDisposable
 {
     IPageReader PageReader { get; }
 

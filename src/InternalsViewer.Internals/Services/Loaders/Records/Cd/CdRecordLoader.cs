@@ -149,7 +149,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
         tags.AddIf("Has Long Data Region", record.HasLongDataRegion);
         tags.AddIf("Has Versioning", record.HasVersioning);
 
-        record.MarkProperty(nameof(record.Header), offset, sizeof(byte), tags);
+        record.MarkProperty(nameof(record.Header), offset, sizeof(byte), tags.ToArray());
 
         Logger.LogDebug("Record Type: {0}", record.RecordType);
     }
@@ -420,7 +420,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                             value1,
                             bytePosition,
                             sizeof(byte),
-                            new List<string> { item1.ToString() });
+                            [item1.ToString()]);
 
             columnDescriptors.Add(item1);
 
@@ -439,7 +439,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                                 value2,
                                 bytePosition,
                                 sizeof(byte),
-                                new List<string> { item2.ToString() });
+                                [item2.ToString()]);
 
                 columnDescriptors.Add(item2);
 

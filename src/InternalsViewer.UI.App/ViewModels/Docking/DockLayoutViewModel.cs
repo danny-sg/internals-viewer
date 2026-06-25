@@ -209,6 +209,11 @@ public sealed partial class DockLayoutViewModel : ObservableObject
             group.SelectedDocument = group.Documents.FirstOrDefault();
         }
 
+        if (document.Content is IAsyncDisposable disposable)
+        {
+            _ = disposable.DisposeAsync().AsTask();
+        }
+
         CollapseIfEmpty(group);
         OnLayoutChanged();
     }

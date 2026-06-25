@@ -30,13 +30,13 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
 
     private IRecordService RecordService { get; } = recordService;
 
-    public async Task VerifyTables(string databaseName)
+    public async Task VerifyTables(string databaseName, bool includeSystem)
     {
         var database = await CreateDatabase(databaseName);
 
         var results = new List<VerificationResult>();
 
-        var tables = await ObjectService.GetTables(databaseName);
+        var tables = await ObjectService.GetTables(databaseName, includeSystem);
 
         foreach (var objectId in tables)
         {
@@ -65,7 +65,7 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
     {
         var results = new List<VerificationResult>();
 
-        var tableName = database.AllocationUnits.FirstOrDefault(a => a.ObjectId == objectId)?.TableName;
+        var tableName = database.AllocationUnits.Values.FirstOrDefault(a => a.ObjectId == objectId)?.TableName;
 
         var pages = await ObjectPageListService.GetPages(database.Name, objectId, null, Engine.Pages.Enums.PageType.Data);
 
@@ -191,7 +191,7 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
     {
         var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
 
-        var connection = new SqlConnection(connectionString);
+        await using var connection = new SqlConnection(connectionString);
 
         var pageCommand = string.Format("DBCC PAGE('{0}', {1}, {2}, {3}) WITH TABLERESULTS",
             connection.Database,

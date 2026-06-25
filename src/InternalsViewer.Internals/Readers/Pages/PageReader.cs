@@ -8,24 +8,30 @@ namespace InternalsViewer.Internals.Readers.Pages;
 /// </summary>
 public abstract class PageReader
 {
-    protected static int ReadData(string currentRow, int offset, byte[] data)
+    protected static int ReadData(ReadOnlySpan<char> hexSection, int offset, byte[] data)
     {
-        var currentData = currentRow.Substring(20, 44).Replace(" ", string.Empty);
+        var i = 0;
 
-        for (var i = 0; i < currentData.Length; i += 2)
+        while (i < hexSection.Length && offset < PageData.Size)
         {
-            var byteString = currentData.Substring(i, 2);
-
-            if (!byteString.Contains("†") && !byteString.Contains(".") && offset < PageData.Size)
+            if (hexSection[i] == ' ')
             {
-                if (byte.TryParse(byteString,
-                                  NumberStyles.HexNumber,
-                                  CultureInfo.InvariantCulture,
-                                  out data[offset]))
+                i++;
+                continue;
+            }
+
+            if (i + 1 < hexSection.Length)
+            {
+                var pair = hexSection.Slice(i, 2);
+
+                if (!pair.Contains('†') && !pair.Contains('.')
+                    && byte.TryParse(pair, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out data[offset]))
                 {
                     offset++;
                 }
             }
+
+            i += 2;
         }
 
         return offset;

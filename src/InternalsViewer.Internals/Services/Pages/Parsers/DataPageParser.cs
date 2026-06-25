@@ -25,11 +25,12 @@ public sealed class DataPageParser(CompressionInfoLoader compressionInfoLoader) 
     {
         var dataPage = CopyToPageType<DataPage>(page);
 
-        dataPage.AllocationUnit = dataPage.Database
-                                          .AllocationUnits
-                                          .FirstOrDefault(
-                                              a => a.AllocationUnitId == dataPage.PageHeader.AllocationUnitId)
-                                  ?? AllocationUnit.Unknown;
+        var allocationUnit = dataPage.Database
+                                     .AllocationUnits
+                                     .TryGetValue(dataPage.PageHeader.AllocationUnitId, 
+                                                  out var value) ? value : AllocationUnit.Unknown;
+
+        dataPage.AllocationUnit = allocationUnit;
 
         if (dataPage.AllocationUnit.CompressionType == CompressionType.Page && dataPage.IsPageCompressed)
         {

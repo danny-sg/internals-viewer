@@ -59,7 +59,8 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
 
         Logger.LogDebug("Getting allocation units from metadata");
 
-        database.AllocationUnits = AllocationUnitProvider.GetAllocationUnits(database.Metadata);
+        database.AllocationUnits = AllocationUnitProvider.GetAllocationUnits(database.Metadata)
+                                                         .ToDictionary(k => k.AllocationUnitId, v => v);
 
         database.Files = FileProvider.GetFiles(database.Metadata);
 
@@ -77,6 +78,8 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     /// </summary>
     public async Task RefreshAllocations(DatabaseSource database)
     {
+        PageService.ResetCache(database);
+
         await RefreshFileAllocations(database);
 
         await RefreshPfs(database);
@@ -124,17 +127,17 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     {
         Logger.LogDebug("Refreshing allocation unit allocations (via IAMs)");
 
-        foreach (var allocationUnit in database.AllocationUnits)
+        foreach (var allocationUnit in database.AllocationUnits.Values)
         {
             if (allocationUnit.FirstIamPage == PageAddress.Empty)
             {
-                Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - No First IAM page", 
+                Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - No First IAM page",
                                 allocationUnit.AllocationUnitId);
 
                 continue;
             }
 
-            Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - Loading from First IAM page: {FirstIamPage}", 
+            Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - Loading from First IAM page: {FirstIamPage}",
                             allocationUnit.AllocationUnitId,
                             allocationUnit.FirstIamPage);
 

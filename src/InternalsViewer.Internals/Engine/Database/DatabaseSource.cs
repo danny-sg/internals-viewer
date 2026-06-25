@@ -14,40 +14,40 @@ public sealed class DatabaseSource(IConnectionType connection) : DatabaseSummary
     /// <summary>
     /// GAM (Global Allocation Map) chain per database file
     /// </summary>
-    public Dictionary<int, AllocationChain> Gam { get; set; } = new();
+    public Dictionary<int, AllocationChain> Gam { get; set; } = [];
 
     /// <summary>
     /// SGAM (Shared Global Allocation Map) chain per database file
     /// </summary>
-    public Dictionary<int, AllocationChain> SGam { get; set; } = new();
+    public Dictionary<int, AllocationChain> SGam { get; set; } = [];
 
 
     /// <summary>
     /// DCM (Differential Changed Map) chain per database file
     /// </summary>
-    public Dictionary<int, AllocationChain> Dcm { get; set; } = new();
+    public Dictionary<int, AllocationChain> Dcm { get; set; } = [];
 
 
     /// <summary>
     /// BCM (Bulk Changed Map) chain per database file
     /// </summary>
-    public Dictionary<int, AllocationChain> Bcm { get; set; } = new();
+    public Dictionary<int, AllocationChain> Bcm { get; set; } = [];
 
     /// <summary>
     /// PFS (Page Free Space) chain per database file
     /// </summary>
-    public Dictionary<int, PfsChain> Pfs { get; set; } = new();
+    public Dictionary<int, PfsChain> Pfs { get; set; } = [];
 
     public bool IsCompatible => CompatibilityLevel >= 90 && State == 0;
+
+    public List<DatabaseFile> Files { get; set; } = [];
+
+    public Dictionary<long, AllocationUnit> AllocationUnits { get; set; } = [];
+
+    public InternalMetadata Metadata { get; set; } = new();
 
     public int GetFileSize(short fileId)
     {
         return Files.FirstOrDefault(file => file.FileId == fileId)?.Size ?? 0;
     }
-
-    public List<DatabaseFile> Files { get; set; } = new();
-
-    public List<AllocationUnit> AllocationUnits { get; set; } = new();
-
-    public InternalMetadata Metadata { get; set; } = new();
 }

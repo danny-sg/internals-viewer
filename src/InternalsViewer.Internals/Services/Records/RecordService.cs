@@ -107,7 +107,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
         return page.OffsetTable
                    .Select((s, index) => FixedVarIndexRecordLoader.Load(page, s, index, structure))
-                    .ToList();
+                   .ToList();
     }
 
     private IEnumerable<CdIndexRecord> GetCdIndexRecords(IndexPage page)
@@ -116,14 +116,14 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
-            .Select((s, index) =>
-            {
-                var record = CdIndexRecordLoader.Load(page, s, structure);
-
-                record.Slot = index;
-
-                return record;
-            })
-            .ToList();
+                   .Select((s, index) =>
+                   {
+                       var record = CdIndexRecordLoader.Load(page, s, structure);
+                   
+                       record.Slot = index;
+                   
+                       return record;
+                   })
+                   .ToList();
     }
 }

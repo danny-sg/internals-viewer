@@ -34,7 +34,7 @@ public abstract class FixedVarRecordLoader
         tags.AddIf("Has Variable Length Columns", record.HasVariableLengthColumns);
         tags.AddIf("Has Row Versioning", record.HasRowVersioning);
 
-        record.MarkProperty(nameof(FixedVarRecord.StatusBitsA), record.Offset, 1, tags);
+        record.MarkProperty(nameof(FixedVarRecord.StatusBitsA), record.Offset, 1, tags.ToArray());
     }
 
     /// <summary>

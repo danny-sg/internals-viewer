@@ -4,9 +4,44 @@ using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 
-internal class CdRecordField(ColumnStructure columnStructure, CdRecord parentRecord)
+internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord parentRecord)
     : RecordField(columnStructure)
 {
+    public bool IsNull { get; set; }
+
+    public int Cluster { get; set; }
+
+    public int AnchorLength { get; set; }
+
+    public CdRecordField? AnchorField { get; set; }
+
+    public CdRecord Record { get; set; } = parentRecord;
+
+    public short SymbolOffset { get; set; }
+
+    public bool IsPageSymbol { get; set; }
+
+    public override string Value
+    {
+        get
+        {
+            if (IsPageSymbol)
+            {
+                return GetPageSymbolValue();
+            }
+
+            if (AnchorField is { IsNull: false, Data.IsEmpty: false })
+            {
+                return GetValueWithAnchor();
+            }
+
+            return CompressedDataConverter.CompressedBinaryToBinary(Data.Span,
+                                                                    ColumnStructure.DataType,
+                                                                    ColumnStructure.Precision,
+                                                                    ColumnStructure.Scale);
+        }
+    }   
+    
     /// <summary>
     /// Uses the anchor field to expand the compressed data
     /// </summary>
@@ -37,41 +72,6 @@ internal class CdRecordField(ColumnStructure columnStructure, CdRecord parentRec
         fieldData[dataOffset..].CopyTo(compositeData.AsSpan(AnchorLength));
 
         return compositeData;
-    }
-
-    public bool IsNull { get; set; }
-
-    public int Cluster { get; set; }
-
-    public int AnchorLength { get; set; }
-
-    public CdRecordField? AnchorField { get; set; }
-
-    public CdRecord Record { get; set; } = parentRecord;
-
-    public short SymbolOffset { get; set; }
-
-    public bool IsPageSymbol { get; set; }
-
-    public override string Value
-    {
-        get
-        {
-            if (IsPageSymbol)
-            {
-                return GetPageSymbolValue();
-            }
-
-            if (AnchorField is { IsNull: false } && !AnchorField.Data.IsEmpty)
-            {
-                return GetValueWithAnchor();
-            }
-
-            return CompressedDataConverter.CompressedBinaryToBinary(Data.Span,
-                                                                    ColumnStructure.DataType,
-                                                                    ColumnStructure.Precision,
-                                                                    ColumnStructure.Scale);
-        }
     }
 
     private string GetValueWithAnchor()

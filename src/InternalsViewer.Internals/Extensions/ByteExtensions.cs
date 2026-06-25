@@ -1,5 +1,4 @@
-﻿using System.Text;
-using InternalsViewer.Internals.Helpers;
+﻿using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Extensions;
 

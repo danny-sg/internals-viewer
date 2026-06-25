@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using InternalsViewer.Internals.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
@@ -74,7 +73,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
     {
         Logger.BeginScope("Index Record Loader: {FileId}:{PageId}:{Offset}", page.PageAddress.FileId, page.PageAddress.PageId, offset);
 
-        Logger.LogDebug(structure.ToDetailString());
+        Logger.LogTrace("Index Structure: {Structure}", structure);
 
         var nodeType = page.PageHeader.Level switch
         {

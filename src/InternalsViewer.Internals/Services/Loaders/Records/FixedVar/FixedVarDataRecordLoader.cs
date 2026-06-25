@@ -5,7 +5,6 @@ using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 using InternalsViewer.Internals.Helpers;
-using InternalsViewer.Internals.Metadata.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
@@ -145,8 +144,8 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
 
             // Load offset array of 2-byte integers indicating the end offset of each variable length field
             dataRecord.VariableLengthColumnOffsetArray = RecordHelpers.GetOffsetArray(data,
-                                                                     dataRecord.VariableLengthColumnCount,
-                                                                     dataRecord.Offset + offsetStart);
+                                                                                      dataRecord.VariableLengthColumnCount,
+                                                                                      dataRecord.Offset + offsetStart);
 
             dataRecord.MarkProperty(nameof(DataRecord.VariableLengthColumnOffsetArray),
                                     dataRecord.Offset + offsetStart,
@@ -159,7 +158,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         else
         {
             dataRecord.VariableLengthColumnCount = 0;
-            dataRecord.VariableLengthColumnOffsetArray = Array.Empty<ushort>();
+            dataRecord.VariableLengthColumnOffsetArray = [];
         }
     }
 

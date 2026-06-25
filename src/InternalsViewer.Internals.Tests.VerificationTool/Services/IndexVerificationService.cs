@@ -183,7 +183,7 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
     {
         var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
 
-        var connection = new SqlConnection(connectionString);
+        await using var connection = new SqlConnection(connectionString);
 
         var pageCommand = string.Format("DBCC PAGE('{0}', {1}, {2}, {3})",
                                         connection.Database,

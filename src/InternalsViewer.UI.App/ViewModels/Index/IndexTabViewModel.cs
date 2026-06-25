@@ -210,7 +210,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     partial void OnRootPageChanged(PageAddress value)
     {
-        var allocationUnit = Database.AllocationUnits.FirstOrDefault(a => a.RootPage == value);
+        var allocationUnit = Database.AllocationUnits.Values.FirstOrDefault(a => a.RootPage == value);
 
         if (allocationUnit != null)
         {

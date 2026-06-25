@@ -10,6 +10,7 @@ public static class DatabaseSourceExtensions
         var extent = page.PageId / 8;
 
         return databaseSource.AllocationUnits
+                             .Values
                              .FirstOrDefault(u =>
                                              u.IamChain.IsExtentAllocated(extent, page.FileId, false) ||
                                              u.IamChain.SinglePageSlots.Contains(page)

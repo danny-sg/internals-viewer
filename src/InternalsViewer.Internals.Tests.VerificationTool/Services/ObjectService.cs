@@ -36,7 +36,7 @@ internal class ObjectService
         return results;
     }
 
-    public async Task<List<int>> GetTables(string databaseName)
+    public async Task<List<int>> GetTables(string databaseName, bool includeSystem)
     {
         var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
 
@@ -47,9 +47,11 @@ internal class ObjectService
         var sql = @"
             SELECT o.object_id
             FROM   sys.objects o
-            WHERE  o.type IN ('U', 'S')";
+            WHERE  o.type IN ('U', 'S') AND (o.is_ms_shipped = 0 OR @IncludeSystem = 1)";
 
         await using var command = new SqlCommand(sql, sqlConnection);
+
+        command.Parameters.AddWithValue("@IncludeSystem", includeSystem);
 
         await sqlConnection.OpenAsync();
 

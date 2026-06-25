@@ -1,8 +1,3 @@
 ﻿namespace InternalsViewer.UI.App.Models;
 
-public class ExtentAllocation(short fileId, int extentId)
-{
-    public int ExtentId { get; } = extentId;
-
-    public short FileId { get; } = fileId;
-}
+public record struct ExtentAllocation(short FileId, int ExtentId);

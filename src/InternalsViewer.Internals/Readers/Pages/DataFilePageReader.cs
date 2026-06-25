@@ -13,6 +13,8 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader
 {
     private string FilePath { get; } = path;
 
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
     /// <summary>
     /// Reads a page from a SQL Server data file
     /// </summary>
@@ -25,9 +27,16 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader
     /// </remarks>
     public async Task<byte[]> Read(string name, PageAddress pageAddress)
     {
-        var offset = (long)pageAddress.PageId * PageData.Size;
-
         var data = new byte[PageData.Size];
+
+        await ReadInto(name, pageAddress, data);
+
+        return data;
+    }
+
+    public async Task ReadInto(string name, PageAddress pageAddress, byte[] buffer)
+    {
+        var offset = (long)pageAddress.PageId * PageData.Size;
 
         await using var file = File.OpenRead(FilePath);
 
@@ -40,8 +49,6 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader
 
         file.Seek(offset, SeekOrigin.Begin);
 
-        await file.ReadExactlyAsync(data, 0, PageData.Size);
-
-        return data;
+        await file.ReadExactlyAsync(buffer, 0, PageData.Size);
     }
 }

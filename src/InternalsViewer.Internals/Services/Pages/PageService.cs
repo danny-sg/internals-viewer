@@ -22,23 +22,40 @@ public sealed class PageService(ILogger<PageService> logger,
 
             var page = await loader.Load(database, pageAddress);
 
-            Logger.LogDebug("Page {PageAddress}: Page Type: {PageType}", pageAddress, page.PageHeader.PageType);
-
-            var parser = parsers.FirstOrDefault(p => p.SupportedPageTypes.Any(t => page.PageHeader.PageType == t));
-
-            if (parser == null)
-            {
-                Logger.LogError("Page {PageAddress}: Page Type: {PageType} - No parser found for page type",
-                                pageAddress, 
-                                page.PageHeader.PageType);
-
-                throw new ArgumentException($"No parser found for page type {page.PageHeader.PageType}");
-            }
-
-            Logger.LogTrace("Using Parser: {ParserType}", parser.GetType());
-
-            return parser.Parse(page);
+            return ParsePage(page, pageAddress);
         }
+    }
+
+    public async Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress, byte[] buffer)
+    {
+        using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
+        {
+            Logger.LogDebug("Loading page {PageAddress} into buffer", pageAddress);
+
+            var page = await loader.LoadInto(database, pageAddress, buffer);
+
+            return ParsePage(page, pageAddress);
+        }
+    }
+
+    private Page ParsePage(PageData page, PageAddress pageAddress)
+    {
+        Logger.LogDebug("Page {PageAddress}: Page Type: {PageType}", pageAddress, page.PageHeader.PageType);
+
+        var parser = parsers.FirstOrDefault(p => p.SupportedPageTypes.Any(t => page.PageHeader.PageType == t));
+
+        if (parser == null)
+        {
+            Logger.LogError("Page {PageAddress}: Page Type: {PageType} - No parser found for page type",
+                            pageAddress,
+                            page.PageHeader.PageType);
+
+            throw new ArgumentException($"No parser found for page type {page.PageHeader.PageType}");
+        }
+
+        Logger.LogTrace("Using Parser: {ParserType}", parser.GetType());
+
+        return parser.Parse(page);
     }
 
     public async Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress)
@@ -52,5 +69,8 @@ public sealed class PageService(ILogger<PageService> logger,
         }
 
         return typedPage;
+    }
+    public void ResetCache(DatabaseSource database)
+    {
     }
 }

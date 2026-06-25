@@ -35,7 +35,7 @@ public class Marker: DependencyObject
 
     public int? Ordinal { get; set; }
 
-    public List<string> Tags { get; set; } = [];
+    public string[] Tags { get; set; } = [];
 
     public static Marker? GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
     {

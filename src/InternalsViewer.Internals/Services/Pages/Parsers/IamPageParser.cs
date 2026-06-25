@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using InternalsViewer.Internals.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -25,10 +24,13 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
     {
         var iamPage = CopyToPageType<IamPage>(page);
 
-        iamPage.AllocationUnit = iamPage.Database
-                                        .AllocationUnits
-                                        .FirstOrDefault(a => a.AllocationUnitId == iamPage.PageHeader.AllocationUnitId)
-                                 ?? AllocationUnit.Unknown;
+        var allocationUnit = iamPage.Database
+                                    .AllocationUnits
+                                    .TryGetValue(iamPage.PageHeader.AllocationUnitId, out var value) 
+                            ? value 
+                            : AllocationUnit.Unknown;
+
+        iamPage.AllocationUnit = allocationUnit;
 
         var result = Parse(iamPage);
 
@@ -42,17 +44,25 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
         page.StartPage = GetIamStartPage(page);
         page.SinglePageSlots = GetSinglePageSlots(page);
 
-        var allocationData = new byte[AllocationPage.AllocationInterval / 8];
+        var allocationData = page.Data.AsSpan(AllocationPage.AllocationArrayOffset,
+                                              AllocationPage.AllocationInterval / 8);
 
-        Array.Copy(page.Data,
-                   AllocationPage.AllocationArrayOffset,
-                   allocationData,
-                   0,
-                   allocationData.Length);
+        var allocationMap = page.AllocationMap;
 
-        var bitArray = new BitArray(allocationData);
+        for (var i = 0; i < allocationData.Length; i++)
+        {
+            var b = allocationData[i];
+            var baseIndex = i * 8;
 
-        bitArray.CopyTo(page.AllocationMap, 0);
+            allocationMap[baseIndex] = (b & 0x01) != 0;
+            allocationMap[baseIndex + 1] = (b & 0x02) != 0;
+            allocationMap[baseIndex + 2] = (b & 0x04) != 0;
+            allocationMap[baseIndex + 3] = (b & 0x08) != 0;
+            allocationMap[baseIndex + 4] = (b & 0x10) != 0;
+            allocationMap[baseIndex + 5] = (b & 0x20) != 0;
+            allocationMap[baseIndex + 6] = (b & 0x40) != 0;
+            allocationMap[baseIndex + 7] = (b & 0x80) != 0;
+        }
 
         return page;
     }

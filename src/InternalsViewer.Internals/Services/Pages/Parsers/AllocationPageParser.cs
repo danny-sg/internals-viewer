@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using InternalsViewer.Internals.Engine.Pages;
+﻿using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 

@@ -415,9 +415,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         PfsChain = database.Pfs.First().Value;
 
         systemObjectIds = database.AllocationUnits
-            .Where(u => u.IsSystem)
-            .Select(u => u.ObjectId)
-            .ToHashSet();
+                                  .Values
+                                  .Where(u => u.IsSystem)
+                                  .Select(u => u.ObjectId)
+                                  .ToHashSet();
 
         EventFilter = new EventFilterViewModel(settingsService);
         EventFilter.SetSystemObjectIds(systemObjectIds);
@@ -496,8 +497,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Message = $"({results.RowCount} rows affected)";
 
         var names = Database.AllocationUnits
-            .GroupBy(u => u.ObjectId)
-            .ToDictionary(g => g.Key, g => g.First().DisplayName);
+                            .Values
+                            .GroupBy(u => u.ObjectId)
+                            .ToDictionary(g => g.Key, g => g.First().DisplayName);
 
         foreach (var e in results.EngineEvents.Where(e => e.ObjectId > 0))
         {

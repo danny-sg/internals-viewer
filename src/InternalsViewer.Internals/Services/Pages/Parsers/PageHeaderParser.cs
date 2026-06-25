@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Annotations;
+﻿using System.Buffers.Binary;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
@@ -35,6 +36,11 @@ public static class PageHeaderParser
 
     public static PageHeader Parse(byte[] data)
     {
+        return Parse(data.AsSpan());
+    }
+
+    public static PageHeader Parse(ReadOnlySpan<byte> data)
+    {
         var header = new PageHeader();
 
         ReadValues(data, header);
@@ -44,7 +50,7 @@ public static class PageHeaderParser
         return header;
     }
 
-    private static void ReadValues(byte[] data, PageHeader pageHeader)
+    private static void ReadValues(ReadOnlySpan<byte> data, PageHeader pageHeader)
     {
         pageHeader.PageType = (PageType)data[PageTypeOffset];
 
@@ -53,31 +59,31 @@ public static class PageHeaderParser
         pageHeader.PreviousPage = PageAddressParser.Parse(data, PreviousPageOffset);
         pageHeader.NextPage = PageAddressParser.Parse(data, NextPageOffset);
 
-        pageHeader.InternalObjectId = BitConverter.ToInt32(data, ObjectIdOffset);
-        pageHeader.InternalIndexId = BitConverter.ToInt16(data, IndexIdOffset);
+        pageHeader.InternalObjectId = BinaryPrimitives.ReadInt32LittleEndian(data[ObjectIdOffset..]);
+        pageHeader.InternalIndexId = BinaryPrimitives.ReadInt16LittleEndian(data[IndexIdOffset..]);
 
         pageHeader.Level = data[LevelOffset];
 
         pageHeader.HeaderVersion = data[HeaderVersionOffset];
 
         pageHeader.TypeFlagBits = data[TypeFlagBitsOffset];
-        pageHeader.FlagBits = BitConverter.ToInt16(data, FlagBitsOffset);
+        pageHeader.FlagBits = BinaryPrimitives.ReadInt16LittleEndian(data[FlagBitsOffset..]);
 
-        pageHeader.FixedLengthSize = BitConverter.ToInt16(data, FixedLengthOffset);
+        pageHeader.FixedLengthSize = BinaryPrimitives.ReadInt16LittleEndian(data[FixedLengthOffset..]);
 
-        pageHeader.SlotCount = BitConverter.ToInt16(data, SlotCountOffset);
-        pageHeader.FreeCount = BitConverter.ToInt16(data, FreeCountOffset);
-        pageHeader.ReservedCount = BitConverter.ToInt16(data, ReservedCountOffset);
+        pageHeader.SlotCount = BinaryPrimitives.ReadInt16LittleEndian(data[SlotCountOffset..]);
+        pageHeader.FreeCount = BinaryPrimitives.ReadInt16LittleEndian(data[FreeCountOffset..]);
+        pageHeader.ReservedCount = BinaryPrimitives.ReadInt16LittleEndian(data[ReservedCountOffset..]);
 
-        pageHeader.TransactionReservedCount = BitConverter.ToInt16(data, TransactionReservedCountOffset);
+        pageHeader.TransactionReservedCount = BinaryPrimitives.ReadInt16LittleEndian(data[TransactionReservedCountOffset..]);
 
         pageHeader.InternalTransactionId = PageAddressParser.Parse(data, InternalTransactionIdOffset);
-        pageHeader.GhostRecordCount = BitConverter.ToInt16(data, GhostRecordCountOffset);
-        pageHeader.FreeData = BitConverter.ToInt16(data, FreeDataOffset);
+        pageHeader.GhostRecordCount = BinaryPrimitives.ReadInt16LittleEndian(data[GhostRecordCountOffset..]);
+        pageHeader.FreeData = BinaryPrimitives.ReadInt16LittleEndian(data[FreeDataOffset..]);
 
-        pageHeader.TornBits = BitConverter.ToInt32(data, TornBitsOffset);
+        pageHeader.TornBits = BinaryPrimitives.ReadInt32LittleEndian(data[TornBitsOffset..]);
 
-        pageHeader.Lsn = LogSequenceNumberParser.Parse(data, LsnOffset);
+        pageHeader.Lsn = LogSequenceNumberParser.Parse(data[LsnOffset..]);
     }
 
     private static void SetHeaderMarkers(DataStructure header)

@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Buffers;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
 using InternalsViewer.Internals.Engine.Pages;
@@ -27,7 +28,16 @@ public sealed class IndexService(IPageService pageService, IRecordService record
 
         nodes.Add(rootNode);
 
-        await GetIndexNodes(nodes, database, rootPage, null, 0);
+        var buffer = ArrayPool<byte>.Shared.Rent(PageData.Size);
+
+        try
+        {
+            await GetIndexNodes(nodes, database, rootPage, null, 0, buffer);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
 
         return nodes;
     }
@@ -36,7 +46,8 @@ public sealed class IndexService(IPageService pageService, IRecordService record
                                      DatabaseSource database,
                                      PageAddress pageAddress,
                                      PageAddress? parentPageAddress,
-                                     int level)
+                                     int level,
+                                     byte[] buffer)
     {
         var node = nodes.FirstOrDefault(n => n.PageAddress == pageAddress);
 
@@ -47,6 +58,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
                 Level = level,
                 Ordinal = nodes.Count(n => n.Level == level) + 1
             };
+
             nodes.Add(node);
         }
 
@@ -55,7 +67,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
             node.Parents.Add(parentPageAddress.Value);
         }
 
-        var page = await PageService.GetPage(database, pageAddress);
+        var page = await PageService.GetPage(database, pageAddress, buffer);
 
         node.PageType = page.PageHeader.PageType;
         node.PreviousPage = page.PageHeader.PreviousPage;
@@ -76,7 +88,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
                 {
                     node.Children.Add(childPageAddress);
 
-                    await GetIndexNodes(nodes, database, childPageAddress, pageAddress, level + 1);
+                    await GetIndexNodes(nodes, database, childPageAddress, pageAddress, level + 1, buffer);
                 }
             }
         }
