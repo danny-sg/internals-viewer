@@ -1,4 +1,3 @@
-﻿using System.Globalization;
 using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Readers.Pages;
@@ -12,7 +11,7 @@ public abstract class PageReader
     {
         var i = 0;
 
-        while (i < hexSection.Length && offset < PageData.Size)
+        while (i + 1 < hexSection.Length && offset < PageData.Size)
         {
             if (hexSection[i] == ' ')
             {
@@ -20,15 +19,15 @@ public abstract class PageReader
                 continue;
             }
 
-            if (i + 1 < hexSection.Length)
-            {
-                var pair = hexSection.Slice(i, 2);
+            var high = HexValue(hexSection[i]);
+            
+            var low = HexValue(hexSection[i + 1]);
 
-                if (!pair.Contains('†') && !pair.Contains('.')
-                    && byte.TryParse(pair, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out data[offset]))
-                {
-                    offset++;
-                }
+            if ((high | low) >= 0)
+            {
+                data[offset] = (byte)((high << 4) | low);
+
+                offset++;
             }
 
             i += 2;
@@ -36,4 +35,12 @@ public abstract class PageReader
 
         return offset;
     }
+
+    private static int HexValue(char c) => c switch
+    {
+        >= '0' and <= '9' => c - '0',
+        >= 'A' and <= 'F' => c - 'A' + 10,
+        >= 'a' and <= 'f' => c - 'a' + 10,
+        _ => -1,
+    };
 }
