@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Internals.Engine.Pages;
 
-public class IamPage : AllocationPage
+public sealed class IamPage : AllocationPage
 {
     public static readonly int StartPageOffset = 136;
 

@@ -12,9 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using System.Collections.ObjectModel;
-using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.UI.App.Models.Index;
-using InternalsViewer.Internals.Engine.Records.Data;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Internals.Interfaces.Engine;
 
@@ -210,7 +208,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     partial void OnRootPageChanged(PageAddress value)
     {
-        var allocationUnit = Database.AllocationUnits.FirstOrDefault(a => a.RootPage == value);
+        var allocationUnit = Database.AllocationUnits.Values.FirstOrDefault(a => a.RootPage == value);
 
         if (allocationUnit != null)
         {

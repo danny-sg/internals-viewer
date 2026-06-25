@@ -2,7 +2,6 @@ using System;
 using System.ComponentModel;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;

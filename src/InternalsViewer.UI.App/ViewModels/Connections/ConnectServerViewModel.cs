@@ -25,48 +25,48 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 {
     private SettingsService SettingsService { get; } = settingsService;
 
-    private readonly SqlConnectionStringBuilder builder = new() { TrustServerCertificate = true };
+    private readonly SqlConnectionStringBuilder _builder = new() { TrustServerCertificate = true };
 
     public bool CanConnect() => !HasErrors && !IsBusy;    
 
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    private string instanceName = "localhost";
+    private string _instanceName = "localhost";
 
     [Required]
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    private int authenticationType = (int)SqlAuthenticationMethod.ActiveDirectoryIntegrated;
+    private int _authenticationType = (int)SqlAuthenticationMethod.ActiveDirectoryIntegrated;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    private string userId = string.Empty;
+    private string _userId = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    private string password = string.Empty;
+    private string _password = string.Empty;
 
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    private string database = string.Empty;
+    private string _database = string.Empty;
 
     [ObservableProperty]
-    private ObservableCollection<string> databases = [];
+    private ObservableCollection<string> _databases = [];
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    private bool isBusy;
+    private bool _isBusy;
 
     [ObservableProperty]
-    private string connectButtonText = "Connect";
+    private string _connectButtonText = "Connect";
 
     [ObservableProperty]
-    private bool isUserIdEnabled;
+    private bool _isUserIdEnabled;
 
     [ObservableProperty]
-    private bool isPasswordEnabled;
+    private bool _isPasswordEnabled;
 
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
@@ -86,9 +86,9 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
     partial void OnAuthenticationTypeChanged(int value)
     {
-        builder.Authentication = (SqlAuthenticationMethod)value;
+        _builder.Authentication = (SqlAuthenticationMethod)value;
 
-        switch (builder)
+        switch (_builder)
         {
             case { Authentication: SqlAuthenticationMethod.SqlPassword }:
             case { Authentication: SqlAuthenticationMethod.ActiveDirectoryServicePrincipal }:
@@ -106,7 +106,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
                 IsUserIdEnabled = true;
                 IsPasswordEnabled = false;
 
-                builder.Remove(nameof(Password));
+                _builder.Remove(nameof(Password));
 
                 break;
             case { Authentication: SqlAuthenticationMethod.ActiveDirectoryDefault }:
@@ -115,8 +115,8 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
                 IsUserIdEnabled = false;
                 IsPasswordEnabled = false;
 
-                builder.Remove(nameof(UserId));
-                builder.Remove(nameof(Password));
+                _builder.Remove(nameof(UserId));
+                _builder.Remove(nameof(Password));
                 break;
         }
     }
@@ -128,7 +128,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     {
         RefreshConnectionString();
 
-        return builder.ConnectionString;
+        return _builder.ConnectionString;
     }
 
     /// <summary>
@@ -138,28 +138,28 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     {
         RefreshConnectionString();
 
-        builder.Remove(nameof(Password));
+        _builder.Remove(nameof(Password));
 
-        return builder.ConnectionString;
+        return _builder.ConnectionString;
     }
 
     private ServerConnectionSettings GetSettings() =>
         new()
         {
-            InstanceName = instanceName,
-            AuthenticationType = authenticationType,
-            DatabaseName = database,
-            UserId = userId
+            InstanceName = InstanceName,
+            AuthenticationType = AuthenticationType,
+            DatabaseName = Database,
+            UserId = UserId
         };
 
     public async Task RefreshDatabases()
     {
-        if (string.IsNullOrWhiteSpace(instanceName))
+        if (string.IsNullOrWhiteSpace(InstanceName))
         {
             return;
         }
 
-        isBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -199,7 +199,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         }
         finally
         {
-            isBusy = false;
+            IsBusy = false;
         }
     }
 
@@ -255,7 +255,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         }
         finally
         {
-            connection.Close();
+            await connection.CloseAsync();
         }
     }
 
@@ -306,19 +306,19 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
     private void RefreshConnectionString()
     {
-        builder.InitialCatalog = Database;
-        builder.DataSource = InstanceName;
+        _builder.InitialCatalog = Database;
+        _builder.DataSource = InstanceName;
 
-        builder.Authentication = (SqlAuthenticationMethod)AuthenticationType;
+        _builder.Authentication = (SqlAuthenticationMethod)AuthenticationType;
 
         if (!string.IsNullOrEmpty(UserId))
         {
-            builder.UserID = UserId;
+            _builder.UserID = UserId;
         }
 
         if (!string.IsNullOrEmpty(Password))
         {
-            builder.Password = Password;
+            _builder.Password = Password;
         }
     }
 }

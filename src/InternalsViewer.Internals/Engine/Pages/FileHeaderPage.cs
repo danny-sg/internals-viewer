@@ -1,3 +1,3 @@
 ﻿namespace InternalsViewer.Internals.Engine.Pages;
 
-public class FileHeaderPage : DataPage;
+public sealed class FileHeaderPage : DataPage;

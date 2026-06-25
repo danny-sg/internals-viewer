@@ -19,9 +19,21 @@ public sealed class PageLoader : IPageLoader
     {
         var data = await database.Connection.PageReader.Read(database.Name, pageAddress);
 
+        return BuildPageData(database, pageAddress, data);
+    }
+
+    public async Task<PageData> LoadInto(DatabaseSource database, PageAddress pageAddress, byte[] buffer)
+    {
+        await database.Connection.PageReader.ReadInto(database.Name, pageAddress, buffer);
+
+        return BuildPageData(database, pageAddress, buffer);
+    }
+
+    private static PageData BuildPageData(DatabaseSource database, PageAddress pageAddress, byte[] data)
+    {
         var header = PageHeaderParser.Parse(data);
 
-        var page = new PageData
+        return new PageData
         {
             Database = database,
             PageAddress = pageAddress,
@@ -29,8 +41,6 @@ public sealed class PageLoader : IPageLoader
             PageHeader = header,
             OffsetTable = LoadOffsetTable(data, header.SlotCount)
         };
-
-        return page;
     }
 
     /// <summary>

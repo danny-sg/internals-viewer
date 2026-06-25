@@ -21,9 +21,11 @@ namespace InternalsViewer.Internals.Services.Loaders.Chains;
 ///  Bitmap size - 7,988 bytes (63,904 bits)
 ///  Unused      - 108 bytes
 /// </remarks>
-public sealed class AllocationChainService(IPageService pageService)
+public sealed class AllocationChainService(ILogger<AllocationChainService> logger, IPageService pageService)
     : IAllocationChainService
 {
+    public ILogger<AllocationChainService> Logger { get; } = logger;
+
     public async Task<AllocationChain> LoadChain(DatabaseSource database, short fileId, PageType pageType)
     {
         var startPage = pageType switch
@@ -35,6 +37,10 @@ public sealed class AllocationChainService(IPageService pageService)
             _ => throw new InvalidOperationException("Page type is not a database allocation page")
         };
 
+        var startPageAddress = new PageAddress(fileId, startPage);
+
+        Logger.LogDebug("Loading allocation chain ({Type}) starting at {PageAddress}", pageType, startPageAddress);
+
         return await LoadChain(database, new PageAddress(fileId, startPage));
     }
 
@@ -45,13 +51,22 @@ public sealed class AllocationChainService(IPageService pageService)
     {
         var allocation = new AllocationChain();
 
-        var pageCount = (int)Math.Ceiling(database.GetFileSize(startPageAddress.FileId)
-                             / (decimal)AllocationPage.AllocationInterval);
+        var fileSize = database.GetFileSize(startPageAddress.FileId);
+
+        var pageCount = (int)Math.Ceiling(fileSize
+                                          / (decimal)AllocationPage.AllocationInterval);
+
+        Logger.LogDebug("Page Count: {PageCount} ⌈File Size / Allocation Internal⌉ = ⌈ {Size} / {Interval}⌉",
+                        pageCount,
+                        fileSize,
+                        AllocationPage.AllocationInterval);
 
         for (var i = 0; i < pageCount; i++)
         {
-            var address = new PageAddress(startPageAddress.FileId, 
-                                          startPageAddress.PageId + i * AllocationPage.AllocationInterval);
+            var address = new PageAddress(startPageAddress.FileId,
+                                          startPageAddress.PageId + (i * AllocationPage.AllocationInterval));
+
+            Logger.LogDebug("Page {Index}: {PageAddress}", i, address);
 
             var page = await pageService.GetPage<AllocationPage>(database, address);
 

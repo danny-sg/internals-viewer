@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace InternalsViewer.UI.App.Models.Query;
+﻿namespace InternalsViewer.UI.App.Models.Query;
 
 public record QueryOptions
 {

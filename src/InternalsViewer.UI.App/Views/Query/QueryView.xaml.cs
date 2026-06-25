@@ -1,6 +1,4 @@
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.ViewModels.Query;

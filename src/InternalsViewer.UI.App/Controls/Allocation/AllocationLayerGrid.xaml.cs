@@ -3,12 +3,10 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.UI.App.Controls.Index;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;

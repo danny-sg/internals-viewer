@@ -9,7 +9,7 @@ public class DataStructure : IDataStructure
     /// <summary>
     /// Adds a marker that the given property is a part of the data structure at the offset
     /// </summary>
-    public void MarkProperty(string propertyName, int offset, int length, List<string>? tags = null)
+    public void MarkProperty(string propertyName, int offset, int length, string[]? tags = null)
     {
         var dataStructureItem = new PropertyItem
         {
@@ -56,7 +56,7 @@ public class DataStructure : IDataStructure
         MarkItems.Add(dataStructureItem);
     }
 
-    public void MarkValue(ItemType type, string name, object value, int offset, int length, List<string>? tags = null)
+    public void MarkValue(ItemType type, string name, object value, int offset, int length, string[]? tags = null)
     {
         var dataStructureItem = new ValueItem
         {
@@ -65,7 +65,7 @@ public class DataStructure : IDataStructure
             Value = value,
             Offset = offset,
             Length = length,
-            Tags = tags ?? new()
+            Tags = tags ?? []
         };
 
         MarkItems.Add(dataStructureItem);

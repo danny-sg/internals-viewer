@@ -1,6 +1,4 @@
 ﻿using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Engine.Pages.Enums;
-using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;
@@ -72,7 +70,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private IEnumerable<DataRecord> GetFixedVarDataRecords(DataPage page)
     {
-        var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
+        var structure = TableStructureProvider.GetTableStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable.Select((s, index) =>
@@ -87,7 +85,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private IEnumerable<CdRecord> GetCdDataRecords(DataPage page)
     {
-        var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
+        var structure = TableStructureProvider.GetTableStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
@@ -104,28 +102,28 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private IEnumerable<FixedVarIndexRecord> GetFixedVarIndexRecords(IndexPage page)
     {
-        var structure = IndexStructureProvider.GetIndexStructure(page.Database.Metadata,
+        var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
                    .Select((s, index) => FixedVarIndexRecordLoader.Load(page, s, index, structure))
-                    .ToList();
+                   .ToList();
     }
 
     private IEnumerable<CdIndexRecord> GetCdIndexRecords(IndexPage page)
     {
-        var structure = IndexStructureProvider.GetIndexStructure(page.Database.Metadata,
+        var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
-            .Select((s, index) =>
-            {
-                var record = CdIndexRecordLoader.Load(page, s, structure);
-
-                record.Slot = index;
-
-                return record;
-            })
-            .ToList();
+                   .Select((s, index) =>
+                   {
+                       var record = CdIndexRecordLoader.Load(page, s, structure);
+                   
+                       record.Slot = index;
+                   
+                       return record;
+                   })
+                   .ToList();
     }
 }

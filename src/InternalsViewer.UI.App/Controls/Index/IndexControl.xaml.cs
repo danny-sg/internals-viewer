@@ -2,7 +2,6 @@ using InternalsViewer.Internals.Engine.Indexes;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using Windows.System;
 using SkiaSharp;
@@ -14,7 +13,6 @@ using Microsoft.UI.Xaml.Input;
 using Windows.UI.Core;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using Microsoft.UI.Input;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 

@@ -64,7 +64,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 ///     
 ///         Indicated by the header byte. It could be a forwarding pointer, back pointer, or version info.
 /// </remarks>
-public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logger) 
+public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logger)
     where TStructure : ColumnStructure
 {
     /// <summary>
@@ -149,7 +149,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
         tags.AddIf("Has Long Data Region", record.HasLongDataRegion);
         tags.AddIf("Has Versioning", record.HasVersioning);
 
-        record.MarkProperty(nameof(record.Header), offset, sizeof(byte), tags);
+        record.MarkProperty(nameof(record.Header), offset, sizeof(byte), tags.ToArray());
 
         Logger.LogDebug("Record Type: {0}", record.RecordType);
     }
@@ -207,16 +207,16 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
         record.LongDataOffsetArray = RecordHelpers.GetOffsetArray(data, record.LongDataOffsetCount, currentPosition);
 
-        record.MarkProperty(nameof(record.LongDataOffsetArray), 
-                            currentPosition, 
+        record.MarkProperty(nameof(record.LongDataOffsetArray),
+                            currentPosition,
                             record.LongDataOffsetCount * sizeof(ushort));
 
         currentPosition += record.LongDataOffsetCount * sizeof(ushort);
 
         ParseLongDataClusterArray(record, data, currentPosition);
 
-        record.MarkProperty(nameof(record.LongDataClusterArray), 
-                            currentPosition, 
+        record.MarkProperty(nameof(record.LongDataClusterArray),
+                            currentPosition,
                             record.LongDataClusterArray.Length);
 
         currentPosition += record.LongDataClusterArray.Length;
@@ -267,18 +267,10 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
         if ((data[offset] & 0x80) != 0)
         {
-            // Check if the first bit is high, if it is it indicates 2-byte int
+            // Check if the first bit is high, if it is it indicates 2-byte int - stored big-endian with flag bit cleared
             size = 2;
 
-            var columnCount = new byte[2];
-
-            Array.Copy(data, offset, columnCount, 0, 2);
-
-            columnCount[0] = Convert.ToByte(columnCount[0] ^ 0x80);
-
-            Array.Reverse(columnCount);
-
-            record.ColumnCount = BitConverter.ToInt16(columnCount, 0);
+            record.ColumnCount = (short)(((data[offset] ^ 0x80) << 8) | data[offset + 1]);
         }
         else
         {
@@ -309,12 +301,8 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
             if (i >= structure.Columns.Count && columnDescriptor.Value == ColumnDescriptorFlag.SixByteShort)
             {
-                var address = new byte[PageAddress.Size];
-
                 // 6 bytes post columns is the Down Page Pointer
-                Array.Copy(data, offset, address, 0, PageAddress.Size);
-
-                record.DownPagePointer = PageAddressParser.Parse(address);
+                record.DownPagePointer = PageAddressParser.Parse(data.AsSpan(offset, PageAddress.Size));
 
                 record.MarkProperty(nameof(CdIndexRecord.DownPagePointer), offset, PageAddress.Size);
 
@@ -328,7 +316,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
             if (structure.Columns[i].DataType == SqlDbType.Bit)
             {
                 field.Length = 1;
-                field.Data = [(byte)record.ColumnDescriptors[i].Value];
+                field.Data = new ReadOnlyMemory<byte>([(byte)record.ColumnDescriptors[i].Value]);
             }
             else
             {
@@ -341,8 +329,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
                 if (size > 0)
                 {
-                    field.Data = new byte[size];
-                    Array.Copy(data, offset, field.Data, 0, size);
+                    field.Data = data.AsMemory(offset, size);
 
                     field.Offset = offset;
                     offset += size;
@@ -380,12 +367,10 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
                 field.Cluster = cluster;
                 field.Length = RecordHelpers.DecodeOffset(nextOffset) - previousOffset;
-                field.Data = new byte[field.Length];
                 field.Offset = offset + previousOffset;
+                field.Data = data.AsMemory(field.Offset, field.Length);
 
                 var isLob = (nextOffset & 0x8000) == 0;
-
-                Array.Copy(data, field.Offset, field.Data, 0, field.Length);
 
                 field.AnchorField = anchorRecord?.Fields
                                                  .Cast<CdRecordField>()
@@ -435,7 +420,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                             value1,
                             bytePosition,
                             sizeof(byte),
-                            new List<string> { item1.ToString() });
+                            [item1.ToString()]);
 
             columnDescriptors.Add(item1);
 
@@ -454,7 +439,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                                 value2,
                                 bytePosition,
                                 sizeof(byte),
-                                new List<string> { item2.ToString() });
+                                [item2.ToString()]);
 
                 columnDescriptors.Add(item2);
 

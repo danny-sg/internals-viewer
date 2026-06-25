@@ -52,10 +52,7 @@ public class LobRootFieldLoader
 
             var length = BitConverter.ToInt32(data, ChildOffset + i * 12);
 
-            var rowIdData = new byte[8];
-            Array.Copy(data, ChildOffset + i * 12 + 4, rowIdData, 0, 8);
-
-            var rowId = new RowIdentifier(rowIdData);
+            var rowId = new RowIdentifier(data.AsSpan(ChildOffset + i * 12 + 4, 8));
 
             var link = new BlobChildLink(rowId, 0, length);
 

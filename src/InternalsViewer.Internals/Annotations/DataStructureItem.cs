@@ -17,17 +17,7 @@ public class DataStructureItem
 
     public string Prefix { get; set; } = string.Empty;
 
-    public List<string> Tags { get; set; } = new();
+    public string[] Tags { get; set; } = [];
 
     public bool IsVisible { get; set; } = true;
-}
-
-public class PropertyItem : DataStructureItem
-{
-    public string PropertyName { get; set; } = string.Empty;
-}
-
-public class ValueItem : DataStructureItem
-{
-    public object? Value { get; set; }
 }

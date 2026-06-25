@@ -1,13 +1,14 @@
-﻿using System.Data;
+﻿using System.Buffers.Binary;
+using System.Data;
 using System.Globalization;
 
 namespace InternalsViewer.Internals.Converters;
 
 public static class CompressedDataConverter
 {
-    public static string CompressedBinaryToBinary(byte[]? data, SqlDbType sqlType, byte precision, byte scale)
+    public static string CompressedBinaryToBinary(ReadOnlySpan<byte> data, SqlDbType sqlType, byte precision, byte scale)
     {
-        if (data == null || data.Length == 0)
+        if (data.IsEmpty)
         {
             return string.Empty;
         }
@@ -45,27 +46,6 @@ public static class CompressedDataConverter
 
                 case SqlDbType.SmallDateTime:
                     return DecodeSmallDateTime(data);
-                case SqlDbType.Binary:
-                case SqlDbType.Bit:
-                case SqlDbType.Char:
-                case SqlDbType.Decimal:
-                case SqlDbType.Float:
-                case SqlDbType.Image:
-                case SqlDbType.NText:
-                case SqlDbType.Real:
-                case SqlDbType.UniqueIdentifier:
-                case SqlDbType.Text:
-                case SqlDbType.Timestamp:
-                case SqlDbType.VarBinary:
-                case SqlDbType.VarChar:
-                case SqlDbType.Variant:
-                case SqlDbType.Xml:
-                case SqlDbType.Udt:
-                case SqlDbType.Structured:
-                case SqlDbType.Date:
-                case SqlDbType.Time:
-                case SqlDbType.DateTime2:
-                case SqlDbType.DateTimeOffset:
                 default:
                     return DataConverter.BinaryToString(data, sqlType, precision, scale);
             }
@@ -80,63 +60,45 @@ public static class CompressedDataConverter
     {
         if ((data[startPosition] & 0x80) != 0 && data.Length > 1)
         {
-            var numberOfColumnsData = new byte[2];
-
-            Array.Copy(data, startPosition, numberOfColumnsData, 0, 2);
-
-            numberOfColumnsData[0] = Convert.ToByte(numberOfColumnsData[0] ^ 0x80);
-
-            Array.Reverse(numberOfColumnsData);
-
-            return BitConverter.ToUInt16(numberOfColumnsData, 0);
+            return (data[startPosition] ^ 0x80) | (data[startPosition + 1] << 8);
         }
 
         return data[startPosition];
     }
 
-    private static string DecodeBigInt(byte[] data, bool unsigned)
+    private static string DecodeBigInt(ReadOnlySpan<byte> data, bool unsigned)
     {
-        var returnData = DecodeInt(data, unsigned, 8);
+        var decoded = DecodeInt(data, unsigned, 8);
 
-        if (unsigned)
-        {
-            return BitConverter.ToUInt64(returnData, 0).ToString(CultureInfo.CurrentCulture);
-        }
-
-        return BitConverter.ToInt64(returnData, 0).ToString(CultureInfo.CurrentCulture);
+        return unsigned
+            ? BinaryPrimitives.ReadUInt64LittleEndian(decoded).ToString(CultureInfo.CurrentCulture)
+            : BinaryPrimitives.ReadInt64LittleEndian(decoded).ToString(CultureInfo.CurrentCulture);
     }
 
-    private static string DecodeSmallInt(byte[] data, bool unsigned)
+    private static string DecodeSmallInt(ReadOnlySpan<byte> data, bool unsigned)
     {
-        var returnData = DecodeInt(data, unsigned, 2);
+        var decoded = DecodeInt(data, unsigned, 2);
 
-        if (unsigned)
-        {
-            return BitConverter.ToUInt16(returnData, 0).ToString(CultureInfo.CurrentCulture);
-        }
-
-        return BitConverter.ToInt16(returnData, 0).ToString(CultureInfo.CurrentCulture);
+        return unsigned
+            ? BinaryPrimitives.ReadUInt16LittleEndian(decoded).ToString(CultureInfo.CurrentCulture)
+            : BinaryPrimitives.ReadInt16LittleEndian(decoded).ToString(CultureInfo.CurrentCulture);
     }
 
-    private static string DecodeInt(byte[] data, bool unsigned)
+    private static string DecodeInt(ReadOnlySpan<byte> data, bool unsigned)
     {
-        var returnData = DecodeInt(data, unsigned, 4);
+        var decoded = DecodeInt(data, unsigned, 4);
 
-        if (unsigned)
-        {
-            return BitConverter.ToUInt32(returnData, 0).ToString(CultureInfo.CurrentCulture);
-        }
-
-        return BitConverter.ToInt32(returnData, 0).ToString(CultureInfo.CurrentCulture);
+        return unsigned
+            ? BinaryPrimitives.ReadUInt32LittleEndian(decoded).ToString(CultureInfo.CurrentCulture)
+            : BinaryPrimitives.ReadInt32LittleEndian(decoded).ToString(CultureInfo.CurrentCulture);
     }
 
-    private static string DecodeSmallDateTime(byte[] data)
+    private static string DecodeSmallDateTime(ReadOnlySpan<byte> data)
     {
         if (data.Length == 2)
         {
-            var expandedDate = new byte[4];
-
-            Array.Copy(data, 0, expandedDate, 2, 2);
+            Span<byte> expandedDate = stackalloc byte[4];
+            data.CopyTo(expandedDate[2..]);
 
             return DataConverter.BinaryToString(expandedDate, SqlDbType.SmallDateTime);
         }
@@ -144,56 +106,62 @@ public static class CompressedDataConverter
         return DataConverter.BinaryToString(data, SqlDbType.SmallDateTime);
     }
 
-    private static string DecodeDateTime(byte[] data, bool unsigned)
+    private static string DecodeDateTime(ReadOnlySpan<byte> data, bool unsigned)
     {
-        var expandedDateTime = new byte[8];
+        Span<byte> expandedDateTime = stackalloc byte[8];
 
         if (data.Length < 5)
         {
-            // Time only
-            Array.Copy(DecodeInt(data, unsigned, 4), expandedDateTime, data.Length);
+            DecodeInt(data, unsigned, 4).CopyTo(expandedDateTime);
         }
         else
         {
-            // time is always the last 4 bytes
-            var timePart = new byte[4];
-            var datePart = new byte[data.Length - 4];
+            var timePart = data[^4..];
+            var datePart = data[..^4];
 
-            Array.Copy(data, data.Length - 4, timePart, 0, 4);
-            Array.Copy(data, datePart, data.Length - 4);
+            DecodeInt(timePart, (timePart[0] & 0x80) == 0x80, 4).CopyTo(expandedDateTime);
 
-            Array.Copy(DecodeInt(timePart, (timePart[0] & 0x80) == 0x80, 4), expandedDateTime, timePart.Length);
+            Span<byte> dateDecoded = stackalloc byte[datePart.Length];
+            datePart.CopyTo(dateDecoded);
 
             if (!unsigned)
             {
-                datePart[0] = Convert.ToByte(datePart[0] ^ 0x80);
+                dateDecoded[0] ^= 0x80;
             }
 
-            Array.Copy(DecodeInt(datePart, unsigned, 4), 0, expandedDateTime, 4, 4);
+            DecodeInt(dateDecoded, unsigned, 4).CopyTo(expandedDateTime[4..]);
         }
 
         return DataConverter.BinaryToString(expandedDateTime, SqlDbType.DateTime);
     }
 
-    private static byte[] DecodeInt(byte[] data, bool unsigned, int size)
+    /// <summary>
+    /// Decodes a compressed big-endian integer into a little-endian buffer of the requested size.
+    /// </summary>
+    /// <remarks>
+    /// SQL Server row compression stores integers big-endian with the sign bit in the high byte masked.
+    /// Unsigned values have 0x80 XOR'd into the most-significant byte; signed values are sign-extended with 0xFF.
+    /// </remarks>
+    private static Span<byte> DecodeInt(ReadOnlySpan<byte> data, bool unsigned, int size)
     {
         var returnData = new byte[size];
 
         if (!unsigned)
         {
-            for (var i = 0; i < returnData.Length; i++)
-            {
-                returnData[i] = 0xFF;
-            }
+            returnData.AsSpan().Fill(0xFF);
         }
-        else
+
+        // Reverse copy: data is big-endian, returnData should be little-endian
+        for (var i = 0; i < data.Length; i++)
         {
-            data[0] = Convert.ToByte(data[0] ^ 0x80);
+            returnData[data.Length - 1 - i] = data[i];
         }
 
-        Array.Reverse(data);
-
-        Array.Copy(data, returnData, data.Length);
+        if (unsigned)
+        {
+            // XOR was originally on data[0] (MSB); after reversal that byte is at index data.Length-1
+            returnData[data.Length - 1] ^= 0x80;
+        }
 
         return returnData;
     }

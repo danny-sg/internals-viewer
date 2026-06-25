@@ -9,22 +9,22 @@ namespace InternalsViewer.UI.App.ViewModels.Page;
 public partial class HexControlViewModel
 {
     [ObservableProperty]
-    private bool isDataTipOpen;
+    private bool _isDataTipOpen;
 
     [ObservableProperty]
-    private ObservableCollection<DecodeResult> decodeResults = [];
+    private ObservableCollection<DecodeResult> _decodeResults = [];
 
     [ObservableProperty]
-    private int startOffset;
+    private int _startOffset;
 
     [ObservableProperty]
-    private int endOffset;
+    private int _endOffset;
 
     [ObservableProperty]
-    private string selectedText = string.Empty;
+    private string _selectedText = string.Empty;
 
     [ObservableProperty]
-    private string dataTipTitle = string.Empty;
+    private string _dataTipTitle = string.Empty;
 
     partial void OnSelectedTextChanged(string value)
     {
@@ -45,8 +45,15 @@ public partial class HexControlViewModel
 
     private void SetDataTipTitle()
     {
-        DataTipTitle = $" {StartOffset} (0x{StartOffset:X8}) - {EndOffset} (0x{EndOffset:X8})";
-    }   
+        if (StartOffset == EndOffset)
+        {
+            DataTipTitle = $"  {StartOffset - 1} (0x{StartOffset - 1:X8})";
+        }
+        else
+        {
+            DataTipTitle = $" {StartOffset - 1} (0x{StartOffset - 1:X8}) - {EndOffset - 1} (0x{EndOffset - 1:X8})";
+        }
+    }
 
     [RelayCommand]
     private void CloseDataTip()

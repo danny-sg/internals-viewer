@@ -3,14 +3,13 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Generators;
 
 // ReSharper disable StringLiteralTypo
-
 namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 
 /// <summary>
 /// SQL Server Allocation Units definitions table - sys.sysallocunits    
 /// </summary>
 [InternalsMetadata]
-public record InternalAllocationUnit
+public sealed record InternalAllocationUnit
 {
     public static PageAddress Location => new(1, 20);
 

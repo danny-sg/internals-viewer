@@ -67,6 +67,5 @@ public static class DataDecoder
         }
 
         return new DecodeResult(sqlType.ToString(), value);
-        
     }
 }

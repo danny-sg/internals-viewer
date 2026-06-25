@@ -5,13 +5,13 @@ namespace InternalsViewer.Internals.Tests.Helpers;
 
 public sealed class FilePageReader(string path) : PageReader, IPageReader
 {
-    private static byte[] LoadTextPage(string pageText)
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+    private static void LoadTextPage(string pageText, byte[] buffer)
     {
         var offset = 0;
 
         var dumpFound = false;
-
-        var data = new byte[PageData.Size];
 
         foreach (var line in pageText.Split([Environment.NewLine], StringSplitOptions.None))
         {
@@ -26,14 +26,12 @@ public sealed class FilePageReader(string path) : PageReader, IPageReader
             }
             if (dumpFound && !string.IsNullOrEmpty(line) && line.Length >= 64)
             {
-                offset = ReadData(line, offset, data);
+                offset = ReadData(line.AsSpan(20, 44), offset, buffer);
             }
         }
-
-        return data;
     }
 
-    public async Task<byte[]> Read(string name, PageAddress pageAddress)
+    private async Task<string> ReadPageText(string name, PageAddress pageAddress)
     {
         var pattern = $"{name}_{pageAddress.FileId}_{pageAddress.PageId}_*.page";
 
@@ -49,8 +47,22 @@ public sealed class FilePageReader(string path) : PageReader, IPageReader
             throw new ArgumentException($"Multiple files found matching pattern: {pattern}");
         }
 
-        var pageText = await File.ReadAllTextAsync(files[0]);
+        return await File.ReadAllTextAsync(files[0]);
+    }
 
-        return LoadTextPage(pageText);
+    public async Task<byte[]> Read(string name, PageAddress pageAddress)
+    {
+        var data = new byte[PageData.Size];
+
+        await ReadInto(name, pageAddress, data);
+
+        return data;
+    }
+
+    public async Task ReadInto(string name, PageAddress pageAddress, byte[] buffer)
+    {
+        var pageText = await ReadPageText(name, pageAddress);
+
+        LoadTextPage(pageText, buffer);
     }
 }

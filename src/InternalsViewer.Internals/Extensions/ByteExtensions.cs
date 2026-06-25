@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Text;
-using InternalsViewer.Internals.Helpers;
+﻿using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Extensions;
 
@@ -11,16 +9,13 @@ public static class ByteExtensions
     /// </summary>
     public static string ToBinaryString(this byte input)
     {
-        var bitArray = new BitArray(new[] { input });
-
-        var stringBuilder = new StringBuilder();
-
-        for (var i = 0; i < bitArray.Length; i++)
+        return string.Create(8, input, static (span, b) =>
         {
-            stringBuilder.Append(bitArray[i] ? "1" : "0");
-        }
-
-        return stringBuilder.ToString();
+            for (var i = 0; i < 8; i++)
+            {
+                span[i] = (b & (1 << i)) != 0 ? '1' : '0';
+            }
+        });
     }
 
     /// <summary>

@@ -39,9 +39,9 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     /// </summary>
     public async Task<DatabaseSource> LoadAsync(string name, IConnectionType connection)
     {
-        Logger.LogInformation("Loading database {DatabaseName}", name);
+        var startTimestamp = Stopwatch.GetTimestamp();
 
-        Logger.LogDebug("Getting database information");
+        Logger.LogInformation("Loading database {DatabaseName}", name);
 
         var database = new DatabaseSource(connection)
         {
@@ -49,25 +49,26 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
             Name = name
         };
 
-        Logger.LogDebug("Loading Boot Page");
+        Logger.LogDebug("Loading Boot Page: {BootPageAddress}", BootPage.BootPageAddress);
 
         database.BootPage = await PageService.GetPage<BootPage>(database, BootPage.BootPageAddress);
 
-        Logger.LogDebug("Reading database internal tables/metadata");
+        Logger.LogDebug("Booting database from internal tables/metadata");
 
         await RefreshMetadata(database);
 
         Logger.LogDebug("Getting allocation units from metadata");
 
-        database.AllocationUnits = AllocationUnitProvider.GetAllocationUnits(database.Metadata);
-
-        Logger.LogDebug("Getting files from metadata");
+        database.AllocationUnits = AllocationUnitProvider.GetAllocationUnits(database.Metadata)
+                                                         .ToDictionary(k => k.AllocationUnitId, v => v);
 
         database.Files = FileProvider.GetFiles(database.Metadata);
 
-        Logger.LogDebug("Refreshing allocations");
+        Logger.LogDebug("Reading allocations");
 
         await RefreshAllocations(database);
+
+        Logger.LogInformation("Database loaded in {Duration}", Stopwatch.GetElapsedTime(startTimestamp));
 
         return database;
     }
@@ -77,6 +78,8 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     /// </summary>
     public async Task RefreshAllocations(DatabaseSource database)
     {
+        PageService.ResetCache(database);
+
         await RefreshFileAllocations(database);
 
         await RefreshPfs(database);
@@ -124,19 +127,17 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     {
         Logger.LogDebug("Refreshing allocation unit allocations (via IAMs)");
 
-        foreach (var allocationUnit in database.AllocationUnits)
+        foreach (var allocationUnit in database.AllocationUnits.Values)
         {
-            Logger.LogTrace("Allocation Unit Id: {AllocationUnitId} - Refreshing", allocationUnit.AllocationUnitId);
-
             if (allocationUnit.FirstIamPage == PageAddress.Empty)
             {
-                Logger.LogTrace("Allocation Unit Id: {AllocationUnitId} - No First IAM page", 
+                Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - No First IAM page",
                                 allocationUnit.AllocationUnitId);
 
                 continue;
             }
 
-            Logger.LogTrace("Allocation Unit Id: {AllocationUnitId} - Loading from First IAM page: {FirstIamPage}", 
+            Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - Loading from First IAM page: {FirstIamPage}",
                             allocationUnit.AllocationUnitId,
                             allocationUnit.FirstIamPage);
 
@@ -149,7 +150,7 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     /// </summary>
     private async Task RefreshPfs(DatabaseSource databaseDetail)
     {
-        Logger.LogDebug("Refreshing PFS allocations");
+        Logger.LogDebug("Refreshing PFS chain");
 
         databaseDetail.Pfs.Clear();
 

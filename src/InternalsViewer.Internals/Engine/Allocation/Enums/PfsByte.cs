@@ -26,7 +26,7 @@ public record PfsByte
 
     public override string ToString()
     {
-        var stringBuilder = new StringBuilder($"0x{Value:X2} ");
+        var stringBuilder = new StringBuilder("PFS Status: ");
 
         if (IsAllocated)
         {

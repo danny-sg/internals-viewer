@@ -8,10 +8,10 @@ namespace InternalsViewer.Internals.Helpers;
 public static class StringHelpers
 {
     private static readonly char[] HexDigits =
-    {
+    [
         '0', '1', '2', '3', '4', '5', '6', '7',
         '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-    };
+    ];
 
     /// <summary>
     /// Returns a hex string for a given array of bytes
@@ -25,6 +25,16 @@ public static class StringHelpers
             return string.Empty;
         }
 
+        return ToHexString(bytes.AsSpan());
+    }
+
+    public static string ToHexString(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.IsEmpty)
+        {
+            return string.Empty;
+        }
+
         var chars = new char[bytes.Length * 2];
 
         for (var i = 0; i < bytes.Length; i++)
@@ -32,7 +42,7 @@ public static class StringHelpers
             int b = bytes[i];
 
             chars[i * 2] = HexDigits[b >> 4];
-            chars[i * 2 + 1] = HexDigits[b & 0xF];
+            chars[(i * 2) + 1] = HexDigits[b & 0xF];
         }
 
         return new string(chars);
@@ -41,11 +51,13 @@ public static class StringHelpers
     /// <summary>
     /// Returns a hex string for a given byte
     /// </summary>
-    /// <param name="bytes">The bytes.</param>
-    /// <returns></returns>
-    public static string ToHexString(byte bytes)
+    public static string ToHexString(byte b)
     {
-        return ToHexString(new byte[1] { bytes });
+        return string.Create(2, b, static (span, v) =>
+        {
+            span[0] = HexDigits[v >> 4];
+            span[1] = HexDigits[v & 0xF];
+        });
     }
 
     public static string SplitCamelCase(this string value, string separator = " ")
@@ -61,9 +73,9 @@ public static class StringHelpers
 
         for (var i = 0; i < data.Length; i++)
         {
-            data[i] = byte.Parse(value.Substring(i * 2, 2),
-                NumberStyles.AllowHexSpecifier,
-                CultureInfo.InvariantCulture);
+            data[i] = byte.Parse(value.AsSpan(i * 2, 2),
+                                 NumberStyles.AllowHexSpecifier,
+                                 CultureInfo.InvariantCulture);
         }
 
         return data;

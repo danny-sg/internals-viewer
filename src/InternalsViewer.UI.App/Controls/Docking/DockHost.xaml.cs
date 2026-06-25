@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using CommunityToolkit.WinUI.Controls;
 using InternalsViewer.UI.App.ViewModels.Docking;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 

@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 /// <summary>
 /// FixedVar Record Field
 /// </summary>
-public class FixedVarRecordField(ColumnStructure columnStructure) : RecordField(columnStructure)
+public sealed class FixedVarRecordField(ColumnStructure columnStructure) : RecordField(columnStructure)
 {
     public BlobField? BlobInlineRoot { get; set; }
 
@@ -16,7 +16,7 @@ public class FixedVarRecordField(ColumnStructure columnStructure) : RecordField(
 
     public bool IsSparse { get; set; }
 
-    public override string Value => DataConverter.BinaryToString(Data,
+    public override string Value => DataConverter.BinaryToString(Data.Span,
                                                                  ColumnStructure.DataType,
                                                                  ColumnStructure.Precision,
                                                                  ColumnStructure.Scale,
@@ -30,6 +30,6 @@ public class FixedVarRecordField(ColumnStructure columnStructure) : RecordField(
                              Length,
                              ColumnStructure.ColumnName,
                              ColumnStructure.DataType,
-                             StringHelpers.ToHexString(Data));
+                             StringHelpers.ToHexString(Data.Span));
     }
 }

@@ -1,9 +1,10 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Buffers.Binary;
+using System.Text.RegularExpressions;
 using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Engine.Parsers;
 
-public static class PageAddressParser
+public static partial class PageAddressParser
 {
     /// <summary>
     /// Parses a page address from a string in number format
@@ -15,14 +16,14 @@ public static class PageAddressParser
             return ParseBytes(address);
         }
 
-        var decimalMatch = Regex.Match(address, @"^(\d+):(\d+)$");
+        var decimalMatch = DecimalFormatRegEx().Match(address);
 
         if (decimalMatch.Success)
         {
             return new PageAddress(short.Parse(decimalMatch.Groups[1].Value), int.Parse(decimalMatch.Groups[2].Value));
         }
 
-        var hexMatch = Regex.Match(address, @"^([0-9A-Fa-f]{4}):([0-9A-Fa-f]{8})$");
+        var hexMatch = HexFormatRegEx().Match(address);
 
         if (hexMatch.Success)
         {
@@ -48,7 +49,7 @@ public static class PageAddressParser
 
             return false;
         }
-    }   
+    }
 
     /// <summary>
     /// Parses a page address from a hex string
@@ -58,7 +59,7 @@ public static class PageAddressParser
     /// </remarks>
     public static PageAddress ParseBytes(string address)
     {
-        var bytes = Convert.FromHexString(address[2..]);
+        var bytes = Convert.FromHexString(address.AsSpan(2));
 
         return Parse(bytes);
     }
@@ -66,24 +67,28 @@ public static class PageAddressParser
     /// <summary>
     /// Parses a page address from a byte array
     /// </summary>
-    /// <remarks>
-    /// Page Address is stored in 6 bytes, 4 bytes for the page id and 2 bytes for the file id
-    /// </remarks>
-    public static PageAddress Parse(byte[] data)
-    {
-        return Parse(data, 0);
-    }
+    public static PageAddress Parse(byte[] data) => Parse(data.AsSpan());
 
     /// <summary>
-    /// Parses a page address from a byte array
+    /// Parses a page address from a byte array at the given offset
+    /// </summary>
+    public static PageAddress Parse(byte[] data, int startAddress) => Parse(data.AsSpan(startAddress));
+
+    /// <summary>
+    /// Parses a page address from a span at the given offset
+    /// </summary>
+    public static PageAddress Parse(ReadOnlySpan<byte> data, int startAddress) => Parse(data[startAddress..]);
+
+    /// <summary>
+    /// Parses a page address from a span
     /// </summary>
     /// <remarks>
     /// Page Address is stored in 6 bytes, 4 bytes for the page id and 2 bytes for the file id
     /// </remarks>
-    public static PageAddress Parse(byte[] data, int startAddress)
+    public static PageAddress Parse(ReadOnlySpan<byte> data)
     {
-        var pageId = BitConverter.ToInt32(data, startAddress);
-        var fileId = BitConverter.ToInt16(data, startAddress + 4);
+        var pageId = BinaryPrimitives.ReadInt32LittleEndian(data);
+        var fileId = BinaryPrimitives.ReadInt16LittleEndian(data[4..]);
 
         return new PageAddress(fileId, pageId);
     }
@@ -95,11 +100,27 @@ public static class PageAddressParser
             return PageAddress.Empty;
         }
 
-        if(address.Length != PageAddress.Size)
+        if (address.Length != PageAddress.Size)
+        {
+            throw new ArgumentException("Invalid page address format", nameof(address));
+        }
+
+        return Parse(address.AsSpan());
+    }
+
+    public static PageAddress ToPageAddress(this ReadOnlySpan<byte> address)
+    {
+        if (address.Length != PageAddress.Size)
         {
             throw new ArgumentException("Invalid page address format", nameof(address));
         }
 
         return Parse(address);
     }
+
+    [GeneratedRegex(@"^\(?(\d+):(\d+)\)?$")]
+    private static partial Regex DecimalFormatRegEx();
+
+    [GeneratedRegex(@"^([0-9A-Fa-f]{4}):([0-9A-Fa-f]{8})$")]
+    private static partial Regex HexFormatRegEx();
 }

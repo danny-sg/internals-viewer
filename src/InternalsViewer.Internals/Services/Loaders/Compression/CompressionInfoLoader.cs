@@ -1,9 +1,9 @@
-﻿using System.Data;
+﻿using System.Buffers.Binary;
+using System.Data;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Metadata.Structures;
-using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 
 namespace InternalsViewer.Internals.Services.Loaders.Compression;
@@ -21,17 +21,19 @@ public sealed class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
 
         ParseHeader(ci, page.Data, offset);
 
-        ci.PageModificationCount = BitConverter.ToInt16(page.Data, offset + 1);
+        var span = page.Data.AsSpan(offset);
+
+        ci.PageModificationCount = BinaryPrimitives.ReadInt16LittleEndian(span[1..]);
 
         ci.MarkProperty(nameof(ci.PageModificationCount), offset + sizeof(byte), sizeof(short));
 
-        ci.Length = BitConverter.ToUInt16(page.Data, offset + 3);
+        ci.Length = BinaryPrimitives.ReadUInt16LittleEndian(span[3..]);
 
         ci.MarkProperty(nameof(ci.Length), offset + sizeof(byte) + sizeof(short), sizeof(short));
 
         if (ci.HasDictionary)
         {
-            ci.Size = BitConverter.ToInt16(page.Data, offset + 5);
+            ci.Size = BinaryPrimitives.ReadInt16LittleEndian(span[5..]);
 
             ci.MarkProperty(nameof(ci.Size), offset + sizeof(byte) + sizeof(short) + sizeof(short), sizeof(short));
         }
@@ -61,7 +63,7 @@ public sealed class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
         tags.AddIf("Has Anchor Record", ci.HasAnchorRecord);
         tags.AddIf("Has Dictionary", ci.HasDictionary);
 
-        ci.MarkProperty(nameof(ci.Header), offset, sizeof(byte), tags);
+        ci.MarkProperty(nameof(ci.Header), offset, sizeof(byte), tags.ToArray());
     }
 
     private static void LoadDictionary(CompressionInfo ci, byte[] data, ushort offset)

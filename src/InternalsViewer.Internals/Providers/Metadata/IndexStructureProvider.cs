@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Metadata.Internals;
@@ -12,6 +13,23 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 /// </summary>
 public static class IndexStructureProvider
 {
+    /// <summary>
+    /// Gets the index structure for the specified allocation unit, using the database-level cache.
+    /// </summary>
+    public static IndexStructure GetIndexStructure(DatabaseSource database, long allocationUnitId)
+    {
+        if (database.IndexStructures.TryGetValue(allocationUnitId, out var cached))
+        {
+            return cached;
+        }
+
+        var structure = GetIndexStructure(database.Metadata, allocationUnitId);
+
+        database.IndexStructures[allocationUnitId] = structure;
+
+        return structure;
+    }
+
     /// <summary>
     /// Gets the index structure for the specified allocation unit
     /// </summary>
@@ -47,24 +65,18 @@ public static class IndexStructureProvider
     {
         var structure = new IndexStructure(allocationUnitId);
 
-        var allocationUnit = metadata.AllocationUnits
-                                     .FirstOrDefault(a => a.AllocationUnitId == allocationUnitId);
-
-        if (allocationUnit == null)
+        if (!metadata.AllocationUnits.TryGetValue(allocationUnitId, out var allocationUnit))
         {
             throw new ArgumentException($"Allocation unit {allocationUnitId} not found");
         }
 
-        var rowSet = metadata.RowSets
-                             .FirstOrDefault(p => p.RowSetId == allocationUnit.ContainerId);
-
-        if (rowSet == null)
+        if (!metadata.RowSets.TryGetValue(allocationUnit.ContainerId, out var rowSet))
         {
             throw new ArgumentException($"Row set {allocationUnit.ContainerId} not found");
         }
 
-        var index = metadata.Indexes.FirstOrDefault(i => i.ObjectId == rowSet.ObjectId
-                                                         && i.IndexId == rowSet.IndexId);
+        var index = metadata.Indexes[rowSet.ObjectId]
+                            .FirstOrDefault(i => i.IndexId == rowSet.IndexId);
 
         if (index == null)
         {
@@ -155,16 +167,14 @@ public static class IndexStructureProvider
     private static List<IndexColumnStructure> GetNonClusteredIndexColumns(IndexStructure structure, InternalMetadata metadata)
     {
         // Index physical structure
-        var columnLayouts = metadata.ColumnLayouts.Where(c => c.PartitionId == structure.PartitionId).ToList();
+        var columnLayouts = metadata.ColumnLayouts[structure.PartitionId].ToList();
 
-        // Table columns
-        var columns = metadata.Columns.Where(c => c.ObjectId == structure.ObjectId).ToList();
+        // Table columns keyed by ColumnId for O(1) lookup
+        var columns = metadata.Columns[structure.ObjectId].ToDictionary(c => c.ColumnId);
 
-        // Index columns
-        var indexColumns = metadata.IndexColumns
-                                   .Where(c => c.ObjectId == structure.ObjectId
-                                               && c.IndexId == structure.IndexId)
-                                   .ToList();
+        // Index columns keyed by IndexColumnId for O(1) lookup
+        var indexColumns = metadata.IndexColumns[(structure.ObjectId, structure.IndexId)]
+                                   .ToDictionary(c => c.IndexColumnId);
 
         var keyStack = new List<ColumnStructure>();
 
@@ -180,24 +190,24 @@ public static class IndexStructureProvider
 
     private static IndexColumnStructure ToIndexColumnStructure(InternalColumnLayout layout,
                                                                IndexStructure structure,
-                                                               List<InternalIndexColumn> indexColumns,
-                                                               List<InternalColumn> columns,
+                                                               Dictionary<int, InternalIndexColumn> indexColumns,
+                                                               Dictionary<int, InternalColumn> columns,
                                                                List<ColumnStructure> keyStack)
     {
-        /*
-            The Offset field is a 4 byte integer, the first 2 bytes represent the leaf offset (offset in a leaf index page), the second
-            2 bytes represent the node offset (offset in a node/non-leaf index page).
-        */
         var leafOffset = (short)(layout.Offset & 0xffff);
         var nodeOffset = (short)(layout.Offset >> 16);
 
         var typeInfo = layout.TypeInfo.ToTypeInfo();
 
         // If the index is explicitly defined on a column there should be a matching index column mapped via Index Column Id
-        var indexColumn = indexColumns.FirstOrDefault(c => c.IndexColumnId == layout.ColumnId);
+        indexColumns.TryGetValue(layout.ColumnId, out var indexColumn);
 
         // An index column will map to a table column
-        var column = columns.FirstOrDefault(c => c.ColumnId == indexColumn?.ColumnId);
+        InternalColumn? column = null;
+        if (indexColumn != null)
+        {
+            columns.TryGetValue(indexColumn.ColumnId, out column);
+        }
 
         // Check if the column is a key column and remove it from the available key columns in the stack
         var key = keyStack.FirstOrDefault(f => f.ColumnId == indexColumn?.ColumnId);
@@ -271,11 +281,13 @@ public static class IndexStructureProvider
     /// </summary>
     private static long? GetParentAllocationUnitId(int objectId, int partitionNumber, InternalMetadata metadata)
     {
-        var rowSet = metadata.RowSets.FirstOrDefault(p => p.ObjectId == objectId
-                                                     && p.PartitionNumber == partitionNumber
-                                                     && p.IndexId <= 1);
+        var rowSet = metadata.RowSets.Values
+                             .FirstOrDefault(p => p.ObjectId == objectId
+                                             && p.PartitionNumber == partitionNumber
+                                             && p.IndexId <= 1);
 
-        var allocationUnit = metadata.AllocationUnits.FirstOrDefault(a => a.ContainerId == rowSet?.RowSetId);
+        var allocationUnit = metadata.AllocationUnits.Values
+                                     .FirstOrDefault(a => a.ContainerId == rowSet?.RowSetId);
 
         return allocationUnit?.AllocationUnitId;
     }

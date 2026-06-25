@@ -30,14 +30,24 @@ public sealed partial class ConnectView
     {
         if (args.IsSettingsSelected)
         {
-            ContentFrame.Navigate(typeof(SettingsPage));
+            ContentFrame.Navigate(typeof(SettingsView));
         }
         else
         {
             var selectedItem = (NavigationViewItem)args.SelectedItem;
             var selectedItemTag = (string)selectedItem.Tag;
 
-            await Navigate(selectedItemTag);
+            try
+            {
+                await Navigate(selectedItemTag);
+            }
+            catch (Exception ex)
+            {
+                // Logger.LogError(ex, "Error connecting");
+                // TODO: Log
+
+                throw;
+            }
         }
     }
 
@@ -69,6 +79,7 @@ public sealed partial class ConnectView
                 break;
             case "ConnectFilePage":
                 var connectFileViewModel = ConnectFileViewModelFactory.Create();
+                
                 ContentFrame.Navigate(typeof(ConnectFilePage), connectFileViewModel);
                 break;
             default:

@@ -33,6 +33,7 @@
     <ItemGroup>
         <None Update="IntegrationTests\Test Data\TestDatabase\TestDatabase.mdf">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+          <Link>IntegrationTests\Test Data\TestDatabase.mdf</Link>
         </None>
         <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_100_IamPage.page">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>

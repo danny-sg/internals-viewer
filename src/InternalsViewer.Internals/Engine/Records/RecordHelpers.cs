@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Buffers.Binary;
+using System.Text;
 
 namespace InternalsViewer.Internals.Engine.Records;
 
@@ -21,15 +22,13 @@ public static class RecordHelpers
     /// Get an offset array from a record
     /// </summary>
     /// <returns>An array of 2-byte integers representing a start offset in the page</returns>
-    public static ushort[] GetOffsetArray(byte[] record, int size, int offset)
+    public static ushort[] GetOffsetArray(ReadOnlySpan<byte> record, int size, int offset)
     {
         var offsetArray = new ushort[size];
-
+        
         for (var i = 0; i < size; i++)
         {
-            offsetArray[i] = BitConverter.ToUInt16(record, offset);
-
-            offset += sizeof(ushort);
+            offsetArray[i] = BinaryPrimitives.ReadUInt16LittleEndian(record[(offset + (i * sizeof(ushort)))..]);
         }
 
         return offsetArray;

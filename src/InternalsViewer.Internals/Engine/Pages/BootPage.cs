@@ -5,9 +5,9 @@ namespace InternalsViewer.Internals.Engine.Pages;
 /// <summary>
 /// Boot Page
 /// </summary>
-public class BootPage : Page
+public sealed class BootPage : Page
 {
-    public static PageAddress BootPageAddress = new(1, 9);
+    public static readonly PageAddress BootPageAddress = new(1, 9);
 
     public string DatabaseName { get; set; } = string.Empty;
 

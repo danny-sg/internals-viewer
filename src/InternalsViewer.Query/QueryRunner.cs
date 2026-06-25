@@ -198,7 +198,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     }
 
     private async Task GetEventKeyAddresses(List<EngineEvent> events,
-                                            List<AllocationUnit> allocationUnits,
+                                            Dictionary<long, AllocationUnit> allocationUnits,
                                             string connectionString)
     {
         var keyLockEvents = events.Where(e => e is LockEvent { KeyHash: not null }).Cast<LockEvent>();
@@ -209,7 +209,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             var objectId = grouping.Key;
 
-            var allocationUnit = allocationUnits.FirstOrDefault(f => f.ObjectId == objectId);
+            var allocationUnit = allocationUnits.Values.FirstOrDefault(f => f.ObjectId == objectId);
 
             if (allocationUnit is null)
             {

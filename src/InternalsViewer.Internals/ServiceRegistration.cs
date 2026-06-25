@@ -1,4 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using InternalsViewer.Internals.Connections.Backup;
+using InternalsViewer.Internals.Connections.File;
+using InternalsViewer.Internals.Connections.Server;
+using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
@@ -13,7 +17,6 @@ using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Internals.Services.Loaders.Chains;
 using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders.Engine;
-using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Services.Pages;
@@ -29,6 +32,8 @@ public static class ServiceRegistration
 {
     public static void RegisterServices(this IServiceCollection services)
     {
+        RegisterConnectionFactories(services);
+
         services.AddTransient<IPageReader, QueryPageReader>();
 
         services.AddTransient<IBufferPoolInfoProvider, BufferPoolInfoProvider>();
@@ -47,7 +52,8 @@ public static class ServiceRegistration
 
         services.AddTransient<IRecordService, RecordService>();
 
-        services.AddTransient<IPageService, PageService>();
+        services.AddTransient<PageService>();
+        services.AddTransient<IPageService, CachingPageService>();
 
         services.AddTransient<CompressionInfoLoader>();
 
@@ -60,6 +66,13 @@ public static class ServiceRegistration
         services.AddTransient<IndexService>();
 
         RegisterPageParsers(services);
+    }
+
+    private static void RegisterConnectionFactories(IServiceCollection services)
+    {
+        services.AddTransient<IConnectionTypeFactory, ServerConnectionFactory>();
+        services.AddTransient<IConnectionTypeFactory, FileConnectionFactory>();
+        services.AddTransient<IConnectionTypeFactory, BackupConnectionFactory>();
     }
 
     private static void RegisterPageParsers(IServiceCollection services)

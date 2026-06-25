@@ -49,19 +49,19 @@ internal static class Program
 
         if (verifyType == "t" || verifyType == "table")
         {
-            Console.WriteLine("Object Id or * for all?");
+            Console.WriteLine("Object Id or * for all (*s for all including system tables)?");
 
             var objectId = Console.ReadLine();
 
-            if (objectId == "*")
+            if (objectId == "*" || objectId == "*s")
             {
                 try
                 {
-                    await tableService.VerifyTables(databaseName);
+                    await tableService.VerifyTables(databaseName, objectId == "*s");
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.ToString());
                 }
             }
             else if (int.TryParse(objectId, out var id))

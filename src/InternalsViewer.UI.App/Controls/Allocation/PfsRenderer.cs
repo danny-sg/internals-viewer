@@ -3,7 +3,6 @@ using System.Drawing;
 using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
 

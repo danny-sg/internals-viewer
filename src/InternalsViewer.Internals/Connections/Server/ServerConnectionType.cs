@@ -10,12 +10,11 @@ public sealed class ServerConnectionType(IPageReader pageReader, string name, st
 
     public string Name { get; set; } = name;
 
+    public IPageReader PageReader { get; } = pageReader;
+
     private string ConnectionString { get; } = connectionString;
 
-    public string GetConnectionString()
-    {
-        return ConnectionString;
-    }
+    public string GetConnectionString() => ConnectionString;
 
-    public IPageReader PageReader { get; } = pageReader;
+    public ValueTask DisposeAsync() => PageReader.DisposeAsync();
 }

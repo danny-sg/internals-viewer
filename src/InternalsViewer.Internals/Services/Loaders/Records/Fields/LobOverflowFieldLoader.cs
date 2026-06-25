@@ -57,13 +57,9 @@ public class LobOverflowFieldLoader
 
         field.Length = BitConverter.ToInt32(data, ChildOffset);
 
-        var rowIdData = new byte[8];
-
-        Array.Copy(data, ChildOffset + 4, rowIdData, 0, 8);
-
         field.MarkProperty("LinksArray", string.Empty, 0);
 
-        var rowId = new RowIdentifier(rowIdData);
+        var rowId = new RowIdentifier(data.AsSpan(ChildOffset + 4, 8));
 
         var link = new BlobChildLink(rowId, field.Length, 0);
 

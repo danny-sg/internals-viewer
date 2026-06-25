@@ -65,6 +65,7 @@
         <None Remove="Controls\Index\IndexControl.xaml" />
         <None Remove="Controls\Index\RecordGrid.xaml" />
         <None Remove="Controls\LabelTextBox.xaml" />
+        <None Remove="Controls\LogMessageControl.xaml" />
         <None Remove="Controls\PageAddressTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Controls\Page\HexViewControl.xaml" />
@@ -303,6 +304,12 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Views\AppLogView.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+      <Page Update="Controls\LogMessageControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Controls\EventGrid\EventFilterControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
@@ -330,7 +337,7 @@
       <None Update="Views\PageView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </None>
-      <None Update="Views\SettingsPage.xaml">
+      <None Update="Views\SettingsView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </None>
       <Page Update="Controls\CopyTextBlock.xaml">
@@ -358,7 +365,7 @@
       <Page Update="Controls\ExceptionDialog.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Views\SettingsPage.xaml">
+      <Page Update="Views\SettingsView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Views\Connect\ConnectBackupPage.xaml">
@@ -500,6 +507,9 @@
 
     <ItemGroup>
       <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
     </ItemGroup>
 
     <ItemGroup>

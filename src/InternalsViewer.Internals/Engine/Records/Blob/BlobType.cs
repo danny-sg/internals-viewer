@@ -1,5 +1,4 @@
-﻿
-namespace InternalsViewer.Internals.Engine.Records.Blob;
+﻿namespace InternalsViewer.Internals.Engine.Records.Blob;
 
 public enum BlobType : byte
 {

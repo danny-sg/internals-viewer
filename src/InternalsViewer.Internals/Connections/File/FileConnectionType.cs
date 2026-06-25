@@ -3,16 +3,18 @@ using InternalsViewer.Internals.Interfaces.Readers;
 
 namespace InternalsViewer.Internals.Connections.File;
 
-public class FileConnectionType(IPageReader pageReader, string name) : IConnectionType
+public sealed class FileConnectionType(IPageReader pageReader, string name) : IConnectionType
 {
     public IPageReader PageReader { get; } = pageReader;
 
     public string Name { get; set; } = name;
+
+    public string Identifier => "File";
 
     public string GetConnectionString()
     {
         throw new NotImplementedException();
     }
 
-    public string Identifier => "File";
+    public ValueTask DisposeAsync() => PageReader.DisposeAsync();
 }

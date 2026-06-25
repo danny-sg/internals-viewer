@@ -10,7 +10,8 @@ public interface IPageParser
     Page Parse(PageData page);
 }
 
-public interface IPageParser<out T> : IPageParser where T : Page, new()
+public interface IPageParser<out T> : IPageParser 
+    where T : Page, new()
 {
     new T Parse(PageData page);
 }

@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Buffers.Binary;
+using System.Globalization;
 using System.Text;
 
 namespace InternalsViewer.Internals.Engine.Address;
@@ -17,9 +18,16 @@ public sealed record RowIdentifier
     public ushort SlotId { get; set; }
 
     public RowIdentifier(byte[] address)
+        : this(address.AsSpan())
     {
-        PageAddress = new PageAddress(BitConverter.ToInt16(address, 4), BitConverter.ToInt32(address, 0));
-        SlotId = BitConverter.ToUInt16(address, 6);
+    }
+
+    public RowIdentifier(ReadOnlySpan<byte> address)
+    {
+        PageAddress = new PageAddress(BinaryPrimitives.ReadInt16LittleEndian(address[4..]),
+                                      BinaryPrimitives.ReadInt32LittleEndian(address));
+
+        SlotId = BinaryPrimitives.ReadUInt16LittleEndian(address[6..]);
     }
 
     public RowIdentifier(PageAddress page, ushort slot)
@@ -69,7 +77,8 @@ public sealed record RowIdentifier
 
     public override string ToString()
     {
-        return string.Format(CultureInfo.CurrentCulture, "({0}:{1}:{2})",
+        return string.Format(CultureInfo.CurrentCulture,
+                             "({0}:{1}:{2})",
                              PageAddress.FileId,
                              PageAddress.PageId,
                              SlotId);

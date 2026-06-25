@@ -1,9 +1,12 @@
 ﻿using System.Data;
+using System.Globalization;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
+using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.VerificationTool.Helpers;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 
@@ -32,7 +35,7 @@ internal abstract class VerificationService(IDatabaseService databaseService)
 
     protected void WriteError(string message)
     {
-        Console.ForegroundColor = ConsoleColor.DarkRed;
+        Console.ForegroundColor = ConsoleColor.Red;
 
         Console.WriteLine(message);
 
@@ -43,7 +46,7 @@ internal abstract class VerificationService(IDatabaseService databaseService)
     {
         var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
 
-        var connection = ServerConnectionFactory.Create(config => config.ConnectionString = connectionString);
+        var connection = new ServerConnectionFactory(NullLogger<QueryPageReader>.Instance).Create(config => config.ConnectionString = connectionString);
 
         var database = await DatabaseService.LoadAsync(databaseName, connection);
 
@@ -65,14 +68,14 @@ internal abstract class VerificationService(IDatabaseService databaseService)
                 return float.Parse(value).ToString("0.00");
 
             case SqlDbType.Bit:
-            {
-                if (bool.TryParse(value, out var result))
                 {
-                    return result.ToString();
-                }
+                    if (bool.TryParse(value, out var result))
+                    {
+                        return result.ToString();
+                    }
 
-                return value == "1" ? "True" : "False";
-            }
+                    return value == "1" ? "True" : "False";
+                }
             case SqlDbType.SmallInt:
                 return short.Parse(value).ToString();
             case SqlDbType.BigInt:
@@ -101,18 +104,36 @@ internal abstract class VerificationService(IDatabaseService databaseService)
             case SqlDbType.Image:
                 return value;
             case SqlDbType.Date:
-                return DateTime.Parse(value).ToString("yyyy-MM-dd");
+                return ParseDateTime(value).ToString("yyyy-MM-dd");
             case SqlDbType.DateTime2:
             case SqlDbType.DateTimeOffset:
             case SqlDbType.SmallDateTime:
             case SqlDbType.DateTime:
-                return DateTime.Parse(value).ToString();
+                return ParseDateTime(value).ToString("yyyy-MM-dd HH:mm:ss");
             case SqlDbType.Time:
-                return TimeSpan.Parse(value).ToString();
+                return TimeSpan.Parse(value).ToString(@"hh\:mm\:ss");
             case SqlDbType.Variant:
                 return value;
             default:
                 throw new ArgumentException($"Cannot convert to type: {sqlDbType}");
         }
+    }
+
+    private static readonly string[] DateFormats =
+    [
+        "dd/MM/yyyy HH:mm:ss", "MM/dd/yyyy HH:mm:ss",
+        "dd/MM/yyyy",          "MM/dd/yyyy",
+        "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd"
+    ];
+
+    private static DateTime ParseDateTime(string value)
+    {
+        if (DateTime.TryParseExact(value, DateFormats, CultureInfo.InvariantCulture,
+                                   DateTimeStyles.None, out var result))
+        {
+            return result;
+        }
+
+        return DateTime.Parse(value, CultureInfo.InvariantCulture);
     }
 }

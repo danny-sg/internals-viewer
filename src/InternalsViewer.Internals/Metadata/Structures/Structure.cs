@@ -3,7 +3,8 @@ using InternalsViewer.Internals.Engine.Records.CdRecordType;
 
 namespace InternalsViewer.Internals.Metadata.Structures;
 
-public abstract record Structure<T>(long AllocationUnitId) where T : ColumnStructure
+public abstract record Structure<T>(long AllocationUnitId) 
+    where T : ColumnStructure
 {
     public int ObjectId { get; set; }
 
@@ -13,7 +14,7 @@ public abstract record Structure<T>(long AllocationUnitId) where T : ColumnStruc
 
     public long PartitionId { get; set; }
 
-    public List<T> Columns { get; set; } = new();
+    public List<T> Columns { get; set; } = [];
 
     public bool HasSparseColumns => Columns.Any(c => c.IsSparse);
 

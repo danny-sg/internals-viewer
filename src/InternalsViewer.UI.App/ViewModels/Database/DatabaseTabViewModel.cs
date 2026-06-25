@@ -15,7 +15,6 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
-using InternalsViewer.UI.App.ViewModels;
 
 namespace InternalsViewer.UI.App.ViewModels.Database;
 
@@ -28,52 +27,52 @@ public sealed class DatabaseTabViewModelFactory(IDatabaseService databaseService
 }
 
 public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService) 
-    : TabViewModel, IAllocationViewModel
+    : TabViewModel, IAllocationViewModel, IAsyncDisposable
 {
     private IDatabaseService DatabaseService { get; } = databaseService;
 
     [ObservableProperty]
-    private DatabaseSource database = database;
+    private DatabaseSource _database = database;
 
     [ObservableProperty]
-    private DatabaseFile[] databaseFiles = [];
+    private DatabaseFile[] _databaseFiles = [];
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> allocationLayers = [];
+    private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
     [ObservableProperty]
-    private PfsChain pfsChain = new();
+    private PfsChain _pfsChain = new();
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> selectedLayers = [];
+    private ObservableCollection<AllocationLayer> _selectedLayers = [];
 
     [ObservableProperty]
-    private int extentCount;
+    private int _extentCount;
 
     [ObservableProperty]
-    private AllocationOverViewModel allocationOver = new();
+    private AllocationOverViewModel _allocationOver = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GridAllocationLayers))]
-    private string filter = string.Empty;
+    private string _filter = string.Empty;
 
     [ObservableProperty]
-    private bool isDetailVisible = true;
+    private bool _isDetailVisible = true;
 
     [ObservableProperty]
-    private bool isPfsVisible = false;
+    private bool _isPfsVisible = false;
 
     [ObservableProperty]
-    private bool isQueryReplayVisible;
+    private bool _isQueryReplayVisible;
 
     [ObservableProperty]
-    private bool isTooltipEnabled;
+    private bool _isTooltipEnabled;
 
     [ObservableProperty]
-    private short fileId = 1;
+    private short _fileId = 1;
 
     [ObservableProperty]
-    private double allocationMapHeight = 200;
+    private double _allocationMapHeight = 200;
 
     public long SequenceFrom => 0;
 
@@ -82,32 +81,32 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     [RelayCommand]
     private void OpenPage(PageAddress pageAddress)
     {
-        WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(database, pageAddress)));
+        WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(Database, pageAddress)));
     }
 
     [RelayCommand]
     private void OpenQueryReplay()
     {
-        WeakReferenceMessenger.Default.Send(new OpenQueryReplayMessage(database));
+        WeakReferenceMessenger.Default.Send(new OpenQueryReplayMessage(Database));
     }
 
     public List<AllocationLayer> GridAllocationLayers
-        => allocationLayers.Where(w => string.IsNullOrEmpty(Filter) || w.Name.ToLower().Contains(filter.ToLower())).ToList();
+        => AllocationLayers.Where(w => string.IsNullOrEmpty(Filter) || w.Name.ToLower().Contains(_filter.ToLower())).ToList();
 
     public void Load(string name)
     {
         Name = name;
 
-        DatabaseFiles = database.Files
+        DatabaseFiles = Database.Files
                                 .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
                                 .ToArray();
         IsLoading = true;
 
-        var layers = AllocationLayerBuilder.GenerateLayers(database, true);
+        var layers = AllocationLayerBuilder.GenerateLayers(Database, true);
 
-        ExtentCount = database.GetFileSize(1) / 8;
+        ExtentCount = Database.GetFileSize(1) / 8;
         AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
-        PfsChain = database.Pfs.First().Value;
+        PfsChain = Database.Pfs.First().Value;
 
         IsLoading = false;
     }
@@ -117,7 +116,7 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     {
         await Task.Run(async () =>
         {
-            var result = await DatabaseService.LoadAsync(database.Name, database.Connection);
+            var result = await DatabaseService.LoadAsync(Database.Name, Database.Connection);
 
             DispatcherQueue.TryEnqueue(() =>
             {
@@ -127,4 +126,6 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
             });
         });
     }
+
+    public ValueTask DisposeAsync() => Database.Connection.DisposeAsync();
 }

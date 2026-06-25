@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Engine.Pages;
 
-public class LobPage : Page
+public sealed class LobPage : Page
 {
 
 }

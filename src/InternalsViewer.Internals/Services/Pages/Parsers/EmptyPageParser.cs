@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 
 public sealed class EmptyPageParser : PageParser, IPageParser<EmptyPage>
 {
-    public PageType[] SupportedPageTypes => new[] { PageType.None };
+    public PageType[] SupportedPageTypes => [PageType.None];
 
     Page IPageParser.Parse(PageData page)
     {

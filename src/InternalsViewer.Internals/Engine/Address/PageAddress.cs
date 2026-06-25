@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Engine.Address;
 /// </summary>
 public readonly record struct PageAddress(short FileId, int PageId)
 {
-    public static readonly PageAddress Empty = new();
+    public static readonly PageAddress Empty = default(PageAddress);
 
     /// <summary>
     /// Size of a Page Address is 6 bytes (2 byte File Id + 4 byte Page Id)

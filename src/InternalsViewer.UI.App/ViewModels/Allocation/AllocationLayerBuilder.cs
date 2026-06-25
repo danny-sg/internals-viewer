@@ -26,9 +26,12 @@ internal static class AllocationLayerBuilder
 
         var allocationUnits = database.AllocationUnits;
 
-        var userObjectCount = allocationUnits.Where(u => !u.IsSystem).DistinctBy(t => t.TableName).Count();
+        var userObjectCount = allocationUnits.Values.Where(u => !u.IsSystem).DistinctBy(t => t.TableName).Count();
 
-        foreach (var allocationUnit in allocationUnits.OrderBy(o => o.TableName).ThenBy(o => o.IndexName).Where(o => !o.IsSystem))
+        foreach (var allocationUnit in allocationUnits.Values
+                                                      .OrderBy(o => o.TableName)
+                                                      .ThenBy(o => o.IndexName)
+                                                      .Where(o => !o.IsSystem))
         {
             var currentObjectName = GetCurrentObjectName(allocationUnit, separateIndexes);
 
@@ -62,7 +65,7 @@ internal static class AllocationLayerBuilder
             IsVisible = true
         };
 
-        foreach (var systemAllocationUnit in allocationUnits.Where(a => a.IsSystem))
+        foreach (var systemAllocationUnit in allocationUnits.Values.Where(a => a.IsSystem))
         {
             systemLayer.Allocations.AddRange(GetExtentAllocations(systemAllocationUnit.IamChain));
 
@@ -83,17 +86,16 @@ internal static class AllocationLayerBuilder
     public static AllocationLayer GenerateLayer(AllocationPage allocationPage)
     {
         var layer = new AllocationLayer();
+        var map = allocationPage.AllocationMap;
+        var fileId = allocationPage.PageAddress.FileId;
 
-        layer.Allocations
-             .AddRange(allocationPage.AllocationMap
-                                     .Select((isAllocated, index) => new
-                                     {
-                                         isAllocated,
-                                         Extent = index,
-                                         allocationPage.PageAddress.FileId
-                                     })
-                                     .Where(w => w.isAllocated)
-                                     .Select(s => new ExtentAllocation(s.FileId, s.Extent)));
+        for (var i = 0; i < map.Length; i++)
+        {
+            if (map[i])
+            {
+                layer.Allocations.Add(new ExtentAllocation(fileId, i));
+            }
+        }
 
         return layer;
     }
@@ -102,16 +104,20 @@ internal static class AllocationLayerBuilder
     {
         var result = new List<ExtentAllocation>();
 
-        result.AddRange(chain.Pages
-                             .SelectMany(s => s.AllocationMap
-                                               .Select((isAllocated, index) => new
-                                               {
-                                                   isAllocated,
-                                                   Extent = index + s.StartPage.PageId * 8,
-                                                   s.StartPage.FileId
-                                               }))
-                             .Where(w => w.isAllocated)
-                             .Select(s => new ExtentAllocation(s.FileId, s.Extent)));
+        foreach (var page in chain.Pages)
+        {
+            var map = page.AllocationMap;
+            var fileId = page.StartPage.FileId;
+            var baseExtent = page.StartPage.PageId * 8;
+
+            for (var i = 0; i < map.Length; i++)
+            {
+                if (map[i])
+                {
+                    result.Add(new ExtentAllocation(fileId, baseExtent + i));
+                }
+            }
+        }
 
         return result;
     }

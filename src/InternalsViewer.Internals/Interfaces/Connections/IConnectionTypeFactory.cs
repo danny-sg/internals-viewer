@@ -2,7 +2,19 @@
 
 namespace InternalsViewer.Internals.Interfaces.Connections;
 
-public interface IConnectionTypeFactory<out TConfig> where TConfig : ConnectionTypeConfig
+/// <summary>
+/// Non-generic base interface for connection type factories, used for DI enumeration by identifier.
+/// </summary>
+public interface IConnectionTypeFactory
 {
-    static abstract IConnectionType Create(Action<TConfig> configDelegate);
+    string Identifier { get; }
+}
+
+/// <summary>
+/// Typed factory for creating a connection of a specific configuration type.
+/// </summary>
+public interface IConnectionTypeFactory<out TConfig> : IConnectionTypeFactory
+    where TConfig : ConnectionTypeConfig
+{
+    IConnectionType Create(Action<TConfig> configDelegate);
 }

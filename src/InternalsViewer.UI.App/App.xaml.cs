@@ -1,22 +1,24 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System;
+﻿using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals;
+using InternalsViewer.Query;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.TransactionLog;
 using InternalsViewer.UI.App.Activation;
+using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using InternalsViewer.UI.App.ViewModels.Database;
-using InternalsViewer.UI.App.ViewModels.Page;
-using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
-using CommunityToolkit.Mvvm.Messaging;
-using InternalsViewer.Query;
-using InternalsViewer.Query.Events;
-using InternalsViewer.Query.TransactionLog;
-using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Index;
+using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using System;
+using InternalsViewer.Internals.Services.Logging;
+using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
 
 namespace InternalsViewer.UI.App;
 
@@ -46,12 +48,22 @@ public partial class App
                         .Host
                         .CreateDefaultBuilder()
                         .UseContentRoot(AppContext.BaseDirectory)
+                        .ConfigureLogging(logging =>
+                        {
+                            logging.ClearProviders();
+                            logging.SetMinimumLevel(LogLevel.Trace);
+                            logging.AddFilter("Microsoft", LogLevel.Warning);
+                            logging.AddFilter("System", LogLevel.Warning);
+                        })
                         .ConfigureServices((context, services) =>
         {
             // Default Activation Handler
             services.AddTransient<ActivationHandler<LaunchActivatedEventArgs>, DefaultActivationHandler>();
 
             services.AddSingleton<SettingsService>();
+
+            services.AddSingleton<AppLogService>();
+            services.AddSingleton<ILoggerProvider, AppLogLoggerProvider>();
 
             services.RegisterServices();
 
@@ -67,6 +79,8 @@ public partial class App
             services.AddTransient<LogRecordReader>();
             services.AddTransient<EventReader>();
 
+            services.AddSingleton<AppLogViewModel>();
+            
             services.AddTransient<MainViewModel>();
 
             services.AddTransient<MainWindow>();

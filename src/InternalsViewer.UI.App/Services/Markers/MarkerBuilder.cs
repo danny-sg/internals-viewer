@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using InternalsViewer.Internals.Annotations;
-using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Extensions;

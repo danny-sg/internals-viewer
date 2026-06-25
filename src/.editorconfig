@@ -69,6 +69,9 @@ dotnet_diagnostic.CA2253.severity = none
 # MVVMTK0045: Using [ObservableProperty] on fields is not AOT compatible for WinRT
 dotnet_diagnostic.MVVMTK0045.severity = none
 
+# CA1873: Avoid potentially expensive logging
+dotnet_diagnostic.CA1873.severity = none
+
 [*.{cs,vb}]
 dotnet_style_operator_placement_when_wrapping = beginning_of_line
 tab_width = 4

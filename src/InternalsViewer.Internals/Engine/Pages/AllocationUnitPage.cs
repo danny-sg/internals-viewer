@@ -24,9 +24,3 @@ public abstract class AllocationUnitPage
 
     public AllocationUnit AllocationUnit { get; set; } = AllocationUnit.Unknown;
 }
-
-public class IndexPage
-    : AllocationUnitPage;
-
-public class DataPage
-    : AllocationUnitPage;

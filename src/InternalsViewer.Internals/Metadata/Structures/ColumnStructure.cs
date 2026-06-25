@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Metadata.Structures;
 public record ColumnStructure
 {
     /// <summary>
-    ///Name of the column.
+    ///Name of the column
     /// </summary>
     public string ColumnName { get; set; } = string.Empty;
 

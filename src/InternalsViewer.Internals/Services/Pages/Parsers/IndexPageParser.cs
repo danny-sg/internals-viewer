@@ -21,10 +21,12 @@ public sealed class IndexPageParser : PageParser, IPageParser<IndexPage>
     {
         var indexPage = CopyToPageType<IndexPage>(page);
 
-        indexPage.AllocationUnit = indexPage.Database
-                                       .AllocationUnits
-                                       .FirstOrDefault(a => a.AllocationUnitId == indexPage.PageHeader.AllocationUnitId)
-                                   ?? AllocationUnit.Unknown;
+        var allocationUnit = indexPage.Database
+                                      .AllocationUnits
+                                      .TryGetValue(indexPage.PageHeader.AllocationUnitId,
+                                          out var value) ? value : AllocationUnit.Unknown;
+
+        indexPage.AllocationUnit = allocationUnit;
 
         return indexPage;
     }

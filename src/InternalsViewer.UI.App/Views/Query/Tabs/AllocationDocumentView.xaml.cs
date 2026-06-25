@@ -3,7 +3,6 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;

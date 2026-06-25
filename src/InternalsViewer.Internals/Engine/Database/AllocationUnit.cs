@@ -17,6 +17,8 @@ namespace InternalsViewer.Internals.Engine.Database;
 /// </remarks>
 public sealed record AllocationUnit
 {
+    public static readonly AllocationUnit Unknown = new() { AllocationUnitId = -1 };
+
     public long AllocationUnitId { get; set; }
 
     public int ObjectId { get; set; }
@@ -48,8 +50,6 @@ public sealed record AllocationUnit
     public long UsedPages { get; set; }
 
     public long TotalPages { get; set; }
-
-    public static readonly AllocationUnit Unknown = new() { AllocationUnitId = -1 };
 
     public string DisplayName { get; set; } = string.Empty;
     

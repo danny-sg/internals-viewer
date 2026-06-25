@@ -5,9 +5,11 @@ namespace InternalsViewer.Internals.Connections.File;
 
 public class FileConnectionFactory : IConnectionTypeFactory<FileConnectionTypeConfig>
 {
-    public string Identifier => "File";
+    public const string FileIdentifier = "File";
 
-    public static IConnectionType Create(Action<FileConnectionTypeConfig> configDelegate)
+    public string Identifier => FileIdentifier;
+
+    public IConnectionType Create(Action<FileConnectionTypeConfig> configDelegate)
     {
         var config = new FileConnectionTypeConfig();
 

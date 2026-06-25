@@ -1,33 +1,31 @@
-﻿namespace InternalsViewer.Internals.Converters;
+﻿using System.Buffers.Binary;
+
+namespace InternalsViewer.Internals.Converters;
 
 public static class DateTimeConverters
 {
+    private static readonly long[] TickFactors = [10_000_000L, 1_000_000L, 100_000L, 10_000L, 1_000L, 100L, 10L, 1L];
+
     /// <summary>
     /// Decodes SMALLDATETIME data type
     /// </summary>
-    /// <param name="data">The data.</param>
-    /// <returns></returns>
-    public static DateTime DecodeSmallDateTime(byte[] data)
+    public static DateTime DecodeSmallDateTime(ReadOnlySpan<byte> data)
     {
         var returnDate = new DateTime(1900, 1, 1);
 
-        int timePart = BitConverter.ToUInt16(data, 0);
-        int datePart = BitConverter.ToUInt16(data, 2);
+        int timePart = BinaryPrimitives.ReadUInt16LittleEndian(data);
+        int datePart = BinaryPrimitives.ReadUInt16LittleEndian(data[2..]);
 
-        returnDate = returnDate.AddDays(datePart).AddMinutes(timePart);
-
-        return returnDate;
+        return returnDate.AddDays(datePart).AddMinutes(timePart);
     }
 
     /// <summary>
     /// Decode DATETIME data type
     /// </summary>
-    /// <param name="data">The data.</param>
-    /// <returns></returns>
-    public static DateTime DecodeDateTime(byte[] data)
+    public static DateTime DecodeDateTime(ReadOnlySpan<byte> data)
     {
-        var timePart = BitConverter.ToInt32(data, 0);
-        var datePart = BitConverter.ToInt32(data, 4);
+        var timePart = BinaryPrimitives.ReadInt32LittleEndian(data);
+        var datePart = BinaryPrimitives.ReadInt32LittleEndian(data[4..]);
 
         return DecodeDateTime(timePart, datePart);
     }
@@ -54,9 +52,102 @@ public static class DateTimeConverters
 
         var roundedMilliseconds = milliseconds - milliseconds % 10 + ClosestTo(milliseconds % 10);
 
-        returnDate = returnDate.AddDays(datePart).AddMilliseconds(roundedMilliseconds);
+        return returnDate.AddDays(datePart).AddMilliseconds(roundedMilliseconds);
+    }
 
-        return returnDate;
+    /// <summary>
+    /// Decodes the DATETIME2 data type
+    /// </summary>
+    /// <param name="data">The data.</param>
+    /// <param name="scale">The scale.</param>
+    public static DateTime DecodeDateTime2(ReadOnlySpan<byte> data, int scale)
+    {
+        Span<byte> dateData = stackalloc byte[4];
+        Span<byte> timeData = stackalloc byte[8];
+
+        data[..^3].CopyTo(timeData);
+        data[^3..].CopyTo(dateData);
+
+        var datePart = BinaryPrimitives.ReadInt32LittleEndian(dateData);
+        var timePart = BinaryPrimitives.ReadInt64LittleEndian(timeData);
+
+        return new DateTime(0001, 01, 01)
+            .AddDays(datePart)
+            .AddTicks(timePart * TickFactors[scale]);
+    }
+
+    /// <summary>
+    /// Decodes the DATE data type
+    /// </summary>
+    /// <param name="data">The data.</param>
+    public static DateOnly DecodeDate(ReadOnlySpan<byte> data)
+    {
+        Span<byte> dateData = stackalloc byte[4];
+
+        data[..3].CopyTo(dateData);
+
+        return default(DateOnly).AddDays(BinaryPrimitives.ReadInt32LittleEndian(dateData));
+    }
+
+    /// <summary>
+    /// Decodes the TIME datatype
+    /// </summary>
+    /// <remarks>
+    /// TIME is stored as a 3, 4, 5, 6, 7 or 8 byte integer depending on the scale. The integer represents the number
+    /// of ticks since midnight.
+    ///
+    ///     Scale | Unit   | Storage
+    ///     ------+--------+--------
+    ///     0     |    1 s |  3 bytes
+    ///     1     | 100 ms |  3 bytes
+    ///     2     |  10 ms |  3 bytes
+    ///     3     |   1 ms |  4 bytes
+    ///     4     | 100 us |  4 bytes
+    ///     5     |  10 us |  5 bytes
+    ///     6     |   1 us |  5 bytes
+    ///     7     | 100 ns |  5 bytes (.NET tick)
+    /// </remarks>
+    /// <param name="data">The data.</param>
+    /// <param name="scale">The scale.</param>
+    public static TimeSpan DecodeTime(ReadOnlySpan<byte> data, int scale)
+    {
+        Span<byte> timeData = stackalloc byte[8];
+
+        data.CopyTo(timeData);
+
+        var time = BinaryPrimitives.ReadInt64LittleEndian(timeData);
+
+        return TimeSpan.FromTicks(time * TickFactors[scale]);
+    }
+
+    /// <summary>
+    /// Decodes DATETIMEOFFSET type
+    /// </summary>
+    /// <param name="data">The data.</param>
+    /// <param name="scale">The scale.</param>
+    /// <returns>
+    /// String representing the value
+    /// </returns>
+    public static string DecodeDateTimeOffset(ReadOnlySpan<byte> data, byte scale)
+    {
+        Span<byte> dateData = stackalloc byte[4];
+        Span<byte> timeData = stackalloc byte[8];
+
+        data[..^5].CopyTo(timeData);
+        data[^5..^2].CopyTo(dateData);
+
+        var datePart = BinaryPrimitives.ReadInt32LittleEndian(dateData);
+        var timePart = BinaryPrimitives.ReadInt64LittleEndian(timeData);
+        var time = BinaryPrimitives.ReadInt16LittleEndian(data[^2..]);
+
+        var returnDate = new DateTime(0001, 01, 01)
+            .AddDays(datePart)
+            .AddTicks(timePart * TickFactors[scale]);
+
+        var offsetTime = default(DateTime).AddMinutes(Math.Abs(time));
+        var sign = time >= 0 ? "+" : "-";
+
+        return $"{returnDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
     }
 
     /// <summary>
@@ -81,108 +172,5 @@ public static class DateTimeConverters
         }
 
         return nearest;
-    }
-
-    /// <summary>
-    /// Decodes the DATETIME2 data type
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <param name="scale">The scale.</param>
-    /// <returns></returns>
-    public static DateTime DecodeDateTime2(byte[] data, int scale)
-    {
-        var dateData = new byte[4];
-        var timeData = new byte[8];
-
-        var scaleFactor = 1000F / (float)Math.Pow(10, scale);
-
-        Array.Copy(data, timeData, data.Length - 3);
-        Array.Copy(data, data.Length - 3, dateData, 0, 3);
-
-        var datePart = BitConverter.ToInt32(dateData, 0);
-        var timePart = BitConverter.ToInt64(timeData, 0);
-
-        var returnDate = new DateTime(0001, 01, 01);
-
-        returnDate = returnDate.AddDays(datePart);
-        returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
-
-        return returnDate;
-    }
-
-    /// <summary>
-    /// Decodes the DATE data type
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <returns></returns>
-    public static DateOnly DecodeDate(byte[] data)
-    {
-        var dateData = new byte[4];
-
-        Array.Copy(data, dateData, 3);
-
-        var date = BitConverter.ToInt32(dateData, 0);
-
-        var returnDate = new DateOnly();
-
-        returnDate = returnDate.AddDays(date);
-
-        return returnDate;
-    }
-
-    /// <summary>
-    /// Decodes the TIME datatype
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <param name="scale">The scale.</param>
-    /// <returns></returns>
-    public static TimeSpan DecodeTime(byte[] data, int scale)
-    {
-        var timeData = new byte[8];
-
-        var scaleFactor = 1000F / (float)Math.Pow(10, scale);
-
-        Array.Copy(data, timeData, data.Length);
-
-        var time = BitConverter.ToInt64(timeData, 0);
-
-        var returnDate = new DateTime();
-        returnDate = returnDate.AddMilliseconds(scaleFactor * time);
-
-        return returnDate.TimeOfDay;
-    }
-
-    /// <summary>
-    /// Decodes DATETIMEOFFSET type
-    /// </summary>
-    /// <param name="data">The data.</param>
-    /// <param name="scale">The scale.</param>
-    /// <returns>
-    /// String representing the value
-    /// </returns>
-    public static string DecodeDateTimeOffset(byte[] data, byte scale)
-    {
-        var dateData = new byte[4];
-        var timeData = new byte[8];
-
-        var scaleFactor = 1000F / (float)Math.Pow(10, scale);
-
-        Array.Copy(data, timeData, data.Length - 5);
-        Array.Copy(data, data.Length - 5, dateData, 0, 3);
-
-        var datePart = BitConverter.ToInt32(dateData, 0);
-        var timePart = BitConverter.ToInt64(timeData, 0);
-        var time = BitConverter.ToInt16(data, data.Length - 2);
-
-        var returnDate = new DateTime(0001, 01, 01);
-
-        returnDate = returnDate.AddDays(datePart);
-        returnDate = returnDate.AddMilliseconds(scaleFactor * timePart);
-
-        var offsetTime = new DateTime().AddMinutes(Math.Abs(time));
-
-        var sign = time >= 0 ? "+" : "-";
-
-        return $"{returnDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
     }
 }

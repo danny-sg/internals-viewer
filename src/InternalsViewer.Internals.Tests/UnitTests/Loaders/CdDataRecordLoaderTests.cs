@@ -44,12 +44,12 @@ public class CdDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 
         var tableStructure = new TableStructure(0);
 
-        tableStructure.Columns = new List<ColumnStructure>
-        {
+        tableStructure.Columns =
+        [
             new() { ColumnId = 1, ColumnName = "NumberField", DataType = System.Data.SqlDbType.Int },
-            new() { ColumnId = 2, ColumnName = "TextField" , DataType = System.Data.SqlDbType.VarChar },
-            new() { ColumnId = 3, ColumnName = "FixedTextField", DataType = System.Data.SqlDbType.Char },
-        };
+            new() { ColumnId = 2, ColumnName = "TextField", DataType = System.Data.SqlDbType.VarChar },
+            new() { ColumnId = 3, ColumnName = "FixedTextField", DataType = System.Data.SqlDbType.Char }
+        ];
 
         var record = loader.Load(page, 0, tableStructure);
 

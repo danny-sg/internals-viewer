@@ -9,7 +9,7 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 /// sys.sysprufiles
 /// </summary>
 [InternalsMetadata]
-public record InternalFile
+public sealed record InternalFile
 {
     [InternalsMetadataColumn("dbfragid", 1, SqlDbType.Int, 4, 4, 1)]
     public int DbFragId { get; set; }

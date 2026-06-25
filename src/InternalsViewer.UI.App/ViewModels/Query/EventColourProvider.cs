@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Text;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;

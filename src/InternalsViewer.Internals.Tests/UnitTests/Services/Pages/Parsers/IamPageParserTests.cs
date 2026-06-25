@@ -28,4 +28,41 @@ public class IamPageParserTests(ITestOutputHelper testOutput)
         Assert.Equal(new PageAddress(0, 0), page.SinglePageSlots[6]);
         Assert.Equal(new PageAddress(0, 0), page.SinglePageSlots[7]);
     }
+
+    [Fact]
+    public async Task Allocation_Map_Has_Correct_Length()
+    {
+        var pageData = await GetPageData(new PageAddress(1, 100));
+
+        var parser = new IamPageParser();
+
+        var page = parser.Parse(pageData);
+
+        Assert.Equal(AllocationPage.AllocationInterval, page.AllocationMap.Length);
+    }
+
+    [Fact]
+    public async Task Single_Page_Slots_Has_Eight_Entries()
+    {
+        var pageData = await GetPageData(new PageAddress(1, 100));
+
+        var parser = new IamPageParser();
+
+        var page = parser.Parse(pageData);
+
+        Assert.Equal(AllocationPage.SlotCount, page.SinglePageSlots.Length);
+    }
+
+    [Fact]
+    public async Task Allocation_Map_Has_Some_Allocated_Extents()
+    {
+        var pageData = await GetPageData(new PageAddress(1, 100));
+
+        var parser = new IamPageParser();
+
+        var page = parser.Parse(pageData);
+
+        // At minimum the extent containing page 99 should be allocated
+        Assert.Contains(true, page.AllocationMap);
+    }
 }

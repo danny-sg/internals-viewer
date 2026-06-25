@@ -27,7 +27,7 @@ public class PageData : DataStructure
     /// <summary>
     /// Raw page data
     /// </summary>
-    public byte[] Data { get; set; } = new byte[Size];
+    public byte[] Data { get; set; } = [];
 
     /// <summary>
     /// Page Header
