@@ -66,11 +66,20 @@ public static class DataConverter
             var b = binaryData[0];
             var binaryString = string.Create(10, b, static (span, v) =>
             {
-                span[0] = 'b'; span[1] = 'i'; span[2] = 'n'; span[3] = 'a';
-                span[4] = 'r'; span[5] = 'y'; span[6] = ':'; span[7] = ' ';
+                span[0] = 'b';
+                span[1] = 'i';
+                span[2] = 'n';
+                span[3] = 'a';
+                span[4] = 'r';
+                span[5] = 'y';
+                span[6] = ':';
+                span[7] = ' ';
                 for (var i = 0; i < 8; i++)
+                {
                     span[9 - i] = (v & (1 << i)) != 0 ? '1' : '0';
+                }
             });
+
             decodedData.Add(binaryString);
         }
 

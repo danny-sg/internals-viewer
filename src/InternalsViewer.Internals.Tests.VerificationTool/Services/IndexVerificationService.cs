@@ -203,7 +203,9 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
         if (reader.HasRows)
         {
-            var fields = Enumerable.Range(0, reader.FieldCount).Select(s => reader.GetName(s)).ToList();
+            var fields = Enumerable.Range(0, reader.FieldCount)
+                                   .Select(reader.GetName)
+                                   .ToList();
 
             RowIdentifier? rid = null;
 

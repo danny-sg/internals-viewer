@@ -4,6 +4,8 @@ namespace InternalsViewer.Internals.Converters;
 
 public static class DateTimeConverters
 {
+    private static readonly long[] TickFactors = [10_000_000L, 1_000_000L, 100_000L, 10_000L, 1_000L, 100L, 10L, 1L];
+
     /// <summary>
     /// Decodes SMALLDATETIME data type
     /// </summary>
@@ -63,17 +65,15 @@ public static class DateTimeConverters
         Span<byte> dateData = stackalloc byte[4];
         Span<byte> timeData = stackalloc byte[8];
 
-        var scaleFactor = 1000F / (float)Math.Pow(10, scale);
-
-        data[..(data.Length - 3)].CopyTo(timeData);
-        data[(data.Length - 3)..].CopyTo(dateData);
+        data[..^3].CopyTo(timeData);
+        data[^3..].CopyTo(dateData);
 
         var datePart = BinaryPrimitives.ReadInt32LittleEndian(dateData);
         var timePart = BinaryPrimitives.ReadInt64LittleEndian(timeData);
 
         return new DateTime(0001, 01, 01)
             .AddDays(datePart)
-            .AddMilliseconds(scaleFactor * timePart);
+            .AddTicks(timePart * TickFactors[scale]);
     }
 
     /// <summary>
@@ -92,19 +92,32 @@ public static class DateTimeConverters
     /// <summary>
     /// Decodes the TIME datatype
     /// </summary>
+    /// <remarks>
+    /// TIME is stored as a 3, 4, 5, 6, 7 or 8 byte integer depending on the scale. The integer represents the number
+    /// of ticks since midnight.
+    ///
+    ///     Scale | Unit   | Storage
+    ///     ------+--------+--------
+    ///     0     |    1 s |  3 bytes
+    ///     1     | 100 ms |  3 bytes
+    ///     2     |  10 ms |  3 bytes
+    ///     3     |   1 ms |  4 bytes
+    ///     4     | 100 us |  4 bytes
+    ///     5     |  10 us |  5 bytes
+    ///     6     |   1 us |  5 bytes
+    ///     7     | 100 ns |  5 bytes (.NET tick)
+    /// </remarks>
     /// <param name="data">The data.</param>
     /// <param name="scale">The scale.</param>
     public static TimeSpan DecodeTime(ReadOnlySpan<byte> data, int scale)
     {
         Span<byte> timeData = stackalloc byte[8];
 
-        var scaleFactor = 1000F / (float)Math.Pow(10, scale);
-
         data.CopyTo(timeData);
 
         var time = BinaryPrimitives.ReadInt64LittleEndian(timeData);
 
-        return default(DateTime).AddMilliseconds(scaleFactor * time).TimeOfDay;
+        return TimeSpan.FromTicks(time * TickFactors[scale]);
     }
 
     /// <summary>
@@ -120,18 +133,16 @@ public static class DateTimeConverters
         Span<byte> dateData = stackalloc byte[4];
         Span<byte> timeData = stackalloc byte[8];
 
-        var scaleFactor = 1000F / (float)Math.Pow(10, scale);
-
-        data[..(data.Length - 5)].CopyTo(timeData);
-        data[(data.Length - 5)..(data.Length - 2)].CopyTo(dateData);
+        data[..^5].CopyTo(timeData);
+        data[^5..^2].CopyTo(dateData);
 
         var datePart = BinaryPrimitives.ReadInt32LittleEndian(dateData);
         var timePart = BinaryPrimitives.ReadInt64LittleEndian(timeData);
-        var time = BinaryPrimitives.ReadInt16LittleEndian(data[(data.Length - 2)..]);
+        var time = BinaryPrimitives.ReadInt16LittleEndian(data[^2..]);
 
         var returnDate = new DateTime(0001, 01, 01)
             .AddDays(datePart)
-            .AddMilliseconds(scaleFactor * timePart);
+            .AddTicks(timePart * TickFactors[scale]);
 
         var offsetTime = default(DateTime).AddMinutes(Math.Abs(time));
         var sign = time >= 0 ? "+" : "-";
