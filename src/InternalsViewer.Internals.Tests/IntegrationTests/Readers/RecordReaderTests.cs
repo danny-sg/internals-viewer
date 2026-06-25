@@ -14,7 +14,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
 
     private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
 
-    protected IConnectionType Connection => FileConnectionFactory.Create(c => c.Filename = MdfPath);
+    protected IConnectionType Connection => new FileConnectionFactory().Create(c => c.Filename = MdfPath);
 
 
     [RequiresFileFact(MdfPath)]

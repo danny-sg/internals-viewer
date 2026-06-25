@@ -1,4 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using InternalsViewer.Internals.Connections.Backup;
+using InternalsViewer.Internals.Connections.File;
+using InternalsViewer.Internals.Connections.Server;
+using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
@@ -28,6 +32,8 @@ public static class ServiceRegistration
 {
     public static void RegisterServices(this IServiceCollection services)
     {
+        RegisterConnectionFactories(services);
+
         services.AddTransient<IPageReader, QueryPageReader>();
 
         services.AddTransient<IBufferPoolInfoProvider, BufferPoolInfoProvider>();
@@ -59,6 +65,13 @@ public static class ServiceRegistration
         services.AddTransient<IndexService>();
 
         RegisterPageParsers(services);
+    }
+
+    private static void RegisterConnectionFactories(IServiceCollection services)
+    {
+        services.AddTransient<IConnectionTypeFactory, ServerConnectionFactory>();
+        services.AddTransient<IConnectionTypeFactory, FileConnectionFactory>();
+        services.AddTransient<IConnectionTypeFactory, BackupConnectionFactory>();
     }
 
     private static void RegisterPageParsers(IServiceCollection services)

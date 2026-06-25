@@ -20,7 +20,7 @@ public sealed class PfsPage : Page
     /// <summary>
     /// PFS bytes collection
     /// </summary>
-    public List<PfsByte> PfsBytes { get; set; } = new();
+    public List<PfsByte> PfsBytes { get; set; } = [];
 
     public override string ToString()
     {

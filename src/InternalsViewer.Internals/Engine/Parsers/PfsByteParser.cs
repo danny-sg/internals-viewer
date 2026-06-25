@@ -33,22 +33,15 @@ public class PfsByteParser
     ///     
     ///     Bit 8 - Unused
     /// </remarks>
-    public static PfsByte Parse(byte pageByte)
+    public static PfsByte Parse(byte pageByte) => new()
     {
-        var bitArray = new BitArray(new[] { pageByte });
-
-        var pfsByte = new PfsByte
-        {
-            Value = pageByte,
-            GhostRecords = bitArray[3],
-            IsIam = bitArray[4],
-            IsMixed = bitArray[5],
-            IsAllocated = bitArray[6],
-            PageSpaceFree = (SpaceFree)(pageByte & 7)
-        };
-
-        return pfsByte;
-    }
+        Value = pageByte,
+        GhostRecords = (pageByte & 0x08) != 0,
+        IsIam = (pageByte & 0x10) != 0,
+        IsMixed = (pageByte & 0x20) != 0,
+        IsAllocated = (pageByte & 0x40) != 0,
+        PageSpaceFree = (SpaceFree)(pageByte & 0x07)
+    };
 
     public static byte Parse(PfsByte pfsByte)
     {

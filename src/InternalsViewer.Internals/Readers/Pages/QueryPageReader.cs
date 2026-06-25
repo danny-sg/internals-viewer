@@ -9,7 +9,7 @@ namespace InternalsViewer.Internals.Readers.Pages;
 /// <summary>
 /// Page Reader for reading a page using an online database with DBCC PAGE
 /// </summary>
-public sealed class QueryPageReader(string connectionString) : PageReader, IPageReader
+public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string connectionString) : PageReader, IPageReader
 {
     private const int ParentObjectIndex = 0;
     private const int ObjectIndex = 1;
@@ -19,6 +19,8 @@ public sealed class QueryPageReader(string connectionString) : PageReader, IPage
     private const int DbccPageHexDumpOption = 2;
 
     private const string DbccPageCommand = @"DBCC PAGE({0}, {1}, {2}, {3}) WITH TABLERESULTS";
+
+    private ILogger<QueryPageReader> Logger { get; } = logger;
 
     /// <summary>
     /// Loads the database page using DBCC PAGE (hex dump)
@@ -30,6 +32,9 @@ public sealed class QueryPageReader(string connectionString) : PageReader, IPage
                                         pageAddress.FileId,
                                         pageAddress.PageId,
                                         DbccPageHexDumpOption);
+
+        Logger.LogDebug("Reading page {PageAddress}: {CommandSql}", pageAddress, pageCommand);
+
         var offset = 0;
         var data = new byte[PageData.Size];
 
@@ -65,6 +70,8 @@ public sealed class QueryPageReader(string connectionString) : PageReader, IPage
         }
         catch (Exception ex)
         {
+            Logger.LogError(ex, "Error reading page {PageAddress}: {Command} ", pageAddress, pageCommand);
+
             throw new Exception($"Error reading page {pageAddress.FileId}:{pageAddress.PageId}", ex);
         }
 

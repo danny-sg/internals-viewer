@@ -61,7 +61,7 @@ internal static class Program
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.ToString());
                 }
             }
             else if (int.TryParse(objectId, out var id))

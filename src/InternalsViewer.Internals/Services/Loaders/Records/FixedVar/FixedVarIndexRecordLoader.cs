@@ -231,14 +231,11 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
     /// </summary>
     private static void LoadDownPagePointer(FixedVarIndexRecord record, PageData page)
     {
-        //Last 6 bytes of the fixed slot
-        var address = new byte[PageAddress.Size];
-
+        // Last 6 bytes of the fixed slot
         var downPagePointerOffset = record.Offset + page.PageHeader.FixedLengthSize - PageAddress.Size;
 
-        Array.Copy(page.Data, downPagePointerOffset, address, 0, PageAddress.Size);
-
-        record.DownPagePointer = PageAddressParser.Parse(address);
+        record.DownPagePointer = PageAddressParser.Parse(
+            page.Data.AsSpan(downPagePointerOffset, PageAddress.Size));
 
         record.MarkProperty(nameof(FixedVarIndexRecord.DownPagePointer), downPagePointerOffset, PageAddress.Size);
     }

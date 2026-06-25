@@ -63,8 +63,6 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
     {
         var result = new InternalMetadata();
 
-        Logger.LogDebug("Database: {DatabaseName} - Building metadata", database.Name);
-
         result.AllocationUnits = await GetAllocationUnits(database);
 
         var rowSetsFirstPage = GetFirstPage(InternalTableConstants.RowSetId, result.AllocationUnits);
@@ -245,7 +243,8 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         var pageAddress = databaseDetail.BootPage.FirstAllocationUnitsPage;
 
         Logger.LogTrace(
-            "Getting Allocation Units (sys.sysallocunits) using first page specified in Boot Page (1:9): {PageAddress}",
+            "Getting Allocation Units (sys.sysallocunits) using first page specified in Boot Page {BootPage}): {PageAddress}",
+            BootPage.BootPageAddress,
             pageAddress);
 
         var id = IdHelpers.GetAllocationUnitId(objectId, indexId);
@@ -254,7 +253,7 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
                                              databaseDetail.BootPage.FirstAllocationUnitsPage,
                                              InternalAllocationUnitStructure.GetStructure(id));
 
-        Logger.LogTrace("Allocation Units (sys.sysallocunits): {Count} records found. Parsing records...", 
+        Logger.LogTrace("Allocation Units (sys.sysallocunits): {Count} records found.", 
                         records.Count);
 
         var rows = records.Select(InternalAllocationUnitLoader.Load).ToList();
@@ -280,7 +279,7 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
                         objectId,
                         indexId,
                         allocationUnitId,
-                        firstPage?.ToString() ?? "NOT FOUND");
+                        firstPage);
 
         if (firstPage == null)
         {

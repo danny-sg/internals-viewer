@@ -1,9 +1,12 @@
 ﻿using System.Data;
+using System.Globalization;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
+using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.VerificationTool.Helpers;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 
@@ -43,7 +46,7 @@ internal abstract class VerificationService(IDatabaseService databaseService)
     {
         var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
 
-        var connection = ServerConnectionFactory.Create(config => config.ConnectionString = connectionString);
+        var connection = new ServerConnectionFactory(NullLogger<QueryPageReader>.Instance).Create(config => config.ConnectionString = connectionString);
 
         var database = await DatabaseService.LoadAsync(databaseName, connection);
 
@@ -65,14 +68,14 @@ internal abstract class VerificationService(IDatabaseService databaseService)
                 return float.Parse(value).ToString("0.00");
 
             case SqlDbType.Bit:
-            {
-                if (bool.TryParse(value, out var result))
                 {
-                    return result.ToString();
-                }
+                    if (bool.TryParse(value, out var result))
+                    {
+                        return result.ToString();
+                    }
 
-                return value == "1" ? "True" : "False";
-            }
+                    return value == "1" ? "True" : "False";
+                }
             case SqlDbType.SmallInt:
                 return short.Parse(value).ToString();
             case SqlDbType.BigInt:
@@ -106,7 +109,12 @@ internal abstract class VerificationService(IDatabaseService databaseService)
             case SqlDbType.DateTimeOffset:
             case SqlDbType.SmallDateTime:
             case SqlDbType.DateTime:
-                return DateTime.Parse(value).ToString();
+                {
+                    DateTime.TryParse(value, out var result);
+
+                    return "BLAH";
+                }
+
             case SqlDbType.Time:
                 return TimeSpan.Parse(value).ToString();
             case SqlDbType.Variant:

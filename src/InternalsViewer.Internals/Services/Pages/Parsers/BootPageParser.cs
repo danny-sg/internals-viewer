@@ -26,7 +26,7 @@ public sealed class BootPageParser : PageParser, IPageParser<BootPage>
     private const int FirstPageOffset = 612;
     private const int NextAllocationUnitIdOffset = 832;
 
-    public PageType[] SupportedPageTypes => new[] { PageType.Boot };
+    public PageType[] SupportedPageTypes => [PageType.Boot];
 
     Page IPageParser.Parse(PageData page)
     {
@@ -66,8 +66,8 @@ public sealed class BootPageParser : PageParser, IPageParser<BootPage>
 
         page.Collation = BitConverter.ToInt32(page.Data, CollationOffset);
 
-        page.FirstAllocationUnitsPage 
-            = PageAddressParser.Parse(page.Data[FirstPageOffset..(FirstPageOffset + PageAddress.Size)]);
+        page.FirstAllocationUnitsPage = PageAddressParser.Parse(
+            page.Data.AsSpan(FirstPageOffset, PageAddress.Size));
 
         page.CheckpointLsn = LogSequenceNumberParser.Parse(
                 page.Data[CheckpointLsnOffset..(CheckpointLsnOffset + LogSequenceNumber.Size)]);

@@ -1,7 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Database;
-
-namespace InternalsViewer.Internals.Extensions;
+﻿namespace InternalsViewer.Internals.Extensions;
 
 public static class EnumerableExtensions
 {
@@ -15,7 +12,7 @@ public static class EnumerableExtensions
 
     public static T? Pop<T>(this List<T> collection, Func<T, bool> predicate)
     {
-        if (collection.Count(predicate) > 0)
+        if (collection.Any(predicate))
         {
             var result = collection.Where(predicate).First();
 
@@ -25,21 +22,5 @@ public static class EnumerableExtensions
         }
 
         return default;
-    }
-}
-
-public static class DatabaseSourceExtensions
-{
-    public static AllocationUnit? FindPageAllocationUnit(this DatabaseSource databaseSource, PageAddress page)
-    {
-        var extent = page.PageId / 8;
-
-        return databaseSource.AllocationUnits
-                             .FirstOrDefault(u =>
-                                 u.IamChain.IsExtentAllocated(extent, page.FileId, false) ||
-                                 u.IamChain.SinglePageSlots.Contains(page)
-                                 || u.FirstPage == page
-                                 || u.FirstIamPage == page
-                                 || u.RootPage == page);
     }
 }

@@ -59,22 +59,18 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
 
     private static PageAddress[] GetSinglePageSlots(PageData page)
     {
-        var singlePageSlots = new List<PageAddress>();
+        var singlePageSlots = new PageAddress[AllocationPage.SlotCount];
 
         var offset = AllocationPage.SinglePageSlotOffset;
 
         for (var i = 0; i < AllocationPage.SlotCount; i++)
         {
-            var pageAddress = new byte[PageAddress.Size];
-
-            Array.Copy(page.Data, offset, pageAddress, 0, PageAddress.Size);
-
-            singlePageSlots.Add(PageAddressParser.Parse(pageAddress));
+            singlePageSlots[i] = PageAddressParser.Parse(page.Data.AsSpan(offset, PageAddress.Size));
 
             offset += PageAddress.Size;
         }
 
-        return singlePageSlots.ToArray();
+        return singlePageSlots;
     }
 
     private static PageAddress GetIamStartPage(PageData page)

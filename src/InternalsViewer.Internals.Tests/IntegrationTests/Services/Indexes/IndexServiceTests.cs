@@ -16,7 +16,7 @@ public class IndexServiceTests(ITestOutputHelper testOutput)
 
         var service = serviceHost.GetService<IndexService>();
 
-        var connection = FileConnectionFactory.Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase/TestDatabase.mdf");
+        var connection = new FileConnectionFactory().Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase/TestDatabase.mdf");
 
         var databaseService = serviceHost.GetService<IDatabaseService>();
 

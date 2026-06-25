@@ -2,6 +2,7 @@
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Readers.Internals;
+using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Services.Loaders.Engine;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Tests.Helpers;
@@ -19,7 +20,7 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var database = new DatabaseSource(ServerConnectionFactory.Create(c => c.ConnectionString = connectionString))
+        var database = new DatabaseSource(new ServerConnectionFactory(TestLogger.GetLogger<QueryPageReader>(TestOutput)).Create(c => c.ConnectionString = connectionString))
         {
             Name = "AdventureWorks2022",
             BootPage = new BootPage { FirstAllocationUnitsPage = new PageAddress(1, 20) }

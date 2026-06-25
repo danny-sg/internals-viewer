@@ -18,14 +18,20 @@ public sealed class PageService(ILogger<PageService> logger,
     {
         using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
         {
-            Logger.LogTrace("Loading page {PageAddress}", pageAddress);
+            Logger.LogDebug("Loading page {PageAddress}", pageAddress);
 
             var page = await loader.Load(database, pageAddress);
+
+            Logger.LogDebug("Page {PageAddress}: Page Type: {PageType}", pageAddress, page.PageHeader.PageType);
 
             var parser = parsers.FirstOrDefault(p => p.SupportedPageTypes.Any(t => page.PageHeader.PageType == t));
 
             if (parser == null)
             {
+                Logger.LogError("Page {PageAddress}: Page Type: {PageType} - No parser found for page type",
+                                pageAddress, 
+                                page.PageHeader.PageType);
+
                 throw new ArgumentException($"No parser found for page type {page.PageHeader.PageType}");
             }
 

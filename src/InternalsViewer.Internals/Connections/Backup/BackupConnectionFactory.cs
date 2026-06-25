@@ -4,9 +4,11 @@ namespace InternalsViewer.Internals.Connections.Backup;
 
 public class BackupConnectionFactory : IConnectionTypeFactory<BackupConnectionTypeConfig>
 {
-    public string Identifier => "Backup";
+    public const string BackupIdentifier = "Backup";
 
-    public static IConnectionType Create(Action<BackupConnectionTypeConfig> configDelegate)
+    public string Identifier => BackupIdentifier;
+
+    public IConnectionType Create(Action<BackupConnectionTypeConfig> configDelegate)
     {
         var config = new BackupConnectionTypeConfig();
 

@@ -16,7 +16,7 @@ public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
     [RequiresFileFact(MdfPath)]
     public async Task Can_Load_Metadata()
     {
-        var database = new DatabaseSource(FileConnectionFactory.Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase.mdf"))
+        var database = new DatabaseSource(new FileConnectionFactory().Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase.mdf"))
         {
             Name = "TestDatabase",
             BootPage = new BootPage { FirstAllocationUnitsPage = new PageAddress(1, 20) }

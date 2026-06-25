@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml.Media;
@@ -34,9 +36,15 @@ public sealed partial class MainWindow
 {
     private IDatabaseService DatabaseService { get; }
 
+    private IEnumerable<IConnectionTypeFactory> ConnectionFactories { get; }
+
     private TabViewItem? ConnectTab { get; set; }
 
+    private TabViewItem? LogTab { get; set; }
+
     private MainViewModel ViewModel { get; }
+
+    private AppLogViewModel AppLogViewModel { get; }
 
     private PageTabViewModelFactory PageTabViewModelFactory { get; }
 
@@ -49,7 +57,9 @@ public sealed partial class MainWindow
     private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
     public MainWindow(IDatabaseService databaseService,
+                      IEnumerable<IConnectionTypeFactory> connectionFactories,
                       MainViewModel mainViewModel,
+                      AppLogViewModel appLogViewModel,
                       PageTabViewModelFactory pageTabViewModelFactory,
                       DatabaseTabViewModelFactory databaseTabViewModelFactory,
                       ConnectServerViewModelFactory connectServerViewModelFactory,
@@ -59,8 +69,10 @@ public sealed partial class MainWindow
         Title = "Internals Viewer";
 
         DatabaseService = databaseService;
+        ConnectionFactories = connectionFactories;
 
         ViewModel = mainViewModel;
+        AppLogViewModel = appLogViewModel;
         PageTabViewModelFactory = pageTabViewModelFactory;
         DatabaseTabViewModelFactory = databaseTabViewModelFactory;
         ConnectServerViewModelFactory = connectServerViewModelFactory;
@@ -91,7 +103,10 @@ public sealed partial class MainWindow
                        => m.Reply(ShowExceptionDialog(m.Exception)));
 
         WeakReferenceMessenger.Default.Register<OpenQueryReplayMessage>(this, (_, m)
-            => m.Reply(OpenQueryReplay(m.Database)));
+            => m.Reply(OpenQuery(m.Database)));
+
+        WeakReferenceMessenger.Default.Register<OpenLogMessage>(this, (_, m)
+            => m.Reply(OpenLogTab()));
 
         SetTitleBar(CustomDragRegion);
     }
@@ -143,9 +158,15 @@ public sealed partial class MainWindow
             connectionString = ConnectionHelper.SetPassword(connectionString, result);
         }
 
-        var connection = ServerConnectionFactory.Create(c => c.ConnectionString = connectionString);
+        var factory = (IConnectionTypeFactory<ServerConnectionConfig>)ConnectionFactories
+            .Single(f => f.Identifier == ServerConnectionFactory.ServerIdentifier);
 
-        await AddConnection(connection);
+        var connection = factory.Create(c => c.ConnectionString = connectionString);
+
+        if (!await AddConnection(connection))
+        {
+            return false;
+        }
 
         await ViewModel.AddRecentConnectionCommand.ExecuteAsync(recent);
 
@@ -154,52 +175,75 @@ public sealed partial class MainWindow
 
     private async Task<bool> ConnectFile(string filename, RecentConnection recent)
     {
-        var connection = FileConnectionFactory.Create(c => c.Filename = filename);
+        var factory = (IConnectionTypeFactory<FileConnectionTypeConfig>)ConnectionFactories
+            .Single(f => f.Identifier == FileConnectionFactory.FileIdentifier);
 
-        await AddConnection(connection);
+        var connection = factory.Create(c => c.Filename = filename);
+
+        if (!await AddConnection(connection))
+        {
+            return false;
+        }
 
         await ViewModel.AddRecentConnectionCommand.ExecuteAsync(recent);
 
         return true;
     }
 
-    private async Task ConnectBackup(string filename)
+    private async Task<bool> ConnectBackup(string filename)
     {
-        var connection = BackupConnectionFactory.Create(c => c.Filename = filename);
+        var factory = (IConnectionTypeFactory<BackupConnectionTypeConfig>)ConnectionFactories
+            .Single(f => f.Identifier == BackupConnectionFactory.BackupIdentifier);
 
-        await AddConnection(connection);
-    }
+        var connection = factory.Create(c => c.Filename = filename);
 
-    private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress)
-    {
-        var viewModel = PageTabViewModelFactory.Create(database);
-
-        await viewModel.LoadPage(pageAddress);
-
-        var content = new PageView();
-
-        content.DataContext = viewModel;
-
-        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
-
-        var title = $"Page {pageAddress.PageId}";
-
-        var tab = new TabViewItem
+        if (!await AddConnection(connection))
         {
-            Name = title,
-            Content = content,
-            IconSource = new ImageIconSource { ImageSource = svg },
-        };
-
-        BindTabTitle(viewModel, tab);
-
-        WindowTabView.TabItems.Add(tab);
-        WindowTabView.SelectedItem = tab;
+            return false;
+        }
 
         return true;
     }
 
-    private async Task<bool> OpenQueryReplay(DatabaseSource database)
+    private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress)
+    {
+        try
+        {
+            var viewModel = PageTabViewModelFactory.Create(database);
+
+            await viewModel.LoadPage(pageAddress);
+
+            var content = new PageView();
+
+            content.DataContext = viewModel;
+
+            var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
+
+            var title = $"Page {pageAddress.PageId}";
+
+            var tab = new TabViewItem
+            {
+                Name = title,
+                Content = content,
+                IconSource = new ImageIconSource { ImageSource = svg },
+            };
+
+            BindTabTitle(viewModel, tab);
+
+            WindowTabView.TabItems.Add(tab);
+            WindowTabView.SelectedItem = tab;
+        }
+        catch (Exception ex)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool OpenQuery(DatabaseSource database)
     {
         var viewModel = QueryViewModelFactory.Create(database);
 
@@ -228,32 +272,39 @@ public sealed partial class MainWindow
 
     private bool OpenIndex(DatabaseSource database, PageAddress rootPageAddress)
     {
-        var viewModel = IndexTabViewModelFactory.Create(database);
-
-        viewModel.RootPage = rootPageAddress;
-
-        var content = new IndexView();
-
-        content.DataContext = viewModel;
-
-        var title = $"Index";
-
-        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/IndexTabIcon.svg"));
-
-        var tab = new TabViewItem
+        try
         {
-            Name = title,
-            Content = content,
-            IconSource = new ImageIconSource { ImageSource = svg },
-        };
+            var viewModel = IndexTabViewModelFactory.Create(database);
+
+            viewModel.RootPage = rootPageAddress;
+
+            var content = new IndexView();
+
+            content.DataContext = viewModel;
+
+            var title = $"Index";
+
+            var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/IndexTabIcon.svg"));
+
+            var tab = new TabViewItem
+            {
+                Name = title,
+                Content = content,
+                IconSource = new ImageIconSource { ImageSource = svg },
+            };
 
 
-        tab.Unloaded += (_, _) => content.Dispose();
+            tab.Unloaded += (_, _) => content.Dispose();
 
-        BindTabTitle(viewModel, tab);
+            BindTabTitle(viewModel, tab);
 
-        WindowTabView.TabItems.Add(tab);
-        WindowTabView.SelectedItem = tab;
+            WindowTabView.TabItems.Add(tab);
+            WindowTabView.SelectedItem = tab;
+        }
+        catch (Exception ex)
+        {
+            WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+        }
 
         return true;
     }
@@ -269,43 +320,51 @@ public sealed partial class MainWindow
         tab.SetBinding(TabViewItem.HeaderProperty, titleBinding);
     }
 
-    private async Task AddConnection(IConnectionType connection)
+    private async Task<bool> AddConnection(IConnectionType connection)
     {
-        DatabaseSource database = null!;
-
-        await Task.Run(async () =>
+        try
         {
-            // Worker thread
-            database = await DatabaseService.LoadAsync(connection.Name, connection);
-        });
+            DatabaseSource database = null!;
 
-        var viewModel = DatabaseTabViewModelFactory.Create(database);
-
-        viewModel.Load(connection.Name);
-
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            // UI thread
-            var content = new DatabaseView();
-
-            content.DataContext = viewModel;
-
-            var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/DatabaseTabIcon.svg"));
-
-            var tab = new TabViewItem
+            await Task.Run(async () =>
             {
-                Name = connection.Name,
-                IconSource = new ImageIconSource { ImageSource = svg },
-                Content = content
-            };
+                database = await DatabaseService.LoadAsync(connection.Name, connection);
+            });
 
-            BindTabTitle(viewModel, tab);
+            var viewModel = DatabaseTabViewModelFactory.Create(database);
 
-            tab.Unloaded += (_, _) => content.Dispose();
+            viewModel.Load(connection.Name);
 
-            WindowTabView.TabItems.Add(tab);
-            WindowTabView.SelectedItem = tab;
-        });
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                var content = new DatabaseView();
+
+                content.DataContext = viewModel;
+
+                var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/DatabaseTabIcon.svg"));
+
+                var tab = new TabViewItem
+                {
+                    Name = connection.Name,
+                    IconSource = new ImageIconSource { ImageSource = svg },
+                    Content = content
+                };
+
+                BindTabTitle(viewModel, tab);
+
+                tab.Unloaded += (_, _) => content.Dispose();
+
+                WindowTabView.TabItems.Add(tab);
+                WindowTabView.SelectedItem = tab;
+            });
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+            return false;
+        }
     }
 
     private void TabView_OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
@@ -350,6 +409,32 @@ public sealed partial class MainWindow
         tabView.TabItems.Add(connectTab);
 
         return connectTab;
+    }
+
+    private Task<bool> OpenLogTab()
+    {
+        if (LogTab != null && WindowTabView.TabItems.Contains(LogTab))
+        {
+            WindowTabView.SelectedItem = LogTab;
+            return Task.FromResult(true);
+        }
+
+        var content = new AppLogView();
+
+        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
+
+        LogTab = new TabViewItem
+        {
+            Header = "Log",
+            IconSource = new ImageIconSource { ImageSource = svg },
+            Content = content,
+            IsClosable = true
+        };
+
+        WindowTabView.TabItems.Add(LogTab);
+        WindowTabView.SelectedItem = LogTab;
+
+        return Task.FromResult(true);
     }
 
     public async Task InitializeAsync()

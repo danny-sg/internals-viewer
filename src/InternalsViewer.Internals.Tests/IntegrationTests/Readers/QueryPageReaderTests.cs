@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Readers;
 
@@ -17,7 +18,7 @@ public class QueryPageReaderTests(ITestOutputHelper testOutputHelper)
     {
         var connectionString = ConnectionStringHelper.GetConnectionString("local");
 
-        var reader = new QueryPageReader(connectionString);
+        var reader = new QueryPageReader(NullLogger<QueryPageReader>.Instance, connectionString);
 
         var result = await reader.Read("TestDatabase", new PageAddress(1, 1));
 
@@ -29,7 +30,7 @@ public class QueryPageReaderTests(ITestOutputHelper testOutputHelper)
     {
         var service = ServiceHelper.CreatePageService(TestOutputHelper);
 
-        var connection = FileConnectionFactory.Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase.mdf");
+        var connection = new FileConnectionFactory().Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase.mdf");
 
         var result = await service.GetPage(new DatabaseSource(connection), 
                                            new PageAddress(1, 9));

@@ -14,7 +14,7 @@ public abstract record Structure<T>(long AllocationUnitId)
 
     public long PartitionId { get; set; }
 
-    public List<T> Columns { get; set; } = new();
+    public List<T> Columns { get; set; } = [];
 
     public bool HasSparseColumns => Columns.Any(c => c.IsSparse);
 

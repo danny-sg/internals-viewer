@@ -133,8 +133,11 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
                 if (!internalsValue.Equals(databaseValue, StringComparison.OrdinalIgnoreCase))
                 {
                     result.FailCount += 1;
-                    WriteError($"{result.PageAddress}:{result.Slot} Field {field.Name} value mismatch" +
-                               $" - Database: {field.Value ?? "(null)"} vs Internals: {internalsField.Value}");
+                    if(result.FailCount < 10)
+                    {
+                        WriteError($"{result.PageAddress}:{result.Slot} Field {field.Name} value mismatch" +
+                                   $" - Database: {field.Value ?? "(null)"} vs Internals: {internalsField.Value} - {internalsField.ColumnStructure.DataType}");
+                    }
                 }
                 else
                 {

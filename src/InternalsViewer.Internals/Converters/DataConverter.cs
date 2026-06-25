@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿using System.Buffers.Binary;
 using System.Data;
 using System.Data.SqlTypes;
 using System.Globalization;
@@ -41,7 +41,7 @@ public static class DataConverter
 
         for (var i = 0; i < binaryData.Length; i++)
         {
-            binaryData[i] = byte.Parse(data.Substring(i * 2, 2),
+            binaryData[i] = byte.Parse(data.AsSpan(i * 2, 2),
                 NumberStyles.AllowHexSpecifier,
                 CultureInfo.InvariantCulture);
         }
@@ -64,18 +64,15 @@ public static class DataConverter
 
         if (binaryData.Length == 1)
         {
-            var bitArray = new BitArray(binaryData);
-
-            var stringBuilder = new StringBuilder();
-
-            for (var i = 0; i < 8; i++)
+            var b = binaryData[0];
+            var binaryString = string.Create(10, b, static (span, v) =>
             {
-                stringBuilder.Insert(0, bitArray[i] ? "1" : "0");
-            }
-
-            stringBuilder.Insert(0, "binary: ");
-
-            decodedData.Add(stringBuilder.ToString());
+                span[0] = 'b'; span[1] = 'i'; span[2] = 'n'; span[3] = 'a';
+                span[4] = 'r'; span[5] = 'y'; span[6] = ':'; span[7] = ' ';
+                for (var i = 0; i < 8; i++)
+                    span[9 - i] = (v & (1 << i)) != 0 ? '1' : '0';
+            });
+            decodedData.Add(binaryString);
         }
 
         var varcharData = DataString(binaryData, SqlDbType.VarChar);
@@ -91,13 +88,13 @@ public static class DataConverter
     /// <summary>
     /// Converts a byte array to a value
     /// </summary>
-    public static string BinaryToString(byte[]? data,
+    public static string BinaryToString(ReadOnlySpan<byte> data,
                                         SqlDbType sqlType,
                                         byte precision = 0,
                                         byte scale = 0,
                                         short bitPosition = 0)
     {
-        if (data == null || data.Length == 0)
+        if (data is not { Length: not 0 })
         {
             return string.Empty;
         }
@@ -113,34 +110,34 @@ public static class DataConverter
 
                 case SqlDbType.SmallInt:
                     // smallint is a two byte (16 bit) integer    
-                    return BitConverter.ToInt16(data, 0).ToString(CultureInfo.CurrentCulture);
+                    return BinaryPrimitives.ReadInt16LittleEndian(data).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.Int:
                     // int is a four byte (32 bit) integer  
-                    return BitConverter.ToInt32(data, 0).ToString(CultureInfo.CurrentCulture);
+                    return BinaryPrimitives.ReadInt32LittleEndian(data).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.BigInt:
                     // bigint is an eight byte (64 bit) integer  
-                    return BitConverter.ToInt64(data, 0).ToString(CultureInfo.CurrentCulture);
+                    return BinaryPrimitives.ReadInt64LittleEndian(data).ToString(CultureInfo.CurrentCulture);
 
                 case SqlDbType.Decimal:
                     return DecodeDecimal(data, precision, scale).ToString();
 
                 case SqlDbType.SmallMoney:
                     // smallmoney is a four byte (32 bit) integer with a precision of 4 decimal places, i.e. divided by 10,000
-                    return (BitConverter.ToInt32(data, 0) / 10000M).ToString(CultureInfo.InvariantCulture);
+                    return (BinaryPrimitives.ReadInt32LittleEndian(data) / 10000M).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.Money:
                     // money is an eight byte (64 bit) integer with a precision of 4 decimal places, i.e. divided by 10,000
-                    return (BitConverter.ToInt64(data, 0) / 10000M).ToString(CultureInfo.InvariantCulture);
+                    return (BinaryPrimitives.ReadInt64LittleEndian(data) / 10000M).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.Real:
                     // Real is a four byte (32 bit) floating point number
-                    return BitConverter.ToSingle(data, 0).ToString(CultureInfo.InvariantCulture);
+                    return BinaryPrimitives.ReadSingleLittleEndian(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.Float:
                     // Float is an eight byte (64 bit) floating point number
-                    return BitConverter.ToDouble(data, 0).ToString(CultureInfo.InvariantCulture);
+                    return BinaryPrimitives.ReadDoubleLittleEndian(data).ToString(CultureInfo.InvariantCulture);
 
                 // String types
                 case SqlDbType.Char:
@@ -153,10 +150,10 @@ public static class DataConverter
 
                 // Date types
                 case SqlDbType.DateTime:
-                    return DateTimeConverters.DecodeDateTime(data).ToString("M/d/yyyy H:mm:ss", CultureInfo.InvariantCulture);
+                    return DateTimeConverters.DecodeDateTime(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.SmallDateTime:
-                    return DateTimeConverters.DecodeSmallDateTime(data).ToString("M/d/yyyy H:mm:ss", CultureInfo.InvariantCulture);
+                    return DateTimeConverters.DecodeSmallDateTime(data).ToString(CultureInfo.InvariantCulture);
 
                 case SqlDbType.Date:
                     return DateTimeConverters.DecodeDate(data).ToShortDateString();
@@ -183,10 +180,10 @@ public static class DataConverter
                 // Binary types
                 case SqlDbType.VarBinary:
                 case SqlDbType.Binary:
-                    return "0x" + data.ToHexString();
+                    return "0x" + Convert.ToHexString(data);
 
                 case SqlDbType.UniqueIdentifier:
-                    return BinaryToGuid(data).ToString().ToUpper();
+                    return new Guid(data).ToString().ToUpper();
 
                 // SQL Variant
                 case SqlDbType.Variant:
@@ -227,31 +224,33 @@ public static class DataConverter
 
         try
         {
+            ReadOnlySpan<byte> span = data;
+
             return sqlType switch
             {
-                SqlDbType.BigInt => BitConverter.ToInt64(data, 0),
-                SqlDbType.Int => BitConverter.ToInt32(data, 0),
+                SqlDbType.BigInt => BinaryPrimitives.ReadInt64LittleEndian(span),
+                SqlDbType.Int => BinaryPrimitives.ReadInt32LittleEndian(span),
                 SqlDbType.TinyInt => data[0],
-                SqlDbType.SmallInt => BitConverter.ToInt16(data, 0),
-                SqlDbType.Char => Encoding.UTF8.GetString(data),
-                SqlDbType.VarChar => Encoding.UTF8.GetString(data),
-                SqlDbType.NChar => Encoding.Unicode.GetString(data),
-                SqlDbType.NVarChar => Encoding.Unicode.GetString(data),
-                SqlDbType.DateTime => DateTimeConverters.DecodeDateTime(data),
-                SqlDbType.SmallDateTime => DateTimeConverters.DecodeSmallDateTime(data),
+                SqlDbType.SmallInt => BinaryPrimitives.ReadInt16LittleEndian(span),
+                SqlDbType.Char => Encoding.UTF8.GetString(span),
+                SqlDbType.VarChar => Encoding.UTF8.GetString(span),
+                SqlDbType.NChar => Encoding.Unicode.GetString(span),
+                SqlDbType.NVarChar => Encoding.Unicode.GetString(span),
+                SqlDbType.DateTime => DateTimeConverters.DecodeDateTime(span),
+                SqlDbType.SmallDateTime => DateTimeConverters.DecodeSmallDateTime(span),
                 SqlDbType.VarBinary => data,
                 SqlDbType.Binary => data,
-                SqlDbType.UniqueIdentifier => BinaryToGuid(data),
-                SqlDbType.Decimal => DecodeDecimal(data, precision, scale),
-                SqlDbType.Money => BitConverter.ToInt64(data, 0) / 10000M,
-                SqlDbType.SmallMoney => BitConverter.ToInt32(data, 0) / 10000M,
-                SqlDbType.Real => BitConverter.ToSingle(data, 0),
-                SqlDbType.Float => BitConverter.ToDouble(data, 0),
-                SqlDbType.Variant => VariantBinaryToString(data),
-                SqlDbType.Date => DateTimeConverters.DecodeDate(data),
-                SqlDbType.Time => DateTimeConverters.DecodeTime(data, scale),
-                SqlDbType.DateTime2 => DateTimeConverters.DecodeDateTime2(data, scale),
-                SqlDbType.DateTimeOffset => DateTimeConverters.DecodeDateTimeOffset(data, scale),
+                SqlDbType.UniqueIdentifier => new Guid(span),
+                SqlDbType.Decimal => DecodeDecimal(span, precision, scale),
+                SqlDbType.Money => BinaryPrimitives.ReadInt64LittleEndian(span) / 10000M,
+                SqlDbType.SmallMoney => BinaryPrimitives.ReadInt32LittleEndian(span) / 10000M,
+                SqlDbType.Real => BinaryPrimitives.ReadSingleLittleEndian(span),
+                SqlDbType.Float => BinaryPrimitives.ReadDoubleLittleEndian(span),
+                SqlDbType.Variant => VariantBinaryToString(span),
+                SqlDbType.Date => DateTimeConverters.DecodeDate(span),
+                SqlDbType.Time => DateTimeConverters.DecodeTime(span, scale),
+                SqlDbType.DateTime2 => DateTimeConverters.DecodeDateTime2(span, scale),
+                SqlDbType.DateTimeOffset => DateTimeConverters.DecodeDateTimeOffset(span, scale),
                 _ => string.Format(CultureInfo.CurrentCulture, "not yet supported ({0:G})", sqlType)
             };
         }
@@ -275,7 +274,7 @@ public static class DataConverter
     /// <summary>
     /// Returns a string representation of a variant data type
     /// </summary>
-    private static string VariantBinaryToString(byte[] data)
+    private static string VariantBinaryToString(ReadOnlySpan<byte> data)
     {
         var variantType = data[0];
         var offset = 2;
@@ -313,34 +312,28 @@ public static class DataConverter
                 break;
         }
 
-        var variantData = new byte[data.Length - offset];
-
-        Array.Copy(data, offset, variantData, 0, variantData.Length);
-
-        return BinaryToString(variantData, SqlTypeHelpers.ToSqlType(variantType), precision, scale);
+        return BinaryToString(data[offset..], SqlTypeHelpers.ToSqlType(variantType), precision, scale);
     }
 
     /// <summary>
     /// Decodes the DECIMAL/NUMERIC data type
     /// </summary>
     /// <remarks>
-    /// - Precision determines the maximum number of digits that can be stored
-    /// - Scale determines the number of digits that can be stored to the right of the decimal point
+    /// Precision determines the maximum number of digits that can be stored
+    ///
+    /// Scale determines the number of digits that can be stored to the right of the decimal point
     /// 
     /// This uses System.Data.SqlTypes.SqlDecimal to get the value
     /// </remarks>
-    private static SqlDecimal DecodeDecimal(byte[] data, byte precision, byte scale)
+    private static SqlDecimal DecodeDecimal(ReadOnlySpan<byte> data, byte precision, byte scale)
     {
-        int index;
         var positive = data[0] == 1;
-
         var bits = new int[4];
+        var length = (data.Length - 1) >> 2;
 
-        var length = data.Length >> 2;
-
-        for (index = 0; index < length; index++)
+        for (var index = 0; index < length; index++)
         {
-            bits[index] = BitConverter.ToInt32(data, 1 + index * 4);
+            bits[index] = BinaryPrimitives.ReadInt32LittleEndian(data[(1 + index * 4)..]);
         }
 
         return new SqlDecimal(precision, scale, positive, bits);

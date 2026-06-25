@@ -59,72 +59,72 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private IRecordService RecordService { get; } = recordService;
 
     [ObservableProperty]
-    private string objectName = string.Empty;
+    private string _objectName = string.Empty;
 
     [ObservableProperty]
-    private int objectId;
+    private int _objectId;
 
     [ObservableProperty]
-    private int indexId;
+    private int _indexId;
 
     [ObservableProperty]
-    private string indexName = string.Empty;
+    private string _indexName = string.Empty;
 
     [ObservableProperty]
-    private string objectIndexType = string.Empty;
+    private string _objectIndexType = string.Empty;
 
     [ObservableProperty]
-    private string indexType = string.Empty;
+    private string _indexType = string.Empty;
 
     [ObservableProperty]
-    private bool isLoading;
+    private bool _isLoading;
 
     [ObservableProperty]
-    private PageAddress pageAddress;
+    private PageAddress _pageAddress;
 
     [ObservableProperty]
-    private PageAddress nextPage;
+    private PageAddress _nextPage;
 
     [ObservableProperty]
-    private PageAddress previousPage;
+    private PageAddress _previousPage;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PageForwardCommand))]
     [NotifyCanExecuteChangedFor(nameof(PageBackCommand))]
-    private Internals.Engine.Pages.Page page = new EmptyPage();
+    private Internals.Engine.Pages.Page _page = new EmptyPage();
 
     [ObservableProperty]
-    private DatabaseSource database = database;
+    private DatabaseSource _database = database;
 
     [ObservableProperty]
-    private ObservableCollection<PageSlot> pageSlots = [];
+    private ObservableCollection<PageSlot> _pageSlots = [];
 
     [ObservableProperty]
-    private PageSlot? selectedSlot;
+    private PageSlot? _selectedSlot;
 
     [ObservableProperty]
-    private Marker? selectedMarker;
+    private Marker? _selectedMarker;
 
     [ObservableProperty]
-    private ObservableCollection<Marker> markers = [];
+    private ObservableCollection<Marker> _markers = [];
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> allocationLayers = [];
+    private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
     [ObservableProperty]
-    private string markerTabName = "Page Header";
+    private string _markerTabName = "Page Header";
 
     [ObservableProperty]
-    private bool isRowDataTabVisible;
+    private bool _isRowDataTabVisible;
 
     [ObservableProperty]
-    private bool isAllocationsTabVisible;
+    private bool _isAllocationsTabVisible;
 
     [ObservableProperty]
-    private int selectedTabIndex;
+    private int _selectedTabIndex;
 
     [ObservableProperty]
-    private short allocationFileId;
+    private short _allocationFileId;
 
     private const int HeaderTab = 0;
     private const int RowDataTabIndex = 1;
@@ -183,8 +183,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             Index = CompressionInfoSlot,
             Description = "Compression Info"
         };
-
-        Logger.LogDebug("Loading Page {Address}", address);
 
         await Task.Run(async () =>
             {
@@ -250,11 +248,11 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                     Page = resultPage;
 
-                    NextPage = new PageAddress(pageAddress.FileId, pageAddress.PageId + 1);
+                    NextPage = new PageAddress(_pageAddress.FileId, _pageAddress.PageId + 1);
 
-                    if (pageAddress.PageId > 0)
+                    if (_pageAddress.PageId > 0)
                     {
-                        PreviousPage = new PageAddress(pageAddress.FileId, pageAddress.PageId - 1);
+                        PreviousPage = new PageAddress(_pageAddress.FileId, _pageAddress.PageId - 1);
                     }
 
                     AddPageMarkers(resultPage);
@@ -264,7 +262,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 });
             });
 
-        History.Add(pageAddress);
+        History.Add(_pageAddress);
     }
 
 

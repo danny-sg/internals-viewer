@@ -309,12 +309,8 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
             if (i >= structure.Columns.Count && columnDescriptor.Value == ColumnDescriptorFlag.SixByteShort)
             {
-                var address = new byte[PageAddress.Size];
-
                 // 6 bytes post columns is the Down Page Pointer
-                Array.Copy(data, offset, address, 0, PageAddress.Size);
-
-                record.DownPagePointer = PageAddressParser.Parse(address);
+                record.DownPagePointer = PageAddressParser.Parse(data.AsSpan(offset, PageAddress.Size));
 
                 record.MarkProperty(nameof(CdIndexRecord.DownPagePointer), offset, PageAddress.Size);
 
