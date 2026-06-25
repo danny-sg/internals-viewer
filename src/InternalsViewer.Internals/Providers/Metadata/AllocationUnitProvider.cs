@@ -14,26 +14,22 @@ public static class AllocationUnitProvider
 {
     public static List<AllocationUnit> GetAllocationUnits(InternalMetadata metadata)
     {
-        return metadata.AllocationUnits.Select(a => GetAllocationUnit(metadata, a)).ToList();
+        return metadata.AllocationUnits.Values.Select(a => GetAllocationUnit(metadata, a)).ToList();
     }
 
     public static AllocationUnit GetAllocationUnit(InternalMetadata metadata, InternalAllocationUnit source)
     {
-        var rowSet = metadata.RowSets
-                             .First(r => r.RowSetId == source.ContainerId);
+        var rowSet = metadata.RowSets[source.ContainerId];
 
-        var internalObject = metadata.Objects
-                                     .First(o => o.ObjectId == rowSet.ObjectId);
+        var internalObject = metadata.Objects[rowSet.ObjectId];
 
-        var schema = metadata.Entities
-                             .First(s => s.Id == internalObject.SchemaId && s.ClassId == MetadataConstants.SchemaClassId);
+        var schema = metadata.Entities[(internalObject.SchemaId, (byte)MetadataConstants.SchemaClassId)];
 
-        var index = metadata.Indexes
-                            .FirstOrDefault(i => i.ObjectId == rowSet.ObjectId && i.IndexId == rowSet.IndexId);
+        var index = metadata.Indexes[rowSet.ObjectId]
+                            .FirstOrDefault(i => i.IndexId == rowSet.IndexId);
 
-        var parentIndex = metadata.Indexes
-                                  .FirstOrDefault(i => i.ObjectId == internalObject.ObjectId 
-                                                       && i.IndexId <= 1);
+        var parentIndex = metadata.Indexes[internalObject.ObjectId]
+                                  .FirstOrDefault(i => i.IndexId <= 1);
 
         var displayName = !string.IsNullOrEmpty(index?.Name)
             ? $"{schema.Name}.{internalObject.Name}.{index.Name}"

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Linq;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.UI.App.Models.Schema;
@@ -18,7 +15,8 @@ internal class SchemaHelper
 
         databaseSchema.Schemas = schemas.Select(s => new SqlSchema { Name = s.Value }).ToList();
 
-        var tables = database.Metadata.Objects.Where(o => (o.ObjectType == "U " || o.ObjectType == "V ") 
+        var tables = database.Metadata.Objects.Values
+                                              .Where(o => (o.ObjectType == "U " || o.ObjectType == "V ") 
                                                           && (o.Status & 1) == 0);
 
         foreach (var internalObject in tables)
@@ -29,7 +27,7 @@ internal class SchemaHelper
                 Schema = schemas[internalObject.SchemaId]
             });
 
-            var columns = database.Metadata.Columns.Where(c => c.ObjectId == internalObject.ObjectId);
+            var columns = database.Metadata.Columns[internalObject.ObjectId];
 
             databaseSchema.Columns.AddRange(columns.Select(
                 c => new SqlColumn

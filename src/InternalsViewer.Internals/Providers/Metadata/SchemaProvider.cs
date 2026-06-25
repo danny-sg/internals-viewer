@@ -8,7 +8,7 @@ public static class SchemaProvider
     {
         return database.Metadata
                        .Entities
-                       .Where(s => s.ClassId == MetadataConstants.SchemaClassId)
-                       .ToDictionary(s => s.Id, s => s.Name);
+                       .Where(e => e.Key.ClassId == MetadataConstants.SchemaClassId)
+                       .ToDictionary(e => e.Key.Id, e => e.Value.Name);
     }
 }

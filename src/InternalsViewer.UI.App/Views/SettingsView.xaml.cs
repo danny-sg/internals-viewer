@@ -1,7 +1,6 @@
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views;

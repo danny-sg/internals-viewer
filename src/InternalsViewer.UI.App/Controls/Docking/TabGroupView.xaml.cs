@@ -5,7 +5,6 @@ using System.ComponentModel;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using InternalsViewer.UI.App.ViewModels.Docking;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;

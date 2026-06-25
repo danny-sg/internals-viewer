@@ -70,7 +70,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private IEnumerable<DataRecord> GetFixedVarDataRecords(DataPage page)
     {
-        var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
+        var structure = TableStructureProvider.GetTableStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable.Select((s, index) =>
@@ -85,7 +85,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private IEnumerable<CdRecord> GetCdDataRecords(DataPage page)
     {
-        var structure = TableStructureProvider.GetTableStructure(page.Database.Metadata,
+        var structure = TableStructureProvider.GetTableStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
@@ -102,7 +102,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private IEnumerable<FixedVarIndexRecord> GetFixedVarIndexRecords(IndexPage page)
     {
-        var structure = IndexStructureProvider.GetIndexStructure(page.Database.Metadata,
+        var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
@@ -112,7 +112,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private IEnumerable<CdIndexRecord> GetCdIndexRecords(IndexPage page)
     {
-        var structure = IndexStructureProvider.GetIndexStructure(page.Database.Metadata,
+        var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable

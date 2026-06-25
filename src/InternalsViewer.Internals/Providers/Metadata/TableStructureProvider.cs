@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Database.Enums;
+﻿using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Structures;
 
@@ -10,24 +11,35 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 public class TableStructureProvider
 {
     /// <summary>
-    /// Gets the table structure for the specified allocation unit
+    /// Gets the table structure for the specified allocation unit, using the database-level cache.
+    /// </summary>
+    public static TableStructure GetTableStructure(DatabaseSource database, long allocationUnitId)
+    {
+        if (database.TableStructures.TryGetValue(allocationUnitId, out var cached))
+        {
+            return cached;
+        }
+
+        var structure = GetTableStructure(database.Metadata, allocationUnitId);
+
+        database.TableStructures[allocationUnitId] = structure;
+
+        return structure;
+    }
+
+    /// <summary>
+    /// Gets the table structure for the specified allocation unit from the metadata collection.
     /// </summary>
     public static TableStructure GetTableStructure(InternalMetadata metadata, long allocationUnitId)
     {
         var structure = new TableStructure(allocationUnitId);
 
-        var allocationUnit = metadata.AllocationUnits
-                                     .FirstOrDefault(a => a.AllocationUnitId == allocationUnitId);
-
-        if (allocationUnit == null)
+        if (!metadata.AllocationUnits.TryGetValue(allocationUnitId, out var allocationUnit))
         {
             throw new ArgumentException($"Allocation unit {allocationUnitId} not found");
         }
 
-        var rowSet = metadata.RowSets
-                             .FirstOrDefault(p => p.RowSetId == allocationUnit.ContainerId);
-
-        if (rowSet == null)
+        if (!metadata.RowSets.TryGetValue(allocationUnit.ContainerId, out var rowSet))
         {
             throw new ArgumentException($"Row set {allocationUnit.ContainerId} not found");
         }
@@ -36,22 +48,21 @@ public class TableStructureProvider
 
         structure.CompressionType = rowSet.CompressionType;
 
-        var columnLayouts = metadata.ColumnLayouts.Where(c => c.PartitionId == rowSet.RowSetId).ToList();
+        var columnLayouts = metadata.ColumnLayouts[rowSet.RowSetId].ToList();
 
-        var columns = metadata.Columns.Where(c => c.ObjectId == rowSet.ObjectId).ToList();
+        var columns = metadata.Columns[rowSet.ObjectId].ToDictionary(c => c.ColumnId);
 
-        var indexColumns = metadata.IndexColumns
-                                   .Where(c => c.ObjectId == rowSet.ObjectId
-                                               && c.IndexId == rowSet.IndexId)
-                                   .ToList();
+        var indexColumnIds = metadata.IndexColumns[(rowSet.ObjectId, rowSet.IndexId)]
+                                     .Select(c => c.ColumnId)
+                                     .ToHashSet();
 
         structure.Columns.AddRange(columnLayouts.Select(s =>
         {
-            var column = columns.FirstOrDefault(c => c.ColumnId == s.ColumnId);
+            columns.TryGetValue(s.ColumnId, out var column);
 
             var isDropped = Convert.ToBoolean(s.Status & 2);
             var isUniqueifer = Convert.ToBoolean(s.Status & 16);
-            var isKey = indexColumns.Any(c => c.ColumnId == s.ColumnId);
+            var isKey = indexColumnIds.Contains(s.ColumnId);
 
             structure.ObjectId = rowSet.ObjectId;
             structure.IndexId = rowSet.IndexId;

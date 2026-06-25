@@ -294,7 +294,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
             }
             else if ((nodeType == NodeType.Root || nodeType == NodeType.Node) && record.Slot == 0)
             {
-                // The first slot in a root (level 1) index page is always null for non-unique indexes
+                // TODO - Work this out
                 field = LoadNullField(column);
             }
             else if (columnOffset >= 0)

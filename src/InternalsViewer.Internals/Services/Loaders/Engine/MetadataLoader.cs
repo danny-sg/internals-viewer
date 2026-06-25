@@ -117,7 +117,7 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<List<InternalEntityObject>> GetEntities(PageAddress pageAddress, DatabaseSource database)
+    private async Task<Dictionary<(int Id, byte ClassId), InternalEntityObject>> GetEntities(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Entities (sys.sysclsobjs) using fixed Object Id/Index Id");
 
@@ -127,14 +127,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
 
         Logger.LogTrace("Entities (sys.sysclsobjs): {Count} records found. Parsing records...", records.Count);
 
-        var rows = records.Select(InternalEntityObjectLoader.Load).ToList();
+        var rows = records.Select(InternalEntityObjectLoader.Load)
+                          .ToDictionary(e => (e.Id, e.ClassId));
 
         Logger.LogDebug("Entities (sys.sysclsobjs): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
-    private async Task<List<InternalObject>> GetObjects(PageAddress pageAddress, DatabaseSource database)
+    private async Task<Dictionary<int, InternalObject>> GetObjects(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
 
@@ -144,14 +145,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
 
         Logger.LogTrace("Objects (sys.sysschobjs): {Count} records found. Parsing records...", records.Count);
 
-        var rows = records.Select(InternalObjectLoader.Load).ToList();
+        var rows = records.Select(InternalObjectLoader.Load)
+                          .ToDictionary(o => o.ObjectId);
 
         Logger.LogDebug("Objects (sys.sysschobjs): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
-    private async Task<List<InternalIndex>> GetIndexes(PageAddress pageAddress, DatabaseSource database)
+    private async Task<ILookup<int, InternalIndex>> GetIndexes(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Indexes (sys.sysidxstats) using fixed Object Id/Index Id");
 
@@ -161,14 +163,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
 
         Logger.LogTrace("Indexes (sys.sysidxstats): {Count} records found. Parsing records...", records.Count);
 
-        var rows = records.Select(InternalIndexLoader.Load).ToList();
+        var rows = records.Select(InternalIndexLoader.Load)
+                          .ToLookup(i => i.ObjectId);
 
         Logger.LogDebug("Indexes (sys.sysidxstats): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
-    private async Task<List<InternalIndexColumn>> GetIndexColumns(PageAddress pageAddress, DatabaseSource database)
+    private async Task<ILookup<(int ObjectId, int IndexId), InternalIndexColumn>> GetIndexColumns(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Index Columns (sys.sysiscols) using fixed Object Id/Index Id");
 
@@ -178,14 +181,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
 
         Logger.LogTrace("Index Columns (sys.sysiscols): {Count} records found. Parsing records...", records.Count);
 
-        var rows = records.Select(InternalIndexColumnLoader.Load).ToList();
+        var rows = records.Select(InternalIndexColumnLoader.Load)
+                          .ToLookup(c => (c.ObjectId, c.IndexId));
 
         Logger.LogDebug("Index Columns (sys.sysiscols): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
-    private async Task<List<InternalRowSet>> GetRowSets(PageAddress pageAddress, DatabaseSource database)
+    private async Task<Dictionary<long, InternalRowSet>> GetRowSets(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Row Sets (sys.sysrowsets) using fixed Object Id/Index Id");
 
@@ -195,14 +199,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
 
         Logger.LogTrace("Row Sets (sys.sysrowsets): {Count} records found. Parsing records...", records.Count);
 
-        var rows = records.Select(InternalRowSetLoader.Load).ToList();
+        var rows = records.Select(InternalRowSetLoader.Load)
+                          .ToDictionary(r => r.RowSetId);
 
         Logger.LogDebug("Row Sets (sys.sysrowsets): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
-    private async Task<List<InternalColumnLayout>> GetColumnLayouts(PageAddress pageAddress, DatabaseSource database)
+    private async Task<ILookup<long, InternalColumnLayout>> GetColumnLayouts(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Column Layouts (sys.sysrscols) using fixed Object Id/Index Id");
 
@@ -212,31 +217,33 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
 
         Logger.LogTrace("Column Layouts (sys.sysrscols): {Count} records found. Parsing records...", records.Count);
 
-        var rows = records.Select(InternalColumnLayoutLoader.Load).ToList();
+        var rows = records.Select(InternalColumnLayoutLoader.Load)
+                          .ToLookup(c => c.PartitionId);
 
         Logger.LogDebug("Column Layouts (sys.sysrscols): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
-    private async Task<List<InternalColumn>> GetColumns(PageAddress pageAddress, DatabaseSource database)
+    private async Task<ILookup<int, InternalColumn>> GetColumns(PageAddress pageAddress, DatabaseSource database)
     {
         Logger.LogTrace("Getting Columns (sys.syscolpars) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
-                                             pageAddress,
-                                             InternalColumnStructure.GetStructure(-1));
+                                              pageAddress,
+                                              InternalColumnStructure.GetStructure(-1));
 
         Logger.LogTrace("Columns (sys.syscolpars): {Count} records found. Parsing records...", records.Count);
 
-        var rows = records.Select(InternalColumnLoader.Load).ToList();
+        var rows = records.Select(InternalColumnLoader.Load)
+                          .ToLookup(c => c.ObjectId);
 
         Logger.LogDebug("Columns (sys.syscolpars): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
-    private async Task<List<InternalAllocationUnit>> GetAllocationUnits(DatabaseSource databaseDetail)
+    private async Task<Dictionary<long, InternalAllocationUnit>> GetAllocationUnits(DatabaseSource databaseDetail)
     {
         var (objectId, indexId) = InternalTableConstants.ObjectsId;
 
@@ -256,20 +263,21 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         Logger.LogTrace("Allocation Units (sys.sysallocunits): {Count} records found.", 
                         records.Count);
 
-        var rows = records.Select(InternalAllocationUnitLoader.Load).ToList();
+        var rows = records.Select(InternalAllocationUnitLoader.Load)
+                          .ToDictionary(a => a.AllocationUnitId);
 
         Logger.LogDebug("Allocation Units (sys.sysallocunits): {Count} records parsed.", rows.Count);
 
         return rows;
     }
 
-    private PageAddress GetFirstPage((int ObjectId, int IndexId) id, List<InternalAllocationUnit> allocationUnits)
+    private PageAddress GetFirstPage((int ObjectId, int IndexId) id, Dictionary<long, InternalAllocationUnit> allocationUnits)
     {
         var (objectId, indexId) = id;
 
         var allocationUnitId = IdHelpers.GetAllocationUnitId(objectId, indexId);
 
-        var firstPage = allocationUnits.FirstOrDefault(f => f.AllocationUnitId == allocationUnitId)
+        var firstPage = allocationUnits.GetValueOrDefault(allocationUnitId)
                                       ?.FirstPage
                                       ?.ToPageAddress();
 

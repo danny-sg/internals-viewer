@@ -1,10 +1,7 @@
 using InternalsViewer.Query.Parsing;
-using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Models.Query;
 using InternalsViewer.UI.App.Models.Schema;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Microsoft.UI;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Web.WebView2.Core;

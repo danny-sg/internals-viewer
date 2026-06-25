@@ -5,7 +5,6 @@ using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.UI.App.Controls.Allocation;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 

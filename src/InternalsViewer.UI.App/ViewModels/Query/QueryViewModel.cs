@@ -1,25 +1,19 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using InternalsViewer.UI.App.Controls.SqlEditor;
-using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
-using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
-using Microsoft.UI;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
@@ -56,83 +50,83 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public EventFilterViewModel EventFilter { get; }
 
     [ObservableProperty] 
-    private bool isError;
+    private bool _isError;
 
     [ObservableProperty] 
-    private string message;
+    private string _message;
 
     [ObservableProperty]
-    private string sql = string.Empty;
+    private string _sql = string.Empty;
 
     [ObservableProperty]
-    private bool isPfsVisible = false;
+    private bool _isPfsVisible = false;
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> selectedLayers = [];
+    private ObservableCollection<AllocationLayer> _selectedLayers = [];
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> allocationLayers = [];
+    private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
     [ObservableProperty]
-    private PfsChain pfsChain = new();
+    private PfsChain _pfsChain = new();
 
     [ObservableProperty]
-    private bool isTooltipEnabled = true;
+    private bool _isTooltipEnabled = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
-    private bool isTimelinePlaying;
+    private bool _isTimelinePlaying;
 
     [ObservableProperty]
-    private bool includeLocks = false;
+    private bool _includeLocks = false;
 
     [ObservableProperty]
-    private bool includeIo = false;
+    private bool _includeIo = false;
 
     [ObservableProperty]
-    private int extentCount;
+    private int _extentCount;
 
     [ObservableProperty]
-    public bool cropToQuery = true;
+    public bool _cropToQuery = true;
 
     [ObservableProperty]
-    private double allocationMapHeight = 200;
+    private double _allocationMapHeight = 200;
 
     [ObservableProperty]
-    private DatabaseFile[] databaseFiles = [];
+    private DatabaseFile[] _databaseFiles = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasEvents))]
-    private List<EngineEvent> events = [];
+    private List<EngineEvent> _events = [];
 
     [ObservableProperty]
-    private List<EngineEvent> filteredEvents = [];
+    private List<EngineEvent> _filteredEvents = [];
 
     [ObservableProperty]
-    private HashSet<int> systemObjectIds;
+    private HashSet<int> _systemObjectIds;
 
     [ObservableProperty]
-    private long sequenceFrom;
+    private long _sequenceFrom;
 
     [ObservableProperty]
-    private long sequenceTo;
+    private long _sequenceTo;
 
     [ObservableProperty]
-    public double? startTime;
+    public double? _startTime;
 
     [ObservableProperty]
-    public double? endTime;
+    public double? _endTime;
 
     [ObservableProperty]
-    private long playheadSequence;
+    private long _playheadSequence;
 
     [ObservableProperty]
-    private DatabaseSchema? schema;
+    private DatabaseSchema? _schema;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TimelineRowHeight))]
     [NotifyPropertyChangedFor(nameof(TimelineSplitterVisibility))]
-    private bool isTimelineVisible = true;
+    private bool _isTimelineVisible = true;
 
     public GridLength TimelineRowHeight
         => IsTimelineVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
@@ -141,19 +135,19 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         => IsTimelineVisible ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
-    private bool isSqlEditorVisible = true;
+    private bool _isSqlEditorVisible = true;
 
     [ObservableProperty]
-    private bool isAllocationsVisible;
+    private bool _isAllocationsVisible;
 
     [ObservableProperty]
-    private bool isExecutionPlanVisible;
+    private bool _isExecutionPlanVisible;
 
     [ObservableProperty]
-    private bool isEventsVisible;
+    private bool _isEventsVisible;
 
     [ObservableProperty]
-    private bool isEventSelectionPanelOpen;
+    private bool _isEventSelectionPanelOpen;
 
     partial void OnIsSqlEditorVisibleChanged(bool value) => SetDocumentVisible(SqlDocument, value);
 
@@ -169,7 +163,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void SetDocumentVisible(DocumentViewModel document, bool show)
     {
-        if (suppressVisibilitySync)
+        if (_suppressVisibilitySync)
         {
             return;
         }
@@ -186,14 +180,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void SyncTabVisibility()
     {
-        suppressVisibilitySync = true;
+        _suppressVisibilitySync = true;
 
         IsSqlEditorVisible = Dock.Contains(SqlDocument);
         IsAllocationsVisible = Dock.Contains(AllocationsDocument);
         IsExecutionPlanVisible = Dock.Contains(PlanDocument);
         IsEventsVisible = Dock.Contains(EventsDocument);
 
-        suppressVisibilitySync = false;
+        _suppressVisibilitySync = false;
     }
 
     public DockLayoutViewModel Dock { get; }
@@ -223,10 +217,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private const string LayoutSettingKey = "QueryDockLayout";
 
-    private bool suppressVisibilitySync;
-    private bool isRestoringLayout;
-    private bool layoutRestored;
-    private bool saveScheduled;
+    private bool _suppressVisibilitySync;
+    private bool _isRestoringLayout;
+    private bool _layoutRestored;
+    private bool _saveScheduled;
 
     private void OnDockLayoutChanged(object? sender, EventArgs e)
     {
@@ -236,17 +230,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void ScheduleSaveLayout()
     {
-        if (isRestoringLayout || suppressVisibilitySync || saveScheduled)
+        if (_isRestoringLayout || _suppressVisibilitySync || _saveScheduled)
         {
             return;
         }
 
-        saveScheduled = true;
+        _saveScheduled = true;
 
 #pragma warning disable VSTHRD101 // Avoid unsupported async delegates
         DispatcherQueue.TryEnqueue(async void () =>
         {
-            saveScheduled = false;
+            _saveScheduled = false;
 
             try
             {
@@ -269,12 +263,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             SettingsOpen = IsEventSelectionPanelOpen
         };
 
-        await settingsService.SaveSettingAsync(LayoutSettingKey, dto);
+        await _settingsService.SaveSettingAsync(LayoutSettingKey, dto);
     }
 
     private async Task RestoreLayoutAsync()
     {
-        var dto = await settingsService.ReadSettingAsync<QueryLayoutState>(LayoutSettingKey);
+        var dto = await _settingsService.ReadSettingAsync<QueryLayoutState>(LayoutSettingKey);
 
         var root = DockLayoutSerializer.Deserialize(dto?.Root, key => DocumentsByKey.GetValueOrDefault(key));
 
@@ -283,15 +277,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        isRestoringLayout = true;
+        _isRestoringLayout = true;
 
         IsTimelineVisible = dto.TimelineVisible;
         IsEventSelectionPanelOpen = dto.SettingsOpen;
 
         Dock.SetRoot(root);
 
-        layoutRestored = true;
-        isRestoringLayout = false;
+        _layoutRestored = true;
+        _isRestoringLayout = false;
 
         SyncTabVisibility();
     }
@@ -299,8 +293,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand]
     private void ResetLayout()
     {
-        layoutRestored = false;
-        resultTabsOpened = false;
+        _layoutRestored = false;
+        _resultTabsOpened = false;
 
         IsTimelineVisible = true;
         IsEventSelectionPanelOpen = false;
@@ -309,14 +303,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     [ObservableProperty]
-    private ObservableCollection<ExecutionPlan> executionPlans = [];
+    private ObservableCollection<ExecutionPlan> _executionPlans = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveOperatorName))]
     [NotifyPropertyChangedFor(nameof(ActiveOperatorObject))]
     [NotifyPropertyChangedFor(nameof(ActiveOperatorIcon))]
     [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
-    private PlanNode? activePlanNode;
+    private PlanNode? _activePlanNode;
 
     partial void OnPlayheadSequenceChanged(long value) 
         => UpdateActiveOperator(value);
@@ -397,7 +391,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Logger = logger;
         QueryRunner = queryRunner;
         Database = database;
-        this.settingsService = settingsService;
+        _settingsService = settingsService;
         Message = string.Empty;
 
         Name = $"{Database.Name}: Query";
@@ -414,14 +408,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         PfsChain = database.Pfs.First().Value;
 
-        systemObjectIds = database.AllocationUnits
-                                  .Values
-                                  .Where(u => u.IsSystem)
-                                  .Select(u => u.ObjectId)
-                                  .ToHashSet();
+        _systemObjectIds = database.AllocationUnits
+                                   .Values
+                                   .Where(u => u.IsSystem)
+                                   .Select(u => u.ObjectId)
+                                   .ToHashSet();
 
         EventFilter = new EventFilterViewModel(settingsService);
-        EventFilter.SetSystemObjectIds(systemObjectIds);
+        EventFilter.SetSystemObjectIds(_systemObjectIds);
         EventFilter.FilterChanged += RefreshFilteredEvents;
 
         Schema = SchemaHelper.ToSqlSchema(database);
@@ -445,7 +439,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         DispatcherQueue.TryEnqueue(async () => await RestoreLayoutAsync());
     }
 
-    private readonly SettingsService settingsService;
+    private readonly SettingsService _settingsService;
 
     [RelayCommand]
     private async Task OpenIndexView()
@@ -522,16 +516,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshLayers(results.EngineEvents);
     }
 
-    private bool resultTabsOpened;
+    private bool _resultTabsOpened;
 
     private void ShowResultTabsForFirstRun()
     {
-        if (layoutRestored || resultTabsOpened)
+        if (_layoutRestored || _resultTabsOpened)
         {
             return;
         }
 
-        resultTabsOpened = true;
+        _resultTabsOpened = true;
 
         IsAllocationsVisible = true;
         IsExecutionPlanVisible = true;

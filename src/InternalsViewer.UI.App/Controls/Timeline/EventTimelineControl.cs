@@ -4,7 +4,6 @@ using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;

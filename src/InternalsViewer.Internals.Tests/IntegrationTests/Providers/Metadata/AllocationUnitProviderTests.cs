@@ -21,7 +21,7 @@ public class AllocationUnitProviderTests(ITestOutputHelper testOutput) : Provide
     {
         var metadata = await GetMetadata();
 
-        var source = metadata.AllocationUnits.First(a=> a.AllocationUnitId == allocationUnitId);
+        var source = metadata.AllocationUnits[allocationUnitId];
         var result = AllocationUnitProvider.GetAllocationUnit(metadata, source);
 
         Assert.NotNull(result);

@@ -2,6 +2,7 @@
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Metadata.Internals;
+using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Engine.Database;
 
@@ -21,12 +22,10 @@ public sealed class DatabaseSource(IConnectionType connection) : DatabaseSummary
     /// </summary>
     public Dictionary<int, AllocationChain> SGam { get; set; } = [];
 
-
     /// <summary>
     /// DCM (Differential Changed Map) chain per database file
     /// </summary>
     public Dictionary<int, AllocationChain> Dcm { get; set; } = [];
-
 
     /// <summary>
     /// BCM (Bulk Changed Map) chain per database file
@@ -43,6 +42,16 @@ public sealed class DatabaseSource(IConnectionType connection) : DatabaseSummary
     public List<DatabaseFile> Files { get; set; } = [];
 
     public Dictionary<long, AllocationUnit> AllocationUnits { get; set; } = [];
+
+    /// <summary>
+    /// Table structures cached by AllocationUnitId.
+    /// </summary>
+    public Dictionary<long, TableStructure> TableStructures { get; } = [];
+
+    /// <summary>
+    /// Index structures cached by AllocationUnitId.
+    /// </summary>
+    public Dictionary<long, IndexStructure> IndexStructures { get; } = [];
 
     public InternalMetadata Metadata { get; set; } = new();
 

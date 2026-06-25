@@ -1,5 +1,4 @@
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Controls.QueryReplay;

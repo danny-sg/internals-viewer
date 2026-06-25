@@ -1,13 +1,9 @@
-using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Services.Logging;
-using InternalsViewer.UI.App.Messages;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 namespace InternalsViewer.UI.App.Controls.Logging;
 
