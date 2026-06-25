@@ -19,7 +19,7 @@ public abstract class RecordField(ColumnStructure columnStructure) : Field
     /// <summary>
     /// Raw data for the field
     /// </summary>
-    public byte[] Data { get; set; } = Array.Empty<byte>();
+    public ReadOnlyMemory<byte> Data { get; set; } = ReadOnlyMemory<byte>.Empty;
 
     public string Name => ColumnStructure.ColumnName;
 

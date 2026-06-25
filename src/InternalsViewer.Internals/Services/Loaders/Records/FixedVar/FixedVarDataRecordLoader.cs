@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using InternalsViewer.Internals.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records;
@@ -34,7 +33,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
                                             page.PageAddress.PageId,
                                             slotOffset);
 
-        Logger.LogTrace(structure.ToDetailString());
+        Logger.LogTrace("Table structure: {Structure}", structure);
 
         var record = new DataRecord
         {
@@ -169,18 +168,9 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     /// </summary>
     private static void LoadNullBitmap(DataRecord dataRecord, byte[] data)
     {
-        var nullBitmapBytes = new byte[dataRecord.NullBitmapSize];
-
-        // Null bitmap located after column count offset + column count 2-byte int
         var nullBitmapPosition = dataRecord.Offset + dataRecord.ColumnCountOffset + sizeof(short);
 
-        Array.Copy(data,
-                   nullBitmapPosition,
-                   nullBitmapBytes,
-                   0,
-                   dataRecord.NullBitmapSize);
-
-        dataRecord.NullBitmap = new BitArray(nullBitmapBytes);
+        dataRecord.NullBitmap = data[nullBitmapPosition..(nullBitmapPosition + dataRecord.NullBitmapSize)];
 
         dataRecord.MarkProperty(nameof(DataRecord.NullBitmap), nullBitmapPosition, dataRecord.NullBitmapSize);
     }
@@ -284,13 +274,9 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         // Length fixed from data type/data length
         var length = column.DataLength;
 
-        var data = new byte[length];
-
-        Array.Copy(pageData, column.LeafOffset + dataRecord.Offset, data, 0, length);
-
         field.Offset = offset;
         field.Length = length;
-        field.Data = data;
+        field.Data = pageData.AsMemory(column.LeafOffset + dataRecord.Offset, length);
 
         dataRecord.MarkValue(ItemType.FixedLengthValue,
                              column.ColumnName,
@@ -347,18 +333,14 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
             length = 0;
         }
 
-        var data = new byte[length];
-
-        Array.Copy(pageData, dataRecord.Offset + offset, data, 0, length);
-
         field.Offset = offset;
         field.Length = length;
-        field.Data = data;
+        field.Data = pageData.AsMemory(dataRecord.Offset + offset, length);
         field.VariableOffset = fieldIndex;
 
         if (isLob)
         {
-            LoadLobField(field, data, dataRecord.Offset + offset);
+            LoadLobField(field, field.Data.ToArray(), dataRecord.Offset + offset);
         }
         else
         {
@@ -396,11 +378,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     /// </remarks>
     private static void LoadForwardingStub(DataRecord dataRecord, byte[] data)
     {
-        var forwardingRecord = new byte[8];
-
-        Array.Copy(data, dataRecord.Offset + sizeof(byte), forwardingRecord, 0, 6);
-
-        dataRecord.ForwardingStub = new RowIdentifier(forwardingRecord);
+        dataRecord.ForwardingStub = new RowIdentifier(data[(dataRecord.Offset + sizeof(byte))..(dataRecord.Offset + sizeof(byte) + 6)]);
 
         dataRecord.MarkProperty(nameof(DataRecord.ForwardingStub), dataRecord.Offset + sizeof(byte), 6);
     }

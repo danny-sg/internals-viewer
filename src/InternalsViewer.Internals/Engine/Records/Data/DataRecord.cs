@@ -27,12 +27,12 @@ public sealed class DataRecord : FixedVarRecord
             throw new ArgumentException($"Column {columnName} not found");
         }
 
-        if (field.Data.Length == 0)
+        if (field.Data.IsEmpty)
         {
             return default;
         }
 
-        return DataConverter.GetValue<T>(field.Data,
+        return DataConverter.GetValue<T>(field.Data.ToArray(),
                                          field.ColumnStructure.DataType,
                                          field.ColumnStructure.Precision,
                                          field.ColumnStructure.Scale);

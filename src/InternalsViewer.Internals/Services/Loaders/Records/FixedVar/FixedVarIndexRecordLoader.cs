@@ -337,11 +337,7 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
     private static void LoadRidField(int offset, FixedVarIndexRecord record, byte[] pageData)
     {
-        var ridAddress = new byte[8];
-
-        Array.Copy(pageData, record.Offset + offset, ridAddress, 0, RowIdentifier.Size);
-
-        record.Rid = new RowIdentifier(ridAddress);
+        record.Rid = new RowIdentifier(pageData[(record.Offset + offset)..(record.Offset + offset + RowIdentifier.Size)]);
 
         record.MarkProperty(nameof(FixedVarIndexRecord.Rid), record.Offset + offset, RowIdentifier.Size);
     }
@@ -365,13 +361,9 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
             length = record.VariableLengthColumnOffsetArray[variableIndex] - offset;
         }
 
-        var data = new byte[length];
-
-        Array.Copy(pageData, offset + record.Offset, data, 0, length);
-
         field.Offset = offset;
         field.Length = length;
-        field.Data = data;
+        field.Data = pageData.AsMemory(offset + record.Offset, length);
         field.VariableOffset = variableIndex;
 
         record.MarkValue(ItemType.VariableLengthValue, column.ColumnName, field, record.Offset + field.Offset, field.Length);
@@ -414,13 +406,9 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         // Uniqueifier is always a 4-byte integer
         var length = sizeof(int);
 
-        var data = new byte[length];
-
-        Array.Copy(pageData, offset + record.Offset, data, 0, length);
-
         field.Offset = offset;
         field.Length = length;
-        field.Data = data;
+        field.Data = pageData.AsMemory(offset + record.Offset, length);
 
         record.MarkValue(ItemType.UniquifierIndex, "Uniquifier", field, record.Offset + field.Offset, field.Length);
 
@@ -440,14 +428,9 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
         // Length fixed from data type/data length
         var length = column.DataLength;
 
-        var data = new byte[length];
-
         field.Offset = offset;
         field.Length = length;
-
-        Array.Copy(pageData, record.Offset + field.Offset, data, 0, length);
-
-        field.Data = data;
+        field.Data = pageData.AsMemory(record.Offset + field.Offset, length);
 
         record.MarkValue(ItemType.FixedLengthValue,
                          column.ColumnName,
@@ -468,17 +451,9 @@ public class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader> logger
 
         record.MarkProperty(nameof(FixedVarIndexRecord.ColumnCount), columnCountPosition, sizeof(short));
 
-        var nullBitmapBytes = new byte[record.NullBitmapSize];
-
         var nullBitmapPosition = record.Offset + page.PageHeader.FixedLengthSize + sizeof(short);
 
-        Array.Copy(page.Data,
-                   nullBitmapPosition,
-                   nullBitmapBytes,
-                   0,
-                   record.NullBitmapSize);
-
-        record.NullBitmap = new BitArray(nullBitmapBytes);
+        record.NullBitmap = page.Data[nullBitmapPosition..(nullBitmapPosition + record.NullBitmapSize)];
 
         record.MarkProperty(nameof(FixedVarIndexRecord.NullBitmap), nullBitmapPosition, record.NullBitmapSize);
     }

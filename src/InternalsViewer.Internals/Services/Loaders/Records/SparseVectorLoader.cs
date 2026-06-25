@@ -39,9 +39,7 @@ public class SparseVectorLoader
 
             sparseVector.Offset[i] = BitConverter.ToUInt16(sparseVector.Data, 4 + sparseVector.ColCount * 2 + i * 2);
 
-            var columnData = new byte[sparseVector.Offset[i] - previousOffset];
-
-            Array.Copy(sparseVector.Data, previousOffset, columnData, 0, sparseVector.Offset[i] - previousOffset);
+            var columnData = sparseVector.Data.AsMemory(previousOffset, sparseVector.Offset[i] - previousOffset);
 
             var column = sparseVector.Structure.Columns.First(col => col.ColumnId == sparseVector.Columns[i]);
 

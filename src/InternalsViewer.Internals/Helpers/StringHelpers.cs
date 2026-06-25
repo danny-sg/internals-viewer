@@ -25,6 +25,16 @@ public static class StringHelpers
             return string.Empty;
         }
 
+        return ToHexString(bytes.AsSpan());
+    }
+
+    public static string ToHexString(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.IsEmpty)
+        {
+            return string.Empty;
+        }
+
         var chars = new char[bytes.Length * 2];
 
         for (var i = 0; i < bytes.Length; i++)
