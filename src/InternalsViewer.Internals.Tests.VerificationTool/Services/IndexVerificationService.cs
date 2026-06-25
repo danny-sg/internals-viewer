@@ -1,16 +1,17 @@
-﻿using InternalsViewer.Internals.Tests.VerificationTool.Models;
-using System.Data;
-using InternalsViewer.Internals.Engine.Address;
-using Microsoft.Data.SqlClient;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
-using InternalsViewer.Internals.Helpers;
-using Microsoft.Extensions.Logging;
-using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Tests.VerificationTool.Helpers;
+using InternalsViewer.Internals.Tests.VerificationTool.Models;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using System.Data;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 
@@ -43,6 +44,8 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
         foreach (var index in indexes)
         {
+
+            WriteMessage($"Verifying index {index.ObjectId}.{index.IndexId} - {index.Name} (Unique: {index.isUnique}, PrimaryKey: {index.isPrimaryKey}, UniqueConstraint: {index.isUniqueConstraint})");
             results.AddRange(await VerifyIndex(index.ObjectId, index.IndexId, database));
         }
 
@@ -68,7 +71,6 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
     {
         var results = new List<VerificationResult>();
 
-        WriteMessage($"Verifying index {objectId}.{indexId}");
 
         var pages = await ObjectPageListService.GetPages(database.Name, objectId, indexId, Engine.Pages.Enums.PageType.Index);
 
