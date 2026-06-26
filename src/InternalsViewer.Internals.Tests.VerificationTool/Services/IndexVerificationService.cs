@@ -128,15 +128,21 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
                     result.FailCount += 1;
                     WriteError($"{result.PageAddress}:{result.Slot} - Field {sanitizedField} not found in Internals version");
                 }
-                else if (!internalsField.Value.Equals(field.Value, StringComparison.OrdinalIgnoreCase))
-                {
-                    result.FailCount += 1;
-                    WriteError($"{result.PageAddress}:{result.Slot} Field {field.Name} value mismatch" +
-                               $" - Database: {field.Value ?? "(null)"} vs Internals: {internalsField.Value}");
-                }
                 else
                 {
-                    result.PassCount += 1;
+                    var databaseValue = ConvertStringToSqlDbType(field.Value, internalsField.ColumnStructure.DataType)?.Replace("''", "'") ?? "(null)";
+                    var internalsValue = ConvertStringToSqlDbType(internalsField.Value, internalsField.ColumnStructure.DataType) ?? "(null)";
+
+                    if (!internalsValue.Equals(databaseValue, StringComparison.OrdinalIgnoreCase))
+                    {
+                        result.FailCount += 1;
+                        WriteError($"{result.PageAddress}:{result.Slot} Field {field.Name} value mismatch" +
+                                   $" - Database: {field.Value ?? "(null)"} vs Internals: {internalsField.Value}");
+                    }
+                    else
+                    {
+                        result.PassCount += 1;
+                    }
                 }
             }
 
@@ -265,6 +271,12 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
                                 break;
                             case ("date", _):
                                 values.Add(new DatabaseField { Name = name, Value = $"{value:dd/MM/yyyy}" });
+                                break;
+                            case ("datetime", _):
+                                values.Add(new DatabaseField { Name = name, Value = $"{value:dd/MM/yyyy HH:mm:ss}" });
+                                break;
+                            case ("dateTime2", _):
+                                values.Add(new DatabaseField { Name = name, Value = $"{value:dd/MM/yyyy HH:mm:ss.fff}" });
                                 break;
                             default:
                                 values.Add(new DatabaseField { Name = name, Value = value?.ToString() });

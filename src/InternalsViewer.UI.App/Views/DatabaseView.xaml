@@ -79,7 +79,8 @@
                                                 CommandParameter="PFS"/>
                                 <MenuFlyoutItem Text="Buffer Pool" 
                                                 Command="{x:Bind TabViewModel.SetOverlayCommand}" 
-                                                CommandParameter="Buffer Pool"/>
+                                                CommandParameter="Buffer Pool"
+                                                IsEnabled="{x:Bind TabViewModel.IsServerConnection}"/>
                                 <MenuFlyoutItem Text="DCM"    
                                                 Command="{x:Bind TabViewModel.SetOverlayCommand}" 
                                                 CommandParameter="DCM"/>
@@ -98,6 +99,7 @@
                 <AppBarButton x:Name="QueryReplayAppBarToggleButton"
                               Label="Query" 
                               Icon="Play"
+                              IsEnabled="{x:Bind TabViewModel.IsServerConnection}"
                               Command="{x:Bind TabViewModel.OpenQueryReplayCommand}" />
             </CommandBar>
             <CommandBar 

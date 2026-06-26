@@ -91,6 +91,17 @@ internal static class AllocationLayerBuilder
         layers.AddRange(GenerateAllocationLayers("DCM", database.Dcm, Color.CornflowerBlue, true));
         layers.AddRange(GenerateAllocationLayers("BCM", database.Bcm, Color.Purple, true));
 
+        var bufferPoolLayer = new AllocationLayer
+        {
+            Name = "Buffer Pool",
+            LayerName = "Buffer Pool",
+            Colour = Color.FromArgb(200, 190, 190, 205),
+            IsVisible = true,
+            Opacity = 0
+        };
+
+        layers.Add(bufferPoolLayer);
+
         return layers;
     }
 

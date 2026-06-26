@@ -28,6 +28,9 @@ public sealed partial class AllocationControl : IDisposable
 
     private const double MinimumZoomForLines = 0.4;
 
+    // Opacity percentage applied to non-selected layers while a grid selection is active.
+    private const int SelectionDimPercent = 40;
+
     private Size ExtentSize => new((int)(80 * Zoom), (int)(10 * Zoom));
 
     private ExtentLayout Layout { get; set; } = new();
@@ -449,29 +452,41 @@ public sealed partial class AllocationControl : IDisposable
             }
 
             var isSelected = selectedSet?.Contains(layer) ?? false;
-            var alpha = !hasSelected || isSelected ? 255 : 25;
+
+            // Opacity is a 0-100 percentage. With no grid selection every layer honours its own
+            // opacity - this is what lets overlay mode dim non-overlay layers while keeping them
+            // visible. When layers are selected the selected ones show fully and the rest dim.
+            var opacityPercent = !hasSelected
+                ? layer.Opacity
+                : isSelected ? 100 : Math.Min((int)layer.Opacity, SelectionDimPercent);
+
+            var alpha = (byte)(opacityPercent * 255 / 100);
             var colour = layer.Colour.SetTransparency(alpha);
 
             renderer.SetAllocationColour(colour, ColourHelpers.ToBackgroundColour(colour));
 
             var chains = layer.AllocationChains;
-            var isInverted = layer.IsInverted;
-            var fileId = FileId;
 
-            switch (chains)
+            if (chains.Count > 0)
             {
-                case [IamChain single]:
-                    DrawExtentsCore(canvas, renderer, layout, single, isInverted, fileId);
-                    break;
-                case [AllocationChain single]:
-                    DrawExtentsCore(canvas, renderer, layout, single, isInverted, fileId);
-                    break;
-                case [BitmapAllocation single]:
-                    DrawExtentsCore(canvas, renderer, layout, single, isInverted, fileId);
-                    break;
-                default:
-                    DrawExtentsMulti(canvas, renderer, layout, chains, isInverted, fileId);
-                    break;
+                var isInverted = layer.IsInverted;
+                var fileId = FileId;
+
+                switch (chains)
+                {
+                    case [IamChain single]:
+                        DrawExtentsCore(canvas, renderer, layout, single, isInverted, fileId);
+                        break;
+                    case [AllocationChain single]:
+                        DrawExtentsCore(canvas, renderer, layout, single, isInverted, fileId);
+                        break;
+                    case [BitmapAllocation single]:
+                        DrawExtentsCore(canvas, renderer, layout, single, isInverted, fileId);
+                        break;
+                    default:
+                        DrawExtentsMulti(canvas, renderer, layout, chains, isInverted, fileId);
+                        break;
+                }
             }
 
             foreach (var page in layer.SinglePages.Where(l => l.FileId == FileId))

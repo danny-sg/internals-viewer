@@ -158,13 +158,13 @@ public static class DataConverter
 
                 // Date types
                 case SqlDbType.DateTime:
-                    return DateTimeConverters.DecodeDateTime(data).ToString(CultureInfo.InvariantCulture);
+                    return DateTimeConverters.DecodeDateTime(data).ToString("yyyy-MM-dd HH:mm:ss.fff");
 
                 case SqlDbType.SmallDateTime:
-                    return DateTimeConverters.DecodeSmallDateTime(data).ToString(CultureInfo.InvariantCulture);
+                    return DateTimeConverters.DecodeSmallDateTime(data).ToString("yyyy-MM-dd HH:mm:ss");
 
                 case SqlDbType.Date:
-                    return DateTimeConverters.DecodeDate(data).ToShortDateString();
+                    return DateTimeConverters.DecodeDate(data).ToString("yyyy-MM-dd");
 
                 case SqlDbType.Time:
                     {

@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Models;
 
