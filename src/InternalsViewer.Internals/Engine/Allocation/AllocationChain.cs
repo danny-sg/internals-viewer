@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Runtime.CompilerServices;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
 
@@ -7,9 +8,10 @@ namespace InternalsViewer.Internals.Engine.Allocation;
 /// <summary>
 /// An Allocation structure represented by a collection of allocation pages
 /// </summary>
-public sealed class AllocationChain : IAllocationChain<AllocationPage>
+public sealed class AllocationChain 
+    : IAllocationPageChain<AllocationPage>
 {
-    public List<AllocationPage> Pages { get; } = new();
+    public List<AllocationPage> Pages { get; } = [];
 
     /// <remarks>
     /// Allocation chains do not use the single page slots
@@ -19,34 +21,49 @@ public sealed class AllocationChain : IAllocationChain<AllocationPage>
     public short FileId { get; set; }
 
     /// <summary>
-    /// Checks the allocation status or an extent
+    /// Checks the allocation status of an extent
     /// </summary>
     public bool IsExtentAllocated(int targetExtent, short fileId, bool invert)
     {
-        var value = IsExtentAllocated(targetExtent) && fileId == FileId;
+        if (fileId != FileId)
+        {
+            return invert;
+        }
 
-        return invert ? !value : value;
+        var allocated = IsExtentAllocated(targetExtent);
+
+        return invert ? !allocated : allocated;
+    }
+
+    public bool AnyExtentsAllocated(int fromExtent, int toExtent, short fileId, bool isInverted)
+    {
+        for (var extent = fromExtent; extent <= toExtent; extent++)
+        {
+            if (IsExtentAllocated(extent) == isInverted)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
     /// Check if a specific extent is allocated
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool IsExtentAllocated(int extent)
     {
-        // How many pages into the chain is the extent
         var pageIndex = extent / AllocationPage.AllocationInterval;
+        var extentIndex = extent % AllocationPage.AllocationInterval;
 
-        // Bit index of the extent in the allocation (bit) map
-        var extentIndex = extent % (AllocationPage.AllocationInterval + 1);
-
-        if (pageIndex < 0 
-            || pageIndex >= Pages.Count 
-            || extentIndex < 0 
-            || extentIndex >= Pages[pageIndex].AllocationMap.Length)
+        if ((uint)pageIndex >= (uint)Pages.Count)
         {
-            throw new IndexOutOfRangeException("The extent is out of the range of the allocation chain.");
+            return false;
         }
 
-        return Pages[pageIndex].AllocationMap[extentIndex];
+        var map = Pages[pageIndex].AllocationMap;
+
+        return (map[extentIndex >> 3] >> (extentIndex & 7) & 1) != 0;
     }
 }

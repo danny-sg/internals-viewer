@@ -9,12 +9,12 @@ public abstract class RecordField(ColumnStructure columnStructure) : Field
     /// <summary>
     /// Length of the field (in bytes)
     /// </summary>
-    public int Length { get; set; }
+    public ushort Length { get; set; }
 
     /// <summary>
     /// Offset of the field in the row
     /// </summary>
-    public int Offset { get; set; }
+    public ushort Offset { get; set; }
 
     /// <summary>
     /// Raw data for the field

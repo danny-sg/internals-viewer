@@ -1,7 +1,7 @@
-﻿using InternalsViewer.Internals.Annotations;
+﻿using System.Linq;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Controls;
-using System.Linq;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;
 

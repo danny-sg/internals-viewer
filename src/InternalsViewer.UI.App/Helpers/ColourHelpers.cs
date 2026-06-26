@@ -1,7 +1,7 @@
-﻿using SkiaSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Helpers;
 

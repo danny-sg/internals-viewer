@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Data;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
@@ -10,8 +11,6 @@ using InternalsViewer.Internals.Tests.VerificationTool.Helpers;
 using InternalsViewer.Internals.Tests.VerificationTool.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using System.Data;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 

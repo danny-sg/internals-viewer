@@ -34,8 +34,20 @@ public sealed class AllocationRenderer : IDisposable
 
     private SKPaint BorderPaint { get; }
 
+    private Color LastColourFrom { get; set; } = Color.White;
+
+    private Color LastColourTo { get; set; } = Color.White;
+
     public void SetAllocationColour(Color colourFrom, Color colourTo)
     {
+        if (colourFrom == LastColourFrom && colourTo == LastColourTo)
+        {
+            return;
+        }
+
+        LastColourFrom = colourFrom;
+        LastColourTo = colourTo;
+
         var extentRect = new SKRect(0, 0, ExtentSize.Width, ExtentSize.Height);
 
         var colours = new[]
@@ -84,7 +96,7 @@ public sealed class AllocationRenderer : IDisposable
         {
             Shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
                                                    new SKPoint(rect.Right, rect.Top),
-                                                   new[] { colourFrom.ToSkColor(), colourTo.ToSkColor() },
+                                                   [colourFrom.ToSkColor(), colourTo.ToSkColor()],
                                                    null,
                                                    SKShaderTileMode.Repeat)
         };
@@ -124,60 +136,74 @@ public sealed class AllocationRenderer : IDisposable
                                         int extentsVertical,
                                         int extentsRemaining)
     {
-        // Extents are drawn as columns
-        for (var extentColumn = 0; extentColumn <= extentsHorizontal; extentColumn++)
+        var normalHeight = extentsVertical * ExtentSize.Height;
+        var totalWidth = extentsHorizontal * ExtentSize.Width;
+
+        if (extentsRemaining > 0)
         {
-            // Column is either full height or one row less if a remaining extent column
-            var extentHeight = extentColumn < extentsRemaining
-                ? (extentsVertical + 1) * ExtentSize.Height
-                : extentsVertical * ExtentSize.Height;
+            // Columns with a partial extra row are taller — draw them as one rect
+            var tallWidth = extentsRemaining * ExtentSize.Width;
+            var tallHeight = (extentsVertical + 1) * ExtentSize.Height;
 
-            var extentRectangle = new SKRect(extentColumn * ExtentSize.Width,
-                                             0,
-                                             ExtentSize.Width,
-                                             extentHeight);
+            g.DrawRect(new SKRect(0, 0, tallWidth, tallHeight), BackgroundPaint);
 
-            g.DrawRect(extentRectangle, BackgroundPaint);
+            // Remaining shorter columns as a second rect
+            if (extentsRemaining < extentsHorizontal)
+            {
+                g.DrawRect(new SKRect(tallWidth, 0, totalWidth, normalHeight), BackgroundPaint);
+            }
+        }
+        else
+        {
+            g.DrawRect(new SKRect(0, 0, totalWidth, normalHeight), BackgroundPaint);
         }
     }
 
     internal void DrawPageLines(SKCanvas g,
-                                int extentsHorizontal,
-                                int extentsVertical,
-                                int extentsRemaining)
+        int extentsHorizontal,
+        int extentsVertical,
+        int extentsRemaining)
     {
-        if (IsDrawBorder)
+        if (!IsDrawBorder)
         {
-            var pageWidth = ExtentSize.Width / 8F;
+            return;
+        }
 
-            for (var page = 0; page <= extentsHorizontal * 8; page++)
-            {
-                var extent = Math.Floor(page / 8d);
+        var pageWidth = ExtentSize.Width / 8F;
+        var normalHeight = extentsVertical * ExtentSize.Height;
+        var tallHeight = (extentsVertical + 1) * ExtentSize.Height;
+        var fullWidth = ExtentSize.Width * extentsHorizontal;
 
-                var linePosition = page * pageWidth;
-                var lineHeight = extent < extentsRemaining
-                                 ? (extentsVertical + 1) * ExtentSize.Height
-                                 : extentsVertical * ExtentSize.Height;
+        // Precompute the boundary page index — the closing border of the last tall column
+        // must also be drawn tall, so use <= not <
+        var tallBoundaryPage = extentsRemaining * 8;
 
-                // Draw vertical lines to separate the pages in the columns
-                g.DrawLine(linePosition,
-                           0,
-                           linePosition,
-                           lineHeight,
-                           BorderPaint);
-            }
+        for (var page = 0; page <= extentsHorizontal * 8; page++)
+        {
+            var lineHeight = extentsRemaining > 0 && page <= tallBoundaryPage
+                ? tallHeight
+                : normalHeight;
 
-            for (var k = 0; k <= extentsVertical + 1; k++)
-            {
-                var width = k == extentsVertical + 1
-                    ? ExtentSize.Width * (extentsRemaining - 1)
-                    : ExtentSize.Width * extentsHorizontal;
+            var x = page * pageWidth;
 
-                // Draw horizontal lines to separate the extents
-                g.DrawLine(new SKPoint(0, k * ExtentSize.Height),
-                           new SKPoint(width, k * ExtentSize.Height),
-                           BorderPaint);
-            }
+            g.DrawLine(x, 0, x, lineHeight, BorderPaint);
+        }
+
+        // Full-width horizontal row separators (top border through bottom of last full row)
+        for (var k = 0; k <= extentsVertical; k++)
+        {
+            var y = k * ExtentSize.Height;
+
+            g.DrawLine(new SKPoint(0, y), new SKPoint(fullWidth, y), BorderPaint);
+        }
+
+        // Bottom border of partial last row — only drawn when one exists
+        if (extentsRemaining > 0)
+        {
+            var y = (extentsVertical + 1) * ExtentSize.Height;
+            var remainingWidth = extentsRemaining * ExtentSize.Width; // was extentsRemaining - 1
+
+            g.DrawLine(new SKPoint(0, y), new SKPoint(remainingWidth, y), BorderPaint);
         }
     }
 

@@ -8,14 +8,14 @@ namespace InternalsViewer.Internals.Metadata.Structures;
 public record ColumnStructure
 {
     /// <summary>
-    ///Name of the column
+    /// Name of the column
     /// </summary>
     public string ColumnName { get; set; } = string.Empty;
 
     /// <summary>
     /// Column id.
     /// </summary>
-    public int ColumnId { get; set; }
+    public ushort ColumnId { get; set; }
 
     /// <summary>
     /// Data type
@@ -65,12 +65,12 @@ public record ColumnStructure
     /// <summary>
     /// 1-based index for the column in the null bitmap.
     /// </summary>
-    public short NullBitIndex { get; set; }
+    public ushort NullBitIndex { get; set; }
 
     /// <summary>
     /// Bit position for a BIT column as bits are stored in bytes, up to 8 bits/columns per byte.
     /// </summary>
-    public short BitPosition { get; set; }
+    public byte BitPosition { get; set; }
 
     public bool IsKey { get; set; }
 }

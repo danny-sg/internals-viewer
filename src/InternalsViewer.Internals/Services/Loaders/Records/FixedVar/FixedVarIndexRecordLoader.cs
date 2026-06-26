@@ -69,7 +69,11 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
     /// <summary>
     /// Load an Index record at the specified offset
     /// </summary>
-    public FixedVarIndexRecord Load(IndexPage page, ushort offset, int slot, IndexStructure structure)
+    public FixedVarIndexRecord Load(IndexPage page,
+                                    ushort offset, 
+                                    int slot, 
+                                    IndexStructure structure, 
+                                    bool isMarkEnabled = false)
     {
         Logger.BeginScope("Index Record Loader: {FileId}:{PageId}:{Offset}",
                           page.PageAddress.FileId,
@@ -93,7 +97,8 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         {
             Offset = offset,
             Slot = slot,
-            NodeType = nodeType
+            NodeType = nodeType,
+            IsMarkEnabled = isMarkEnabled
         };
 
         Logger.LogDebug("Loading Index Record ({nodeType}) at offset {offset}", nodeType, offset);
@@ -377,9 +382,9 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         }
 
         field.Offset = offset;
-        field.Length = length;
+        field.Length = (ushort)length;
         field.Data = pageData.AsMemory(offset + record.Offset, length);
-        field.VariableOffset = variableIndex;
+        field.VariableOffset = (ushort)variableIndex;
 
         record.MarkValue(ItemType.VariableLengthValue,
                          column.ColumnName,
@@ -429,7 +434,7 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         var length = sizeof(int);
 
         field.Offset = offset;
-        field.Length = length;
+        field.Length = (ushort)length;
         field.Data = pageData.AsMemory(offset + record.Offset, length);
 
         record.MarkValue(ItemType.UniquifierIndex, "Uniquifier", field, record.Offset + field.Offset, field.Length);
@@ -453,8 +458,8 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         // Length fixed from data type/data length
         var length = column.DataLength;
 
-        field.Offset = offset;
-        field.Length = length;
+        field.Offset = (ushort)offset;
+        field.Length = (ushort)length;
         field.Data = pageData.AsMemory(record.Offset + field.Offset, length);
 
         record.MarkValue(ItemType.FixedLengthValue,

@@ -1,12 +1,12 @@
+using System;
 using System.Collections;
-using InternalsViewer.UI.App.Controls.Allocation;
 using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.WinUI;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Database;
 using Microsoft.UI.Xaml.Controls;
-using InternalsViewer.Internals.Engine.Address;
-using System;
-using CommunityToolkit.WinUI;
 
 namespace InternalsViewer.UI.App.Views;
 

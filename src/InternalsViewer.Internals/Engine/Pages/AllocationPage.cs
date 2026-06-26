@@ -18,6 +18,8 @@ public class AllocationPage : Page
     /// </remarks>
     public const int AllocationInterval = 63904;
 
+    public const int AllocationMapBytes = AllocationInterval / 8;
+
     public const int AllocationArrayOffset = 194;
 
     public const int SinglePageSlotOffset = 142;
@@ -35,5 +37,8 @@ public class AllocationPage : Page
     /// <summary>
     /// Allocation bitmap
     /// </summary>
-    public bool[] AllocationMap { get; } = new bool[AllocationInterval];
+    /// <remarks>
+    /// Packed into bytes to save space
+    /// </remarks>
+    public byte[] AllocationMap { get; } = new byte[AllocationMapBytes];
 }

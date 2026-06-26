@@ -1,6 +1,6 @@
-﻿using Microsoft.UI.Xaml.Data;
-using System;
+﻿using System;
 using System.Drawing;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;

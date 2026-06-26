@@ -3,17 +3,17 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
+using Windows.UI.Text;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Models;
-using Microsoft.UI.Xaml.Documents;
-using Microsoft.UI.Xaml.Media;
 using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI;
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Controls;
-using Windows.UI.Text;
 using Microsoft.UI.Text;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.Page;
 

@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Tests.VerificationTool.Helpers;
 using Microsoft.Data.SqlClient;
-using InternalsViewer.Internals.Engine.Pages.Enums;
 
 namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 

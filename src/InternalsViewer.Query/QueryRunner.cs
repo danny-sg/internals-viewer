@@ -1,11 +1,11 @@
-﻿using InternalsViewer.Internals.Engine.Database;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
-using System.Text;
+﻿using System.Text;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.TransactionLog;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query;
 

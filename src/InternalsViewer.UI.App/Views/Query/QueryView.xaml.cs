@@ -1,7 +1,7 @@
-using Microsoft.UI.Xaml.Controls;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.ViewModels.Query;
+using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views;
 

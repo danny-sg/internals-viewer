@@ -69,17 +69,17 @@ public static class PageHeaderParser
         pageHeader.TypeFlagBits = data[TypeFlagBitsOffset];
         pageHeader.FlagBits = BinaryPrimitives.ReadInt16LittleEndian(data[FlagBitsOffset..]);
 
-        pageHeader.FixedLengthSize = BinaryPrimitives.ReadInt16LittleEndian(data[FixedLengthOffset..]);
+        pageHeader.FixedLengthSize = BinaryPrimitives.ReadUInt16LittleEndian(data[FixedLengthOffset..]);
 
-        pageHeader.SlotCount = BinaryPrimitives.ReadInt16LittleEndian(data[SlotCountOffset..]);
-        pageHeader.FreeCount = BinaryPrimitives.ReadInt16LittleEndian(data[FreeCountOffset..]);
-        pageHeader.ReservedCount = BinaryPrimitives.ReadInt16LittleEndian(data[ReservedCountOffset..]);
+        pageHeader.SlotCount = BinaryPrimitives.ReadUInt16LittleEndian(data[SlotCountOffset..]);
+        pageHeader.FreeCount = BinaryPrimitives.ReadUInt16LittleEndian(data[FreeCountOffset..]);
+        pageHeader.ReservedCount = BinaryPrimitives.ReadUInt16LittleEndian(data[ReservedCountOffset..]);
 
         pageHeader.TransactionReservedCount = BinaryPrimitives.ReadInt16LittleEndian(data[TransactionReservedCountOffset..]);
 
         pageHeader.InternalTransactionId = PageAddressParser.Parse(data, InternalTransactionIdOffset);
         pageHeader.GhostRecordCount = BinaryPrimitives.ReadInt16LittleEndian(data[GhostRecordCountOffset..]);
-        pageHeader.FreeData = BinaryPrimitives.ReadInt16LittleEndian(data[FreeDataOffset..]);
+        pageHeader.FreeData = BinaryPrimitives.ReadUInt16LittleEndian(data[FreeDataOffset..]);
 
         pageHeader.TornBits = BinaryPrimitives.ReadInt32LittleEndian(data[TornBitsOffset..]);
 

@@ -26,56 +26,56 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private CdIndexRecordLoader CdIndexRecordLoader { get; } = cdIndexRecordLoader;
 
-    public IEnumerable<IRecord> GetRecords(AllocationUnitPage page)
+    public IEnumerable<IRecord> GetRecords(AllocationUnitPage page, bool isMarkEnabled = false)
     {
         var isCompressed = page.AllocationUnit.CompressionType != CompressionType.None;
 
         return page switch
         {
             DataPage dataPage when !isCompressed
-                => GetFixedVarDataRecords(dataPage),
+                => GetFixedVarDataRecords(dataPage, isMarkEnabled),
             DataPage dataPage
-                => GetCdDataRecords(dataPage),
+                => GetCdDataRecords(dataPage, isMarkEnabled),
             IndexPage indexPage when !isCompressed
-                => GetIndexRecords(indexPage),
+                => GetIndexRecords(indexPage, isMarkEnabled),
             IndexPage indexPage
-                => GetCdIndexRecords(indexPage),
+                => GetCdIndexRecords(indexPage, isMarkEnabled),
             _ => throw new InvalidOperationException("Unknown page type")
         };
     }
 
-    public IEnumerable<IRecord> GetDataRecords(DataPage page)
+    public IEnumerable<IRecord> GetDataRecords(DataPage page, bool isMarkEnabled = false)
     {
         var isCompressed = page.AllocationUnit.CompressionType != CompressionType.None;
 
         if (isCompressed)
         {
-            return GetCdDataRecords(page);
+            return GetCdDataRecords(page, isMarkEnabled);
         }
 
-        return GetFixedVarDataRecords(page);
+        return GetFixedVarDataRecords(page, isMarkEnabled);
     }
 
-    public IEnumerable<IIndexRecord> GetIndexRecords(IndexPage page)
+    public IEnumerable<IIndexRecord> GetIndexRecords(IndexPage page, bool isMarkEnabled = false)
     {
         var isCompressed = page.AllocationUnit.CompressionType != CompressionType.None;
 
         if (isCompressed)
         {
-            return GetCdIndexRecords(page);
+            return GetCdIndexRecords(page, isMarkEnabled);
         }
 
-        return GetFixedVarIndexRecords(page);
+        return GetFixedVarIndexRecords(page, isMarkEnabled);
     }
 
-    private IEnumerable<DataRecord> GetFixedVarDataRecords(DataPage page)
+    private IEnumerable<DataRecord> GetFixedVarDataRecords(DataPage page, bool isMarkEnabled = false)
     {
         var structure = TableStructureProvider.GetTableStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable.Select((s, index) =>
         {
-            var record = FixedVarDataRecordLoader.Load(page, s, structure);
+            var record = FixedVarDataRecordLoader.Load(page, s, structure, isMarkEnabled);
 
             record.Slot = index;
 
@@ -83,7 +83,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         }).ToList();
     }
 
-    private IEnumerable<CdRecord> GetCdDataRecords(DataPage page)
+    private IEnumerable<CdRecord> GetCdDataRecords(DataPage page, bool isMarkEnabled = false)
     {
         var structure = TableStructureProvider.GetTableStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
@@ -91,7 +91,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         return page.OffsetTable
                    .Select((s, index) =>
                     {
-                        var record = CdDataRecordLoader.Load(page, s, structure);
+                        var record = CdDataRecordLoader.Load(page, s, structure, isMarkEnabled);
 
                         record.Slot = index;
 
@@ -100,17 +100,17 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
                    .ToList();
     }
 
-    private IEnumerable<FixedVarIndexRecord> GetFixedVarIndexRecords(IndexPage page)
+    private IEnumerable<FixedVarIndexRecord> GetFixedVarIndexRecords(IndexPage page, bool isMarkEnabled = false)
     {
         var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
-                   .Select((s, index) => FixedVarIndexRecordLoader.Load(page, s, index, structure))
+                   .Select((s, index) => FixedVarIndexRecordLoader.Load(page, s, index, structure, isMarkEnabled))
                    .ToList();
     }
 
-    private IEnumerable<CdIndexRecord> GetCdIndexRecords(IndexPage page)
+    private IEnumerable<CdIndexRecord> GetCdIndexRecords(IndexPage page, bool isMarkEnabled = false)
     {
         var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
@@ -118,7 +118,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         return page.OffsetTable
                    .Select((s, index) =>
                    {
-                       var record = CdIndexRecordLoader.Load(page, s, structure);
+                       var record = CdIndexRecordLoader.Load(page, s, structure, isMarkEnabled);
                    
                        record.Slot = index;
                    

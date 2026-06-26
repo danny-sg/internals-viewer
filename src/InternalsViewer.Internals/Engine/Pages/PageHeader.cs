@@ -10,6 +10,11 @@ namespace InternalsViewer.Internals.Engine.Pages;
 /// </summary>
 public sealed class PageHeader : DataStructure
 {
+    public PageHeader()
+    {
+        IsMarkEnabled = true;
+    }
+
     /// <summary>
     /// Page Header is always 96 bytes
     /// </summary>
@@ -72,40 +77,40 @@ public sealed class PageHeader : DataStructure
     /// Root level = > 0
     /// </remarks>
     [DataStructureItem(ItemType.IndexLevel)]
-    public int Level { get; set; }
+    public byte Level { get; set; }
 
     /// <summary>
     /// Record/slot count
     /// </summary>
     [DataStructureItem(ItemType.SlotCount)]
-    public int SlotCount { get; set; }
+    public ushort SlotCount { get; set; }
 
     /// <summary>
     /// Free space in bytes
     /// </summary>
     [DataStructureItem(ItemType.FreeCount)]
-    public int FreeCount { get; set; }
+    public ushort FreeCount { get; set; }
 
     [DataStructureItem(ItemType.FreeDataOffset)]
-    public int FreeData { get; set; }
+    public ushort FreeData { get; set; }
 
     /// <summary>
     /// Record fixed length size
     /// </summary>
     [DataStructureItem(ItemType.FixedLengthSize)]
-    public int FixedLengthSize { get; set; }
+    public ushort FixedLengthSize { get; set; }
 
     /// <summary>
     /// Space reserved by an active transaction
     /// </summary>
     [DataStructureItem(ItemType.ReservedCount)]
-    public int ReservedCount { get; set; }
+    public ushort ReservedCount { get; set; }
 
     /// <summary>
     /// Last transaction reserved count
     /// </summary>
     [DataStructureItem(ItemType.TransactionReserved)]
-    public int TransactionReservedCount { get; set; }
+    public short TransactionReservedCount { get; set; }
 
     [DataStructureItem(ItemType.TornBits)]
     public int TornBits { get; set; }

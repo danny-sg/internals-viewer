@@ -23,7 +23,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     /// <summary>
     /// Loads the data record at the given offset
     /// </summary>
-    public DataRecord Load(DataPage page, ushort slotOffset, TableStructure structure)
+    public DataRecord Load(DataPage page, ushort slotOffset, TableStructure structure, bool isMarkEnabled = false)
     {
         var data = page.Data;
 
@@ -37,7 +37,8 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         var record = new DataRecord
         {
             Offset = slotOffset,
-            RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset)
+            RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset),
+            IsMarkEnabled = isMarkEnabled
         };
 
         // Records will always have Status Bits A
@@ -273,8 +274,9 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         // Length fixed from data type/data length
         var length = column.DataLength;
 
-        field.Offset = offset;
-        field.Length = length;
+        field.Offset = (ushort)offset;
+        field.Length = (ushort)length;
+
         field.Data = pageData.AsMemory(column.LeafOffset + dataRecord.Offset, length);
 
         dataRecord.MarkValue(ItemType.FixedLengthValue,
@@ -306,7 +308,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         bool isLob;
 
         // Use the leaf offset to get the variable length column ordinal
-        var fieldIndex = Math.Abs(column.LeafOffset) - 1;
+        var fieldIndex = (short)Math.Abs(column.LeafOffset) - 1;
 
         if (fieldIndex == 0)
         {
@@ -333,9 +335,9 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         }
 
         field.Offset = offset;
-        field.Length = length;
+        field.Length = (ushort)length;
         field.Data = pageData.AsMemory(dataRecord.Offset + offset, length);
-        field.VariableOffset = fieldIndex;
+        field.VariableOffset = (ushort)fieldIndex;
 
         if (isLob)
         {

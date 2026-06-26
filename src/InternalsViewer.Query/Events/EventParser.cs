@@ -1,7 +1,7 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Xml.Linq;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
-using System.Xml.Linq;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Locks;

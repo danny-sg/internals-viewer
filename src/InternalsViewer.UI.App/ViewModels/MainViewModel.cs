@@ -1,4 +1,7 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
@@ -6,9 +9,6 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Connections;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels.Tabs;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace InternalsViewer.UI.App.ViewModels;
 

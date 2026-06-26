@@ -1,3 +1,9 @@
+using System;
+using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+using System.Windows.Input;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.UI.App.Models.Query;
 using InternalsViewer.UI.App.Models.Schema;
@@ -5,12 +11,6 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Web.WebView2.Core;
-using System;
-using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using System.Windows.Input;
 
 namespace InternalsViewer.UI.App.Controls.SqlEditor;
 

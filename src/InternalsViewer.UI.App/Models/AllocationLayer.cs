@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.UI.App.Models;
 
@@ -49,7 +50,7 @@ public partial class AllocationLayer : ObservableObject
     private long _totalPages;
 
     [ObservableProperty]
-    private List<ExtentAllocation> _allocations = [];
+    private List<IAllocationChain> _allocationChains = [];
 
     [ObservableProperty]
     private List<PageAddress> _singlePages = [];
@@ -58,8 +59,13 @@ public partial class AllocationLayer : ObservableObject
     private List<PageSpan> _pageSpans = [];
 
     [ObservableProperty]
+    private bool _isInverted;
+
+    [ObservableProperty]
     private bool _isVisible;
 
     [ObservableProperty] 
     private byte _opacity = 100;
+
+    public string LayerName { get; set; } = string.Empty;
 }

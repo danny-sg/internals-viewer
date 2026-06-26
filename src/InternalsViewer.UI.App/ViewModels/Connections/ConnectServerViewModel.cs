@@ -1,16 +1,16 @@
 ﻿using System;
-using CommunityToolkit.Mvvm.ComponentModel;
-using System.Collections.ObjectModel;
-using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using InternalsViewer.UI.App.Models.Connections;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using InternalsViewer.UI.App.Services;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
-using System.ComponentModel;
+using InternalsViewer.UI.App.Models.Connections;
+using InternalsViewer.UI.App.Services;
+using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 

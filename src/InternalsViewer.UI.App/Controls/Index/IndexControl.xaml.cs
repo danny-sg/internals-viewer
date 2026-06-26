@@ -1,18 +1,18 @@
-using InternalsViewer.Internals.Engine.Indexes;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Windows.System;
+using Windows.UI.Core;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Indexes;
+using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.UI.App.Controls.Allocation;
+using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
-using InternalsViewer.Internals.Engine.Address;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using InternalsViewer.UI.App.Controls.Allocation;
-using Microsoft.UI.Xaml.Input;
-using Windows.UI.Core;
-using InternalsViewer.Internals.Engine.Pages.Enums;
-using Microsoft.UI.Input;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 

@@ -3,26 +3,26 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.UI;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Internals.Interfaces.Annotations;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
+using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Services.Markers;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI;
-using Windows.UI;
-using InternalsViewer.Internals.Helpers;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
-using InternalsViewer.UI.App.Services.Markers;
-using CommunityToolkit.Mvvm.Messaging;
-using InternalsViewer.Internals.Interfaces.Annotations;
-using InternalsViewer.Internals.Interfaces.Engine;
-using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
@@ -348,7 +348,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private void LoadIamLayer(IamPage iamPage)
     {
-        var layer = AllocationLayerBuilder.GenerateLayer(iamPage);
+        var layer = AllocationLayerBuilder.GenerateLayer(iamPage, iamPage.StartPage.PageId);
 
         // IAMs are not necessarily in the same file as where they are tracking. The Start Page file determines the file
         AllocationFileId = iamPage.StartPage.FileId;
@@ -363,7 +363,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private void LoadAllocationLayer(AllocationPage allocationPage)
     {
-        var layer = AllocationLayerBuilder.GenerateLayer(allocationPage);
+        var layer = AllocationLayerBuilder.GenerateLayer(allocationPage, 0);
 
         AllocationFileId = allocationPage.PageAddress.FileId;
 
@@ -399,7 +399,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         try
         {
-            Records.AddRange(RecordService.GetRecords(target));
+            Records.AddRange(RecordService.GetRecords(target, isMarkEnabled: true));
         }
         catch (Exception ex)
         {

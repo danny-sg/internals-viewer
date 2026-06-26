@@ -1,6 +1,6 @@
 ﻿using System.Text;
-using Microsoft.Extensions.Logging;
 using InternalsViewer.Internals.Tests.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Readers;
 

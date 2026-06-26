@@ -1,9 +1,9 @@
 using System.Text;
+using Windows.UI;
 using InternalsViewer.Query.Plans;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 

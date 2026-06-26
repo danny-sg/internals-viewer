@@ -49,7 +49,10 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
     /// </summary>
     public async Task<AllocationChain> LoadChain(DatabaseSource database, PageAddress startPageAddress)
     {
-        var allocation = new AllocationChain();
+        var allocation = new AllocationChain
+        {
+            FileId = startPageAddress.FileId
+        };
 
         var pageCount = database.GetFilePageCount(startPageAddress.FileId);
 

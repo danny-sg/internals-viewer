@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Windows.Foundation;
+using Windows.UI;
 using InternalsViewer.Query.Plans;
 using Microsoft.UI;
 using Microsoft.UI.Input;
@@ -9,8 +11,6 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Shapes;
-using Windows.Foundation;
-using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 

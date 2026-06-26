@@ -46,7 +46,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
                                      DatabaseSource database,
                                      PageAddress pageAddress,
                                      PageAddress? parentPageAddress,
-                                     int level,
+                                     byte level,
                                      byte[] buffer)
     {
         var node = nodes.FirstOrDefault(n => n.PageAddress == pageAddress);
@@ -56,7 +56,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
             node = new IndexNode(pageAddress)
             {
                 Level = level,
-                Ordinal = nodes.Count(n => n.Level == level) + 1
+                Ordinal = (ushort)(nodes.Count(n => n.Level == level) + 1)
             };
 
             nodes.Add(node);
@@ -88,7 +88,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
                 {
                     node.Children.Add(childPageAddress);
 
-                    await GetIndexNodes(nodes, database, childPageAddress, pageAddress, level + 1, buffer);
+                    await GetIndexNodes(nodes, database, childPageAddress, pageAddress, (byte)(level + 1), buffer);
                 }
             }
         }

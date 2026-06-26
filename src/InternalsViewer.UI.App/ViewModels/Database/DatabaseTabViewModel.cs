@@ -1,4 +1,11 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using Windows.Media.Editing;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
@@ -10,17 +17,12 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Database;
 
-public sealed class DatabaseTabViewModelFactory(ILogger<DatabaseTabViewModel> logger, IDatabaseService databaseService)
+public sealed class DatabaseTabViewModelFactory(ILogger<DatabaseTabViewModel> logger, 
+                                                IDatabaseService databaseService)
 {
     private IDatabaseService DatabaseService { get; } = databaseService;
 
@@ -101,7 +103,17 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         Overlay = overlay;
         HasOverlay = Overlay != "Overlay";
 
-  
+        foreach (var layer in AllocationLayers)
+        {
+            if (HasOverlay)
+            {
+                layer.Opacity = (byte)(layer.LayerName == Overlay ? 100 : 0);
+            }
+            else
+            {
+                layer.Opacity = (byte)(string.IsNullOrEmpty(layer.LayerName) ? 100 : 0);
+            }
+        }
     }
 
     [RelayCommand]
@@ -118,7 +130,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
     public List<AllocationLayer> GridAllocationLayers
         => AllocationLayers.Where(w => string.IsNullOrEmpty(Filter) 
-                                       || w.Name.ToLower().Contains(_filter.ToLower())).ToList();
+                                       || w.Name.ToLower().Contains(Filter.ToLower())).ToList();
 
     public void Load(string name)
     {

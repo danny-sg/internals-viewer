@@ -23,7 +23,9 @@ public class SparseVectorLoader
 
         sparseVector.Columns = new ushort[sparseVector.ColCount];
 
-        sparseVector.MarkProperty("ColumnsDescription", vectorOffset + SparseVector.ColumnsOffset, sparseVector.ColCount * sizeof(short));
+        sparseVector.MarkProperty("ColumnsDescription", 
+                                  vectorOffset + SparseVector.ColumnsOffset, 
+                                  sparseVector.ColCount * sizeof(short));
 
         sparseVector.Offset = new ushort[sparseVector.ColCount];
 
@@ -48,11 +50,13 @@ public class SparseVectorLoader
             field.Data = columnData;
             field.IsSparse = true;
             field.Offset = sparseVector.Offset[i];
-            field.Length = sparseVector.Offset[i] - previousOffset;
+            field.Length = (ushort)(sparseVector.Offset[i] - previousOffset);
 
             field.MarkProperty("Value", vectorOffset + previousOffset, field.Length);
 
-            sparseVector.ParentRecord.MarkProperty("FieldsArray", field.Name + " (Sparse)", sparseVector.ParentRecord.Fields.Count);
+            sparseVector.ParentRecord.MarkProperty("FieldsArray", 
+                                                   field.Name + " (Sparse)", 
+                                                   sparseVector.ParentRecord.Fields.Count);
 
             previousOffset = sparseVector.Offset[i];
 

@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Allocation.Enums;
+﻿using System.Runtime.CompilerServices;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Engine.Allocation;
@@ -13,13 +14,14 @@ namespace InternalsViewer.Internals.Engine.Allocation;
 /// 
 /// <see href="https://learn.microsoft.com/en-us/sql/relational-databases/pages-and-extents-architecture-guide"/>
 /// </remarks>
-public class PfsChain
+public sealed class PfsChain
 {
     public List<PfsPage> PfsPages { get; } = new();
 
     /// <summary>
     /// Gets the PFS status for a given page
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public PfsByte GetPageStatus(int page)
     {
         // How many pages into the PFS chain is the page

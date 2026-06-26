@@ -95,7 +95,7 @@ public sealed class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
             var column = new ColumnStructure();
 
             column.ColumnName = $"Column {i}";
-            column.ColumnId = i;
+            column.ColumnId = (ushort)i;
             column.LeafOffset = i;
             column.DataType = SqlDbType.VarBinary;
             column.DataLength = 8000;

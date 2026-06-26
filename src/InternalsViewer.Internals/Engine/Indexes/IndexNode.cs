@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Pages.Enums;
 
 namespace InternalsViewer.Internals.Engine.Indexes;
 
-public class IndexNode(PageAddress pageAddress)
+public sealed class IndexNode(PageAddress pageAddress)
 {
     public PageAddress PageAddress { get; set; } = pageAddress;
 
@@ -17,9 +17,9 @@ public class IndexNode(PageAddress pageAddress)
 
     public PageAddress PreviousPage { get; set; }
 
-    public int Level { get; set; }
+    public byte Level { get; set; }
 
-    public int Ordinal { get; set; }
+    public ushort Ordinal { get; set; }
     
-    public int IndexLevel { get; set; }
+    public byte IndexLevel { get; set; }
 }

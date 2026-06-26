@@ -58,7 +58,7 @@
                 </AppBarToggleButton>
                 <AppBarToggleButton x:Name="AllocationInfoAppBarToggleButton"
                                     Icon="DockBottom" 
-                                    Label="Allocation Info" 
+                                    Label="Allocations" 
                                     IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
                 <AppBarElementContainer>
                     <ToggleSplitButton Content="{x:Bind TabViewModel.Overlay, Mode=OneWay}"
