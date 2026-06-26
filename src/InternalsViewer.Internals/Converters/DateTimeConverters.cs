@@ -48,9 +48,9 @@ public static class DateTimeConverters
     {
         var returnDate = new DateTime(1900, 1, 1);
 
-        var milliseconds = (int)((30f / 9f) * timePart);
+        var milliseconds = (int)((30d / 9d) * timePart);
 
-        var roundedMilliseconds = milliseconds - milliseconds % 10 + ClosestTo(milliseconds % 10);
+        var roundedMilliseconds = milliseconds - (milliseconds % 10) + ClosestTo(milliseconds % 10);
 
         return returnDate.AddDays(datePart).AddMilliseconds(roundedMilliseconds);
     }

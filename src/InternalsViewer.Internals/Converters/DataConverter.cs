@@ -200,6 +200,8 @@ public static class DataConverter
                 case SqlDbType.Bit:
                     return GetBit(data[0], bitPosition);
 
+                case SqlDbType.Timestamp:
+                    return GetTimestamp(data);
                 default:
                     return string.Format(CultureInfo.CurrentCulture,
                                          "not yet supported ({0:G})",
@@ -210,6 +212,11 @@ public static class DataConverter
         {
             return $"Error converting data - {ex.Message}";
         }
+    }
+
+    private static string GetTimestamp(ReadOnlySpan<byte> data)
+    {
+        return BinaryPrimitives.ReadUInt64BigEndian(data).ToString();
     }
 
     /// <summary>

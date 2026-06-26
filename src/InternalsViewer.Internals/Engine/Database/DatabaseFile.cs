@@ -1,4 +1,5 @@
-﻿
+﻿using InternalsViewer.Internals.Engine.Pages;
+
 namespace InternalsViewer.Internals.Engine.Database;
 
 /// <summary>
@@ -21,9 +22,9 @@ public record DatabaseFile(short FileId)
 
     public long UsedPages { get; set; }
 
-    public float TotalMb => TotalPages * 512 / 1024F;
+    public double TotalMb => TotalPages * PageData.Size / 1024d / 1024d;
 
-    public float UsedMb => UsedPages * 512 / 1024F;
+    public double UsedMb => UsedPages * PageData.Size / 1024d / 1024d;
 
     public string FileName => PhysicalName[(PhysicalName.LastIndexOf('\\') + 1)..];
 

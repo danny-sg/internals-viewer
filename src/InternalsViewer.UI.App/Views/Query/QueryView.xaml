@@ -11,18 +11,7 @@
     xmlns:queryReplay="using:InternalsViewer.UI.App.Controls.QueryReplay"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     mc:Ignorable="d">
-    <Page.Resources>
-        <!-- Toggle buttons: subtle (non-accent) checked state, and no border line -->
-        <Thickness x:Key="AppBarToggleButtonRevealBorderThemeThickness">0</Thickness>
-        <StaticResource x:Key="AppBarToggleButtonBackgroundChecked" ResourceKey="ControlStrokeColorDefaultBrush"/>
-        <StaticResource x:Key="AppBarToggleButtonBackgroundCheckedPointerOver" ResourceKey="ControlStrokeColorSecondaryBrush"/>
-        <StaticResource x:Key="AppBarToggleButtonBackgroundCheckedPressed" ResourceKey="ControlStrokeColorDefaultBrush"/>
-        <StaticResource x:Key="AppBarToggleButtonBackgroundCheckedDisabled" ResourceKey="ControlStrokeColorDefaultBrush"/>
-        <StaticResource x:Key="AppBarToggleButtonForegroundChecked" ResourceKey="TextFillColorPrimaryBrush"/>
-        <StaticResource x:Key="AppBarToggleButtonForegroundCheckedPointerOver" ResourceKey="TextFillColorPrimaryBrush"/>
-        <StaticResource x:Key="AppBarToggleButtonForegroundCheckedPressed" ResourceKey="TextFillColorPrimaryBrush"/>
-        <StaticResource x:Key="AppBarToggleButtonForegroundCheckedDisabled" ResourceKey="TextFillColorDisabledBrush"/>
-    </Page.Resources>
+
     <SplitView x:Name="EventSelectionPanel"
                DisplayMode="Overlay"
                PanePlacement="Right"
@@ -48,90 +37,92 @@
             <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="2*"/>
+                    <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="{x:Bind ViewModel.TimelineRowHeight, Mode=OneWay}"/>
                 </Grid.RowDefinitions>
-                <MenuBar Grid.Row="0"
-                         MinHeight="0"
-                         Height="30"
-                         Padding="0">
-                    <MenuBar.Resources>
-                        <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
-                        <Thickness x:Key="MenuBarItemButtonPadding">8,2</Thickness>
-                    </MenuBar.Resources>
-                    <MenuBarItem Title="View">
-                        <ToggleMenuFlyoutItem Text="SQL Editor"
-                                              IsChecked="{x:Bind ViewModel.IsSqlEditorVisible, Mode=TwoWay}"/>
-                        <ToggleMenuFlyoutItem Text="Allocations"
-                                              IsChecked="{x:Bind ViewModel.IsAllocationsVisible, Mode=TwoWay}"/>
-                        <ToggleMenuFlyoutItem Text="Execution Plan"
-                                              IsChecked="{x:Bind ViewModel.IsExecutionPlanVisible, Mode=TwoWay}"/>
-                        <ToggleMenuFlyoutItem Text="Events"
-                                              IsChecked="{x:Bind ViewModel.IsEventsVisible, Mode=TwoWay}"/>
-                        <MenuFlyoutSeparator/>
-                        <ToggleMenuFlyoutItem Text="Timeline"
-                                              IsChecked="{x:Bind ViewModel.IsTimelineVisible, Mode=TwoWay}"/>
-                        <ToggleMenuFlyoutItem Text="Settings"
-                                              IsChecked="{x:Bind ViewModel.IsEventSelectionPanelOpen, Mode=TwoWay}"/>
-                        <MenuFlyoutSeparator/>
-                        <MenuFlyoutItem Text="Reset Layout"
-                                        Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
-                    </MenuBarItem>
 
-                    <MenuBarItem Title="Help">
-                        <MenuFlyoutItem Text="About"/>
-                    </MenuBarItem>
-                </MenuBar>
-
-                <!--Top Command Bar-->
-                <CommandBar IsOpen="False"
-                    DefaultLabelPosition="Right"
-                    Grid.Row="1"
-                    HorizontalAlignment="Stretch"
-                    Background="Transparent">
+                <!-- Menu/Command Bar -->
+                <Border        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                               BorderThickness="0,0,0,1">
+                <CommandBar DefaultLabelPosition="Right">
                     <CommandBar.Content>
-                        <StackPanel Orientation="Horizontal"
-                            Height="40"
-                            VerticalAlignment="Center"
-                            Spacing="8"
-                            Margin="12,0,0,0"
-                            Visibility="{x:Bind ViewModel.ActiveOperatorVisibility, Mode=OneWay}">
-                            <Image Source="{x:Bind ViewModel.ActiveOperatorIcon, Mode=OneWay}"
-                                   Width="18"
-                                   Height="18"
-                                   VerticalAlignment="Center" />
-                            <TextBlock Text="{x:Bind ViewModel.ActiveOperatorName, Mode=OneWay}"
-                                       VerticalAlignment="Center"
-                                       FontWeight="SemiBold" />
-                            <TextBlock Text="{x:Bind ViewModel.ActiveOperatorObject, Mode=OneWay}"
-                                       VerticalAlignment="Center"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </StackPanel>
+                        <MenuBar Grid.Row="0"
+                                 Height="48"
+                                 Padding="0">
+                            <MenuBar.Resources>
+                                <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
+                        
+                            </MenuBar.Resources>
+                            <MenuBarItem Title="View">
+                                <ToggleMenuFlyoutItem Text="SQL Editor"
+                                                      IsChecked="{x:Bind ViewModel.IsSqlEditorVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Allocations"
+                                                      IsChecked="{x:Bind ViewModel.IsAllocationsVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Execution Plan"
+                                                      IsChecked="{x:Bind ViewModel.IsExecutionPlanVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Events"
+                                                      IsChecked="{x:Bind ViewModel.IsEventsVisible, Mode=TwoWay}"/>
+                                <MenuFlyoutSeparator/>
+                                <ToggleMenuFlyoutItem Text="Timeline"
+                                                      IsChecked="{x:Bind ViewModel.IsTimelineVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Settings"
+                                                      IsChecked="{x:Bind ViewModel.IsEventSelectionPanelOpen, Mode=TwoWay}"/>
+                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem Text="Reset Layout"
+                                                Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
+                            </MenuBarItem>
+
+                            <!--<MenuBarItem Title="Help">
+                                <MenuFlyoutItem Text="About"/>
+                            </MenuBarItem>-->
+                        </MenuBar>
                     </CommandBar.Content>
 
-                    <AppBarToggleButton Label="SQL Editor"
-                                        IsChecked="{x:Bind ViewModel.IsSqlEditorVisible, Mode=TwoWay}">
-                        <AppBarToggleButton.Icon>
-                            <FontIcon Glyph="&#xE943;"/>
-                        </AppBarToggleButton.Icon>
-                    </AppBarToggleButton>
-                    <AppBarToggleButton Label="Timeline"
-                                        IsChecked="{x:Bind ViewModel.IsTimelineVisible, Mode=TwoWay}">
-                        <AppBarToggleButton.Icon>
-                            <FontIcon Glyph="&#xEC92;"/>
-                        </AppBarToggleButton.Icon>
-                    </AppBarToggleButton>
-                </CommandBar>
+                    <CommandBar.PrimaryCommands>
+                        <AppBarElementContainer>
+                            <StackPanel Orientation="Horizontal"
+                                        Height="40"
+                                        VerticalAlignment="Center"
+                                        Spacing="8"
+                                        Margin="12,0,0,0"
+                                        Visibility="{x:Bind ViewModel.ActiveOperatorVisibility, Mode=OneWay}">
+                                <Image Source="{x:Bind ViewModel.ActiveOperatorIcon, Mode=OneWay}"
+                                       Width="18"
+                                       Height="18"
+                                       VerticalAlignment="Center" />
+                                <TextBlock Text="{x:Bind ViewModel.ActiveOperatorName, Mode=OneWay}"
+                                           VerticalAlignment="Center"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="{x:Bind ViewModel.ActiveOperatorObject, Mode=OneWay}"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                        </AppBarElementContainer>
+                        <AppBarToggleButton Label="SQL Editor"
+                                            IsChecked="{x:Bind ViewModel.IsSqlEditorVisible, Mode=TwoWay}">
+                            <AppBarToggleButton.Icon>
+                                <FontIcon Glyph="&#xE943;"/>
+                            </AppBarToggleButton.Icon>
+                        </AppBarToggleButton>
+                        <AppBarToggleButton Label="Timeline"
+                                            IsChecked="{x:Bind ViewModel.IsTimelineVisible, Mode=TwoWay}">
+                            <AppBarToggleButton.Icon>
+                                <FontIcon Glyph="&#xEC92;"/>
+                            </AppBarToggleButton.Icon>
+                        </AppBarToggleButton>
+                    </CommandBar.PrimaryCommands>
 
+                </CommandBar>
+                </Border>
                 <!--Tabs (dockable / splittable document region)-->
                 <docking:DockHost x:Name="DockHostControl"
-                                  Grid.Row="2"
+                                  Grid.Row="1"
+                           
                                   Layout="{x:Bind ViewModel.Dock, Mode=OneWay}"/>
 
                 <!--Timeline splitter-->
-                <controls:GridSplitter Grid.Row="3"
+                <controls:GridSplitter Grid.Row="2"
                                Height="2"
                                Visibility="{x:Bind ViewModel.TimelineSplitterVisibility, Mode=OneWay}"
                                Background="{ThemeResource ControlStrokeColorDefaultBrush}"
@@ -144,7 +135,7 @@
                 </controls:GridSplitter>
 
                 <!--Timeline-->
-                <timeline:EventTimelineControl Grid.Row="4"
+                <timeline:EventTimelineControl Grid.Row="3"
                                                x:Name="EventTimeline"
                                                VerticalAlignment="Stretch"
                                                HorizontalAlignment="Stretch"

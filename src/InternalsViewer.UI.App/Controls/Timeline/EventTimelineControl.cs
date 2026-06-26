@@ -90,7 +90,7 @@ public sealed class EventTimelineControl : Grid
     private readonly Button _playButton;
     private readonly Button _speedButton;
     private readonly ToggleButton _traceIoButton;
-    private bool _traceIo;
+    private bool _traceIo = true;
     private readonly SKXamlCanvas _skCanvas;
     private readonly Canvas _overlay;
     private readonly ScrollBar _scrollBar;
