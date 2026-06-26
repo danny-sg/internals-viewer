@@ -81,14 +81,17 @@ public sealed partial class AllocationControl : IDisposable
             typeof(AllocationControl),
             null);
 
-    public int Size
+    /// <summary>
+    /// Gets or sets the number of extents in the allocation map.
+    /// </summary>
+    public int ExtentCount
     {
-        get => (int)GetValue(SizeProperty);
-        set => SetValue(SizeProperty, value);
+        get => (int)GetValue(ExtentCountProperty);
+        set => SetValue(ExtentCountProperty, value);
     }
 
-    public static readonly DependencyProperty SizeProperty
-        = DependencyProperty.Register(nameof(Size),
+    public static readonly DependencyProperty ExtentCountProperty
+        = DependencyProperty.Register(nameof(ExtentCount),
                                      typeof(int),
                                      typeof(AllocationControl),
                                      new PropertyMetadata(default, OnPropertyChanged));
@@ -179,7 +182,7 @@ public sealed partial class AllocationControl : IDisposable
 
     public AllocationOverViewModel AllocationOver { get; } = new();
 
-    private int PageCount => Size * 8;
+    private int PageCount => ExtentCount * 8;
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -245,7 +248,7 @@ public sealed partial class AllocationControl : IDisposable
 
     private void Refresh()
     {
-        Layout = GetExtentLayout(Size, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
+        Layout = GetExtentLayout(ExtentCount, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
 
         SetScrollBarValues();
 
@@ -267,7 +270,7 @@ public sealed partial class AllocationControl : IDisposable
                 Zoom = newZoom;
             }
         }
-        else
+        else if (ScrollBar.IsEnabled)
         {
             ScrollBar.Value -= e.GetCurrentPoint(this).Properties.MouseWheelDelta;
         }
@@ -275,7 +278,7 @@ public sealed partial class AllocationControl : IDisposable
 
     private void AllocationCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        Layout = GetExtentLayout(Size, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
+        Layout = GetExtentLayout(ExtentCount, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
 
         SetScrollBarValues();
 
@@ -289,10 +292,10 @@ public sealed partial class AllocationControl : IDisposable
             return;
         }
 
-        ScrollBar.IsEnabled = Size > Layout.VisibleCount;
+        ScrollBar.IsEnabled = ExtentCount > Layout.VisibleCount;
         ScrollBar.SmallChange = Layout.HorizontalCount;
         ScrollBar.LargeChange = (Layout.VerticalCount - 1) * Layout.HorizontalCount;
-        ScrollBar.Maximum = Size + Size % Layout.HorizontalCount;
+        ScrollBar.Maximum = ExtentCount + ExtentCount % Layout.HorizontalCount;
     }
 
     private void AllocationCanvas_PaintSurface(object? sender, SKPaintSurfaceEventArgs e)
@@ -306,24 +309,31 @@ public sealed partial class AllocationControl : IDisposable
 
         extentRenderer.IsDrawBorder = true;
 
-        extentRenderer.DrawBackgroundExtents(canvas, 
-                                             Layout.HorizontalCount, 
-                                             Layout.VerticalCount, 
-                                             Layout.RemainingCount);
+        var renderLayout = GetExtentLayout(
+            ExtentCount - ScrollPosition,
+            ExtentSize,
+            (int)AllocationCanvas.ActualWidth,
+            (int)AllocationCanvas.ActualHeight);
 
-        var width = Layout.HorizontalCount * ExtentSize.Width;
+        extentRenderer.DrawBackgroundExtents(canvas,
+                                             renderLayout.HorizontalCount,
+                                             renderLayout.VerticalCount,
+                                             renderLayout.RemainingCount);
 
-        DrawExtents(canvas, extentRenderer, Layout);
+        var width = renderLayout.HorizontalCount * ExtentSize.Width;
+
+        DrawExtents(canvas, extentRenderer, renderLayout);
 
         if (IsPfsVisible)
         {
             using var pfsRenderer = new PfsRenderer(ExtentSize with { Width = ExtentSize.Width / 8 });
 
-            DrawPfs(canvas, pfsRenderer, Layout);
+            DrawPfs(canvas, pfsRenderer, renderLayout);
         }
+
         if (Zoom >= MinimumZoomForLines)
         {
-            extentRenderer.DrawPageLines(canvas, Layout.HorizontalCount, Layout.VerticalCount, Layout.RemainingCount);
+            extentRenderer.DrawPageLines(canvas, renderLayout.HorizontalCount, renderLayout.VerticalCount, renderLayout.RemainingCount);
         }
 
         if (SelectedLayers is { Count: > 0 })
@@ -340,14 +350,13 @@ public sealed partial class AllocationControl : IDisposable
         borderPaint.StrokeWidth = 1;
         borderPaint.Style = SKPaintStyle.Stroke;
 
-        // Draw border around the control
         canvas.DrawLine(width, 0, width, e.Info.Height, borderPaint);
     }
 
-    private void DrawScrollbarMarkers(SKCanvas canvas, 
-                                      ExtentLayout layout, 
-                                      AllocationLayer layer, 
-                                      int width, 
+    private void DrawScrollbarMarkers(SKCanvas canvas,
+                                      ExtentLayout layout,
+                                      AllocationLayer layer,
+                                      int width,
                                       int height)
     {
         // Offset accounting for the scrollbar buttons
@@ -359,7 +368,7 @@ public sealed partial class AllocationControl : IDisposable
         // The number of [Block Size] pixel block in the allocation map
         var renderLines = (height - (offset)) / blockSize;
 
-        var extentLines = Size / layout.HorizontalCount;
+        var extentLines = ExtentCount / layout.HorizontalCount;
 
         var extentLinePerRenderLine = extentLines / renderLines;
 
@@ -409,7 +418,12 @@ public sealed partial class AllocationControl : IDisposable
 
                 foreach (var extent in layer.Allocations.Where(l => l.FileId == FileId))
                 {
-                    renderer.DrawExtent(canvas, GetExtentPosition(extent.ExtentId - ScrollPosition, layout));
+                    var extentId = extent.ExtentId - ScrollPosition;
+
+                    if (extentId > 0)
+                    {
+                        renderer.DrawExtent(canvas, GetExtentPosition(extentId, layout));
+                    }
                 }
 
                 foreach (var page in layer.SinglePages.Where(l => l.FileId == FileId))
@@ -492,21 +506,12 @@ public sealed partial class AllocationControl : IDisposable
 
     private static ExtentLayout GetExtentLayout(int extentCount, Size extentSize, decimal width, decimal height)
     {
-        // Number of extents horizontally/vertically available if ths screen is full
         var extentsHorizontal = (int)Math.Floor(width / extentSize.Width);
-        var extentsVertical = (int)Math.Ceiling(height / extentSize.Height);
+        var rowsVisible = (int)Math.Ceiling(height / extentSize.Height);
 
-        // Total number of extents visible
-        var visibleCount = extentsHorizontal * extentsVertical;
-
-        if (extentsHorizontal == 0 | extentsVertical == 0 | extentCount == 0)
+        if (extentsHorizontal == 0 || rowsVisible == 0 || extentCount == 0)
         {
             return new ExtentLayout();
-        }
-
-        if (extentsHorizontal == 0)
-        {
-            extentsHorizontal = 1;
         }
 
         if (extentsHorizontal > extentCount)
@@ -514,12 +519,13 @@ public sealed partial class AllocationControl : IDisposable
             extentsHorizontal = extentCount;
         }
 
-        if (extentsVertical > extentCount / extentsHorizontal)
-        {
-            extentsVertical = (int)Math.Ceiling((double)extentCount / extentsHorizontal);
-        }
+        var visibleCount = Math.Min(extentsHorizontal * rowsVisible, extentCount);
 
-        var extentsRemaining = extentCount - visibleCount;
+        var fullRows = extentCount / extentsHorizontal;
+        var lastRowExtents = extentCount % extentsHorizontal;
+
+        var extentsVertical = Math.Min(fullRows, rowsVisible);
+        var extentsRemaining = fullRows < rowsVisible ? lastRowExtents : 0;
 
         return new ExtentLayout
         {

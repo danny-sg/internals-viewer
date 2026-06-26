@@ -38,7 +38,7 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader
     {
         var offset = (long)pageAddress.PageId * PageData.Size;
 
-        await using var file = File.OpenRead(FilePath);
+        await using var file = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
         if (offset < 0 || offset + PageData.Size > file.Length)
         {

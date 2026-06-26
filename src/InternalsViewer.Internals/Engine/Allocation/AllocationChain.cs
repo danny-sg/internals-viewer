@@ -14,7 +14,7 @@ public sealed class AllocationChain : IAllocationChain<AllocationPage>
     /// <remarks>
     /// Allocation chains do not use the single page slots
     /// </remarks>
-    public PageAddress[] SinglePageSlots => Array.Empty<PageAddress>();
+    public PageAddress[] SinglePageSlots => [];
 
     public short FileId { get; set; }
 
@@ -39,7 +39,10 @@ public sealed class AllocationChain : IAllocationChain<AllocationPage>
         // Bit index of the extent in the allocation (bit) map
         var extentIndex = extent % (AllocationPage.AllocationInterval + 1);
 
-        if (pageIndex < 0 || pageIndex >= Pages.Count || extentIndex < 0 || extentIndex >= Pages[pageIndex].AllocationMap.Length)
+        if (pageIndex < 0 
+            || pageIndex >= Pages.Count 
+            || extentIndex < 0 
+            || extentIndex >= Pages[pageIndex].AllocationMap.Length)
         {
             throw new IndexOutOfRangeException("The extent is out of the range of the allocation chain.");
         }

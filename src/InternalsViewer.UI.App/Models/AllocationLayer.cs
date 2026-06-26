@@ -10,53 +10,56 @@ namespace InternalsViewer.UI.App.Models;
 public partial class AllocationLayer : ObservableObject
 {
     [ObservableProperty]
-    private Color colour;
+    private Color _colour;
 
     [ObservableProperty]
-    private string name = string.Empty;
+    private string _name = string.Empty;
 
     [ObservableProperty]
-    private string objectName = string.Empty;
+    private string _objectName = string.Empty;
 
     [ObservableProperty]
-    private string indexName = string.Empty;
+    private string _indexName = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IndexTypeDescription))]
     [NotifyPropertyChangedFor(nameof(IsIndex))]
-    private IndexType indexType;
+    private IndexType _indexType;
 
     public bool IsIndex => IndexType is IndexType.Clustered or IndexType.NonClustered;
 
-    public string IndexTypeDescription => isSystemObject ? string.Empty : IndexType.ToString().SplitCamelCase("-");
+    public string IndexTypeDescription => IsSystemObject ? string.Empty : IndexType.ToString().SplitCamelCase("-");
 
     [ObservableProperty]
-    private bool isSystemObject;
+    private bool _isSystemObject;
 
     [ObservableProperty]
-    private PageAddress firstPage;
+    private PageAddress _firstPage;
 
     [ObservableProperty]
-    private PageAddress rootPage;
+    private PageAddress _rootPage;
 
     [ObservableProperty]
-    private PageAddress firstIamPage;
+    private PageAddress _firstIamPage;
 
     [ObservableProperty]
-    private long usedPages;
+    private long _usedPages;
 
     [ObservableProperty]
-    private long totalPages;
+    private long _totalPages;
 
     [ObservableProperty]
-    private List<ExtentAllocation> allocations = [];
+    private List<ExtentAllocation> _allocations = [];
 
     [ObservableProperty]
-    private List<PageAddress> singlePages = [];
+    private List<PageAddress> _singlePages = [];
 
     [ObservableProperty]
-    private List<PageSpan> pageSpans = [];
+    private List<PageSpan> _pageSpans = [];
 
     [ObservableProperty]
-    private bool isVisible;
+    private bool _isVisible;
+
+    [ObservableProperty] 
+    private byte _opacity = 100;
 }

@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Engine.Database;
 /// SQL Server Database File
 /// </summary>
 /// <see href="https://learn.microsoft.com/en-us/sql/relational-databases/databases/database-files-and-filegroups"/>
-public record DatabaseFile(short FileId)
+public sealed record DatabaseFile(short FileId)
 {
     public short FileId { get; set; } = FileId;
 

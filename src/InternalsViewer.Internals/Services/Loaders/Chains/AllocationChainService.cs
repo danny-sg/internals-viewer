@@ -51,17 +51,17 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
     {
         var allocation = new AllocationChain();
 
-        var fileSize = database.GetFileSize(startPageAddress.FileId);
+        var pageCount = database.GetFilePageCount(startPageAddress.FileId);
 
-        var pageCount = (int)Math.Ceiling(fileSize
-                                          / (decimal)AllocationPage.AllocationInterval);
+        var extentCount = (int)Math.Ceiling(pageCount
+                                            / (decimal)AllocationPage.AllocationInterval);
 
-        Logger.LogDebug("Page Count: {PageCount} ⌈File Size / Allocation Internal⌉ = ⌈ {Size} / {Interval}⌉",
+        Logger.LogDebug("Extent Count: {ExtentCount} ⌈Page Count / Allocation Internal⌉ = ⌈{PageCount} / {Interval}⌉",
+                        extentCount,
                         pageCount,
-                        fileSize,
                         AllocationPage.AllocationInterval);
 
-        for (var i = 0; i < pageCount; i++)
+        for (var i = 0; i < extentCount; i++)
         {
             var address = new PageAddress(startPageAddress.FileId,
                                           startPageAddress.PageId + (i * AllocationPage.AllocationInterval));

@@ -100,7 +100,6 @@
                                    Style="{StaticResource TooltipValueStyle}"
                                    Text="{x:Bind AllocationOver.LayerName, Mode=OneWay}"/>
                     </Grid>
-
                 </Border>
             </Grid>
         </Popup>

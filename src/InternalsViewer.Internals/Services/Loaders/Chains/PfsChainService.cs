@@ -21,10 +21,10 @@ public sealed class PfsChainService(ILogger<PfsChainService> logger, IPageServic
     /// </summary>
     public async Task<PfsChain> LoadChain(DatabaseSource databaseDetail, short fileId)
     {
-        var fileSize = databaseDetail.GetFileSize(fileId);
+        var fileSize = databaseDetail.GetFilePageCount(fileId);
 
         // Calculate the number of PFS pages in the file
-        var pfsCount = (int)Math.Ceiling(databaseDetail.GetFileSize(fileId) / (decimal)PfsPage.PfsInterval);
+        var pfsCount = (int)Math.Ceiling(databaseDetail.GetFilePageCount(fileId) / (decimal)PfsPage.PfsInterval);
 
         Logger.LogDebug("PFS Count: {PageCount} ⌈File Size / PFS Internal⌉ = ⌈ {Size} / {Interval}⌉",
                         pfsCount,

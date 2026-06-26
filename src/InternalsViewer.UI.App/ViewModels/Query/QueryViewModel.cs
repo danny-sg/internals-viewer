@@ -402,7 +402,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, true);
 
-        ExtentCount = database.GetFileSize(1) / 8;
+        ExtentCount = database.GetFilePageCount(1) / 8;
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
 

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
@@ -14,21 +9,32 @@ using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Database;
 
-public sealed class DatabaseTabViewModelFactory(IDatabaseService databaseService)
+public sealed class DatabaseTabViewModelFactory(ILogger<DatabaseTabViewModel> logger, IDatabaseService databaseService)
 {
     private IDatabaseService DatabaseService { get; } = databaseService;
 
     public DatabaseTabViewModel Create(DatabaseSource database)
-        => new(database, DatabaseService);
+        => new(logger, database, DatabaseService);
 }
 
-public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService) 
+public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> logger, 
+                                                 DatabaseSource database, 
+                                                 IDatabaseService databaseService) 
     : TabViewModel, IAllocationViewModel, IAsyncDisposable
 {
+    private ILogger<DatabaseTabViewModel> Logger { get; } = logger;
+
     private IDatabaseService DatabaseService { get; } = databaseService;
 
     [ObservableProperty]
@@ -60,7 +66,13 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     private bool _isDetailVisible = true;
 
     [ObservableProperty]
-    private bool _isPfsVisible = false;
+    private string _overlay = "Overlay";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Overlay))]
+    private bool _hasOverlay;
+
+    public bool IsPfsVisible => Overlay == "PFS";
 
     [ObservableProperty]
     private bool _isQueryReplayVisible;
@@ -79,6 +91,20 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     public long SequenceTo => 0;
 
     [RelayCommand]
+    private void SetOverlay(string overlay)
+    {
+        if (overlay == Overlay)
+        {
+            return;
+        }
+
+        Overlay = overlay;
+        HasOverlay = Overlay != "Overlay";
+
+  
+    }
+
+    [RelayCommand]
     private void OpenPage(PageAddress pageAddress)
     {
         WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(Database, pageAddress)));
@@ -91,10 +117,13 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     }
 
     public List<AllocationLayer> GridAllocationLayers
-        => AllocationLayers.Where(w => string.IsNullOrEmpty(Filter) || w.Name.ToLower().Contains(_filter.ToLower())).ToList();
+        => AllocationLayers.Where(w => string.IsNullOrEmpty(Filter) 
+                                       || w.Name.ToLower().Contains(_filter.ToLower())).ToList();
 
     public void Load(string name)
     {
+        Logger.LogDebug("Loading database: {Name}", name);
+
         Name = name;
 
         DatabaseFiles = Database.Files
@@ -102,10 +131,16 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
                                 .ToArray();
         IsLoading = true;
 
+        var layersStart = Stopwatch.GetTimestamp();
+
         var layers = AllocationLayerBuilder.GenerateLayers(Database, true);
 
-        ExtentCount = Database.GetFileSize(1) / 8;
+        Logger.LogDebug("Generated allocation layers in: {Elapsed}", Stopwatch.GetElapsedTime(layersStart));
+
+        ExtentCount = Database.GetFilePageCount(1) / 8;
+
         AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
+
         PfsChain = Database.Pfs.First().Value;
 
         IsLoading = false;

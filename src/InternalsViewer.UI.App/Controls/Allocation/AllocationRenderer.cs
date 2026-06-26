@@ -100,7 +100,7 @@ public sealed class AllocationRenderer : IDisposable
         {
             Shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
                                                    new SKPoint(rect.Right, rect.Top),
-                                                   new[] { colourFrom.ToSkColor(), colourTo.ToSkColor() },
+                                                   [colourFrom.ToSkColor(), colourTo.ToSkColor()],
                                                    null,
                                                    SKShaderTileMode.Repeat)
         };
@@ -152,12 +152,12 @@ public sealed class AllocationRenderer : IDisposable
 
             for (var page = 0; page <= extentsHorizontal * 8; page++)
             {
-                var extent = Math.Ceiling(page / 8F);
+                var extent = Math.Floor(page / 8d);
 
                 var linePosition = page * pageWidth;
                 var lineHeight = extent < extentsRemaining
-                    ? (extentsVertical + 1) * ExtentSize.Height
-                    : extentsVertical * ExtentSize.Height;
+                                 ? (extentsVertical + 1) * ExtentSize.Height
+                                 : extentsVertical * ExtentSize.Height;
 
                 // Draw vertical lines to separate the pages in the columns
                 g.DrawLine(linePosition,
@@ -166,6 +166,7 @@ public sealed class AllocationRenderer : IDisposable
                            lineHeight,
                            BorderPaint);
             }
+
             for (var k = 0; k <= extentsVertical + 1; k++)
             {
                 var width = k == extentsVertical + 1

@@ -210,6 +210,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                     switch (resultPage)
                     {
+                        case FileHeaderPage fileHeaderPage:
+                            break;
                         case AllocationUnitPage allocationUnitPage:
                             DisplayAllocationUnitPage(allocationUnitPage);
 

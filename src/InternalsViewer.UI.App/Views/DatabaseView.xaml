@@ -18,7 +18,7 @@
             <Grid>
                 <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
                                               Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
-                                              Size="{x:Bind Parent.ExtentCount, Mode=OneWay}" 
+                                              ExtentCount="{x:Bind Parent.ExtentCount, Mode=OneWay}" 
                                               Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
                                               SelectedLayers="{x:Bind Parent.SelectedLayers, Mode=OneWay}"
                                               FileId="{x:Bind FileId, Mode=OneWay}"
@@ -60,8 +60,38 @@
                                     Icon="DockBottom" 
                                     Label="Allocation Info" 
                                     IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
-                <AppBarToggleButton Label="PFS" 
-                                    IsChecked="{x:Bind TabViewModel.IsPfsVisible, Mode=TwoWay}" />
+                <AppBarElementContainer>
+                    <ToggleSplitButton Content="{x:Bind TabViewModel.Overlay, Mode=OneWay}"
+                                       IsChecked="{x:Bind TabViewModel.HasOverlay, Mode=TwoWay}"
+                                       Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                       CommandParameter="Overlay">
+
+                        <ToggleSplitButton.Flyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="GAM"     
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="GAM"/>
+                                <MenuFlyoutItem Text="SGAM"   
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="SGAM"/>
+                                <MenuFlyoutItem Text="PFS"     
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}"
+                                                CommandParameter="PFS"/>
+                                <MenuFlyoutItem Text="Buffer Pool" 
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="Buffer Pool"/>
+                                <MenuFlyoutItem Text="DCM"    
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="DCM"/>
+                                <MenuFlyoutItem Text="BCM"     
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="BCM"/>
+                            </MenuFlyout>
+                        </ToggleSplitButton.Flyout>
+
+                    </ToggleSplitButton>
+                </AppBarElementContainer>
+
                 <AppBarButton Label="Refresh" 
                               Icon="Refresh" 
                               Command="{x:Bind TabViewModel.RefreshCommand}"/>

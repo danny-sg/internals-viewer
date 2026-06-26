@@ -18,7 +18,9 @@ internal static class AllocationLayerBuilder
     private const int UserSaturation = 150;
     private const int UserValue = 220;
 
-    public static List<AllocationLayer> GenerateLayers(DatabaseSource database, bool separateIndexes, bool isGreyScale = false)
+    public static List<AllocationLayer> GenerateLayers(DatabaseSource database, 
+                                                       bool separateIndexes, 
+                                                       bool isGreyScale = false)
     {
         var layers = new List<AllocationLayer>();
 
@@ -80,7 +82,31 @@ internal static class AllocationLayerBuilder
 
         layers.Add(systemLayer);
 
+        layers.Add(GenerateAllocationLayer("GAM", database.Gam, Color.CornflowerBlue));
+        layers.Add(GenerateAllocationLayer("SGAM", database.SGam, Color.Green));
+
         return layers;
+    }
+
+    private static AllocationLayer GenerateAllocationLayer(string name, 
+                                                           Dictionary<int, AllocationChain> allocations, 
+                                                           Color colour,
+                                                           bool isInverted)
+    {
+        var layer = new AllocationLayer
+        {
+            Name = name,
+            Colour = colour,
+            IsVisible = true
+        };
+
+        foreach (var allocation in allocations.Values)
+        {
+            layer.Allocations.AddRange(GetExtentAllocations(allocation));
+
+        }
+
+        return layer;
     }
 
     public static AllocationLayer GenerateLayer(AllocationPage allocationPage)
@@ -121,6 +147,30 @@ internal static class AllocationLayerBuilder
 
         return result;
     }
+
+
+    private static List<ExtentAllocation> GetExtentAllocations(AllocationChain chain)
+    {
+        var result = new List<ExtentAllocation>();
+
+        foreach (var page in chain.Pages)
+        {
+            var map = page.AllocationMap;
+            var fileId = page.StartPage.FileId;
+            var baseExtent = page.StartPage.PageId * 8;
+
+            for (var i = 0; i < map.Length; i++)
+            {
+                if (map[i])
+                {
+                    result.Add(new ExtentAllocation(fileId, baseExtent + i));
+                }
+            }
+        }
+
+        return result;
+    }
+
 
     private static string GetCurrentObjectName(AllocationUnit allocationUnit, bool separateIndexes)
     {
