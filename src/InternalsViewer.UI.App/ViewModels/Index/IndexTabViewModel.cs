@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -60,6 +61,11 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     [ObservableProperty]
     private bool _isInitialized;
+
+    [ObservableProperty]
+    private bool _isRecordsLoading;
+
+    private const int RecordsSpinnerDelayMs = 100;
 
     [ObservableProperty]
     private string _objectName = string.Empty;
@@ -158,12 +164,13 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             return;
         }
 
-        // Update via UI thread
-        DispatcherQueue.TryEnqueue(() =>
-            {
-                SelectedPageAddress = pageAddress;
-                IsInitialized = false;
-            });
+        SelectedPageAddress = pageAddress;
+
+        IndexDetailVisibility = Visibility.Visible;
+
+        using var spinnerDelay = new CancellationTokenSource();
+
+        _ = ShowRecordsSpinnerAfterDelay(spinnerDelay.Token);
 
         Internals.Engine.Pages.Page? page = null;
 
@@ -180,7 +187,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 {
                     Logger.LogDebug("Decoding Index Page records");
 
-                    decodedRecords = GetIndexRecordModels(RecordService.GetIndexRecords(indexPage, 
+                    decodedRecords = GetIndexRecordModels(RecordService.GetIndexRecords(indexPage,
                                                                                         isMarkEnabled: true));
                 }
                 else if (page is DataPage dataPage)
@@ -193,18 +200,33 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         Logger.LogDebug("Decoded {Count} record(s)", decodedRecords.Count);
 
-        // Update via UI thread
-        DispatcherQueue.TryEnqueue(() =>
+        await spinnerDelay.CancelAsync();
+
+        Records = new ObservableCollection<IndexRecordModel>(decodedRecords);
+        SelectedLevel = page?.PageHeader.Level;
+        SelectedNextPage = page?.PageHeader.NextPage;
+        SelectedPreviousPage = page?.PageHeader.PreviousPage;
+
+        IsRecordsLoading = false;
+
+        IndexDetailVisibility = Visibility.Visible;
+    }
+
+    private async Task ShowRecordsSpinnerAfterDelay(CancellationToken token)
+    {
+        try
         {
-            Records = new ObservableCollection<IndexRecordModel>(decodedRecords);
-            SelectedLevel = page?.PageHeader.Level;
-            SelectedNextPage = page?.PageHeader.NextPage;
-            SelectedPreviousPage = page?.PageHeader.PreviousPage;
+            await Task.Delay(RecordsSpinnerDelayMs, token);
 
-            IsInitialized = true;
-
-            IndexDetailVisibility = Visibility.Visible;
-        });
+            if (!token.IsCancellationRequested)
+            {
+                IsRecordsLoading = true;
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Load completed within the delay window
+        }
     }
 
     partial void OnRootPageChanged(PageAddress value)

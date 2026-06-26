@@ -30,11 +30,15 @@ public sealed partial class IndexView: IDisposable
         // Clicking on the Index View selects the page and reads the records
         IndexControl.PageClicked += IndexView_PageClicked;
         
-        // Clicking Previous Page or Next Page links loads the previous or next page
+        // Clicking page address links loads the page (Shift+Click opens in a new tab)
+        PageAddressLink.Click += PageAddressLink_OnClick;
         PreviousPageAddressLink.Click += PageAddressLink_OnClick;
         NextPageAddressLink.Click += PageAddressLink_OnClick;
 
-        // Hovering over a Previous or Next page highlights the page to show the double linked list
+        // Hovering over a page address highlights the page to show the double linked list
+        PageAddressLink.PointerEntered += PageAddressLink_PointerEntered;
+        PageAddressLink.PointerExited += PageAddressLink_PointerExited;
+
         PreviousPageAddressLink.PointerEntered += PageAddressLink_PointerEntered;
         PreviousPageAddressLink.PointerExited += PageAddressLink_PointerExited;
 
@@ -150,7 +154,6 @@ public sealed partial class IndexView: IDisposable
     {
         var maxWidth = e.NewSize.Width / 2;
 
-        // Set max width of the index grid to 50% (grid doesn't accept MaxWidth=50* so we have to do it in code)
         ContainerGrid.ColumnDefinitions[1].MaxWidth = maxWidth;
         IndexGrid.MaxWidth = maxWidth;
     }
@@ -159,8 +162,12 @@ public sealed partial class IndexView: IDisposable
     {
         IndexControl.PageClicked -= IndexView_PageClicked;
 
+        PageAddressLink.Click -= PageAddressLink_OnClick;
         PreviousPageAddressLink.Click -= PageAddressLink_OnClick;
         NextPageAddressLink.Click -= PageAddressLink_OnClick;
+
+        PageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
+        PageAddressLink.PointerExited -= PageAddressLink_PointerExited;
 
         PreviousPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
         PreviousPageAddressLink.PointerExited -= PageAddressLink_PointerExited;

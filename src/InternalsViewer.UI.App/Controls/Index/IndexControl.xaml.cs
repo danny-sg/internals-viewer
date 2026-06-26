@@ -372,6 +372,10 @@ public sealed partial class IndexControl : IDisposable
         // X position of the next level used to draw lines from the page to the parent
         var renderNextLevelStartX = (nextLevelStartX - xScrollOffset);
 
+        // Read the visible bounds once per level rather than per node - on large levels the loop
+        // runs for thousands of nodes and the offscreen ones are culled below.
+        var clip = canvas.LocalClipBounds;
+
         foreach (var node in levelNodes)
         {
             var renderX = startX + node.X - xScrollOffset;
@@ -379,7 +383,7 @@ public sealed partial class IndexControl : IDisposable
             var renderY = node.Y - yScrollOffset;
 
             // Only draw the page if it is visible
-            if (canvas.LocalClipBounds.Contains(renderX, renderY))
+            if (clip.Contains(renderX, renderY))
             {
                 var isHighlighted = HighlightedPageAddresses.Contains(node.Node.PageAddress);
                 var isSelected = node.Node.PageAddress == SelectedPageAddress;
@@ -400,7 +404,7 @@ public sealed partial class IndexControl : IDisposable
                 }
             }
 
-            DrawLines(canvas, node.Node, renderX, renderY, renderNextLevelStartX, yScrollOffset, false, false);
+            DrawLines(canvas, clip, node.Node, renderX, renderY, renderNextLevelStartX, yScrollOffset, false, false);
         }
     }
 
@@ -408,6 +412,7 @@ public sealed partial class IndexControl : IDisposable
     /// Draws line(s) to parent node(s)
     /// </summary>
     private void DrawLines(SKCanvas canvas,
+                           SKRect clip,
                            IndexNode node,
                            float x,
                            float y,
@@ -455,6 +460,17 @@ public sealed partial class IndexControl : IDisposable
             var x2Line3 = (float)Math.Floor(parentX + (PageWidth / 2));
 
             var y2Line4 = (float)Math.Floor(GetNodeY(node.Level - 1, 0) + PageHeight - yScrollOffset);
+
+            // Skip building/drawing the connector if its bounding box is entirely offscreen. This
+            // is the main per-frame cost on large levels, so culling it keeps selection repaints
+            // (which redraw the whole surface) responsive.
+            var lineLeft = Math.Min(x2Line1, x2Line3);
+            var lineRight = Math.Max(x, x2Line3);
+
+            if (lineRight < clip.Left || lineLeft > clip.Right || y1Line1 < clip.Top || y2Line4 > clip.Bottom)
+            {
+                continue;
+            }
 
             linePath.Reset();
 
