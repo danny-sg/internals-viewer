@@ -17,6 +17,8 @@ public sealed partial class IndexView: IDisposable
     private const float MinimumZoom = 0.001f;
     private const float MaximumZoom = 10f;
 
+    private bool _hasLoaded;
+
     public IndexTabViewModel ViewModel => (IndexTabViewModel)DataContext;
 
     public IndexView()
@@ -71,6 +73,13 @@ public sealed partial class IndexView: IDisposable
 
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
+        if (_hasLoaded)
+        {
+            return;
+        }
+
+        _hasLoaded = true;
+
         try
         {
             await ViewModel.Refresh();

@@ -80,10 +80,15 @@ public sealed partial class IndexControl : IDisposable
             typeof(AllocationControl),
             null);
 
-    private float PageWidth => 20 * Zoom;
-    private float PageHeight => 30 * Zoom;
-    private float HorizontalMargin => 20 * Zoom;
-    private float VerticalMargin => 60 * Zoom;
+    // Mirror of the Zoom dependency property. The size getters below are read hundreds of
+    // thousands of times per frame in the draw loop; reading a field avoids a GetValue call
+    // (which showed up as a hotspot in profiling) on every access. Kept in sync in OnPropertyChanged.
+    private float _zoom = 1f;
+
+    private float PageWidth => 20 * _zoom;
+    private float PageHeight => 30 * _zoom;
+    private float HorizontalMargin => 20 * _zoom;
+    private float VerticalMargin => 60 * _zoom;
 
     public List<IndexNode> Nodes
     {
@@ -97,43 +102,40 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(new(), OnPropertyChanged));
 
-    private readonly SKPaint indexPagePaint;
-    private readonly SKPaint linePaint;
-    private readonly SKPaint shadowPaint;
+    private readonly SKPaint _indexPagePaint;
+    private readonly SKPaint _linePaint;
+    private readonly SKPaint _shadowPaint;
 
-    private readonly SKColor backgroundColour = SKColors.White;
-    private readonly SKColor selectedBackgroundColour = SKColors.AliceBlue;
-    private readonly SKColor highlightedBackgroundColour = SKColors.Honeydew;
+    private readonly SKColor _backgroundColour = SKColors.White;
+    private readonly SKColor _selectedBackgroundColour = SKColors.AliceBlue;
+    private readonly SKColor _highlightedBackgroundColour = SKColors.Honeydew;
 
-    private readonly SKColor borderColour = SKColors.Gray;
-    private readonly SKColor selectedBorderColour = SKColors.Navy;
-    private readonly SKColor highlightedBorderColour = SKColors.Green;
+    private readonly SKColor _borderColour = SKColors.Gray;
+    private readonly SKColor _selectedBorderColour = SKColors.Navy;
+    private readonly SKColor _highlightedBorderColour = SKColors.Green;
 
-    private readonly SKColor lineColour = SKColors.Gray;
-    private readonly SKColor selectedLineColour = SKColors.Navy;
+    private readonly SKColor _lineColour = SKColors.Gray;
+    private readonly SKColor _selectedLineColour = SKColors.Navy;
 
-    private readonly List<IndexTreeNode> nodePositions = [];
+    private readonly List<IndexTreeNode> _nodePositions = [];
 
-    // Caches rebuilt only when the tree changes (Nodes/Zoom), so the per-frame paint avoids
-    // repeated O(N) LINQ scans and O(N) parent lookups.
-    private readonly Dictionary<int, List<IndexTreeNode>> nodesByLevel = [];
-    private readonly Dictionary<int, float> levelMaxX = [];
-    private readonly Dictionary<PageAddress, int> ordinalByAddress = [];
-    private float globalMaxX;
-    private int levelCount;
+    private readonly Dictionary<int, List<IndexTreeNode>> _nodesByLevel = [];
+    private readonly Dictionary<int, float> _levelMaxX = [];
+    private readonly Dictionary<PageAddress, int> _ordinalByAddress = [];
+    private float _globalMaxX;
+    private int _levelCount;
 
-    // Reused across line draws to avoid allocating an SKPath per parent on every frame.
-    private readonly SKPath linePath = new();
+    private readonly SKPath _linePath = new();
 
     private const float MinZoom = 0.2f;
     private const float MaxZoom = 3.0f;
     private const double DragThreshold = 4;
 
-    private bool isPointerDown;
-    private bool isDragging;
-    private Windows.Foundation.Point dragStart;
-    private double dragStartHorizontal;
-    private double dragStartVertical;
+    private bool _isPointerDown;
+    private bool _isDragging;
+    private Windows.Foundation.Point _dragStart;
+    private double _dragStartHorizontal;
+    private double _dragStartVertical;
 
     public IndexControl()
     {
@@ -147,7 +149,9 @@ public sealed partial class IndexControl : IDisposable
         IndexCanvas.PointerCaptureLost += IndexCanvas_PointerReleased;
         IndexCanvas.PointerWheelChanged += IndexCanvas_PointerWheelChanged;
 
-        shadowPaint = new SKPaint
+        Loaded += IndexControl_OnLoaded;
+
+        _shadowPaint = new SKPaint
         {
 
             Style = SKPaintStyle.Fill,
@@ -159,9 +163,9 @@ public sealed partial class IndexControl : IDisposable
         float sigmaX = 5;
         float sigmaY = 5;
 
-        shadowPaint.ImageFilter = SKImageFilter.CreateBlur(sigmaX, sigmaY);
+        _shadowPaint.ImageFilter = SKImageFilter.CreateBlur(sigmaX, sigmaY);
 
-        indexPagePaint = new SKPaint
+        _indexPagePaint = new SKPaint
         {
             Style = SKPaintStyle.Fill,
             Color = SKColors.Gray,
@@ -169,7 +173,7 @@ public sealed partial class IndexControl : IDisposable
             StrokeWidth = 1
         };
 
-        linePaint = new SKPaint
+        _linePaint = new SKPaint
         {
             Style = SKPaintStyle.Stroke,
             Color = SKColors.IndianRed,
@@ -182,11 +186,14 @@ public sealed partial class IndexControl : IDisposable
     {
         var control = (IndexControl)d;
 
-        // The hover node only drives the XAML tooltip - repainting the Skia surface for every
-        // pointer move was the main cause of lag on large trees.
         if (e.Property == HoverNodeProperty)
         {
             return;
+        }
+
+        if (e.Property == ZoomProperty)
+        {
+            control._zoom = (float)e.NewValue;
         }
 
         if (e.Property == ZoomProperty || e.Property == NodesProperty)
@@ -200,7 +207,7 @@ public sealed partial class IndexControl : IDisposable
 
     private void IndexCanvas_PaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
-        if (nodePositions.Count == 0)
+        if (_nodePositions.Count == 0)
         {
             return;
         }
@@ -208,67 +215,69 @@ public sealed partial class IndexControl : IDisposable
         e.Surface.Canvas.Clear(SKColors.Transparent);
 
         //// Draw levels from the bottom up
-        for (var i = levelCount; i >= 0; i--)
+        for (var i = _levelCount; i >= 0; i--)
         {
             DrawTreeLevel(i, e.Surface.Canvas);
         }
     }
 
-    private float GetNodeX(int n) => (PageWidth + HorizontalMargin) * n;
+    private float GetNodeX(int n) 
+        => (PageWidth + HorizontalMargin) * n;
 
-    private float GetNodeY(int level, int row) => PageHeight + VerticalMargin * level + (PageHeight + VerticalMargin * row);
+    private float GetNodeY(int level, int row) 
+        => PageHeight + VerticalMargin * level + (PageHeight + VerticalMargin * row);
 
     /// <summary>
     /// Build a virtual structure of the tree per level
     /// </summary>
     private void BuildIndexTree()
     {
-        nodePositions.Clear();
-        nodesByLevel.Clear();
-        levelMaxX.Clear();
-        ordinalByAddress.Clear();
-        globalMaxX = 0;
-        levelCount = 0;
+        _nodePositions.Clear();
+        _nodesByLevel.Clear();
+        _levelMaxX.Clear();
+        _ordinalByAddress.Clear();
+        _globalMaxX = 0;
+        _levelCount = 0;
 
         if (Nodes.Count == 0)
         {
             return;
         }
 
-        levelCount = Nodes.Max(n => n.Level);
+        _levelCount = Nodes.Max(n => n.Level);
 
         // Address -> ordinal lookup so DrawLines can resolve parents in O(1) rather than scanning.
         foreach (var node in Nodes)
         {
-            ordinalByAddress[node.PageAddress] = node.Ordinal;
+            _ordinalByAddress[node.PageAddress] = node.Ordinal;
         }
 
-        for (var i = levelCount; i >= 0; i--)
+        for (var i = _levelCount; i >= 0; i--)
         {
             BuildIndexTreeLevel(i, Nodes);
         }
 
         // Group positions by level and record per-level / global extents once for the paint loop.
-        foreach (var treeNode in nodePositions)
+        foreach (var treeNode in _nodePositions)
         {
             var level = treeNode.Node.Level;
 
-            if (!nodesByLevel.TryGetValue(level, out var list))
+            if (!_nodesByLevel.TryGetValue(level, out var list))
             {
                 list = [];
-                nodesByLevel[level] = list;
+                _nodesByLevel[level] = list;
             }
 
             list.Add(treeNode);
 
-            if (!levelMaxX.TryGetValue(level, out var max) || treeNode.X > max)
+            if (!_levelMaxX.TryGetValue(level, out var max) || treeNode.X > max)
             {
-                levelMaxX[level] = treeNode.X;
+                _levelMaxX[level] = treeNode.X;
             }
 
-            if (treeNode.X > globalMaxX)
+            if (treeNode.X > _globalMaxX)
             {
-                globalMaxX = treeNode.X;
+                _globalMaxX = treeNode.X;
             }
         }
     }
@@ -310,7 +319,7 @@ public sealed partial class IndexControl : IDisposable
 
             var x = GetNodeX(column - 1);
 
-            nodePositions.Add(new IndexTreeNode(node, x, y, row, column));
+            _nodePositions.Add(new IndexTreeNode(node, x, y, row, column));
 
             previousNode = node;
         }
@@ -320,7 +329,8 @@ public sealed partial class IndexControl : IDisposable
     /// Gets the X offset for the start of the level
     /// </summary>
     /// <remarks>
-    /// Nodes are created in two phases, the build which is a one-off, and the draw which is performed on every re-render.
+    /// Nodes are created in two phases, the build which is a one-off, and the draw which is performed on every
+    /// re-render.
     /// 
     /// The centering can change depending on the window size to the X offsets are calculated as part of the draw.
     /// 
@@ -330,7 +340,8 @@ public sealed partial class IndexControl : IDisposable
     ///     Level 1 |-----------------|
     ///     Level 2 |------------------------|
     ///     
-    /// The offset is calculated for each level based on maximum width less the level width, divided by 2. These offsets center the tree:
+    /// The offset is calculated for each level based on maximum width less the level width, divided by 2. These
+    /// offsets center the tree:
     /// 
     ///     Level 0          |----|
     ///     Level 1    |-----------------|
@@ -345,8 +356,8 @@ public sealed partial class IndexControl : IDisposable
 
         var canvasWidth = IndexCanvas.ActualSize.X;
 
-        var maxWidth = globalMaxX + PageWidth + HorizontalMargin;
-        var levelWidth = (levelMaxX.TryGetValue(level, out var max) ? max : 0) + HorizontalMargin;
+        var maxWidth = _globalMaxX + PageWidth + HorizontalMargin;
+        var levelWidth = (_levelMaxX.GetValueOrDefault(level, 0)) + HorizontalMargin;
 
         if (maxWidth < canvasWidth)
         {
@@ -361,7 +372,7 @@ public sealed partial class IndexControl : IDisposable
         var xScrollOffset = (float)HorizontalScrollBar.Value;
         var yScrollOffset = (float)VerticalScrollBar.Value;
 
-        if (!nodesByLevel.TryGetValue(level, out var levelNodes))
+        if (!_nodesByLevel.TryGetValue(level, out var levelNodes))
         {
             return;
         }
@@ -372,9 +383,12 @@ public sealed partial class IndexControl : IDisposable
         // X position of the next level used to draw lines from the page to the parent
         var renderNextLevelStartX = (nextLevelStartX - xScrollOffset);
 
-        // Read the visible bounds once per level rather than per node - on large levels the loop
-        // runs for thousands of nodes and the offscreen ones are culled below.
         var clip = canvas.LocalClipBounds;
+
+        // Snapshot the dependency-property reads once per level instead of per node.
+        var selectedAddress = SelectedPageAddress;
+        var highlightedAddresses = HighlightedPageAddresses;
+        var showDetail = _zoom > 0.5;
 
         foreach (var node in levelNodes)
         {
@@ -385,12 +399,12 @@ public sealed partial class IndexControl : IDisposable
             // Only draw the page if it is visible
             if (clip.Contains(renderX, renderY))
             {
-                var isHighlighted = HighlightedPageAddresses.Contains(node.Node.PageAddress);
-                var isSelected = node.Node.PageAddress == SelectedPageAddress;
+                var isHighlighted = highlightedAddresses.Contains(node.Node.PageAddress);
+                var isSelected = node.Node.PageAddress == selectedAddress;
 
                 DrawPage(canvas, renderX, renderY, isSelected, isHighlighted);
 
-                if (Zoom > 0.5)
+                if (showDetail)
                 {
                     if (node.Node is { PageType: PageType.Data })
                     {
@@ -428,23 +442,23 @@ public sealed partial class IndexControl : IDisposable
         //      --X     Line 1  Node    
         if (isHighlighted)
         {
-            linePaint.Color = highlightedBorderColour;
+            _linePaint.Color = _highlightedBorderColour;
         }
         else if (isSelected)
         {
-            linePaint.Color = selectedLineColour;
+            _linePaint.Color = _selectedLineColour;
         }
         else
         {
-            linePaint.Color = lineColour;
+            _linePaint.Color = _lineColour;
         }
 
-        linePaint.StrokeWidth = isSelected || isHighlighted ? 2.5f : 1f;
-        linePaint.StrokeJoin = SKStrokeJoin.Round;
+        _linePaint.StrokeWidth = isSelected || isHighlighted ? 2.5f : 1f;
+        _linePaint.StrokeJoin = SKStrokeJoin.Round;
 
         foreach (var parent in node.Parents)
         {
-            if (!ordinalByAddress.TryGetValue(parent, out var parentOrdinal))
+            if (!_ordinalByAddress.TryGetValue(parent, out var parentOrdinal))
             {
                 continue;
             }
@@ -455,16 +469,16 @@ public sealed partial class IndexControl : IDisposable
 
             var x2Line1 = (float)Math.Floor(x - HorizontalMargin / 2);
 
-            var y2Line2 = (float)Math.Floor(GetNodeY(node.Level - 1, 0) + PageHeight + (VerticalMargin / 4f) - yScrollOffset);
+            var y2Line2 = (float)Math.Floor(GetNodeY(node.Level - 1, 0) 
+                                            + PageHeight 
+                                            + (VerticalMargin / 4f) 
+                                            - yScrollOffset);
 
             var x2Line3 = (float)Math.Floor(parentX + (PageWidth / 2));
 
             var y2Line4 = (float)Math.Floor(GetNodeY(node.Level - 1, 0) + PageHeight - yScrollOffset);
 
-            // Skip building/drawing the connector if its bounding box is entirely offscreen. This
-            // is the main per-frame cost on large levels, so culling it keeps selection repaints
-            // (which redraw the whole surface) responsive.
-            var lineLeft = Math.Min(x2Line1, x2Line3);
+           var lineLeft = Math.Min(x2Line1, x2Line3);
             var lineRight = Math.Max(x, x2Line3);
 
             if (lineRight < clip.Left || lineLeft > clip.Right || y1Line1 < clip.Top || y2Line4 > clip.Bottom)
@@ -472,15 +486,15 @@ public sealed partial class IndexControl : IDisposable
                 continue;
             }
 
-            linePath.Reset();
+            _linePath.Reset();
 
-            linePath.MoveTo(x, y1Line1);
-            linePath.LineTo(x2Line1, y1Line1);
-            linePath.LineTo(x2Line1, y2Line2);
-            linePath.LineTo(x2Line3, y2Line2);
-            linePath.LineTo(x2Line3, y2Line4);
+            _linePath.MoveTo(x, y1Line1);
+            _linePath.LineTo(x2Line1, y1Line1);
+            _linePath.LineTo(x2Line1, y2Line2);
+            _linePath.LineTo(x2Line3, y2Line2);
+            _linePath.LineTo(x2Line3, y2Line4);
 
-            canvas.DrawPath(linePath, linePaint);
+            canvas.DrawPath(_linePath, _linePaint);
         }
     }
 
@@ -490,47 +504,26 @@ public sealed partial class IndexControl : IDisposable
                           bool isSelected,
                           bool isHighlighted)
     {
-        indexPagePaint.Style = SKPaintStyle.Fill;
-
-        var shadowRect = new SKRect(x + 5, y + 5, x + PageWidth, y + PageHeight);
-
-        canvas.DrawRect(shadowRect, shadowPaint);
-
         var indexPageRect = new SKRect(x, y, x + PageWidth, y + PageHeight);
 
-        if (isSelected)
-        {
-            indexPagePaint.Color = selectedBackgroundColour;
-        }
-        else if (isHighlighted)
-        {
-            indexPagePaint.Color = highlightedBackgroundColour;
-        }
-        else
-        {
-            indexPagePaint.Color = backgroundColour;
-        }
-
-        canvas.DrawRect(indexPageRect, indexPagePaint);
-
-        indexPagePaint.Style = SKPaintStyle.Stroke;
+        _indexPagePaint.Style = SKPaintStyle.Stroke;
 
         if (isSelected)
         {
-            indexPagePaint.Color = selectedBorderColour;
+            _indexPagePaint.Color = _selectedBorderColour;
         }
         else if (isHighlighted)
         {
-            indexPagePaint.Color = highlightedBorderColour;
+            _indexPagePaint.Color = _highlightedBorderColour;
         }
         else
         {
-            indexPagePaint.Color = borderColour;
+            _indexPagePaint.Color = _borderColour;
         }
 
-        indexPagePaint.StrokeWidth = isSelected || isHighlighted ? 2f : 1f;
+        _indexPagePaint.StrokeWidth = isSelected || isHighlighted ? 2f : 1f;
 
-        canvas.DrawRect(indexPageRect, indexPagePaint);
+        canvas.DrawRect(indexPageRect, _indexPagePaint);
     }
 
     /// <summary>
@@ -541,9 +534,9 @@ public sealed partial class IndexControl : IDisposable
         var verticalMargin = PageHeight / 6;
         var horizontalMargin = PageWidth * .1f;
 
-        indexPagePaint.Color = SKColors.LightGray;
+        _indexPagePaint.Color = SKColors.LightGray;
 
-        indexPagePaint.StrokeWidth = 1;
+        _indexPagePaint.StrokeWidth = 1;
 
         for (var i = 1; i < 6; i++)
         {
@@ -551,7 +544,7 @@ public sealed partial class IndexControl : IDisposable
                             y + verticalMargin * i,
                             x + PageWidth - horizontalMargin,
                             y + verticalMargin * i,
-                            indexPagePaint);
+                            _indexPagePaint);
         }
     }
 
@@ -563,9 +556,9 @@ public sealed partial class IndexControl : IDisposable
         var verticalMargin = PageHeight * .1f;
         var horizontalMargin = PageWidth / 4;
 
-        indexPagePaint.Color = SKColors.LightGray;
+        _indexPagePaint.Color = SKColors.LightGray;
 
-        indexPagePaint.StrokeWidth = 1;
+        _indexPagePaint.StrokeWidth = 1;
 
         for (var i = 1; i < 4; i++)
         {
@@ -573,13 +566,13 @@ public sealed partial class IndexControl : IDisposable
                             y + verticalMargin,
                             x + horizontalMargin * i,
                             y + PageHeight - verticalMargin,
-                            indexPagePaint);
+                            _indexPagePaint);
         }
     }
 
     private void UpdateScrollbars()
     {
-        if (nodePositions.Count == 0)
+        if (_nodePositions.Count == 0)
         {
             HorizontalScrollBar.Visibility = Visibility.Collapsed;
             HorizontalScrollBar.Maximum = 0;
@@ -590,8 +583,8 @@ public sealed partial class IndexControl : IDisposable
             return;
         }
 
-        var maxWidth = globalMaxX + PageWidth + (HorizontalMargin * 2);
-        var maxHeight = nodePositions.Max(n => n.Y) + PageHeight + VerticalMargin;
+        var maxWidth = _globalMaxX + PageWidth + (HorizontalMargin * 2);
+        var maxHeight = _nodePositions.Max(n => n.Y) + PageHeight + VerticalMargin;
 
         if (maxWidth < IndexCanvas.ActualWidth)
         {
@@ -635,6 +628,14 @@ public sealed partial class IndexControl : IDisposable
         IndexCanvas.Invalidate();
     }
 
+    private void IndexControl_OnLoaded(object sender, RoutedEventArgs e)
+    {
+        // The Skia canvas goes blank after being reparented (tab re-selected). The tree layout is
+        // unchanged, so just repaint from the cached positions - no need to rebuild or recompute
+        // scrollbars (SizeChanged handles genuine size changes).
+        IndexCanvas.Invalidate();
+    }
+
     private void UserControl_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateScrollbars();
@@ -649,30 +650,30 @@ public sealed partial class IndexControl : IDisposable
     {
         var position = e.GetCurrentPoint(this).Position;
 
-        isPointerDown = true;
-        isDragging = false;
-        dragStart = position;
-        dragStartHorizontal = HorizontalScrollBar.Value;
-        dragStartVertical = VerticalScrollBar.Value;
+        _isPointerDown = true;
+        _isDragging = false;
+        _dragStart = position;
+        _dragStartHorizontal = HorizontalScrollBar.Value;
+        _dragStartVertical = VerticalScrollBar.Value;
 
         IndexCanvas.CapturePointer(e.Pointer);
     }
 
     private void IndexCanvas_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        if (isPointerDown && !isDragging)
+        if (_isPointerDown && !_isDragging)
         {
             // A press with no drag is a click - select the node under the pointer.
             HandleClick(e.GetCurrentPoint(this).Position);
         }
 
-        if (isDragging)
+        if (_isDragging)
         {
             ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
         }
 
-        isPointerDown = false;
-        isDragging = false;
+        _isPointerDown = false;
+        _isDragging = false;
 
         IndexCanvas.ReleasePointerCapture(e.Pointer);
     }
@@ -682,6 +683,7 @@ public sealed partial class IndexControl : IDisposable
         var node = GetIndexNodeAtPosition(position.X, position.Y);
 
         SelectedPageAddress = node?.PageAddress;
+
         IndexCanvas.Invalidate();
 
         if (node is not null)
@@ -706,22 +708,22 @@ public sealed partial class IndexControl : IDisposable
     {
         var position = e.GetCurrentPoint(this).Position;
 
-        if (isPointerDown)
+        if (_isPointerDown)
         {
-            var deltaX = position.X - dragStart.X;
-            var deltaY = position.Y - dragStart.Y;
+            var deltaX = position.X - _dragStart.X;
+            var deltaY = position.Y - _dragStart.Y;
 
-            if (!isDragging && (Math.Abs(deltaX) > DragThreshold || Math.Abs(deltaY) > DragThreshold))
+            if (!_isDragging && (Math.Abs(deltaX) > DragThreshold || Math.Abs(deltaY) > DragThreshold))
             {
-                isDragging = true;
+                _isDragging = true;
                 TooltipPopup.IsOpen = false;
                 HoverNode = null;
                 ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeAll);
             }
 
-            if (isDragging)
+            if (_isDragging)
             {
-                Pan(dragStartHorizontal - deltaX, dragStartVertical - deltaY);
+                Pan(_dragStartHorizontal - deltaX, _dragStartVertical - deltaY);
             }
 
             return;
@@ -768,7 +770,7 @@ public sealed partial class IndexControl : IDisposable
             return;
         }
 
-        var oldZoom = Zoom;
+        var oldZoom = _zoom;
         var factor = delta > 0 ? 1.1f : 1f / 1.1f;
         var newZoom = Math.Clamp(oldZoom * factor, MinZoom, MaxZoom);
 
@@ -779,10 +781,11 @@ public sealed partial class IndexControl : IDisposable
             return;
         }
 
-        // Preserve the scroll ratio so the viewport's centre stays roughly stable across the zoom.
+        // Preserve the scroll ratio so the viewport's centre stays roughly stable across the zoom
         var horizontalRatio = HorizontalScrollBar.Maximum > 0
             ? HorizontalScrollBar.Value / HorizontalScrollBar.Maximum
             : 0;
+
         var verticalRatio = VerticalScrollBar.Maximum > 0
             ? VerticalScrollBar.Value / VerticalScrollBar.Maximum
             : 0;
@@ -802,7 +805,7 @@ public sealed partial class IndexControl : IDisposable
         var yScrollOffset = (float)VerticalScrollBar.Value;
 
         // Find the level first as the level offsets are used to center the tree.
-        var level = nodePositions.FirstOrDefault(n => y >= n.Y - yScrollOffset
+        var level = _nodePositions.FirstOrDefault(n => y >= n.Y - yScrollOffset
                                                       && y <= n.Y - yScrollOffset + PageHeight)?.Node.Level;
 
         if (level is null)
@@ -812,7 +815,7 @@ public sealed partial class IndexControl : IDisposable
 
         var xOffset = GetLevelStartX(level.Value) - xScrollOffset;
 
-        var node = nodePositions.FirstOrDefault(n => x >= xOffset + n.X
+        var node = _nodePositions.FirstOrDefault(n => x >= xOffset + n.X
                                                      && x <= xOffset + n.X + PageWidth
                                                      && y >= n.Y - yScrollOffset
                                                      && y <= n.Y - yScrollOffset + PageHeight);
@@ -822,10 +825,12 @@ public sealed partial class IndexControl : IDisposable
 
     public void Dispose()
     {
-        indexPagePaint.Dispose();
-        linePaint.Dispose();
-        shadowPaint.Dispose();
-        linePath.Dispose();
+        _indexPagePaint.Dispose();
+        _linePaint.Dispose();
+        _shadowPaint.Dispose();
+        _linePath.Dispose();
+
+        Loaded -= IndexControl_OnLoaded;
 
         IndexCanvas.PaintSurface -= IndexCanvas_PaintSurface;
         IndexCanvas.PointerMoved -= IndexCanvas_PointerMoved;
@@ -842,4 +847,4 @@ public class ViewIndexEventArgs(long allocationUnitId) : EventArgs
     public long AllocationUnitId { get; } = allocationUnitId;
 }
 
-public record IndexTreeNode(IndexNode Node, float X, float Y, int Row, int Column);
+public sealed record IndexTreeNode(IndexNode Node, float X, float Y, int Row, int Column);
