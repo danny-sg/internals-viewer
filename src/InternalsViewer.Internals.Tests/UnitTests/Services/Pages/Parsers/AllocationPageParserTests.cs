@@ -31,7 +31,7 @@ public class AllocationPageParserTests(ITestOutputHelper testOutput)
 
         var allocationPage = parser.Parse(pageData);
 
-        Assert.Equal(AllocationPage.AllocationInterval, allocationPage.AllocationMap.Length);
+        Assert.Equal(AllocationPage.AllocationExtentInterval, allocationPage.AllocationMap.Length);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class AllocationPageParserTests(ITestOutputHelper testOutput)
         var dcmPage = parser.Parse(dcmData);
         var bcmPage = parser.Parse(bcmData);
 
-        Assert.Equal(AllocationPage.AllocationInterval, dcmPage.AllocationMap.Length);
-        Assert.Equal(AllocationPage.AllocationInterval, bcmPage.AllocationMap.Length);
+        Assert.Equal(AllocationPage.AllocationExtentInterval, dcmPage.AllocationMap.Length);
+        Assert.Equal(AllocationPage.AllocationExtentInterval, bcmPage.AllocationMap.Length);
     }
 }

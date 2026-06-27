@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -26,8 +27,10 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
         PageType.Pfs
     ];
 
-    // Weak keys so each per-database cache is collected automatically when the DatabaseSource is GC'd
-    private readonly ConditionalWeakTable<DatabaseSource, Dictionary<PageAddress, Page>> _cache = new();
+    // Weak keys so each per-database cache is collected automatically when the DatabaseSource is GC'd.
+    // ConcurrentDictionary so pages can be loaded in parallel (e.g. IAM chains during a database
+    // refresh); a race just re-loads the same page and the last write wins with identical data.
+    private readonly ConditionalWeakTable<DatabaseSource, ConcurrentDictionary<PageAddress, Page>> _cache = new();
 
     private ILogger<CachingPageService> Logger { get; } = logger;
 

@@ -43,7 +43,7 @@ public class PageHelpersTests
     // GAM pages: 2, 2 + 63904, 2 + 2*63904, ...
     [Theory]
     [InlineData(AllocationPage.FirstGamPage, true)]
-    [InlineData(AllocationPage.FirstGamPage + AllocationPage.AllocationInterval, true)]
+    [InlineData(AllocationPage.FirstGamPage + AllocationPage.AllocationExtentInterval, true)]
     [InlineData(AllocationPage.FirstGamPage + 1, false)]
     [InlineData(0, false)]
     [InlineData(AllocationPage.FirstSgamPage, false)]
@@ -54,7 +54,7 @@ public class PageHelpersTests
 
     [Theory]
     [InlineData(AllocationPage.FirstSgamPage, true)]
-    [InlineData(AllocationPage.FirstSgamPage + AllocationPage.AllocationInterval, true)]
+    [InlineData(AllocationPage.FirstSgamPage + AllocationPage.AllocationExtentInterval, true)]
     [InlineData(AllocationPage.FirstSgamPage + 1, false)]
     [InlineData(AllocationPage.FirstGamPage, false)]
     public void IsSgam_Returns_Correct_For_Boundary_Pages(int pageId, bool expected)
@@ -64,7 +64,7 @@ public class PageHelpersTests
 
     [Theory]
     [InlineData(AllocationPage.FirstDcmPage, true)]
-    [InlineData(AllocationPage.FirstDcmPage + AllocationPage.AllocationInterval, true)]
+    [InlineData(AllocationPage.FirstDcmPage + AllocationPage.AllocationExtentInterval, true)]
     [InlineData(AllocationPage.FirstDcmPage + 1, false)]
     public void IsDcm_Returns_Correct_For_Boundary_Pages(int pageId, bool expected)
     {
@@ -73,7 +73,7 @@ public class PageHelpersTests
 
     [Theory]
     [InlineData(AllocationPage.FirstBcmPage, true)]
-    [InlineData(AllocationPage.FirstBcmPage + AllocationPage.AllocationInterval, true)]
+    [InlineData(AllocationPage.FirstBcmPage + AllocationPage.AllocationExtentInterval, true)]
     [InlineData(AllocationPage.FirstBcmPage + 1, false)]
     public void IsBcm_Returns_Correct_For_Boundary_Pages(int pageId, bool expected)
     {

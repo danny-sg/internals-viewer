@@ -35,6 +35,13 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     private IPfsChainService PfsChainService { get; } = pfsChainService;
 
     /// <summary>
+    /// Maximum number of IAM chains loaded concurrently when refreshing allocation units. Each
+    /// chain load reads pages on its own connection/file handle, so this keeps demand under the
+    /// SqlClient pool limit (default 100) while still parallelising across allocation units.
+    /// </summary>
+    private const int MaxParallelChainLoads = 16;
+
+    /// <summary>
     /// Create and load a Database object for the given database name
     /// </summary>
     public async Task<DatabaseSource> LoadAsync(string name, IConnectionType connection)
@@ -127,22 +134,23 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     {
         Logger.LogDebug("Refreshing allocation unit allocations (via IAMs)");
 
-        foreach (var allocationUnit in database.AllocationUnits.Values)
-        {
-            if (allocationUnit.FirstIamPage == PageAddress.Empty)
+        // Each allocation unit's IAM chain is independent and is written back to its own object,
+        // so they can be loaded in parallel. Bounded to avoid exhausting the connection pool.
+        var unitsWithIam = database.AllocationUnits.Values
+                                   .Where(a => a.FirstIamPage != PageAddress.Empty)
+                                   .ToList();
+
+        await Parallel.ForEachAsync(
+            unitsWithIam,
+            new ParallelOptions { MaxDegreeOfParallelism = MaxParallelChainLoads },
+            async (allocationUnit, _) =>
             {
-                Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - No First IAM page",
-                                allocationUnit.AllocationUnitId);
+                Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - Loading from First IAM page: {FirstIamPage}",
+                                allocationUnit.AllocationUnitId,
+                                allocationUnit.FirstIamPage);
 
-                continue;
-            }
-
-            Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - Loading from First IAM page: {FirstIamPage}",
-                            allocationUnit.AllocationUnitId,
-                            allocationUnit.FirstIamPage);
-
-            allocationUnit.IamChain = await IamChainService.LoadChain(database, allocationUnit.FirstIamPage);
-        }
+                allocationUnit.IamChain = await IamChainService.LoadChain(database, allocationUnit.FirstIamPage);
+            });
     }
 
     /// <summary>

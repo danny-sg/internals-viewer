@@ -38,7 +38,7 @@ public class IamPageParserTests(ITestOutputHelper testOutput)
 
         var page = parser.Parse(pageData);
 
-        Assert.Equal(AllocationPage.AllocationInterval, page.AllocationMap.Length);
+        Assert.Equal(AllocationPage.AllocationExtentInterval, page.AllocationMap.Length);
     }
 
     [Fact]

@@ -54,8 +54,8 @@ public sealed class AllocationChain
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool IsExtentAllocated(int extent)
     {
-        var pageIndex = extent / AllocationPage.AllocationInterval;
-        var extentIndex = extent % AllocationPage.AllocationInterval;
+        var pageIndex = extent / AllocationPage.AllocationExtentInterval;
+        var extentIndex = extent % AllocationPage.AllocationExtentInterval;
 
         if ((uint)pageIndex >= (uint)Pages.Count)
         {

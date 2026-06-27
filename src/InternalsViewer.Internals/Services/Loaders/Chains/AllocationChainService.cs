@@ -41,7 +41,7 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
 
         Logger.LogDebug("Loading allocation chain ({Type}) starting at {PageAddress}", pageType, startPageAddress);
 
-        return await LoadChain(database, new PageAddress(fileId, startPage));
+        return await LoadChain(database, startPageAddress);
     }
 
     /// <summary>
@@ -56,18 +56,24 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
 
         var pageCount = database.GetFilePageCount(startPageAddress.FileId);
 
-        var extentCount = (int)Math.Ceiling(pageCount
-                                            / (decimal)AllocationPage.AllocationInterval);
+        // File page count in terms of extents
+        var extentCount = pageCount / 8;
 
-        Logger.LogDebug("Extent Count: {ExtentCount} ⌈Page Count / Allocation Internal⌉ = ⌈{PageCount} / {Interval}⌉",
-                        extentCount,
-                        pageCount,
-                        AllocationPage.AllocationInterval);
+        // Number of allocation pages that cover the extent count
+        var allocationPageCount = (int)Math.Ceiling(extentCount
+                                                    / (decimal)AllocationPage.AllocationExtentInterval);
 
-        for (var i = 0; i < extentCount; i++)
+
+        Logger.LogDebug(
+            "Allocation Count: {ExtentCount} ⌈Extent Count / Allocation Internal⌉ = ⌈{Count} / {Interval}⌉",
+            allocationPageCount,
+            extentCount,
+            AllocationPage.AllocationExtentInterval);
+
+        for (var i = 0; i < allocationPageCount; i++)
         {
             var address = new PageAddress(startPageAddress.FileId,
-                                          startPageAddress.PageId + (i * AllocationPage.AllocationInterval));
+                                          startPageAddress.PageId + (i * AllocationPage.AllocationPageCount));
 
             Logger.LogDebug("Page {Index}: {PageAddress}", i, address);
 

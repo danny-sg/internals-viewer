@@ -50,7 +50,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    private string _database = string.Empty;
+    private string? _database = string.Empty;
 
     [ObservableProperty]
     private ObservableCollection<string> _databases = [];
@@ -306,7 +306,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
     private void RefreshConnectionString()
     {
-        _builder.InitialCatalog = Database;
+        _builder.InitialCatalog = Database ?? "master";
         _builder.DataSource = InstanceName;
 
         _builder.Authentication = (SqlAuthenticationMethod)AuthenticationType;

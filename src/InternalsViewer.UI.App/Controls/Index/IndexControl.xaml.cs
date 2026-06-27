@@ -80,9 +80,6 @@ public sealed partial class IndexControl : IDisposable
             typeof(AllocationControl),
             null);
 
-    // Mirror of the Zoom dependency property. The size getters below are read hundreds of
-    // thousands of times per frame in the draw loop; reading a field avoids a GetValue call
-    // (which showed up as a hotspot in profiling) on every access. Kept in sync in OnPropertyChanged.
     private float _zoom = 1f;
 
     private float PageWidth => 20 * _zoom;
@@ -105,11 +102,7 @@ public sealed partial class IndexControl : IDisposable
     private readonly SKPaint _indexPagePaint;
     private readonly SKPaint _linePaint;
     private readonly SKPaint _shadowPaint;
-
-    private readonly SKColor _backgroundColour = SKColors.White;
-    private readonly SKColor _selectedBackgroundColour = SKColors.AliceBlue;
-    private readonly SKColor _highlightedBackgroundColour = SKColors.Honeydew;
-
+    
     private readonly SKColor _borderColour = SKColors.Gray;
     private readonly SKColor _selectedBorderColour = SKColors.Navy;
     private readonly SKColor _highlightedBorderColour = SKColors.Green;
@@ -630,9 +623,6 @@ public sealed partial class IndexControl : IDisposable
 
     private void IndexControl_OnLoaded(object sender, RoutedEventArgs e)
     {
-        // The Skia canvas goes blank after being reparented (tab re-selected). The tree layout is
-        // unchanged, so just repaint from the cached positions - no need to rebuild or recompute
-        // scrollbars (SizeChanged handles genuine size changes).
         IndexCanvas.Invalidate();
     }
 

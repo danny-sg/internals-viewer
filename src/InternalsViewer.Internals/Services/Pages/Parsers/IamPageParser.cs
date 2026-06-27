@@ -77,6 +77,6 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
 
         page.MarkProperty("AllocationMap",
                           AllocationPage.AllocationArrayOffset,
-                          AllocationPage.AllocationInterval / 8);
+                          AllocationPage.AllocationExtentInterval / 8);
     }
 }

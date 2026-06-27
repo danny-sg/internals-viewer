@@ -1,8 +1,9 @@
-﻿using System.Buffers;
+using System.Buffers;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 
@@ -13,6 +14,13 @@ namespace InternalsViewer.Internals.Services.Indexes;
 /// </summary>
 public sealed class IndexService(IPageService pageService, IRecordService recordService)
 {
+    /// <summary>
+    /// Maximum number of pages read concurrently. Each read opens its own connection (server) or
+    /// file handle (data file), so this keeps demand well under the SqlClient pool limit (default
+    /// 100) and avoids a file-handle storm. Loading is otherwise sequential.
+    /// </summary>
+    private const int MaxParallelPageLoads = 16;
+
     private IPageService PageService { get; } = pageService;
 
     private IRecordService RecordService { get; } = recordService;
@@ -24,73 +32,120 @@ public sealed class IndexService(IPageService pageService, IRecordService record
     {
         var nodes = new List<IndexNode>();
 
-        var rootNode = new IndexNode(rootPage) { Ordinal = 1 };
+        var nodesByAddress = new Dictionary<PageAddress, IndexNode>();
+
+        var rootNode = new IndexNode(rootPage) { Level = 0, Ordinal = 1 };
 
         nodes.Add(rootNode);
 
-        var buffer = ArrayPool<byte>.Shared.Rent(PageData.Size);
+        nodesByAddress[rootPage] = rootNode;
 
-        try
+        var currentLevel = new List<IndexNode> { rootNode };
+        byte level = 0;
+
+        while (currentLevel.Count > 0)
         {
-            await GetIndexNodes(nodes, database, rootPage, null, 0, buffer);
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
+            // I/O for the whole level, in parallel.
+            var loaded = await LoadLevel(database, currentLevel);
+
+            // Node construction for the next level, single-threaded and in order.
+            var nextLevel = new List<IndexNode>();
+
+            for (var i = 0; i < currentLevel.Count; i++)
+            {
+                var node = currentLevel[i];
+                var page = loaded[i];
+
+                node.PageType = page.PageType;
+                node.PreviousPage = page.PreviousPage;
+                node.NextPage = page.NextPage;
+                node.IndexLevel = page.IndexLevel;
+
+                foreach (var childAddress in page.DownPointers)
+                {
+                    node.Children.Add(childAddress);
+
+                    if (!nodesByAddress.TryGetValue(childAddress, out var childNode))
+                    {
+                        childNode = new IndexNode(childAddress)
+                        {
+                            Level = (byte)(level + 1),
+                            Ordinal = (ushort)(nextLevel.Count + 1)
+                        };
+
+                        nodes.Add(childNode);
+                        
+                        nodesByAddress[childAddress] = childNode;
+
+                        nextLevel.Add(childNode);
+                    }
+
+                    if (!childNode.Parents.Contains(node.PageAddress))
+                    {
+                        childNode.Parents.Add(node.PageAddress);
+                    }
+                }
+            }
+
+            currentLevel = nextLevel;
+            level++;
         }
 
         return nodes;
     }
 
-    private async Task GetIndexNodes(ICollection<IndexNode> nodes,
-                                     DatabaseSource database,
-                                     PageAddress pageAddress,
-                                     PageAddress? parentPageAddress,
-                                     byte level,
-                                     byte[] buffer)
+    /// <summary>
+    /// Reads every page on a level in parallel, returning results in the same order as the input.
+    /// </summary>
+    private async Task<LoadedPage[]> LoadLevel(DatabaseSource database, List<IndexNode> levelNodes)
     {
-        var node = nodes.FirstOrDefault(n => n.PageAddress == pageAddress);
+        var results = new LoadedPage[levelNodes.Count];
 
-        if (node is null)
+        await Parallel.ForEachAsync(Enumerable.Range(0, levelNodes.Count),
+                                    new ParallelOptions { MaxDegreeOfParallelism = MaxParallelPageLoads },
+                                    async (i, _) 
+                                        => results[i] = await LoadPage(database, levelNodes[i].PageAddress));
+
+        return results;
+    }
+
+    /// <summary>
+    /// Reads a single page and extracts the header fields and child pointers needed to build the tree
+    /// </summary>
+    private async Task<LoadedPage> LoadPage(DatabaseSource database, PageAddress pageAddress)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(PageData.Size);
+
+        try
         {
-            node = new IndexNode(pageAddress)
+            var page = await PageService.GetPage(database, pageAddress, buffer);
+
+            var downPointers = new List<PageAddress>();
+
+            // Only index pages above the leaf (Level >= 1) point down to child pages.
+            if (page is IndexPage indexPage && page.PageHeader.Level >= 1)
             {
-                Level = level,
-                Ordinal = (ushort)(nodes.Count(n => n.Level == level) + 1)
-            };
-
-            nodes.Add(node);
-        }
-
-        if (parentPageAddress != null && !node.Parents.Contains(parentPageAddress.Value))
-        {
-            node.Parents.Add(parentPageAddress.Value);
-        }
-
-        var page = await PageService.GetPage(database, pageAddress, buffer);
-
-        node.PageType = page.PageHeader.PageType;
-        node.PreviousPage = page.PageHeader.PreviousPage;
-        node.NextPage = page.PageHeader.NextPage;
-        node.IndexLevel = page.PageHeader.Level;
-
-        if (page is IndexPage indexPage)
-        {
-            var records = RecordService.GetIndexRecords(indexPage);
-
-            var downPagePointers = records.Select(r => r.DownPagePointer)
-                                          .Where(p => p != PageAddress.Empty)
-                                          .ToList();
-
-            if (page.PageHeader.Level >= 1)
-            {
-                foreach (var childPageAddress in downPagePointers)
-                {
-                    node.Children.Add(childPageAddress);
-
-                    await GetIndexNodes(nodes, database, childPageAddress, pageAddress, (byte)(level + 1), buffer);
-                }
+                downPointers = RecordService.GetIndexRecords(indexPage)
+                                            .Select(r => r.DownPagePointer)
+                                            .Where(p => p != PageAddress.Empty)
+                                            .ToList();
             }
+
+            return new LoadedPage(page.PageHeader.PageType,
+                                  page.PageHeader.PreviousPage,
+                                  page.PageHeader.NextPage,
+                                  page.PageHeader.Level,
+                                  downPointers);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
+
+    private readonly record struct LoadedPage(PageType PageType,
+                                              PageAddress PreviousPage,
+                                              PageAddress NextPage,
+                                              byte IndexLevel,
+                                              List<PageAddress> DownPointers);
 }
