@@ -105,7 +105,7 @@ public sealed class EventTimelineControl : Grid
 
     // Operator bar labels get their own font so the size can be scaled per bar (up to OperatorMaxFont).
     // The type (e.g. "Index Scan") is drawn bold, the object name that follows in the regular font.
-    private readonly SKFont _operatorFont = new(SKTypeface.Default, 10f);
+    private readonly SKFont _operatorFont = new(SKTypeface.Default, 12f);
     private readonly SKFont _operatorBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold), 10f);
 
     private readonly SKPaint _labelPaint = new()
@@ -137,7 +137,7 @@ public sealed class EventTimelineControl : Grid
     private const float MinLabelBarWidth = 26f;
 
     // Operator labels scale up to this size when the bar has room, and are hidden below the minimum.
-    private const float OperatorMaxFont = 11f;
+    private const float OperatorMaxFont = 12f;
     private const float OperatorMinFont = 7f;
 
     private readonly SKPaint _operatorTextPaint = new() { IsAntialias = true };
@@ -1399,9 +1399,14 @@ public sealed class EventTimelineControl : Grid
     // Gap between the bold type and the object name, as a fraction of the font size (scales with it).
     private const float OperatorLabelGapFraction = 0.5f;
 
+    // Vertical gap between the stacked type and object-name lines in the two-line operator label.
+    private const float TwoLineGap = 2f;
+
     /// <summary>
-    /// Draws the operator type (bold) and, if present, the object name following it (regular weight),
-    /// sized to the largest that fits the bar's height and width.
+    /// Draws the operator type (bold) and, when present, the object name, sized to the largest that
+    /// fits the bar. The layout is chosen by priority on the bar's height and width: the object name
+    /// stacked below the type on two centred lines; failing that the two on a single line (type then
+    /// object name, left aligned); failing that the operator type alone; otherwise nothing.
     /// </summary>
     private void DrawOperatorLabel(SKCanvas canvas, ExecutionOperatorEvent op,
                                    float startX, float endX, float y, float barHeight, SKColor barColour)
@@ -1414,51 +1419,87 @@ public sealed class EventTimelineControl : Grid
             return;
         }
 
-        const float textPadX = 4f;
+        const float textPadX = 8f;
         var availWidth = endX - startX - textPadX * 2;
         if (availWidth <= 0)
         {
             return;
         }
 
-        // Grow the label to the largest size that fits the bar's height and width, capped at the max.
-        // Width (type + gap + object name) scales linearly with font size, so derive the width-bound
-        // size from a measure at the cap.
+        // Widths scale linearly with font size, so measure once at the cap and derive each layout's
+        // width-bound size from that.
         _operatorBoldFont.Size = OperatorMaxFont;
         _operatorFont.Size = OperatorMaxFont;
 
         var typeW = type.Length > 0 ? _operatorBoldFont.MeasureText(type) : 0f;
         var targetW = target.Length > 0 ? _operatorFont.MeasureText(target) : 0f;
         var hasBoth = type.Length > 0 && target.Length > 0;
-        var widthAtMax = typeW + targetW + (hasBoth ? OperatorMaxFont * OperatorLabelGapFraction : 0f);
 
-        var sizeByWidth = widthAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / widthAtMax;
-        var sizeByHeight = barHeight - 2f;
-        var size = Math.Min(OperatorMaxFont, Math.Min(sizeByWidth, sizeByHeight));
-
-        // Hide the label entirely if it can't be shown at a legible size rather than clipping it.
-        if (size < OperatorMinFont)
-        {
-            return;
-        }
-
-        _operatorBoldFont.Size = size;
-        _operatorFont.Size = size;
         _operatorTextPaint.Color = OperatorLabelColour;
 
-        // Centre the text vertically within the bar.
-        var baseline = y + size * 0.35f;
-        var x = startX + textPadX;
-
-        if (type.Length > 0)
+        // 1. Two lines: type above the object name, left aligned. Each line scales with the wider of
+        // the two, and the pair needs room for two rows of text plus the gap between them.
+        if (hasBoth)
         {
-            canvas.DrawText(type, x, baseline, SKTextAlign.Left, _operatorBoldFont, _operatorTextPaint);
-            x += _operatorBoldFont.MeasureText(type) + (target.Length > 0 ? size * OperatorLabelGapFraction : 0f);
+            var widerAtMax = Math.Max(typeW, targetW);
+            var sizeByWidth = widerAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / widerAtMax;
+            var sizeByHeight = (barHeight - 2f - TwoLineGap) / 2f;
+            var size = Math.Min(OperatorMaxFont, Math.Min(sizeByWidth, sizeByHeight));
+
+            if (size >= OperatorMinFont)
+            {
+                _operatorBoldFont.Size = size;
+                _operatorFont.Size = size;
+
+                var x = startX + textPadX;
+                var halfGap = (size + TwoLineGap) / 2f;
+
+                canvas.DrawText(type, x, y - halfGap + size * 0.35f, SKTextAlign.Left,
+                                _operatorBoldFont, _operatorTextPaint);
+                canvas.DrawText(target, x, y + halfGap + size * 0.35f, SKTextAlign.Left,
+                                _operatorFont, _operatorTextPaint);
+                return;
+            }
         }
 
-        if (target.Length > 0)
+        // 2. Single line: type then object name, left aligned (the original layout) - when the bar is
+        // too short for two lines but wide enough to fit both side by side.
+        if (hasBoth)
         {
-            canvas.DrawText(target, x, baseline, SKTextAlign.Left, _operatorFont, _operatorTextPaint);
+            var widthAtMax = typeW + targetW + OperatorMaxFont * OperatorLabelGapFraction;
+            var sizeByWidth = widthAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / widthAtMax;
+            var sizeByHeight = barHeight - 2f;
+            var size = Math.Min(OperatorMaxFont, Math.Min(sizeByWidth, sizeByHeight));
+
+            if (size >= OperatorMinFont)
+            {
+                _operatorBoldFont.Size = size;
+                _operatorFont.Size = size;
+
+                var baseline = y + size * 0.35f;
+                var x = startX + textPadX;
+
+                canvas.DrawText(type, x, baseline, SKTextAlign.Left, _operatorBoldFont, _operatorTextPaint);
+                x += _operatorBoldFont.MeasureText(type) + size * OperatorLabelGapFraction;
+                canvas.DrawText(target, x, baseline, SKTextAlign.Left, _operatorFont, _operatorTextPaint);
+                return;
+            }
+        }
+
+        // 3. Single line: the operator type alone (or whichever single label is present) - when there
+        // isn't room for both but the type still fits.
+        var primary = type.Length > 0 ? type : target;
+        var primaryFont = type.Length > 0 ? _operatorBoldFont : _operatorFont;
+        var primaryWAtMax = type.Length > 0 ? typeW : targetW;
+
+        var nameSizeByWidth = primaryWAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / primaryWAtMax;
+        var nameSize = Math.Min(OperatorMaxFont, Math.Min(nameSizeByWidth, barHeight - 2f));
+
+        if (nameSize >= OperatorMinFont)
+        {
+            primaryFont.Size = nameSize;
+            canvas.DrawText(primary, startX + textPadX, y + nameSize * 0.35f, SKTextAlign.Left,
+                            primaryFont, _operatorTextPaint);
         }
     }
 
