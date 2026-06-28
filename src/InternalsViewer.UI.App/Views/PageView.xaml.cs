@@ -46,7 +46,14 @@ public sealed partial class PageView : IDisposable
         }
         else
         {
-            ViewModel.LoadPageCommand.Execute(pageAddress);
+            if (e.Slot != null)
+            {
+                ViewModel.LoadRowIdentifierCommand.Execute(new RowIdentifier(pageAddress, e.Slot.Value));
+            }
+            else
+            {
+                ViewModel.LoadPageCommand.Execute(pageAddress);
+            }
         }
     }
 

@@ -188,7 +188,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     [RelayCommand]
     private void OpenQueryReplay()
     {
-        WeakReferenceMessenger.Default.Send(new OpenQueryReplayMessage(Database));
+        WeakReferenceMessenger.Default.Send(new OpenQueryMessage(Database));
     }
 
     public List<AllocationLayer> GridAllocationLayers

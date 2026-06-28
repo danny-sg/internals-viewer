@@ -7,6 +7,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
@@ -67,7 +68,17 @@ public sealed partial class AllocationLayerGrid
 
     private void DataGrid_OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        var row = LayoutHelpers.FindParent<DataGridRow>(e.OriginalSource as DependencyObject);
+        var source = e.OriginalSource as DependencyObject;
+
+        // Clicks on the page-address / view-index links navigate; they must not toggle row selection.
+        // Marking the event handled stops the DataGrid from selecting the row underneath the link.
+        if (LayoutHelpers.FindParent<ButtonBase>(source) != null)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var row = LayoutHelpers.FindParent<DataGridRow>(source);
 
         if (row == null)
         {

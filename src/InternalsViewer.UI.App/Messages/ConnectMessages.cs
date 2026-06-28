@@ -3,7 +3,7 @@ using InternalsViewer.UI.App.Models.Connections;
 
 namespace InternalsViewer.UI.App.Messages;
 
-public class ConnectServerMessage(string connectionString, RecentConnection recent) : AsyncRequestMessage<bool>
+public sealed class ConnectServerMessage(string connectionString, RecentConnection recent) : AsyncRequestMessage<bool>
 {
     public string ConnectionString { get; } = connectionString;
 
@@ -12,7 +12,7 @@ public class ConnectServerMessage(string connectionString, RecentConnection rece
     public bool IsPasswordRequired { get; set; }
 }
 
-public class ConnectFileMessage(string filename, RecentConnection recent) : AsyncRequestMessage<bool>
+public sealed class ConnectFileMessage(string filename, RecentConnection recent) : AsyncRequestMessage<bool>
 {
     public string Filename { get; } = filename;
 

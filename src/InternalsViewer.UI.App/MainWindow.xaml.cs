@@ -94,7 +94,7 @@ public sealed partial class MainWindow
             => m.Reply(ConnectFile(m.Filename, m.Recent)));
 
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, (_, m)
-            => m.Reply(OpenPage(m.Request.Database, m.Request.PageAddress)));
+            => m.Reply(OpenPage(m.Request.Database, m.Request.PageAddress, m.Request.Slot)));
 
         WeakReferenceMessenger.Default.Register<OpenIndexMessage>(this, (_, m)
             => m.Reply(OpenIndex(m.Request.Database, m.Request.RootPageAddress)));
@@ -102,7 +102,7 @@ public sealed partial class MainWindow
         WeakReferenceMessenger.Default.Register<ExceptionMessage>(this, (_, m)
                        => m.Reply(ShowExceptionDialog(m.Exception)));
 
-        WeakReferenceMessenger.Default.Register<OpenQueryReplayMessage>(this, (_, m)
+        WeakReferenceMessenger.Default.Register<OpenQueryMessage>(this, (_, m)
             => m.Reply(OpenQuery(m.Database)));
 
         WeakReferenceMessenger.Default.Register<OpenLogMessage>(this, (_, m)
@@ -205,13 +205,13 @@ public sealed partial class MainWindow
         return true;
     }
 
-    private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress)
+    private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress, ushort? slot)
     {
         try
         {
             var viewModel = PageTabViewModelFactory.Create(database);
 
-            await viewModel.LoadPage(pageAddress);
+            await viewModel.LoadPage(pageAddress, slot);
 
             var content = new PageView();
 

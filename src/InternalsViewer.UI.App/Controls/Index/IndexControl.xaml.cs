@@ -82,6 +82,9 @@ public sealed partial class IndexControl : IDisposable
 
     private float _zoom = 1f;
 
+    private const float ZoomMiniMode = 0.25f;
+    private const float ZoomMaxiMode = 4f;
+
     private float PageWidth => 20 * _zoom;
     private float PageHeight => 30 * _zoom;
     private float HorizontalMargin => 20 * _zoom;
@@ -102,7 +105,11 @@ public sealed partial class IndexControl : IDisposable
     private readonly SKPaint _indexPagePaint;
     private readonly SKPaint _linePaint;
     private readonly SKPaint _shadowPaint;
-    
+    private readonly SKPaint _detailTextPaint;
+
+    private readonly SKFont _detailFont = new(SKTypeface.Default, 10f);
+    private readonly SKFont _detailBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold), 10f);
+
     private readonly SKColor _borderColour = SKColors.Gray;
     private readonly SKColor _selectedBorderColour = SKColors.Navy;
     private readonly SKColor _highlightedBorderColour = SKColors.Green;
@@ -120,8 +127,8 @@ public sealed partial class IndexControl : IDisposable
 
     private readonly SKPath _linePath = new();
 
-    private const float MinZoom = 0.2f;
-    private const float MaxZoom = 3.0f;
+    private const float MinZoom = 0.05f;
+    private const float MaxZoom = 10.0f;
     private const double DragThreshold = 4;
 
     private bool _isPointerDown;
@@ -172,6 +179,13 @@ public sealed partial class IndexControl : IDisposable
             Color = SKColors.IndianRed,
             IsAntialias = false,
             StrokeWidth = 1f
+        };
+
+        _detailTextPaint = new SKPaint
+        {
+            Style = SKPaintStyle.Fill,
+            Color = SKColors.Navy,
+            IsAntialias = true
         };
     }
 
@@ -381,7 +395,10 @@ public sealed partial class IndexControl : IDisposable
         // Snapshot the dependency-property reads once per level instead of per node.
         var selectedAddress = SelectedPageAddress;
         var highlightedAddresses = HighlightedPageAddresses;
+
         var showDetail = _zoom > 0.5;
+        var miniMode = _zoom < ZoomMiniMode;
+        var maxiMode = _zoom > ZoomMaxiMode;
 
         foreach (var node in levelNodes)
         {
@@ -397,7 +414,20 @@ public sealed partial class IndexControl : IDisposable
 
                 DrawPage(canvas, renderX, renderY, isSelected, isHighlighted);
 
-                if (showDetail)
+                if (maxiMode)
+                {
+                    var headerHeight = DrawFullPageDetail(canvas, node.Node, renderX, renderY);
+
+                    if (node.Node is { PageType: PageType.Data })
+                    {
+                        DrawPageDataDetail(canvas, renderX, renderY, headerHeight);
+                    }
+                    else
+                    {
+                        DrawPageIndexDetail(canvas, renderX, renderY, headerHeight);
+                    }
+                }
+                else if (showDetail)
                 {
                     if (node.Node is { PageType: PageType.Data })
                     {
@@ -411,7 +441,19 @@ public sealed partial class IndexControl : IDisposable
                 }
             }
 
-            DrawLines(canvas, clip, node.Node, renderX, renderY, renderNextLevelStartX, yScrollOffset, false, false);
+            if (!miniMode)
+            {
+                DrawLines(canvas, 
+                          clip, 
+                          node.Node, 
+                          renderX, 
+                          renderY, 
+                          renderNextLevelStartX, 
+                          yScrollOffset, 
+                          false, 
+                          false);
+            }
+
         }
     }
 
@@ -514,7 +556,16 @@ public sealed partial class IndexControl : IDisposable
             _indexPagePaint.Color = _borderColour;
         }
 
-        _indexPagePaint.StrokeWidth = isSelected || isHighlighted ? 2f : 1f;
+        if (_zoom < ZoomMiniMode)
+        {
+            _indexPagePaint.Style = SKPaintStyle.Fill;
+            _indexPagePaint.StrokeWidth =  1f;
+        }
+        else
+        {
+            _indexPagePaint.Style = SKPaintStyle.Stroke;
+            _indexPagePaint.StrokeWidth = isSelected || isHighlighted ? 2f : 1f;
+        }
 
         canvas.DrawRect(indexPageRect, _indexPagePaint);
     }
@@ -522,11 +573,16 @@ public sealed partial class IndexControl : IDisposable
     /// <summary>
     /// Draws the lines horizontally indicating the index records
     /// </summary>
-    private void DrawPageIndexDetail(SKCanvas canvas, float x, float y)
+    private void DrawPageIndexDetail(SKCanvas canvas, float x, float y, float yOffset = 0)
     {
-        var verticalMargin = PageHeight / 6;
+        // yOffset shifts the detail below the page header (maxi-mode); the remaining height is divided up.
+        var availableHeight = PageHeight - yOffset;
+        var top = y + yOffset;
+
+        var verticalMargin = availableHeight / 6;
         var horizontalMargin = PageWidth * .1f;
 
+        _indexPagePaint.Style = SKPaintStyle.Stroke;
         _indexPagePaint.Color = SKColors.LightGray;
 
         _indexPagePaint.StrokeWidth = 1;
@@ -534,9 +590,9 @@ public sealed partial class IndexControl : IDisposable
         for (var i = 1; i < 6; i++)
         {
             canvas.DrawLine(x + horizontalMargin,
-                            y + verticalMargin * i,
+                            top + verticalMargin * i,
                             x + PageWidth - horizontalMargin,
-                            y + verticalMargin * i,
+                            top + verticalMargin * i,
                             _indexPagePaint);
         }
     }
@@ -544,11 +600,16 @@ public sealed partial class IndexControl : IDisposable
     /// <summary>
     /// Draws the index lines vertically indicating the data record columns
     /// </summary>
-    private void DrawPageDataDetail(SKCanvas canvas, float x, float y)
+    private void DrawPageDataDetail(SKCanvas canvas, float x, float y, float yOffset = 0)
     {
-        var verticalMargin = PageHeight * .1f;
+        // yOffset shifts the detail below the page header (maxi-mode); the remaining height is divided up.
+        var availableHeight = PageHeight - yOffset;
+        var top = y + yOffset;
+
+        var verticalMargin = availableHeight * .1f;
         var horizontalMargin = PageWidth / 4;
 
+        _indexPagePaint.Style = SKPaintStyle.Stroke;
         _indexPagePaint.Color = SKColors.LightGray;
 
         _indexPagePaint.StrokeWidth = 1;
@@ -556,11 +617,85 @@ public sealed partial class IndexControl : IDisposable
         for (var i = 1; i < 4; i++)
         {
             canvas.DrawLine(x + horizontalMargin * i,
-                            y + verticalMargin,
+                            top + verticalMargin,
                             x + horizontalMargin * i,
-                            y + PageHeight - verticalMargin,
+                            top + availableHeight - verticalMargin,
                             _indexPagePaint);
         }
+    }
+
+    /// <summary>
+    /// Draws the page header when zoomed in far enough (maxi-mode) to show readable text.
+    /// </summary>
+    /// <remarks>
+    /// The header occupies the top two rows of the page:
+    ///
+    ///     --------------------------
+    ///     |      Page Address      |
+    ///     |------------------------|
+    ///     |  Previous |    Next    |
+    ///     |------------------------|
+    ///
+    /// The detail lines below the header are drawn offset by the returned header height.
+    /// </remarks>
+    /// <returns>The height of the header, used to offset the detail drawn below it.</returns>
+    private float DrawFullPageDetail(SKCanvas canvas, IndexNode node, float x, float y)
+    {
+        var rowHeight = PageHeight / 6;
+
+        var addressRowBottom = y + rowHeight;
+        var linkRowBottom = y + rowHeight * 2;
+        var midX = x + PageWidth / 2;
+
+        _indexPagePaint.Style = SKPaintStyle.Stroke;
+        _indexPagePaint.Color = _borderColour;
+        _indexPagePaint.StrokeWidth = 1;
+
+        // Horizontal divider beneath the page address
+        canvas.DrawLine(x, addressRowBottom, x + PageWidth, addressRowBottom, _indexPagePaint);
+
+        // Vertical divider splitting Previous | Next
+        canvas.DrawLine(midX, addressRowBottom, midX, linkRowBottom, _indexPagePaint);
+
+        // Horizontal divider beneath Previous | Next
+        canvas.DrawLine(x, linkRowBottom, x + PageWidth, linkRowBottom, _indexPagePaint);
+
+        // Page address, centred and bold across the full width
+        DrawCellText(canvas, node.PageAddress.ToString(), x, y, PageWidth, rowHeight, bold: true);
+
+        // Previous and Next addresses in their half-width cells, padded from the edges
+        DrawCellText(canvas, node.PreviousPage.ToString(), x, addressRowBottom, PageWidth / 2, rowHeight, horizontalPadding: 6f);
+        DrawCellText(canvas, node.NextPage.ToString(), midX, addressRowBottom, PageWidth / 2, rowHeight, horizontalPadding: 6f);
+
+        return rowHeight * 2;
+    }
+
+    /// <summary>
+    /// Draws text centred within a cell, shrinking the font so it fits the cell width.
+    /// </summary>
+    private void DrawCellText(SKCanvas canvas,
+                              string text,
+                              float cellX, float cellY, float cellWidth, float cellHeight,
+                              bool bold = false,
+                              float horizontalPadding = 0f)
+    {
+        var font = bold ? _detailBoldFont : _detailFont;
+
+        var availableWidth = cellWidth - horizontalPadding * 2;
+
+        // Start from a font sized to the cell height, then shrink further if the text is too wide.
+        font.Size = cellHeight * 0.6f;
+
+        var textWidth = font.MeasureText(text);
+
+        if (textWidth > availableWidth)
+        {
+            font.Size *= availableWidth / textWidth;
+        }
+
+        var baseline = cellY + cellHeight / 2 + font.Size * 0.35f;
+
+        canvas.DrawText(text, cellX + cellWidth / 2, baseline, SKTextAlign.Center, font, _detailTextPaint);
     }
 
     private void UpdateScrollbars()
@@ -818,6 +953,9 @@ public sealed partial class IndexControl : IDisposable
         _indexPagePaint.Dispose();
         _linePaint.Dispose();
         _shadowPaint.Dispose();
+        _detailTextPaint.Dispose();
+        _detailFont.Dispose();
+        _detailBoldFont.Dispose();
         _linePath.Dispose();
 
         Loaded -= IndexControl_OnLoaded;

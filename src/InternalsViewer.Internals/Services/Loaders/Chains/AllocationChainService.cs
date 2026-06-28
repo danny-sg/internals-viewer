@@ -12,8 +12,8 @@ namespace InternalsViewer.Internals.Services.Loaders.Chains;
 /// Service responsible for building allocation chains
 /// </summary>
 /// <remarks>
-/// GAM/SGAM/DCM/BCM pages are fixed length bitmaps of extent coverage of around 4GB. Pages are chained based on the GAM interval and file
-/// size. The number of pages is derived from the size of the file divided by the GAM interval. 
+/// GAM/SGAM/DCM/BCM pages are fixed length bitmaps of extent coverage of around 4GB. Pages are chained based on the
+/// GAM interval and file size. The number of pages is derived from the size of the file divided by the GAM interval. 
 /// 
 /// The GAM interval is sometimes described as 64,000 extents. It is actually 63,904 extents. 
 /// 
@@ -65,7 +65,7 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
 
 
         Logger.LogDebug(
-            "Allocation Count: {ExtentCount} ⌈Extent Count / Allocation Internal⌉ = ⌈{Count} / {Interval}⌉",
+            "Allocation Count: {AllocationCount} ⌈Extent Count / Allocation Internal⌉ = ⌈{Count} / {Interval}⌉",
             allocationPageCount,
             extentCount,
             AllocationPage.AllocationExtentInterval);

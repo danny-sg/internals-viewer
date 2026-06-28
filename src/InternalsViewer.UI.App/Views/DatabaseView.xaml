@@ -121,10 +121,8 @@
             Layout="{StaticResource VerticalStackLayout}"
             ItemTemplate="{StaticResource AllocationFileTemplate}" />
 
-        <allocation:AllocationLayerGrid Grid.Row="2" 
+        <allocation:AllocationLayerGrid Grid.Row="2"
                                         x:Name="AllocationLayerGrid"
-                                        PageClicked="OnPageSelected"
-                                        ViewIndexClicked="OnViewIndexClicked"
                                         SelectedLayers="{x:Bind TabViewModel.SelectedLayers, Mode=TwoWay}"
                                         Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
 

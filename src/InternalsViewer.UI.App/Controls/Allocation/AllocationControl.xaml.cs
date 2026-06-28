@@ -285,9 +285,9 @@ public sealed partial class AllocationControl : IDisposable
 
     private void Refresh()
     {
-        Layout = GetExtentLayout(ExtentCount, 
-                                 ExtentSize, 
-                                 (int)AllocationCanvas.ActualWidth, 
+        Layout = GetExtentLayout(ExtentCount,
+                                 ExtentSize,
+                                 (int)AllocationCanvas.ActualWidth,
                                  (int)AllocationCanvas.ActualHeight);
 
         SetScrollBarValues();
@@ -369,9 +369,9 @@ public sealed partial class AllocationControl : IDisposable
 
         if (Zoom >= MinimumZoomForLines)
         {
-            renderer.DrawPageLines(canvas, 
-                                   renderLayout.HorizontalCount, 
-                                   renderLayout.VerticalCount, 
+            renderer.DrawPageLines(canvas,
+                                   renderLayout.HorizontalCount,
+                                   renderLayout.VerticalCount,
                                    renderLayout.RemainingCount);
         }
 
@@ -733,7 +733,7 @@ public sealed partial class AllocationControl : IDisposable
 
         if (pageId <= PageCount)
         {
-            PageClicked?.Invoke(this, new PageAddressEventArgs(FileId, pageId));
+            PageClicked?.Invoke(this, new PageAddressEventArgs(FileId, pageId, null));
         }
     }
 
@@ -763,10 +763,15 @@ public sealed partial class AllocationControl : IDisposable
     }
 }
 
-public sealed class PageAddressEventArgs(short fileId, int pageId) : EventArgs
+public sealed class PageAddressEventArgs(short fileId, int pageId, ushort? slot) : EventArgs
 {
+    public PageAddressEventArgs(short fileId, int pageId)
+        : this(fileId, pageId, null)
+    {
+    }
+
     public PageAddressEventArgs(PageAddress pageAddress)
-        : this(pageAddress.FileId, pageAddress.PageId)
+        : this(pageAddress.FileId, pageAddress.PageId, null)
     {
     }
 
@@ -774,7 +779,7 @@ public sealed class PageAddressEventArgs(short fileId, int pageId) : EventArgs
 
     public int PageId { get; } = pageId;
 
-    public ushort? Slot { get; init; }
+    public ushort? Slot { get; init; } = slot;
 
     public string Tag { get; set; } = string.Empty;
 

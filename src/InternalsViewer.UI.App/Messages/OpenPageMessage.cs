@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.UI.App.Messages;
 
-public class OpenPageRequest(DatabaseSource database, PageAddress pageAddress)
+public sealed class OpenPageRequest(DatabaseSource database, PageAddress pageAddress)
 {
     public PageAddress PageAddress { get; } = pageAddress;
 
@@ -13,24 +13,19 @@ public class OpenPageRequest(DatabaseSource database, PageAddress pageAddress)
     public ushort? Slot { get; set; }
 }
 
-public class OpenIndexRequest(DatabaseSource database, PageAddress rootPage)
+public sealed class OpenIndexRequest(DatabaseSource database, PageAddress rootPage)
 {
     public DatabaseSource Database { get; } = database;
     
     public PageAddress RootPageAddress { get; } = rootPage;
 }
 
-public class OpenPageMessage(OpenPageRequest request) : AsyncRequestMessage<bool>
+public sealed class OpenPageMessage(OpenPageRequest request) : AsyncRequestMessage<bool>
 {
     public OpenPageRequest Request { get; } = request;
 }
 
-public class OpenIndexMessage(OpenIndexRequest request) : AsyncRequestMessage<bool>
+public sealed class OpenIndexMessage(OpenIndexRequest request) : AsyncRequestMessage<bool>
 {
     public OpenIndexRequest Request { get; } = request;
-}
-
-public class OpenQueryReplayMessage(DatabaseSource database) : AsyncRequestMessage<bool>
-{
-    public DatabaseSource Database { get; } = database;
 }

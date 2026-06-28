@@ -148,7 +148,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         {
             InstanceName = InstanceName,
             AuthenticationType = AuthenticationType,
-            DatabaseName = Database,
+            DatabaseName = Database ?? string.Empty,
             UserId = UserId
         };
 
