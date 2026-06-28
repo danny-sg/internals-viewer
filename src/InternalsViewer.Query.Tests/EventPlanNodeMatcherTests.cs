@@ -1,6 +1,6 @@
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
-using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.Query.Tests;
 

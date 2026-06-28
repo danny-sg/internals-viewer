@@ -1,5 +1,7 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using System;
+using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Services.Logging;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.TransactionLog;
@@ -16,8 +18,6 @@ using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using InternalsViewer.Internals.Services.Logging;
 using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
 
 namespace InternalsViewer.UI.App;

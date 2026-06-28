@@ -1,6 +1,6 @@
-using Microsoft.UI.Xaml.Controls;
 using System.Text;
 using Windows.ApplicationModel.DataTransfer;
+using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Controls;
 

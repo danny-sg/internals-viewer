@@ -3,8 +3,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
-using InternalsViewer.UI.App.ViewModels.Connections;
 using InternalsViewer.UI.App.ViewModels;
+using InternalsViewer.UI.App.ViewModels.Connections;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Connect;

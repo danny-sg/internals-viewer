@@ -94,7 +94,7 @@ public class TableStructureProvider
 
             var result = new ColumnStructure
             {
-                ColumnId = s.ColumnId,
+                ColumnId = (ushort)s.ColumnId,
                 ColumnName = name,
                 DataType = typeInfo.DataType,
                 LeafOffset = leafOffset,
@@ -105,8 +105,8 @@ public class TableStructureProvider
                 IsDropped = isDropped,
                 IsUniqueifier = isUniqueifer,
                 IsSparse = (s.Status & 256) != 0,
-                NullBitIndex = (short)(s.NullBit & 0xffff),
-                BitPosition = s.BitPosition,
+                NullBitIndex = (ushort)(s.NullBit & 0xffff),
+                BitPosition = (byte)s.BitPosition,
                 IsKey = isKey
             };
 

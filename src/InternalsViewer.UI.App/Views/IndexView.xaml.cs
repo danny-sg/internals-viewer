@@ -1,14 +1,14 @@
 using System;
-using InternalsViewer.UI.App.ViewModels.Index;
-using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Input;
 using Windows.System;
 using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
+using InternalsViewer.UI.App.ViewModels.Index;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Views;
 
@@ -16,6 +16,8 @@ public sealed partial class IndexView: IDisposable
 {
     private const float MinimumZoom = 0.001f;
     private const float MaximumZoom = 10f;
+
+    private bool _hasLoaded;
 
     public IndexTabViewModel ViewModel => (IndexTabViewModel)DataContext;
 
@@ -30,11 +32,15 @@ public sealed partial class IndexView: IDisposable
         // Clicking on the Index View selects the page and reads the records
         IndexControl.PageClicked += IndexView_PageClicked;
         
-        // Clicking Previous Page or Next Page links loads the previous or next page
+        // Clicking page address links loads the page (Shift+Click opens in a new tab)
+        PageAddressLink.Click += PageAddressLink_OnClick;
         PreviousPageAddressLink.Click += PageAddressLink_OnClick;
         NextPageAddressLink.Click += PageAddressLink_OnClick;
 
-        // Hovering over a Previous or Next page highlights the page to show the double linked list
+        // Hovering over a page address highlights the page to show the double linked list
+        PageAddressLink.PointerEntered += PageAddressLink_PointerEntered;
+        PageAddressLink.PointerExited += PageAddressLink_PointerExited;
+
         PreviousPageAddressLink.PointerEntered += PageAddressLink_PointerEntered;
         PreviousPageAddressLink.PointerExited += PageAddressLink_PointerExited;
 
@@ -67,6 +73,13 @@ public sealed partial class IndexView: IDisposable
 
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
+        if (_hasLoaded)
+        {
+            return;
+        }
+
+        _hasLoaded = true;
+
         try
         {
             await ViewModel.Refresh();
@@ -150,7 +163,6 @@ public sealed partial class IndexView: IDisposable
     {
         var maxWidth = e.NewSize.Width / 2;
 
-        // Set max width of the index grid to 50% (grid doesn't accept MaxWidth=50* so we have to do it in code)
         ContainerGrid.ColumnDefinitions[1].MaxWidth = maxWidth;
         IndexGrid.MaxWidth = maxWidth;
     }
@@ -159,8 +171,12 @@ public sealed partial class IndexView: IDisposable
     {
         IndexControl.PageClicked -= IndexView_PageClicked;
 
+        PageAddressLink.Click -= PageAddressLink_OnClick;
         PreviousPageAddressLink.Click -= PageAddressLink_OnClick;
         NextPageAddressLink.Click -= PageAddressLink_OnClick;
+
+        PageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
+        PageAddressLink.PointerExited -= PageAddressLink_PointerExited;
 
         PreviousPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
         PreviousPageAddressLink.PointerExited -= PageAddressLink_PointerExited;

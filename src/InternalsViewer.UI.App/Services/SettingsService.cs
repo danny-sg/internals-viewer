@@ -1,13 +1,13 @@
-﻿using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Models;
-using Microsoft.Extensions.Options;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Storage;
+using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace InternalsViewer.UI.App.Services;
 

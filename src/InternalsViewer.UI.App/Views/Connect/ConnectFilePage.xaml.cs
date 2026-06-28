@@ -1,7 +1,7 @@
-using InternalsViewer.UI.App.ViewModels.Connections;
-using Microsoft.UI.Xaml.Navigation;
 using System;
 using Windows.Storage.Pickers;
+using InternalsViewer.UI.App.ViewModels.Connections;
+using Microsoft.UI.Xaml.Navigation;
 
 namespace InternalsViewer.UI.App.Views.Connect;
 

@@ -3,26 +3,26 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.UI;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Internals.Interfaces.Annotations;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
+using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Services.Markers;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI;
-using Windows.UI;
-using InternalsViewer.Internals.Helpers;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
-using InternalsViewer.UI.App.Services.Markers;
-using CommunityToolkit.Mvvm.Messaging;
-using InternalsViewer.Internals.Interfaces.Annotations;
-using InternalsViewer.Internals.Interfaces.Engine;
-using InternalsViewer.UI.App.Messages;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
@@ -160,7 +160,18 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     }
 
     [RelayCommand]
-    public async Task LoadPage(PageAddress address)
+    public async Task LoadPage(PageAddress pageAddress)
+    {
+        await LoadPage(pageAddress, null);
+    }
+
+    [RelayCommand]
+    public async Task LoadRowIdentifier(RowIdentifier rowIdentifier)
+    {
+        await LoadPage(rowIdentifier.PageAddress, rowIdentifier.SlotId);
+    }
+
+    public async Task LoadPage(PageAddress pageAddress, ushort? slot)
     {
         var headerSlot = new PageSlot
         {
@@ -186,12 +197,12 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 {
                     IsLoading = true;
 
-                    Name = $"Loading Page {address}...";
+                    Name = $"Loading Page {pageAddress}...";
 
-                    PageAddress = address;
+                    PageAddress = pageAddress;
                 });
 
-                var resultPage = await PageService.GetPage(Database, address);
+                var resultPage = await PageService.GetPage(Database, pageAddress);
 
                 var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
                 {
@@ -202,14 +213,19 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                 slots.Insert(0, headerSlot);
 
+                var selectedSlot = slots.FirstOrDefault(s => s.Index == slot);
+
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} Page {address}";
+                    Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} " +
+                           $"Page {pageAddress}";
 
                     Logger.LogDebug("Building Offset Table");
 
                     switch (resultPage)
                     {
+                        case FileHeaderPage fileHeaderPage:
+                            break;
                         case AllocationUnitPage allocationUnitPage:
                             DisplayAllocationUnitPage(allocationUnitPage);
 
@@ -239,16 +255,16 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                     PageSlots = new ObservableCollection<PageSlot>(new[] { headerSlot }.Union(slots));
 
-                    SelectedSlot = headerSlot;
+                    SelectedSlot = selectedSlot ?? headerSlot;
                     SelectedMarker = null;
 
                     Page = resultPage;
 
-                    NextPage = new PageAddress(_pageAddress.FileId, _pageAddress.PageId + 1);
+                    NextPage = new PageAddress(PageAddress.FileId, PageAddress.PageId + 1);
 
-                    if (_pageAddress.PageId > 0)
+                    if (PageAddress.PageId > 0)
                     {
-                        PreviousPage = new PageAddress(_pageAddress.FileId, _pageAddress.PageId - 1);
+                        PreviousPage = new PageAddress(PageAddress.FileId, PageAddress.PageId - 1);
                     }
 
                     AddPageMarkers(resultPage);
@@ -258,7 +274,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 });
             });
 
-        History.Add(_pageAddress);
+        History.Add(PageAddress);
     }
 
 
@@ -269,7 +285,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         if (back != default)
         {
-            await LoadPage(back);
+            await LoadPage(back, null);
         }
     }
 
@@ -280,14 +296,14 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         if (forward != default)
         {
-            await LoadPage(forward);
+            await LoadPage(forward, null);
         }
     }
 
     [RelayCommand]
     private async Task Refresh()
     {
-        await LoadPage(PageAddress);
+        await LoadPage(PageAddress, null);
     }
 
     [RelayCommand(CanExecute = nameof(CanOpenIndexView))]
@@ -302,7 +318,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     }
 
     private bool CanOpenIndexView() => Page is AllocationUnitPage allocationUnitPage
-                                       && allocationUnitPage.AllocationUnit.IndexType != Internals.Engine.Database.Enums.IndexType.Heap;
+                                       && allocationUnitPage.AllocationUnit.IndexType 
+                                            != Internals.Engine.Database.Enums.IndexType.Heap;
 
     private bool CanGoForward() => History.CanGoForward();
 
@@ -346,7 +363,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private void LoadIamLayer(IamPage iamPage)
     {
-        var layer = AllocationLayerBuilder.GenerateLayer(iamPage);
+        var layer = AllocationLayerBuilder.GenerateLayer(iamPage, iamPage.StartPage.PageId);
 
         // IAMs are not necessarily in the same file as where they are tracking. The Start Page file determines the file
         AllocationFileId = iamPage.StartPage.FileId;
@@ -361,7 +378,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private void LoadAllocationLayer(AllocationPage allocationPage)
     {
-        var layer = AllocationLayerBuilder.GenerateLayer(allocationPage);
+        var layer = AllocationLayerBuilder.GenerateLayer(allocationPage, 0);
 
         AllocationFileId = allocationPage.PageAddress.FileId;
 
@@ -397,7 +414,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         try
         {
-            Records.AddRange(RecordService.GetRecords(target));
+            Records.AddRange(RecordService.GetRecords(target, isMarkEnabled: true));
         }
         catch (Exception ex)
         {
@@ -480,19 +497,20 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         Markers = new ObservableCollection<Marker>(pageMarkers.Concat(recordMarkers).OrderBy(o => o.StartPosition));
     }
 
-    private List<Marker> GetPageMarkers(PageData p)
+    private static List<Marker> GetPageMarkers(PageData p)
     {
-        var m = new List<Marker>();
-
-        m.Add(new Marker
+        var m = new List<Marker>
         {
-            Name = "Page Header",
-            StartPosition = 0,
-            EndPosition = 95,
-            ForeColour = Colors.Blue,
-            BackColour = Color.FromArgb(1, 245, 245, 250),
-            IsVisible = false
-        });
+            new()
+            {
+                Name = "Page Header",
+                StartPosition = 0,
+                EndPosition = 95,
+                ForeColour = Colors.Blue,
+                BackColour = Color.FromArgb(1, 245, 245, 250),
+                IsVisible = false
+            }
+        };
 
         var offsetTableStart = PageData.Size - p.PageHeader.SlotCount * 2;
 

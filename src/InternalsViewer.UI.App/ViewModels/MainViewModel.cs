@@ -1,4 +1,8 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
@@ -6,9 +10,6 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Connections;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels.Tabs;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
@@ -47,6 +48,14 @@ public partial class MainViewModel(SettingsService settingsService)
         RecentConnections = new ObservableCollection<RecentConnection>(existing);
 
         await SettingsService.SaveSettingAsync("RecentConnections", RecentConnections.ToArray());
+    }
+
+    [RelayCommand]
+    private async Task ClearRecentConnections()
+    {
+        RecentConnections = new ObservableCollection<RecentConnection>([]);
+
+        await SettingsService.SaveSettingAsync("RecentConnections", Array.Empty<RecentConnection>());
     }
 
     [RelayCommand]
@@ -109,8 +118,8 @@ public partial class MainViewModel(SettingsService settingsService)
     }
 
     [ObservableProperty]
-    private ObservableCollection<RecentConnection> recentConnections = [];
+    private ObservableCollection<RecentConnection> _recentConnections = [];
 
     [ObservableProperty]
-    private ObservableCollection<PageBookmark> pageBookmarks = [];
+    private ObservableCollection<PageBookmark> _pageBookmarks = [];
 }

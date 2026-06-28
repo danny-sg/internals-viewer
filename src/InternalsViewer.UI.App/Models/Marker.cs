@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Windows.UI;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Services.Markers;
-using Windows.UI;
 
 namespace InternalsViewer.UI.App.Models;
 

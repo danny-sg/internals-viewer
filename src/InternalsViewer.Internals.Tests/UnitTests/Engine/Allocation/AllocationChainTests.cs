@@ -75,7 +75,7 @@ public class AllocationChainTests
         var chain = BuildChain(fileId: 1);
 
         Assert.Throws<IndexOutOfRangeException>(() =>
-            chain.IsExtentAllocated(AllocationPage.AllocationInterval + 1, 1, invert: false));
+            chain.IsExtentAllocated(AllocationPage.AllocationExtentInterval + 1, 1, invert: false));
     }
 
     [Fact]

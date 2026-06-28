@@ -1,35 +1,50 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using InternalsViewer.Internals.Connections.Server;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Database;
 
-public sealed class DatabaseTabViewModelFactory(IDatabaseService databaseService)
+public sealed class DatabaseTabViewModelFactory(ILogger<DatabaseTabViewModel> logger,
+                                                IBufferPoolInfoProvider bufferPoolInfoProvider,
+                                                IDatabaseService databaseService)
 {
+    private IBufferPoolInfoProvider BufferPoolInfoProvider { get; } = bufferPoolInfoProvider;
+
     private IDatabaseService DatabaseService { get; } = databaseService;
 
     public DatabaseTabViewModel Create(DatabaseSource database)
-        => new(database, DatabaseService);
+        => new(logger, database, BufferPoolInfoProvider, DatabaseService);
 }
 
-public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatabaseService databaseService) 
+public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> logger,
+                                                 DatabaseSource database,
+                                                 IBufferPoolInfoProvider bufferPoolInfoProvider,
+                                                 IDatabaseService databaseService)
     : TabViewModel, IAllocationViewModel, IAsyncDisposable
 {
+    private ILogger<DatabaseTabViewModel> Logger { get; } = logger;
+
     private IDatabaseService DatabaseService { get; } = databaseService;
+
+    private IBufferPoolInfoProvider BufferPoolInfoProvider { get; } = bufferPoolInfoProvider;
 
     [ObservableProperty]
     private DatabaseSource _database = database;
@@ -60,7 +75,14 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     private bool _isDetailVisible = true;
 
     [ObservableProperty]
-    private bool _isPfsVisible = false;
+    [NotifyPropertyChangedFor(nameof(IsPfsVisible))]
+    private string _overlay = "Overlay";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Overlay))]
+    private bool _hasOverlay;
+
+    public bool IsPfsVisible => Overlay == "PFS";
 
     [ObservableProperty]
     private bool _isQueryReplayVisible;
@@ -78,6 +100,85 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
 
     public long SequenceTo => 0;
 
+    public bool IsServerConnection => Database.Connection is ServerConnectionType;
+
+    [RelayCommand]
+    private async Task SetOverlay(string overlay)
+    {
+        var changed = overlay != Overlay;
+
+        Overlay = overlay;
+
+        HasOverlay = Overlay != "Overlay";
+
+        if (!changed)
+        {
+            return;
+        }
+
+        foreach (var layer in AllocationLayers)
+        {
+            if (!string.IsNullOrEmpty(layer.LayerName) && layer.LayerName != Overlay)
+            {
+                // Overlay not selected
+                layer.Opacity = 0;
+
+                continue;
+            }
+
+            if (Overlay == "PFS")
+            {
+                layer.Opacity = (byte)(layer.LayerName == Overlay ? 100 : 20);
+
+                continue;
+            }
+
+            if (Overlay == "Buffer Pool")
+            {
+                layer.Opacity = (byte)(layer.LayerName == Overlay ? 100 : 20);
+
+                continue;
+            }
+
+            if (HasOverlay)
+            {
+                layer.Opacity = (byte)(layer.LayerName == Overlay ? 100 : 0);
+            }
+            else
+            {
+                layer.Opacity = (byte)(string.IsNullOrEmpty(layer.LayerName) ? 100 : 0);
+            }
+        }
+
+        AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+
+        if (Overlay == "Buffer Pool")
+        {
+            await RefreshBufferPool();
+        }
+    }
+
+    private async Task RefreshBufferPool()
+    {
+        try
+        {
+            var bufferPoolPages = await BufferPoolInfoProvider.GetBufferPoolEntries(Database);
+
+            var layer = AllocationLayers.FirstOrDefault(l => l.LayerName == "Buffer Pool");
+
+            if (layer != null)
+            {
+                layer.SinglePages = bufferPoolPages.Dirty;
+
+                AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh buffer pool overlay for database: {Name}", Database.Name);
+        }
+    }
+
     [RelayCommand]
     private void OpenPage(PageAddress pageAddress)
     {
@@ -87,14 +188,17 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
     [RelayCommand]
     private void OpenQueryReplay()
     {
-        WeakReferenceMessenger.Default.Send(new OpenQueryReplayMessage(Database));
+        WeakReferenceMessenger.Default.Send(new OpenQueryMessage(Database));
     }
 
     public List<AllocationLayer> GridAllocationLayers
-        => AllocationLayers.Where(w => string.IsNullOrEmpty(Filter) || w.Name.ToLower().Contains(_filter.ToLower())).ToList();
+        => AllocationLayers.Where(w => string.IsNullOrEmpty(Filter)
+                                       || w.Name.ToLower().Contains(Filter.ToLower())).ToList();
 
     public void Load(string name)
     {
+        Logger.LogDebug("Loading database: {Name}", name);
+
         Name = name;
 
         DatabaseFiles = Database.Files
@@ -102,10 +206,16 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
                                 .ToArray();
         IsLoading = true;
 
+        var layersStart = Stopwatch.GetTimestamp();
+
         var layers = AllocationLayerBuilder.GenerateLayers(Database, true);
 
-        ExtentCount = Database.GetFileSize(1) / 8;
+        Logger.LogDebug("Generated allocation layers in: {Elapsed}", Stopwatch.GetElapsedTime(layersStart));
+
+        ExtentCount = Database.GetFilePageCount(1) / 8;
+
         AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
+
         PfsChain = Database.Pfs.First().Value;
 
         IsLoading = false;
@@ -117,6 +227,11 @@ public sealed partial class DatabaseTabViewModel(DatabaseSource database, IDatab
         await Task.Run(async () =>
         {
             var result = await DatabaseService.LoadAsync(Database.Name, Database.Connection);
+
+            if (Overlay == "Buffer Pool")
+            {
+                await RefreshBufferPool();
+            }
 
             DispatcherQueue.TryEnqueue(() =>
             {

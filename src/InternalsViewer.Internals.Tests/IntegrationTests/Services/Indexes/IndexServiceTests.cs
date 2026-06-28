@@ -1,6 +1,6 @@
-﻿using InternalsViewer.Internals.Services.Indexes;
-using InternalsViewer.Internals.Connections.File;
+﻿using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
+using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Indexes;

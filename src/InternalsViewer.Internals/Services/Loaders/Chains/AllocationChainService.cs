@@ -12,8 +12,8 @@ namespace InternalsViewer.Internals.Services.Loaders.Chains;
 /// Service responsible for building allocation chains
 /// </summary>
 /// <remarks>
-/// GAM/SGAM/DCM/BCM pages are fixed length bitmaps of extent coverage of around 4GB. Pages are chained based on the GAM interval and file
-/// size. The number of pages is derived from the size of the file divided by the GAM interval. 
+/// GAM/SGAM/DCM/BCM pages are fixed length bitmaps of extent coverage of around 4GB. Pages are chained based on the
+/// GAM interval and file size. The number of pages is derived from the size of the file divided by the GAM interval. 
 /// 
 /// The GAM interval is sometimes described as 64,000 extents. It is actually 63,904 extents. 
 /// 
@@ -41,7 +41,7 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
 
         Logger.LogDebug("Loading allocation chain ({Type}) starting at {PageAddress}", pageType, startPageAddress);
 
-        return await LoadChain(database, new PageAddress(fileId, startPage));
+        return await LoadChain(database, startPageAddress);
     }
 
     /// <summary>
@@ -49,22 +49,31 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
     /// </summary>
     public async Task<AllocationChain> LoadChain(DatabaseSource database, PageAddress startPageAddress)
     {
-        var allocation = new AllocationChain();
+        var allocation = new AllocationChain
+        {
+            FileId = startPageAddress.FileId
+        };
 
-        var fileSize = database.GetFileSize(startPageAddress.FileId);
+        var pageCount = database.GetFilePageCount(startPageAddress.FileId);
 
-        var pageCount = (int)Math.Ceiling(fileSize
-                                          / (decimal)AllocationPage.AllocationInterval);
+        // File page count in terms of extents
+        var extentCount = pageCount / 8;
 
-        Logger.LogDebug("Page Count: {PageCount} ⌈File Size / Allocation Internal⌉ = ⌈ {Size} / {Interval}⌉",
-                        pageCount,
-                        fileSize,
-                        AllocationPage.AllocationInterval);
+        // Number of allocation pages that cover the extent count
+        var allocationPageCount = (int)Math.Ceiling(extentCount
+                                                    / (decimal)AllocationPage.AllocationExtentInterval);
 
-        for (var i = 0; i < pageCount; i++)
+
+        Logger.LogDebug(
+            "Allocation Count: {AllocationCount} ⌈Extent Count / Allocation Internal⌉ = ⌈{Count} / {Interval}⌉",
+            allocationPageCount,
+            extentCount,
+            AllocationPage.AllocationExtentInterval);
+
+        for (var i = 0; i < allocationPageCount; i++)
         {
             var address = new PageAddress(startPageAddress.FileId,
-                                          startPageAddress.PageId + (i * AllocationPage.AllocationInterval));
+                                          startPageAddress.PageId + (i * AllocationPage.AllocationPageCount));
 
             Logger.LogDebug("Page {Index}: {PageAddress}", i, address);
 

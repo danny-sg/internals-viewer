@@ -1,16 +1,16 @@
 ﻿using System;
-using CommunityToolkit.Mvvm.ComponentModel;
-using System.Collections.ObjectModel;
-using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using InternalsViewer.UI.App.Models.Connections;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using InternalsViewer.UI.App.Services;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
-using System.ComponentModel;
+using InternalsViewer.UI.App.Models.Connections;
+using InternalsViewer.UI.App.Services;
+using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 
@@ -50,7 +50,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    private string _database = string.Empty;
+    private string? _database = string.Empty;
 
     [ObservableProperty]
     private ObservableCollection<string> _databases = [];
@@ -148,7 +148,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         {
             InstanceName = InstanceName,
             AuthenticationType = AuthenticationType,
-            DatabaseName = Database,
+            DatabaseName = Database ?? string.Empty,
             UserId = UserId
         };
 
@@ -306,7 +306,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
     private void RefreshConnectionString()
     {
-        _builder.InitialCatalog = Database;
+        _builder.InitialCatalog = Database ?? "master";
         _builder.DataSource = InstanceName;
 
         _builder.Authentication = (SqlAuthenticationMethod)AuthenticationType;

@@ -25,28 +25,11 @@ public sealed class AllocationPageParser : PageParser, IPageParser<AllocationPag
 
     private static AllocationPage Parse(AllocationPage page)
     {
-        var allocationData = page.Data.AsSpan(AllocationPage.AllocationArrayOffset,
-                                              AllocationPage.AllocationInterval / 8);
+        var allocationPage = CopyToPageType<AllocationPage>(page);
 
-        var allocationMap = page.AllocationMap;
+        page.Data.AsSpan(AllocationPage.AllocationArrayOffset, AllocationPage.AllocationMapBytes)
+            .CopyTo(allocationPage.AllocationMap);
 
-        for (var i = 0; i < allocationData.Length; i++)
-        {
-            var b = allocationData[i];
-
-            var baseIndex = i * 8;
-
-            // Set bits from the 8 bits in the byte
-            allocationMap[baseIndex] = (b & 0x01) != 0;
-            allocationMap[baseIndex + 1] = (b & 0x02) != 0;
-            allocationMap[baseIndex + 2] = (b & 0x04) != 0;
-            allocationMap[baseIndex + 3] = (b & 0x08) != 0;
-            allocationMap[baseIndex + 4] = (b & 0x10) != 0;
-            allocationMap[baseIndex + 5] = (b & 0x20) != 0;
-            allocationMap[baseIndex + 6] = (b & 0x40) != 0;
-            allocationMap[baseIndex + 7] = (b & 0x80) != 0;
-        }
-
-        return page;
+        return allocationPage;
     }
 }

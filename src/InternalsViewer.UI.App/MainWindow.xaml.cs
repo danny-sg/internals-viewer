@@ -1,34 +1,34 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.UI.Composition.SystemBackdrops;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Controls;
-using System;
-using InternalsViewer.UI.App.Views;
 using CommunityToolkit.Mvvm.Messaging;
-using InternalsViewer.UI.App.Messages;
-using InternalsViewer.Internals.Connections.Server;
-using InternalsViewer.Internals.Interfaces.Connections;
-using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
-using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Connections.Backup;
+using InternalsViewer.Internals.Connections.File;
+using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.UI.App.Views.Connect;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Media.Imaging;
-using InternalsViewer.UI.App.Models.Connections;
-using InternalsViewer.UI.App.ViewModels;
-using InternalsViewer.UI.App.ViewModels.Database;
-using InternalsViewer.UI.App.ViewModels.Page;
-using InternalsViewer.UI.App.ViewModels.Connections;
+using InternalsViewer.Internals.Interfaces.Connections;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.ViewModels.Tabs;
-using WinUIEx;
+using InternalsViewer.UI.App.Messages;
+using InternalsViewer.UI.App.Models.Connections;
+using InternalsViewer.UI.App.ViewModels;
+using InternalsViewer.UI.App.ViewModels.Connections;
+using InternalsViewer.UI.App.ViewModels.Database;
 using InternalsViewer.UI.App.ViewModels.Index;
+using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query;
+using InternalsViewer.UI.App.ViewModels.Tabs;
+using InternalsViewer.UI.App.Views;
+using InternalsViewer.UI.App.Views.Connect;
+using Microsoft.UI.Composition.SystemBackdrops;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using WinUIEx;
 
 namespace InternalsViewer.UI.App;
 
@@ -94,7 +94,7 @@ public sealed partial class MainWindow
             => m.Reply(ConnectFile(m.Filename, m.Recent)));
 
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, (_, m)
-            => m.Reply(OpenPage(m.Request.Database, m.Request.PageAddress)));
+            => m.Reply(OpenPage(m.Request.Database, m.Request.PageAddress, m.Request.Slot)));
 
         WeakReferenceMessenger.Default.Register<OpenIndexMessage>(this, (_, m)
             => m.Reply(OpenIndex(m.Request.Database, m.Request.RootPageAddress)));
@@ -102,7 +102,7 @@ public sealed partial class MainWindow
         WeakReferenceMessenger.Default.Register<ExceptionMessage>(this, (_, m)
                        => m.Reply(ShowExceptionDialog(m.Exception)));
 
-        WeakReferenceMessenger.Default.Register<OpenQueryReplayMessage>(this, (_, m)
+        WeakReferenceMessenger.Default.Register<OpenQueryMessage>(this, (_, m)
             => m.Reply(OpenQuery(m.Database)));
 
         WeakReferenceMessenger.Default.Register<OpenLogMessage>(this, (_, m)
@@ -205,13 +205,13 @@ public sealed partial class MainWindow
         return true;
     }
 
-    private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress)
+    private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress, ushort? slot)
     {
         try
         {
             var viewModel = PageTabViewModelFactory.Create(database);
 
-            await viewModel.LoadPage(pageAddress);
+            await viewModel.LoadPage(pageAddress, slot);
 
             var content = new PageView();
 

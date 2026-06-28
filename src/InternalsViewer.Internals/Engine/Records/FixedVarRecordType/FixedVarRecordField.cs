@@ -12,7 +12,7 @@ public sealed class FixedVarRecordField(ColumnStructure columnStructure) : Recor
 {
     public BlobField? BlobInlineRoot { get; set; }
 
-    public int VariableOffset { get; set; }
+    public ushort VariableOffset { get; set; }
 
     public bool IsSparse { get; set; }
 

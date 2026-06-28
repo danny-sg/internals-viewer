@@ -2,4 +2,4 @@
 
 namespace InternalsViewer.UI.App.Messages;
 
-public class NavigateMessage(string target) : ValueChangedMessage<string>(target);
+public sealed class NavigateMessage(string target) : ValueChangedMessage<string>(target);

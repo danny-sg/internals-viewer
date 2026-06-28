@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.UI.App.Models.Index;
 

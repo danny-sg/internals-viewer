@@ -18,7 +18,7 @@
             <Grid>
                 <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
                                               Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
-                                              Size="{x:Bind Parent.ExtentCount, Mode=OneWay}" 
+                                              ExtentCount="{x:Bind Parent.ExtentCount, Mode=OneWay}" 
                                               Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
                                               SelectedLayers="{x:Bind Parent.SelectedLayers, Mode=OneWay}"
                                               FileId="{x:Bind FileId, Mode=OneWay}"
@@ -58,16 +58,48 @@
                 </AppBarToggleButton>
                 <AppBarToggleButton x:Name="AllocationInfoAppBarToggleButton"
                                     Icon="DockBottom" 
-                                    Label="Allocation Info" 
+                                    Label="Allocations" 
                                     IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
-                <AppBarToggleButton Label="PFS" 
-                                    IsChecked="{x:Bind TabViewModel.IsPfsVisible, Mode=TwoWay}" />
+                <AppBarElementContainer>
+                    <ToggleSplitButton Content="{x:Bind TabViewModel.Overlay, Mode=OneWay}"
+                                       IsChecked="{x:Bind TabViewModel.HasOverlay, Mode=TwoWay}"
+                                       Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                       CommandParameter="Overlay">
+
+                        <ToggleSplitButton.Flyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="GAM"     
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="GAM"/>
+                                <MenuFlyoutItem Text="SGAM"   
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="SGAM"/>
+                                <MenuFlyoutItem Text="PFS"     
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}"
+                                                CommandParameter="PFS"/>
+                                <MenuFlyoutItem Text="Buffer Pool" 
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="Buffer Pool"
+                                                IsEnabled="{x:Bind TabViewModel.IsServerConnection}"/>
+                                <MenuFlyoutItem Text="DCM"    
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="DCM"/>
+                                <MenuFlyoutItem Text="BCM"     
+                                                Command="{x:Bind TabViewModel.SetOverlayCommand}" 
+                                                CommandParameter="BCM"/>
+                            </MenuFlyout>
+                        </ToggleSplitButton.Flyout>
+
+                    </ToggleSplitButton>
+                </AppBarElementContainer>
+
                 <AppBarButton Label="Refresh" 
                               Icon="Refresh" 
                               Command="{x:Bind TabViewModel.RefreshCommand}"/>
                 <AppBarButton x:Name="QueryReplayAppBarToggleButton"
                               Label="Query" 
                               Icon="Play"
+                              IsEnabled="{x:Bind TabViewModel.IsServerConnection}"
                               Command="{x:Bind TabViewModel.OpenQueryReplayCommand}" />
             </CommandBar>
             <CommandBar 
@@ -89,10 +121,8 @@
             Layout="{StaticResource VerticalStackLayout}"
             ItemTemplate="{StaticResource AllocationFileTemplate}" />
 
-        <allocation:AllocationLayerGrid Grid.Row="2" 
+        <allocation:AllocationLayerGrid Grid.Row="2"
                                         x:Name="AllocationLayerGrid"
-                                        PageClicked="OnPageSelected"
-                                        ViewIndexClicked="OnViewIndexClicked"
                                         SelectedLayers="{x:Bind TabViewModel.SelectedLayers, Mode=TwoWay}"
                                         Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
 

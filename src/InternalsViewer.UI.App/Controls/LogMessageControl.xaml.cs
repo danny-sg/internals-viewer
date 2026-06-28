@@ -1,9 +1,9 @@
+using System;
+using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Services.Logging;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
-using System;
-using System.Collections.Generic;
 
 namespace InternalsViewer.UI.App.Controls.Logging;
 

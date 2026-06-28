@@ -44,6 +44,8 @@ public sealed class IamChainService(IPageService pageService) : IIamChainService
             break;
         }
 
+        iam.BuildLookup();
+
         return iam;
     }
 }

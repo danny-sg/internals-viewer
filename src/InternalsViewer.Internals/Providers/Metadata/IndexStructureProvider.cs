@@ -254,7 +254,7 @@ public static class IndexStructureProvider
 
         var columnStructure = new IndexColumnStructure
         {
-            ColumnId = layout.ColumnId,
+            ColumnId = (ushort)layout.ColumnId,
             ColumnName = name,
             DataType = typeInfo.DataType,
             LeafOffset = leafOffset,
@@ -265,8 +265,8 @@ public static class IndexStructureProvider
             IsDropped = isDropped,
             IsUniqueifier = isUniqueifier,
             IsSparse = (layout.Status & 256) != 0,
-            NullBitIndex = (short)(layout.NullBit & 0xffff),
-            BitPosition = layout.BitPosition,
+            NullBitIndex = (ushort)(layout.NullBit & 0xffff),
+            BitPosition = (byte)layout.BitPosition,
             IsIncludeColumn = isIncludeColumn,
             IndexColumnId = indexColumn?.IndexColumnId ?? 0,
             IsKey = isKey,

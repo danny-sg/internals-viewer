@@ -3,11 +3,11 @@ using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 
-public class ColumnDescriptor(byte value) : DataStructure
+public sealed class ColumnDescriptor(byte value) : DataStructure
 {
     public ColumnDescriptorFlag Value { get; } = (ColumnDescriptorFlag)value;
 
-    public int Size => Value switch
+    public ushort Size => Value switch
     {
         ColumnDescriptorFlag.Null => 0,
         ColumnDescriptorFlag.ZeroByteShort => 0,

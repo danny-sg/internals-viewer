@@ -1,7 +1,7 @@
-﻿using Microsoft.UI.Xaml.Data;
-using System;
+﻿using System;
 using System.Linq;
 using InternalsViewer.UI.App.Models.Index;
+using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;
 

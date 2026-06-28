@@ -12,29 +12,37 @@
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="44" />
             <RowDefinition Height="2*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition x:Name="MessagesRow" Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
+        <Grid Grid.Row="0" Padding="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <CommandBar IsOpen="False"
+                        Padding="0"            
+                        VerticalAlignment="Center"
                         DefaultLabelPosition="Right"
                         Grid.Column="0"
                         HorizontalAlignment="Left"
+                        VerticalContentAlignment="Top"
+                        MinHeight="0"
+                        OverflowButtonVisibility="Collapsed"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
                         Background="Transparent">
-                <AppBarElementContainer VerticalContentAlignment="Center">
+
+                <AppBarElementContainer VerticalContentAlignment="Center" Height="40">
                     <Button Click="{x:Bind HandleExecuteClick}"
                             IsEnabled="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolConverter }}"
                                            Background="Transparent"
                                            BorderThickness="0"
-                                           Padding="12,0">
+                                           Padding="6,0">
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <ProgressRing Width="16"
                                           Height="16"
@@ -48,24 +56,42 @@
                         </StackPanel>
                     </Button>
                 </AppBarElementContainer>
-                <AppBarToggleButton Label="Clear Buffer Pool"
-                                               Padding="0"
-                                               IsChecked="{x:Bind QueryOptions.ClearBufferPool, Mode=TwoWay}" />
-                <AppBarToggleButton Label="Disable Read-Ahead"
-                                               IsChecked="{x:Bind QueryOptions.DisableReadAhead, Mode=TwoWay}" />
+
+                <AppBarElementContainer VerticalContentAlignment="Center">
+                    <ToggleButton Margin="0,0,8,0" 
+                                  IsChecked="{x:Bind QueryOptions.ClearBufferPool, Mode=TwoWay}"
+                                  BorderThickness="0">
+                        <TextBlock Text="Clear Buffer Pool" VerticalAlignment="Center" />
+                    </ToggleButton>
+                </AppBarElementContainer>
+
+                <AppBarElementContainer VerticalContentAlignment="Center" Margin="0,0,8,0">
+                    <ToggleButton IsChecked="{x:Bind QueryOptions.DisableReadAhead, Mode=TwoWay}"
+                                  Margin="0,0,8,0" 
+                                  BorderThickness="0"
+                                  >
+                        <TextBlock Text="Disable Read-Ahead" VerticalAlignment="Center" />
+                    </ToggleButton>
+                </AppBarElementContainer>
             </CommandBar>
 
             <CommandBar IsOpen="False"
+                        Padding="0"            
+                        VerticalAlignment="Center"
                         DefaultLabelPosition="Right"
-                        Grid.Column="1"
+                        Grid.Column="0"
                         HorizontalAlignment="Right"
+                        VerticalContentAlignment="Top"
+                        MinHeight="0"
+                        OverflowButtonVisibility="Collapsed"
                         Background="Transparent">
-                <AppBarToggleButton Label="Messages"
-                                    IsChecked="{x:Bind IsMessagesVisible, Mode=TwoWay}">
-                    <AppBarToggleButton.Icon>
-                        <FontIcon Glyph="&#xE8A5;"/>
-                    </AppBarToggleButton.Icon>
-                </AppBarToggleButton>
+                <AppBarElementContainer VerticalContentAlignment="Center">
+                    <ToggleButton IsChecked="{x:Bind IsMessagesVisible, Mode=TwoWay}"
+                                  BorderThickness="0"
+                                  Margin="0,0,8,0">
+                        <TextBlock Text="Messages" VerticalAlignment="Center" />
+                    </ToggleButton>
+                </AppBarElementContainer>
             </CommandBar>
         </Grid>
 
@@ -112,5 +138,5 @@
             </TabViewItem>
         </TabView>
     </Grid>
-  
+
 </UserControl>

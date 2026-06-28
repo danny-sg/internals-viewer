@@ -74,14 +74,18 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
     private ILogger<CdRecordLoader<TStructure>> Logger { get; } = logger;
 
-    public CdIndexRecord Load(AllocationUnitPage page, ushort slotOffset, Structure<TStructure> structure)
+    public CdIndexRecord Load(AllocationUnitPage page,
+                              ushort slotOffset,
+                              Structure<TStructure> structure,
+                              bool isMarkEnabled = false)
     {
         int currentPosition = slotOffset;
 
         var record = new CdIndexRecord(page.CompressionInfo!)
         {
             Offset = slotOffset,
-            RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset)
+            RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset),
+            IsMarkEnabled = isMarkEnabled
         };
 
         LoadHeader(record, page.Data, currentPosition);
@@ -109,7 +113,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
         currentPosition += (int)Math.Ceiling(record.ColumnCount / 2.0);
 
-        LoadShortDataRegion(record, structure, page.CompressionInfo?.AnchorRecord, page.Data, currentPosition);
+        LoadShortDataRegion(record, structure, page.CompressionInfo?.AnchorRecord, page.Data, (ushort)currentPosition);
 
         if (record.HasLongDataRegion)
         {
@@ -166,13 +170,13 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                                             Structure<TStructure> structure,
                                             CdRecord? anchorRecord,
                                             byte[] data,
-                                            int offset)
+                                            ushort offset)
     {
         var currentPosition = offset;
 
         ParseShortDataClusterArray(record, data, currentPosition);
 
-        currentPosition += record.ShortDataClusterArray.Length;
+        currentPosition += (ushort)record.ShortDataClusterArray.Length;
 
         LoadShortFields(record, structure, anchorRecord, data, currentPosition);
     }
@@ -286,7 +290,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                                         Structure<TStructure> structure,
                                         IRecord? anchorRecord,
                                         byte[] data,
-                                        int offset)
+                                        ushort offset)
     {
         for (var i = 0; i < record.ColumnCount; i++)
         {
@@ -353,7 +357,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                                        byte[] data)
     {
         var columnIndex = 0;
-        var previousOffset = 0;
+        ushort previousOffset = 0;
 
         for (var i = 0; i < record.ColumnCount; i++)
         {
@@ -366,8 +370,8 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                 var field = new CdRecordField(structure.Columns[i], record);
 
                 field.Cluster = cluster;
-                field.Length = RecordHelpers.DecodeOffset(nextOffset) - previousOffset;
-                field.Offset = offset + previousOffset;
+                field.Length = (ushort)(RecordHelpers.DecodeOffset(nextOffset) - previousOffset);
+                field.Offset = (ushort)(offset + previousOffset);
                 field.Data = data.AsMemory(field.Offset, field.Length);
 
                 var isLob = (nextOffset & 0x8000) == 0;

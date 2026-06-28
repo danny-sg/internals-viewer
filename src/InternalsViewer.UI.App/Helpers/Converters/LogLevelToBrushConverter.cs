@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System;
+using Windows.UI;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
-using System;
-using Windows.UI;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;
 

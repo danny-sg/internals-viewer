@@ -12,11 +12,18 @@ public class AllocationPage : Page
     /// Interval between allocation pages
     /// </summary>
     /// <remarks>
-    /// 1 bit per extent representing allocation status of the extent
+    /// 1 bit per extent representing allocation status of the extent. Page covers 63,904 extents.
     /// 
     /// 63,904 bits = 7,988 bytes = 1 page (8,192 bytes) less page header/overhead.
     /// </remarks>
-    public const int AllocationInterval = 63904;
+    public const int AllocationExtentInterval = 63904;
+
+    /// <summary>
+    /// Pages covered by 63,904 = 63,904 * 8 = 511,232 pages
+    /// </summary>
+    public const int AllocationPageCount = AllocationExtentInterval * 8;
+
+    public const int AllocationMapBytes = AllocationExtentInterval / 8;
 
     public const int AllocationArrayOffset = 194;
 
@@ -35,5 +42,8 @@ public class AllocationPage : Page
     /// <summary>
     /// Allocation bitmap
     /// </summary>
-    public bool[] AllocationMap { get; } = new bool[AllocationInterval];
+    /// <remarks>
+    /// Packed into bytes to save space
+    /// </remarks>
+    public byte[] AllocationMap { get; } = new byte[AllocationMapBytes];
 }

@@ -55,7 +55,7 @@ public sealed class DatabaseSource(IConnectionType connection) : DatabaseSummary
 
     public InternalMetadata Metadata { get; set; } = new();
 
-    public int GetFileSize(short fileId)
+    public int GetFilePageCount(short fileId)
     {
         return Files.FirstOrDefault(file => file.FileId == fileId)?.Size ?? 0;
     }

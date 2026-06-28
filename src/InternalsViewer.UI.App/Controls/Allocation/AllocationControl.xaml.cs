@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Drawing;
-using System.Linq;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Input;
@@ -12,9 +9,13 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Drawing;
+using System.Linq;
 using Windows.System;
 using Windows.UI.Core;
-using InternalsViewer.Internals.Engine.Allocation.Enums;
 using AllocationOverViewModel = InternalsViewer.UI.App.ViewModels.Allocation.AllocationOverViewModel;
 using Color = Windows.UI.Color;
 
@@ -26,6 +27,9 @@ public sealed partial class AllocationControl : IDisposable
     private const double MaximumZoom = 4;
 
     private const double MinimumZoomForLines = 0.4;
+
+    // Opacity percentage applied to non-selected layers while a grid selection is active.
+    private const int SelectionDimPercent = 40;
 
     private Size ExtentSize => new((int)(80 * Zoom), (int)(10 * Zoom));
 
@@ -81,14 +85,17 @@ public sealed partial class AllocationControl : IDisposable
             typeof(AllocationControl),
             null);
 
-    public int Size
+    /// <summary>
+    /// Gets or sets the number of extents in the allocation map.
+    /// </summary>
+    public int ExtentCount
     {
-        get => (int)GetValue(SizeProperty);
-        set => SetValue(SizeProperty, value);
+        get => (int)GetValue(ExtentCountProperty);
+        set => SetValue(ExtentCountProperty, value);
     }
 
-    public static readonly DependencyProperty SizeProperty
-        = DependencyProperty.Register(nameof(Size),
+    public static readonly DependencyProperty ExtentCountProperty
+        = DependencyProperty.Register(nameof(ExtentCount),
                                      typeof(int),
                                      typeof(AllocationControl),
                                      new PropertyMetadata(default, OnPropertyChanged));
@@ -179,7 +186,40 @@ public sealed partial class AllocationControl : IDisposable
 
     public AllocationOverViewModel AllocationOver { get; } = new();
 
-    private int PageCount => Size * 8;
+    private int PageCount => ExtentCount * 8;
+
+    // Add these fields near the top of the class, alongside ScrollPosition
+    private AllocationRenderer? _renderer;
+    private SKPaint? _borderPaint;
+    private Size _lastExtentSize;
+    private Color _lastGridColor;
+
+    private AllocationRenderer GetOrCreateRenderer()
+    {
+        var extentSize = ExtentSize;
+        var gridColor = GridColor;
+
+        if (_renderer is null || extentSize != _lastExtentSize || gridColor != _lastGridColor)
+        {
+            _renderer?.Dispose();
+            _borderPaint?.Dispose();
+
+            _renderer = new AllocationRenderer(gridColor.ToColor(), extentSize);
+            _renderer.IsDrawBorder = true;
+
+            _borderPaint = new SKPaint
+            {
+                Color = BorderColor.ToSkColor(),
+                StrokeWidth = 1,
+                Style = SKPaintStyle.Stroke
+            };
+
+            _lastExtentSize = extentSize;
+            _lastGridColor = gridColor;
+        }
+
+        return _renderer;
+    }
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -245,7 +285,10 @@ public sealed partial class AllocationControl : IDisposable
 
     private void Refresh()
     {
-        Layout = GetExtentLayout(Size, ExtentSize, (int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
+        Layout = GetExtentLayout(ExtentCount,
+                                 ExtentSize,
+                                 (int)AllocationCanvas.ActualWidth,
+                                 (int)AllocationCanvas.ActualHeight);
 
         SetScrollBarValues();
 
@@ -267,7 +310,7 @@ public sealed partial class AllocationControl : IDisposable
                 Zoom = newZoom;
             }
         }
-        else
+        else if (ScrollBar.IsEnabled)
         {
             ScrollBar.Value -= e.GetCurrentPoint(this).Properties.MouseWheelDelta;
         }
@@ -275,7 +318,7 @@ public sealed partial class AllocationControl : IDisposable
 
     private void AllocationCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        Layout = GetExtentLayout(Size, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
+        Layout = GetExtentLayout(ExtentCount, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
 
         SetScrollBarValues();
 
@@ -289,41 +332,47 @@ public sealed partial class AllocationControl : IDisposable
             return;
         }
 
-        ScrollBar.IsEnabled = Size > Layout.VisibleCount;
+        ScrollBar.IsEnabled = ExtentCount > Layout.VisibleCount;
         ScrollBar.SmallChange = Layout.HorizontalCount;
         ScrollBar.LargeChange = (Layout.VerticalCount - 1) * Layout.HorizontalCount;
-        ScrollBar.Maximum = Size + Size % Layout.HorizontalCount;
+        ScrollBar.Maximum = ExtentCount + ExtentCount % Layout.HorizontalCount;
     }
 
     private void AllocationCanvas_PaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
-        var surface = e.Surface;
-        var canvas = surface.Canvas;
+        var canvas = e.Surface.Canvas;
 
         canvas.Clear(SKColors.Transparent);
 
-        using var extentRenderer = new AllocationRenderer(GridColor.ToColor(), ExtentSize);
+        var renderLayout = GetExtentLayout(ExtentCount - ScrollPosition,
+                                           ExtentSize,
+                                           (int)AllocationCanvas.ActualWidth,
+                                           (int)AllocationCanvas.ActualHeight);
 
-        extentRenderer.IsDrawBorder = true;
+        var renderer = GetOrCreateRenderer();
 
-        extentRenderer.DrawBackgroundExtents(canvas, 
-                                             Layout.HorizontalCount, 
-                                             Layout.VerticalCount, 
-                                             Layout.RemainingCount);
+        renderer.DrawBackgroundExtents(canvas,
+                                       renderLayout.HorizontalCount,
+                                       renderLayout.VerticalCount,
+                                       renderLayout.RemainingCount);
 
-        var width = Layout.HorizontalCount * ExtentSize.Width;
+        var width = renderLayout.HorizontalCount * ExtentSize.Width;
 
-        DrawExtents(canvas, extentRenderer, Layout);
+        DrawExtents(canvas, renderer, renderLayout);
 
         if (IsPfsVisible)
         {
             using var pfsRenderer = new PfsRenderer(ExtentSize with { Width = ExtentSize.Width / 8 });
 
-            DrawPfs(canvas, pfsRenderer, Layout);
+            DrawPfs(canvas, pfsRenderer, renderLayout);
         }
+
         if (Zoom >= MinimumZoomForLines)
         {
-            extentRenderer.DrawPageLines(canvas, Layout.HorizontalCount, Layout.VerticalCount, Layout.RemainingCount);
+            renderer.DrawPageLines(canvas,
+                                   renderLayout.HorizontalCount,
+                                   renderLayout.VerticalCount,
+                                   renderLayout.RemainingCount);
         }
 
         if (SelectedLayers is { Count: > 0 })
@@ -334,20 +383,13 @@ public sealed partial class AllocationControl : IDisposable
             }
         }
 
-        using var borderPaint = new SKPaint();
-
-        borderPaint.Color = BorderColor.ToSkColor();
-        borderPaint.StrokeWidth = 1;
-        borderPaint.Style = SKPaintStyle.Stroke;
-
-        // Draw border around the control
-        canvas.DrawLine(width, 0, width, e.Info.Height, borderPaint);
+        canvas.DrawLine(width, 0, width, e.Info.Height, _borderPaint);
     }
 
-    private void DrawScrollbarMarkers(SKCanvas canvas, 
-                                      ExtentLayout layout, 
-                                      AllocationLayer layer, 
-                                      int width, 
+    private void DrawScrollbarMarkers(SKCanvas canvas,
+                                      ExtentLayout layout,
+                                      AllocationLayer layer,
+                                      int width,
                                       int height)
     {
         // Offset accounting for the scrollbar buttons
@@ -359,7 +401,7 @@ public sealed partial class AllocationControl : IDisposable
         // The number of [Block Size] pixel block in the allocation map
         var renderLines = (height - (offset)) / blockSize;
 
-        var extentLines = Size / layout.HorizontalCount;
+        var extentLines = ExtentCount / layout.VerticalCount;
 
         var extentLinePerRenderLine = extentLines / renderLines;
 
@@ -376,14 +418,23 @@ public sealed partial class AllocationControl : IDisposable
             var pagesFrom = extentsFrom * 8;
             var pagesTo = extentsTo * 8;
 
-            if (layer.Allocations.Any(a => a.FileId == FileId && a.ExtentId > extentsFrom && a.ExtentId <= i + extentsTo)
-                                      || layer.SinglePages.Any(a => a.PageId > pagesFrom && a.PageId <= pagesTo))
+            foreach (var allocationChain in layer.AllocationChains)
             {
-                var top = offset + i * blockSize;
-                var bottom = offset + (i + 1) * blockSize;
-                var position = new SKRect(width - blockSize * 2, top, width, bottom);
+                if (allocationChain.AnyExtentsAllocated(extentsFrom, extentsTo, FileId, layer.IsInverted)
+                    || layer.SinglePages.Any(a => a.PageId > pagesFrom && a.PageId <= pagesTo))
+                {
+                    //}
 
-                canvas.DrawRect(position, paint);
+                    //if (layer.Allocations.Any(a => a.FileId == FileId && a.ExtentId > extentsFrom && a.ExtentId <= i + extentsTo)
+                    //                          || layer.SinglePages.Any(a => a.PageId > pagesFrom && a.PageId <= pagesTo))
+                    //{
+                    var top = offset + i * blockSize;
+                    var bottom = offset + (i + 1) * blockSize;
+
+                    var position = new SKRect(width - blockSize * 2, top, width, bottom);
+
+                    canvas.DrawRect(position, paint);
+                }
             }
         }
     }
@@ -391,46 +442,117 @@ public sealed partial class AllocationControl : IDisposable
     private void DrawExtents(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
     {
         var hasSelected = SelectedLayers is { Count: > 0 };
-
         var selectedSet = hasSelected ? new HashSet<AllocationLayer>(SelectedLayers!) : null;
 
         foreach (var layer in Layers)
         {
+            if (!layer.IsVisible || layer.Opacity == 0)
+            {
+                continue;
+            }
+
             var isSelected = selectedSet?.Contains(layer) ?? false;
 
-            var alpha = !hasSelected || isSelected ? 255 : 25;
+            // Opacity is a 0-100 percentage. With no grid selection every layer honours its own
+            // opacity - this is what lets overlay mode dim non-overlay layers while keeping them
+            // visible. When layers are selected the selected ones show fully and the rest dim.
+            var opacityPercent = !hasSelected
+                ? layer.Opacity
+                : isSelected ? 100 : Math.Min((int)layer.Opacity, SelectionDimPercent);
 
-            if (layer is { IsVisible: true })
+            var alpha = (byte)(opacityPercent * 255 / 100);
+            var colour = layer.Colour.SetTransparency(alpha);
+
+            renderer.SetAllocationColour(colour, ColourHelpers.ToBackgroundColour(colour));
+
+            var chains = layer.AllocationChains;
+
+            if (chains.Count > 0)
             {
-                var colour = layer.Colour.SetTransparency(alpha);
-                var backgroundColour = ColourHelpers.ToBackgroundColour(colour);
+                var isInverted = layer.IsInverted;
+                var fileId = FileId;
 
-                renderer.SetAllocationColour(colour, backgroundColour);
-
-                foreach (var extent in layer.Allocations.Where(l => l.FileId == FileId))
+                switch (chains)
                 {
-                    renderer.DrawExtent(canvas, GetExtentPosition(extent.ExtentId - ScrollPosition, layout));
+                    case [IamChain single]:
+                        DrawExtentsCore(canvas, renderer, layout, single, isInverted, fileId);
+                        break;
+                    case [AllocationChain single]:
+                        DrawExtentsCore(canvas, renderer, layout, single, isInverted, fileId);
+                        break;
+                    case [BitmapAllocation single]:
+                        DrawExtentsCore(canvas, renderer, layout, single, isInverted, fileId);
+                        break;
+                    default:
+                        DrawExtentsMulti(canvas, renderer, layout, chains, isInverted, fileId);
+                        break;
                 }
+            }
 
-                foreach (var page in layer.SinglePages.Where(l => l.FileId == FileId))
-                {
-                    renderer.DrawPage(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout));
-                }
+            foreach (var page in layer.SinglePages.Where(l => l.FileId == FileId))
+            {
+                renderer.DrawPage(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout));
+            }
 
-                foreach (var page in layer.PageSpans
-                                          .Where(l => l.Address.FileId == FileId
-                                                      && ((l.SequenceFrom >= SequenceFrom && l.SequenceTo <= SequenceTo)
-                                                          || SequenceFrom == 0 && SequenceTo == 0)))
+            foreach (var page in layer.PageSpans
+                         .Where(l => l.Address.FileId == FileId
+                                     && ((l.SequenceFrom >= SequenceFrom && l.SequenceTo <= SequenceTo)
+                                         || SequenceFrom == 0 && SequenceTo == 0)))
+            {
+                renderer.DrawPage(canvas, GetPagePosition(page.Address.PageId - (ScrollPosition * 8), layout));
+            }
+        }
+    }
+
+    private void DrawExtentsCore<TChain>(SKCanvas canvas,
+                                         AllocationRenderer renderer,
+                                         ExtentLayout layout,
+                                         TChain chain,
+                                         bool isInverted,
+                                         short fileId)
+        where TChain : class, IAllocationChain
+    {
+        for (var i = ScrollPosition; i < ScrollPosition + layout.VisibleCount; i++)
+        {
+            if (chain.IsExtentAllocated(i, fileId, isInverted))
+            {
+                renderer.DrawExtent(canvas, GetExtentPosition(i - ScrollPosition, layout));
+            }
+        }
+    }
+
+    private void DrawExtentsMulti(SKCanvas canvas,
+                                  AllocationRenderer renderer,
+                                  ExtentLayout layout,
+                                  List<IAllocationChain> chains,
+                                  bool isInverted,
+                                  short fileId)
+    {
+        var chainCount = chains.Count;
+
+        for (var i = ScrollPosition; i < ScrollPosition + layout.VisibleCount; i++)
+        {
+            var toRender = true;
+
+            for (var c = 0; c < chainCount; c++)
+            {
+                if (!chains[c].IsExtentAllocated(i, fileId, isInverted))
                 {
-                    renderer.DrawPage(canvas, GetPagePosition(page.Address.PageId - (ScrollPosition * 8), layout));
+                    toRender = false;
+                    break;
                 }
+            }
+
+            if (toRender)
+            {
+                renderer.DrawExtent(canvas, GetExtentPosition(i - ScrollPosition, layout));
             }
         }
     }
 
     private void DrawPfs(SKCanvas canvas, PfsRenderer renderer, ExtentLayout layout)
     {
-        for (var i = 0; i <= layout.VisibleCount * 8; i++)
+        for (var i = 0; i < layout.VisibleCount * 8; i++)
         {
             var pageId = i + (ScrollPosition * 8);
 
@@ -492,21 +614,12 @@ public sealed partial class AllocationControl : IDisposable
 
     private static ExtentLayout GetExtentLayout(int extentCount, Size extentSize, decimal width, decimal height)
     {
-        // Number of extents horizontally/vertically available if ths screen is full
         var extentsHorizontal = (int)Math.Floor(width / extentSize.Width);
-        var extentsVertical = (int)Math.Ceiling(height / extentSize.Height);
+        var rowsVisible = (int)Math.Ceiling(height / extentSize.Height);
 
-        // Total number of extents visible
-        var visibleCount = extentsHorizontal * extentsVertical;
-
-        if (extentsHorizontal == 0 | extentsVertical == 0 | extentCount == 0)
+        if (extentsHorizontal == 0 || rowsVisible == 0 || extentCount == 0)
         {
             return new ExtentLayout();
-        }
-
-        if (extentsHorizontal == 0)
-        {
-            extentsHorizontal = 1;
         }
 
         if (extentsHorizontal > extentCount)
@@ -514,12 +627,13 @@ public sealed partial class AllocationControl : IDisposable
             extentsHorizontal = extentCount;
         }
 
-        if (extentsVertical > extentCount / extentsHorizontal)
-        {
-            extentsVertical = (int)Math.Ceiling((double)extentCount / extentsHorizontal);
-        }
+        var visibleCount = Math.Min(extentsHorizontal * rowsVisible, extentCount);
 
-        var extentsRemaining = extentCount - visibleCount;
+        var fullRows = extentCount / extentsHorizontal;
+        var lastRowExtents = extentCount % extentsHorizontal;
+
+        var extentsVertical = Math.Min(fullRows, rowsVisible);
+        var extentsRemaining = fullRows < rowsVisible ? lastRowExtents : 0;
 
         return new ExtentLayout
         {
@@ -553,8 +667,9 @@ public sealed partial class AllocationControl : IDisposable
         var pageId = GetPageAtPosition((int)position.X, (int)position.Y);
         var extentId = GetExtentAtPosition((int)position.X, (int)position.Y);
 
-        var layer = Layers.FirstOrDefault(l => l.Allocations.Any(a => a.FileId == FileId && a.ExtentId == extentId)
-                                               || l.SinglePages.Any(p => p.PageId == pageId && p.FileId == FileId));
+        var layer = Layers.FirstOrDefault(
+            l => l.AllocationChains.Any(a => a.IsExtentAllocated(extentId, FileId, l.IsInverted))
+                 || l.SinglePages.Any(p => p.PageId == pageId && p.FileId == FileId));
 
         string layerName;
 
@@ -618,7 +733,7 @@ public sealed partial class AllocationControl : IDisposable
 
         if (pageId <= PageCount)
         {
-            PageClicked?.Invoke(this, new PageAddressEventArgs(FileId, pageId));
+            PageClicked?.Invoke(this, new PageAddressEventArgs(FileId, pageId, null));
         }
     }
 
@@ -634,6 +749,9 @@ public sealed partial class AllocationControl : IDisposable
 
     public void Dispose()
     {
+        _renderer?.Dispose();
+        _borderPaint?.Dispose();
+
         AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
         PointerWheelChanged -= AllocationControl_PointerWheelChanged;
         AllocationCanvas.PaintSurface -= AllocationCanvas_PaintSurface;
@@ -645,10 +763,15 @@ public sealed partial class AllocationControl : IDisposable
     }
 }
 
-public sealed class PageAddressEventArgs(short fileId, int pageId) : EventArgs
+public sealed class PageAddressEventArgs(short fileId, int pageId, ushort? slot) : EventArgs
 {
+    public PageAddressEventArgs(short fileId, int pageId)
+        : this(fileId, pageId, null)
+    {
+    }
+
     public PageAddressEventArgs(PageAddress pageAddress)
-        : this(pageAddress.FileId, pageAddress.PageId)
+        : this(pageAddress.FileId, pageAddress.PageId, null)
     {
     }
 
@@ -656,7 +779,7 @@ public sealed class PageAddressEventArgs(short fileId, int pageId) : EventArgs
 
     public int PageId { get; } = pageId;
 
-    public ushort? Slot { get; init; }
+    public ushort? Slot { get; init; } = slot;
 
     public string Tag { get; set; } = string.Empty;
 

@@ -31,7 +31,7 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
 
     private const string DbccPageCommand = @"DBCC PAGE({0}, {1}, {2}, {3}) WITH TABLERESULTS";
 
-    private SqlConnection Connection { get; } = new(connectionString);
+    private string ConnectionString { get; } = connectionString;
 
     private ILogger<QueryPageReader> Logger { get; } = logger;
 
@@ -61,12 +61,11 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
 
         try
         {
-            if (Connection.State != ConnectionState.Open)
-            {
-                await Connection.OpenAsync();
-            }
+            await using var connection = new SqlConnection(ConnectionString);
 
-            await using var command = new SqlCommand(pageCommand, Connection);
+            await connection.OpenAsync();
+
+            await using var command = new SqlCommand(pageCommand, connection);
 
             command.CommandType = CommandType.Text;
 
@@ -132,8 +131,5 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
         return true;
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        await Connection.DisposeAsync();
-    }
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

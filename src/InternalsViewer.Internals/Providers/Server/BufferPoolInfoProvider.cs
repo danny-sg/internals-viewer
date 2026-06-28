@@ -1,11 +1,12 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Providers.Server;
 
-public sealed class BufferPoolInfoProvider(string connectionString) : IBufferPoolInfoProvider
+public sealed class BufferPoolInfoProvider(ILogger<BufferPoolInfoProvider> logger) : IBufferPoolInfoProvider
 {
     private const string BufferPoolCommand = @" -- Query Buffer Pool
         SELECT CONVERT(SMALLINT, file_id) AS FileId
@@ -14,20 +15,21 @@ public sealed class BufferPoolInfoProvider(string connectionString) : IBufferPoo
         FROM   sys.dm_os_buffer_descriptors WITH (NOLOCK)
         WHERE  database_id = DB_ID(@DatabaseName)";
 
-    private string ConnectionString { get; } = connectionString;
+    public ILogger<BufferPoolInfoProvider> Logger { get; } = logger;
 
-    public async Task<(List<PageAddress> Clean, List<PageAddress> Dirty)> GetBufferPoolEntries(string databaseName)
+    public async Task<(List<PageAddress> Clean, List<PageAddress> Dirty)>
+        GetBufferPoolEntries(DatabaseSource database)
     {
         var dirtyPages = new List<PageAddress>();
         var cleanPages = new List<PageAddress>();
 
-        await using var connection = new SqlConnection(ConnectionString);
+        await using var connection = new SqlConnection(database.Connection.GetConnectionString());
 
         var command = new SqlCommand(BufferPoolCommand, connection);
 
         command.CommandType = CommandType.Text;
 
-        command.Parameters.AddWithValue("@DatabaseName", databaseName);
+        command.Parameters.AddWithValue("@DatabaseName", database.Name);
 
         await connection.OpenAsync();
 

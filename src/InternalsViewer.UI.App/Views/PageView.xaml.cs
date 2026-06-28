@@ -1,14 +1,14 @@
+using System;
+using Windows.System;
+using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
+using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
-using Windows.System;
-using Windows.UI.Core;
-using InternalsViewer.UI.App.ViewModels.Page;
-using InternalsViewer.UI.App.Controls.Allocation;
-using System;
 
 namespace InternalsViewer.UI.App.Views;
 
@@ -46,7 +46,14 @@ public sealed partial class PageView : IDisposable
         }
         else
         {
-            ViewModel.LoadPageCommand.Execute(pageAddress);
+            if (e.Slot != null)
+            {
+                ViewModel.LoadRowIdentifierCommand.Execute(new RowIdentifier(pageAddress, e.Slot.Value));
+            }
+            else
+            {
+                ViewModel.LoadPageCommand.Execute(pageAddress);
+            }
         }
     }
 

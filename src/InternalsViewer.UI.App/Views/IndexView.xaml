@@ -157,8 +157,20 @@
                 </StackPanel>
                 <index:RecordGrid Grid.Row="1"
                                   x:Name="RecordGrid"
-                                  Records="{x:Bind ViewModel.Records, Mode=OneWay}" 
+                                  Records="{x:Bind ViewModel.Records, Mode=OneWay}"
                                   BorderThickness="0" />
+
+                <!--Scoped spinner shown while a page's records load - the index tree stays visible-->
+                <StackPanel Grid.Row="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Visibility="{x:Bind ViewModel.IsRecordsLoading,
+                                    Mode=OneWay,
+                                    Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ProgressRing IsActive="{x:Bind ViewModel.IsRecordsLoading, Mode=OneWay}" />
+                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center">Loading...</TextBlock>
+                </StackPanel>
             </Grid>
             <controls1:GridSplitter Width="4"
                                     Grid.Column="1"

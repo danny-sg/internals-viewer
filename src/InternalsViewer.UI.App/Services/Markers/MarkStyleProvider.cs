@@ -1,7 +1,7 @@
-﻿using CommunityToolkit.WinUI.Helpers;
+﻿using System.Diagnostics;
+using CommunityToolkit.WinUI.Helpers;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Models;
-using System.Diagnostics;
 
 namespace InternalsViewer.UI.App.Services.Markers;
 

@@ -26,45 +26,21 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
 
         var allocationUnit = iamPage.Database
                                     .AllocationUnits
-                                    .TryGetValue(iamPage.PageHeader.AllocationUnitId, out var value) 
-                            ? value 
-                            : AllocationUnit.Unknown;
+                                    .TryGetValue(iamPage.PageHeader.AllocationUnitId, out var value)
+                             ? value
+                             : AllocationUnit.Unknown;
 
         iamPage.AllocationUnit = allocationUnit;
 
-        var result = Parse(iamPage);
+        iamPage.StartPage = GetIamStartPage(page);
+        iamPage.SinglePageSlots = GetSinglePageSlots(page);
 
-        SetIamMarkers(result);
+        page.Data.AsSpan(AllocationPage.AllocationArrayOffset, AllocationPage.AllocationMapBytes)
+            .CopyTo(iamPage.AllocationMap);
 
-        return result;
-    }
+        SetIamMarkers(iamPage);
 
-    private static IamPage Parse(IamPage page)
-    {
-        page.StartPage = GetIamStartPage(page);
-        page.SinglePageSlots = GetSinglePageSlots(page);
-
-        var allocationData = page.Data.AsSpan(AllocationPage.AllocationArrayOffset,
-                                              AllocationPage.AllocationInterval / 8);
-
-        var allocationMap = page.AllocationMap;
-
-        for (var i = 0; i < allocationData.Length; i++)
-        {
-            var b = allocationData[i];
-            var baseIndex = i * 8;
-
-            allocationMap[baseIndex] = (b & 0x01) != 0;
-            allocationMap[baseIndex + 1] = (b & 0x02) != 0;
-            allocationMap[baseIndex + 2] = (b & 0x04) != 0;
-            allocationMap[baseIndex + 3] = (b & 0x08) != 0;
-            allocationMap[baseIndex + 4] = (b & 0x10) != 0;
-            allocationMap[baseIndex + 5] = (b & 0x20) != 0;
-            allocationMap[baseIndex + 6] = (b & 0x40) != 0;
-            allocationMap[baseIndex + 7] = (b & 0x80) != 0;
-        }
-
-        return page;
+        return iamPage;
     }
 
     private static PageAddress[] GetSinglePageSlots(PageData page)
@@ -101,6 +77,6 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
 
         page.MarkProperty("AllocationMap",
                           AllocationPage.AllocationArrayOffset,
-                          AllocationPage.AllocationInterval / 8);
+                          AllocationPage.AllocationExtentInterval / 8);
     }
 }

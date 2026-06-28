@@ -8,15 +8,15 @@ public sealed class IamPage : AllocationPage
 {
     public static readonly int StartPageOffset = 136;
 
-    public int SequenceNumber { get; set; }
+    public ushort SequenceNumber { get; set; }
 
     public byte Status { get; set; }
 
     public int ObjectId { get; set; }
 
-    public int IndexId { get; set; }
+    public short IndexId { get; set; }
 
-    public int PageCount { get; set; }
+    public ushort PageCount { get; set; }
 
     public AllocationUnit AllocationUnit { get; set; } = AllocationUnit.Unknown;
 

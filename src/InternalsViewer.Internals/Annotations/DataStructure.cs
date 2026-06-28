@@ -6,11 +6,18 @@ public class DataStructure : IDataStructure
 {
     public List<DataStructureItem> MarkItems { get; } = new();
 
+    public bool IsMarkEnabled { get; set; }
+
     /// <summary>
     /// Adds a marker that the given property is a part of the data structure at the offset
     /// </summary>
     public void MarkProperty(string propertyName, int offset, int length, string[]? tags = null)
     {
+        if (!IsMarkEnabled)
+        {
+            return;
+        }
+
         var dataStructureItem = new PropertyItem
         {
             PropertyName = propertyName,
@@ -24,6 +31,11 @@ public class DataStructure : IDataStructure
 
     public void MarkArray(string propertyName, int startPosition, int length, int index)
     {
+        if (!IsMarkEnabled)
+        {
+            return;
+        }
+
         var dataStructureItem = new PropertyItem
         {
             PropertyName = propertyName,
@@ -37,6 +49,11 @@ public class DataStructure : IDataStructure
 
     public void MarkProperty(string propertyName, string prefix, int index)
     {
+        if (!IsMarkEnabled)
+        {
+            return;
+        }
+
         var dataStructureItem = new PropertyItem
         {
             PropertyName = propertyName,
@@ -49,6 +66,11 @@ public class DataStructure : IDataStructure
 
     public void MarkProperty(string propertyName)
     {
+        if (!IsMarkEnabled)
+        {
+            return;
+        }
+
         var dataStructureItem = new PropertyItem
         {
             PropertyName = propertyName
@@ -58,6 +80,11 @@ public class DataStructure : IDataStructure
 
     public void MarkValue(ItemType type, string name, object value, int offset, int length, string[]? tags = null)
     {
+        if (!IsMarkEnabled)
+        {
+            return;
+        }
+
         var dataStructureItem = new ValueItem
         {
             ItemType = type,

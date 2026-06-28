@@ -273,7 +273,7 @@
                         Allocations
                     </TabViewItem.Header>
                     <allocation:AllocationControl x:Name="AllocationControl"
-                                                  Size="63903" 
+                                                  ExtentCount="63903" 
                                                   IsTooltipEnabled="True"
                                                   BorderColor="{ThemeResource CardStrokeColorDefault}"
                                                   GridColor="{ThemeResource AllocationBorderColor}"

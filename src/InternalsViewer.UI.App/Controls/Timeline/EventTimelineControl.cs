@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Windows.UI;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
@@ -10,10 +14,6 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
@@ -90,7 +90,7 @@ public sealed class EventTimelineControl : Grid
     private readonly Button _playButton;
     private readonly Button _speedButton;
     private readonly ToggleButton _traceIoButton;
-    private bool _traceIo;
+    private bool _traceIo = true;
     private readonly SKXamlCanvas _skCanvas;
     private readonly Canvas _overlay;
     private readonly ScrollBar _scrollBar;

@@ -1,12 +1,12 @@
-using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Models;
+using Windows.ApplicationModel.DataTransfer;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
-using Windows.ApplicationModel.DataTransfer;
+using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models;
+using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Controls.Page;
 

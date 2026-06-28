@@ -23,7 +23,7 @@ public sealed class PfsRenderer : IDisposable
     public PfsRenderer(Size pageSize)
     {
         PageSize = pageSize;
-        SpaceFreePaint = GetSpaceFreePaint(Color.FromArgb(120, 255, 255, 255));
+        SpaceFreePaint = GetSpaceFreePaint(Color.FromArgb(100, 0, 0, 91));
 
         IamFlagFont = new SKFont(
             SKTypeface.FromFamilyName(
@@ -39,7 +39,7 @@ public sealed class PfsRenderer : IDisposable
             IsAntialias = true,
         };
 
-        IamFlagFont.MeasureText(IamFlag, out SKRect textBounds);
+        IamFlagFont.MeasureText(IamFlag, out var textBounds);
 
         IamFlagSize = new Size((int)textBounds.Width, (int)textBounds.Height);
     }
