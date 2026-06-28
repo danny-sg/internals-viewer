@@ -1811,7 +1811,7 @@ public sealed class EventTimelineControl : Grid
         {
             _hoverEvent = region.Event;
             _hoverLabel = region.Label;
-            _toolTipText.Text = region.Label ?? region.Event.Description;
+            _toolTipText.Text = region.Event.Name;
         }
 
         _toolTip.HorizontalOffset = position.X + 12;
