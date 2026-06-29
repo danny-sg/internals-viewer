@@ -25,7 +25,8 @@ public sealed partial class DocumentViewModel : ObservableObject
                              Func<FrameworkElement> viewFactory,
                              bool canClose = true,
                              bool keepAlive = false,
-                             string? key = null)
+                             string? key = null,
+                             bool persist = true)
     {
         Title = title;
         Content = content;
@@ -33,10 +34,17 @@ public sealed partial class DocumentViewModel : ObservableObject
         CanClose = canClose;
         KeepAlive = keepAlive;
         Key = key ?? title;
+        Persist = persist;
     }
 
     /// <summary>Stable identifier used to persist/restore which documents are open and where.</summary>
     public string Key { get; }
+
+    /// <summary>
+    /// When false the document is excluded from the saved layout (e.g. dynamically opened index tabs,
+    /// which are reopened on demand rather than restored).
+    /// </summary>
+    public bool Persist { get; }
 
     /// <summary>The object set as the view's <c>DataContext</c> (e.g. the shared query view model).</summary>
     public object Content { get; }
@@ -90,6 +98,23 @@ public sealed partial class DocumentViewModel : ObservableObject
         currentHolder = holder;
 
         return holder;
+    }
+
+    /// <summary>Disposes and drops the cached view (for keep-alive documents) when the tab is closed.</summary>
+    public void DisposeView()
+    {
+        if (currentHolder is not null)
+        {
+            currentHolder.Content = null;
+            currentHolder = null;
+        }
+
+        if (cachedView is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+
+        cachedView = null;
     }
 
     /// <summary>Convenience factory for the common case of a parameterless view bound to <paramref name="content"/>.</summary>

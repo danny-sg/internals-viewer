@@ -35,10 +35,6 @@ public sealed class EventTimelineControl : Grid
     private const float SparseMarkerWidth = 4f;
     private const int SparseRowThreshold = 25;
 
-    // IO page reads/writes are bucketed to the nearest millisecond and fanned evenly across it; this is
-    // that bucket width (1ms), divided by the page count to space the markers.
-    private const double ReadBucketMs = 1.0;
-
     private const double TransportButtonHeight = 26;
 
     // Opacity of the I/O trace extensions (Trace I/O mode) — faint so they read as a background hint.
@@ -57,12 +53,6 @@ public sealed class EventTimelineControl : Grid
     private const double PlayTickMs = 16;
     private const double BasePlayDurationMs = 10_000;
 
-    // Dead-air gaps wider than this many times the average event spacing are skipped so the sweep
-    // doesn't crawl through empty time. Based on spacing (not the step) so it never skips normal gaps.
-    private const double GapSkipFactor = 6;
-
-    // Playback speed multipliers cycled by the speed button (1x = BasePlayDurationMs, 2x = half, etc.).
-    private static readonly double[] PlaySpeeds = [0.5, 1.0, 2.0, 4.0];
     private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(PlayTickMs);
 
     private static readonly SKColor PlayheadColour = new(230, 60, 60);
@@ -94,7 +84,6 @@ public sealed class EventTimelineControl : Grid
     private int[] _rowEventCounts = [];
 
     private readonly Button _playButton;
-    private readonly Button _speedButton;
     // The I/O trace extensions are always drawn; the toolbar toggle controls the (more involved)
     // per-thread sub-lane overlay instead, which is off by default.
     private readonly ToggleButton _threadsButton;
@@ -180,9 +169,10 @@ public sealed class EventTimelineControl : Grid
         Style = SKPaintStyle.Fill,
         IsAntialias = true,
     };
-    private readonly SKPaint _selectionBandPaint = new()
+    // Dims the rows outside the from/to selection so only the selected (clipped) window stands out.
+    private readonly SKPaint _clipDimPaint = new()
     {
-        Color = new SKColor(255, 255, 255, 28),
+        Color = new SKColor(0, 0, 0, 120),
         Style = SKPaintStyle.Fill,
     };
     private readonly SKPaint _tickPaint = new()
@@ -196,9 +186,9 @@ public sealed class EventTimelineControl : Grid
     private List<EngineEvent> _sortedEvents = [];
     private List<double> _times = [];
 
-    // Render-only time offset (ms) that fans point events sharing a timestamp evenly across the gap
-    // to the next timestamp, so the capture's coarse time resolution doesn't stack them - while
-    // staying within the bucket (and so within the parent operator).
+    // Render-only time offset (ms) that fans non-IO point events sharing an exact timestamp across the
+    // gap to the next timestamp (page reads are already spread at the event stage - see
+    // EventReader.NudgeReads - so they are not fanned here).
     private double[] _nudge = [];
 
     private double _minTime;
@@ -209,9 +199,6 @@ public sealed class EventTimelineControl : Grid
     private double _playStartTime;
     private double _playEndTime;
     private double _playStep;
-    private double _basePlayStep;
-    private double _gapThreshold;
-    private int _speedIndex = 1;
     private bool _isPlaying;
 
     // True once the user has dragged a handle. While false the start/end handles track the playhead.
@@ -258,28 +245,29 @@ public sealed class EventTimelineControl : Grid
     }
 
     /// <summary>
-    /// Optional crop (milliseconds): when set the timeline axis spans only [<see cref="StartTime"/>,
-    /// <see cref="EndTime"/>], hiding activity before/after the cropped window. <c>null</c> means
-    /// "no crop" and the axis uses the full event range.
+    /// Optional crop (microseconds): when set the timeline axis spans only [<see cref="StartOffset"/>,
+    /// <see cref="EndOffset"/>], hiding activity outside the window (e.g. pre-query events) so the
+    /// displayed time runs from 0 at <see cref="StartOffset"/>. Internally events keep their true time -
+    /// only the displayed ruler and the visible extent are offset. <c>null</c> means "no crop".
     /// </summary>
-    public double? StartTime
+    public long? StartOffset
     {
-        get => (double?)GetValue(StartTimeProperty);
-        set => SetValue(StartTimeProperty, value);
+        get => (long?)GetValue(StartOffsetProperty);
+        set => SetValue(StartOffsetProperty, value);
     }
 
-    public static readonly DependencyProperty StartTimeProperty =
-        DependencyProperty.Register(nameof(StartTime), typeof(double?), typeof(EventTimelineControl),
+    public static readonly DependencyProperty StartOffsetProperty =
+        DependencyProperty.Register(nameof(StartOffset), typeof(long?), typeof(EventTimelineControl),
             new PropertyMetadata(null, OnCropChanged));
 
-    public double? EndTime
+    public long? EndOffset
     {
-        get => (double?)GetValue(EndTimeProperty);
-        set => SetValue(EndTimeProperty, value);
+        get => (long?)GetValue(EndOffsetProperty);
+        set => SetValue(EndOffsetProperty, value);
     }
 
-    public static readonly DependencyProperty EndTimeProperty =
-        DependencyProperty.Register(nameof(EndTime), typeof(double?), typeof(EventTimelineControl),
+    public static readonly DependencyProperty EndOffsetProperty =
+        DependencyProperty.Register(nameof(EndOffset), typeof(long?), typeof(EventTimelineControl),
             new PropertyMetadata(null, OnCropChanged));
 
     private static void OnCropChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -306,21 +294,28 @@ public sealed class EventTimelineControl : Grid
         ctrl._skCanvas.Invalidate();
     }
 
-    public long CurrentSequenceFrom { get; private set; }
-    public long CurrentSequenceTo { get; private set; }
-    public long CurrentPlayhead { get; private set; }
+    // Last emitted values (microseconds), kept only to suppress duplicate notifications during play.
+    private long _scopeFromUs;
+    private long _scopeToUs = -1;
+    private long _playheadUs = -1;
 
-    /// <summary>Raised when the selection range changes. A collapsed selection reports (0, 0) = all.</summary>
-    public event Action<long, long>? SequenceChanged;
+    /// <summary>
+    /// Raised when the in-scope window changes, as microsecond times (from, to). The control deals only
+    /// in time - mapping a time to events/sequences/pages is the consumer's responsibility.
+    /// </summary>
+    public event Action<long, long>? ScopeChanged;
 
-    /// <summary>Raised when the playhead moves, with the sequence id of the event under it.</summary>
-    public event Action<long>? PlayheadChanged;
+    /// <summary>Raised when the playhead moves, with its position in microseconds.</summary>
+    public event Action<long>? PlayheadTimeChanged;
 
     /// <summary>Raised when a plan operator in the timeline is clicked.</summary>
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
 
     /// <summary>Raised when an individual event marker is clicked (to reveal it in the event grid).</summary>
     public event Action<EngineEvent>? EventSelected;
+
+    /// <summary>Raised when "Open Index" is chosen on a scan/seek operator (carries schema/table/index).</summary>
+    public event Action<ExecutionOperatorEvent>? IndexOpenRequested;
 
     /// <summary>Raised when auto-play starts (true) or stops (false).</summary>
     public event Action<bool>? PlayStateChanged;
@@ -352,11 +347,6 @@ public sealed class EventTimelineControl : Grid
         var stepForwardButton = MakeTransportButton(new FontIcon { Glyph = "", FontSize = 12 }, 30);
         stepForwardButton.Click += OnStepForwardButtonClick;
 
-        _speedButton = MakeTransportButton(
-            new TextBlock { FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center }, 36);
-        _speedButton.Click += OnSpeedButtonClick;
-        UpdateSpeedLabel();
-
         _threadsButton = new ToggleButton
         {
             Content = new TextBlock { Text = "Threads", FontSize = 10 },
@@ -377,7 +367,6 @@ public sealed class EventTimelineControl : Grid
         transport.Children.Add(stepBackButton);
         transport.Children.Add(_playButton);
         transport.Children.Add(stepForwardButton);
-        transport.Children.Add(_speedButton);
         transport.Children.Add(_threadsButton);
 
         Grid.SetRow(transport, 0);
@@ -430,6 +419,7 @@ public sealed class EventTimelineControl : Grid
         _overlay.PointerWheelChanged += OnPointerWheelChanged;
         _overlay.PointerExited += OnPointerExited;
         _overlay.SizeChanged += OnOverlaySizeChanged;
+        _overlay.ContextRequested += OnContextRequested;
 
         _playTimer = new DispatcherTimer { Interval = PlayInterval };
         _playTimer.Tick += OnPlayTimerTick;
@@ -446,38 +436,6 @@ public sealed class EventTimelineControl : Grid
         CornerRadius = new CornerRadius(0),
     };
 
-    private double SpeedMultiplier => PlaySpeeds[_speedIndex];
-
-    private void UpdateSpeedLabel()
-    {
-        if (_speedButton.Content is TextBlock label)
-        {
-            var speed = SpeedMultiplier;
-
-            switch (speed)
-            {
-                case 0.001:
-                    label.Text = "0.001x";
-                    break;
-                default:
-                    label.Text = (speed % 1 == 0 ? speed.ToString("0") : speed.ToString("0.#")) + "x";
-                    break;
-            }
-        }
-    }
-
-    private void OnSpeedButtonClick(object sender, RoutedEventArgs e)
-    {
-        _speedIndex = (_speedIndex + 1) % PlaySpeeds.Length;
-        UpdateSpeedLabel();
-
-        // Re-scale the in-flight step so a speed change takes effect immediately while playing.
-        if (_isPlaying)
-        {
-            _playStep = _basePlayStep * SpeedMultiplier;
-        }
-    }
-
     private void OnThreadsToggled(object sender, RoutedEventArgs e)
     {
         _showThreads = _threadsButton.IsChecked == true;
@@ -488,7 +446,10 @@ public sealed class EventTimelineControl : Grid
 
     private void OnStepForwardButtonClick(object sender, RoutedEventArgs e) => StepToAdjacentEvent(forward: true);
 
-    /// <summary>Pauses play and moves the playhead to the previous/next event by sequence id.</summary>
+    /// <summary>
+    /// Jumps the playhead to the previous/next I/O read event - used to step across dead-air gaps to the
+    /// next read. Playback is not interrupted: if playing, it continues from the new position.
+    /// </summary>
     private void StepToAdjacentEvent(bool forward)
     {
         if (_sortedEvents.Count == 0)
@@ -496,45 +457,45 @@ public sealed class EventTimelineControl : Grid
             return;
         }
 
-        StopPlay();
+        var (lo, hi) = ActiveRange;
 
-        var current = IndexAtTime(_playheadTime);
+        // The nearest read (by time) on the requested side of the playhead, within the active range.
+        var target = -1;
+        var bestTime = forward ? double.MaxValue : double.MinValue;
 
-        int target;
-        if (forward)
+        for (var i = 0; i < _sortedEvents.Count; i++)
         {
-            target = current + 1;
+            if (_sortedEvents[i] is not IoEvent { IsRead: true })
+            {
+                continue;
+            }
+
+            // Use the fanned position so same-millisecond reads are each a distinct stop.
+            var t = EffectiveTime(i);
+
+            if (t < lo || t > hi)
+            {
+                continue;
+            }
+
+            if (forward ? t > _playheadTime && t < bestTime
+                        : t < _playheadTime && t > bestTime)
+            {
+                bestTime = t;
+                target = i;
+            }
         }
-        else
+
+        if (target < 0)
         {
-            // If the playhead sits in a gap past the current event, step back lands on that event;
-            // otherwise it moves to the preceding one.
-            target = current >= 0 && _times[current] < _playheadTime ? current : current - 1;
+            return;
         }
 
-        target = Math.Clamp(target, 0, _sortedEvents.Count - 1);
-
-        _playheadTime = Math.Clamp(_times[target], _minTime, _maxTime);
+        _playheadTime = EffectiveTime(target);
         SyncHandlesToPlayhead();
         FirePlayhead();
         EnsurePlayheadVisible();
         _skCanvas.Invalidate();
-    }
-
-    /// <summary>Index (in sequence-id order) of the latest event at or before the given time, or -1.</summary>
-    private int IndexAtTime(double timeMs)
-    {
-        var index = -1;
-
-        for (var i = 0; i < _times.Count; i++)
-        {
-            if (_times[i] <= timeMs)
-            {
-                index = i;
-            }
-        }
-
-        return index;
     }
 
     /// <summary>When zoomed in, scrolls so the playhead stays within the visible content window.</summary>
@@ -573,9 +534,9 @@ public sealed class EventTimelineControl : Grid
         _startTime = _playheadTime;
         _endTime = _playheadTime;
 
-        CurrentSequenceFrom = 0;
-        CurrentSequenceTo = SequenceAtTime(_playheadTime);
-        CurrentPlayhead = CurrentSequenceTo;
+        _scopeFromUs = ToUs(_minTime);
+        _scopeToUs = ToUs(_playheadTime);
+        _playheadUs = _scopeToUs;
 
         UpdateScrollBar();
     }
@@ -604,7 +565,7 @@ public sealed class EventTimelineControl : Grid
         // Group size per (timestamp, visual lane) - needed up front to space the fan-out evenly.
         var groupSizes = new Dictionary<(long Time, int Lane), int>();
 
-        // The end of each operator's bar; a point event's fan must never cross its operator's end.
+        // The end of each operator's bar; a non-IO point event's fan is kept within its operator's bar.
         var operatorEnds = new Dictionary<PlanNodeIdentifier, double>();
 
         for (var i = 0; i < _sortedEvents.Count; i++)
@@ -645,17 +606,16 @@ public sealed class EventTimelineControl : Grid
             }
         }
 
-        // Apply the optional crop: a set Start/EndTime overrides the natural event extent so that
-        // pre/post activity outside the cropped window falls off the axis (clipped by the canvas).
-        _minTime = StartTime ?? min;
-        _maxTime = EndTime ?? max;
+        // Apply the optional crop: a set Start/EndOffset (microseconds) overrides the natural event
+        // extent so that activity outside the cropped window falls off the axis (clipped by the canvas).
+        _minTime = StartOffset.HasValue ? StartOffset.Value / 1000.0 : min;
+        _maxTime = EndOffset.HasValue ? EndOffset.Value / 1000.0 : max;
         _timeRange = Math.Max(_maxTime - _minTime, 1.0);
 
         // The bucket width: the gap to the next distinct timestamp (the capture's time resolution).
         var bucket = NextTimestampGaps();
 
-        // Fan each group evenly across its bucket, in sequence-id order, clamped so it never crosses
-        // the parent operator's end.
+        // Fan each same-time group forward across its resolution window, in sequence-id order.
         var placed = new Dictionary<(long Time, int Lane), int>();
 
         for (var i = 0; i < _sortedEvents.Count; i++)
@@ -674,26 +634,9 @@ public sealed class EventTimelineControl : Grid
 
             var t = _times[i];
 
-            if (ev is IoEvent)
-            {
-                // Page reads/writes share a coarse (nearest-ms) timestamp. Fan them evenly across that
-                // millisecond by the number of pages in it (e.g. 8 pages → 0, 125µs, 250µs …), snapping
-                // the bucket to the ms so the markers don't stack on the sub-ms jitter.
-                var bucketMs = Math.Round(t);
-                var desired = bucketMs + (size > 1 ? index * (ReadBucketMs / size) : 0);
-
-                if (ev.PlanNodeIdentifier is { } ioId && operatorEnds.TryGetValue(ioId, out var ioOpEnd))
-                {
-                    desired = Math.Min(desired, ioOpEnd);
-                }
-
-                _nudge[i] = desired - t;
-                continue;
-            }
-
             if (ev.PlanNodeIdentifier is { } id && operatorEnds.TryGetValue(id, out var opEnd))
             {
-                // Hard limit: the marker (and its fan) must stay within the operator's bar.
+                // Other point events stay within their operator's bar.
                 var room = opEnd - t;
                 var fanWidth = Math.Max(0, Math.Min(bucket.GetValueOrDefault(t), room));
                 _nudge[i] = Math.Min(size > 1 ? fanWidth * index / size : 0, room);
@@ -752,15 +695,19 @@ public sealed class EventTimelineControl : Grid
         return GetRowIndex(ev) * 8 + (category.HasValue ? (int)category.Value : 7);
     }
 
-    // The fan-out grouping key. IO markers carry sub-millisecond timestamp jitter, so they are bucketed
-    // by nearest millisecond (and spread across it by count); other point events group on exact time.
-    private (long Time, int Lane) FanKey(EngineEvent ev) =>
-        ev is IoEvent
-            ? ((long)Math.Round(ev.TimeUs / 1000.0), RenderLane(ev))
-            : (ev.TimeUs, RenderLane(ev));
+    // The fan-out grouping key: events sharing an exact time and lane. Page reads are spread to distinct
+    // times at the event stage (see EventReader.NudgeReads), so this groups only genuinely coincident
+    // non-IO point events now.
+    private (long Time, int Lane) FanKey(EngineEvent ev) => (ev.TimeUs, RenderLane(ev));
 
     // The selection only counts once the user has explicitly dragged a handle.
     private bool SelectionActive => _selectionActivated;
+
+    // The active window the playhead is confined to and playback loops within: the from/to selection
+    // when set, otherwise the whole axis.
+    private (double Lo, double Hi) ActiveRange => SelectionActive
+        ? (Math.Min(_startTime, _endTime), Math.Max(_startTime, _endTime))
+        : (_minTime, _maxTime);
 
     // While not activated the handles sit on the playhead, so they follow it as it scrubs/plays.
     private void SyncHandlesToPlayhead()
@@ -772,41 +719,12 @@ public sealed class EventTimelineControl : Grid
         }
     }
 
-    /// <summary>Sequence id of the most recent event at or before the given time.</summary>
-    private long SequenceAtTime(double timeMs)
-    {
-        if (_sortedEvents.Count == 0)
-        {
-            return 0;
-        }
+    // The axis works in milliseconds; events and the emitted playhead/scope are in microseconds.
+    private static long ToUs(double ms) => (long)Math.Round(ms * 1000.0);
 
-        var seq = _sortedEvents[0].SequenceId;
-        for (var i = 0; i < _times.Count; i++)
-            if (_times[i] <= timeMs)
-            {
-                seq = _sortedEvents[i].SequenceId;
-            }
-
-        return seq;
-    }
-
-    /// <summary>Earliest event time strictly after <paramref name="timeMs"/> up to <paramref name="upper"/>, or null.</summary>
-    private double? NextEventTime(double timeMs, double upper)
-    {
-        double? next = null;
-
-        for (var i = 0; i < _times.Count; i++)
-        {
-            var t = _times[i];
-
-            if (t > timeMs && t <= upper && (next is null || t < next))
-            {
-                next = t;
-            }
-        }
-
-        return next;
-    }
+    // The fanned position of event i: its time plus the render nudge that spreads same-millisecond
+    // events apart. Used by the step-to-read navigation so individually-fanned reads are each addressable.
+    private double EffectiveTime(int i) => _times[i] + _nudge[i];
 
     private float CanvasWidth => (float)_overlay.ActualWidth;
     private float DrawWidth => CanvasWidth - RowLabelWidth;
@@ -950,12 +868,22 @@ public sealed class EventTimelineControl : Grid
         // Time ruler (ticks + labels) along the top.
         DrawRuler(canvas);
 
-        // Selection band between the two handles.
+        // Clip to the from/to selection: dim everything outside it so only the selected window - the
+        // region the playhead is confined to and playback loops within - stands out.
         if (SelectionActive)
         {
             var lo = Math.Min(TimeToX(_startTime), TimeToX(_endTime));
             var hi = Math.Max(TimeToX(_startTime), TimeToX(_endTime));
-            canvas.DrawRect(lo, rowsTop, hi - lo, rowsHeight, _selectionBandPaint);
+
+            if (lo > RowLabelWidth)
+            {
+                canvas.DrawRect(RowLabelWidth, rowsTop, lo - RowLabelWidth, rowsHeight, _clipDimPaint);
+            }
+
+            if (hi < w)
+            {
+                canvas.DrawRect(hi, rowsTop, w - hi, rowsHeight, _clipDimPaint);
+            }
         }
 
         // Dark-grey rectangle handles for start and end.
@@ -1805,80 +1733,47 @@ public sealed class EventTimelineControl : Grid
         colour.Alpha);
 
     /// <summary>
-    /// Emits the in-scope window the other views highlight. With an explicit selection that is the
-    /// selected range; otherwise it runs from the start up to the playhead, so the playhead drives
-    /// the rest of the views as it is scrubbed or played.
+    /// Emits the in-scope window (microseconds) the other views highlight. With an explicit selection
+    /// that is the selected range; otherwise it runs from the axis start up to the playhead.
     /// </summary>
     private void EmitScope()
     {
-        long from, to;
+        long fromUs, toUs;
 
         if (SelectionActive)
         {
-            from = SequenceIdAtOrAfter(Math.Min(_startTime, _endTime));
-            to = SequenceIdAtOrBefore(Math.Max(_startTime, _endTime));
+            fromUs = ToUs(Math.Min(_startTime, _endTime));
+            toUs = ToUs(Math.Max(_startTime, _endTime));
         }
         else
         {
-            from = 0;
-            to = SequenceAtTime(_playheadTime);
+            fromUs = ToUs(_minTime);
+            toUs = ToUs(_playheadTime);
         }
 
-        // Smooth play ticks many times per event; only notify when the scope actually changes.
-        if (from == CurrentSequenceFrom && to == CurrentSequenceTo)
+        // Smooth play ticks many times per pixel; only notify when the scope actually changes.
+        if (fromUs == _scopeFromUs && toUs == _scopeToUs)
         {
             return;
         }
 
-        CurrentSequenceFrom = from;
-        CurrentSequenceTo = to;
-        SequenceChanged?.Invoke(from, to);
+        _scopeFromUs = fromUs;
+        _scopeToUs = toUs;
+        ScopeChanged?.Invoke(fromUs, toUs);
     }
 
     private void FirePlayhead()
     {
-        var playhead = SequenceAtTime(_playheadTime);
-
-        if (playhead != CurrentPlayhead)
-        {
-            CurrentPlayhead = playhead;
-            PlayheadChanged?.Invoke(CurrentPlayhead);
-        }
-
-        // The scope's right edge tracks the playhead when there's no explicit selection.
+        // Emit the scope first so a consumer reacting to the playhead sees the current window.
         EmitScope();
-    }
 
-    private long SequenceIdAtOrAfter(double t)
-    {
-        if (_sortedEvents.Count == 0)
+        var playheadUs = ToUs(_playheadTime);
+
+        if (playheadUs != _playheadUs)
         {
-            return 0;
+            _playheadUs = playheadUs;
+            PlayheadTimeChanged?.Invoke(playheadUs);
         }
-
-        for (var i = 0; i < _times.Count; i++)
-            if (_times[i] >= t)
-            {
-                return _sortedEvents[i].SequenceId;
-            }
-
-        return _sortedEvents[^1].SequenceId;
-    }
-
-    private long SequenceIdAtOrBefore(double t)
-    {
-        if (_sortedEvents.Count == 0)
-        {
-            return 0;
-        }
-
-        for (var i = _times.Count - 1; i >= 0; i--)
-            if (_times[i] <= t)
-            {
-                return _sortedEvents[i].SequenceId;
-            }
-
-        return _sortedEvents[0].SequenceId;
     }
 
     private bool IsOnTriangle(double x, double y)
@@ -1921,7 +1816,15 @@ public sealed class EventTimelineControl : Grid
 
         HideTooltip();
 
-        var position = e.GetCurrentPoint(_overlay).Position;
+        var point = e.GetCurrentPoint(_overlay);
+
+        // Right-click is reserved for the context menu (ContextRequested) - don't scrub or select on it.
+        if (point.Properties.IsRightButtonPressed)
+        {
+            return;
+        }
+
+        var position = point.Position;
 
         var now = Environment.TickCount64;
         var isDoubleClick = now - _lastPressTicks <= DoubleClickMs && Math.Abs(position.X - _lastPressX) <= HitArea;
@@ -1994,6 +1897,32 @@ public sealed class EventTimelineControl : Grid
         _skCanvas.Invalidate();
     }
 
+    /// <summary>Right-click on a scan/seek operator offers "Open Index" for its underlying index.</summary>
+    private void OnContextRequested(UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (!e.TryGetPosition(_overlay, out var position))
+        {
+            return;
+        }
+
+        var hit = HitTestRegion(position.X, position.Y);
+
+        // Only data-access operators (scan/seek/lookup) that run against a named index get the item.
+        if (hit?.Event is not ExecutionOperatorEvent { Category: OperatorCategory.DataAccess, IndexName.Length: > 0 } op)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var openIndex = new MenuFlyoutItem { Text = $"Open Index: {op.IndexName}" };
+        openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(op);
+        flyout.Items.Add(openIndex);
+
+        flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
+
+        e.Handled = true;
+    }
+
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
         if (!_isDragging)
@@ -2010,12 +1939,14 @@ public sealed class EventTimelineControl : Grid
             case DragTarget.Start:
                 _selectionActivated = true;
                 _startTime = Math.Min(t, _endTime);
+                ConfinePlayheadToSelection();
                 EmitScope();
                 break;
 
             case DragTarget.End:
                 _selectionActivated = true;
                 _endTime = Math.Max(t, _startTime);
+                ConfinePlayheadToSelection();
                 EmitScope();
                 break;
 
@@ -2152,9 +2083,23 @@ public sealed class EventTimelineControl : Grid
 
     private void MovePlayheadToX(double x)
     {
-        _playheadTime = Math.Clamp(XToTime(x), _minTime, _maxTime);
+        var (lo, hi) = ActiveRange;
+        _playheadTime = Math.Clamp(XToTime(x), lo, hi);
         SyncHandlesToPlayhead();
         FirePlayhead();
+    }
+
+    /// <summary>Pulls the playhead inside the from/to selection after it changes, so it stays clipped.</summary>
+    private void ConfinePlayheadToSelection()
+    {
+        var (lo, hi) = ActiveRange;
+        var clamped = Math.Clamp(_playheadTime, lo, hi);
+
+        if (clamped != _playheadTime)
+        {
+            _playheadTime = clamped;
+            FirePlayhead();
+        }
     }
 
     /// <summary>Double-click reset: deactivate the selection and snap the handles to the playhead.</summary>
@@ -2184,8 +2129,7 @@ public sealed class EventTimelineControl : Grid
             return;
         }
 
-        var rangeStart = SelectionActive ? Math.Min(_startTime, _endTime) : _minTime;
-        var rangeEnd = SelectionActive ? Math.Max(_startTime, _endTime) : _maxTime;
+        var (rangeStart, rangeEnd) = ActiveRange;
 
         _playStartTime = rangeStart;
         _playEndTime = rangeEnd;
@@ -2199,15 +2143,11 @@ public sealed class EventTimelineControl : Grid
 
         _isPlaying = true;
 
-        // Sweep the whole range over BasePlayDurationMs (at 1x) so the wall-clock duration is the same
-        // for a 25ms query and a multi-second one - the playhead just moves slower over a short range.
+        // Constant speed: sweep the range over a fixed wall-clock duration (BasePlayDurationMs), so a
+        // 25ms query and a multi-second one take the same time to play through. Dead-air gaps are not
+        // skipped automatically - the user presses the skip buttons to jump across them.
         var rangeMs = Math.Max(rangeEnd - rangeStart, 1e-6);
-        var eventsInRange = Math.Max(1, _times.Count(t => t >= rangeStart && t <= rangeEnd));
-        _basePlayStep = rangeMs * PlayTickMs / BasePlayDurationMs;
-        _playStep = _basePlayStep * SpeedMultiplier;
-
-        // Gap-skip threshold from the average event spacing, so only genuine dead air is skipped.
-        _gapThreshold = rangeMs / eventsInRange * GapSkipFactor;
+        _playStep = rangeMs * PlayTickMs / BasePlayDurationMs;
 
         SyncHandlesToPlayhead();
         FirePlayhead();
@@ -2251,11 +2191,6 @@ public sealed class EventTimelineControl : Grid
         if (_playheadTime >= _playEndTime)
         {
             _playheadTime = _playStartTime;
-        }
-        else if (NextEventTime(_playheadTime, _playEndTime) is { } next && next - _playheadTime > _gapThreshold)
-        {
-            // Dead air ahead: jump straight to the next activity rather than gliding across the gap.
-            _playheadTime = next;
         }
 
         SyncHandlesToPlayhead();

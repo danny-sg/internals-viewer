@@ -70,8 +70,6 @@ internal sealed class OperatorEventBuilder
         return events;
     }
 
-    // ---- timing (bottom-up, memoised) ----
-
     private readonly record struct OperatorTiming(long StartUs, long EmitStartUs, long EndUs);
 
     private OperatorTiming Timing(PlanNode node)
@@ -127,6 +125,7 @@ internal sealed class OperatorEventBuilder
         }
 
         var longestThread = node.CountersByThread.Values.Select(c => c.ElapsedUs).DefaultIfEmpty(0).Max();
+
         end = Math.Max(end, start + longestThread);
 
         if (end <= start)
@@ -167,8 +166,6 @@ internal sealed class OperatorEventBuilder
         return streaming.Count > 0 ? streaming.Min(c => Timing(c).StartUs) : consumeEnd;
     }
 
-    // ---- event construction ----
-
     private ExecutionOperatorEvent BuildEvent(PlanNode node, int sequenceOffset)
     {
         var (start, emitStart, end) = Timing(node);
@@ -183,6 +180,9 @@ internal sealed class OperatorEventBuilder
             Cost = OwnCost(node),
             RowsProcessed = node.RowsProcessed,
             ObjectName = ObjectName(node),
+            SchemaName = node.Schema ?? string.Empty,
+            TableName = node.Table ?? string.Empty,
+            IndexName = node.Index ?? string.Empty,
             PlanNodeIdentifier = new PlanNodeIdentifier { NodeId = node.NodeId, PlanHandle = _plan.PlanHandle },
             TimeUs = start,
             EmitStartUs = emitStart,
@@ -260,8 +260,6 @@ internal sealed class OperatorEventBuilder
             ? $"{node.Schema}.{node.Table}"
             : $"{node.Schema}.{node.Table}.{node.Index}";
     }
-
-    // ---- per-node event lookups ----
 
     private List<EngineEvent> EventsFor(PlanNode node) =>
         _eventsByNode.TryGetValue(node.NodeId, out var list) ? list : [];

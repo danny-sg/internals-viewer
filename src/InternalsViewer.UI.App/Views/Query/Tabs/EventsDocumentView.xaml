@@ -6,8 +6,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:queryReplay="using:InternalsViewer.UI.App.Controls.QueryReplay"
+    xmlns:eventGrid="using:InternalsViewer.UI.App.Controls.EventGrid"
     mc:Ignorable="d">
-    <queryReplay:EventGridControl x:Name="EventGrid"
+    <eventGrid:EventGridControl x:Name="EventGrid"
                                   Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
                                   SequenceFrom="{x:Bind ViewModel.SequenceFrom, Mode=OneWay}"
                                   SequenceTo="{x:Bind ViewModel.SequenceTo, Mode=OneWay}"

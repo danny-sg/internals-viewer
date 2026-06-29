@@ -139,8 +139,8 @@
                                                x:Name="EventTimeline"
                                                VerticalAlignment="Stretch"
                                                HorizontalAlignment="Stretch"
-                                               StartTime="{x:Bind ViewModel.StartTime, Mode=OneWay}"
-                                               EndTime="{x:Bind ViewModel.EndTime, Mode=OneWay}"
+                                               StartOffset="{x:Bind ViewModel.StartOffset, Mode=OneWay}"
+                                               EndOffset="{x:Bind ViewModel.EndOffset, Mode=OneWay}"
                                                Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}" />
             </Grid>
         </SplitView.Content>

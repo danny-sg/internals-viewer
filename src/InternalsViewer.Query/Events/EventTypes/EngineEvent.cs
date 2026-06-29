@@ -25,11 +25,11 @@ public record EngineEvent
 
     public string ObjectName { get; set; } = string.Empty;
 
-    internal string SchemaName { get; set; } = string.Empty;
+    public string SchemaName { get; set; } = string.Empty;
 
-    internal string TableName { get; set; } = string.Empty;
+    public string TableName { get; set; } = string.Empty;
 
-    internal string IndexName { get; set; } = string.Empty;
+    public string IndexName { get; set; } = string.Empty;
 
     internal string PlanHandle { get; set; } = string.Empty;
 

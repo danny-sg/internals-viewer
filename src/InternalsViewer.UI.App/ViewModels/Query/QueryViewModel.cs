@@ -9,6 +9,8 @@ using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Parsing;
@@ -20,6 +22,7 @@ using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
+using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using Microsoft.Extensions.Logging;
@@ -31,11 +34,13 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 
 public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           QueryRunner queryRunner,
-                                          SettingsService settingsService)
+                                          SettingsService settingsService,
+                                          IndexTabViewModelFactory indexTabViewModelFactory)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
                                                                  settingsService,
+                                                                 indexTabViewModelFactory,
                                                                  database);
 }
 
@@ -105,20 +110,26 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private HashSet<int> _systemObjectIds;
 
+    // The scope sequence range (derived from the timeline's microsecond scope) still drives the grid and
+    // allocation views, which highlight by sequence id.
     [ObservableProperty]
     private long _sequenceFrom;
 
     [ObservableProperty]
     private long _sequenceTo;
 
+    // The query crop (microseconds): the timeline shows only [StartOffset, EndOffset], hiding pre-query
+    // events. Null = no crop (full event range).
     [ObservableProperty]
-    public double? _startTime;
+    public long? _startOffset;
 
     [ObservableProperty]
-    public double? _endTime;
+    public long? _endOffset;
 
-    [ObservableProperty]
-    private long _playheadSequence;
+    // The timeline now reports position purely as time (microseconds); the view model maps it to events.
+    private long _playheadTimeUs;
+    private long _scopeFromUs;
+    private long _scopeToUs;
 
     [ObservableProperty]
     private DatabaseSchema? _schema;
@@ -224,6 +235,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void OnDockLayoutChanged(object? sender, EventArgs e)
     {
+        PruneClosedIndexes();
         SyncTabVisibility();
         ScheduleSaveLayout();
     }
@@ -312,8 +324,42 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
     private PlanNode? _activePlanNode;
 
-    partial void OnPlayheadSequenceChanged(long value) 
-        => UpdateActiveOperator(value);
+    /// <summary>The timeline's in-scope window changed (microseconds). Derives the sequence range the
+    /// grid/allocation views highlight by.</summary>
+    public void SetScope(long fromUs, long toUs)
+    {
+        _scopeFromUs = fromUs;
+        _scopeToUs = toUs;
+
+        var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
+
+        var from = long.MaxValue;
+        var to = long.MinValue;
+
+        foreach (var e in source)
+        {
+            // Point events define the sequence scope (operator events carry offset sequence ids).
+            if (e is ExecutionOperatorEvent || e.TimeUs < fromUs || e.TimeUs > toUs)
+            {
+                continue;
+            }
+
+            if (e.SequenceId < from) from = e.SequenceId;
+            if (e.SequenceId > to) to = e.SequenceId;
+        }
+
+        SequenceFrom = from <= to ? from : 0;
+        SequenceTo = from <= to ? to : 0;
+    }
+
+    /// <summary>The playhead moved to a time (microseconds). Updates the active operator and index tabs.</summary>
+    public void SetPlayheadTime(long timeUs)
+    {
+        _playheadTimeUs = timeUs;
+
+        UpdateActiveOperator(timeUs);
+        SyncIndexPage(timeUs);
+    }
 
     public string ActiveOperatorName 
         => ActivePlanNode?.PhysicalOperator ?? string.Empty;
@@ -346,23 +392,23 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public Visibility ActiveOperatorVisibility
         => ActivePlanNode is not null && IsTimelinePlaying ? Visibility.Visible : Visibility.Collapsed;
 
-    private void UpdateActiveOperator(long operatorSequenceTo)
+    private void UpdateActiveOperator(long timeUs)
     {
-        if (operatorSequenceTo <= 0)
-        {
-            ActivePlanNode = null;
-            return;
-        }
-
         var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
 
-        var identifier = source
-            .Where(e => e.SequenceId <= operatorSequenceTo && e.PlanNodeIdentifier is not null)
-            .OrderByDescending(e => e.SequenceId)
-            .Select(e => e.PlanNodeIdentifier)
-            .FirstOrDefault();
+        // The deepest (innermost) operator whose span contains the playhead time.
+        ExecutionOperatorEvent? active = null;
 
-        ActivePlanNode = identifier is null ? null : ResolvePlanNode(identifier);
+        foreach (var op in source.OfType<ExecutionOperatorEvent>())
+        {
+            if (op.TimeUs <= timeUs && timeUs <= op.TimeUs + op.DurationUs
+                && (active is null || op.NodeLevel > active.NodeLevel))
+            {
+                active = op;
+            }
+        }
+
+        ActivePlanNode = active?.PlanNodeIdentifier is { } id ? ResolvePlanNode(id) : null;
     }
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
@@ -378,6 +424,164 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         ActivePlanNode = ResolvePlanNode(identifier);
     }
 
+    // Open index tabs (transient, not persisted), keyed by schema.table.index so each index opens once.
+    private readonly Dictionary<string, IndexTabViewModel> _openIndexes = new();
+
+    /// <summary>
+    /// Opens (or re-activates) an index tab for the operator's underlying index, synced with the
+    /// timeline so the page under the playhead is selected as scans/seeks play out.
+    /// </summary>
+    public void OpenIndex(ExecutionOperatorEvent op)
+    {
+        if (string.IsNullOrEmpty(op.IndexName))
+        {
+            return;
+        }
+
+        var key = $"Index:{op.SchemaName}.{op.TableName}.{op.IndexName}";
+
+        if (DocumentsByKey.TryGetValue(key, out var existing))
+        {
+            Dock.Show(existing);
+            return;
+        }
+
+        var unit = Database.AllocationUnits.Values.FirstOrDefault(a =>
+            NameMatches(a.IndexName, op.IndexName)
+            && NameMatches(a.TableName, op.TableName)
+            && (op.SchemaName.Length == 0 || NameMatches(a.SchemaName, op.SchemaName))
+            && a.AllocationUnitType == AllocationUnitType.InRowData);
+
+        if (unit is null)
+        {
+            Logger.LogWarning("Index not found: {Schema}.{Table}.{Index}",
+                              op.SchemaName, op.TableName, op.IndexName);
+            return;
+        }
+
+        var indexViewModel = _indexTabViewModelFactory.Create(Database);
+        indexViewModel.RootPage = unit.RootPage;
+
+        var document = new DocumentViewModel(
+            title: $"Index: {op.IndexName}",
+            content: indexViewModel,
+            viewFactory: static () => new IndexDocumentView(),
+            canClose: true,
+            keepAlive: true,
+            key: key,
+            persist: false);
+
+        DocumentsByKey[key] = document;
+        _openIndexes[key] = indexViewModel;
+
+        Dock.Show(document);
+
+        // Reflect the current playhead position immediately.
+        SyncIndexPage(_playheadTimeUs);
+    }
+
+    /// <summary>Drops index tabs the user has closed (they are transient and recreated on demand).</summary>
+    private void PruneClosedIndexes()
+    {
+        if (_openIndexes.Count == 0)
+        {
+            return;
+        }
+
+        var closed = _openIndexes.Keys
+            .Where(k => !(DocumentsByKey.TryGetValue(k, out var d) && Dock.Contains(d)))
+            .ToList();
+
+        foreach (var key in closed)
+        {
+            _openIndexes.Remove(key);
+
+            if (DocumentsByKey.Remove(key, out var document))
+            {
+                document.DisposeView();
+            }
+        }
+    }
+
+    // Caches each page's owning index root page, so the per-playhead range scan doesn't repeatedly
+    // resolve the same pages' allocation units.
+    private readonly Dictionary<PageAddress, PageAddress?> _pageRootCache = new();
+
+    private PageAddress? RootPageOf(PageAddress page)
+    {
+        if (!_pageRootCache.TryGetValue(page, out var root))
+        {
+            root = Database.FindPageAllocationUnit(page)?.RootPage;
+            _pageRootCache[page] = root;
+        }
+
+        return root;
+    }
+
+    /// <summary>
+    /// Updates each open index tab from the playhead time: the single page actively being read at the
+    /// playhead, plus the range of every page the index read between the clip start and the playhead.
+    /// Working in time (not sequence) means reads from different operators at the same coarse timestamp
+    /// are resolved by where they actually sit, so each operator's index tracks correctly.
+    /// </summary>
+    private void SyncIndexPage(long playheadUs)
+    {
+        if (_openIndexes.Count == 0)
+        {
+            return;
+        }
+
+        var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
+
+        // The active read: the latest page read at or before the playhead (by time).
+        PageAddress? activePage = null;
+        var activeReadTime = long.MinValue;
+
+        // The range: every page read between the clip start and the playhead, grouped by index root page.
+        var rangeByRoot = new Dictionary<PageAddress, List<PageAddress>>();
+
+        foreach (var e in source)
+        {
+            if (e is not IoEvent { IsRead: true } || e.PageAddress is not { } pg)
+            {
+                continue;
+            }
+
+            if (e.TimeUs <= playheadUs && e.TimeUs > activeReadTime)
+            {
+                activeReadTime = e.TimeUs;
+                activePage = pg;
+            }
+
+            if (e.TimeUs >= _scopeFromUs && e.TimeUs <= playheadUs && RootPageOf(pg) is { } root)
+            {
+                if (!rangeByRoot.TryGetValue(root, out var pages))
+                {
+                    pages = [];
+                    rangeByRoot[root] = pages;
+                }
+
+                pages.Add(pg);
+            }
+        }
+
+        var activeRoot = activePage is { } ap ? RootPageOf(ap) : null;
+
+        foreach (var viewModel in _openIndexes.Values)
+        {
+            viewModel.SelectedPageAddress = activeRoot is not null && viewModel.RootPage == activeRoot
+                ? activePage
+                : null;
+
+            viewModel.SelectedPageAddresses = rangeByRoot.TryGetValue(viewModel.RootPage, out var range)
+                ? range
+                : [];
+        }
+    }
+
+    private static bool NameMatches(string? a, string? b) =>
+        string.Equals(a?.Trim('[', ']'), b?.Trim('[', ']'), StringComparison.OrdinalIgnoreCase);
+
     public Visibility HasEvents
         => Events.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     
@@ -386,12 +590,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
                           SettingsService settingsService,
+                          IndexTabViewModelFactory indexTabViewModelFactory,
                           DatabaseSource database)
     {
         Logger = logger;
         QueryRunner = queryRunner;
         Database = database;
         _settingsService = settingsService;
+        _indexTabViewModelFactory = indexTabViewModelFactory;
         Message = string.Empty;
 
         Name = $"{Database.Name}: Query";
@@ -441,16 +647,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly SettingsService _settingsService;
 
-    [RelayCommand]
-    private async Task OpenIndexView()
-    {
-        //if (Page is AllocationUnitPage allocationUnitPage)
-        //{
-        //    var rootPage = allocationUnitPage.AllocationUnit.RootPage;
+    private readonly IndexTabViewModelFactory _indexTabViewModelFactory;
 
-        //    await WeakReferenceMessenger.Default.Send(new OpenIndexMessage(new OpenIndexRequest(Database, rootPage)));
-        //}
-    }
+    // Padding (microseconds) added either side of the query crop so boundary reads aren't clipped.
+    private const long CropPaddingUs = 500;
 
     [RelayCommand]
     private async Task ExecuteQuery(ExecuteSqlPayload payload)
@@ -477,15 +677,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             if (queryNode != null)
             {
-                // Event times are microseconds; the timeline crop works in milliseconds.
-                StartTime = queryNode.TimeUs / 1000.0;
-                EndTime = (queryNode.TimeUs + queryNode.DurationUs) / 1000.0;
+                // Crop to the query (statement) node's span, padded so reads that sit just before/after
+                // the measured span (e.g. the first/last page accesses) aren't clipped off the timeline.
+                StartOffset = Math.Max(0, queryNode.TimeUs - CropPaddingUs);
+                EndOffset = queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs;
             }
         }
         else
         {
-            StartTime = 0;
-            EndTime = Events.DefaultIfEmpty().Max(e => e?.TimeUs + e?.DurationUs) / 1000.0;
+            // No crop - show the full captured range.
+            StartOffset = null;
+            EndOffset = null;
         }
 
         IsError = false;
@@ -540,7 +742,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         SequenceFrom = 0;
         SequenceTo = 0;
-        PlayheadSequence = 0;
+        _playheadTimeUs = 0;
+        _scopeFromUs = 0;
+        _scopeToUs = 0;
         IsTimelinePlaying = false;
         ActivePlanNode = null;
 

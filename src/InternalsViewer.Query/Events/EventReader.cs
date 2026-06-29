@@ -75,6 +75,10 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         var orderedEvents = events.OrderBy(e => e.Timestamp).ThenBy(e => e.SequenceId).ToList();
 
+        // Captured timestamps are only millisecond-resolution, so a burst of page reads all land on the
+        // same microsecond. Nudge each read within its bucket so they get distinct times.
+        NudgeReads(orderedEvents);
+
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
         EventPlanNodeMatcher.Match(orderedEvents, executionPlans);
 
@@ -86,6 +90,56 @@ public sealed class EventReader(ILogger<EventReader> logger)
         orderedEvents.AddRange(operatorEvents);
 
         return (orderedEvents, executionPlans);
+    }
+
+    // The resolution window (microseconds) a coarse timestamp represents: a read logged at t happened
+    // somewhere in [t, t + ReadWindowUs).
+    private const long ReadWindowUs = 1000;
+
+    /// <summary>
+    /// Spreads page reads that share a coarse (millisecond-resolution) timestamp across their resolution
+    /// window, so each read gets a distinct time and is individually visible/selectable on the timeline.
+    /// Each read is offset by <c>ReadWindowUs / readCount * index</c> within its bucket.
+    /// </summary>
+    private static void NudgeReads(List<EngineEvent> events)
+    {
+        var i = 0;
+
+        while (i < events.Count)
+        {
+            var bucketTime = events[i].TimeUs;
+
+            var j = i;
+            while (j < events.Count && events[j].TimeUs == bucketTime)
+            {
+                j++;
+            }
+
+            // The page reads sharing this timestamp.
+            var readCount = 0;
+            for (var k = i; k < j; k++)
+            {
+                if (events[k] is IoEvent { IsRead: true })
+                {
+                    readCount++;
+                }
+            }
+
+            if (readCount > 1)
+            {
+                var index = 0;
+                for (var k = i; k < j; k++)
+                {
+                    if (events[k] is IoEvent { IsRead: true })
+                    {
+                        events[k].TimeUs = bucketTime + ReadWindowUs * index / readCount;
+                        index++;
+                    }
+                }
+            }
+
+            i = j;
+        }
     }
 
     private string GetResultsSql(string filename)
