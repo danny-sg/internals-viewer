@@ -37,7 +37,7 @@
                         BorderThickness="0,0,0,1"
                         Background="Transparent">
 
-                <AppBarElementContainer VerticalContentAlignment="Center" Height="40">
+                <AppBarElementContainer VerticalContentAlignment="Center" Height="40" Margin="0,0,8,0">
                     <Button Click="{x:Bind HandleExecuteClick}"
                             IsEnabled="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolConverter }}"
                                            Background="Transparent"

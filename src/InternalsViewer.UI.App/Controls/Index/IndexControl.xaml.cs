@@ -168,7 +168,7 @@ public sealed partial class IndexControl : IDisposable
     private readonly SKColor _highlightedBorderColour = SKColors.Green;
 
     private readonly SKColor _lineColour = SKColors.DarkGray;
-    private readonly SKColor _miniColour = SKColors.DarkGray;
+    private readonly SKColor _miniColour = SKColors.LightGray;
 
     // Resolved from the colour dependency properties once per paint (so the draw loop doesn't box/unbox
     // the colour through GetValue per node).

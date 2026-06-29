@@ -186,8 +186,8 @@ internal static class AllocationLayerBuilder
 
     private static Color GetGreyscaleColour(int colourIndex)
     {
-        const int minBrightness = 60;
-        const int maxBrightness = 140;
+        const int minBrightness = 140;
+        const int maxBrightness = 170;
 
         var grey = minBrightness + (int)((double)colourIndex / ColourCount * (maxBrightness - minBrightness));
 

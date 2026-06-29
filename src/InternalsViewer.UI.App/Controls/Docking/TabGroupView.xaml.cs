@@ -7,16 +7,9 @@ using Windows.Foundation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 
 namespace InternalsViewer.UI.App.Controls.Docking;
 
-/// <summary>
-/// Renders a single <see cref="TabGroupNode"/> as a <see cref="TabView"/> and provides the
-/// VS Code-style drop overlay that lets a dragged tab be moved into this group or split it
-/// left/right/top/bottom. Tab items are built in code (rather than via TabItemsSource) so each
-/// document control is hosted directly as a tab's content, which lays out full-size.
-/// </summary>
 public sealed partial class TabGroupView : UserControl
 {
     private const double EdgeFraction = 0.25;
@@ -24,9 +17,9 @@ public sealed partial class TabGroupView : UserControl
     // Height of the tab strip the overlay sits over; drops here move into the group rather than split it.
     private const double TabStripReserve = 44;
 
-    private readonly Dictionary<DocumentViewModel, TabViewItem> items = new();
+    private readonly Dictionary<DocumentViewModel, TabViewItem> _items = new();
 
-    private bool syncing;
+    private bool _syncing;
 
     public TabGroupNode? Group { get; private set; }
 
@@ -66,30 +59,35 @@ public sealed partial class TabGroupView : UserControl
             return;
         }
 
-        syncing = true;
+        _syncing = true;
 
         Tabs.TabItems.Clear();
-        items.Clear();
+        _items.Clear();
 
         foreach (var document in Group.Documents)
         {
             var item = CreateTab(document);
-            items[document] = item;
+            _items[document] = item;
             Tabs.TabItems.Add(item);
         }
 
-        Tabs.SelectedItem = Group.SelectedDocument is { } selected && items.TryGetValue(selected, out var selectedItem)
+        Tabs.SelectedItem = Group.SelectedDocument is { } selected 
+                            && _items.TryGetValue(selected, out var selectedItem)
             ? selectedItem
             : Tabs.TabItems.Count > 0 ? Tabs.TabItems[0] : null;
 
-        syncing = false;
+        _syncing = false;
     }
 
     private static TabViewItem CreateTab(DocumentViewModel document)
     {
         var item = new TabViewItem
         {
-            Header = document.Title,
+            Header = new TextBlock
+            {
+                Text = document.Title,
+                Margin = new Thickness(4, 0, 4, 0)
+            },
             IsClosable = document.CanClose,
             Tag = document,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
@@ -105,30 +103,29 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnGroupPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(TabGroupNode.SelectedDocument) || Group is null || syncing)
+        if (e.PropertyName != nameof(TabGroupNode.SelectedDocument) || Group is null || _syncing)
         {
             return;
         }
 
-        if (Group.SelectedDocument is { } selected && items.TryGetValue(selected, out var item))
+        if (Group.SelectedDocument is { } selected && _items.TryGetValue(selected, out var item))
         {
-            syncing = true;
+            _syncing = true;
             Tabs.SelectedItem = item;
-            syncing = false;
+            _syncing = false;
         }
     }
 
-    // Strip the built-in tab-switch / strip transitions so changing tabs swaps content instantly.
     private void OnTabsLoaded(object sender, RoutedEventArgs e)
     {
         if (FindDescendant<ContentPresenter>(Tabs, "TabContentPresenter") is { } content)
         {
-            content.ContentTransitions = new TransitionCollection();
+            content.ContentTransitions = [];
         }
 
         if (FindDescendant<ListView>(Tabs) is { } strip)
         {
-            strip.ItemContainerTransitions = new TransitionCollection();
+            strip.ItemContainerTransitions = [];
         }
     }
 
@@ -156,7 +153,7 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (syncing || Group is null)
+        if (_syncing || Group is null)
         {
             return;
         }

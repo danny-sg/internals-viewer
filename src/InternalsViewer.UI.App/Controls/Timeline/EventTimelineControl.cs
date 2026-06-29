@@ -23,6 +23,12 @@ public sealed class EventTimelineControl : Grid
     private const float HandleBandHeight = 16f;
     private const float MarkerStripHeight = RulerBandHeight + HandleBandHeight;
     private const float HandleWidth = 7f;
+
+    // The from/to handles are drawn as short flat-top triangles in the top of the handle band (rather
+    // than full-height bars), so they present a small target that's harder to grab by accident while
+    // scrubbing the playhead. The handle is only grabbable within this top slice of the strip.
+    private const float HandleHeight = 8f;
+
     private const float HandleGap = 13f;
     private const float TriangleHalfWidth = 9f;
     private const double HitArea = 7;
@@ -186,11 +192,6 @@ public sealed class EventTimelineControl : Grid
     private List<EngineEvent> _sortedEvents = [];
     private List<double> _times = [];
 
-    // Render-only time offset (ms) that fans non-IO point events sharing an exact timestamp across the
-    // gap to the next timestamp (page reads are already spread at the event stage - see
-    // EventReader.NudgeReads - so they are not fanned here).
-    private double[] _nudge = [];
-
     private double _minTime;
     private double _maxTime;
     private double _timeRange;
@@ -272,26 +273,26 @@ public sealed class EventTimelineControl : Grid
 
     private static void OnCropChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var ctrl = (EventTimelineControl)d;
+        var control = (EventTimelineControl)d;
 
-        ctrl.BuildTimes();
+        control.BuildTimes();
 
-        if (ctrl._sortedEvents.Count > 0)
+        if (control._sortedEvents.Count > 0)
         {
             // Pull the playhead (and any non-activated handles) back into the cropped range, then
             // re-emit so the scope/active operator the other views show follows the clamped position.
-            var clamped = Math.Clamp(ctrl._playheadTime, ctrl._minTime, ctrl._maxTime);
+            var clamped = Math.Clamp(control._playheadTime, control._minTime, control._maxTime);
 
-            if (Math.Abs(clamped - ctrl._playheadTime) > 0.1)
+            if (Math.Abs(clamped - control._playheadTime) > 0.1)
             {
-                ctrl._playheadTime = clamped;
-                ctrl.SyncHandlesToPlayhead();
-                ctrl.FirePlayhead();
+                control._playheadTime = clamped;
+                control.SyncHandlesToPlayhead();
+                control.FirePlayhead();
             }
         }
 
-        ctrl.UpdateScrollBar();
-        ctrl._skCanvas.Invalidate();
+        control.UpdateScrollBar();
+        control._skCanvas.Invalidate();
     }
 
     // Last emitted values (microseconds), kept only to suppress duplicate notifications during play.
@@ -324,9 +325,14 @@ public sealed class EventTimelineControl : Grid
     {
         Background = new SolidColorBrush(Colors.Transparent);
 
-        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });                       // transport toolbar
-        RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });   // timeline
-        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });                       // scroll bar
+        // transport toolbar
+        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        // timeline
+        RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        // scroll bar
+        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });                       
 
         _playButton = new Button
         {
@@ -364,21 +370,23 @@ public sealed class EventTimelineControl : Grid
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Left,
         };
+
         transport.Children.Add(stepBackButton);
         transport.Children.Add(_playButton);
         transport.Children.Add(stepForwardButton);
         transport.Children.Add(_threadsButton);
 
-        Grid.SetRow(transport, 0);
+        SetRow(transport, 0);
         Children.Add(transport);
 
         _skCanvas = new SKXamlCanvas { IgnorePixelScaling = true };
         _skCanvas.PaintSurface += OnPaintSurface;
-        Grid.SetRow(_skCanvas, 1);
+
+        SetRow(_skCanvas, 1);
         Children.Add(_skCanvas);
 
         _overlay = new Canvas { Background = new SolidColorBrush(Colors.Transparent) };
-        Grid.SetRow(_overlay, 1);
+        SetRow(_overlay, 1);
         Children.Add(_overlay);
 
         _scrollBar = new ScrollBar
@@ -390,7 +398,7 @@ public sealed class EventTimelineControl : Grid
             IndicatorMode = ScrollingIndicatorMode.MouseIndicator,
         };
         _scrollBar.Scroll += OnScrollBarScroll;
-        Grid.SetRow(_scrollBar, 2);
+        SetRow(_scrollBar, 2);
         Children.Add(_scrollBar);
 
         _toolTipText = new TextBlock
@@ -470,8 +478,7 @@ public sealed class EventTimelineControl : Grid
                 continue;
             }
 
-            // Use the fanned position so same-millisecond reads are each a distinct stop.
-            var t = EffectiveTime(i);
+            var t = _times[i];
 
             if (t < lo || t > hi)
             {
@@ -491,14 +498,17 @@ public sealed class EventTimelineControl : Grid
             return;
         }
 
-        _playheadTime = EffectiveTime(target);
+        _playheadTime = _times[target];
+        
         SyncHandlesToPlayhead();
+        
         FirePlayhead();
+        
         EnsurePlayheadVisible();
+
         _skCanvas.Invalidate();
     }
 
-    /// <summary>When zoomed in, scrolls so the playhead stays within the visible content window.</summary>
     private void EnsurePlayheadVisible()
     {
         if (MaxScroll <= 0)
@@ -527,8 +537,6 @@ public sealed class EventTimelineControl : Grid
         _scrollX = 0;
         _selectedNodeId = null;
 
-        // Park the playhead at the start with no selection: the start/end handles cluster on the
-        // playhead at the left edge, ready to play forward from the beginning.
         _selectionActivated = false;
         _playheadTime = _minTime;
         _startTime = _playheadTime;
@@ -549,7 +557,6 @@ public sealed class EventTimelineControl : Grid
     private void BuildTimes()
     {
         _times = new List<double>(_sortedEvents.Count);
-        _nudge = new double[_sortedEvents.Count];
 
         if (_sortedEvents.Count == 0)
         {
@@ -562,12 +569,6 @@ public sealed class EventTimelineControl : Grid
         var min = double.MaxValue;
         var max = double.MinValue;
 
-        // Group size per (timestamp, visual lane) - needed up front to space the fan-out evenly.
-        var groupSizes = new Dictionary<(long Time, int Lane), int>();
-
-        // The end of each operator's bar; a non-IO point event's fan is kept within its operator's bar.
-        var operatorEnds = new Dictionary<PlanNodeIdentifier, double>();
-
         for (var i = 0; i < _sortedEvents.Count; i++)
         {
             var ev = _sortedEvents[i];
@@ -579,30 +580,14 @@ public sealed class EventTimelineControl : Grid
                 min = start;
             }
 
-            if (ev is ExecutionOperatorEvent)
+            // Operators occupy [start, start + duration]; point events are an instant at start. Events
+            // sharing a coarse timestamp are already spread to distinct times upstream (see
+            // EventReader.SpreadCoincidentEvents), so nothing is fanned out here.
+            var end = ev is ExecutionOperatorEvent ? start + DurationMs(ev) : start;
+
+            if (end > max)
             {
-                // Operators occupy [start, start + duration].
-                var operatorEnd = start + DurationMs(ev);
-
-                if (operatorEnd > max)
-                {
-                    max = operatorEnd;
-                }
-
-                if (ev.PlanNodeIdentifier is { } opId)
-                {
-                    operatorEnds[opId] = operatorEnd;
-                }
-            }
-            else
-            {
-                if (start > max)
-                {
-                    max = start;
-                }
-
-                var key = FanKey(ev);
-                groupSizes[key] = groupSizes.TryGetValue(key, out var c) ? c + 1 : 1;
+                max = end;
             }
         }
 
@@ -611,94 +596,12 @@ public sealed class EventTimelineControl : Grid
         _minTime = StartOffset.HasValue ? StartOffset.Value / 1000.0 : min;
         _maxTime = EndOffset.HasValue ? EndOffset.Value / 1000.0 : max;
         _timeRange = Math.Max(_maxTime - _minTime, 1.0);
-
-        // The bucket width: the gap to the next distinct timestamp (the capture's time resolution).
-        var bucket = NextTimestampGaps();
-
-        // Fan each same-time group forward across its resolution window, in sequence-id order.
-        var placed = new Dictionary<(long Time, int Lane), int>();
-
-        for (var i = 0; i < _sortedEvents.Count; i++)
-        {
-            var ev = _sortedEvents[i];
-            if (ev is ExecutionOperatorEvent)
-            {
-                continue;
-            }
-
-            var key = FanKey(ev);
-            var size = groupSizes[key];
-
-            placed.TryGetValue(key, out var index);
-            placed[key] = index + 1;
-
-            var t = _times[i];
-
-            if (ev.PlanNodeIdentifier is { } id && operatorEnds.TryGetValue(id, out var opEnd))
-            {
-                // Other point events stay within their operator's bar.
-                var room = opEnd - t;
-                var fanWidth = Math.Max(0, Math.Min(bucket.GetValueOrDefault(t), room));
-                _nudge[i] = Math.Min(size > 1 ? fanWidth * index / size : 0, room);
-            }
-            else if (size > 1)
-            {
-                _nudge[i] = bucket.GetValueOrDefault(t) * index / size;
-            }
-        }
-    }
-
-    /// <summary>Maps each distinct timestamp to the gap to the next one (the bucket width).</summary>
-    private Dictionary<double, double> NextTimestampGaps()
-    {
-        var distinct = _times.Distinct().OrderBy(t => t).ToList();
-        var gaps = new Dictionary<double, double>(distinct.Count);
-
-        if (distinct.Count == 0)
-        {
-            return gaps;
-        }
-
-        // Default bucket for the last timestamp: reuse the smallest gap so it fans consistently.
-        var smallest = double.MaxValue;
-        for (var k = 1; k < distinct.Count; k++)
-        {
-            var gap = distinct[k] - distinct[k - 1];
-            if (gap > 0 && gap < smallest)
-            {
-                smallest = gap;
-            }
-        }
-        if (smallest == double.MaxValue)
-        {
-            smallest = 1.0;
-        }
-
-        for (var k = 0; k < distinct.Count; k++)
-        {
-            gaps[distinct[k]] = k + 1 < distinct.Count ? distinct[k + 1] - distinct[k] : smallest;
-        }
-
-        return gaps;
     }
 
     // EngineEvent.TimeUs / DurationUs are microseconds; divide by AxisUnitsPerMs (1000) to get ms.
     private static double StartMs(EngineEvent ev) => ev.TimeUs / AxisUnitsPerMs;
 
     private static double DurationMs(EngineEvent ev) => ev.DurationUs / AxisUnitsPerMs;
-
-    // A point event's visual lane: its row, sub-divided by category band for locks/waits, so only
-    // markers that truly overlap (same row + band) are fanned out.
-    private int RenderLane(EngineEvent ev)
-    {
-        var category = EventCategoryClassifier.GetCategory(ev);
-        return GetRowIndex(ev) * 8 + (category.HasValue ? (int)category.Value : 7);
-    }
-
-    // The fan-out grouping key: events sharing an exact time and lane. Page reads are spread to distinct
-    // times at the event stage (see EventReader.NudgeReads), so this groups only genuinely coincident
-    // non-IO point events now.
-    private (long Time, int Lane) FanKey(EngineEvent ev) => (ev.TimeUs, RenderLane(ev));
 
     // The selection only counts once the user has explicitly dragged a handle.
     private bool SelectionActive => _selectionActivated;
@@ -722,10 +625,6 @@ public sealed class EventTimelineControl : Grid
     // The axis works in milliseconds; events and the emitted playhead/scope are in microseconds.
     private static long ToUs(double ms) => (long)Math.Round(ms * 1000.0);
 
-    // The fanned position of event i: its time plus the render nudge that spreads same-millisecond
-    // events apart. Used by the step-to-read navigation so individually-fanned reads are each addressable.
-    private double EffectiveTime(int i) => _times[i] + _nudge[i];
-
     private float CanvasWidth => (float)_overlay.ActualWidth;
     private float DrawWidth => CanvasWidth - RowLabelWidth;
     private double ContentWidth => DrawWidth * _zoom;
@@ -745,6 +644,7 @@ public sealed class EventTimelineControl : Grid
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
         var canvas = e.Surface.Canvas;
+
         canvas.Clear(SKColors.Transparent);
 
         var w = e.Info.Width;
@@ -763,6 +663,7 @@ public sealed class EventTimelineControl : Grid
         var rowTops = new float[rowCount];
         var rowHeights = new float[rowCount];
         var acc = rowsTop;
+
         for (var r = 0; r < rowCount; r++)
         {
             rowTops[r] = acc;
@@ -779,12 +680,19 @@ public sealed class EventTimelineControl : Grid
             _rowBgPaint.Color = r % 2 == 0
                 ? new SKColor(30, 30, 30, 220)
                 : new SKColor(20, 20, 20, 220);
+
             canvas.DrawRect(0, y, w, rowHeight, _rowBgPaint);
 
-            canvas.DrawText(label, 2, y + rowHeight / 2 + _labelFont.Size / 2, SKTextAlign.Left, _labelFont, _labelPaint);
+            canvas.DrawText(label, 
+                            2, 
+                            y + rowHeight / 2 + _labelFont.Size / 2, 
+                            SKTextAlign.Left, 
+                            _labelFont, 
+                            _labelPaint);
 
-            using var sepPaint = new SKPaint { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
-            canvas.DrawLine(0, y + rowHeight, w, y + rowHeight, sepPaint);
+            using var separatorPaint = new SKPaint { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
+
+            canvas.DrawLine(0, y + rowHeight, w, y + rowHeight, separatorPaint);
         }
 
         _hitRegions.Clear();
@@ -796,6 +704,7 @@ public sealed class EventTimelineControl : Grid
         }
 
         canvas.Save();
+
         canvas.ClipRect(new SKRect(RowLabelWidth, 0, w, h));
 
         for (var i = 0; i < _sortedEvents.Count; i++)
@@ -808,9 +717,7 @@ public sealed class EventTimelineControl : Grid
                 continue;
             }
 
-            // Fan same-timestamp markers apart within their bucket (render only; the playhead and
-            // selection still use the true time). The offset is in ms, so it scales with zoom.
-            var x = TimeToX(_times[i] + _nudge[i]);
+            var x = TimeToX(_times[i]);
 
             // Virtualisation: skip markers that fall outside the visible content. Skia would clip the
             // pixels anyway, but this also avoids the per-event work and the hit-region entry, which
@@ -821,6 +728,7 @@ public sealed class EventTimelineControl : Grid
             }
 
             var rowIndex = GetRowIndex(ev);
+
             if (rowIndex < 0)
             {
                 continue;
@@ -851,8 +759,10 @@ public sealed class EventTimelineControl : Grid
                 // The single marker paint is reused; only its (struct) colour changes per event.
                 // Fall back to the row colour when the event has no display colour set.
                 var displayColour = ev.DisplayColour;
+
                 markerTop = innerTop;
                 markerHeight = innerHeight;
+                
                 _markerPaint.Color = displayColour.A == 0 ? _activeRows[rowIndex].Color : displayColour.ToSkColor();
             }
 
@@ -887,8 +797,8 @@ public sealed class EventTimelineControl : Grid
         }
 
         // Dark-grey rectangle handles for start and end.
-        DrawHandle(canvas, StartDrawX);
-        DrawHandle(canvas, EndDrawX);
+        DrawHandle(canvas, StartDrawX, isStart: true);
+        DrawHandle(canvas, EndDrawX, isStart: false);
 
         // Red playhead: line down through the rows with a triangle in the strip.
         var px = PlayheadX;
@@ -899,7 +809,9 @@ public sealed class EventTimelineControl : Grid
         canvas.Restore();
     }
 
-    /// <summary>Draws evenly spaced time ticks with labels across the visible range.</summary>
+    /// <summary>
+    /// Draws header time ruler
+    /// </summary>
     private void DrawRuler(SKCanvas canvas)
     {
         var leftMs = EffectiveToMs(XToTime(RowLabelWidth));
@@ -912,6 +824,7 @@ public sealed class EventTimelineControl : Grid
         }
 
         var targetTicks = Math.Max(2, DrawWidth / 80f);
+
         var interval = NiceInterval(rangeMs / targetTicks);
 
         if (interval <= 0)
@@ -934,14 +847,18 @@ public sealed class EventTimelineControl : Grid
         var text = FormatTime(EffectiveToMs(_playheadTime));
 
         const float padding = 4f;
+        
         var badgeWidth = _labelFont.MeasureText(text) + padding * 2;
         var badgeHeight = RulerBandHeight - 2;
+
         var bx = Math.Clamp(px - badgeWidth / 2f, RowLabelWidth, Math.Max(RowLabelWidth, CanvasWidth - badgeWidth));
 
         canvas.DrawRoundRect(new SKRect(bx, 0, bx + badgeWidth, badgeHeight), 2, 2, _playheadFill);
 
         _operatorTextPaint.Color = SKColors.White;
+
         var baseline = badgeHeight / 2f + _labelFont.Size * 0.35f;
+        
         canvas.DrawText(text, bx + padding, baseline, SKTextAlign.Left, _labelFont, _operatorTextPaint);
     }
 
@@ -984,13 +901,17 @@ public sealed class EventTimelineControl : Grid
     }
 
     // A laid-out operator bar; computed first so I/O traces can be drawn behind the bars.
-    private readonly record struct OperatorBar(
-        ExecutionOperatorEvent Op,
-        float StartX, float EndX,
-        float BarTop, float BarBottom, float BarCentreY,
-        float LineWidth, float CornerRadius,
-        float SlotCentreY, float SlotHeight,
-        SKColor BarColour);
+    private readonly record struct OperatorBar(ExecutionOperatorEvent Op,
+                                               float StartX, 
+                                               float EndX,
+                                               float BarTop, 
+                                               float BarBottom, 
+                                               float BarCentreY,
+                                               float LineWidth, 
+                                               float CornerRadius,
+                                               float SlotCentreY,
+                                               float SlotHeight,
+                                               SKColor BarColour);
 
     /// <summary>
     /// Draws operator events as horizontal lines spanning their duration. Operators are stacked
@@ -1001,9 +922,13 @@ public sealed class EventTimelineControl : Grid
     private void DrawOperatorLines(SKCanvas canvas, float[] rowTops, float[] rowHeights)
     {
         var planRow = -1;
+
         for (var r = 0; r < _activeRows.Length; r++)
         {
-            if (_activeRows[r].EventType == typeof(ExecutionOperatorEvent)) { planRow = r; break; }
+            if (_activeRows[r].EventType == typeof(ExecutionOperatorEvent))
+            {
+                planRow = r; break;
+            }
         }
 
         if (planRow < 0)
@@ -1013,6 +938,7 @@ public sealed class EventTimelineControl : Grid
 
         // Gather operators with the index that gives their start time on the axis.
         var operators = new List<(int Index, ExecutionOperatorEvent Op)>();
+
         for (var i = 0; i < _sortedEvents.Count; i++)
         {
             if (_sortedEvents[i] is ExecutionOperatorEvent op)
@@ -1054,23 +980,6 @@ public sealed class EventTimelineControl : Grid
             .Select(o => o.Op.RowsProcessed)
             .DefaultIfEmpty(0)
             .Max();
-
-        float CostWeight(ExecutionOperatorEvent op)
-        {
-            if (op.NodeLevel == 0)
-            {
-                return StatementBandWeight;
-            }
-
-            if (maxCost <= 0)
-            {
-                // No cost information: fall back to an equal share for every operator.
-                return MaxCostWeight;
-            }
-
-            var normalised = (float)Math.Sqrt(Math.Clamp((op.Cost ?? 0) / maxCost, 0, 1));
-            return MinCostWeight + (MaxCostWeight - MinCostWeight) * normalised;
-        }
 
         var totalWeight = ordered.Sum(o => CostWeight(o.Op));
         var unit = totalWeight > 0 ? height / totalWeight : height;
@@ -1205,7 +1114,7 @@ public sealed class EventTimelineControl : Grid
 
             if (b.LineWidth >= MinLabelBarHeight && b.EndX - b.StartX >= MinLabelBarWidth)
             {
-                DrawOperatorLabel(canvas, b.Op, b.StartX, b.EndX, b.BarCentreY, b.LineWidth, b.BarColour);
+                DrawOperatorLabel(canvas, b.Op, b.StartX, b.EndX, b.BarCentreY, b.LineWidth);
             }
 
             _hitRegions.Add((new SKRect(b.StartX, b.SlotCentreY - b.SlotHeight / 2f, b.EndX,
@@ -1217,6 +1126,25 @@ public sealed class EventTimelineControl : Grid
         if (_selectedNodeId is { } selected)
         {
             DrawRowFlowPath(canvas, bars, selected);
+        }
+
+        return;
+
+        float CostWeight(ExecutionOperatorEvent op)
+        {
+            if (op.NodeLevel == 0)
+            {
+                return StatementBandWeight;
+            }
+
+            if (maxCost <= 0)
+            {
+                // No cost information: fall back to an equal share for every operator.
+                return MaxCostWeight;
+            }
+
+            var normalised = (float)Math.Sqrt(Math.Clamp((op.Cost ?? 0) / maxCost, 0, 1));
+            return MinCostWeight + (MaxCostWeight - MinCostWeight) * normalised;
         }
     }
 
@@ -1338,6 +1266,7 @@ public sealed class EventTimelineControl : Grid
         // Composite all extensions through a single layer at reduced opacity so overlapping traces
         // don't stack up to full opacity (the layer merges them first, then fades the whole thing once).
         using var layerPaint = new SKPaint { Color = SKColors.White.WithAlpha(TraceAlpha) };
+
         canvas.SaveLayer(layerPaint);
 
         var rightEdge = CanvasWidth;
@@ -1350,15 +1279,14 @@ public sealed class EventTimelineControl : Grid
 
             for (var i = 0; i < _sortedEvents.Count; i++)
             {
-                if (_sortedEvents[i] is not IoEvent io ||
-                    io.PlanNodeIdentifier is not { } id ||
+                if (_sortedEvents[i] is not IoEvent { PlanNodeIdentifier: { } id } io ||
                     !byNode.TryGetValue(id, out var b) ||
                     b.BarBottom >= ioTop)
                 {
                     continue;
                 }
 
-                var x = TimeToX(_times[i] + _nudge[i]);
+                var x = TimeToX(_times[i]);
                 if (x > rightEdge || x < RowLabelWidth - width)
                 {
                     continue;
@@ -1377,15 +1305,14 @@ public sealed class EventTimelineControl : Grid
 
             for (var i = 0; i < _sortedEvents.Count; i++)
             {
-                if (_sortedEvents[i] is not TransactionLogEvent log ||
-                    log.PlanNodeIdentifier is not { } id ||
+                if (_sortedEvents[i] is not TransactionLogEvent { PlanNodeIdentifier: { } id } log ||
                     !byNode.TryGetValue(id, out var b) ||
                     b.BarTop <= logBottom)
                 {
                     continue;
                 }
 
-                var x = TimeToX(_times[i] + _nudge[i]);
+                var x = TimeToX(_times[i]);
                 if (x > rightEdge || x < RowLabelWidth - width)
                 {
                     continue;
@@ -1561,8 +1488,12 @@ public sealed class EventTimelineControl : Grid
     /// stacked below the type on two centred lines; failing that the two on a single line (type then
     /// object name, left aligned); failing that the operator type alone; otherwise nothing.
     /// </summary>
-    private void DrawOperatorLabel(SKCanvas canvas, ExecutionOperatorEvent op,
-                                   float startX, float endX, float y, float barHeight, SKColor barColour)
+    private void DrawOperatorLabel(SKCanvas canvas,
+                                   ExecutionOperatorEvent op,
+                                   float startX, 
+                                   float endX, 
+                                   float y, 
+                                   float barHeight)
     {
         var type = op.Name ?? string.Empty;
         var target = op.ObjectName ?? string.Empty;
@@ -1663,15 +1594,24 @@ public sealed class EventTimelineControl : Grid
         }
     }
 
-    /// <summary>Black or white, whichever reads better on the given fill colour.</summary>
-    private static SKColor ContrastingColour(SKColor background)
+    // A short flat-top right triangle at the bottom of the handle band: the start (left) handle is a
+    // "/-" - flat top, vertical left edge, "/" slope down to a point at the bottom-left; the end (right)
+    // handle mirrors it as "-\" with the point at the bottom-right. Sitting low and small, they're easy
+    // to avoid while scrubbing the playhead just below them.
+    private void DrawHandle(SKCanvas canvas, float x, bool isStart)
     {
-        var luminance = 0.299 * background.Red + 0.587 * background.Green + 0.114 * background.Blue;
-        return luminance > 150 ? SKColors.Black : SKColors.White;
-    }
+        var top = MarkerStripHeight - HandleHeight;
+        var half = HandleWidth / 2f;
 
-    private void DrawHandle(SKCanvas canvas, float x)
-        => canvas.DrawRect(x - HandleWidth / 2f, RulerBandHeight, HandleWidth, HandleBandHeight, _handlePaint);
+        using var path = new SKPath();
+
+        path.MoveTo(x - half, top);
+        path.LineTo(x + half, top);
+        path.LineTo(isStart ? x - half : x + half, MarkerStripHeight);
+        path.Close();
+
+        canvas.DrawPath(path, _handlePaint);
+    }
 
     private void DrawPlayheadTriangle(SKCanvas canvas, float x)
     {
@@ -1783,24 +1723,28 @@ public sealed class EventTimelineControl : Grid
     {
         if (y <= MarkerStripHeight + HitArea)
         {
-            var dPlay = Math.Abs(x - PlayheadX);
-            var dStart = Math.Abs(x - StartDrawX);
-            var dEnd = Math.Abs(x - EndDrawX);
-
             // The triangle sits on top and is wider, so a press anywhere on it grabs the playhead.
-            if (dPlay <= TriangleHalfWidth)
+            if (Math.Abs(x - PlayheadX) <= TriangleHalfWidth)
             {
                 return DragTarget.Playhead;
             }
 
-            if (dStart <= HitArea && dStart <= dEnd)
+            // The from/to handles are only the short triangles at the bottom of the band, so a press
+            // higher in the strip (over the ruler) scrubs rather than grabbing a handle.
+            if (y >= MarkerStripHeight - HandleHeight - HitArea)
             {
-                return DragTarget.Start;
-            }
+                var dStart = Math.Abs(x - StartDrawX);
+                var dEnd = Math.Abs(x - EndDrawX);
 
-            if (dEnd <= HitArea)
-            {
-                return DragTarget.End;
+                if (dStart <= HitArea && dStart <= dEnd)
+                {
+                    return DragTarget.Start;
+                }
+
+                if (dEnd <= HitArea)
+                {
+                    return DragTarget.End;
+                }
             }
         }
 
@@ -1897,7 +1841,9 @@ public sealed class EventTimelineControl : Grid
         _skCanvas.Invalidate();
     }
 
-    /// <summary>Right-click on a scan/seek operator offers "Open Index" for its underlying index.</summary>
+    /// <summary>
+    /// Right-click on a scan/seek operator offers "Open Index" for its underlying index
+    /// </summary>
     private void OnContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
         if (!e.TryGetPosition(_overlay, out var position))
@@ -1991,7 +1937,7 @@ public sealed class EventTimelineControl : Grid
         {
             _hoverEvent = region.Event;
             _hoverLabel = region.Label;
-            _toolTipText.Text = region.Event.Name;
+            _toolTipText.Text = region.Event.Description;
         }
 
         _toolTip.HorizontalOffset = position.X + 12;
@@ -2089,7 +2035,9 @@ public sealed class EventTimelineControl : Grid
         FirePlayhead();
     }
 
-    /// <summary>Pulls the playhead inside the from/to selection after it changes, so it stays clipped.</summary>
+    /// <summary>
+    /// Pulls the playhead inside the from/to selection after it changes, so it stays clipped
+    /// </summary>
     private void ConfinePlayheadToSelection()
     {
         var (lo, hi) = ActiveRange;

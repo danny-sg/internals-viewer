@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Drawing;
-using System.Linq;
-using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
@@ -17,6 +12,7 @@ using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Controls.SqlEditor;
+using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
@@ -28,6 +24,12 @@ using InternalsViewer.UI.App.Views.Query.Tabs;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Drawing;
+using System.Linq;
+using System.Threading.Tasks;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -92,7 +94,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private int _extentCount;
 
     [ObservableProperty]
-    public bool _cropToQuery = true;
+    private bool _cropToQuery = true;
 
     [ObservableProperty]
     private double _allocationMapHeight = 200;
@@ -121,10 +123,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     // The query crop (microseconds): the timeline shows only [StartOffset, EndOffset], hiding pre-query
     // events. Null = no crop (full event range).
     [ObservableProperty]
-    public long? _startOffset;
+    private long? _startOffset;
 
     [ObservableProperty]
-    public long? _endOffset;
+    private long? _endOffset;
 
     // The timeline now reports position purely as time (microseconds); the view model maps it to events.
     private long _playheadTimeUs;
@@ -249,7 +251,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _saveScheduled = true;
 
-#pragma warning disable VSTHRD101 // Avoid unsupported async delegates
+#pragma warning disable VSTHRD101 
+        // Avoid unsupported async delegates
+        // ReSharper disable once AsyncVoidMethod
         DispatcherQueue.TryEnqueue(async void () =>
         {
             _saveScheduled = false;
@@ -322,10 +326,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [NotifyPropertyChangedFor(nameof(ActiveOperatorObject))]
     [NotifyPropertyChangedFor(nameof(ActiveOperatorIcon))]
     [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
+
     private PlanNode? _activePlanNode;
 
-    /// <summary>The timeline's in-scope window changed (microseconds). Derives the sequence range the
-    /// grid/allocation views highlight by.</summary>
     public void SetScope(long fromUs, long toUs)
     {
         _scopeFromUs = fromUs;
@@ -352,7 +355,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SequenceTo = from <= to ? to : 0;
     }
 
-    /// <summary>The playhead moved to a time (microseconds). Updates the active operator and index tabs.</summary>
     public void SetPlayheadTime(long timeUs)
     {
         _playheadTimeUs = timeUs;
@@ -427,18 +429,23 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     // Open index tabs (transient, not persisted), keyed by schema.table.index so each index opens once.
     private readonly Dictionary<string, IndexTabViewModel> _openIndexes = new();
 
-    /// <summary>
-    /// Opens (or re-activates) an index tab for the operator's underlying index, synced with the
-    /// timeline so the page under the playhead is selected as scans/seeks play out.
-    /// </summary>
     public void OpenIndex(ExecutionOperatorEvent op)
+        => OpenIndex(op.SchemaName, op.TableName, op.IndexName);
+
+    public void OpenIndex(PlanNode node)
+        => OpenIndex(node.Schema, node.Table, node.Index);
+
+    private void OpenIndex(string? schema, string? table, string? index)
     {
-        if (string.IsNullOrEmpty(op.IndexName))
+        if (string.IsNullOrEmpty(index))
         {
             return;
         }
 
-        var key = $"Index:{op.SchemaName}.{op.TableName}.{op.IndexName}";
+        schema ??= string.Empty;
+        table ??= string.Empty;
+
+        var key = $"Index:{schema}.{table}.{index}";
 
         if (DocumentsByKey.TryGetValue(key, out var existing))
         {
@@ -446,30 +453,31 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        var unit = Database.AllocationUnits.Values.FirstOrDefault(a =>
-            NameMatches(a.IndexName, op.IndexName)
-            && NameMatches(a.TableName, op.TableName)
-            && (op.SchemaName.Length == 0 || NameMatches(a.SchemaName, op.SchemaName))
-            && a.AllocationUnitType == AllocationUnitType.InRowData);
+        var allocationUnit = Database.AllocationUnits
+                                     .Values
+                                     .FirstOrDefault(a => NameMatches(a.IndexName, index)
+                                                          && NameMatches(a.TableName, table)
+                                                          && (schema.Length == 0 || NameMatches(a.SchemaName, schema))
+                                                          && a.AllocationUnitType == AllocationUnitType.InRowData);
 
-        if (unit is null)
+        if (allocationUnit is null)
         {
-            Logger.LogWarning("Index not found: {Schema}.{Table}.{Index}",
-                              op.SchemaName, op.TableName, op.IndexName);
+            Logger.LogWarning("Index not found: {Schema}.{Table}.{Index}", schema, table, index);
+
             return;
         }
 
         var indexViewModel = _indexTabViewModelFactory.Create(Database);
-        indexViewModel.RootPage = unit.RootPage;
 
-        var document = new DocumentViewModel(
-            title: $"Index: {op.IndexName}",
-            content: indexViewModel,
-            viewFactory: static () => new IndexDocumentView(),
-            canClose: true,
-            keepAlive: true,
-            key: key,
-            persist: false);
+        indexViewModel.RootPage = allocationUnit.RootPage;
+
+        var document = new DocumentViewModel(title: $"Index: {index}",
+                                             content: indexViewModel,
+                                             viewFactory: static () => new IndexDocumentView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false);
 
         DocumentsByKey[key] = document;
         _openIndexes[key] = indexViewModel;
@@ -480,7 +488,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SyncIndexPage(_playheadTimeUs);
     }
 
-    /// <summary>Drops index tabs the user has closed (they are transient and recreated on demand).</summary>
+    /// <summary>
+    /// Drops index tabs the user has closed (they are transient and recreated on demand)
+    /// </summary>
     private void PruneClosedIndexes()
     {
         if (_openIndexes.Count == 0)
@@ -535,6 +545,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         // The active read: the latest page read at or before the playhead (by time).
         PageAddress? activePage = null;
+
         var activeReadTime = long.MinValue;
 
         // The range: every page read between the clip start and the playhead, grouped by index root page.
@@ -650,7 +661,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private readonly IndexTabViewModelFactory _indexTabViewModelFactory;
 
     // Padding (microseconds) added either side of the query crop so boundary reads aren't clipped.
-    private const long CropPaddingUs = 500;
+    private const long CropPaddingUs = 200;
 
     [RelayCommand]
     private async Task ExecuteQuery(ExecuteSqlPayload payload)
@@ -707,13 +718,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         DispatcherQueue.TryEnqueue(async void () =>
         {
-            Events = results.EngineEvents;
+            try
+            {
+                Events = results.EngineEvents;
 
-            ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
+                ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
 
-            await EventFilter.BuildAsync(Events);
+                await EventFilter.BuildAsync(Events);
 
-            ShowResultTabsForFirstRun();
+                ShowResultTabsForFirstRun();
+            }
+            catch (Exception ex)
+            {
+                await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+            }
         });
 
         RefreshLayers(results.EngineEvents);
@@ -751,6 +769,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Events = [];
         FilteredEvents = [];
         ExecutionPlans = [];
+
+        foreach (var indexViewModel in _openIndexes.Values)
+        {
+            indexViewModel.SelectedPageAddress = null;
+            indexViewModel.SelectedPageAddresses = [];
+        }
 
         EventFilter.Clear();
 

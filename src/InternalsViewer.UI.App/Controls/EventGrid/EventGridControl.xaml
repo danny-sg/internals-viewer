@@ -98,16 +98,6 @@
                         </DataTemplate>
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
-
-                <toolkit:DataGridTemplateColumn Header="Sequence Id" Tag="SequenceId">
-                    <toolkit:DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind SequenceId, Mode=OneTime}"
-                                       Margin="4,0"
-                                       VerticalAlignment="Center"/>
-                        </DataTemplate>
-                    </toolkit:DataGridTemplateColumn.CellTemplate>
-                </toolkit:DataGridTemplateColumn>
             </toolkit:DataGrid.Columns>
         </toolkit:DataGrid>
     </Grid>

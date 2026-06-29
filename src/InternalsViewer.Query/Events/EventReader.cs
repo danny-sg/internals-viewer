@@ -75,9 +75,10 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         var orderedEvents = events.OrderBy(e => e.Timestamp).ThenBy(e => e.SequenceId).ToList();
 
-        // Captured timestamps are only millisecond-resolution, so a burst of page reads all land on the
-        // same microsecond. Nudge each read within its bucket so they get distinct times.
-        NudgeReads(orderedEvents);
+        // Captured timestamps are only millisecond-resolution, so a burst of events all land on the same
+        // microsecond. Spread each bucket of coincident events across its window so they get distinct,
+        // individually addressable times (in capture/sequence order).
+        SpreadCoincidentEvents(orderedEvents);
 
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
         EventPlanNodeMatcher.Match(orderedEvents, executionPlans);
@@ -92,16 +93,17 @@ public sealed class EventReader(ILogger<EventReader> logger)
         return (orderedEvents, executionPlans);
     }
 
-    // The resolution window (microseconds) a coarse timestamp represents: a read logged at t happened
-    // somewhere in [t, t + ReadWindowUs).
-    private const long ReadWindowUs = 1000;
+    // The resolution window (microseconds) a coarse timestamp represents: an event logged at t happened
+    // somewhere in [t, t + ResolutionWindowUs).
+    private const long ResolutionWindowUs = 1000;
 
     /// <summary>
-    /// Spreads page reads that share a coarse (millisecond-resolution) timestamp across their resolution
-    /// window, so each read gets a distinct time and is individually visible/selectable on the timeline.
-    /// Each read is offset by <c>ReadWindowUs / readCount * index</c> within its bucket.
+    /// Spreads each bucket of events that share a coarse (millisecond-resolution) timestamp evenly across
+    /// its resolution window, in the existing (timestamp, sequence-id) order, so each event gets a
+    /// distinct, individually addressable time. The k-th of <c>n</c> coincident events is offset by
+    /// <c>ResolutionWindowUs * k / n</c>, so they stay within the window and keep their capture order.
     /// </summary>
-    private static void NudgeReads(List<EngineEvent> events)
+    private static void SpreadCoincidentEvents(List<EngineEvent> events)
     {
         var i = 0;
 
@@ -115,26 +117,13 @@ public sealed class EventReader(ILogger<EventReader> logger)
                 j++;
             }
 
-            // The page reads sharing this timestamp.
-            var readCount = 0;
-            for (var k = i; k < j; k++)
-            {
-                if (events[k] is IoEvent { IsRead: true })
-                {
-                    readCount++;
-                }
-            }
+            var count = j - i;
 
-            if (readCount > 1)
+            if (count > 1)
             {
-                var index = 0;
-                for (var k = i; k < j; k++)
+                for (var k = 0; k < count; k++)
                 {
-                    if (events[k] is IoEvent { IsRead: true })
-                    {
-                        events[k].TimeUs = bucketTime + ReadWindowUs * index / readCount;
-                        index++;
-                    }
+                    events[i + k].TimeUs = bucketTime + ResolutionWindowUs * k / count;
                 }
             }
 

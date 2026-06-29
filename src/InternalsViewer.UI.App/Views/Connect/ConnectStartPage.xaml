@@ -120,9 +120,13 @@
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
         </GridView>
-        <Button Style="{StaticResource SubtleButtonStyle}"    Grid.Row="4" Content="Clear recent"/>
-        <ProgressRing HorizontalAlignment="Left"
-                      Grid.Row="5"
+        <Button Margin="0,0,0,15" 
+                Style="{StaticResource SubtleButtonStyle}"  
+                FontSize="12" 
+                HorizontalAlignment="Right" 
+                Grid.Row="4" 
+                Content="Clear recent"/>
+        <ProgressRing Grid.Row="5"
                       IsActive="{x:Bind ViewModel.ConnectRecentCommand.IsRunning, Mode=OneWay}"/>
     </Grid>
 </Page>

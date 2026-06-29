@@ -7,6 +7,7 @@ using InternalsViewer.Query.Plans;
 using Microsoft.UI;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -51,6 +52,7 @@ public sealed class ExecutionPlanControl : Canvas
         PointerMoved += OnPointerMoved;
         PointerReleased += OnPointerReleased;
         PointerCaptureLost += OnPointerCaptureLost;
+        ContextRequested += OnContextRequested;
     }
 
     public ExecutionPlan? Plan
@@ -101,6 +103,9 @@ public sealed class ExecutionPlanControl : Canvas
         => ((ExecutionPlanControl)d).UpdateFlowAnimation();
 
     public event EventHandler<PlanNode?>? NodeSelected;
+
+    /// <summary>Raised when "Open Index" is chosen on a data-access node that runs against a named index.</summary>
+    public event EventHandler<PlanNode>? IndexOpenRequested;
 
     private static void OnPlanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).Rebuild();
@@ -213,7 +218,16 @@ public sealed class ExecutionPlanControl : Canvas
 
         var thickness = 1.25 + 4.0 * Math.Clamp(childCostFraction, 0, 1);
 
+        // Scale the arrowhead with the line so a thick "many rows" connector gets a proportionally larger
+        // head that still reads as an arrow; it must stay wider than the shaft so the shaft can't poke out.
+        var headHalfWidth = Math.Max(4.5, thickness * 1.4);
+        var headLength = headHalfWidth * 2.0;
+
         var brush = new SolidColorBrush(ConnectorColor);
+
+        // Stop the shaft at the arrowhead's base rather than the node edge, so the squared line end is
+        // hidden behind the head and doesn't stick out past the (zero-width) tip.
+        var shaftEnd = new Point(end.X + headLength, end.Y);
 
         var connector = new Polyline
         {
@@ -225,14 +239,11 @@ public sealed class ExecutionPlanControl : Canvas
                 start,
                 new Point(elbowX, start.Y),
                 new Point(elbowX, end.Y),
-                end
+                shaftEnd
             }
         };
 
         Children.Add(connector);
-
-        const double headLength = 9;
-        const double headHalfWidth = 4.5;
 
         var arrow = new Polygon
         {
@@ -275,6 +286,35 @@ public sealed class ExecutionPlanControl : Canvas
         }
 
         BeginPan(e);
+    }
+
+    private void OnContextRequested(UIElement sender, ContextRequestedEventArgs e)
+    {
+        var nodeControl = FindAncestor<PlanNodeControl>(e.OriginalSource as DependencyObject);
+
+        // Only data-access operators (scan/seek/lookup) that run against a named index get the item.
+        if (nodeControl?.Node is not { } node ||
+            string.IsNullOrEmpty(node.Index) ||
+            OperatorClassifier.GetCategory(node) != OperatorCategory.DataAccess)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var openIndex = new MenuFlyoutItem { Text = $"Open Index: {node.Index}" };
+        openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(this, node);
+        flyout.Items.Add(openIndex);
+
+        if (e.TryGetPosition(this, out var position))
+        {
+            flyout.ShowAt(this, new FlyoutShowOptions { Position = position });
+        }
+        else
+        {
+            flyout.ShowAt(nodeControl);
+        }
+
+        e.Handled = true;
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)

@@ -514,7 +514,6 @@
 
     <ItemGroup>
       <Folder Include="Assets\Help\images\" />
-      <Folder Include="ViewModels\Query\Layout\" />
     </ItemGroup>
 
 
