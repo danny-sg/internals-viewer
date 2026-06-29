@@ -8,6 +8,17 @@ public sealed record ExecutionOperatorEvent : EngineEvent
 
     public OperatorCategory Category { get; set; }
 
+    /// <summary>The node id of this operator's parent in the plan tree; <c>null</c> for a root.</summary>
+    public int? ParentNodeId { get; set; }
+
+    /// <summary>
+    /// When rows first flow out of this operator (capture-relative microseconds). Equals the start for
+    /// a streaming operator, but is later for a blocking one (it must consume its input first); a
+    /// streaming operator inherits its child's emit time, so a blocking descendant delays the whole
+    /// chain above it. The span before this is the consume phase (drawn dimmed).
+    /// </summary>
+    public long EmitStartUs { get; set; }
+
     public override string Description => $"Node {PlanNodeIdentifier?.NodeId}";
 
     public long BuildPhaseTimeUs { get; set; }

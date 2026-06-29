@@ -28,6 +28,7 @@ internal sealed class OperatorEventBuilder
     private readonly ExecutionPlan _plan;
     private readonly List<EngineEvent> _allEvents;
     private readonly Dictionary<int, List<EngineEvent>> _eventsByNode;
+    private readonly Dictionary<int, int> _parentByNode = new();
     private readonly Dictionary<int, OperatorTiming> _timings = new();
 
     public OperatorEventBuilder(ExecutionPlan plan, List<EngineEvent> events)
@@ -39,6 +40,20 @@ internal sealed class OperatorEventBuilder
             .Where(e => e.PlanNodeIdentifier is { } id && id.PlanHandle == plan.PlanHandle)
             .GroupBy(e => e.PlanNodeIdentifier!.NodeId)
             .ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var root in plan.Root)
+        {
+            MapParents(root);
+        }
+    }
+
+    private void MapParents(PlanNode node)
+    {
+        foreach (var child in node.Children)
+        {
+            _parentByNode[child.NodeId] = node.NodeId;
+            MapParents(child);
+        }
     }
 
     public List<ExecutionOperatorEvent> Build()
@@ -57,7 +72,7 @@ internal sealed class OperatorEventBuilder
 
     // ---- timing (bottom-up, memoised) ----
 
-    private readonly record struct OperatorTiming(long StartUs, long EndUs);
+    private readonly record struct OperatorTiming(long StartUs, long EmitStartUs, long EndUs);
 
     private OperatorTiming Timing(PlanNode node)
     {
@@ -119,14 +134,44 @@ internal sealed class OperatorEventBuilder
             end = start + 1;
         }
 
-        return new OperatorTiming(start, end);
+        var emitStart = Math.Clamp(ComputeEmitStart(node, start, end), start, end);
+
+        return new OperatorTiming(start, emitStart, end);
+    }
+
+    /// <summary>
+    /// When rows first leave the operator. A leaf emits as it reads; a streaming operator emits once its
+    /// inputs are emitting (so it inherits a blocking descendant's delay); a blocking operator emits only
+    /// after consuming its blocking input(s).
+    /// </summary>
+    private long ComputeEmitStart(PlanNode node, long start, long end)
+    {
+        if (node.Children.Count == 0)
+        {
+            return start;
+        }
+
+        var blocking = node.Children.Where(c => OperatorClassifier.RoleOf(node, c) == InputRole.Blocking).ToList();
+
+        if (blocking.Count == 0)
+        {
+            // Streaming: cannot emit before its inputs do (the latest, so all inputs are flowing).
+            return node.Children.Max(c => Timing(c).EmitStartUs);
+        }
+
+        var consumeEnd = blocking.Max(c => Timing(c).EndUs);
+
+        var streaming = node.Children.Where(c => OperatorClassifier.RoleOf(node, c) == InputRole.Streaming).ToList();
+
+        // Emit begins when the streaming (probe) input opens, or when consumption finishes if there is none.
+        return streaming.Count > 0 ? streaming.Min(c => Timing(c).StartUs) : consumeEnd;
     }
 
     // ---- event construction ----
 
     private ExecutionOperatorEvent BuildEvent(PlanNode node, int sequenceOffset)
     {
-        var (start, end) = Timing(node);
+        var (start, emitStart, end) = Timing(node);
 
         var operatorEvent = new ExecutionOperatorEvent
         {
@@ -134,27 +179,29 @@ internal sealed class OperatorEventBuilder
             Category = OperatorClassifier.GetCategory(node),
             PlanHandle = _plan.PlanHandle,
             NodeLevel = node.NodeLevel,
+            ParentNodeId = _parentByNode.TryGetValue(node.NodeId, out var parent) ? parent : null,
             Cost = OwnCost(node),
             RowsProcessed = node.RowsProcessed,
             ObjectName = ObjectName(node),
             PlanNodeIdentifier = new PlanNodeIdentifier { NodeId = node.NodeId, PlanHandle = _plan.PlanHandle },
             TimeUs = start,
+            EmitStartUs = emitStart,
             DurationUs = end - start,
             Threads = BuildThreads(node, start),
             SequenceId = NearestSequenceId(start) - sequenceOffset,
         };
 
-        ApplyPhases(operatorEvent, node, end);
+        ApplyPhases(operatorEvent, node, emitStart, end);
 
         return operatorEvent;
     }
 
     /// <summary>
-    /// Splits a blocking/hybrid operator into a consume (build) phase and an emit (probe) phase. A
-    /// blocking input must be fully consumed before output; the operator then emits, overlapping any
-    /// streaming (probe) input. Streaming-only operators have no phases.
+    /// Splits a blocking/hybrid operator into a consume (build) phase and an emit (probe) phase, around
+    /// <paramref name="emitStart"/> - the consume phase is what the timeline dims. Streaming-only
+    /// operators emit from their start and so have no phases.
     /// </summary>
-    private void ApplyPhases(ExecutionOperatorEvent operatorEvent, PlanNode node, long end)
+    private void ApplyPhases(ExecutionOperatorEvent operatorEvent, PlanNode node, long emitStart, long end)
     {
         var blocking = node.Children
                            .Where(c => OperatorClassifier.RoleOf(node, c) == InputRole.Blocking)
@@ -165,21 +212,10 @@ internal sealed class OperatorEventBuilder
             return;
         }
 
-        var streaming = node.Children
-                            .Where(c => OperatorClassifier.RoleOf(node, c) == InputRole.Streaming)
-                            .ToList();
-
         var consumeStart = blocking.Min(c => Timing(c).StartUs);
-        var consumeEnd = blocking.Max(c => Timing(c).EndUs);
-
-        // Emit begins when the streaming (probe) input opens, or when consumption finishes if there is none.
-        var emitStart = streaming.Count > 0 ? streaming.Min(c => Timing(c).StartUs) : consumeEnd;
-
-        // The consume phase runs until emit begins.
-        var consumePhaseEnd = Math.Max(consumeStart, Math.Min(consumeEnd, emitStart));
 
         operatorEvent.BuildPhaseTimeUs = consumeStart;
-        operatorEvent.BuildPhaseDurationUs = consumePhaseEnd - consumeStart;
+        operatorEvent.BuildPhaseDurationUs = Math.Max(0, emitStart - consumeStart);
 
         operatorEvent.ProbePhaseTimeUs = emitStart;
         operatorEvent.ProbePhaseDurationUs = Math.Max(0, end - emitStart);

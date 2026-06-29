@@ -109,6 +109,9 @@ public sealed class EventTimelineControl : Grid
     private EngineEvent? _hoverEvent;
     private string? _hoverLabel;
 
+    // The plan node id of the clicked operator, whose row-flow path (up to the root) is highlighted.
+    private int? _selectedNodeId;
+
     private readonly SKFont _labelFont = new(SKTypeface.Default, 10f);
 
     // Operator bar labels get their own font so the size can be scaled per bar (up to OperatorMaxFont).
@@ -561,6 +564,7 @@ public sealed class EventTimelineControl : Grid
     {
         _zoom = MinZoom;
         _scrollX = 0;
+        _selectedNodeId = null;
 
         // Park the playhead at the start with no selection: the start/end handles cluster on the
         // playhead at the left edge, ready to play forward from the beginning.
@@ -1279,6 +1283,13 @@ public sealed class EventTimelineControl : Grid
             _hitRegions.Add((new SKRect(b.StartX, b.SlotCentreY - b.SlotHeight / 2f, b.EndX,
                                         b.SlotCentreY + b.SlotHeight / 2f), b.Op, null));
         }
+
+        // On click, trace the selected operator's rows up to the root: a connector per hop, lit only
+        // while the source is emitting (non-dimmed).
+        if (_selectedNodeId is { } selected)
+        {
+            DrawRowFlowPath(canvas, bars, selected);
+        }
     }
 
     /// <summary>
@@ -1511,6 +1522,89 @@ public sealed class EventTimelineControl : Grid
 
         _hitRegions.Add((new SKRect(consumeStartX, b.BarTop, consumeEndX, b.BarBottom), b.Op, "Consuming"));
     }
+
+    /// <summary>
+    /// Traces the clicked operator's rows up to the root: a connector for each child→parent hop, lit
+    /// only over the window the source is emitting (its non-dimmed span). Because emit time only moves
+    /// later up the tree, the lit segments form a rising staircase showing where the flow is held up.
+    /// </summary>
+    private void DrawRowFlowPath(SKCanvas canvas, List<OperatorBar> bars, int selectedNodeId)
+    {
+        var barByNode = new Dictionary<int, OperatorBar>(bars.Count);
+        foreach (var bar in bars)
+        {
+            if (bar.Op.PlanNodeIdentifier is { } id)
+            {
+                barByNode[id.NodeId] = bar;
+            }
+        }
+
+        if (!barByNode.TryGetValue(selectedNodeId, out var start))
+        {
+            return;
+        }
+
+        // The chain selected → … → root.
+        var chain = new List<OperatorBar> { start };
+        var current = start;
+        while (current.Op.ParentNodeId is { } parentId && barByNode.TryGetValue(parentId, out var parent))
+        {
+            chain.Add(parent);
+            current = parent;
+        }
+
+        // Connector ribbons between consecutive operators, lit over the child's emit window.
+        for (var i = 0; i < chain.Count - 1; i++)
+        {
+            DrawFlowConnector(canvas, chain[i], chain[i + 1]);
+        }
+
+        // Outline each operator on the path; the clicked one stands out.
+        foreach (var bar in chain)
+        {
+            var isSelected = bar.Op.PlanNodeIdentifier?.NodeId == selectedNodeId;
+            OutlineBar(canvas, bar, isSelected ? FlowSelectedColour : FlowPathColour, isSelected ? 2f : 1f);
+        }
+    }
+
+    private void DrawFlowConnector(SKCanvas canvas, OperatorBar child, OperatorBar parent)
+    {
+        // Rows flow from the child while it is emitting: [EmitStart, End].
+        var x0 = Math.Max(RowLabelWidth, TimeToX(child.Op.EmitStartUs / AxisUnitsPerMs));
+        var x1 = Math.Min(CanvasWidth, TimeToX((child.Op.TimeUs + child.Op.DurationUs) / AxisUnitsPerMs));
+
+        if (x1 <= x0)
+        {
+            return;
+        }
+
+        // Bridge the two bars from the top edge of the upper to the bottom edge of the lower.
+        var yLo = Math.Min(child.BarTop, parent.BarTop);
+        var yHi = Math.Max(child.BarBottom, parent.BarBottom);
+
+        using var paint = new SKPaint { Color = FlowConnectorColour, Style = SKPaintStyle.Fill, IsAntialias = true };
+        canvas.DrawRect(x0, yLo, x1 - x0, yHi - yLo, paint);
+    }
+
+    private static void OutlineBar(SKCanvas canvas, OperatorBar b, SKColor colour, float strokeWidth)
+    {
+        using var paint = new SKPaint
+        {
+            Color = colour,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = strokeWidth,
+            IsAntialias = true,
+        };
+
+        canvas.DrawRoundRect(new SKRect(b.StartX, b.BarTop, b.EndX, b.BarBottom),
+                             b.CornerRadius, b.CornerRadius, paint);
+    }
+
+    // Row-flow overlay (shown when an operator is clicked): a translucent ribbon links each operator to
+    // its parent over the window rows are flowing; the path operators are outlined, the clicked one brighter.
+    private static readonly SKColor FlowConnectorColour = new(120, 200, 255, 70);
+    private static readonly SKColor FlowPathColour = new(200, 200, 200, 200);
+    private static readonly SKColor FlowSelectedColour = new(255, 255, 255, 230);
 
     // The statement (SELECT) band is a fixed slim share, independent of cost.
     private const float StatementBandWeight = 0.5f;
@@ -1869,18 +1963,35 @@ public sealed class EventTimelineControl : Grid
 
         if (hit is null)
         {
+            // Clicking empty space clears the selected operator's row-flow overlay.
+            ClearOperatorSelection();
             return;
         }
 
         if (hit.Value.Event is ExecutionOperatorEvent { PlanNodeIdentifier: { } node })
         {
+            // Track the selection so its row-flow path (child→parent, lit while emitting) is drawn.
+            _selectedNodeId = node.NodeId;
+            _skCanvas.Invalidate();
             PlanNodeSelected?.Invoke(node);
         }
         else
         {
             // A point marker (read/lock/wait/log): reveal that event in the event grid.
+            ClearOperatorSelection();
             EventSelected?.Invoke(hit.Value.Event);
         }
+    }
+
+    private void ClearOperatorSelection()
+    {
+        if (_selectedNodeId is null)
+        {
+            return;
+        }
+
+        _selectedNodeId = null;
+        _skCanvas.Invalidate();
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
