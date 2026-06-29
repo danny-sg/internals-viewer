@@ -58,7 +58,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
                         // Gaps in sequence ids to allow the plan nodes to be slotted in
                         engineEvent.SequenceId = sequenceId += 100;
 
-                        engineEvent.TimeMs = (long)(engineEvent.Timestamp - startTimeStamp.Value).TotalMilliseconds;
+                        engineEvent.TimeUs = (long)(engineEvent.Timestamp - startTimeStamp.Value).TotalMicroseconds;
 
                         if (endMarker is not null && endMarker(engineEvent))
                         {
@@ -77,6 +77,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
         EventPlanNodeMatcher.Match(orderedEvents, executionPlans);
+
+        ExecutionPlanParser.SetNodeDurations(orderedEvents, executionPlans);
 
         ExecutionPlanParser.MergePlanEvents(orderedEvents, executionPlans);
 

@@ -1,5 +1,4 @@
-﻿using System.Timers;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using InternalsViewer.Query.Events.EventTypes;
 
 namespace InternalsViewer.Query.Plans;
@@ -84,6 +83,8 @@ public static class ExecutionPlanParser
 
         node.EstimatedCost = GetDoubleAttribute(element, "EstimatedTotalSubtreeCost");
 
+        node.CountersByThread = ExtractThreadCounters(element);
+
         ExtractObjectInfo(element, node);
 
         node.Outputs = ExtractTables(element);
@@ -124,9 +125,35 @@ public static class ExecutionPlanParser
             );
     }
 
+    private static Dictionary<int, ThreadRuntime> ExtractThreadCounters(XElement relOp)
+    {
+        var counters = new Dictionary<int, ThreadRuntime>();
+
+        var runtime = relOp.Elements().FirstOrDefault(e => e.Name.LocalName == "RunTimeInformation");
+
+        if (runtime == null)
+        {
+            return counters;
+        }
+
+        foreach (var counter in runtime.Elements().Where(e => e.Name.LocalName == "RunTimeCountersPerThread"))
+        {
+            var thread = GetIntAttribute(counter, "Thread");
+            var read = GetLongAttribute(counter, "ActualRowsRead") ?? 0;
+            var output = GetLongAttribute(counter, "ActualRows") ?? 0;
+            var elapsedMs = GetDoubleAttribute(counter, "ActualElapsedms") ?? 0;
+
+            counters[thread] = new ThreadRuntime(read > 0 ? read : output, (long)(elapsedMs * 1000));
+        }
+
+        return counters;
+    }
 
     private static int GetIntAttribute(XElement e, string name)
         => (int?)e.Attribute(name) ?? 0;
+
+    private static long? GetLongAttribute(XElement e, string name)
+        => (long?)e.Attribute(name);
 
     private static string GetStringAttribute(XElement e, string name)
         => (string?)e.Attribute(name) ?? string.Empty;
@@ -155,6 +182,66 @@ public static class ExecutionPlanParser
         return ((string?)element.Attribute(attributeName))?.Trim('[', ']');
     }
 
+    /// <summary>
+    /// Use Query Thread Profile events to set node duration
+    /// </summary>
+    public static void SetNodeDurations(List<EngineEvent> events, List<ExecutionPlan> executionPlans)
+    {
+        foreach (var plan in executionPlans)
+        {
+            var queryThreadEvents =
+                events.OfType<QueryThreadEvent>()
+                    .Where(e => e.PlanNodeIdentifier?.PlanHandle == plan.PlanHandle)
+                    .ToList();
+
+            var nodes = plan.NodesById.Values;
+
+            foreach (var node in nodes)
+            {
+                var nodeThreadEvents = queryThreadEvents.Where(e => e.PlanNodeIdentifier?.NodeId == node.NodeId)
+                                                        .ToList();
+
+                if (nodeThreadEvents.Count == 0)
+                {
+                    continue;
+                }
+
+                var coordinatorThread = nodeThreadEvents.FirstOrDefault(e => e.ThreadId == 0);
+
+                node.DurationUs = coordinatorThread?.DurationUs ?? nodeThreadEvents.Max(e => e.DurationUs);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The per-thread spans for a node from its <c>query_thread_profile</c> events, ordered by thread id
+    /// (coordinator 0 first). Each thread runs [close - elapsed, close].
+    /// </summary>
+    private static IReadOnlyList<OperatorThread> 
+        BuildOperatorThreads(List<EngineEvent> events,
+                             string planHandle, 
+                             int nodeId,
+                             IReadOnlyDictionary<int, ThreadRuntime> countersByThread)
+    {
+        return events
+            .OfType<QueryThreadEvent>()
+            .Where(e => e.PlanNodeIdentifier?.PlanHandle == planHandle
+                        && e.PlanNodeIdentifier?.NodeId == nodeId)
+            .OrderBy(e => e.ThreadId)
+            .Select(e =>
+            {
+                var counters = countersByThread.GetValueOrDefault(e.ThreadId);
+
+                // A thread's length is its measured wall-clock elapsed; fall back to the profile's total
+                // (CPU/active) time when the plan has no per-thread elapsed. The absolute start is
+                // anchored to the operator start by the caller, so it is left at zero here.
+                var spanUs = counters.ElapsedUs > 0 ? counters.ElapsedUs : e.DurationUs;
+
+                return new OperatorThread(e.ThreadId, 0, spanUs, counters.RowsProcessed);
+            })
+            .ToList();
+    }
+
     public static void MergePlanEvents(List<EngineEvent> events, List<ExecutionPlan> executionPlans)
     {
         if (executionPlans.Count == 0)
@@ -179,14 +266,45 @@ public static class ExecutionPlanParser
                 var startTime = timingCache.GetStartTime(node);
                 var endTime = timingCache.GetEndTime(node);
 
-                var operatorEvent = ToPlanEvent(plan.PlanHandle, node, node.NodeLevel, timingCache);
+                var operatorEvent = ToPlanEvent(plan.PlanHandle, node, node.NodeLevel);
 
-                var nearestSequenceId = events.LastOrDefault(e => e.TimeMs < startTime)?.SequenceId ?? 0;
+                var nearestSequenceId = events.LastOrDefault(e => e.TimeUs < startTime)?.SequenceId ?? 0;
+
+                // Duration is taken from the query_thread_profile (the accurate measured duration) when
+                // one exists for the node; otherwise fall back to the inferred span.
+                var duration = node.DurationUs > 0 ? node.DurationUs : Math.Max(endTime - startTime, 1);
+
+                // The operator must never end before its own reads/writes: extend the duration to cover
+                // the last IO tied to this node so its markers stay within the bar.
+                var lastIoEnd = NodeEventHelper.GetLastIoTime(events, operatorEvent.PlanNodeIdentifier!);
+
+                if (lastIoEnd.HasValue)
+                {
+                    duration = Math.Max(duration, lastIoEnd.Value - startTime);
+                }
+
+                // Per-thread spans (parallel operators): one query_thread_profile per thread, whose
+                // timestamp marks its close and total_time_us its elapsed time, so start = close - elapsed.
+                var threads = BuildOperatorThreads(events, plan.PlanHandle, node.NodeId, node.CountersByThread);
+
+                // Anchor every thread to the operator's start: the first IO is performed by a thread, so
+                // a thread must already be running then. Each lane then runs for its measured elapsed, so
+                // the threads share the start and stagger at the end by how long each ran - rather than
+                // bunching near the profile close (which leaves the start of the bar, and its early IO,
+                // with no thread under it).
+                threads = threads.Select(t => t with { StartUs = startTime }).ToList();
+
+                // Cover the thread envelope so no worker lane extends past the bar.
+                foreach (var t in threads)
+                {
+                    duration = Math.Max(duration, t.EndUs - startTime);
+                }
 
                 operatorEvent = operatorEvent with
                 {
-                    TimeMs = startTime,
-                    Duration = Math.Max(endTime - startTime, 1),
+                    TimeUs = startTime,
+                    DurationUs = duration,
+                    Threads = threads,
                     PlanHandle = plan.PlanHandle,
                     SequenceId = nearestSequenceId - offset,
                 };
@@ -233,8 +351,8 @@ public static class ExecutionPlanParser
                 var buildStart = GetFirstOutputTime(buildNode, buildExec);
                 var probeStart = GetFirstOutputTime(probeNode, probeExec);
 
-                current.BuildPhaseTimeMs = buildStart;
-                current.ProbePhaseTimeMs = probeStart;
+                current.BuildPhaseTimeUs = buildStart;
+                current.ProbePhaseTimeUs = probeStart;
 
                 var buildEndTime = Math.Min(
                     probeStart > 0 ? probeStart : currentEnd,
@@ -247,10 +365,10 @@ public static class ExecutionPlanParser
 
                 probeEndTime = Math.Max(probeEndTime, probeStart);
 
-                current.BuildPhaseDuration =
+                current.BuildPhaseDurationUs =
                     buildEndTime - buildStart;
 
-                current.ProbePhaseDuration =
+                current.ProbePhaseDurationUs =
                     probeEndTime - probeStart;
             }
         }
@@ -258,7 +376,7 @@ public static class ExecutionPlanParser
 
     private static long GetEnd(ExecutionOperatorEvent e)
     {
-        return e.TimeMs + e.Duration;
+        return e.TimeUs + e.DurationUs;
     }
 
 
@@ -298,13 +416,13 @@ public static class ExecutionPlanParser
 
     private static ExecutionOperatorEvent ToPlanEvent(string planHandle,
                                                       PlanNode node,
-                                                      int nodeLevel,
-                                                      NodeTiming timing)
+                                                      int nodeLevel)
     {
         // The operator's own cost: its subtree cost less the subtree cost of its immediate children,
         // so a parent doesn't double-count the work of the operators feeding it (matches the plan
         // view's per-node cost). Clamped at zero to guard against rounding.
         double? ownCost = null;
+
         if (node.EstimatedCost is { } subtree)
         {
             var childCost = node.Children.Sum(c => c.EstimatedCost ?? 0);
@@ -323,8 +441,7 @@ public static class ExecutionPlanParser
                 NodeId = node.NodeId,
                 PlanHandle = planHandle
             },
-            TimeMs = timing.GetStartTime(node),
-            Duration = timing.GetEndTime(node) - timing.GetStartTime(node),
+            RowsProcessed = node.RowsProcessed,
             ObjectName = GetNodeObjectName(node)
         };
 
@@ -371,11 +488,11 @@ public static class ExecutionPlanParser
         if (IsHash(node))
         {
             // Hash join produces rows during probe phase
-            return exec.ProbePhaseTimeMs > 0 ? exec.ProbePhaseTimeMs : exec.TimeMs;
+            return exec.ProbePhaseTimeUs > 0 ? exec.ProbePhaseTimeUs : exec.TimeUs;
         }
 
         // Default: assume streaming
-        return exec.TimeMs;
+        return exec.TimeUs;
     }
 
 

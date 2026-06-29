@@ -477,14 +477,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             if (queryNode != null)
             {
-                StartTime = queryNode.TimeMs;
-                EndTime = queryNode.TimeMs + queryNode.Duration;
+                // Event times are microseconds; the timeline crop works in milliseconds.
+                StartTime = queryNode.TimeUs / 1000.0;
+                EndTime = (queryNode.TimeUs + queryNode.DurationUs) / 1000.0;
             }
         }
         else
         {
             StartTime = 0;
-            EndTime = Events.DefaultIfEmpty().Max(e => e?.TimeMs + e?.Duration);
+            EndTime = Events.DefaultIfEmpty().Max(e => e?.TimeUs + e?.DurationUs) / 1000.0;
         }
 
         IsError = false;

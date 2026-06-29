@@ -35,6 +35,10 @@ public sealed class EventTimelineControl : Grid
     private const float SparseMarkerWidth = 4f;
     private const int SparseRowThreshold = 25;
 
+    // IO page reads/writes are bucketed to the nearest millisecond and fanned evenly across it; this is
+    // that bucket width (1ms), divided by the page count to space the markers.
+    private const double ReadBucketMs = 1.0;
+
     private const double TransportButtonHeight = 26;
 
     // Opacity of the I/O trace extensions (Trace I/O mode) — faint so they read as a background hint.
@@ -44,7 +48,9 @@ public sealed class EventTimelineControl : Grid
     private const double MaxZoom = 100.0;
     private const double ZoomStep = 1.15;
 
-    private const double AxisUnitsPerMs = 1.0;
+    // Event times/durations are stored in microseconds; the timeline axis works in milliseconds, so
+    // event values are divided by this to convert (1000 µs per ms).
+    private const double AxisUnitsPerMs = 1000.0;
 
     // Timer tick for smooth motion. Play sweeps the whole range left-to-right over a fixed wall-clock
     // duration (BasePlayDurationMs at 1x), regardless of how many events or how short the range is.
@@ -89,8 +95,10 @@ public sealed class EventTimelineControl : Grid
 
     private readonly Button _playButton;
     private readonly Button _speedButton;
-    private readonly ToggleButton _traceIoButton;
-    private bool _traceIo = true;
+    // The I/O trace extensions are always drawn; the toolbar toggle controls the (more involved)
+    // per-thread sub-lane overlay instead, which is off by default.
+    private readonly ToggleButton _threadsButton;
+    private bool _showThreads;
     private readonly SKXamlCanvas _skCanvas;
     private readonly Canvas _overlay;
     private readonly ScrollBar _scrollBar;
@@ -131,6 +139,15 @@ public sealed class EventTimelineControl : Grid
 
     // Buffer-category operators (spool/sort/exchange) are drawn as a thin collapsed bar.
     private const float BufferHeightScale = 0.3f;
+
+    // Data-access (scan/seek) bars are sized within their slot by rows processed; this is the smallest
+    // fill fraction so even a tiny scan stays visible.
+    private const float DataAccessMinFill = 0.15f;
+
+    // Parallel operators draw one sub-lane per thread inside the bar; below this lane height the
+    // threads are shown as a concurrency-density fill instead. A thin gap separates adjacent lanes.
+    private const float MinThreadLaneHeight = 2.5f;
+    private const float ThreadLaneGap = 1f;
 
     // Operator labels are only drawn when the bar is tall and wide enough to be legible.
     private const float MinLabelBarHeight = 11f;
@@ -337,18 +354,17 @@ public sealed class EventTimelineControl : Grid
         _speedButton.Click += OnSpeedButtonClick;
         UpdateSpeedLabel();
 
-        _traceIoButton = new ToggleButton
+        _threadsButton = new ToggleButton
         {
-            Content = new TextBlock { Text = "Trace", FontSize = 10 },
+            Content = new TextBlock { Text = "Threads", FontSize = 10 },
             Height = TransportButtonHeight,
-            //Padding = new Thickness(8, 0, 8, 0),
             Margin = new Thickness(8, 2, 0, 2),
             VerticalAlignment = VerticalAlignment.Center,
             BorderBrush = null,
             Background = new SolidColorBrush(Color.FromArgb(0, 30, 30, 30)),
         };
-        _traceIoButton.Checked += OnTraceIoToggled;
-        _traceIoButton.Unchecked += OnTraceIoToggled;
+        _threadsButton.Checked += OnThreadsToggled;
+        _threadsButton.Unchecked += OnThreadsToggled;
 
         var transport = new StackPanel
         {
@@ -359,7 +375,7 @@ public sealed class EventTimelineControl : Grid
         transport.Children.Add(_playButton);
         transport.Children.Add(stepForwardButton);
         transport.Children.Add(_speedButton);
-        transport.Children.Add(_traceIoButton);
+        transport.Children.Add(_threadsButton);
 
         Grid.SetRow(transport, 0);
         Children.Add(transport);
@@ -459,9 +475,9 @@ public sealed class EventTimelineControl : Grid
         }
     }
 
-    private void OnTraceIoToggled(object sender, RoutedEventArgs e)
+    private void OnThreadsToggled(object sender, RoutedEventArgs e)
     {
-        _traceIo = _traceIoButton.IsChecked == true;
+        _showThreads = _threadsButton.IsChecked == true;
         _skCanvas.Invalidate();
     }
 
@@ -620,7 +636,7 @@ public sealed class EventTimelineControl : Grid
                     max = start;
                 }
 
-                var key = (ev.TimeMs, RenderLane(ev));
+                var key = FanKey(ev);
                 groupSizes[key] = groupSizes.TryGetValue(key, out var c) ? c + 1 : 1;
             }
         }
@@ -646,13 +662,30 @@ public sealed class EventTimelineControl : Grid
                 continue;
             }
 
-            var key = (ev.TimeMs, RenderLane(ev));
+            var key = FanKey(ev);
             var size = groupSizes[key];
 
             placed.TryGetValue(key, out var index);
             placed[key] = index + 1;
 
             var t = _times[i];
+
+            if (ev is IoEvent)
+            {
+                // Page reads/writes share a coarse (nearest-ms) timestamp. Fan them evenly across that
+                // millisecond by the number of pages in it (e.g. 8 pages → 0, 125µs, 250µs …), snapping
+                // the bucket to the ms so the markers don't stack on the sub-ms jitter.
+                var bucketMs = Math.Round(t);
+                var desired = bucketMs + (size > 1 ? index * (ReadBucketMs / size) : 0);
+
+                if (ev.PlanNodeIdentifier is { } ioId && operatorEnds.TryGetValue(ioId, out var ioOpEnd))
+                {
+                    desired = Math.Min(desired, ioOpEnd);
+                }
+
+                _nudge[i] = desired - t;
+                continue;
+            }
 
             if (ev.PlanNodeIdentifier is { } id && operatorEnds.TryGetValue(id, out var opEnd))
             {
@@ -702,10 +735,10 @@ public sealed class EventTimelineControl : Grid
         return gaps;
     }
 
-    // EngineEvent.TimeMs / Duration are real milliseconds (AxisUnitsPerMs is 1).
-    private static double StartMs(EngineEvent ev) => ev.TimeMs / AxisUnitsPerMs;
+    // EngineEvent.TimeUs / DurationUs are microseconds; divide by AxisUnitsPerMs (1000) to get ms.
+    private static double StartMs(EngineEvent ev) => ev.TimeUs / AxisUnitsPerMs;
 
-    private static double DurationMs(EngineEvent ev) => ev.Duration / AxisUnitsPerMs;
+    private static double DurationMs(EngineEvent ev) => ev.DurationUs / AxisUnitsPerMs;
 
     // A point event's visual lane: its row, sub-divided by category band for locks/waits, so only
     // markers that truly overlap (same row + band) are fanned out.
@@ -714,6 +747,13 @@ public sealed class EventTimelineControl : Grid
         var category = EventCategoryClassifier.GetCategory(ev);
         return GetRowIndex(ev) * 8 + (category.HasValue ? (int)category.Value : 7);
     }
+
+    // The fan-out grouping key. IO markers carry sub-millisecond timestamp jitter, so they are bucketed
+    // by nearest millisecond (and spread across it by count); other point events group on exact time.
+    private (long Time, int Lane) FanKey(EngineEvent ev) =>
+        ev is IoEvent
+            ? ((long)Math.Round(ev.TimeUs / 1000.0), RenderLane(ev))
+            : (ev.TimeUs, RenderLane(ev));
 
     // The selection only counts once the user has explicitly dragged a handle.
     private bool SelectionActive => _selectionActivated;
@@ -1076,6 +1116,13 @@ public sealed class EventTimelineControl : Grid
             .DefaultIfEmpty(0)
             .Max();
 
+        // Busiest data-access operator, used to normalise scan/seek bar heights by rows processed.
+        var maxRows = operators
+            .Where(o => o.Op.Category == OperatorCategory.DataAccess)
+            .Select(o => o.Op.RowsProcessed)
+            .DefaultIfEmpty(0)
+            .Max();
+
         float CostWeight(ExecutionOperatorEvent op)
         {
             if (op.NodeLevel == 0)
@@ -1144,10 +1191,10 @@ public sealed class EventTimelineControl : Grid
             var slotBottom = y + slotHeight / 2f;
 
             // In Trace mode add extra padding so stacked bars leave a gap for the trace lines to show.
-            var effectiveMargin = OperatorLineMargin + (_traceIo ? TraceStackGap : 0f);
+            var effectiveMargin = OperatorLineMargin + TraceStackGap;
             var pad = effectiveMargin / 2f;
 
-            var hasPhases = op.BuildPhaseDuration != 0 || op.ProbePhaseDuration != 0;
+            var hasPhases = op.BuildPhaseDurationUs != 0 || op.ProbePhaseDurationUs != 0;
             var reserveAbove = hasPhases ? PhaseStripReserve : 0f;
 
             var availTop = slotTop + pad + reserveAbove;
@@ -1158,6 +1205,19 @@ public sealed class EventTimelineControl : Grid
             {
                 // Collapse buffer operators (spool/sort/exchange) to a thin bar centred in the band.
                 var barHeight = Math.Max(1f, (slotHeight - effectiveMargin) * BufferHeightScale);
+                var centre = (availTop + availBottom) / 2f;
+                barTop = centre - barHeight / 2f;
+                barBottom = centre + barHeight / 2f;
+            }
+            else if (op.Category == OperatorCategory.DataAccess && maxRows > 0)
+            {
+                // Size scan/seek bars by rows processed: thicker = more data, sqrt-compressed against the
+                // busiest data-access operator, with a floor so even a tiny scan stays visible.
+                var avail = availBottom - availTop;
+                var fill = op.RowsProcessed > 0
+                    ? Math.Clamp((float)Math.Sqrt(op.RowsProcessed / (double)maxRows), DataAccessMinFill, 1f)
+                    : DataAccessMinFill;
+                var barHeight = Math.Max(1f, avail * fill);
                 var centre = (availTop + availBottom) / 2f;
                 barTop = centre - barHeight / 2f;
                 barBottom = centre + barHeight / 2f;
@@ -1176,11 +1236,8 @@ public sealed class EventTimelineControl : Grid
                                      lineWidth, cornerRadius, y, slotHeight, barColour));
         }
 
-        // Trace: draw the extensions first so the operator bars paint over them.
-        if (_traceIo)
-        {
-            DrawTraces(canvas, bars, rowTops, rowHeights);
-        }
+        // Trace: draw the extensions first so the operator bars paint over them (always on).
+        DrawTraces(canvas, bars, rowTops, rowHeights);
 
         var rightEdge = CanvasWidth;
 
@@ -1207,6 +1264,13 @@ public sealed class EventTimelineControl : Grid
             _operatorPaint.Shader = null;
             gradient.Dispose();
 
+            // Parallel operators: overlay per-thread sub-lanes (or a concurrency-density fill) on the
+            // envelope bar so the degree of parallelism and thread skew are visible.
+            if (_showThreads && b.Op.Threads.Count > 1)
+            {
+                DrawOperatorThreads(canvas, b);
+            }
+
             if (b.LineWidth >= MinLabelBarHeight && b.EndX - b.StartX >= MinLabelBarWidth)
             {
                 DrawOperatorLabel(canvas, b.Op, b.StartX, b.EndX, b.BarCentreY, b.LineWidth, b.BarColour);
@@ -1218,6 +1282,97 @@ public sealed class EventTimelineControl : Grid
             // Build/probe phase bars sit in the reserved strip above the operator; add them last so
             // they win hit-testing.
             DrawOperatorPhases(canvas, b.Op, b.BarTop, b.BarColour);
+        }
+    }
+
+    /// <summary>
+    /// Overlays a parallel operator's worker threads on its bar. The coordinator (thread 0) is the bar
+    /// itself (its span is the whole block), so only the workers (non-zero ids) get sub-lanes: each
+    /// spans its own start→end (time skew) and is as tall as its share of the rows processed (data
+    /// skew). When the lanes would be too thin to read, falls back to a concurrency-density fill.
+    /// </summary>
+    private void DrawOperatorThreads(SKCanvas canvas, OperatorBar b)
+    {
+        var workers = b.Op.Threads.Where(t => t.ThreadId != 0).ToList();
+        if (workers.Count == 0)
+        {
+            return;
+        }
+
+        var barHeight = b.BarBottom - b.BarTop;
+
+        // If the lanes would on average be too thin to read, show the density fill instead.
+        if (barHeight / workers.Count < MinThreadLaneHeight)
+        {
+            DrawThreadDensity(canvas, b, workers);
+            return;
+        }
+
+        // Stack the workers, each lane as tall as its share of the rows (so an over-loaded thread reads
+        // as a thick lane and an idle one as a sliver). Fall back to equal shares with no row counts.
+        var totalRows = workers.Sum(t => t.RowsProcessed);
+
+        var y = b.BarTop;
+
+        foreach (var t in workers)
+        {
+            var share = totalRows > 0 ? (float)t.RowsProcessed / totalRows : 1f / workers.Count;
+            var laneHeight = barHeight * share;
+
+            if (laneHeight >= 0.5f)
+            {
+                var x0 = Math.Max(b.StartX, TimeToX(t.StartUs / AxisUnitsPerMs));
+                var x1 = Math.Min(b.EndX, TimeToX(t.EndUs / AxisUnitsPerMs));
+                if (x1 < x0 + 1f)
+                {
+                    x1 = x0 + 1f;
+                }
+
+                // Workers read a touch brighter than the envelope (coordinator) bar behind them.
+                _markerPaint.Color = ColourScale(b.BarColour, 1.12f);
+                canvas.DrawRect(x0, y, x1 - x0, Math.Max(1f, laneHeight - ThreadLaneGap), _markerPaint);
+            }
+
+            y += laneHeight;
+        }
+    }
+
+    /// <summary>
+    /// High degree-of-parallelism fallback: shades the envelope bar by the number of worker threads
+    /// running concurrently over time (darker = more overlap), by sweeping their start/end points.
+    /// </summary>
+    private void DrawThreadDensity(SKCanvas canvas, OperatorBar b, List<OperatorThread> workers)
+    {
+        var points = new List<(double Ms, int Delta)>(workers.Count * 2);
+        foreach (var t in workers)
+        {
+            points.Add((t.StartUs / AxisUnitsPerMs, +1));
+            points.Add((t.EndUs / AxisUnitsPerMs, -1));
+        }
+
+        points.Sort((p, q) => p.Ms.CompareTo(q.Ms));
+
+        var active = 0;
+        var prevMs = points[0].Ms;
+
+        foreach (var (ms, delta) in points)
+        {
+            if (ms > prevMs && active > 0)
+            {
+                var x0 = Math.Max(b.StartX, TimeToX(prevMs));
+                var x1 = Math.Min(b.EndX, TimeToX(ms));
+
+                if (x1 > x0)
+                {
+                    // Map 1..DOP concurrent workers onto a 0.7→1.3 brightness ramp over the envelope.
+                    var intensity = (float)active / workers.Count;
+                    _markerPaint.Color = ColourScale(b.BarColour, 0.7f + 0.6f * intensity);
+                    canvas.DrawRect(x0, b.BarTop, x1 - x0, b.BarBottom - b.BarTop, _markerPaint);
+                }
+            }
+
+            active += delta;
+            prevMs = ms;
         }
     }
 
@@ -1332,7 +1487,7 @@ public sealed class EventTimelineControl : Grid
     /// </summary>
     private void DrawOperatorPhases(SKCanvas canvas, ExecutionOperatorEvent op, float barTop, SKColor barColour)
     {
-        if (op.BuildPhaseDuration == 0 && op.ProbePhaseDuration == 0)
+        if (op.BuildPhaseDurationUs == 0 && op.ProbePhaseDurationUs == 0)
         {
             return;
         }
@@ -1342,24 +1497,24 @@ public sealed class EventTimelineControl : Grid
         var buildBottom = probeTop;
         var buildTop = buildBottom - PhaseLaneHeight;
 
-        if (op.BuildPhaseDuration != 0)
+        if (op.BuildPhaseDurationUs != 0)
         {
-            DrawPhaseBar(canvas, op, op.BuildPhaseTimeMs, op.BuildPhaseDuration, buildTop, buildBottom,
+            DrawPhaseBar(canvas, op, op.BuildPhaseTimeUs, op.BuildPhaseDurationUs, buildTop, buildBottom,
                          PhaseBuildColour, "Build");
         }
 
-        if (op.ProbePhaseDuration != 0)
+        if (op.ProbePhaseDurationUs != 0)
         {
-            DrawPhaseBar(canvas, op, op.ProbePhaseTimeMs, op.ProbePhaseDuration, probeTop, probeBottom,
+            DrawPhaseBar(canvas, op, op.ProbePhaseTimeUs, op.ProbePhaseDurationUs, probeTop, probeBottom,
                          ColourScale(barColour, PhaseLighten), "Probe");
         }
     }
 
-    private void DrawPhaseBar(SKCanvas canvas, ExecutionOperatorEvent op, long timeMs, long duration,
+    private void DrawPhaseBar(SKCanvas canvas, ExecutionOperatorEvent op, long timeUs, long durationUs,
                               float top, float bottom, SKColor colour, string label)
     {
-        var x0 = TimeToX(timeMs / AxisUnitsPerMs);
-        var x1 = TimeToX((timeMs + duration) / AxisUnitsPerMs);
+        var x0 = TimeToX(timeUs / AxisUnitsPerMs);
+        var x1 = TimeToX((timeUs + durationUs) / AxisUnitsPerMs);
         if (x1 < x0 + 1)
         {
             x1 = x0 + 1;
@@ -1413,6 +1568,13 @@ public sealed class EventTimelineControl : Grid
     {
         var type = op.Name ?? string.Empty;
         var target = op.ObjectName ?? string.Empty;
+
+        // Annotate parallel operators with their degree of parallelism (worker = non-zero thread id).
+        var dop = op.Threads.Count(t => t.ThreadId != 0);
+        if (dop > 1)
+        {
+            type = $"{type} ×{dop}";
+        }
 
         if (type.Length == 0 && target.Length == 0)
         {

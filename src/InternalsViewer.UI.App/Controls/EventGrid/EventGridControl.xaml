@@ -54,10 +54,10 @@
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Time (ms)" Tag="TimeMs">
+                <toolkit:DataGridTemplateColumn Header="Time (µs)" Tag="TimeUs">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind TimeMs, Mode=OneWay}"
+                            <TextBlock Text="{x:Bind TimeUs, Mode=OneWay}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
                                        VerticalAlignment="Center"/>
@@ -65,10 +65,10 @@
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Duration (ms)" Tag="Duration">
+                <toolkit:DataGridTemplateColumn Header="Duration (µs)" Tag="DurationUs">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind Duration, Mode=OneWay}"
+                            <TextBlock Text="{x:Bind DurationUs, Mode=OneWay}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
                                        VerticalAlignment="Center"/>
@@ -109,6 +109,15 @@
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
 
+                <toolkit:DataGridTemplateColumn Header="Thread Id" Tag="ThreadId">
+                    <toolkit:DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="eventTypes:EngineEvent">
+                            <TextBlock Text="{x:Bind ThreadId, Mode=OneWay}"
+                                       Margin="4,0"
+                                       VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </toolkit:DataGridTemplateColumn.CellTemplate>
+                </toolkit:DataGridTemplateColumn>
 
                 <toolkit:DataGridTemplateColumn Header="Node Id" Tag="NodeId">
                     <toolkit:DataGridTemplateColumn.CellTemplate>

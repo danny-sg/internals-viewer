@@ -27,4 +27,12 @@ public sealed class PlanNode
     public HashInfo? HashInfo { get; set; }
 
     public HashSet<string> Outputs { get; set; } = [];
+
+    public long DurationUs { get; set; }
+
+    public Dictionary<int, ThreadRuntime> CountersByThread { get; set; } = new();
+
+    public long RowsProcessed => CountersByThread.Values.Sum(c => c.RowsProcessed);
 }
+
+public readonly record struct ThreadRuntime(long RowsProcessed, long ElapsedUs);
