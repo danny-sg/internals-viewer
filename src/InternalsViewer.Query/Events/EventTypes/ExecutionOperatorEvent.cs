@@ -19,7 +19,9 @@ public sealed record ExecutionOperatorEvent : EngineEvent
     /// </summary>
     public long EmitStartUs { get; set; }
 
-    public override string Description => $"Node {PlanNodeIdentifier?.NodeId}";
+    public override string Description => OperatorDescription;
+
+    public required string OperatorDescription { get; set; }
 
     public long BuildPhaseTimeUs { get; set; }
 

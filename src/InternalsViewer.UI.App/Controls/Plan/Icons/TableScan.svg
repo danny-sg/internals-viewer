@@ -1,29 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <g id="document-download-icon">
+  <g id="table-scan-icon">
+      <g id="table-scan-frame"
+         stroke="#424242"
+         stroke-width="2"
+         fill="none"
+         stroke-linejoin="round"
+         stroke-linecap="square">
 
-    <!-- document structure -->
-    <g id="document-structure" stroke="#424242" stroke-width="2" fill="none" stroke-linejoin="round">
-      
-      <!-- main document outline -->
-      <path id="doc-outline" d="M 10 6 L 20 6 L 26 12 L 26 26 L 10 26 Z" />
-      
-      <!-- folded corner -->
-      <path id="doc-fold" d="M 20 6 L 20 12 L 26 12" />
-      
-      <!-- text lines -->
-      <path d="M 13 16 L 23 16" />
-      <path d="M 13 20 L 23 20" />
-      <path d="M 13 24 L 21 24" />
-    </g>
+          <rect id="compute-scalar-main-rect"
+                x="3"
+                y="5"
+                width="23"
+                height="20" />
+      </g>
 
-    <!-- download arrow -->
     <g id="download-arrow" fill="#0078D4">
       
-      <!-- arrow stem -->
-      <path id="arrow-stem" d="M 16 14 L 16 22" fill="none" stroke="#0078D4" stroke-width="2" stroke-linejoin="round" />
+      <path id="arrow-stem" d="M 14 8 L 14 20" fill="none" stroke="#0078D4" stroke-width="2" stroke-linejoin="round" />
       
-      <!-- arrow head -->
-      <polygon id="arrow-head" points="13,22 16,26 19,22" />
+      <polygon id="arrow-head" points="10,18 14,23 18,18" />
     </g>
 
   </g>

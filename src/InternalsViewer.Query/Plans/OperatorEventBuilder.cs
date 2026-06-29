@@ -26,9 +26,13 @@ namespace InternalsViewer.Query.Plans;
 internal sealed class OperatorEventBuilder
 {
     private readonly ExecutionPlan _plan;
+
     private readonly List<EngineEvent> _allEvents;
+    
     private readonly Dictionary<int, List<EngineEvent>> _eventsByNode;
+    
     private readonly Dictionary<int, int> _parentByNode = new();
+    
     private readonly Dictionary<int, OperatorTiming> _timings = new();
 
     public OperatorEventBuilder(ExecutionPlan plan, List<EngineEvent> events)
@@ -36,10 +40,9 @@ internal sealed class OperatorEventBuilder
         _plan = plan;
         _allEvents = events;
 
-        _eventsByNode = events
-            .Where(e => e.PlanNodeIdentifier is { } id && id.PlanHandle == plan.PlanHandle)
-            .GroupBy(e => e.PlanNodeIdentifier!.NodeId)
-            .ToDictionary(g => g.Key, g => g.ToList());
+        _eventsByNode = events.Where(e => e.PlanNodeIdentifier is { } id && id.PlanHandle == plan.PlanHandle)
+                              .GroupBy(e => e.PlanNodeIdentifier!.NodeId)
+                              .ToDictionary(g => g.Key, g => g.ToList());
 
         foreach (var root in plan.Root)
         {
@@ -105,6 +108,14 @@ internal sealed class OperatorEventBuilder
                 : node.Children.Min(c => Timing(c).StartUs);
         }
 
+        // The query (statement) node spans the whole batch, so it can't start after the first page read
+        // from any of its operators - even when its driving input opens later (common on very fast queries
+        // where a read is timestamped before the statement's own measured start).
+        if (node.IsStatement && EarliestSubtreeIo(node) is { } firstRead)
+        {
+            start = Math.Min(start, firstRead);
+        }
+
         // The operator runs for its measured wall-clock duration, but never ends before its own I/O, its
         // log writes, its children, or its threads.
         var end = start + node.DurationUs;
@@ -133,7 +144,7 @@ internal sealed class OperatorEventBuilder
             end = start + 1;
         }
 
-        var emitStart = Math.Clamp(ComputeEmitStart(node, start, end), start, end);
+        var emitStart = Math.Clamp(ComputeEmitStart(node, start), start, end);
 
         return new OperatorTiming(start, emitStart, end);
     }
@@ -143,7 +154,7 @@ internal sealed class OperatorEventBuilder
     /// inputs are emitting (so it inherits a blocking descendant's delay); a blocking operator emits only
     /// after consuming its blocking input(s).
     /// </summary>
-    private long ComputeEmitStart(PlanNode node, long start, long end)
+    private long ComputeEmitStart(PlanNode node, long start)
     {
         if (node.Children.Count == 0)
         {
@@ -170,6 +181,13 @@ internal sealed class OperatorEventBuilder
     {
         var (start, emitStart, end) = Timing(node);
 
+        var description = node.PhysicalOperator;
+
+        if (node.LogicalOperator != node.PhysicalOperator && !string.IsNullOrEmpty(node.LogicalOperator))
+        {
+            description = $"{description} ({node.LogicalOperator})";
+        }
+
         var operatorEvent = new ExecutionOperatorEvent
         {
             Name = node.PhysicalOperator,
@@ -189,6 +207,7 @@ internal sealed class OperatorEventBuilder
             DurationUs = end - start,
             Threads = BuildThreads(node, start),
             SequenceId = NearestSequenceId(start) - sequenceOffset,
+            OperatorDescription = description
         };
 
         ApplyPhases(operatorEvent, node, emitStart, end);
@@ -231,8 +250,6 @@ internal sealed class OperatorEventBuilder
             .Select(kv => new OperatorThread(kv.Key, start, kv.Value.ElapsedUs, kv.Value.RowsProcessed))
             .ToList();
 
-    // The sequence id of the latest event before the operator's start, less an offset so co-located
-    // operators keep a stable order; lets the operators slot into the event grid by time.
     private int NearestSequenceId(long startUs) =>
         _allEvents.LastOrDefault(e => e.TimeUs < startUs)?.SequenceId ?? 0;
 
@@ -243,9 +260,10 @@ internal sealed class OperatorEventBuilder
             return null;
         }
 
-        // The operator's own cost: its subtree cost less its children's, so a parent doesn't
-        // double-count the work feeding it. Clamped at zero to guard against rounding.
+        // The operator's own cost: its subtree cost less its children's, so a parent doesn't double-count the work
+        // feeding it.
         var childCost = node.Children.Sum(c => c.EstimatedCost ?? 0);
+
         return Math.Max(0, subtree - childCost);
     }
 
@@ -266,6 +284,22 @@ internal sealed class OperatorEventBuilder
 
     private static long? FirstIo(List<EngineEvent> events) =>
         events.Where(e => e is IoEvent).Select(e => (long?)e.TimeUs).Min();
+
+    // The earliest page read anywhere in a node's subtree (the node and all its descendants).
+    private long? EarliestSubtreeIo(PlanNode node)
+    {
+        var earliest = FirstIo(EventsFor(node));
+
+        foreach (var child in node.Children)
+        {
+            if (EarliestSubtreeIo(child) is { } childIo && (earliest is null || childIo < earliest))
+            {
+                earliest = childIo;
+            }
+        }
+
+        return earliest;
+    }
 
     private static long? LastIo(List<EngineEvent> events) =>
         events.Where(e => e is IoEvent).Select(e => (long?)e.TimeUs + e.DurationUs).Max();
