@@ -78,9 +78,12 @@ public sealed class EventReader(ILogger<EventReader> logger)
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
         EventPlanNodeMatcher.Match(orderedEvents, executionPlans);
 
-        ExecutionPlanParser.SetNodeDurations(orderedEvents, executionPlans);
+        // Build the operator events (timeline bars) bottom-up from each plan and its matched events.
+        var operatorEvents = executionPlans
+            .SelectMany(plan => new OperatorEventBuilder(plan, orderedEvents).Build())
+            .ToList();
 
-        ExecutionPlanParser.MergePlanEvents(orderedEvents, executionPlans);
+        orderedEvents.AddRange(operatorEvents);
 
         return (orderedEvents, executionPlans);
     }

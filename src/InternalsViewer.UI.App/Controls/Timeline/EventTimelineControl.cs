@@ -1184,9 +1184,8 @@ public sealed class EventTimelineControl : Grid
                 barColour = displayColour.A == 0 ? _activeRows[planRow].Color : displayColour.ToSkColor();
             }
 
-            // Lay the bar out within the slot. Phased operators reserve a strip above the bar for the
-            // build/probe lanes (keeping a gap to the block above); buffer operators collapse to a thin
-            // bar; everything else fills the slot less a margin.
+            // Lay the bar out within the slot. Buffer operators collapse to a thin bar; everything else
+            // fills the slot less a margin.
             var slotTop = y - slotHeight / 2f;
             var slotBottom = y + slotHeight / 2f;
 
@@ -1194,10 +1193,7 @@ public sealed class EventTimelineControl : Grid
             var effectiveMargin = OperatorLineMargin + TraceStackGap;
             var pad = effectiveMargin / 2f;
 
-            var hasPhases = op.BuildPhaseDurationUs != 0 || op.ProbePhaseDurationUs != 0;
-            var reserveAbove = hasPhases ? PhaseStripReserve : 0f;
-
-            var availTop = slotTop + pad + reserveAbove;
+            var availTop = slotTop + pad;
             var availBottom = Math.Max(availTop + 1f, slotBottom - pad);
 
             float barTop, barBottom;
@@ -1271,6 +1267,10 @@ public sealed class EventTimelineControl : Grid
                 DrawOperatorThreads(canvas, b);
             }
 
+            // Blocking operators: dim the consume phase, where the operator is consuming its input but
+            // not yet emitting rows upward (e.g. a hash build, a sort). The solid remainder is the emit.
+            DrawConsumeShade(canvas, b);
+
             if (b.LineWidth >= MinLabelBarHeight && b.EndX - b.StartX >= MinLabelBarWidth)
             {
                 DrawOperatorLabel(canvas, b.Op, b.StartX, b.EndX, b.BarCentreY, b.LineWidth, b.BarColour);
@@ -1278,10 +1278,6 @@ public sealed class EventTimelineControl : Grid
 
             _hitRegions.Add((new SKRect(b.StartX, b.SlotCentreY - b.SlotHeight / 2f, b.EndX,
                                         b.SlotCentreY + b.SlotHeight / 2f), b.Op, null));
-
-            // Build/probe phase bars sit in the reserved strip above the operator; add them last so
-            // they win hit-testing.
-            DrawOperatorPhases(canvas, b.Op, b.BarTop, b.BarColour);
         }
     }
 
@@ -1481,51 +1477,39 @@ public sealed class EventTimelineControl : Grid
     }
 
     /// <summary>
-    /// Draws the hash build/probe phases (when present) as thin half-opacity bars on two lanes just
-    /// above the operator: build (orange) on the upper lane, probe (operator colour lightened) on the
-    /// lower lane. They get their own lanes because the phases can overlap in time.
+    /// Dims the consume (build) phase of a blocking operator on its bar: the span where it is reading
+    /// its input but has not yet started emitting rows to its parent (a hash build, a sort's run
+    /// formation). The undimmed remainder of the bar is the emit phase. Streaming operators have no
+    /// consume phase and so are left fully solid.
     /// </summary>
-    private void DrawOperatorPhases(SKCanvas canvas, ExecutionOperatorEvent op, float barTop, SKColor barColour)
+    private void DrawConsumeShade(SKCanvas canvas, OperatorBar b)
     {
-        if (op.BuildPhaseDurationUs == 0 && op.ProbePhaseDurationUs == 0)
+        if (b.Op.BuildPhaseDurationUs <= 0)
         {
             return;
         }
 
-        var probeBottom = barTop - PhaseGapAboveBar;
-        var probeTop = probeBottom - PhaseLaneHeight;
-        var buildBottom = probeTop;
-        var buildTop = buildBottom - PhaseLaneHeight;
+        var consumeStartX = Math.Max(b.StartX, TimeToX(b.Op.BuildPhaseTimeUs / AxisUnitsPerMs));
+        var consumeEndX = Math.Min(b.EndX,
+            TimeToX((b.Op.BuildPhaseTimeUs + b.Op.BuildPhaseDurationUs) / AxisUnitsPerMs));
 
-        if (op.BuildPhaseDurationUs != 0)
+        if (consumeEndX <= consumeStartX)
         {
-            DrawPhaseBar(canvas, op, op.BuildPhaseTimeUs, op.BuildPhaseDurationUs, buildTop, buildBottom,
-                         PhaseBuildColour, "Build");
+            return;
         }
 
-        if (op.ProbePhaseDurationUs != 0)
-        {
-            DrawPhaseBar(canvas, op, op.ProbePhaseTimeUs, op.ProbePhaseDurationUs, probeTop, probeBottom,
-                         ColourScale(barColour, PhaseLighten), "Probe");
-        }
-    }
+        // Clip to the bar so the overlay respects its rounded corners.
+        canvas.Save();
+        canvas.ClipRoundRect(
+            new SKRoundRect(new SKRect(b.StartX, b.BarTop, b.EndX, b.BarBottom), b.CornerRadius, b.CornerRadius),
+            antialias: true);
 
-    private void DrawPhaseBar(SKCanvas canvas, ExecutionOperatorEvent op, long timeUs, long durationUs,
-                              float top, float bottom, SKColor colour, string label)
-    {
-        var x0 = TimeToX(timeUs / AxisUnitsPerMs);
-        var x1 = TimeToX((timeUs + durationUs) / AxisUnitsPerMs);
-        if (x1 < x0 + 1)
-        {
-            x1 = x0 + 1;
-        }
+        _markerPaint.Color = ConsumeShadeColour;
+        canvas.DrawRect(consumeStartX, b.BarTop, consumeEndX - consumeStartX, b.BarBottom - b.BarTop, _markerPaint);
 
-        var rect = new SKRect(x0, top, x1, bottom);
+        canvas.Restore();
 
-        _markerPaint.Color = colour.WithAlpha(PhaseAlpha);
-        canvas.DrawRect(rect, _markerPaint);
-
-        _hitRegions.Add((rect, op, label));
+        _hitRegions.Add((new SKRect(consumeStartX, b.BarTop, consumeEndX, b.BarBottom), b.Op, "Consuming"));
     }
 
     // The statement (SELECT) band is a fixed slim share, independent of cost.
@@ -1539,17 +1523,9 @@ public sealed class EventTimelineControl : Grid
     // RGB lift/drop for the subtle vertical sheen on operator bars (±14%).
     private const float GradientLift = 0.04f;
 
-    // Build/probe phase bars: thin lanes above the operator at half opacity. Build is a fixed orange;
-    // probe is the operator colour lightened.
-    private const float PhaseLaneHeight = 3f;
-    private const float PhaseGapAboveBar = 1f;
-
-    // Vertical space reserved above a phased operator's bar for the two phase lanes plus their gap.
-    private const float PhaseStripReserve = PhaseGapAboveBar + 2 * PhaseLaneHeight;
-
-    private const float PhaseLighten = 1.4f;
-    private const byte PhaseAlpha = 128;
-    private static readonly SKColor PhaseBuildColour = new(240, 150, 60);
+    // Translucent black overlay that dims the consume phase of a blocking operator (building/sorting
+    // but not yet emitting), so it reads as "started but not producing rows".
+    private static readonly SKColor ConsumeShadeColour = new(0, 0, 0, 115);
 
     // Gap between the bold type and the object name, as a fraction of the font size (scales with it).
     private const float OperatorLabelGapFraction = 0.5f;
