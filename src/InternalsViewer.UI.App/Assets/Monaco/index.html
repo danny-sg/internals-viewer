@@ -29,11 +29,11 @@
                 fontFamily: "'Cascadia Code', 'Consolas', monospace",
                 fontLigatures: true,
                 minimap: { enabled: false },
+                overviewRulerLanes: 0,
                 automaticLayout: true,
                 scrollBeyondLastLine: false,
                 wordWrap: 'off',
                 lineNumbers: 'on',
-                renderLineHighlight: 'gutter',
                 suggestOnTriggerCharacters: true,
                 quickSuggestions: true
             });
@@ -43,6 +43,16 @@
                 JSON.stringify({ type: 'contentChanged', value: editor.getValue() })
             );
         });
+
+        // F5 runs the query. Captured at the window (capture phase) so it fires wherever focus is in the
+        // page and preventDefault stops the WebView from reloading; the host handles the 'execute' message.
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'F5') {
+                e.preventDefault();
+                e.stopPropagation();
+                window.chrome.webview.postMessage(JSON.stringify({ type: 'execute' }));
+            }
+        }, true);
 
         window.setEditorValue = (val) => {
             if (editor.getValue() !== val) {

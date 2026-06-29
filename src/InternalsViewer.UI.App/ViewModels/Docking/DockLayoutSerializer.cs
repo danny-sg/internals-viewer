@@ -34,11 +34,14 @@ public static class DockLayoutSerializer
     {
         if (node is TabGroupNode group)
         {
+            // Transient documents (e.g. opened index tabs) are excluded from the saved layout.
+            var persisted = group.Documents.Where(d => d.Persist).Select(d => d.Key).ToList();
+
             return new DockNodeDto
             {
                 IsSplit = false,
-                Documents = group.Documents.Select(d => d.Key).ToList(),
-                Selected = group.SelectedDocument?.Key
+                Documents = persisted,
+                Selected = group.SelectedDocument is { Persist: true } sel ? sel.Key : persisted.FirstOrDefault()
             };
         }
 

@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Indexes;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.UI.App.Controls.Allocation;
+using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -43,6 +44,59 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(PageAddress?),
                                       typeof(IndexControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
+
+    /// <summary>
+    /// The set of pages selected as a range (e.g. every page read up to the timeline playhead). Drawn
+    /// in <see cref="RangeSelectedColour"/>, distinct from the single <see cref="SelectedPageAddress"/>.
+    /// </summary>
+    public IReadOnlyList<PageAddress> SelectedPageAddresses
+    {
+        get => (IReadOnlyList<PageAddress>)GetValue(SelectedPageAddressesProperty);
+        set => SetValue(SelectedPageAddressesProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedPageAddressesProperty
+        = DependencyProperty.Register(nameof(SelectedPageAddresses),
+                                      typeof(IReadOnlyList<PageAddress>),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
+
+    /// <summary>The colour used to outline the single selected page (<see cref="SelectedPageAddress"/>).</summary>
+    public Windows.UI.Color SingleSelectedColour
+    {
+        get => (Windows.UI.Color)GetValue(SingleSelectedColourProperty);
+        set => SetValue(SingleSelectedColourProperty, value);
+    }
+
+    public static readonly DependencyProperty SingleSelectedColourProperty
+        = DependencyProperty.Register(nameof(SingleSelectedColour),
+                                      typeof(Windows.UI.Color),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(Microsoft.UI.Colors.Navy, OnPropertyChanged));
+
+    public Windows.UI.Color SelectedBackgroundColour
+    {
+        get => (Windows.UI.Color)GetValue(SelectedBackgroundColourProperty);
+        set => SetValue(SelectedBackgroundColourProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedBackgroundColourProperty
+        = DependencyProperty.Register(nameof(SelectedBackgroundColour),
+            typeof(Windows.UI.Color),
+            typeof(IndexControl),
+            new PropertyMetadata(Microsoft.UI.Colors.White, OnPropertyChanged));
+
+    public Windows.UI.Color RangeSelectedColour
+    {
+        get => (Windows.UI.Color)GetValue(RangeSelectedColourProperty);
+        set => SetValue(RangeSelectedColourProperty, value);
+    }
+
+    public static readonly DependencyProperty RangeSelectedColourProperty
+        = DependencyProperty.Register(nameof(RangeSelectedColour),
+                                      typeof(Windows.UI.Color),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(Microsoft.UI.Colors.Navy, OnPropertyChanged));
 
     private IndexNode? HoverNode
     {
@@ -82,7 +136,7 @@ public sealed partial class IndexControl : IDisposable
 
     private float _zoom = 1f;
 
-    private const float ZoomMiniMode = 0.25f;
+    private const float ZoomMiniMode = 0.4f;
     private const float ZoomMaxiMode = 4f;
 
     private float PageWidth => 20 * _zoom;
@@ -111,11 +165,21 @@ public sealed partial class IndexControl : IDisposable
     private readonly SKFont _detailBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold), 10f);
 
     private readonly SKColor _borderColour = SKColors.Gray;
-    private readonly SKColor _selectedBorderColour = SKColors.Navy;
     private readonly SKColor _highlightedBorderColour = SKColors.Green;
 
-    private readonly SKColor _lineColour = SKColors.Gray;
-    private readonly SKColor _selectedLineColour = SKColors.Navy;
+    private readonly SKColor _lineColour = SKColors.DarkGray;
+    private readonly SKColor _miniColour = SKColors.LightGray;
+
+    // Resolved from the colour dependency properties once per paint (so the draw loop doesn't box/unbox
+    // the colour through GetValue per node).
+
+    private SKColor _selectedBackgroundColour = Microsoft.UI.Colors.White.ToSkColor();
+
+    private SKColor _singleSelectedColour = Microsoft.UI.Colors.Navy.ToSkColor();
+    private SKColor _rangeSelectedColour = Microsoft.UI.Colors.Navy.ToSkColor();
+
+    // The range selection as a set, rebuilt once per paint for O(1) membership tests in the draw loop.
+    private readonly HashSet<PageAddress> _rangeSet = [];
 
     private readonly List<IndexTreeNode> _nodePositions = [];
 
@@ -221,6 +285,19 @@ public sealed partial class IndexControl : IDisposable
 
         e.Surface.Canvas.Clear(SKColors.Transparent);
 
+        _selectedBackgroundColour = SelectedBackgroundColour.ToSKColor();
+        _singleSelectedColour = SingleSelectedColour.ToSkColor();
+        _rangeSelectedColour = RangeSelectedColour.ToSkColor();
+
+        _rangeSet.Clear();
+        if (SelectedPageAddresses is { } range)
+        {
+            foreach (var address in range)
+            {
+                _rangeSet.Add(address);
+            }
+        }
+
         //// Draw levels from the bottom up
         for (var i = _levelCount; i >= 0; i--)
         {
@@ -293,7 +370,11 @@ public sealed partial class IndexControl : IDisposable
     {
         var isFirstLevel = Nodes.Max(n => n.Level) == level;
 
-        var verticalNodeCount = isFirstLevel ? 10 : 1;
+        // Leaf pages stack this many rows per column before wrapping to the next column; higher = more
+        // rows and fewer (wider) columns.
+        const int leafPagesPerColumn = 20;
+
+        var verticalNodeCount = isFirstLevel ? leafPagesPerColumn : 1;
 
         var levelNodes = nodes.Where(n => n.Level == level).ToList();
 
@@ -411,8 +492,16 @@ public sealed partial class IndexControl : IDisposable
             {
                 var isHighlighted = highlightedAddresses.Contains(node.Node.PageAddress);
                 var isSelected = node.Node.PageAddress == selectedAddress;
+                var isRangeSelected = _rangeSet.Contains(node.Node.PageAddress);
 
-                DrawPage(canvas, renderX, renderY, isSelected, isHighlighted);
+                if (miniMode)
+                {
+                    DrawMiniPage(canvas, renderX, renderY, isSelected, isHighlighted, isRangeSelected);
+                }
+                else
+                {
+                    DrawPage(canvas, renderX, renderY, isSelected, isHighlighted, isRangeSelected);
+                }
 
                 if (maxiMode)
                 {
@@ -481,7 +570,7 @@ public sealed partial class IndexControl : IDisposable
         }
         else if (isSelected)
         {
-            _linePaint.Color = _selectedLineColour;
+            _linePaint.Color = _singleSelectedColour;
         }
         else
         {
@@ -537,34 +626,72 @@ public sealed partial class IndexControl : IDisposable
                           float x,
                           float y,
                           bool isSelected,
-                          bool isHighlighted)
+                          bool isHighlighted,
+                          bool isRangeSelected)
     {
         var indexPageRect = new SKRect(x, y, x + PageWidth, y + PageHeight);
 
+        if (isSelected || isRangeSelected)
+        {
+            // Draw selected background
+            _indexPagePaint.Style = SKPaintStyle.Fill;
+            _indexPagePaint.Color = _selectedBackgroundColour;
+
+            canvas.DrawRect(indexPageRect, _indexPagePaint);
+        }
+
         _indexPagePaint.Style = SKPaintStyle.Stroke;
 
+        // The single (active) page wins, then a hover highlight, then the range membership.
         if (isSelected)
         {
-            _indexPagePaint.Color = _selectedBorderColour;
+            _indexPagePaint.Color = _singleSelectedColour;
         }
         else if (isHighlighted)
         {
             _indexPagePaint.Color = _highlightedBorderColour;
+        }
+        else if (isRangeSelected)
+        {
+            _indexPagePaint.Color = _rangeSelectedColour;
         }
         else
         {
             _indexPagePaint.Color = _borderColour;
         }
 
-        if (_zoom < ZoomMiniMode)
+        _indexPagePaint.Style = SKPaintStyle.Stroke;
+        _indexPagePaint.StrokeWidth = 1f;
+
+        canvas.DrawRect(indexPageRect, _indexPagePaint);
+    }
+
+    private void DrawMiniPage(SKCanvas canvas,
+                              float x,
+                              float y,
+                              bool isSelected,
+                              bool isHighlighted,
+                              bool isRangeSelected)
+    {
+        var indexPageRect = new SKRect(x, y, x + PageWidth, y + PageHeight);
+
+        _indexPagePaint.Style = SKPaintStyle.Fill;
+
+        if (isSelected)
         {
-            _indexPagePaint.Style = SKPaintStyle.Fill;
-            _indexPagePaint.StrokeWidth =  1f;
+            _indexPagePaint.Color = _singleSelectedColour;
+        }
+        else if (isHighlighted)
+        {
+            _indexPagePaint.Color = _highlightedBorderColour;
+        }
+        else if (isRangeSelected)
+        {
+            _indexPagePaint.Color = _rangeSelectedColour;
         }
         else
         {
-            _indexPagePaint.Style = SKPaintStyle.Stroke;
-            _indexPagePaint.StrokeWidth = isSelected || isHighlighted ? 2f : 1f;
+            _indexPagePaint.Color = _miniColour;
         }
 
         canvas.DrawRect(indexPageRect, _indexPagePaint);

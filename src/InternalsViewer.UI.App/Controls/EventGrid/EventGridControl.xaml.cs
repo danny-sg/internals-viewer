@@ -8,7 +8,7 @@ using InternalsViewer.UI.App.Controls.Allocation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
-namespace InternalsViewer.UI.App.Controls.QueryReplay;
+namespace InternalsViewer.UI.App.Controls.EventGrid;
 
 public sealed partial class EventGridControl : UserControl
 {
@@ -87,9 +87,9 @@ public sealed partial class EventGridControl : UserControl
     private void RefreshRowHighlights()
     {
         foreach (var (row, ev) in _visibleRows)
+        {
             ApplyHighlight(row, ev);
-
-        ScrollToSequenceTo();
+        }
     }
 
     private void ApplyHighlight(DataGridRow row, EngineEvent ev)
@@ -102,30 +102,10 @@ public sealed partial class EventGridControl : UserControl
 
         row.Background = inScope ? InScopeBrush : null;
     }
-
-    private void ScrollToSequenceTo()
-    {
-        if (SequenceTo == 0 || Events is not { Count: > 0 })
-        {
-            return;
-        }
-
-        var target = Events.LastOrDefault(e => e.SequenceId <= SequenceTo);
-
-        if (target != null)
-        {
-            DataGrid.ScrollIntoView(target, null);
-        }
-    }
-
+    
     /// <summary>Selects and scrolls the grid to the given event, clearing the search filter if it hides it.</summary>
     public void NavigateToEvent(EngineEvent ev)
     {
-        if (ev is null)
-        {
-            return;
-        }
-
         if (SearchBox is { Text.Length: > 0 } box &&
             DataGrid.ItemsSource is IEnumerable<EngineEvent> source && !source.Contains(ev))
         {
@@ -172,8 +152,6 @@ public sealed partial class EventGridControl : UserControl
         }
 
         DataGrid.ItemsSource = ApplySort(result);
-
-        RefreshRowHighlights();
     }
 
     private static bool Matches(EngineEvent ev, string query) =>
@@ -183,8 +161,8 @@ public sealed partial class EventGridControl : UserControl
     private static string BuildSearchText(EngineEvent ev) => string.Join(" ",
         ev.Name,
         ev.Description,
-        ev.TimeMs,
-        ev.Duration,
+        ev.TimeUs,
+        ev.DurationUs,
         ev.PageAddress,
         ev.ObjectName,
         ev.SequenceId,
@@ -225,8 +203,8 @@ public sealed partial class EventGridControl : UserControl
         {
             "Event"       => Order(events, e => e.Name),
             "Type"        => Order(events, e => e.Description),
-            "TimeMs"      => Order(events, e => e.TimeMs),
-            "Duration"    => Order(events, e => e.Duration),
+            "TimeUs"      => Order(events, e => e.TimeUs),
+            "DurationUs"  => Order(events, e => e.DurationUs),
             "PageAddress" => Order(events, PageSortKey),
             "Object"      => Order(events, e => e.ObjectName),
             "SequenceId"  => Order(events, e => e.SequenceId),

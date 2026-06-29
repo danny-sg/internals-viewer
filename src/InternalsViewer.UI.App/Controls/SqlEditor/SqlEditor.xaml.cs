@@ -160,6 +160,12 @@ public sealed partial class SqlEditorControl : UserControl
         : (SolidColorBrush)Application.Current.Resources["TextFillColorPrimaryBrush"];
 
     private bool _editorReady;
+    private bool _initialized;
+
+    // Set while applying a change that originated in Monaco, so the resulting SqlText update isn't pushed
+    // straight back into the editor. Without this, Monaco normalising the text (e.g. line endings) makes
+    // the value differ on the round-trip and the editor/VM ping-pong between two states indefinitely.
+    private bool _applyingEditorChange;
 
     private StatementParser StatementParser { get; } = new();
 
@@ -192,6 +198,16 @@ public sealed partial class SqlEditorControl : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        // Re-hosting the editor (moving/re-docking its tab) raises Loaded again. Set the WebView up only
+        // once - re-navigating would reload Monaco and lose the text - and just restore the text instead.
+        if (_initialized)
+        {
+            PushSqlTextToEditor();
+            return;
+        }
+
+        _initialized = true;
+
         await WebView.EnsureCoreWebView2Async();
 
         WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
@@ -204,6 +220,19 @@ public sealed partial class SqlEditorControl : UserControl
             CoreWebView2HostResourceAccessKind.Allow);
 
         WebView.CoreWebView2.Navigate("http://monaco.local/index.html");
+    }
+
+    // Pushes the current SqlText into the Monaco editor (when it is ready).
+    private void PushSqlTextToEditor()
+    {
+        if (!_editorReady || _applyingEditorChange)
+        {
+            return;
+        }
+
+        var escaped = JsonSerializer.Serialize(SqlText ?? string.Empty);
+
+        _ = WebView.ExecuteScriptAsync($"window.setEditorValue({escaped})");
     }
 
     private async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -219,13 +248,27 @@ public sealed partial class SqlEditorControl : UserControl
                 case "ready":
                     _editorReady = true;
                     await PushSchemaToEditorAsync();
+                    PushSqlTextToEditor();
+                    break;
+
+                case "execute":
+                    HandleExecuteClick();
                     break;
 
                 case "contentChanged":
                     if (SqlText != msg.Value)
                     {
-                        SqlText = msg.Value ?? string.Empty;
-                        SqlTextChanged?.Invoke(this, SqlText);
+                        // The text already lives in Monaco - suppress the echo back so we don't fight it.
+                        _applyingEditorChange = true;
+                        try
+                        {
+                            SqlText = msg.Value ?? string.Empty;
+                            SqlTextChanged?.Invoke(this, SqlText);
+                        }
+                        finally
+                        {
+                            _applyingEditorChange = false;
+                        }
                     }
 
                     break;
@@ -261,17 +304,7 @@ public sealed partial class SqlEditorControl : UserControl
     }
 
     private static void OnSqlTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (SqlEditorControl)d;
-        var newValue = (string)(e.NewValue ?? string.Empty);
-
-        if (control._editorReady)
-        {
-            var escaped = JsonSerializer.Serialize(newValue);
-         
-            _ = control.WebView.ExecuteScriptAsync($"window.setEditorValue({escaped})");
-        }
-    }
+        => ((SqlEditorControl)d).PushSqlTextToEditor();
 
     private static void OnThemeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

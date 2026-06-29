@@ -221,7 +221,7 @@ internal class EventParser
             DatabaseId = e.GetDatabaseId(),
             UsedMemoryKb = e.GetLong("used_memory_kb") ?? 0,
             GrantedMemoryKb = e.GetLong("granted_memory_kb") ?? 0,
-            Duration = e.GetLong("duration") ?? 0
+            DurationUs = e.GetLong("duration") ?? 0
         };
     }
 
@@ -235,7 +235,7 @@ internal class EventParser
             Timestamp = e.Timestamp,
             DatabaseId = e.GetDatabaseId(),
             WaitType = waitType,
-            Duration = e.GetLong("duration") ?? 0
+            DurationUs = e.GetLong("duration") ?? 0
         };
     }
 
@@ -244,14 +244,14 @@ internal class EventParser
         var threadId = (e.GetInt("thread_id") ?? 0);
         var nodeId = (e.GetInt("node_id") ?? 0);
 
-        return new QueryThreadEvent()
+        return new QueryThreadEvent
         {
             Name = e.Name,
             Timestamp = e.Timestamp,
             DatabaseId = e.GetDatabaseId(),
             ThreadId = threadId,
             NodeId = nodeId,
-            Duration = e.GetLong("total_time_us") / 1000 ?? 0
+            DurationUs = e.GetLong("total_time_us") ?? 0
         };
     }
 

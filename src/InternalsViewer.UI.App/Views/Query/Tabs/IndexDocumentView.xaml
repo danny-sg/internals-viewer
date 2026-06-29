@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.IndexDocumentView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
+    mc:Ignorable="d">
+    <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+          VerticalAlignment="Stretch"
+          HorizontalAlignment="Stretch">
+
+        <!--Loading spinner shown until the index tree is built-->
+        <StackPanel Padding="10"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Visibility="{x:Bind ViewModel.IsInitialized,
+                            Mode=OneWay,
+                            Converter={StaticResource BoolToVisibilityConverter},
+                            ConverterParameter=True}">
+            <ProgressRing IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+            <TextBlock Margin="10,0,0,0">Loading...</TextBlock>
+        </StackPanel>
+
+        <index:IndexControl x:Name="IndexControl"
+                            Background="Transparent"
+                            Visibility="{x:Bind ViewModel.IsInitialized,
+                                            Mode=OneWay,
+                                            Converter={StaticResource BoolToVisibilityConverter}}"
+                            Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
+                            Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
+                            IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
+                            HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
+                            SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
+                            SelectedPageAddresses="{x:Bind ViewModel.SelectedPageAddresses, Mode=OneWay}"
+                            VerticalAlignment="Stretch"
+                            HorizontalAlignment="Stretch" />
+    </Grid>
+</UserControl>

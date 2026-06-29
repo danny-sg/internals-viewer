@@ -90,9 +90,9 @@ public static class EventPlanNodeMatcher
         var windows = BuildNodeWindows(events);
 
         var readWriteNode = plan.NodesById
-                         .Values
-                         .Where(n => OperatorClassifier.IsRead(n) || OperatorClassifier.IsDataModification(n))
-                         .ToList();
+                                .Values
+                                .Where(n => OperatorClassifier.IsRead(n) || OperatorClassifier.IsDataModification(n))
+                                .ToList();
 
         if (readWriteNode.Count == 0)
         {
@@ -276,7 +276,7 @@ public static class EventPlanNodeMatcher
 
     /// <summary>
     /// Builds an execution window per operator from its thread-profile events. The event timestamp
-    /// marks operator close; <see cref="EngineEvent.Duration"/> (elapsed time) brackets the start.
+    /// marks operator close; <see cref="EngineEvent.DurationUs"/> (elapsed time) brackets the start.
     /// Multiple events for one node (parallel threads) are merged into a single spanning window.
     /// </summary>
     private static Dictionary<int, NodeWindow> BuildNodeWindows(List<EngineEvent> events)
@@ -286,7 +286,7 @@ public static class EventPlanNodeMatcher
         foreach (var threadEvent in events.OfType<QueryThreadEvent>())
         {
             var end = threadEvent.Timestamp;
-            var start = end - TimeSpan.FromMilliseconds(Math.Max(0, threadEvent.Duration));
+            var start = end - TimeSpan.FromMicroseconds(Math.Max(0, threadEvent.DurationUs));
 
             if (windows.TryGetValue(threadEvent.NodeId, out var existing))
             {

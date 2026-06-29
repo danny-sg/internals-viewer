@@ -1,6 +1,7 @@
 ﻿using System.Drawing;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Plans;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace InternalsViewer.Query.Events.EventTypes;
 
@@ -14,9 +15,9 @@ public record EngineEvent
 
     public string Name { get; set; } = string.Empty;
 
-    public long TimeMs { get; set; }
+    public long TimeUs { get; set; }
 
-    public long Duration { get; set; }
+    public long DurationUs { get; set; }
 
     public PageAddress? PageAddress { get; set; }
 
@@ -24,13 +25,15 @@ public record EngineEvent
 
     public string ObjectName { get; set; } = string.Empty;
 
-    internal string SchemaName { get; set; } = string.Empty;
+    public string SchemaName { get; set; } = string.Empty;
 
-    internal string TableName { get; set; } = string.Empty;
+    public string TableName { get; set; } = string.Empty;
 
-    internal string IndexName { get; set; } = string.Empty;
+    public string IndexName { get; set; } = string.Empty;
 
     internal string PlanHandle { get; set; } = string.Empty;
+
+    public int ThreadId { get; set; }
 
     public virtual string Description => string.Empty;
 

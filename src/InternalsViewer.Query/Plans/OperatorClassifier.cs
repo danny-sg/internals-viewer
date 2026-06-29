@@ -1,7 +1,9 @@
-﻿using InternalsViewer.Query.Events.EventTypes;
-
 namespace InternalsViewer.Query.Plans;
 
+/// <summary>
+/// Classifies physical plan operators: what kind they are, how they consume their inputs (streaming vs
+/// blocking), and which child drives them. Pure plan-shape reasoning - no events or timing.
+/// </summary>
 public static class OperatorClassifier
 {
     public static bool IsHash(PlanNode n) =>
@@ -61,8 +63,25 @@ public static class OperatorClassifier
     public static bool IsLeaf(PlanNode n) =>
         IsScan(n) || IsSeek(n) || IsLookup(n);
 
+    // A partial (local) aggregate sits below an exchange and aggregates each thread's stream into a
+    // bounded hash table, flushing as it fills - so, unlike a full aggregate, it does not block.
+    public static bool IsPartialAggregate(PlanNode n) =>
+        Contains(n.LogicalOperator, "Partial");
+
+    // A full hash aggregate consumes all input before producing groups (the non-blocking partial
+    // aggregate, which shares the "Hash Match" physical operator, is excluded).
+    public static bool IsHashAggregate(PlanNode n) =>
+        IsHash(n) && Contains(n.LogicalOperator, "Aggregate") && !IsPartialAggregate(n);
+
+    // An eager spool materialises its whole input before emitting; a lazy spool streams.
+    public static bool IsEagerSpool(PlanNode n) =>
+        IsSpool(n) && Contains(n.LogicalOperator, "Eager");
+
+    // Blocking operators must consume all input before producing output. This excludes the hybrid hash
+    // join (handled per-input by RoleOf) and the non-blocking partial aggregate, flow distinct and lazy
+    // spool, which all stream.
     public static bool IsBlocking(PlanNode n) =>
-        IsHash(n) || IsSort(n) || IsSpool(n);
+        IsSort(n) || IsHashAggregate(n) || IsEagerSpool(n);
 
     public static bool IsStreaming(PlanNode n) =>
         !IsBlocking(n);
@@ -75,6 +94,48 @@ public static class OperatorClassifier
 
     public static bool IsLoopDriven(PlanNode n) =>
         IsNestedLoop(n);
+
+    // A hash JOIN has two inputs (build is blocking, probe streams); a hash AGGREGATE shares the "Hash
+    // Match" physical operator but has a single, blocking input - so the child count distinguishes them.
+    public static bool IsHashJoin(PlanNode n) =>
+        IsHash(n) && n.Children.Count >= 2;
+
+    /// <summary>How <paramref name="parent"/> consumes the given <paramref name="child"/> input.</summary>
+    public static InputRole RoleOf(PlanNode parent, PlanNode child)
+    {
+        // Hash join: the build side is blocking, the probe side streams.
+        if (IsHashJoin(parent))
+        {
+            return child == GetHashBuildChild(parent) ? InputRole.Blocking : InputRole.Streaming;
+        }
+
+        // Single-input blocking operators (sort, hash aggregate, eager spool) consume all input first.
+        if (IsBlocking(parent))
+        {
+            return InputRole.Blocking;
+        }
+
+        return InputRole.Streaming;
+    }
+
+    /// <summary>
+    /// The child that drives the operator's start - the build side of a hash join, the outer side of a
+    /// nested loop - or <c>null</c> when the operator simply opens with its earliest child.
+    /// </summary>
+    public static PlanNode? DrivingChild(PlanNode n)
+    {
+        if (IsHashJoin(n))
+        {
+            return GetHashBuildChild(n);
+        }
+
+        if (IsNestedLoop(n))
+        {
+            return GetOuterChild(n);
+        }
+
+        return null;
+    }
 
     public static PlanNode? GetOuterChild(PlanNode n)
     {
@@ -94,72 +155,6 @@ public static class OperatorClassifier
         }
 
         return n.Children[1];
-    }
-
-    public static long InferStartTime(PlanNode node, 
-                                      string planHandle,
-                                      List<EngineEvent> events, 
-                                      Func<PlanNode, long> getStart)
-    {
-        var identifier = new PlanNodeIdentifier
-        {
-            NodeId = node.NodeId,
-            PlanHandle = planHandle
-        };
-
-        // 1. Hash → build child
-        if (IsHash(node))
-        {
-            var build = GetHashBuildChild(node);
-
-            if (build != null)
-            {
-                return getStart(build);
-            }
-        }
-
-        // 2. Nested loop → outer child
-        if (IsNestedLoop(node))
-        {
-            var outer = GetOuterChild(node);
-
-            if (outer != null)
-            {
-                return getStart(outer);
-            }
-        }
-
-        if (IsLeaf(node))
-        {
-            var io = NodeEventHelper.GetFirstIoTime(events, identifier);
-          
-            if (io.HasValue)
-            {
-                return io.Value;
-            }
-
-            var activity = NodeEventHelper.GetFirstActivityTime(events, identifier);
-
-            if (activity.HasValue)
-            {
-                return activity.Value;
-            }
-        }
-
-        var firstActivity = NodeEventHelper.GetFirstActivityTime(events, identifier);
-
-        // 4. Streaming → earliest child
-        if (node.Children.Count > 0)
-        {
-            var firstChild = node.Children
-                .Select(getStart)
-                .Min();
-
-            return Math.Min(firstChild, firstActivity ?? long.MaxValue);
-        }
-
-        // 5. Fallback → activity
-        return firstActivity ?? 0;
     }
 
     public static OperatorCategory GetCategory(PlanNode n)
@@ -260,130 +255,46 @@ public static class OperatorClassifier
         return OperatorKind.Unknown;
     }
 
-    public static long InferEndTime(PlanNode node,
-                                    string planHandle,
-                                    List<EngineEvent> events,
-                                    Func<PlanNode, long> getEnd)
+    public static PlanNode? GetHashBuildChild(PlanNode hash)
     {
-        var identifier = new PlanNodeIdentifier
-        {
-            NodeId = node.NodeId,
-            PlanHandle = planHandle
-        };
-
-        if (IsLeaf(node))
-        {
-            var lastIo = NodeEventHelper.GetLastIoTime(events, identifier);
-
-            var close = NodeEventHelper.GetLastActivityTime(events, identifier);
-
-            if (lastIo.HasValue)
-            {
-                return close.HasValue ? Math.Min(lastIo.Value, close.Value) : lastIo.Value;
-            }
-
-            return close ?? 1;
-        }
-
-        if (IsDataModification(node))
-        {
-            long lastChild = 1;
-
-            if (node.Children.Count > 0)
-            {
-                lastChild = node.Children
-                                .Select(getEnd)
-                                .Max();
-            }
-
-            var lastActivityTime = NodeEventHelper.GetLastActivityTime(events) ?? 1;
-
-            return Math.Max(lastChild, lastActivityTime);
-        }
-
-        long end = 0;
-
-        var lastActivityNonLeaf = NodeEventHelper.GetLastActivityTime(events, identifier);
-
-        if (lastActivityNonLeaf.HasValue)
-        {
-            end = Math.Max(end, lastActivityNonLeaf.Value);
-        }
-
-        var lastIoNonLeaf = NodeEventHelper.GetLastIoTime(events, identifier);
-
-        if (lastIoNonLeaf.HasValue)
-        {
-            end = Math.Max(end, lastIoNonLeaf.Value);
-        }
-
-        foreach (var child in node.Children)
-        {
-            var childEnd = getEnd(child);
-            end = Math.Max(end, childEnd);
-        }
-
-        if (end == 0 && node.Children.Count > 0)
-        {
-            end = node.Children.Max(getEnd);
-        }
-
-        return end;
-    }
-
-    private static long? MinNullable(long? a, long? b) =>
-        a.HasValue ? (b.HasValue ? Math.Min(a.Value, b.Value) : a) : b;
-
-    private static long? MaxNullable(long? a, long? b) =>
-        a.HasValue ? (b.HasValue ? Math.Max(a.Value, b.Value) : a) : b;
-
-    private static bool Contains(string s, string v) =>
-        s?.IndexOf(v, StringComparison.OrdinalIgnoreCase) >= 0;
-
-    private static bool EqualsOp(string s, string v) =>
-        string.Equals(s?.Trim(), v, StringComparison.OrdinalIgnoreCase);
-
-    public static PlanNode? GetHashBuildChild(PlanNode? hash)
-    {
-        if (hash == null || hash.Children.Count < 2)
+        if (hash.Children.Count < 2)
         {
             return null;
         }
 
-        if (hash.HashInfo != null && hash.HashInfo.BuildKeys.Any())
+        if (hash.HashInfo is { BuildKeys.Count: > 0 })
         {
             var buildTables = hash.HashInfo
                                   .BuildKeys
                                   .Select(k => k.TableKey)
+                                  .Where(t => !string.IsNullOrEmpty(t))
                                   .ToHashSet();
 
-            var bestMatch = FindBestMatchingChild(hash.Children, buildTables);
+            var match = FindBestMatchingChild(hash.Children, buildTables);
 
-            if (bestMatch != null)
+            if (match != null)
             {
-                return bestMatch;
+                return match;
             }
         }
 
-        return hash.Children
-                   .OrderBy(c => c.EstimatedRows)
-                   .First();
+        // Fallback to the table with the lowest estimated rows (the build side is usually the smaller).
+        var byEstimate = hash.Children
+                             .Where(c => c.EstimatedRows > 0)
+                             .OrderBy(c => c.EstimatedRows)
+                             .FirstOrDefault();
+
+        return byEstimate ?? hash.Children.First();
     }
 
-
-    public static PlanNode? GetHashProbeChild(PlanNode? hash)
+    public static PlanNode? GetHashProbeChild(PlanNode hash)
     {
-        if (hash == null || hash.Children.Count < 2)
+        if (hash.Children.Count < 2)
         {
             return null;
         }
 
         var build = GetHashBuildChild(hash);
-
-        if (build == null)
-        {
-            return null;
-        }
 
         return hash.Children.FirstOrDefault(c => c != build);
     }
@@ -396,6 +307,11 @@ public static class OperatorClassifier
 
         foreach (var child in children)
         {
+            if (child.Outputs.Count == 0)
+            {
+                continue;
+            }
+
             var score = child.Outputs.Count(targetTables.Contains);
 
             if (score > bestScore)
@@ -407,4 +323,10 @@ public static class OperatorClassifier
 
         return bestScore > 0 ? best : null;
     }
+
+    private static bool Contains(string s, string v) =>
+        s?.IndexOf(v, StringComparison.OrdinalIgnoreCase) >= 0;
+
+    private static bool EqualsOp(string s, string v) =>
+        string.Equals(s?.Trim(), v, StringComparison.OrdinalIgnoreCase);
 }

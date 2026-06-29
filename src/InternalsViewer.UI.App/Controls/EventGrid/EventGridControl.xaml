@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.Controls.QueryReplay.EventGridControl"
+    x:Class="InternalsViewer.UI.App.Controls.EventGrid.EventGridControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -37,7 +37,7 @@
                 <toolkit:DataGridTemplateColumn Header="Event" Tag="Event">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind Name, Mode=OneWay}"
+                            <TextBlock Text="{x:Bind Name, Mode=OneTime}"
                                        Margin="4,0"
                                        VerticalAlignment="Center"/>
                         </DataTemplate>
@@ -47,17 +47,17 @@
                 <toolkit:DataGridTemplateColumn Header="Type" Tag="Type">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind Description, Mode=OneWay}"
+                            <TextBlock Text="{x:Bind Description, Mode=OneTime}"
                                        Margin="4,0"
                                        VerticalAlignment="Center"/>
                         </DataTemplate>
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Time (ms)" Tag="TimeMs">
+                <toolkit:DataGridTemplateColumn Header="Time (µs)" Tag="TimeUs">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind TimeMs, Mode=OneWay}"
+                            <TextBlock Text="{x:Bind TimeUs, Mode=OneTime}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
                                        VerticalAlignment="Center"/>
@@ -65,10 +65,10 @@
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Duration (ms)" Tag="Duration">
+                <toolkit:DataGridTemplateColumn Header="Duration (µs)" Tag="DurationUs">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind Duration, Mode=OneWay}"
+                            <TextBlock Text="{x:Bind DurationUs, Mode=OneTime}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
                                        VerticalAlignment="Center"/>
@@ -80,7 +80,7 @@
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
                             <Grid>
-                                <HyperlinkButton Content="{x:Bind PageAddress, Mode=OneWay}"
+                                <HyperlinkButton Content="{x:Bind PageAddress, Mode=OneTime}"
                                                  Style="{StaticResource PageAddressStyle}"
                                                  Tag="{x:Bind PageAddress}"
                                                  Click="HyperlinkButton_Click"/>
@@ -92,28 +92,7 @@
                 <toolkit:DataGridTemplateColumn Header="Object" Tag="Object">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind ObjectName, Mode=OneWay}"
-                                       Margin="4,0"
-                                       VerticalAlignment="Center"/>
-                        </DataTemplate>
-                    </toolkit:DataGridTemplateColumn.CellTemplate>
-                </toolkit:DataGridTemplateColumn>
-
-                <toolkit:DataGridTemplateColumn Header="Sequence Id" Tag="SequenceId">
-                    <toolkit:DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind SequenceId, Mode=OneWay}"
-                                       Margin="4,0"
-                                       VerticalAlignment="Center"/>
-                        </DataTemplate>
-                    </toolkit:DataGridTemplateColumn.CellTemplate>
-                </toolkit:DataGridTemplateColumn>
-
-
-                <toolkit:DataGridTemplateColumn Header="Node Id" Tag="NodeId">
-                    <toolkit:DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind PlanNodeIdentifier, Mode=OneWay}"
+                            <TextBlock Text="{x:Bind ObjectName, Mode=OneTime}"
                                        Margin="4,0"
                                        VerticalAlignment="Center"/>
                         </DataTemplate>

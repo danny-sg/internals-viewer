@@ -97,6 +97,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private PageAddress? _selectedPageAddress;
 
+    /// <summary>Pages selected as a range (e.g. every page read up to the timeline playhead).</summary>
+    [ObservableProperty]
+    private IReadOnlyList<PageAddress> _selectedPageAddresses = [];
+
     [ObservableProperty]
     private PageAddress? _selectedNextPage;
 

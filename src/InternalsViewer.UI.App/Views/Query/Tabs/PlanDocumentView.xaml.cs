@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
@@ -89,8 +90,14 @@ public sealed partial class PlanDocumentView : UserControl
         {
             planControl.ActiveNode = viewModel.ActivePlanNode;
             planControl.IsPlaying = viewModel.IsTimelinePlaying;
+
+            // ItemsRepeater recycles elements, so guard against subscribing the same control twice.
+            planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;
+            planControl.IndexOpenRequested += OnPlanIndexOpenRequested;
         }
     }
+
+    private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);
 
     private void ApplyToPlans(Action<ExecutionPlanControl> apply)
     {

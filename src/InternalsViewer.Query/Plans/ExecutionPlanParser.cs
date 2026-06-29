@@ -1,6 +1,4 @@
-﻿using System.Timers;
 using System.Xml.Linq;
-using InternalsViewer.Query.Events.EventTypes;
 
 namespace InternalsViewer.Query.Plans;
 
@@ -46,7 +44,7 @@ public static class ExecutionPlanParser
             : GetStringAttribute(statementElement, "StatementType");
 
         var subtreeCost = (statementElement is null
-                           ? null 
+                           ? null
                            : GetDoubleAttribute(statementElement, "StatementSubTreeCost"))
                           ?? rootRelOps.Sum(r => r.EstimatedCost ?? 0);
 
@@ -83,6 +81,8 @@ public static class ExecutionPlanParser
         };
 
         node.EstimatedCost = GetDoubleAttribute(element, "EstimatedTotalSubtreeCost");
+
+        node.CountersByThread = ExtractThreadCounters(element);
 
         ExtractObjectInfo(element, node);
 
@@ -124,9 +124,41 @@ public static class ExecutionPlanParser
             );
     }
 
+    /// <summary>
+    /// Per-thread run-time counters for this operator, keyed by thread id, from its
+    /// <c>RunTimeCountersPerThread</c> entries: rows processed (<c>ActualRowsRead</c>, else
+    /// <c>ActualRows</c>) and wall-clock elapsed (<c>ActualElapsedms</c>). Empty when the plan has no
+    /// run-time information. Counters are a direct child of this RelOp, so children are not included.
+    /// </summary>
+    private static Dictionary<int, ThreadRuntime> ExtractThreadCounters(XElement relOp)
+    {
+        var counters = new Dictionary<int, ThreadRuntime>();
+
+        var runtime = relOp.Elements().FirstOrDefault(e => e.Name.LocalName == "RunTimeInformation");
+
+        if (runtime == null)
+        {
+            return counters;
+        }
+
+        foreach (var counter in runtime.Elements().Where(e => e.Name.LocalName == "RunTimeCountersPerThread"))
+        {
+            var thread = GetIntAttribute(counter, "Thread");
+            var read = GetLongAttribute(counter, "ActualRowsRead") ?? 0;
+            var output = GetLongAttribute(counter, "ActualRows") ?? 0;
+            var elapsedMs = GetDoubleAttribute(counter, "ActualElapsedms") ?? 0;
+
+            counters[thread] = new ThreadRuntime(read > 0 ? read : output, (long)(elapsedMs * 1000));
+        }
+
+        return counters;
+    }
 
     private static int GetIntAttribute(XElement e, string name)
         => (int?)e.Attribute(name) ?? 0;
+
+    private static long? GetLongAttribute(XElement e, string name)
+        => (long?)e.Attribute(name);
 
     private static string GetStringAttribute(XElement e, string name)
         => (string?)e.Attribute(name) ?? string.Empty;
@@ -154,113 +186,6 @@ public static class ExecutionPlanParser
     {
         return ((string?)element.Attribute(attributeName))?.Trim('[', ']');
     }
-
-    public static void MergePlanEvents(List<EngineEvent> events, List<ExecutionPlan> executionPlans)
-    {
-        if (executionPlans.Count == 0)
-        {
-            return;
-        }
-
-        var operatorEvents = new List<ExecutionOperatorEvent>();
-
-        foreach (var plan in executionPlans)
-        {
-            var timingCache = new NodeTiming(events, plan);
-
-            timingCache.Build();
-
-            var nodes = plan.NodesById.Values;
-
-            var offset = 1;
-
-            foreach (var node in nodes)
-            {
-                var startTime = timingCache.GetStartTime(node);
-                var endTime = timingCache.GetEndTime(node);
-
-                var operatorEvent = ToPlanEvent(plan.PlanHandle, node, node.NodeLevel, timingCache);
-
-                var nearestSequenceId = events.LastOrDefault(e => e.TimeMs < startTime)?.SequenceId ?? 0;
-
-                operatorEvent = operatorEvent with
-                {
-                    TimeMs = startTime,
-                    Duration = Math.Max(endTime - startTime, 1),
-                    PlanHandle = plan.PlanHandle,
-                    SequenceId = nearestSequenceId - offset,
-                };
-
-                offset++;
-
-                operatorEvents.Add(operatorEvent);
-            }
-        }
-
-        events.AddRange(operatorEvents);
-
-        ComputeHashPhases(operatorEvents, executionPlans);
-    }
-
-    private static void ComputeHashPhases(List<ExecutionOperatorEvent> operatorEvents,
-                                          List<ExecutionPlan> executionPlans)
-    {
-        var execByNodeId = operatorEvents
-            .Where(e => e.PlanNodeIdentifier != null)
-            .ToDictionary(e => e.PlanNodeIdentifier!.NodeId);
-
-        foreach (var plan in executionPlans)
-        {
-            foreach (var node in plan.NodesById.Values)
-            {
-                if (!IsHash(node))
-                    continue;
-
-                var current = execByNodeId[node.NodeId];
-
-                var buildNode = GetHashBuildChild(node);
-                var probeNode = GetHashProbeChild(node);
-
-                if (buildNode == null || probeNode == null)
-                    continue;
-
-                var buildExec = execByNodeId[buildNode.NodeId];
-                var probeExec = execByNodeId[probeNode.NodeId];
-
-                var currentEnd = GetEnd(current);
-                var buildEnd = GetEnd(buildExec);
-
-                var buildStart = GetFirstOutputTime(buildNode, buildExec);
-                var probeStart = GetFirstOutputTime(probeNode, probeExec);
-
-                current.BuildPhaseTimeMs = buildStart;
-                current.ProbePhaseTimeMs = probeStart;
-
-                var buildEndTime = Math.Min(
-                    probeStart > 0 ? probeStart : currentEnd,
-                    buildEnd
-                );
-
-                buildEndTime = Math.Max(buildEndTime, buildStart);
-
-                var probeEndTime = currentEnd;
-
-                probeEndTime = Math.Max(probeEndTime, probeStart);
-
-                current.BuildPhaseDuration =
-                    buildEndTime - buildStart;
-
-                current.ProbePhaseDuration =
-                    probeEndTime - probeStart;
-            }
-        }
-    }
-
-    private static long GetEnd(ExecutionOperatorEvent e)
-    {
-        return e.TimeMs + e.Duration;
-    }
-
 
     private static HashInfo ParseHashInfo(XElement hashElement)
     {
@@ -296,56 +221,6 @@ public static class ExecutionPlanParser
             .ToList();
     }
 
-    private static ExecutionOperatorEvent ToPlanEvent(string planHandle,
-                                                      PlanNode node,
-                                                      int nodeLevel,
-                                                      NodeTiming timing)
-    {
-        // The operator's own cost: its subtree cost less the subtree cost of its immediate children,
-        // so a parent doesn't double-count the work of the operators feeding it (matches the plan
-        // view's per-node cost). Clamped at zero to guard against rounding.
-        double? ownCost = null;
-        if (node.EstimatedCost is { } subtree)
-        {
-            var childCost = node.Children.Sum(c => c.EstimatedCost ?? 0);
-            ownCost = Math.Max(0, subtree - childCost);
-        }
-
-        var planEvent = new ExecutionOperatorEvent
-        {
-            Name = node.PhysicalOperator,
-            Category = OperatorClassifier.GetCategory(node),
-            PlanHandle = planHandle,
-            NodeLevel = nodeLevel,
-            Cost = ownCost,
-            PlanNodeIdentifier = new PlanNodeIdentifier
-            {
-                NodeId = node.NodeId,
-                PlanHandle = planHandle
-            },
-            TimeMs = timing.GetStartTime(node),
-            Duration = timing.GetEndTime(node) - timing.GetStartTime(node),
-            ObjectName = GetNodeObjectName(node)
-        };
-
-        return planEvent;
-    }
-
-    private static string GetNodeObjectName(PlanNode node)
-    {
-        if (string.IsNullOrEmpty(node.Schema))
-        {
-            return string.Empty;
-        }
-
-        if (string.IsNullOrEmpty(node.Index))
-        {
-            return $"{node.Schema}.{node.Table}";
-        }
-
-        return $"{node.Schema}.{node.Table}.{node.Index}";
-    }
-
     public static HashSet<string> ExtractTables(XElement nodeElement)
     {
         return nodeElement
@@ -354,106 +229,5 @@ public static class ExecutionPlanParser
             .Where(t => !string.IsNullOrEmpty(t))
             .Select(t => t.ToLowerInvariant())
             .ToHashSet();
-    }
-
-    public static bool IsHash(PlanNode node)
-    {
-        if (string.IsNullOrEmpty(node.PhysicalOperator))
-            return false;
-
-        return node.PhysicalOperator.Equals("Hash Match",
-                                            StringComparison.OrdinalIgnoreCase);
-    }
-
-
-    private static long GetFirstOutputTime(PlanNode node, ExecutionOperatorEvent exec)
-    {
-        if (IsHash(node))
-        {
-            // Hash join produces rows during probe phase
-            return exec.ProbePhaseTimeMs > 0 ? exec.ProbePhaseTimeMs : exec.TimeMs;
-        }
-
-        // Default: assume streaming
-        return exec.TimeMs;
-    }
-
-
-    public static PlanNode? GetHashBuildChild(PlanNode hash)
-    {
-        if (hash.Children.Count < 2)
-        {
-            return null;
-        }
-
-        if (hash.HashInfo is { BuildKeys.Count: > 0 })
-        {
-            var buildTables = hash.HashInfo
-                                  .BuildKeys
-                                  .Select(k => k.TableKey)
-                                  .Where(t => !string.IsNullOrEmpty(t))
-                                  .ToHashSet();
-
-            var match = FindBestMatchingChild(hash.Children, buildTables);
-
-            if (match != null)
-            {
-                return match;
-            }
-        }
-
-        // Fallback to table with the lowest estimated rows (if available)
-        var byEstimate = hash.Children
-                             .Where(c => c.EstimatedRows > 0)
-                             .OrderBy(c => c.EstimatedRows)
-                             .FirstOrDefault();
-
-        if (byEstimate != null)
-        {
-            return byEstimate;
-        }
-
-        // Fallback to the first child if no better match is found
-        return hash.Children.First();
-    }
-
-    public static PlanNode? GetHashProbeChild(PlanNode hash)
-    {
-        if (hash.Children.Count < 2)
-        {
-            return null;
-        }
-
-        var build = GetHashBuildChild(hash);
-
-        return hash.Children.FirstOrDefault(c => c != build);
-    }
-
-
-    private static PlanNode? FindBestMatchingChild(List<PlanNode> children,
-                                                   HashSet<string> targetTables)
-    {
-        PlanNode? best = null;
-
-        var bestScore = 0;
-
-        foreach (var child in children)
-        {
-            if (child.Outputs.Count == 0)
-            {
-                continue;
-            }
-
-            var score = child.Outputs
-                .Count(targetTables.Contains);
-
-            if (score > bestScore)
-            {
-                bestScore = score;
-                best = child;
-            }
-        }
-
-        return bestScore > 0 ? best : null;
     }
 }

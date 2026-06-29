@@ -15,10 +15,11 @@ public sealed partial class QueryView : Page
 
         DataContextChanged += OnDataContextChanged;
 
-        EventTimeline.SequenceChanged += OnSequenceChanged;
-        EventTimeline.PlayheadChanged += OnPlayheadChanged;
+        EventTimeline.ScopeChanged += OnScopeChanged;
+        EventTimeline.PlayheadTimeChanged += OnPlayheadTimeChanged;
         EventTimeline.PlanNodeSelected += OnTimelinePlanNodeSelected;
         EventTimeline.EventSelected += OnTimelineEventSelected;
+        EventTimeline.IndexOpenRequested += OnTimelineIndexOpenRequested;
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
         Unloaded += OnUnloaded;
@@ -49,15 +50,14 @@ public sealed partial class QueryView : Page
         }
     }
 
-    private void OnSequenceChanged(long sequenceFrom, long sequenceTo)
+    private void OnScopeChanged(long fromUs, long toUs)
     {
-        ViewModel.SequenceFrom = sequenceFrom;
-        ViewModel.SequenceTo = sequenceTo;
+        ViewModel.SetScope(fromUs, toUs);
     }
 
-    private void OnPlayheadChanged(long playheadSequence)
+    private void OnPlayheadTimeChanged(long timeUs)
     {
-        ViewModel.PlayheadSequence = playheadSequence;
+        ViewModel.SetPlayheadTime(timeUs);
     }
 
     private void OnTimelinePlanNodeSelected(PlanNodeIdentifier identifier)
@@ -68,5 +68,10 @@ public sealed partial class QueryView : Page
     private void OnTimelineEventSelected(EngineEvent engineEvent)
     {
         ViewModel.NavigateToEvent(engineEvent);
+    }
+
+    private void OnTimelineIndexOpenRequested(ExecutionOperatorEvent op)
+    {
+        ViewModel.OpenIndex(op);
     }
 }

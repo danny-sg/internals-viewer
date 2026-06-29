@@ -67,7 +67,7 @@ public class EventPlanNodeMatcherTests
             PlanHandle = PlanHandle,
             NodeId = 2,
             Timestamp = start.AddMilliseconds(10),
-            Duration = 10
+            DurationUs = 10_000
         };
 
         var profileNode5 = new QueryThreadEvent
@@ -76,7 +76,7 @@ public class EventPlanNodeMatcherTests
             PlanHandle = PlanHandle,
             NodeId = 5,
             Timestamp = start.AddMilliseconds(30),
-            Duration = 10
+            DurationUs = 10_000
         };
 
         // A read that lands inside node 5's window [20ms, 30ms].
