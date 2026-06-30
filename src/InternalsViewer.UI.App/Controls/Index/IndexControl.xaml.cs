@@ -45,10 +45,6 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
-    /// <summary>
-    /// The set of pages selected as a range (e.g. every page read up to the timeline playhead). Drawn
-    /// in <see cref="RangeSelectedColour"/>, distinct from the single <see cref="SelectedPageAddress"/>.
-    /// </summary>
     public IReadOnlyList<PageAddress> SelectedPageAddresses
     {
         get => (IReadOnlyList<PageAddress>)GetValue(SelectedPageAddressesProperty);
@@ -61,7 +57,6 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
-    /// <summary>The colour used to outline the single selected page (<see cref="SelectedPageAddress"/>).</summary>
     public Windows.UI.Color SingleSelectedColour
     {
         get => (Windows.UI.Color)GetValue(SingleSelectedColourProperty);
@@ -290,6 +285,7 @@ public sealed partial class IndexControl : IDisposable
         _rangeSelectedColour = RangeSelectedColour.ToSkColor();
 
         _rangeSet.Clear();
+
         if (SelectedPageAddresses is { } range)
         {
             foreach (var address in range)
@@ -298,7 +294,7 @@ public sealed partial class IndexControl : IDisposable
             }
         }
 
-        //// Draw levels from the bottom up
+        // Draw levels from the bottom up
         for (var i = _levelCount; i >= 0; i--)
         {
             DrawTreeLevel(i, e.Surface.Canvas);
@@ -330,7 +326,6 @@ public sealed partial class IndexControl : IDisposable
 
         _levelCount = Nodes.Max(n => n.Level);
 
-        // Address -> ordinal lookup so DrawLines can resolve parents in O(1) rather than scanning.
         foreach (var node in Nodes)
         {
             _ordinalByAddress[node.PageAddress] = node.Ordinal;
@@ -341,7 +336,6 @@ public sealed partial class IndexControl : IDisposable
             BuildIndexTreeLevel(i, Nodes);
         }
 
-        // Group positions by level and record per-level / global extents once for the paint loop.
         foreach (var treeNode in _nodePositions)
         {
             var level = treeNode.Node.Level;
@@ -370,8 +364,8 @@ public sealed partial class IndexControl : IDisposable
     {
         var isFirstLevel = Nodes.Max(n => n.Level) == level;
 
-        // Leaf pages stack this many rows per column before wrapping to the next column; higher = more
-        // rows and fewer (wider) columns.
+        // Leaf pages stack this many rows per column before wrapping to the next column; higher = more rows and fewer
+        // (wider) columns.
         const int leafPagesPerColumn = 20;
 
         var verticalNodeCount = isFirstLevel ? leafPagesPerColumn : 1;
@@ -477,7 +471,6 @@ public sealed partial class IndexControl : IDisposable
         var selectedAddress = SelectedPageAddress;
         var highlightedAddresses = HighlightedPageAddresses;
 
-        var showDetail = _zoom > 0.5;
         var miniMode = _zoom < ZoomMiniMode;
         var maxiMode = _zoom > ZoomMaxiMode;
 
@@ -501,31 +494,31 @@ public sealed partial class IndexControl : IDisposable
                 else
                 {
                     DrawPage(canvas, renderX, renderY, isSelected, isHighlighted, isRangeSelected);
-                }
 
-                if (maxiMode)
-                {
-                    var headerHeight = DrawFullPageDetail(canvas, node.Node, renderX, renderY);
-
-                    if (node.Node is { PageType: PageType.Data })
+                    if (!maxiMode)
                     {
-                        DrawPageDataDetail(canvas, renderX, renderY, headerHeight);
+                        if (node.Node is { PageType: PageType.Data })
+                        {
+                            DrawPageDataDetail(canvas, renderX, renderY);
+
+                        }
+                        else
+                        {
+                            DrawPageIndexDetail(canvas, renderX, renderY);
+                        }
                     }
                     else
                     {
-                        DrawPageIndexDetail(canvas, renderX, renderY, headerHeight);
-                    }
-                }
-                else if (showDetail)
-                {
-                    if (node.Node is { PageType: PageType.Data })
-                    {
-                        DrawPageDataDetail(canvas, renderX, renderY);
+                        var headerHeight = DrawFullPageDetail(canvas, node.Node, renderX, renderY);
 
-                    }
-                    else
-                    {
-                        DrawPageIndexDetail(canvas, renderX, renderY);
+                        if (node.Node is { PageType: PageType.Data })
+                        {
+                            DrawPageDataDetail(canvas, renderX, renderY, headerHeight);
+                        }
+                        else
+                        {
+                            DrawPageIndexDetail(canvas, renderX, renderY, headerHeight);
+                        }
                     }
                 }
             }
@@ -694,7 +687,7 @@ public sealed partial class IndexControl : IDisposable
             _indexPagePaint.Color = _miniColour;
         }
 
-        canvas.DrawRect(indexPageRect, _indexPagePaint);
+        canvas.DrawRoundRect(indexPageRect, 1, 1, _indexPagePaint);
     }
 
     /// <summary>
