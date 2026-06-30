@@ -107,14 +107,14 @@ internal sealed class EventParser
 
         while (i < xml.Length)
         {
-            var rel = xml[i..].IndexOf('<');
+            var offset = xml[i..].IndexOf('<');
 
-            if (rel < 0)
+            if (offset < 0)
             {
                 break;
             }
 
-            i += rel;
+            i += offset;
 
             if (i + 1 < xml.Length && xml[i + 1] == '/')
             {
@@ -125,6 +125,7 @@ internal sealed class EventParser
                 }
 
                 var close = xml[i..].IndexOf('>');
+
                 if (close < 0)
                 {
                     break;
@@ -213,13 +214,14 @@ internal sealed class EventParser
 
         var inner = content[(tagEnd + 1)..];
 
-        var endRel = inner.IndexOf("</value>".AsSpan(), StringComparison.Ordinal);
-        if (endRel < 0)
+        var endOffset = inner.IndexOf("</value>".AsSpan(), StringComparison.Ordinal);
+
+        if (endOffset < 0)
         {
             return null;
         }
 
-        return Decode(inner[..endRel]);
+        return Decode(inner[..endOffset]);
     }
 
     /// <summary>
@@ -269,18 +271,18 @@ internal sealed class EventParser
 
         while (true)
         {
-            var rel = tag[from..].IndexOf(attribute.AsSpan(), StringComparison.Ordinal);
+            var offset = tag[from..].IndexOf(attribute.AsSpan(), StringComparison.Ordinal);
 
-            if (rel < 0)
+            if (offset < 0)
             {
                 return default;
             }
 
-            var at = from + rel;
+            var at = from + offset;
             var after = at + attribute.Length;
 
-            // Require an attribute boundary before the name and `="` after it, so "name" matches the
-            // attribute and not a substring of another (e.g. a value).
+            // Require an attribute boundary before the name and `="` after it, so "name" matches the attribute and
+            // not a substring of another (e.g. a value).
             if (at > 0 && char.IsWhiteSpace(tag[at - 1])
                 && after + 1 < tag.Length 
                 && tag[after] == '=' 
