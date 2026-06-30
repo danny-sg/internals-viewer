@@ -489,17 +489,22 @@ public sealed partial class AllocationControl : IDisposable
                 }
             }
 
-            foreach (var page in layer.SinglePages.Where(l => l.FileId == FileId))
+            foreach (var page in layer.SinglePages)
             {
-                renderer.DrawPage(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout));
+                if (page.FileId == FileId)
+                {
+                    renderer.DrawPage(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout));
+                }
             }
 
             foreach (var page in layer.PageSpans
-                         .Where(l => l.Address.FileId == FileId
-                                     && ((l.SequenceFrom >= SequenceFrom && l.SequenceTo <= SequenceTo)
+                         .Where(l => ((l.SequenceFrom >= SequenceFrom && l.SequenceTo <= SequenceTo)
                                          || SequenceFrom == 0 && SequenceTo == 0)))
             {
-                renderer.DrawPage(canvas, GetPagePosition(page.Address.PageId - (ScrollPosition * 8), layout));
+                if (page.Address.FileId == FileId)
+                {
+                    renderer.DrawPage(canvas, GetPagePosition(page.Address.PageId - (ScrollPosition * 8), layout));
+                }
             }
         }
     }

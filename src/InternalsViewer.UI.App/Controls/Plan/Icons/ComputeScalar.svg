@@ -19,7 +19,7 @@
         <!-- calculator overlay -->
         <g id="compute-scalar-calculator"
            stroke="#424242"
-           stroke-width="2"
+           stroke-width="2">
 
             <rect id="calculator-body"
                   x="16"

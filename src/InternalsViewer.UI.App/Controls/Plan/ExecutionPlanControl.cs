@@ -4,6 +4,8 @@ using System.Linq;
 using Windows.Foundation;
 using Windows.UI;
 using InternalsViewer.Query.Plans;
+using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
@@ -18,7 +20,7 @@ namespace InternalsViewer.UI.App.Controls.Plan;
 public sealed class ExecutionPlanControl : Canvas
 {
     private const double NodeWidth = 150;
-    private const double NodeHeight = 100;
+    private const double NodeHeight = 90;
     private const double HorizontalGap = 46;
     private const double VerticalGap = 22;
     private const double CanvasMargin = 24;
@@ -26,18 +28,25 @@ public sealed class ExecutionPlanControl : Canvas
     private const double ColumnPitch = NodeWidth + HorizontalGap;
     private const double RowPitch = NodeHeight + VerticalGap;
 
-    private static readonly Color ConnectorColor = Color.FromArgb(255, 140, 140, 140);
+    private static readonly Color ConnectorColor = Color.FromArgb(255, 185, 185, 185);
 
-    // Colour of the animated "data flowing" overlay drawn on the selected node's outgoing connector.
-    private static readonly Color FlowColor = Color.FromArgb(255, 90, 200, 250);
+    // Flow-line colour for a blocked producer (active but not yet emitting - still consuming its input).
+    private static readonly Color BlockedColor = Color.FromArgb(255, 0xF5, 0x84, 0x84);
 
-    // Each producer node mapped to the connector that carries its rows to its consumer (parent).
+    // Each producer node mapped to the connector that carries its rows to its consumer (parent), and to
+    // that connector's arrowhead (recoloured to match the flow line while the producer is active).
     private readonly Dictionary<PlanNode, Polyline> _connectorByProducer = new();
-    private Polyline? _flowOverlay;
-    private Storyboard? _flowStoryboard;
+    private readonly Dictionary<PlanNode, Polygon> _arrowByProducer = new();
+
+    // Per-emitting-producer animated data-flow overlay marching along its outgoing connector. Keyed by
+    // producer so the set can be reconciled incrementally as the active operators change each tick.
+    private readonly Dictionary<PlanNode, FlowOverlay> _flows = new();
 
     private ScrollViewer? _scrollViewer;
     private PlanNodeControl? _selectedControl;
+
+    // Guards against reacting to the SelectedNode change we raise ourselves from an in-plan click.
+    private bool _applyingSelection;
 
     private bool _isPanning;
     private Point _panOrigin;
@@ -65,42 +74,70 @@ public sealed class ExecutionPlanControl : Canvas
         DependencyProperty.Register(nameof(Plan), typeof(ExecutionPlan), typeof(ExecutionPlanControl),
             new PropertyMetadata(null, OnPlanChanged));
 
+    /// <summary>
+    /// The selected node (from a timeline click or an in-plan click). Drives the selection highlight and
+    /// brings the node into view; independent of the time-derived active set.
+    /// </summary>
     public PlanNode? SelectedNode
     {
         get => (PlanNode?)GetValue(SelectedNodeProperty);
-        private set => SetValue(SelectedNodeProperty, value);
+        set => SetValue(SelectedNodeProperty, value);
     }
 
     public static readonly DependencyProperty SelectedNodeProperty =
         DependencyProperty.Register(nameof(SelectedNode), typeof(PlanNode), typeof(ExecutionPlanControl),
-            new PropertyMetadata(null));
+            new PropertyMetadata(null, OnSelectedNodeChanged));
 
-    public PlanNode? ActiveNode
+    private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        get => (PlanNode?)GetValue(ActiveNodeProperty);
-        set => SetValue(ActiveNodeProperty, value);
+        var control = (ExecutionPlanControl)d;
+
+        // Ignore the echo from our own click-driven selection; only react to external (timeline) changes.
+        if (!control._applyingSelection)
+        {
+            control.SelectByNode((PlanNode?)e.NewValue);
+        }
     }
 
-    public static readonly DependencyProperty ActiveNodeProperty =
-        DependencyProperty.Register(nameof(ActiveNode), typeof(PlanNode), typeof(ExecutionPlanControl),
-            new PropertyMetadata(null, OnActiveNodeChanged));
-
-    private static void OnActiveNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((ExecutionPlanControl)d).SelectByNode((PlanNode?)e.NewValue);
-
-    /// <summary>True while the timeline is playing; drives the data-flow animation on the selection.</summary>
-    public bool IsPlaying
+    /// <summary>
+    /// The operators whose run-time span contains the playhead. Highlighted as "running now"; a parallel
+    /// query lights up several at once.
+    /// </summary>
+    public IReadOnlyList<PlanNode>? ActiveNodes
     {
-        get => (bool)GetValue(IsPlayingProperty);
-        set => SetValue(IsPlayingProperty, value);
+        get => (IReadOnlyList<PlanNode>?)GetValue(ActiveNodesProperty);
+        set => SetValue(ActiveNodesProperty, value);
     }
 
-    public static readonly DependencyProperty IsPlayingProperty =
-        DependencyProperty.Register(nameof(IsPlaying), typeof(bool), typeof(ExecutionPlanControl),
-            new PropertyMetadata(false, OnIsPlayingChanged));
+    public static readonly DependencyProperty ActiveNodesProperty =
+        DependencyProperty.Register(nameof(ActiveNodes), typeof(IReadOnlyList<PlanNode>), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnActiveNodesChanged));
 
-    private static void OnIsPlayingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((ExecutionPlanControl)d).UpdateFlowAnimation();
+    private static void OnActiveNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (ExecutionPlanControl)d;
+
+        control.UpdateActiveHighlights();
+        control.UpdateFlows();
+    }
+
+    /// <summary>
+    /// The active operators that have started emitting rows (the rest are still consuming / blocked).
+    /// Determines each flow line's colour and tooltip: emitting lines are vivid in the operator type
+    /// colour and labelled "Streaming"; blocked lines are salmon and labelled "Blocked".
+    /// </summary>
+    public IReadOnlyList<PlanNode>? EmittingNodes
+    {
+        get => (IReadOnlyList<PlanNode>?)GetValue(EmittingNodesProperty);
+        set => SetValue(EmittingNodesProperty, value);
+    }
+
+    public static readonly DependencyProperty EmittingNodesProperty =
+        DependencyProperty.Register(nameof(EmittingNodes), typeof(IReadOnlyList<PlanNode>), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnEmittingNodesChanged));
+
+    private static void OnEmittingNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).UpdateFlows();
 
     public event EventHandler<PlanNode?>? NodeSelected;
 
@@ -112,11 +149,11 @@ public sealed class ExecutionPlanControl : Canvas
 
     private void Rebuild()
     {
-        StopFlow();
+        StopAllFlows();
         Children.Clear();
         _connectorByProducer.Clear();
+        _arrowByProducer.Clear();
         _selectedControl = null;
-        SelectedNode = null;
 
         if (Plan is null || Plan.Root.Count == 0)
         {
@@ -139,7 +176,10 @@ public sealed class ExecutionPlanControl : Canvas
         {
             foreach (var child in node.Children)
             {
-                _connectorByProducer[child] = DrawConnector(point, positions[child], RelativeCost(child, totalCost));
+                var (connector, arrow) = DrawConnector(point, positions[child], RelativeCost(child, totalCost));
+
+                _connectorByProducer[child] = connector;
+                _arrowByProducer[child] = arrow;
             }
         }
 
@@ -154,8 +194,9 @@ public sealed class ExecutionPlanControl : Canvas
         Width = maxX + NodeWidth + CanvasMargin;
         Height = maxY + NodeHeight + CanvasMargin;
 
-        SelectByNode(ActiveNode);
-        UpdateFlowAnimation();
+        SelectByNode(SelectedNode);
+        UpdateActiveHighlights();
+        UpdateFlows();
     }
 
     private static double AssignPositions(PlanNode node,
@@ -209,7 +250,7 @@ public sealed class ExecutionPlanControl : Canvas
         Children.Add(control);
     }
 
-    private Polyline DrawConnector(Point parent, Point child, double childCostFraction)
+    private (Polyline Connector, Polygon Arrow) DrawConnector(Point parent, Point child, double childCostFraction)
     {
         var start = new Point(child.X, child.Y + NodeHeight / 2);
         var end = new Point(parent.X + NodeWidth, parent.Y + NodeHeight / 2);
@@ -258,7 +299,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         Children.Add(arrow);
 
-        return connector;
+        return (connector, arrow);
     }
 
     private static double RelativeCost(PlanNode node, double totalCost)
@@ -420,38 +461,96 @@ public sealed class ExecutionPlanControl : Canvas
             }
         }
 
+        _applyingSelection = true;
         SelectedNode = nodeControl?.Node;
-        UpdateFlowAnimation();
+        _applyingSelection = false;
+
         return true;
     }
 
     /// <summary>
-    /// While the timeline is playing and a node is selected, marches a dashed overlay along that node's
-    /// outgoing connector to show its rows flowing from the producer to its consumer. Otherwise clears it.
+    /// Highlights every node whose operator is active at the playhead (running now), distinct from the
+    /// click selection. A parallel query lights up several at once.
     /// </summary>
-    private void UpdateFlowAnimation()
+    private void UpdateActiveHighlights()
     {
-        StopFlow();
+        var active = ActiveNodes;
 
-        if (!IsPlaying || SelectedNode is null ||
-            !_connectorByProducer.TryGetValue(SelectedNode, out var connector))
+        foreach (var child in Children)
+        {
+            if (child is PlanNodeControl { Node: { } node } nodeControl)
+            {
+                nodeControl.IsActive = active is not null && active.Contains(node);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reconciles the marching data-flow overlays with the active set: one line per active producer that
+    /// has an outgoing connector, coloured by whether it is emitting (streaming, in its operator type
+    /// colour) or still consuming (blocked, salmon). Updated incrementally so unchanged overlays keep
+    /// animating without restarting, since the sets change on every playhead tick; an overlay is rebuilt
+    /// only when its producer's streaming/blocked state flips.
+    /// </summary>
+    private void UpdateFlows()
+    {
+        var active = ActiveNodes;
+        var emitting = EmittingNodes;
+
+        // Tear down overlays whose producer is no longer active (or lost its connector), or whose
+        // streaming/blocked state changed - those are rebuilt below with the new colour and tooltip.
+        foreach (var node in _flows.Keys.ToList())
+        {
+            var stillActive = active is not null && active.Contains(node) && _connectorByProducer.ContainsKey(node);
+            var isEmitting = emitting is not null && emitting.Contains(node);
+
+            if (!stillActive || _flows[node].IsEmitting != isEmitting)
+            {
+                RemoveFlow(node);
+            }
+        }
+
+        if (active is null)
         {
             return;
         }
 
-        const double dashOn = 4;
-        const double dashOff = 4;
-        const double period = dashOn + dashOff;
+        // Start an overlay for each active producer that carries rows to a consumer.
+        foreach (var node in active)
+        {
+            if (!_flows.ContainsKey(node) && _connectorByProducer.TryGetValue(node, out var connector))
+            {
+                AddFlow(node, connector, emitting is not null && emitting.Contains(node));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Draws an overlay along the producer's outgoing connector. A streaming (non-blocking) producer reads
+    /// as a vivid line in its operator type colour with the dashes marching toward the consumer
+    /// ("Streaming"); a blocked one (consuming, not yet emitting) reads as a static salmon line ("Blocked")
+    /// - nothing is flowing yet, so it isn't animated.
+    /// </summary>
+    private void AddFlow(PlanNode producer, Polyline connector, bool isEmitting)
+    {
+        var colour = isEmitting
+            ? EventColourProvider.GetOperatorColour(producer).ToWindowsColor()
+            : BlockedColor;
+
+        // Match the connector's arrowhead to the flow line so the whole connector reads as one colour.
+        if (_arrowByProducer.TryGetValue(producer, out var arrow))
+        {
+            arrow.Fill = new SolidColorBrush(colour);
+        }
 
         var overlay = new Polyline
         {
-            Stroke = new SolidColorBrush(FlowColor),
+            Stroke = new SolidColorBrush(colour),
             StrokeThickness = 2.5,
-            StrokeLineJoin = PenLineJoin.Round,
-            StrokeDashCap = PenLineCap.Round,
-            StrokeDashArray = new DoubleCollection { dashOn, dashOff },
-            IsHitTestVisible = false
+            StrokeLineJoin = PenLineJoin.Round
         };
+
+        ToolTipService.SetToolTip(overlay, isEmitting ? "Streaming" : "Blocked");
 
         foreach (var point in connector.Points)
         {
@@ -459,39 +558,64 @@ public sealed class ExecutionPlanControl : Canvas
         }
 
         Children.Add(overlay);
-        _flowOverlay = overlay;
 
-        // March the dashes toward the consumer (the arrowhead end of the connector).
-        var animation = new DoubleAnimation
+        // Only a streaming producer animates - march the dashes toward the consumer. A blocked producer
+        // stays a static coloured line.
+        Storyboard? storyboard = null;
+
+        if (isEmitting)
         {
-            From = 0,
-            To = -period,
-            Duration = new Duration(TimeSpan.FromSeconds(0.7)),
-            RepeatBehavior = RepeatBehavior.Forever,
-            EnableDependentAnimation = true
-        };
+            const double dashOn = 4;
+            const double dashOff = 4;
+            const double period = dashOn + dashOff;
 
-        Storyboard.SetTarget(animation, overlay);
-        Storyboard.SetTargetProperty(animation, "StrokeDashOffset");
+            overlay.StrokeDashCap = PenLineCap.Round;
+            overlay.StrokeDashArray = new DoubleCollection { dashOn, dashOff };
 
-        _flowStoryboard = new Storyboard();
-        _flowStoryboard.Children.Add(animation);
-        _flowStoryboard.Begin();
+            var animation = new DoubleAnimation
+            {
+                From = 0,
+                To = -period,
+                Duration = new Duration(TimeSpan.FromSeconds(0.7)),
+                RepeatBehavior = RepeatBehavior.Forever,
+                EnableDependentAnimation = true
+            };
+
+            Storyboard.SetTarget(animation, overlay);
+            Storyboard.SetTargetProperty(animation, "StrokeDashOffset");
+
+            storyboard = new Storyboard();
+            storyboard.Children.Add(animation);
+            storyboard.Begin();
+        }
+
+        _flows[producer] = new FlowOverlay(overlay, storyboard, isEmitting);
     }
 
-    private void StopFlow()
+    private void RemoveFlow(PlanNode producer)
     {
-        if (_flowStoryboard is not null)
+        if (_flows.Remove(producer, out var flow))
         {
-            _flowStoryboard.Stop();
-            _flowStoryboard = null;
+            flow.Storyboard?.Stop();
+            Children.Remove(flow.Overlay);
+
+            // Restore the arrowhead to the default connector grey now the producer is no longer active.
+            if (_arrowByProducer.TryGetValue(producer, out var arrow))
+            {
+                arrow.Fill = new SolidColorBrush(ConnectorColor);
+            }
+        }
+    }
+
+    private void StopAllFlows()
+    {
+        foreach (var flow in _flows.Values)
+        {
+            flow.Storyboard?.Stop();
+            Children.Remove(flow.Overlay);
         }
 
-        if (_flowOverlay is not null)
-        {
-            Children.Remove(_flowOverlay);
-            _flowOverlay = null;
-        }
+        _flows.Clear();
     }
 
     private static T? FindAncestor<T>(DependencyObject? start) where T : DependencyObject
@@ -511,4 +635,6 @@ public sealed class ExecutionPlanControl : Canvas
     {
         public int Next { get; set; }
     }
+
+    private readonly record struct FlowOverlay(Polyline Overlay, Storyboard? Storyboard, bool IsEmitting);
 }

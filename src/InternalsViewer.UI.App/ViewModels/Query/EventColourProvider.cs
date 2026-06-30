@@ -60,6 +60,16 @@ internal class EventColourProvider
         }
     }
 
+    // The statement (SELECT/INSERT/...) node is neutral grey, matching the timeline's statement bar,
+    // rather than falling through to the transformation category colour.
+    private static readonly Color StatementColour = Color.FromArgb(255, 130, 130, 130);
+
+    /// <summary>The operator type colour for a plan node (e.g. data-access blue), at full alpha.</summary>
+    internal static Color GetOperatorColour(PlanNode node)
+        => node.IsStatement
+            ? StatementColour
+            : GetOperatorCategoryColour(OperatorClassifier.GetCategory(node));
+
     private static Color GetOperatorCategoryColour(OperatorCategory category)
     {
         return category switch

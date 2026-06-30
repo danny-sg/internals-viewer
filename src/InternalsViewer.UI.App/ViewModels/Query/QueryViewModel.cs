@@ -78,7 +78,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isTooltipEnabled = true;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
     private bool _isTimelinePlaying;
 
     [ObservableProperty]
@@ -314,13 +313,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private ObservableCollection<ExecutionPlan> _executionPlans = [];
 
+    // The plan node selected from the timeline (a single operator the user clicked). Drives the plan's
+    // selection highlight and brings it into view; the timeline owns its own selection for dimming.
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ActiveOperatorName))]
-    [NotifyPropertyChangedFor(nameof(ActiveOperatorObject))]
-    [NotifyPropertyChangedFor(nameof(ActiveOperatorIcon))]
-    [NotifyPropertyChangedFor(nameof(ActiveOperatorVisibility))]
+    private PlanNode? _selectedPlanNode;
 
-    private PlanNode? _activePlanNode;
+    // Operators whose run-time span contains the playhead (the active call hierarchy), derived purely
+    // from the playhead time. A parallel query has several active at once.
+    [ObservableProperty]
+    private IReadOnlyList<PlanNode> _activePlanNodes = [];
+
+    // The subset of the active operators that have started emitting rows at the playhead (past their
+    // consume phase). These drive the data-flow arrows in the plan.
+    [ObservableProperty]
+    private IReadOnlyList<PlanNode> _emittingPlanNodes = [];
 
     public void SetScope(long fromUs, long toUs)
     {
@@ -352,58 +358,96 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         _playheadTimeUs = timeUs;
 
-        UpdateActiveOperator(timeUs);
+        UpdateActiveOperators(timeUs);
         SyncIndexPage(timeUs);
     }
 
-    public string ActiveOperatorName 
-        => ActivePlanNode?.PhysicalOperator ?? string.Empty;
-
-    public string ActiveOperatorObject
-    {
-        get
-        {
-            if (ActivePlanNode is null)
-            {
-                return string.Empty;
-            }
-
-            var table = ActivePlanNode.Table?.Trim('[', ']');
-
-            if (string.IsNullOrEmpty(table))
-            {
-                return string.Empty;
-            }
-
-            var index = ActivePlanNode.Index?.Trim('[', ']');
-
-            return string.IsNullOrEmpty(index) ? table : $"{table}.{index}";
-        }
-    }
-
-    public ImageSource? ActiveOperatorIcon
-        => ActivePlanNode is null ? null : new SvgImageSource(PlanIconResolver.Resolve(ActivePlanNode));
-
-    public Visibility ActiveOperatorVisibility
-        => ActivePlanNode is not null && IsTimelinePlaying ? Visibility.Visible : Visibility.Collapsed;
-
-    private void UpdateActiveOperator(long timeUs)
+    /// <summary>
+    /// Derives the active operators from the playhead time: every operator whose run-time span contains
+    /// the playhead, and the subset of those that have started emitting rows (past their consume phase).
+    /// This reflects the operators running concurrently at the position - a parallel query has several -
+    /// and which are producing rows, so the plan can show the data flow.
+    /// </summary>
+    private void UpdateActiveOperators(long timeUs)
     {
         var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
 
-        // The deepest (innermost) operator whose span contains the playhead time.
-        ExecutionOperatorEvent? active = null;
+        // At the very start of the timeline nothing has run yet - leave the plan in its default (grey)
+        // state rather than lighting up operators that merely start at time zero.
+        if (timeUs <= AxisStartUs(source))
+        {
+            if (_activePlanNodes.Count > 0)
+            {
+                ActivePlanNodes = [];
+            }
+
+            if (_emittingPlanNodes.Count > 0)
+            {
+                EmittingPlanNodes = [];
+            }
+
+            return;
+        }
+
+        var active = new List<PlanNode>();
+        var emitting = new List<PlanNode>();
+        var seen = new HashSet<PlanNode>();
 
         foreach (var op in source.OfType<ExecutionOperatorEvent>())
         {
-            if (op.TimeUs <= timeUs && timeUs <= op.TimeUs + op.DurationUs
-                && (active is null || op.NodeLevel > active.NodeLevel))
+            // Outside the operator's [start, end] span - not running at the playhead.
+            if (op.TimeUs > timeUs || timeUs > op.TimeUs + op.DurationUs)
             {
-                active = op;
+                continue;
+            }
+
+            if (op.PlanNodeIdentifier is not { } id || ResolvePlanNode(id) is not { } node || !seen.Add(node))
+            {
+                continue;
+            }
+
+            active.Add(node);
+
+            // Past the consume phase: the operator is producing rows to its parent.
+            if (op.EmitStartUs <= timeUs)
+            {
+                emitting.Add(node);
             }
         }
 
-        ActivePlanNode = active?.PlanNodeIdentifier is { } id ? ResolvePlanNode(id) : null;
+        // The sets churn on every playhead tick; only publish when they actually change so the plan
+        // doesn't refresh its highlights and flow overlays needlessly.
+        if (!_activePlanNodes.SequenceEqual(active))
+        {
+            ActivePlanNodes = active;
+        }
+
+        if (!_emittingPlanNodes.SequenceEqual(emitting))
+        {
+            EmittingPlanNodes = emitting;
+        }
+    }
+
+    // The capture-time (microseconds) of the timeline's left edge: the crop start when set, otherwise the
+    // earliest event - matching the axis origin the timeline draws as zero.
+    private long AxisStartUs(IReadOnlyList<EngineEvent> source)
+    {
+        if (StartOffset is { } start)
+        {
+            return start;
+        }
+
+        var min = long.MaxValue;
+
+        foreach (var e in source)
+        {
+            if (e.TimeUs < min)
+            {
+                min = e.TimeUs;
+            }
+        }
+
+        return min == long.MaxValue ? 0 : min;
     }
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
@@ -416,7 +460,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void SelectPlanNode(PlanNodeIdentifier identifier)
     {
-        ActivePlanNode = ResolvePlanNode(identifier);
+        SelectedPlanNode = ResolvePlanNode(identifier);
     }
 
     // Open index tabs (transient, not persisted), keyed by schema.table.index so each index opens once.
@@ -755,7 +799,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _scopeFromUs = 0;
         _scopeToUs = 0;
         IsTimelinePlaying = false;
-        ActivePlanNode = null;
+        SelectedPlanNode = null;
+        ActivePlanNodes = [];
+        EmittingPlanNodes = [];
 
         Events = [];
         FilteredEvents = [];

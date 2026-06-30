@@ -1,6 +1,8 @@
 using System.Text;
 using Windows.UI;
 using InternalsViewer.Query.Plans;
+using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -48,16 +50,37 @@ public sealed partial class PlanNodeControl : UserControl
             new PropertyMetadata(false, OnIsSelectedChanged));
 
     private static void OnIsSelectedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((PlanNodeControl)d).UpdateSelectionVisual();
+        => ((PlanNodeControl)d).UpdateStateVisual();
 
-    private void UpdateSelectionVisual()
+    /// <summary>
+    /// True while this operator is running at the timeline playhead. Drives the "active" highlight,
+    /// distinct from (and overridden by) the click selection.
+    /// </summary>
+    public bool IsActive
     {
-        if (IsSelected)
-        {
-            var accent = (Color)Application.Current.Resources["SystemAccentColor"];
+        get => (bool)GetValue(IsActiveProperty);
+        set => SetValue(IsActiveProperty, value);
+    }
 
-            NodeBorder.BorderBrush = new SolidColorBrush(accent);
-            NodeBorder.Background = new SolidColorBrush(Color.FromArgb(40, accent.R, accent.G, accent.B));
+    public static readonly DependencyProperty IsActiveProperty =
+        DependencyProperty.Register(nameof(IsActive), typeof(bool), typeof(PlanNodeControl),
+            new PropertyMetadata(false, OnIsActiveChanged));
+
+    private static void OnIsActiveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((PlanNodeControl)d).UpdateStateVisual();
+
+    // Opacity of the active "running now" background tint (matches the selection background's subtlety).
+    private const byte ActiveBackgroundAlpha = 25;
+
+    private void UpdateStateVisual()
+    {
+        // Selection currently has no visual (the plumbing is kept for later use). Only the time-derived
+        // active state is shown: a background tinted by operator type (e.g. data-access blue).
+        if (IsActive && Node is { } node)
+        {
+            var type = EventColourProvider.GetOperatorColour(node).ToWindowsColor();
+
+            NodeBorder.Background = new SolidColorBrush(Color.FromArgb(ActiveBackgroundAlpha, type.R, type.G, type.B));
         }
         else
         {

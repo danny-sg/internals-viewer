@@ -9,6 +9,8 @@
     mc:Ignorable="d">
     <Border x:Name="NodeBorder"
             BorderThickness="0"
+            Padding="0,4,0,0"
+            CornerRadius="4"
             ToolTipService.ToolTip="{x:Bind ToolTipText, Mode=OneWay}">
         <StackPanel Orientation="Vertical"
                     HorizontalAlignment="Center"

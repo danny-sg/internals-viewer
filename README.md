@@ -25,6 +25,7 @@ The version on Github uses a self-signing certificate that needs to be installed
 The script `Install.ps1` installs the certificate and then installs the .msix package.
 
 Steps:
+
 1. Download the latest release artifacts from [Releases](https://github.com/danny-sg/internals-viewer/releases)
 2. Extract the files to a folder and navigate to \internals-viewer-msix-platform\artifacts\msix-package-platform\InternalsViewer.UI.App_version\
 3. Run `powershell -ExecutionPolicy Bypass -File Install.ps1`
@@ -40,3 +41,9 @@ Steps:
 - C#
 - .NET 10.0
 - Windows App SDK (WinUI 3)
+
+## Usage
+
+### Connecting to a database
+
+Internals Viewer can either connect to a live database or an offline .MDF file.

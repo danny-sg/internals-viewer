@@ -37,8 +37,12 @@ public sealed partial class PlanDocumentView : UserControl
         Subscribe();
 
         // Reflect any state that changed while this tab was hidden.
-        ApplyToPlans(p => p.ActiveNode = ViewModel?.ActivePlanNode);
-        ApplyToPlans(p => p.IsPlaying = ViewModel?.IsTimelinePlaying ?? false);
+        ApplyToPlans(p =>
+        {
+            p.SelectedNode = ViewModel?.SelectedPlanNode;
+            p.ActiveNodes = ViewModel?.ActivePlanNodes;
+            p.EmittingNodes = ViewModel?.EmittingPlanNodes;
+        });
     }
 
     private void Subscribe()
@@ -74,13 +78,17 @@ public sealed partial class PlanDocumentView : UserControl
             return;
         }
 
-        if (e.PropertyName == nameof(QueryViewModel.ActivePlanNode))
+        switch (e.PropertyName)
         {
-            ApplyToPlans(p => p.ActiveNode = _subscribed.ActivePlanNode);
-        }
-        else if (e.PropertyName == nameof(QueryViewModel.IsTimelinePlaying))
-        {
-            ApplyToPlans(p => p.IsPlaying = _subscribed.IsTimelinePlaying);
+            case nameof(QueryViewModel.SelectedPlanNode):
+                ApplyToPlans(p => p.SelectedNode = _subscribed.SelectedPlanNode);
+                break;
+            case nameof(QueryViewModel.ActivePlanNodes):
+                ApplyToPlans(p => p.ActiveNodes = _subscribed.ActivePlanNodes);
+                break;
+            case nameof(QueryViewModel.EmittingPlanNodes):
+                ApplyToPlans(p => p.EmittingNodes = _subscribed.EmittingPlanNodes);
+                break;
         }
     }
 
@@ -88,8 +96,9 @@ public sealed partial class PlanDocumentView : UserControl
     {
         if (args.Element is ExecutionPlanControl planControl && ViewModel is { } viewModel)
         {
-            planControl.ActiveNode = viewModel.ActivePlanNode;
-            planControl.IsPlaying = viewModel.IsTimelinePlaying;
+            planControl.SelectedNode = viewModel.SelectedPlanNode;
+            planControl.ActiveNodes = viewModel.ActivePlanNodes;
+            planControl.EmittingNodes = viewModel.EmittingPlanNodes;
 
             // ItemsRepeater recycles elements, so guard against subscribing the same control twice.
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;
