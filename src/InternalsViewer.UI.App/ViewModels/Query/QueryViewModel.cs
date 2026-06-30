@@ -452,7 +452,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
     {
-        var plan = ExecutionPlans.FirstOrDefault(p => p.PlanHandle == identifier.PlanHandle)
+        var plan = ExecutionPlans.FirstOrDefault(p => p.PlanHandleId == identifier.PlanHandleId)
                    ?? ExecutionPlans.FirstOrDefault();
 
         return plan is not null && plan.NodesById.TryGetValue(identifier.NodeId, out var node) ? node : null;

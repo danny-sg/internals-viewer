@@ -1,7 +1,6 @@
 ﻿using System.Drawing;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Plans;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace InternalsViewer.Query.Events.EventTypes;
 
@@ -31,7 +30,12 @@ public record EngineEvent
 
     public string IndexName { get; set; } = string.Empty;
 
-    internal string PlanHandle { get; set; } = string.Empty;
+    /// <summary>
+    /// Interned id of the plan handle this event belongs to (see <see cref="PlanHandleRegistry"/>), used
+    /// only to link the event to its execution plan. <see cref="PlanHandleRegistry.None"/> when the event
+    /// carries no plan handle.
+    /// </summary>
+    internal short PlanHandleId { get; set; }
 
     public int ThreadId { get; set; }
 

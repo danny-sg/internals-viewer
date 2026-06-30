@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using System.Data;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
 using Microsoft.Data.SqlClient;
@@ -21,13 +22,25 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         var executionPlans = new List<ExecutionPlan>();
 
+        // Map plan handles to PlanHandleId
+        var planHandles = new PlanHandleRegistry();
+
         var resultsSql = GetResultsSql(filePath);
 
         await connection.OpenAsync();
 
         DateTime? startTimeStamp = null;
 
-        await using (var reader = await new SqlCommand(resultsSql, connection).ExecuteReaderAsync())
+        var eventParser = new EventParser(database, planHandles);
+
+        // Use buffer for XML/Name to prevent repeated string allocations for each row
+        var xmlBuffer = new char[4096];
+
+        var nameBuffer = new char[64];
+
+        // SequentialAccess required to read GetChars directly into buffer
+        await using (var reader =
+                     await new SqlCommand(resultsSql, connection).ExecuteReaderAsync(CommandBehavior.SequentialAccess))
         {
             Logger.LogDebug("SQL: {Sql}", resultsSql);
 
@@ -35,25 +48,24 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
             while (await reader.ReadAsync())
             {
-                var eventName = reader.GetString(0);
-                var xml = reader.GetString(1);
+                var nameLength = ReadColumn(reader, 0, ref nameBuffer);
 
-                if (eventName == "query_post_execution_showplan")
+                if (nameBuffer.AsSpan(0, nameLength) is "query_post_execution_showplan")
                 {
-                    var plan = ExecutionPlanParser.Parse(xml);
+                    var plan = ExecutionPlanParser.Parse(reader.GetString(1), planHandles);
 
                     executionPlans.Add(plan);
                 }
                 else
                 {
-                    var engineEvent = EventParser.ParseEvent(xml, database);
+                    // Stream the event_data column into buffer
+                    var length = ReadColumn(reader, 1, ref xmlBuffer);
+
+                    var engineEvent = eventParser.ParseEvent(xmlBuffer.AsSpan(0, length));
 
                     if (engineEvent is not null)
                     {
-                        if (startTimeStamp is null)
-                        {
-                            startTimeStamp = engineEvent.Timestamp;
-                        }
+                        startTimeStamp ??= engineEvent.Timestamp;
 
                         // Gaps in sequence ids to allow the plan nodes to be slotted in
                         engineEvent.SequenceId = sequenceId += 100;
@@ -75,9 +87,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         var orderedEvents = events.OrderBy(e => e.Timestamp).ThenBy(e => e.SequenceId).ToList();
 
-        // Captured timestamps are only millisecond-resolution, so a burst of events all land on the same
-        // microsecond. Spread each bucket of coincident events across its window so they get distinct,
-        // individually addressable times (in capture/sequence order).
+        // Spread events for ms to us resolution
         SpreadCoincidentEvents(orderedEvents);
 
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
@@ -93,16 +103,41 @@ public sealed class EventReader(ILogger<EventReader> logger)
         return (orderedEvents, executionPlans);
     }
 
-    // The resolution window (microseconds) a coarse timestamp represents: an event logged at t happened
-    // somewhere in [t, t + ResolutionWindowUs).
+    private static int ReadColumn(SqlDataReader reader, int ordinal, ref char[] buffer)
+    {
+        var total = 0;
+
+        while (true)
+        {
+            if (total == buffer.Length)
+            {
+                Array.Resize(ref buffer, buffer.Length * 2);
+            }
+
+            var read = (int)reader.GetChars(ordinal, total, buffer, total, buffer.Length - total);
+
+            if (read == 0)
+            {
+                break;
+            }
+
+            total += read;
+        }
+
+        return total;
+    }
+
     private const long ResolutionWindowUs = 1000;
 
     /// <summary>
-    /// Spreads each bucket of events that share a coarse (millisecond-resolution) timestamp evenly across
-    /// its resolution window, in the existing (timestamp, sequence-id) order, so each event gets a
-    /// distinct, individually addressable time. The k-th of <c>n</c> coincident events is offset by
-    /// <c>ResolutionWindowUs * k / n</c>, so they stay within the window and keep their capture order.
+    /// Spreads events over 1ms timestamp window
     /// </summary>
+    /// <remarks>
+    /// Spreads each bucket of events that share a coarse (millisecond-resolution) timestamp evenly across its
+    /// resolution window, in the existing (timestamp, sequence-id) order, so each event gets a distinct, individually
+    /// addressable time. The k-th of n coincident events is offset by ResolutionWindowUs * k / n, so they stay within
+    /// the window and keep their capture order.
+    /// </remarks>
     private static void SpreadCoincidentEvents(List<EngineEvent> events)
     {
         var i = 0;
@@ -112,6 +147,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
             var bucketTime = events[i].TimeUs;
 
             var j = i;
+
             while (j < events.Count && events[j].TimeUs == bucketTime)
             {
                 j++;
@@ -131,7 +167,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
         }
     }
 
-    private string GetResultsSql(string filename)
+    private static string GetResultsSql(string filename)
     {
         return $@"
     SELECT object_name AS event_name, event_data

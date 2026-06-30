@@ -1,8 +1,9 @@
-﻿namespace InternalsViewer.Query.Plans;
+namespace InternalsViewer.Query.Plans;
 
-public sealed class ExecutionPlan(string planHandle)
+public sealed class ExecutionPlan(short planHandleId)
 {
-    public string PlanHandle { get; init; } = planHandle;
+    /// <summary>Interned id of this plan's handle (see <see cref="PlanHandleRegistry"/>).</summary>
+    public short PlanHandleId { get; init; } = planHandleId;
 
     public List<PlanNode> Root { get; set; } = [];
 

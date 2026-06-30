@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.Tests;
 
 public class EventPlanNodeMatcherTests
 {
-    private const string PlanHandle = "0x06000100ABCD";
+    private const short PlanHandleId = 1;
 
     [Fact]
     public void Thread_Profile_Event_Anchors_To_Node_By_NodeId()
@@ -18,7 +18,7 @@ public class EventPlanNodeMatcherTests
         var threadEvent = new QueryThreadEvent
         {
             Name = "query_thread_profile",
-            PlanHandle = PlanHandle,
+            PlanHandleId = PlanHandleId,
             NodeId = 1
         };
 
@@ -26,7 +26,7 @@ public class EventPlanNodeMatcherTests
 
         Assert.NotNull(threadEvent.PlanNodeIdentifier);
         Assert.Equal(1, threadEvent.PlanNodeIdentifier!.NodeId);
-        Assert.Equal(PlanHandle, threadEvent.PlanNodeIdentifier.PlanHandle);
+        Assert.Equal(PlanHandleId, threadEvent.PlanNodeIdentifier.PlanHandleId);
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class EventPlanNodeMatcherTests
         var seekRead = new IoEvent
         {
             Name = "physical_page_read",
-            PlanHandle = PlanHandle,
+            PlanHandleId = PlanHandleId,
             TableName = "Orders",
             IndexName = "IX_Orders_CustomerId"
         };
@@ -64,7 +64,7 @@ public class EventPlanNodeMatcherTests
         var profileNode2 = new QueryThreadEvent
         {
             Name = "query_thread_profile",
-            PlanHandle = PlanHandle,
+            PlanHandleId = PlanHandleId,
             NodeId = 2,
             Timestamp = start.AddMilliseconds(10),
             DurationUs = 10_000
@@ -73,7 +73,7 @@ public class EventPlanNodeMatcherTests
         var profileNode5 = new QueryThreadEvent
         {
             Name = "query_thread_profile",
-            PlanHandle = PlanHandle,
+            PlanHandleId = PlanHandleId,
             NodeId = 5,
             Timestamp = start.AddMilliseconds(30),
             DurationUs = 10_000
@@ -83,7 +83,7 @@ public class EventPlanNodeMatcherTests
         var read = new IoEvent
         {
             Name = "physical_page_read",
-            PlanHandle = PlanHandle,
+            PlanHandleId = PlanHandleId,
             TableName = "Orders",
             IndexName = "IX_Orders_CustomerId",
             Timestamp = start.AddMilliseconds(25)
@@ -104,7 +104,7 @@ public class EventPlanNodeMatcherTests
         var read = new IoEvent
         {
             Name = "physical_page_read",
-            PlanHandle = PlanHandle,
+            PlanHandleId = PlanHandleId,
             TableName = "Customers",
             IndexName = "PK_Customers"
         };
@@ -116,7 +116,7 @@ public class EventPlanNodeMatcherTests
 
     private static ExecutionPlan PlanWith(params PlanNode[] nodes)
     {
-        var plan = new ExecutionPlan(PlanHandle);
+        var plan = new ExecutionPlan(PlanHandleId);
 
         foreach (var node in nodes)
         {

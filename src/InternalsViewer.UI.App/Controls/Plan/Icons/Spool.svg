@@ -1,65 +1,73 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-    <g id="sql-execution-plan-spool-icon">
+  <g id="sql-execution-plan-spool-operator-icon">
 
-        <!-- operator rectangle -->
-        <g id="spool-operator-frame"
-           stroke="#424242"
-           stroke-width="2"
-           fill="none"
-           stroke-linejoin="round"
-           stroke-linecap="square">
+    <!-- operator rectangle -->
+    <g id="spool-operator-frame"
+       stroke="#424242"
+       stroke-width="2"
+       fill="none"
+       stroke-linejoin="round"
+       stroke-linecap="square">
 
-            <rect id="spool-main-rect"
-                  x="3"
-                  y="4"
-                  width="26"
-                  height="24" />
-        </g>
-
-        <!-- spool / reel icon -->
-        <g id="spool-reel"
-           stroke="#424242"
-           stroke-width="2"
-           fill="none"
-           stroke-linejoin="round"
-           stroke-linecap="square">
-
-            <!-- upper reel -->
-            <circle id="spool-upper-reel"
-                    cx="16"
-                    cy="12"
-                    r="4" />
-
-            <!-- lower reel -->
-            <circle id="spool-lower-reel"
-                    cx="16"
-                    cy="20"
-                    r="4" />
-
-            <!-- central connector -->
-            <path id="spool-centre-connector"
-                  d="M 16 16 L 16 16" />
-
-            <!-- side belt / spool body hint -->
-            <path id="spool-left-guide"
-                  d="M 12 12 L 12 20" />
-
-            <path id="spool-right-guide"
-                  d="M 20 12 L 20 20" />
-        </g>
-
-        <!-- reel hubs -->
-        <g id="spool-reel-hubs" fill="#424242">
-            <circle id="spool-upper-hub"
-                    cx="16"
-                    cy="12"
-                    r="1.5" />
-
-            <circle id="spool-lower-hub"
-                    cx="16"
-                    cy="20"
-                    r="1.5" />
-        </g>
-
+      <rect id="spool-main-rect"
+            x="12"
+            y="4"
+            width="16"
+            height="16" />
     </g>
+
+    <!-- smaller spool structure -->
+    <g id="spool-structure"
+       stroke="#0078D4"
+       stroke-width="2"
+       fill="white"
+       stroke-linejoin="round"
+       stroke-linecap="square">
+
+             <rect id="spool-background"
+            x="10"
+            y="10"
+            fill="white"
+            stroke="none"
+            width="10"
+            height="16" />
+
+
+      <!-- top cap -->
+      <rect id="spool-top-cap"
+            x="10"
+            y="10"
+            fill="white"
+            width="10"
+            height="3" />
+
+            
+
+      <!-- spool body sides -->
+      <path id="spool-left-side"
+            d="M 11 13 L 11 23" />
+
+      <path id="spool-right-side"
+            d="M 19 13 L 19 23" />
+
+      <!-- winding bands -->
+      <path id="spool-band-1"
+            d="M 11 16 L 19 16" />
+
+      <path id="spool-band-2"
+            d="M 11 19 L 19 19" />
+
+      <path id="spool-band-3"
+            d="M 11 22 L 19 22" />
+
+      <!-- bottom cap -->
+      <rect id="spool-bottom-cap"
+            x="10"
+            y="23"
+            fill="white"
+            width="10"
+            height="3" />
+    </g>
+
+  </g>
 </svg>

@@ -34,13 +34,22 @@ Steps:
 ### Compatibility
 
 - Windows 10 version 17763.0 or higher
-- Tested on SQL Server 2019 - 2022
+- Tested on SQL Server 2019 - 2025
 
 ### Technologies
 
 - C#
 - .NET 10.0
 - Windows App SDK (WinUI 3)
+
+## Advisory
+
+Use caution when running on any database. Internals Viewer does not make any modifications
+to a database, but it is not advisable to run on production servers due to the I/O 
+overhead and risk of some functions.
+
+Use caution with the Query tracing as the default Clear Buffer Pool will run `DBCC FREEPROCCACHE`
+before executing a query. 
 
 ## Usage
 

@@ -199,6 +199,17 @@ public sealed class EventTimelineControl : Grid, IDisposable
         IsAntialias = false,
     };
 
+    // Composites the trace extensions through one half-opacity layer (see DrawTraces).
+    private readonly SKPaint _traceLayerPaint = new() { Color = SKColors.White.WithAlpha(TraceAlpha) };
+
+    // Row-flow overlay paints (shown when an operator is selected); colour/stroke are set per use.
+    private readonly SKPaint _flowConnectorPaint = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
+    private readonly SKPaint _outlinePaint = new() { Style = SKPaintStyle.Stroke, IsAntialias = true };
+
+    // Reused per frame in the dynamic overlay: Rewind keeps the buffer and just re-adds the points.
+    private readonly SKPath _handlePath = new();
+    private readonly SKPath _playheadTrianglePath = new();
+
     private readonly SKColor _laneColour = new(30, 30, 30, 220);
 
     private readonly SKColor _alternateLaneColour = new(30, 30, 30, 220);
@@ -206,6 +217,19 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private readonly SKPaint _separatorPaint = new() { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
 
     private List<EngineEvent> _sortedEvents = [];
+
+    // The markers/operators/traces/ruler don't change as the playhead sweeps, so they're recorded once
+    // into a picture and replayed each frame; only the playhead, handles and selection dim are redrawn
+    // live. The picture (and the _hitRegions built alongside it) is re-recorded only when an input that
+    // affects the static content changes - see StaticLayerKey. This keeps the per-frame cost of playback
+    // and hover off the O(event count) draw path.
+    private SKPicture? _staticLayer;
+
+    private StaticLayerKey _staticLayerKey;
+
+    // Bumped whenever the event set (and the layout derived from it) is rebuilt, so the cached static
+    // layer is invalidated without having to compare the events themselves.
+    private int _eventsVersion;
 
     private List<double> _times = [];
 
@@ -270,6 +294,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var events = (List<EngineEvent>)e.NewValue;
 
         control._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
+
+        control._eventsVersion++;
 
         control.BuildActiveRows();
         control.BuildTimes();
@@ -719,20 +745,51 @@ public sealed class EventTimelineControl : Grid, IDisposable
             return;
         }
 
+        var key = BuildStaticLayerKey(w, h);
+
+        if (_staticLayer is null || !key.Equals(_staticLayerKey))
+        {
+            _staticLayer?.Dispose();
+            _staticLayer = RecordStaticLayer(w, h);
+            _staticLayerKey = key;
+        }
+
+        canvas.DrawPicture(_staticLayer);
+
+        DrawDynamicOverlay(canvas, w, h);
+    }
+
+    /// <summary>
+    /// Static freeze record of the timeline
+    /// </summary>
+    /// <remarks>
+    /// Changes on zoom, scroll, resize, operator selection, or crop
+    /// </remarks>
+    private SKPicture RecordStaticLayer(int w, int h)
+    {
+        using var recorder = new SKPictureRecorder();
+
+        var canvas = recorder.BeginRecording(new SKRect(0, 0, w, h));
+
         var rowsTop = MarkerStripHeight;
+        
         var rowsHeight = h - rowsTop;
+
         var rowCount = _activeRows.Length;
 
         var totalWeight = _activeRows.Sum(r => r.Weight);
+        
         var rowTops = new float[rowCount];
+        
         var rowHeights = new float[rowCount];
-        var acc = rowsTop;
+
+        var totalTop = rowsTop;
 
         for (var r = 0; r < rowCount; r++)
         {
-            rowTops[r] = acc;
+            rowTops[r] = totalTop;
             rowHeights[r] = rowsHeight * _activeRows[r].Weight / totalWeight;
-            acc += rowHeights[r];
+            totalTop += rowHeights[r];
         }
 
         for (var r = 0; r < rowCount; r++)
@@ -757,10 +814,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         _hitRegions.Clear();
 
-        // No events yet — show the empty lane scaffold (rows + labels) rather than a blank control.
         if (_sortedEvents.Count == 0)
         {
-            return;
+            return recorder.EndRecording();
         }
 
         canvas.Save();
@@ -779,9 +835,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
             var x = TimeToX(_times[i]);
 
-            // Virtualisation: skip markers that fall outside the visible content. Skia would clip the
-            // pixels anyway, but this also avoids the per-event work and the hit-region entry, which
-            // dominates when zoomed in on a large capture.
+            // Skip markers that fall outside the visible content
             if (x > w || x < RowLabelWidth - SparseMarkerWidth)
             {
                 continue;
@@ -823,8 +877,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
                 _markerPaint.Color = displayColour.A == 0 ? _activeRows[rowIndex].Color : displayColour.ToSkColor();
             }
 
-            // When a block is selected, fade markers belonging to other blocks so the selected block's
-            // I/O stands out.
             if (DimForSelection(sourceEvent))
             {
                 _markerPaint.Color = _markerPaint.Color.WithAlpha(FocusedDimAlpha);
@@ -842,9 +894,32 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         DrawRuler(canvas);
 
-        // Clip to the from/to selection: dim everything outside it so only the selected window - the
-        // region the playhead is confined to and playback loops within - stands out.
-        if (SelectionActive)
+        canvas.Restore();
+
+        return recorder.EndRecording();
+    }
+
+    /// <summary>
+    /// Draws the parts that move independently of the cached static layer
+    /// </summary>
+    /// <remarks>
+    /// Includes the from/to selection dim, the range handles and the playhead
+    /// </remarks>
+    private void DrawDynamicOverlay(SKCanvas canvas, int w, int h)
+    {
+        if (_sortedEvents.Count == 0)
+        {
+            return;
+        }
+
+        var rowsTop = MarkerStripHeight;
+        var rowsHeight = h - rowsTop;
+
+        canvas.Save();
+
+        canvas.ClipRect(new SKRect(RowLabelWidth, 0, w, h));
+
+       if (SelectionActive)
         {
             var lo = Math.Min(TimeToX(_startTime), TimeToX(_endTime));
             var hi = Math.Max(TimeToX(_startTime), TimeToX(_endTime));
@@ -873,6 +948,26 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         canvas.Restore();
     }
+
+    private StaticLayerKey BuildStaticLayerKey(int w, int h) => new(_zoom,
+                                                                    _scrollX,
+                                                                    w,
+                                                                    h,
+                                                                    _selectedNodeId ?? int.MinValue,
+                                                                    _showThreads,
+                                                                    _minTime,
+                                                                    _timeRange,
+                                                                    _eventsVersion);
+
+    private readonly record struct StaticLayerKey(double Zoom,
+                                                  double ScrollX,
+                                                  int Width,
+                                                  int Height,
+                                                  int SelectedNodeId,
+                                                  bool ShowThreads,
+                                                  double MinTime,
+                                                  double TimeRange,
+                                                  int EventsVersion);
 
     /// <summary>
     /// Draws header time ruler
@@ -927,7 +1022,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         const float padding = 4f;
 
-        var badgeWidth = _labelFont.MeasureText(text, null) + padding * 2;
+        var badgeWidth = _labelFont.MeasureText(text) + padding * 2;
 
         const float badgeHeight = RulerBandHeight - 2;
 
@@ -947,7 +1042,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
     }
 
-    // The axis is already in milliseconds; this just makes it relative to the first event.
     private double EffectiveToMs(double effective) => effective - _minTime;
 
     private static double NiceInterval(double raw)
@@ -978,11 +1072,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         if (ms < 10)
         {
-            ok = ((double)ms).TryFormat(buf, out written, "0.##");
+            ok = ms.TryFormat(buf, out written, "0.##");
         }
         else if (ms < 1000)
         {
-            ok = ((double)ms).TryFormat(buf, out written, "0");
+            ok = ms.TryFormat(buf, out written, "0");
         }
         else
         {
@@ -1187,15 +1281,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
             
             gradient.Dispose();
 
-            // Parallel operators: overlay per-thread sub-lanes (or a concurrency-density fill) on the envelope bar so
-            // the degree of parallelism and thread skew are visible
             if (_showThreads && b.Op.Threads.Count > 1)
             {
                 DrawOperatorThreads(canvas, b);
             }
 
-            // Blocking operators: dim the consume phase, where the operator is consuming its input but not yet
-            // emitting rows upward (e.g. a hash build, a sort). The solid remainder is the emit.
             DrawConsumeShade(canvas, b);
 
             if (b.LineWidth >= MinLabelBarHeight && b.EndX - b.StartX >= MinLabelBarWidth)
@@ -1207,8 +1297,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
                                         b.SlotCentreY + b.SlotHeight / 2f), b.Op, null));
         }
 
-        // On click, trace the selected operator's rows up to the root: a connector per hop, lit only while the source
-        // is emitting (non-dimmed).
         if (_selectedNodeId is { } selected)
         {
             DrawRowFlowPath(canvas, bars, selected);
@@ -1272,6 +1360,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             {
                 var x0 = Math.Max(b.StartX, TimeToX(t.StartUs / AxisUnitsPerMs));
                 var x1 = Math.Min(b.EndX, TimeToX(t.EndUs / AxisUnitsPerMs));
+
                 if (x1 < x0 + 1f)
                 {
                     x1 = x0 + 1f;
@@ -1294,6 +1383,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private void DrawThreadDensity(SKCanvas canvas, OperatorBar b, List<OperatorThread> workers)
     {
         var points = new List<(double Ms, int Delta)>(workers.Count * 2);
+
         foreach (var t in workers)
         {
             points.Add((t.StartUs / AxisUnitsPerMs, +1));
@@ -1303,13 +1393,13 @@ public sealed class EventTimelineControl : Grid, IDisposable
         points.Sort((p, q) => p.Ms.CompareTo(q.Ms));
 
         var active = 0;
-        var prevMs = points[0].Ms;
+        var previousMs = points[0].Ms;
 
         foreach (var (ms, delta) in points)
         {
-            if (ms > prevMs && active > 0)
+            if (ms > previousMs && active > 0)
             {
-                var x0 = Math.Max(b.StartX, TimeToX(prevMs));
+                var x0 = Math.Max(b.StartX, TimeToX(previousMs));
                 var x1 = Math.Min(b.EndX, TimeToX(ms));
 
                 if (x1 > x0)
@@ -1324,7 +1414,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             }
 
             active += delta;
-            prevMs = ms;
+            previousMs = ms;
         }
     }
 
@@ -1350,9 +1440,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         // Composite all extensions through a single layer at reduced opacity so overlapping traces
         // don't stack up to full opacity (the layer merges them first, then fades the whole thing once).
-        using var layerPaint = new SKPaint { Color = SKColors.White.WithAlpha(TraceAlpha) };
-
-        canvas.SaveLayer(layerPaint);
+        canvas.SaveLayer(_traceLayerPaint);
 
         var rightEdge = CanvasWidth;
 
@@ -1373,6 +1461,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
                 }
 
                 var x = TimeToX(_times[i]);
+
                 if (x > rightEdge || x < RowLabelWidth - width)
                 {
                     continue;
@@ -1529,22 +1618,19 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var yLo = Math.Min(child.BarTop, parent.BarTop);
         var yHi = Math.Max(child.BarBottom, parent.BarBottom);
 
-        using var paint = new SKPaint { Color = FlowConnectorColour, Style = SKPaintStyle.Fill, IsAntialias = true };
-        canvas.DrawRect(x0, yLo, x1 - x0, yHi - yLo, paint);
+        _flowConnectorPaint.Color = FlowConnectorColour;
+        canvas.DrawRect(x0, yLo, x1 - x0, yHi - yLo, _flowConnectorPaint);
     }
 
-    private static void OutlineBar(SKCanvas canvas, OperatorBar b, SKColor colour, float strokeWidth)
+    private void OutlineBar(SKCanvas canvas, OperatorBar b, SKColor colour, float strokeWidth)
     {
-        using var paint = new SKPaint
-        {
-            Color = colour,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = strokeWidth,
-            IsAntialias = true,
-        };
+        _outlinePaint.Color = colour;
+        _outlinePaint.StrokeWidth = strokeWidth;
 
         canvas.DrawRoundRect(new SKRect(b.StartX, b.BarTop, b.EndX, b.BarBottom),
-                             b.CornerRadius, b.CornerRadius, paint);
+                             b.CornerRadius,
+                             b.CornerRadius,
+                             _outlinePaint);
     }
 
     // Row-flow overlay (shown when an operator is clicked): a translucent ribbon links each operator to
@@ -1739,26 +1825,26 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var top = MarkerStripHeight - HandleHeight;
         var half = HandleWidth / 2f;
 
-        using var path = new SKPath();
+        _handlePath.Rewind();
 
-        path.MoveTo(x - half, top);
-        path.LineTo(x + half, top);
-        path.LineTo(isStart ? x - half : x + half, MarkerStripHeight);
-        path.Close();
+        _handlePath.MoveTo(x - half, top);
+        _handlePath.LineTo(x + half, top);
+        _handlePath.LineTo(isStart ? x - half : x + half, MarkerStripHeight);
+        _handlePath.Close();
 
-        canvas.DrawPath(path, _handlePaint);
+        canvas.DrawPath(_handlePath, _handlePaint);
     }
 
     private void DrawPlayheadTriangle(SKCanvas canvas, float x)
     {
-        using var path = new SKPath();
+        _playheadTrianglePath.Rewind();
 
-        path.MoveTo(x, MarkerStripHeight);
-        path.LineTo(x - TriangleHalfWidth, RulerBandHeight);
-        path.LineTo(x + TriangleHalfWidth, RulerBandHeight);
-        path.Close();
+        _playheadTrianglePath.MoveTo(x, MarkerStripHeight);
+        _playheadTrianglePath.LineTo(x - TriangleHalfWidth, RulerBandHeight);
+        _playheadTrianglePath.LineTo(x + TriangleHalfWidth, RulerBandHeight);
+        _playheadTrianglePath.Close();
 
-        canvas.DrawPath(path, _playheadFill);
+        canvas.DrawPath(_playheadTrianglePath, _playheadFill);
     }
 
     private int GetRowIndex(EngineEvent ev)
@@ -2375,5 +2461,13 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _clipDimPaint.Dispose();
         _tickPaint.Dispose();
         _separatorPaint.Dispose();
+        _traceLayerPaint.Dispose();
+        _flowConnectorPaint.Dispose();
+        _outlinePaint.Dispose();
+
+        _handlePath.Dispose();
+        _playheadTrianglePath.Dispose();
+
+        _staticLayer?.Dispose();
     }
 }

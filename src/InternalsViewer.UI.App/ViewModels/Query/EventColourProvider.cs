@@ -11,15 +11,8 @@ internal class EventColourProvider
 {
     public static void SetEventColours(List<ExecutionPlan> executionPlans, List<EngineEvent> events)
     {
-        //var ioOperatorNodes = executionPlans.SelectMany(v => v.NodesById.Values
-        //        .Where(OperatorClassifier.IsDataAccess)
-        //        .Select((s, i) => (v.PlanHandle, s.NodeId)))
-        //    .ToDictionary(k => new PlanNodeIdentifier(k.PlanHandle, k.NodeId), v => ColourHelpers.GetSeriesColour(ColourConstants.IoColour,
-        //        v.NodesById.Count,
-        //        i)));
-
         var ioNodes = executionPlans
-            .SelectMany(g => g.NodesById.Select(n => new PlanNodeIdentifier(g.PlanHandle, n.Key)))
+            .SelectMany(g => g.NodesById.Select(n => new PlanNodeIdentifier(g.PlanHandleId, n.Key)))
             .Distinct()
             .Select((s, i) => (Id: s, Index: i + 1))
             .ToList();

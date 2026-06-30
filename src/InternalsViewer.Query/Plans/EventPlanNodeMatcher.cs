@@ -30,13 +30,13 @@ public static class EventPlanNodeMatcher
             return;
         }
 
-        var plansByHandle = new Dictionary<string, ExecutionPlan>(StringComparer.OrdinalIgnoreCase);
+        var plansByHandle = new Dictionary<short, ExecutionPlan>();
 
         foreach (var plan in plans)
         {
-            if (!string.IsNullOrEmpty(plan.PlanHandle))
+            if (plan.PlanHandleId != PlanHandleRegistry.None)
             {
-                plansByHandle[plan.PlanHandle] = plan;
+                plansByHandle[plan.PlanHandleId] = plan;
             }
         }
 
@@ -48,9 +48,9 @@ public static class EventPlanNodeMatcher
         {
             var plan = singlePlan;
 
-            if (plan is null && !string.IsNullOrEmpty(engineEvent.PlanHandle))
+            if (plan is null && engineEvent.PlanHandleId != PlanHandleRegistry.None)
             {
-                plansByHandle.TryGetValue(engineEvent.PlanHandle, out plan);
+                plansByHandle.TryGetValue(engineEvent.PlanHandleId, out plan);
             }
 
             if (plan is null)
@@ -81,7 +81,7 @@ public static class EventPlanNodeMatcher
             {
                 threadEvent.PlanNodeIdentifier = new PlanNodeIdentifier
                 {
-                    PlanHandle = plan.PlanHandle,
+                    PlanHandleId = plan.PlanHandleId,
                     NodeId = threadEvent.NodeId
                 };
             }
@@ -126,7 +126,7 @@ public static class EventPlanNodeMatcher
 
                 readWriteEvent.PlanNodeIdentifier = new PlanNodeIdentifier
                 {
-                    PlanHandle = plan.PlanHandle,
+                    PlanHandleId = plan.PlanHandleId,
                     NodeId = node.NodeId
                 };
             }

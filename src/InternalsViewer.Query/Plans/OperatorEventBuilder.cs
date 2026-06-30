@@ -40,7 +40,7 @@ internal sealed class OperatorEventBuilder
         _plan = plan;
         _allEvents = events;
 
-        _eventsByNode = events.Where(e => e.PlanNodeIdentifier is { } id && id.PlanHandle == plan.PlanHandle)
+        _eventsByNode = events.Where(e => e.PlanNodeIdentifier is { } id && id.PlanHandleId == plan.PlanHandleId)
                               .GroupBy(e => e.PlanNodeIdentifier!.NodeId)
                               .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -192,7 +192,7 @@ internal sealed class OperatorEventBuilder
         {
             Name = node.PhysicalOperator,
             Category = OperatorClassifier.GetCategory(node),
-            PlanHandle = _plan.PlanHandle,
+            PlanHandleId = _plan.PlanHandleId,
             NodeLevel = node.NodeLevel,
             ParentNodeId = _parentByNode.TryGetValue(node.NodeId, out var parent) ? parent : null,
             Cost = OwnCost(node),
@@ -201,7 +201,7 @@ internal sealed class OperatorEventBuilder
             SchemaName = node.Schema ?? string.Empty,
             TableName = node.Table ?? string.Empty,
             IndexName = node.Index ?? string.Empty,
-            PlanNodeIdentifier = new PlanNodeIdentifier { NodeId = node.NodeId, PlanHandle = _plan.PlanHandle },
+            PlanNodeIdentifier = new PlanNodeIdentifier { NodeId = node.NodeId, PlanHandleId = _plan.PlanHandleId },
             TimeUs = start,
             EmitStartUs = emitStart,
             DurationUs = end - start,

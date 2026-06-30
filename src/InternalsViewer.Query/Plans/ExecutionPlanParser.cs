@@ -4,7 +4,7 @@ namespace InternalsViewer.Query.Plans;
 
 public static class ExecutionPlanParser
 {
-    public static ExecutionPlan Parse(string xml)
+    public static ExecutionPlan Parse(string xml, PlanHandleRegistry planHandles)
     {
         var doc = XDocument.Parse(xml);
 
@@ -16,9 +16,9 @@ public static class ExecutionPlanParser
             throw new InvalidOperationException("QueryPlan element not found.");
         }
 
-        var planHandle = GetPlanHandle(doc);
+        var planHandleId = planHandles.GetOrAdd(GetPlanHandle(doc));
 
-        var plan = new ExecutionPlan(planHandle);
+        var plan = new ExecutionPlan(planHandleId);
 
         var rootRelationalOperators = queryPlan.Elements()
                                                .Where(e => e.Name.LocalName == "RelOp")
