@@ -14,6 +14,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
     public async Task<(List<EngineEvent>, List<ExecutionPlan>)> GetEvents(string filePath,
                                                                           string connectionString,
                                                                           DatabaseSource? database,
+                                                                          CancellationToken cancellationToken,
                                                                           Func<EngineEvent, bool>? endMarker = null)
     {
         await using var connection = new SqlConnection(connectionString);
@@ -27,7 +28,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         var resultsSql = GetResultsSql(filePath);
 
-        await connection.OpenAsync();
+        await connection.OpenAsync(cancellationToken);
 
         DateTime? startTimeStamp = null;
 
@@ -40,13 +41,14 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         // SequentialAccess required to read GetChars directly into buffer
         await using (var reader =
-                     await new SqlCommand(resultsSql, connection).ExecuteReaderAsync(CommandBehavior.SequentialAccess))
+                     await new SqlCommand(resultsSql, connection)
+                            .ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken))
         {
             Logger.LogDebug("SQL: {Sql}", resultsSql);
 
             var sequenceId = 0;
 
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 var nameLength = ReadColumn(reader, 0, ref nameBuffer);
 
@@ -94,9 +96,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
         EventPlanNodeMatcher.Match(orderedEvents, executionPlans);
 
         // Build the operator events (timeline bars) bottom-up from each plan and its matched events.
-        var operatorEvents = executionPlans
-            .SelectMany(plan => new OperatorEventBuilder(plan, orderedEvents).Build())
-            .ToList();
+        var operatorEvents = executionPlans.SelectMany(plan => new OperatorEventBuilder(plan, orderedEvents).Build())
+                                           .ToList();
 
         orderedEvents.AddRange(operatorEvents);
 

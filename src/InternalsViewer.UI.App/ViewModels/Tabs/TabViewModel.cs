@@ -19,7 +19,9 @@ public partial class TabViewModel : ObservableObject
 
     protected TabViewModel()
     {
-        DispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        DispatcherQueue = DispatcherQueue.GetForCurrentThread()
+                          ?? throw new InvalidOperationException(
+                              $"{GetType().Name} must be constructed on the UI thread.");
 
         TabId = Guid.NewGuid().ToString();
     }

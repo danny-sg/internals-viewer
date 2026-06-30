@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Tests.Helpers;
+﻿using System.Threading;
+using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Tests.Helpers;
 using InternalsViewer.Query.TransactionLog;
@@ -24,7 +25,8 @@ public class QueryRunnerTests(ITestOutputHelper testOutputHelper)
         var logReader = new LogRecordReader(TestLogger.GetLogger<LogRecordReader>(TestOutputHelper));
         var executor = new QueryRunner(logger, eventReader, logReader);
 
-        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true);
+        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true,
+            CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.EngineEvents);
@@ -50,7 +52,8 @@ public class QueryRunnerTests(ITestOutputHelper testOutputHelper)
         var logReader = new LogRecordReader(TestLogger.GetLogger<LogRecordReader>(TestOutputHelper));
         var executor = new QueryRunner(logger, eventReader, logReader);
 
-        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true);
+        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true,
+            CancellationToken.None);
 
         Assert.False(result.IsSuccess);
     }

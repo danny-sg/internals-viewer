@@ -31,7 +31,7 @@ public sealed class ExecutionPlanControl : Canvas
     private static readonly Color ConnectorColor = Color.FromArgb(255, 185, 185, 185);
 
     // Flow-line colour for a blocked producer (active but not yet emitting - still consuming its input).
-    private static readonly Color BlockedColor = Color.FromArgb(255, 0xF5, 0x84, 0x84);
+    private static readonly Color BlockedColor = Color.FromArgb(255, 245, 102, 102);
 
     // Each producer node mapped to the connector that carries its rows to its consumer (parent), and to
     // that connector's arrowhead (recoloured to match the flow line while the producer is active).

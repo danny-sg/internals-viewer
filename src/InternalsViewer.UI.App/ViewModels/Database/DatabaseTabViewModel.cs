@@ -164,14 +164,19 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         {
             var bufferPoolPages = await BufferPoolInfoProvider.GetBufferPoolEntries(Database);
 
-            var layer = AllocationLayers.FirstOrDefault(l => l.LayerName == "Buffer Pool");
-
-            if (layer != null)
+            // RefreshBufferPool is also called from Refresh's Task.Run, so this continuation can be on a
+            // background thread; marshal the bound-collection updates onto the UI thread.
+            DispatcherQueue.TryEnqueue(() =>
             {
-                layer.SinglePages = bufferPoolPages.Dirty;
+                var layer = AllocationLayers.FirstOrDefault(l => l.LayerName == "Buffer Pool");
 
-                AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
-            }
+                if (layer != null)
+                {
+                    layer.SinglePages = bufferPoolPages.Dirty;
+
+                    AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -204,21 +209,44 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         DatabaseFiles = Database.Files
                                 .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
                                 .ToArray();
+
         IsLoading = true;
 
-        var layersStart = Stopwatch.GetTimestamp();
+        // Generating the allocation layers walks the whole allocation map, so build it off the UI thread.
+        _ = LoadAllocationLayersAsync();
+    }
 
-        var layers = AllocationLayerBuilder.GenerateLayers(Database, true);
+    private async Task LoadAllocationLayersAsync()
+    {
+        try
+        {
+            var layersStart = Stopwatch.GetTimestamp();
 
-        Logger.LogDebug("Generated allocation layers in: {Elapsed}", Stopwatch.GetElapsedTime(layersStart));
+            // Heavy allocation-map walk on a background thread; the bound assignments below run on the UI
+            // continuation (Load is called on the UI thread).
+            var (layers, extentCount, pfsChain) = await Task.Run(() =>
+            {
+                var generated = AllocationLayerBuilder.GenerateLayers(Database, true);
+                var extents = Database.GetFilePageCount(1) / 8;
+                var pfs = Database.Pfs.First().Value;
 
-        ExtentCount = Database.GetFilePageCount(1) / 8;
+                return (generated, extents, pfs);
+            });
 
-        AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
+            Logger.LogDebug("Generated allocation layers in: {Elapsed}", Stopwatch.GetElapsedTime(layersStart));
 
-        PfsChain = Database.Pfs.First().Value;
-
-        IsLoading = false;
+            AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
+            ExtentCount = extentCount;
+            PfsChain = pfsChain;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to generate allocation layers for database: {Name}", Database.Name);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     [RelayCommand]

@@ -52,7 +52,9 @@ public sealed partial class EventFilterViewModel : ObservableObject
     public EventFilterViewModel(SettingsService settingsService)
     {
         this.settingsService = settingsService;
-        dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        dispatcherQueue = DispatcherQueue.GetForCurrentThread()
+                          ?? throw new InvalidOperationException(
+                              $"{nameof(EventFilterViewModel)} must be constructed on the UI thread.");
     }
 
     /// <summary>System object ids excluded when <see cref="IncludeSystemObjects"/> is off.</summary>
@@ -189,7 +191,15 @@ public sealed partial class EventFilterViewModel : ObservableObject
             dispatcherQueue.TryEnqueue(async () =>
             {
                 saveUncheckedPending = false;
-                await SaveUncheckedAsync();
+
+                try
+                {
+                    await SaveUncheckedAsync();
+                }
+                catch
+                {
+                    // Persisting the unchecked set is best-effort; a failed save shouldn't crash the app.
+                }
             });
         }
     }

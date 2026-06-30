@@ -56,7 +56,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                               string connectionString,
                                               bool clearBufferPool,
                                               bool disableReadAhead,
-                                              bool isModification)
+                                              bool isModification,
+                                              CancellationToken cancellationToken)
     {
         long rowCount;
         var sessionId = $"QueryReplay_{Guid.NewGuid():N}";
@@ -80,9 +81,23 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                                       connectionString,
                                                                                       clearBufferPool,
                                                                                       disableReadAhead,
-                                                                                      isModification);
+                                                                                      isModification,
+                                                                                      cancellationToken);
 
-            (events, executionPlans) = await EventReader.GetEvents(filePath, connectionString, null, endMarker);
+            (events, executionPlans) = await EventReader.GetEvents(filePath,
+                                                                   connectionString,
+                                                                   null,
+                                                                   cancellationToken,
+                                                                   endMarker);
+        }
+        catch (OperationCanceledException)
+        {
+            return new QueryResult
+            {
+                IsSuccess = false,
+                Message = "Query cancelled",
+                SessionId = sessionId
+            };
         }
         catch (SqlException ex)
         {
@@ -124,7 +139,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                               DatabaseSource database,
                                               bool clearBufferPool,
                                               bool disableReadAhead,
-                                              bool isModification)
+                                              bool isModification,
+                                              CancellationToken cancellationToken)
     {
         var connectionString = database.Connection.GetConnectionString();
 
@@ -147,18 +163,29 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         try
         {
             (var filePath, rowCount, var logRecords) = await RunQueryWithEventSession(sessionId,
-                                                                                      sqlText,
-                                                                                      connectionString,
-                                                                                      clearBufferPool,
-                                                                                      disableReadAhead,
-                                                                                      isModification);
+                sqlText,
+                connectionString,
+                clearBufferPool,
+                disableReadAhead,
+                isModification,
+                cancellationToken);
 
-            (events, executionPlans) = await EventReader.GetEvents(filePath, 
-                                                                   connectionString, 
+            (events, executionPlans) = await EventReader.GetEvents(filePath,
+                                                                   connectionString,
                                                                    database,
+                                                                   cancellationToken,
                                                                    endMarker);
 
-            await GetEventKeyAddresses(events, database.AllocationUnits, connectionString);
+            await GetEventKeyAddresses(events, database.AllocationUnits, connectionString, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return new QueryResult
+            {
+                IsSuccess = false,
+                Message = "Query cancelled",
+                SessionId = sessionId
+            };
         }
         catch (SqlException ex)
         {
@@ -196,9 +223,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         };
     }
 
-    private async Task GetEventKeyAddresses(List<EngineEvent> events,
-                                            Dictionary<long, AllocationUnit> allocationUnits,
-                                            string connectionString)
+    private static async Task GetEventKeyAddresses(List<EngineEvent> events,
+                                                   Dictionary<long, AllocationUnit> allocationUnits,
+                                                   string connectionString,
+                                                   CancellationToken cancellationToken)
     {
         var keyLockEvents = events.Where(e => e is LockEvent { KeyHash: not null }).Cast<LockEvent>();
 
@@ -221,7 +249,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             var keyHashRowIdentifiers = await KeyHashLookup.GetKeyHashRowIdentifiers(objectName,
                                                                                      hashes,
-                                                                                     connectionString);
+                                                                                     connectionString,
+                                                                                     cancellationToken);
 
             foreach (var lockEvent in grouping)
             {
@@ -243,15 +272,17 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                  string connectionString,
                                  bool clearBufferPool,
                                  bool disableReadAhead,
-                                 bool isReplayMode)
+                                 bool isReplayMode,
+                                 CancellationToken cancellationToken)
     {
         long rowCount = 0;
 
         await using var connection = new SqlConnection(connectionString);
 
-        await connection.OpenAsync();
+        await connection.OpenAsync(cancellationToken);
 
-        var logPath = (string?)await new SqlCommand(GetFileLocationSql(), connection).ExecuteScalarAsync();
+        var logPath = (string?)await new SqlCommand(GetFileLocationSql(), connection)
+                                            .ExecuteScalarAsync(cancellationToken);
 
         var filePath = $"{logPath}\\{sessionName}.xel";
 
@@ -262,24 +293,24 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var createSessionSql = GetCreateSessionSql(sessionName, filePath, spid, isReplayMode);
 
-        await ExecuteSql(createSessionSql, connection);
+        await ExecuteSql(createSessionSql, connection, cancellationToken);
 
         if (clearBufferPool | isReplayMode)
         {
             // Flush dirty pages either for DROPCLEANBUFFERS or to write the transaction log to disk 
-            await ExecuteSql("CHECKPOINT", connection);
+            await ExecuteSql("CHECKPOINT", connection, cancellationToken);
         }
 
         if (clearBufferPool)
         {
             // Removes all pages from the buffer pool so pages will come from I/O rather than the cache
-            await ExecuteSql("DBCC DROPCLEANBUFFERS", connection);
+            await ExecuteSql("DBCC DROPCLEANBUFFERS", connection, cancellationToken);
         }
 
         if (disableReadAhead)
         {
             // Disable pre-fetching page scans for the session
-            await ExecuteSql("DBCC TRACEON(652)", connection);
+            await ExecuteSql("DBCC TRACEON(652)", connection, cancellationToken);
         }
 
         if (isReplayMode)
@@ -291,20 +322,20 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         // Session block that should stop the session if there is any failure
         try
         {
-            await ExecuteSql(GetStartSessionSql(sessionName), connection);
+            await ExecuteSql(GetStartSessionSql(sessionName), connection, cancellationToken);
 
             if (isReplayMode)
             {
-                await ExecuteSql($"BEGIN TRANSACTION iv_{sessionName[..28]};", connection);
+                await ExecuteSql($"BEGIN TRANSACTION iv_{sessionName[..28]};", connection, cancellationToken);
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, cancellationToken);
 
             Logger.LogDebug("SQL: {Sql}", sqlText);
 
-            await using var reader = await new SqlCommand(sqlText, connection).ExecuteReaderAsync();
+            await using var reader = await new SqlCommand(sqlText, connection).ExecuteReaderAsync(cancellationToken);
 
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 rowCount++;
             }
@@ -315,14 +346,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             {
                 logRecords = await LogRecordReader.GetLogRecords(connection, startLsn, sessionName);
 
-                await ExecuteSql($"ROLLBACK TRANSACTION iv_{sessionName[..28]};", connection);
+                await ExecuteSql($"ROLLBACK TRANSACTION iv_{sessionName[..28]};", connection, cancellationToken);
             }
         }
         finally
         {
+            // Cleanup must run even when the query was cancelled, so it must not observe the (now cancelled)
+            // token - otherwise the Extended Events session is left running on the server.
             try
             {
-                await ExecuteSql(GetStopSessionSql(sessionName), connection);
+                await ExecuteSql(GetStopSessionSql(sessionName), connection, CancellationToken.None);
             }
             catch
             {
@@ -331,7 +364,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             try
             {
-                await ExecuteSql(GetDropSessionSql(sessionName), connection);
+                await ExecuteSql(GetDropSessionSql(sessionName), connection, CancellationToken.None);
             }
             catch
             {
@@ -349,11 +382,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         return (T?)result;
     }
 
-    private async Task ExecuteSql(string sql, SqlConnection connection)
+    private async Task ExecuteSql(string sql, SqlConnection connection, CancellationToken cancellationToken)
     {
         Logger.LogDebug("SQL: {Sql}", sql);
 
-        await new SqlCommand(sql, connection).ExecuteNonQueryAsync();
+        await new SqlCommand(sql, connection).ExecuteNonQueryAsync(cancellationToken);
     }
 
     private string GetFileLocationSql()

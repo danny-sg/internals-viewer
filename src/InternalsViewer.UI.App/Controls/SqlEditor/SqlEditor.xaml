@@ -9,6 +9,10 @@
         <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" IsInverse="true" />
+
+        <converters:BoolToBrushConverter x:Key="ActiveToRedBrushConverter"
+                                         TrueBrush="#C42B1C"
+                                         FalseBrush="#cacaca" />
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -37,7 +41,7 @@
                         BorderThickness="0,0,0,1"
                         Background="Transparent">
 
-                <AppBarElementContainer VerticalContentAlignment="Center" Height="40" Margin="0,0,8,0">
+                <AppBarElementContainer VerticalContentAlignment="Center" Height="40" Width="80" Margin="0,0,8,0">
                     <Button Click="{x:Bind HandleExecuteClick}"
                             IsEnabled="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolConverter }}"
                                            Background="Transparent"
@@ -50,6 +54,7 @@
                                           Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <FontIcon Glyph="&#xE768;"
                                       FontSize="14"
+                                      Width="16"
                                       Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                             <TextBlock Text="{x:Bind ExecuteLabel, Mode=OneWay}"
                                        VerticalAlignment="Center" />
@@ -57,8 +62,22 @@
                     </Button>
                 </AppBarElementContainer>
 
+                <AppBarElementContainer VerticalContentAlignment="Center" Height="40" Margin="0,0,8,0">
+                    <Button Command="{x:Bind CancelCommand, Mode=OneWay}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6,0">
+                        <Rectangle Width="12"
+                                   Height="12"
+                                   RadiusX="2"
+                                   RadiusY="2"
+                                   ToolTipService.ToolTip="Stop query"
+                                   Fill="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource ActiveToRedBrushConverter}}" />
+                    </Button>
+                </AppBarElementContainer>
+
                 <AppBarElementContainer VerticalContentAlignment="Center">
-                    <ToggleButton Margin="0,0,8,0" 
+                    <ToggleButton Margin="0,0,8,0"
                                   IsChecked="{x:Bind QueryOptions.ClearBufferPool, Mode=TwoWay}"
                                   BorderThickness="0">
                         <TextBlock Text="Clear Buffer Pool" VerticalAlignment="Center" />

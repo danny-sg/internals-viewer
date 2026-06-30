@@ -10,6 +10,7 @@
     <sqlEditor:SqlEditorControl x:Name="SqlEditor"
                                 IsExecuting="{x:Bind ViewModel.ExecuteQueryCommand.IsRunning, Mode=OneWay}"
                                 ExecuteCommand="{x:Bind ViewModel.ExecuteQueryCommand, Mode=OneWay}"
+                                CancelCommand="{x:Bind ViewModel.ExecuteQueryCancelCommand, Mode=OneWay}"
                                 Message="{x:Bind ViewModel.Message, Mode=OneWay}"
                                 IsError="{x:Bind ViewModel.IsError, Mode=OneWay}"
                                 Schema="{x:Bind ViewModel.Schema, Mode=OneWay}"

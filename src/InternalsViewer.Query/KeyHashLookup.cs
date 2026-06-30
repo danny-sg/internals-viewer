@@ -10,12 +10,14 @@ public sealed class KeyHashLookup(ILogger<KeyHashLookup> logger)
 
     public ILogger<KeyHashLookup> Logger { get; } = logger;
 
-    public static async Task<Dictionary<string, RowIdentifier>> GetKeyHashRowIdentifiers(string objectName,
-        List<string> hashes,
-        string connectionString)
+    public static async Task<Dictionary<string, RowIdentifier>> 
+        GetKeyHashRowIdentifiers(string objectName,
+                                 List<string> hashes,
+                                 string connectionString, 
+                                 CancellationToken cancellationToken)
     {
         await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync();
+        await connection.OpenAsync(cancellationToken);
 
         var result = new Dictionary<string, RowIdentifier>();
 
@@ -38,9 +40,9 @@ WHERE  %%lockres%% IN ({string.Join(", ", paramNames)})";
                 command.Parameters.AddWithValue($"@h{i}", batch[i]);
             }
 
-            await using var reader = await command.ExecuteReaderAsync();
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 var rowIdentifier = reader.GetSqlBinary(0);
                 var lockHash = reader.GetString(1);

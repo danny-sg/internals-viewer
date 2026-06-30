@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
@@ -698,16 +699,40 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     // Padding (microseconds) added either side of the query crop so boundary reads aren't clipped.
     private const long CropPaddingUs = 200;
 
-    [RelayCommand]
-    private async Task ExecuteQuery(ExecuteSqlPayload payload)
+    [RelayCommand(IncludeCancelCommand = true)]
+    private async Task ExecuteQuery(ExecuteSqlPayload payload, CancellationToken cancellationToken)
     {
         ClearResults();
 
-        var results = await QueryRunner.TraceQuery(payload.SqlText,
-                                                   Database,
-                                                   payload.QueryOptions.ClearBufferPool,
-                                                   payload.QueryOptions.DisableReadAhead,
-                                                   payload.StatementType == StatementType.Modification);
+        // Run full trace on background thread
+        var (results, layers) = await Task.Run(async () =>
+        {
+            var queryResult = await QueryRunner.TraceQuery(payload.SqlText,
+                                                           Database,
+                                                           payload.QueryOptions.ClearBufferPool,
+                                                           payload.QueryOptions.DisableReadAhead,
+                                                           payload.StatementType == StatementType.Modification,
+                                                           cancellationToken);
+
+            if (!queryResult.IsSuccess)
+            {
+                return (queryResult, []);
+            }
+
+            var names = Database.AllocationUnits
+                                .Values
+                                .GroupBy(u => u.ObjectId)
+                                .ToDictionary(g => g.Key, g => g.First().DisplayName);
+
+            foreach (var e in queryResult.EngineEvents.Where(e => e.ObjectId > 0))
+            {
+                e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
+            }
+
+            EventColourProvider.SetEventColours(queryResult.ExecutionPlans, queryResult.EngineEvents);
+
+            return (queryResult, GetEventsAllocationLayer(queryResult.EngineEvents));
+        });
 
         if (!results.IsSuccess)
         {
@@ -739,37 +764,22 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         IsError = false;
         Message = $"({results.RowCount} rows affected)";
 
-        var names = Database.AllocationUnits
-                            .Values
-                            .GroupBy(u => u.ObjectId)
-                            .ToDictionary(g => g.Key, g => g.First().DisplayName);
-
-        foreach (var e in results.EngineEvents.Where(e => e.ObjectId > 0))
+        try
         {
-            e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
+            Events = results.EngineEvents;
+
+            ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
+
+            await EventFilter.BuildAsync(Events);
+
+            ShowResultTabsForFirstRun();
+
+            ApplyEventLayers(layers);
         }
-
-        EventColourProvider.SetEventColours(results.ExecutionPlans, results.EngineEvents);
-
-        DispatcherQueue.TryEnqueue(async void () =>
+        catch (Exception ex)
         {
-            try
-            {
-                Events = results.EngineEvents;
-
-                ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
-
-                await EventFilter.BuildAsync(Events);
-
-                ShowResultTabsForFirstRun();
-            }
-            catch (Exception ex)
-            {
-                await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
-            }
-        });
-
-        RefreshLayers(results.EngineEvents);
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+        }
     }
 
     private bool _resultTabsOpened;
@@ -820,20 +830,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     private void RefreshLayers(List<EngineEvent> engineEvents)
+        => ApplyEventLayers(GetEventsAllocationLayer(engineEvents));
+
+    // Applies the (already computed) event layers. Must run on the UI thread - it assigns bound
+    // collections.
+    private void ApplyEventLayers(List<AllocationLayer> layers)
     {
-        var layers = GetEventsAllocationLayer(engineEvents);
+        AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
 
-        DispatcherQueue.TryEnqueue(() =>
+        foreach (var layer in layers)
         {
-            AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
+            AllocationLayers.Add(layer);
+        }
 
-            foreach (var layer in layers)
-            {
-                AllocationLayers.Add(layer);
-            }
-
-            SelectedLayers = new ObservableCollection<AllocationLayer>(layers);
-        });
+        SelectedLayers = new ObservableCollection<AllocationLayer>(layers);
     }
 
     public void RefreshFilteredEvents()
@@ -897,5 +907,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return [ioLayer, pageLayer, lockLayer, systemIoLayer, systemPageLayer, systemLockLayer];
     }
 
-    public PfsChain PfsChain { get; }
+    public PfsChain PfsChain 
+        => throw new NotImplementedException();
 }
