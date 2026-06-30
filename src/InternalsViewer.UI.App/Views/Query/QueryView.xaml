@@ -37,9 +37,9 @@
             <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition x:Name="DockRow" Height="*"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="{x:Bind ViewModel.TimelineRowHeight, Mode=OneWay}"/>
+                    <RowDefinition x:Name="TimelineRow" Height="*"/>
                 </Grid.RowDefinitions>
 
                 <!-- Menu/Command Bar -->
@@ -122,6 +122,7 @@
                                                HorizontalAlignment="Stretch"
                                                StartOffset="{x:Bind ViewModel.StartOffset, Mode=OneWay}"
                                                EndOffset="{x:Bind ViewModel.EndOffset, Mode=OneWay}"
+                                               ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
                                                Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}" />
             </Grid>
         </SplitView.Content>

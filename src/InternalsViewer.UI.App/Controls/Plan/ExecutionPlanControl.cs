@@ -33,10 +33,16 @@ public sealed class ExecutionPlanControl : Canvas
     // Flow-line colour for a blocked producer (active but not yet emitting - still consuming its input).
     private static readonly Color BlockedColor = Color.FromArgb(255, 245, 102, 102);
 
+    // Branch labels (Build / Probe) sit near the child end of a hash join's input connectors.
+    private static readonly Color BranchLabelColor = Color.FromArgb(255, 160, 160, 160);
+
     // Each producer node mapped to the connector that carries its rows to its consumer (parent), and to
     // that connector's arrowhead (recoloured to match the flow line while the producer is active).
     private readonly Dictionary<PlanNode, Polyline> _connectorByProducer = new();
     private readonly Dictionary<PlanNode, Polygon> _arrowByProducer = new();
+
+    // The second chevron of an ordered read node's double arrowhead, recoloured alongside the primary.
+    private readonly Dictionary<PlanNode, Polygon> _secondaryArrowByProducer = new();
 
     // Per-emitting-producer animated data-flow overlay marching along its outgoing connector. Keyed by
     // producer so the set can be reconciled incrementally as the active operators change each tick.
@@ -153,6 +159,7 @@ public sealed class ExecutionPlanControl : Canvas
         Children.Clear();
         _connectorByProducer.Clear();
         _arrowByProducer.Clear();
+        _secondaryArrowByProducer.Clear();
         _selectedControl = null;
 
         if (Plan is null || Plan.Root.Count == 0)
@@ -176,7 +183,8 @@ public sealed class ExecutionPlanControl : Canvas
         {
             foreach (var child in node.Children)
             {
-                var (connector, arrow) = DrawConnector(point, positions[child], RelativeCost(child, totalCost));
+                var (connector, arrow) = DrawConnector(point, positions[child], RelativeCost(child, totalCost),
+                                                       node, child);
 
                 _connectorByProducer[child] = connector;
                 _arrowByProducer[child] = arrow;
@@ -250,7 +258,8 @@ public sealed class ExecutionPlanControl : Canvas
         Children.Add(control);
     }
 
-    private (Polyline Connector, Polygon Arrow) DrawConnector(Point parent, Point child, double childCostFraction)
+    private (Polyline Connector, Polygon Arrow) DrawConnector(Point parent, Point child, double childCostFraction,
+                                                             PlanNode parentNode, PlanNode childNode)
     {
         var start = new Point(child.X, child.Y + NodeHeight / 2);
         var end = new Point(parent.X + NodeWidth, parent.Y + NodeHeight / 2);
@@ -266,9 +275,13 @@ public sealed class ExecutionPlanControl : Canvas
 
         var brush = new SolidColorBrush(ConnectorColor);
 
-        // Stop the shaft at the arrowhead's base rather than the node edge, so the squared line end is
-        // hidden behind the head and doesn't stick out past the (zero-width) tip.
-        var shaftEnd = new Point(end.X + headLength, end.Y);
+        // An ordered read (e.g. an ordered index scan) gets a second chevron directly behind the first (no
+        // gap) - a double arrowhead reading as "ordered output".
+        var isOrdered = childNode.ScanInfo?.IsOutputOrdered == true;
+
+        // Stop the shaft at the (last) arrowhead's base rather than the node edge, so the squared line end
+        // is hidden behind the head and doesn't stick out past the (zero-width) tip.
+        var shaftEnd = new Point(end.X + (isOrdered ? 2 * headLength : headLength), end.Y);
 
         var connector = new Polyline
         {
@@ -286,20 +299,55 @@ public sealed class ExecutionPlanControl : Canvas
 
         Children.Add(connector);
 
-        var arrow = new Polygon
+        var arrow = MakeArrowhead(end.X, end.Y, headLength, headHalfWidth, brush);
+        Children.Add(arrow);
+
+        if (isOrdered)
         {
-            Fill = brush,
+            // Second chevron's tip sits exactly on the first's base, so the two heads touch.
+            var secondary = MakeArrowhead(end.X + headLength, end.Y, headLength, headHalfWidth, brush);
+            Children.Add(secondary);
+            _secondaryArrowByProducer[childNode] = secondary;
+        }
+
+        // Hash join inputs are labelled Build (the blocking side) / Probe (the streaming side) near the
+        // child end of the line.
+        if (OperatorClassifier.IsHashJoin(parentNode))
+        {
+            var label = OperatorClassifier.RoleOf(parentNode, childNode) == InputRole.Blocking ? "Build" : "Probe";
+            AddBranchLabel(label, elbowX, start.Y);
+        }
+
+        return (connector, arrow);
+    }
+
+    // A left-pointing arrowhead with its tip at (tipX, y); the base sits headLength to the right.
+    private static Polygon MakeArrowhead(double tipX, double y, double headLength, double headHalfWidth, Brush fill)
+        => new()
+        {
+            Fill = fill,
             Points =
             {
-                new Point(end.X, end.Y),
-                new Point(end.X + headLength, end.Y - headHalfWidth),
-                new Point(end.X + headLength, end.Y + headHalfWidth)
+                new Point(tipX, y),
+                new Point(tipX + headLength, y - headHalfWidth),
+                new Point(tipX + headLength, y + headHalfWidth)
             }
         };
 
-        Children.Add(arrow);
+    private void AddBranchLabel(string text, double lineX, double y)
+    {
+        var label = new TextBlock
+        {
+            Text = text,
+            FontSize = 10,
+            Foreground = new SolidColorBrush(BranchLabelColor)
+        };
 
-        return (connector, arrow);
+        // Just to the right of the vertical connector segment, above the line.
+        SetLeft(label, lineX + 3);
+        SetTop(label, y - 17);
+
+        Children.Add(label);
     }
 
     private static double RelativeCost(PlanNode node, double totalCost)
@@ -537,10 +585,15 @@ public sealed class ExecutionPlanControl : Canvas
             ? EventColourProvider.GetOperatorColour(producer).ToWindowsColor()
             : BlockedColor;
 
-        // Match the connector's arrowhead to the flow line so the whole connector reads as one colour.
+        // Match the connector's arrowhead(s) to the flow line so the whole connector reads as one colour.
         if (_arrowByProducer.TryGetValue(producer, out var arrow))
         {
             arrow.Fill = new SolidColorBrush(colour);
+        }
+
+        if (_secondaryArrowByProducer.TryGetValue(producer, out var secondaryArrow))
+        {
+            secondaryArrow.Fill = new SolidColorBrush(colour);
         }
 
         var overlay = new Polyline
@@ -599,10 +652,15 @@ public sealed class ExecutionPlanControl : Canvas
             flow.Storyboard?.Stop();
             Children.Remove(flow.Overlay);
 
-            // Restore the arrowhead to the default connector grey now the producer is no longer active.
+            // Restore the arrowhead(s) to the default connector grey now the producer is no longer active.
             if (_arrowByProducer.TryGetValue(producer, out var arrow))
             {
                 arrow.Fill = new SolidColorBrush(ConnectorColor);
+            }
+
+            if (_secondaryArrowByProducer.TryGetValue(producer, out var secondaryArrow))
+            {
+                secondaryArrow.Fill = new SolidColorBrush(ConnectorColor);
             }
         }
     }

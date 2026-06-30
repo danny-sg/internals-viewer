@@ -34,4 +34,27 @@ public sealed class PlanHandleRegistry
         _idsByHandle[planHandle] = id;
         return id;
     }
+
+    /// <summary>
+    /// As <see cref="GetOrAdd(string?)"/>, but matches the handle text without allocating a string unless it
+    /// is seen for the first time (so the same handle, repeated on every event, costs nothing after the first).
+    /// </summary>
+    public short GetOrAdd(ReadOnlySpan<char> planHandle)
+    {
+        if (planHandle.IsEmpty)
+        {
+            return None;
+        }
+
+        var lookup = _idsByHandle.GetAlternateLookup<ReadOnlySpan<char>>();
+
+        if (lookup.TryGetValue(planHandle, out var id))
+        {
+            return id;
+        }
+
+        id = (short)(_idsByHandle.Count + 1);
+        _idsByHandle[planHandle.ToString()] = id;
+        return id;
+    }
 }

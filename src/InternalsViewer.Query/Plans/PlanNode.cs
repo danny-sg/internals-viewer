@@ -26,6 +26,8 @@ public sealed class PlanNode
 
     public HashInfo? HashInfo { get; set; }
 
+    public ScanInfo? ScanInfo { get; set; }
+
     public HashSet<string> Outputs { get; set; } = [];
 
     public Dictionary<int, ThreadRuntime> CountersByThread { get; set; } = new();

@@ -106,16 +106,28 @@ public sealed partial class PlanNodeControl : UserControl
 
     private static string FormatObject(PlanNode node)
     {
-        var table = Trim(node.Table);
+        var isIo = OperatorClassifier.IsDataAccess(node);
 
-        if (string.IsNullOrEmpty(table))
+        if(isIo)
+        {
+            var table = Trim(node.Table);
+
+            if (string.IsNullOrEmpty(table))
+            {
+                return string.Empty;
+            }
+
+            var index = Trim(node.Index);
+
+            return string.IsNullOrEmpty(index) ? table : $"{table}.{index}";
+        }
+
+        if (node.PhysicalOperator == node.LogicalOperator)
         {
             return string.Empty;
         }
 
-        var index = Trim(node.Index);
-
-        return string.IsNullOrEmpty(index) ? table : $"{table}.{index}";
+        return node.LogicalOperator;
     }
 
     private string BuildToolTip(PlanNode node)

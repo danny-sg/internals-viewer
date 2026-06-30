@@ -63,7 +63,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
                     // Stream the event_data column into buffer
                     var length = ReadColumn(reader, 1, ref xmlBuffer);
 
-                    var engineEvent = eventParser.ParseEvent(xmlBuffer.AsSpan(0, length));
+                    var engineEvent = eventParser.ParseEvent(xmlBuffer, length);
 
                     if (engineEvent is not null)
                     {

@@ -95,6 +95,11 @@ public static class ExecutionPlanParser
             node.HashInfo = ParseHashInfo(element);
         }
 
+        if (OperatorClassifier.IsDataAccess(node))
+        {
+            node.ScanInfo = ParseScanInfo(element);
+        }
+
         foreach (var child in children)
         {
             node.Children.Add(ParseRelationalOperator(child, level + 1));
@@ -191,14 +196,15 @@ public static class ExecutionPlanParser
     {
         var info = new HashInfo();
 
-        var build = hashElement.Element("HashKeysBuild");
+        var build = hashElement.Descendants().FirstOrDefault(e => e.Name.LocalName == "HashKeysBuild");
 
         if (build != null)
         {
             info.BuildKeys = ParseKeys(build);
         }
 
-        var probe = hashElement.Element("HashKeysProbe");
+        var probe = hashElement.Descendants().FirstOrDefault(e => e.Name.LocalName == "HashKeysProbe");
+
         if (probe != null)
         {
             info.ProbeKeys = ParseKeys(probe);
@@ -207,10 +213,32 @@ public static class ExecutionPlanParser
         return info;
     }
 
+    private static ScanInfo ParseScanInfo(XElement scanElement)
+    {
+        var indexScan = scanElement.Elements().FirstOrDefault(e => e.Name.LocalName == "IndexScan");
+
+        var scanInfo = new ScanInfo();
+
+        if (indexScan != null)
+        {
+            scanInfo.IsOutputOrdered = (bool?)indexScan.Attribute("Ordered");
+        }
+
+        var scanDirection = indexScan?.Attribute("ScanDirection");
+
+        if (scanDirection != null)
+        {
+            scanInfo.IsForward = scanDirection.Value.Equals("FORWARD", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return scanInfo;
+    }
+
     private static List<ColumnRef> ParseKeys(XElement parent)
     {
         return parent
-            .Descendants("ColumnReference")
+            .Descendants()
+            .Where(e => e.Name.LocalName == "ColumnReference")
             .Select(c => new ColumnRef
             {
                 Database = GetAttribute("Database", c) ?? string.Empty,
@@ -224,7 +252,8 @@ public static class ExecutionPlanParser
     public static HashSet<string> ExtractTables(XElement nodeElement)
     {
         return nodeElement
-            .Descendants("ColumnReference")
+            .Descendants()
+            .Where(e => e.Name.LocalName == "ColumnReference")
             .Select(c => $"{GetAttribute("Schema", c)}.{GetAttribute("Table", c)}")
             .Where(t => !string.IsNullOrEmpty(t))
             .Select(t => t.ToLowerInvariant())

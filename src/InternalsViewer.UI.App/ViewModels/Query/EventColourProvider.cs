@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using InternalsViewer.Query.Events.EventTypes;
@@ -7,9 +7,16 @@ using InternalsViewer.UI.App.Helpers;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
-internal class EventColourProvider
+/// <summary>
+/// Resolves the display colour for an engine event on demand, so the colour no longer has to be stored on
+/// every event (a <see cref="Color"/> is 24 bytes each). The only state is the per-plan-node IO colour map,
+/// which is built once when the provider is created (per query / event refresh) and reused for every lookup.
+/// </summary>
+public sealed class EventColourProvider
 {
-    public static void SetEventColours(List<ExecutionPlan> executionPlans, List<EngineEvent> events)
+    private readonly Dictionary<PlanNodeIdentifier, Color> _ioOperatorNodes;
+
+    public EventColourProvider(IReadOnlyList<ExecutionPlan> executionPlans)
     {
         var ioNodes = executionPlans
             .SelectMany(g => g.NodesById.Select(n => new PlanNodeIdentifier(g.PlanHandleId, n.Key)))
@@ -17,40 +24,37 @@ internal class EventColourProvider
             .Select((s, i) => (Id: s, Index: i + 1))
             .ToList();
 
-        var ioOperatorNodes = ioNodes.ToDictionary(k => k.Id, 
-            v => ColourHelpers.GetSeriesColour(ColourConstants.IoColour,
-                v.Index,
-                ioNodes.Count + 1));
+        _ioOperatorNodes = ioNodes.ToDictionary(
+            k => k.Id,
+            v => ColourHelpers.GetSeriesColour(ColourConstants.IoColour, v.Index, ioNodes.Count + 1));
+    }
 
-        foreach (var engineEvent in events)
+    /// <summary>The display colour for an event, computed on demand from its type, category and linked node.</summary>
+    public Color GetColour(EngineEvent engineEvent)
+    {
+        // Operators are coloured by their category (data access / join / transformation / buffer).
+        if (engineEvent is ExecutionOperatorEvent op)
         {
-            // Operators are coloured by their category (data access / join / transformation / buffer).
-            if (engineEvent is ExecutionOperatorEvent op)
-            {
-                engineEvent.DisplayColour = GetOperatorCategoryColour(op.Category);
-                continue;
-            }
-
-            // Transaction-log writes are red, and don't get tinted by any linked operator's object.
-            if (engineEvent is TransactionLogEvent)
-            {
-                engineEvent.DisplayColour = ColourConstants.LogColour;
-                continue;
-            }
-
-            // Locks and waits can be linked to an operator's object (e.g. a SCH_S/Object lock) without
-            // representing that operator's IO, so they keep their own colour rather than being tinted
-            // like the data-access events.
-            if (engineEvent is not LockEvent and not WaitEvent &&
-                engineEvent.PlanNodeIdentifier != null &&
-                ioOperatorNodes.TryGetValue(engineEvent.PlanNodeIdentifier, out var colour))
-            {
-                engineEvent.DisplayColour = colour;
-                continue;
-            }
-
-            engineEvent.DisplayColour = GetEventColour(engineEvent);
+            return GetOperatorCategoryColour(op.Category);
         }
+
+        // Transaction-log writes are red, and don't get tinted by any linked operator's object.
+        if (engineEvent is TransactionLogEvent)
+        {
+            return ColourConstants.LogColour;
+        }
+
+        // Locks and waits can be linked to an operator's object (e.g. a SCH_S/Object lock) without
+        // representing that operator's IO, so they keep their own colour rather than being tinted like the
+        // data-access events.
+        if (engineEvent is not LockEvent and not WaitEvent
+            && engineEvent.PlanNodeIdentifier is { } id
+            && _ioOperatorNodes.TryGetValue(id, out var colour))
+        {
+            return colour;
+        }
+
+        return GetEventColour(engineEvent);
     }
 
     // The statement (SELECT/INSERT/...) node is neutral grey, matching the timeline's statement bar,
@@ -85,12 +89,5 @@ internal class EventColourProvider
             TransactionLogEvent => ColourConstants.LogColour,
             _ => Color.Gray
         };
-    }
-
-    private static Color GetColour(Color baseColour, int count, int i)
-    {
-        float hue = (float)i / count;
-
-        return Color.FromArgb(baseColour.A, (int)(baseColour.R * hue), (int)(baseColour.G * hue), (int)(baseColour.B * hue));
     }
 }

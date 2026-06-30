@@ -1,5 +1,4 @@
-﻿using System.Text;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
@@ -23,15 +22,13 @@ internal sealed class EventParser
 
     private readonly PlanHandleRegistry _planHandles;
 
-    // Reused for every event
-    private readonly Dictionary<string, object?> _data = new();
+    // Reused for every event. Values are stored as ranges into the event's character buffer, not strings,
+    // so only the few that are read as strings ever allocate (see EventResultExtensions).
+    private readonly Dictionary<string, ValueRange> _data = new();
 
-    private readonly Dictionary<string, object?> _actions = new();
+    private readonly Dictionary<string, ValueRange> _actions = new();
 
     private readonly EventResult _result;
-
-    // Scratch for decoding the occasional value that contains XML entities (e.g. sql_text)
-    private readonly StringBuilder _decodeBuffer = new();
 
     // Event and field names come from a small fixed vocabulary, so they're interned: each distinct name is
     // turned into a string once and that instance is reused for every later occurrence (and shared by the
@@ -46,18 +43,25 @@ internal sealed class EventParser
         _result = new EventResult { Name = string.Empty, Data = _data, Actions = _actions };
     }
 
-    public EngineEvent? ParseEvent(string xml) => ParseEvent(xml.AsSpan());
-
-    public EngineEvent? ParseEvent(ReadOnlySpan<char> xml)
+    public EngineEvent? ParseEvent(string xml)
     {
-        if (!PopulateResult(xml))
+        var buffer = xml.ToCharArray();
+        return ParseEvent(buffer, buffer.Length);
+    }
+
+    public EngineEvent? ParseEvent(char[] buffer, int length)
+    {
+        _result.Buffer = buffer;
+
+        if (!PopulateResult(buffer.AsSpan(0, length)))
         {
             return null;
         }
 
-        if (_result.Actions.TryGetValue("sql_text", out var value)
-            && value is string sql
-            && sql.StartsWith("ALTER EVENT SESSION"))
+        if (_actions.TryGetValue("sql_text", out var sqlText)
+            && sqlText.Length > 0
+            && buffer.AsSpan(sqlText.Offset, sqlText.Length)
+                     .StartsWith("ALTER EVENT SESSION".AsSpan(), StringComparison.Ordinal))
         {
             return null;
         }
@@ -154,7 +158,7 @@ internal sealed class EventParser
 
             var fieldName = GetAttribute(xml[i..(tagEnd + 1)], "name");
 
-            string? value = null;
+            ValueRange range = default;
             int next;
 
             if (xml[tagEnd - 1] == '/')
@@ -175,12 +179,12 @@ internal sealed class EventParser
 
                 var endAbs = tagEnd + 1 + endRel;
 
-                value = ReadValue(xml[(tagEnd + 1)..endAbs]);
+                range = ReadValueRange(xml[(tagEnd + 1)..endAbs], tagEnd + 1);
 
                 next = endAbs + endTag.Length;
             }
 
-            (isData ? _data : _actions)[Intern(fieldName)] = value;
+            (isData ? _data : _actions)[Intern(fieldName)] = range;
 
             i = next;
         }
@@ -188,20 +192,20 @@ internal sealed class EventParser
         return true;
     }
 
-    private string? ReadValue(ReadOnlySpan<char> content)
+    private static ValueRange ReadValueRange(ReadOnlySpan<char> content, int contentStart)
     {
         var valueStart = content.IndexOf("<value".AsSpan(), StringComparison.Ordinal);
 
         if (valueStart < 0)
         {
-            return null;
+            return default;
         }
 
         var tagEnd = content[valueStart..].IndexOf('>');
 
         if (tagEnd < 0)
         {
-            return null;
+            return default;
         }
 
         tagEnd += valueStart;
@@ -209,7 +213,7 @@ internal sealed class EventParser
         // Self-closing <value/>.
         if (content[tagEnd - 1] == '/')
         {
-            return string.Empty;
+            return default;
         }
 
         var inner = content[(tagEnd + 1)..];
@@ -218,10 +222,10 @@ internal sealed class EventParser
 
         if (endOffset < 0)
         {
-            return null;
+            return default;
         }
 
-        return Decode(inner[..endOffset]);
+        return new ValueRange(contentStart + tagEnd + 1, endOffset);
     }
 
     /// <summary>
@@ -314,90 +318,6 @@ internal sealed class EventParser
         return interned;
     }
 
-    private string Decode(ReadOnlySpan<char> s)
-    {
-        if (s.IndexOf('&') < 0)
-        {
-            return s.ToString();
-        }
-
-        _decodeBuffer.Clear();
-
-        for (var i = 0; i < s.Length; i++)
-        {
-            var c = s[i];
-
-            if (c != '&')
-            {
-                _decodeBuffer.Append(c);
-                continue;
-            }
-
-            var semi = s[i..].IndexOf(';');
-            if (semi < 0)
-            {
-                _decodeBuffer.Append(c);
-                continue;
-            }
-
-            var entity = s.Slice(i + 1, semi - 1);
-
-            switch (entity)
-            {
-                case "lt":
-                    _decodeBuffer.Append('<');
-                    break;
-                case "gt":
-                    _decodeBuffer.Append('>');
-                    break;
-                case "amp":
-                    _decodeBuffer.Append('&');
-                    break;
-                case "quot":
-                    _decodeBuffer.Append('"');
-                    break;
-                case "apos":
-                    _decodeBuffer.Append('\'');
-                    break;
-                default:
-                {
-                    if (entity.Length > 1 
-                        && entity[0] == '#' 
-                        && TryDecodeNumeric(entity, out var ch)) _decodeBuffer.Append(ch);
-                    else
-                    {
-                        // Unknown entity - leave it verbatim rather than dropping characters.
-                        _decodeBuffer.Append(s.Slice(i, semi + 1));
-                    }
-
-                    break;
-                }
-            }
-
-            i += semi;
-        }
-
-        return _decodeBuffer.ToString();
-    }
-
-    private static bool TryDecodeNumeric(ReadOnlySpan<char> entity, out char ch)
-    {
-        ch = '\0';
-
-        var ok = entity[1] is 'x' or 'X'
-            ? int.TryParse(entity[2..], System.Globalization.NumberStyles.HexNumber, null, out var code)
-            : int.TryParse(entity[1..], out code);
-
-        if (!ok || code is < 0 or > char.MaxValue)
-        {
-            return false;
-        }
-
-        ch = (char)code;
-
-        return true;
-    }
-
     private static EngineEvent ToEngineEvent(EventResult e, DatabaseSource? database, PlanHandleRegistry planHandles)
     {
         var engineEvent = e.Name switch
@@ -427,9 +347,9 @@ internal sealed class EventParser
 
         engineEvent.SequenceId = e.SequenceId;
 
-        if (e.Actions.TryGetValue("plan_handle", out var planHandle) && planHandle is not null)
+        if (e.Actions.TryGetValue("plan_handle", out var planHandle) && planHandle.Length > 0)
         {
-            engineEvent.PlanHandleId = planHandles.GetOrAdd(planHandle.ToString());
+            engineEvent.PlanHandleId = planHandles.GetOrAdd(e.Buffer.AsSpan(planHandle.Offset, planHandle.Length));
         }
 
         if (database is null)

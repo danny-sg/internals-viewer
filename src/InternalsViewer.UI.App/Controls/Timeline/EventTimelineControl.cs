@@ -288,6 +288,26 @@ public sealed class EventTimelineControl : Grid, IDisposable
         DependencyProperty.Register(nameof(Events), typeof(List<EngineEvent>), typeof(EventTimelineControl),
             new PropertyMetadata(new List<EngineEvent>(), OnEventsChanged));
 
+    /// <summary>Resolves each event's display colour on demand (colours aren't stored on the events).</summary>
+    public EventColourProvider? ColourProvider
+    {
+        get => (EventColourProvider?)GetValue(ColourProviderProperty);
+        set => SetValue(ColourProviderProperty, value);
+    }
+
+    public static readonly DependencyProperty ColourProviderProperty =
+        DependencyProperty.Register(nameof(ColourProvider), typeof(EventColourProvider), typeof(EventTimelineControl),
+            new PropertyMetadata(null, OnColourProviderChanged));
+
+    private static void OnColourProviderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (EventTimelineControl)d;
+
+        // Colours are baked into the cached static layer, so it must be re-recorded when they change.
+        control._eventsVersion++;
+        control._skCanvas.Invalidate();
+    }
+
     private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (EventTimelineControl)d;
@@ -869,12 +889,12 @@ public sealed class EventTimelineControl : Grid, IDisposable
             }
             else
             {
-                var displayColour = sourceEvent.DisplayColour;
-
                 markerTop = innerTop;
                 markerHeight = innerHeight;
 
-                _markerPaint.Color = displayColour.A == 0 ? _activeRows[rowIndex].Color : displayColour.ToSkColor();
+                _markerPaint.Color = ColourProvider is { } colours
+                    ? colours.GetColour(sourceEvent).ToSkColor()
+                    : _activeRows[rowIndex].Color;
             }
 
             if (DimForSelection(sourceEvent))
@@ -1192,10 +1212,10 @@ public sealed class EventTimelineControl : Grid, IDisposable
             }
             else
             {
-                // Fall back to the row colour when the event has no display colour set.
-                var displayColour = op.DisplayColour;
-
-                barColour = displayColour.A == 0 ? _activeRows[planRow].Color : displayColour.ToSkColor();
+                // Fall back to the row colour when there's no colour provider yet.
+                barColour = ColourProvider is { } colours
+                    ? colours.GetColour(op).ToSkColor()
+                    : _activeRows[planRow].Color;
             }
 
             // Lay the bar out within the slot. Buffer operators collapse to a thin bar; everything else
@@ -1502,7 +1522,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
     }
 
     private SKColor TraceColour(EngineEvent ev, int rowIndex, bool dimmed) =>
-        (ev.DisplayColour.A == 0 ? _activeRows[rowIndex].Color : ev.DisplayColour.ToSkColor())
+        (ColourProvider is { } colours ? colours.GetColour(ev).ToSkColor() : _activeRows[rowIndex].Color)
             .WithAlpha(dimmed ? FocusedDimAlpha : (byte)255);
 
     // True when an operator is selected and the event belongs to a different operator, so its marker and

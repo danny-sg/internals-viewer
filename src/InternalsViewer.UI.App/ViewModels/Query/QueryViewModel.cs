@@ -106,6 +106,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private List<EngineEvent> _filteredEvents = [];
 
+    // Resolves event display colours on demand (its IO colour map is built once per query). Bound by the
+    // timeline and used when building allocation layers, so colours aren't stored on every event.
+    [ObservableProperty]
+    private EventColourProvider _eventColours = new([]);
+
     [ObservableProperty]
     private HashSet<int> _systemObjectIds;
 
@@ -705,7 +710,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         ClearResults();
 
         // Run full trace on background thread
-        var (results, layers) = await Task.Run(async () =>
+        var (results, layers, colours) = await Task.Run(async () =>
         {
             var queryResult = await QueryRunner.TraceQuery(payload.SqlText,
                                                            Database,
@@ -716,7 +721,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             if (!queryResult.IsSuccess)
             {
-                return (queryResult, []);
+                return (queryResult, new List<AllocationLayer>(), new EventColourProvider([]));
             }
 
             var names = Database.AllocationUnits
@@ -729,9 +734,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
             }
 
-            EventColourProvider.SetEventColours(queryResult.ExecutionPlans, queryResult.EngineEvents);
+            // The colour map is built once here (per query); colours are then resolved on demand at the
+            // point of consumption rather than stored on every event.
+            var colourProvider = new EventColourProvider(queryResult.ExecutionPlans);
 
-            return (queryResult, GetEventsAllocationLayer(queryResult.EngineEvents));
+            return (queryResult, GetEventsAllocationLayer(queryResult.EngineEvents, colourProvider), colourProvider);
         });
 
         if (!results.IsSuccess)
@@ -766,6 +773,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
+            // Publish the colour provider before the events so the timeline has it when it (re)paints.
+            EventColours = colours;
+
             Events = results.EngineEvents;
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
@@ -830,7 +840,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     private void RefreshLayers(List<EngineEvent> engineEvents)
-        => ApplyEventLayers(GetEventsAllocationLayer(engineEvents));
+        => ApplyEventLayers(GetEventsAllocationLayer(engineEvents, EventColours));
 
     // Applies the (already computed) event layers. Must run on the UI thread - it assigns bound
     // collections.
@@ -853,7 +863,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshLayers(FilteredEvents);
     }
 
-    private List<AllocationLayer> GetEventsAllocationLayer(List<EngineEvent> engineEvents)
+    private List<AllocationLayer> GetEventsAllocationLayer(List<EngineEvent> engineEvents,
+                                                          EventColourProvider colours)
     {
         var maxFileId = DatabaseFiles.Max(d => d.FileId);
 
@@ -878,12 +889,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                         if (isSystemObject)
                         {
                             systemIoLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId)
-                            { DisplayColour = e.DisplayColour });
+                            { DisplayColour = colours.GetColour(e) });
                         }
                         else
                         {
                             ioLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId)
-                            { DisplayColour = e.DisplayColour });
+                            { DisplayColour = colours.GetColour(e) });
                         }
 
                         break;
@@ -891,12 +902,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                         if (isSystemObject)
                         {
                             systemLockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId)
-                            { DisplayColour = e.DisplayColour });
+                            { DisplayColour = colours.GetColour(e) });
                         }
                         else
                         {
                             lockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId)
-                            { DisplayColour = e.DisplayColour });
+                            { DisplayColour = colours.GetColour(e) });
                         }
 
                         break;
@@ -907,6 +918,5 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return [ioLayer, pageLayer, lockLayer, systemIoLayer, systemPageLayer, systemLockLayer];
     }
 
-    public PfsChain PfsChain 
-        => throw new NotImplementedException();
+    public PfsChain PfsChain => new();
 }

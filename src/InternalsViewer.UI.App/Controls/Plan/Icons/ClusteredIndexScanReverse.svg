@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="32"
+   height="32"
+   viewBox="0 0 32 32"
+   version="1.1"
+   id="svg27"
+   sodipodi:docname="ClusteredIndexScanReverse.svg"
+   inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs31" />
+  <sodipodi:namedview
+     id="namedview29"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="32.09375"
+     inkscape:cx="14.893866"
+     inkscape:cy="15.984421"
+     inkscape:window-width="5120"
+     inkscape:window-height="1369"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="sql-execution-plan-btree-scan-icon" />
+  <g
+     id="sql-execution-plan-btree-scan-icon"
+     transform="matrix(1.4629295,0,0,1.2692113,-7.3312004,-3.7365531)">
+    <g
+       stroke="#424242"
+       stroke-width="2"
+       fill="none"
+       stroke-linejoin="round"
+       id="g8">
+      <path
+         d="M 16,5 V 25"
+         id="path2" />
+      <path
+         d="M 16,13 H 8 v 12"
+         id="path4" />
+      <path
+         d="m 16,13 h 8 v 12"
+         id="path6" />
+    </g>
+    <g
+       fill="#424242"
+       id="g16">
+      <circle
+         cx="16"
+         cy="5"
+         r="2"
+         id="circle10" />
+      <!-- <circle cx="8" cy="25" r="2" /> -->
+      <circle
+         cx="16"
+         cy="25"
+         r="2"
+         id="circle12" />
+      <circle
+         cx="24"
+         cy="25"
+         r="2"
+         id="circle14" />
+    </g>
+    <g
+       stroke="#4fbc7e"
+       stroke-width="2"
+       fill="none"
+       stroke-linejoin="round"
+       id="g20"
+       transform="matrix(0.95101265,0,0,1,1.2736712,0)">
+      <path
+         d="M 6,25 H 26"
+         id="path18" />
+    </g>
+    <g
+       fill="#4fbc7e"
+       id="g24">
+      <polygon
+         points="9,22 5,25 9,28 "
+         id="polygon22" />
+    </g>
+  </g>
+</svg>

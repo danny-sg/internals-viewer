@@ -1,5 +1,4 @@
-﻿using System.Drawing;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Plans;
 
 namespace InternalsViewer.Query.Events.EventTypes;
@@ -44,6 +43,4 @@ public record EngineEvent
     public virtual string Description => string.Empty;
 
     public PlanNodeIdentifier? PlanNodeIdentifier { get; set; }
-
-    public Color DisplayColour { get; set; }
 }
