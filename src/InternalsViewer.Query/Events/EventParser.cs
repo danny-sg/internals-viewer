@@ -144,6 +144,8 @@ internal class EventParser
             ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: true);
         }
 
+        engineEvent.Category = EventCategoryClassifier.GetCategory(engineEvent);
+
         return engineEvent;
     }
 

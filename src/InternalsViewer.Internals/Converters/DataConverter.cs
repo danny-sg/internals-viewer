@@ -214,11 +214,6 @@ public static class DataConverter
         }
     }
 
-    private static string GetTimestamp(ReadOnlySpan<byte> data)
-    {
-        return BinaryPrimitives.ReadUInt64BigEndian(data).ToString();
-    }
-
     /// <summary>
     /// Gets the value of a byte array in terms of a typed object (T) based on the SQL type
     /// </summary>
@@ -284,6 +279,11 @@ public static class DataConverter
         {
             return "Error converting data";
         }
+    }
+
+    private static string GetTimestamp(ReadOnlySpan<byte> data)
+    {
+        return BinaryPrimitives.ReadUInt64BigEndian(data).ToString();
     }
 
     /// <summary>

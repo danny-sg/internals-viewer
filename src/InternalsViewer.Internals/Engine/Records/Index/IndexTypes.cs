@@ -1,5 +1,4 @@
-﻿
-namespace InternalsViewer.Internals.Engine.Records.Index;
+﻿namespace InternalsViewer.Internals.Engine.Records.Index;
 
 [Flags]
 public enum IndexTypes

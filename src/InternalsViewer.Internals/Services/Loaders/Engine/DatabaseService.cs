@@ -22,6 +22,11 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
                                     IPfsChainService pfsChainService)
     : IDatabaseService
 {
+    /// <summary>
+    /// Maximum number of IAM chains loaded concurrently
+    /// </summary>
+    private const int MaxParallelChainLoads = 16;
+
     private ILogger<DatabaseService> Logger { get; } = logger;
 
     private IMetadataLoader MetadataLoader { get; } = metadataLoader;
@@ -33,13 +38,6 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     private IIamChainService IamChainService { get; } = iamChainService;
 
     private IPfsChainService PfsChainService { get; } = pfsChainService;
-
-    /// <summary>
-    /// Maximum number of IAM chains loaded concurrently when refreshing allocation units. Each
-    /// chain load reads pages on its own connection/file handle, so this keeps demand under the
-    /// SqlClient pool limit (default 100) while still parallelising across allocation units.
-    /// </summary>
-    private const int MaxParallelChainLoads = 16;
 
     /// <summary>
     /// Create and load a Database object for the given database name

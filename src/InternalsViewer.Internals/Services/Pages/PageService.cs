@@ -38,6 +38,23 @@ public sealed class PageService(ILogger<PageService> logger,
         }
     }
 
+    public async Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress)
+        where T : Page
+    {
+        var page = await GetPage(database, pageAddress);
+
+        if (page is not T typedPage)
+        {
+            throw new ArgumentException($"Page is not of type {typeof(T)}");
+        }
+
+        return typedPage;
+    }
+
+    public void ResetCache(DatabaseSource database)
+    {
+    }
+
     private Page ParsePage(PageData page, PageAddress pageAddress)
     {
         Logger.LogDebug("Page {PageAddress}: Page Type: {PageType}", pageAddress, page.PageHeader.PageType);
@@ -56,21 +73,5 @@ public sealed class PageService(ILogger<PageService> logger,
         Logger.LogTrace("Using Parser: {ParserType}", parser.GetType());
 
         return parser.Parse(page);
-    }
-
-    public async Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress)
-        where T : Page
-    {
-        var page = await GetPage(database, pageAddress);
-
-        if (page is not T typedPage)
-        {
-            throw new ArgumentException($"Page is not of type {typeof(T)}");
-        }
-
-        return typedPage;
-    }
-    public void ResetCache(DatabaseSource database)
-    {
     }
 }

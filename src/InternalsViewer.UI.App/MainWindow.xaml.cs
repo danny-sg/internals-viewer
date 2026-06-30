@@ -294,8 +294,6 @@ public sealed partial class MainWindow
             };
 
 
-            tab.Unloaded += (_, _) => content.Dispose();
-
             BindTabTitle(viewModel, tab);
 
             WindowTabView.TabItems.Add(tab);
@@ -352,8 +350,6 @@ public sealed partial class MainWindow
 
                 BindTabTitle(viewModel, tab);
 
-                tab.Unloaded += (_, _) => content.Dispose();
-
                 WindowTabView.TabItems.Add(tab);
                 WindowTabView.SelectedItem = tab;
             });
@@ -372,6 +368,14 @@ public sealed partial class MainWindow
         // Close tab if it's not the connect tab
         if (args.Tab != ConnectTab)
         {
+            // Dispose here rather than on Unloaded: TabView fires Unloaded on every tab switch
+            // (the non-selected tab's content leaves the visual tree), which would tear down the
+            // tab's content while it is still open. Disposing on actual close avoids that.
+            if (args.Tab.Content is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+
             sender.TabItems.Remove(args.Tab);
         }
     }

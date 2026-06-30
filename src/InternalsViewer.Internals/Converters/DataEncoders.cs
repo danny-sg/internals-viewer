@@ -47,8 +47,6 @@ public class DataEncoders
     public static string EncodeDecimal(decimal value)
     {
         var sqlValue = new SqlDecimal(value);
-        // sqlValue.Precision = precision;
-        // sqlValue.Scale = scale;
 
         return BitConverter.ToString(sqlValue.BinData).Replace("-", " ");
     }

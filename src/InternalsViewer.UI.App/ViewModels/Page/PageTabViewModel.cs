@@ -26,8 +26,8 @@ using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
-public sealed class PageTabViewModelFactory(ILogger<PageTabViewModel> logger, 
-                                            IPageService pageService, 
+public sealed class PageTabViewModelFactory(ILogger<PageTabViewModel> logger,
+                                            IPageService pageService,
                                             IRecordService recordService)
 {
     private ILogger<PageTabViewModel> Logger { get; } = logger;
@@ -191,17 +191,17 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             Description = "Compression Info"
         };
 
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            IsLoading = true;
+
+            Name = $"Loading Page {pageAddress}...";
+
+            PageAddress = pageAddress;
+        });
+
         await Task.Run(async () =>
             {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    IsLoading = true;
-
-                    Name = $"Loading Page {pageAddress}...";
-
-                    PageAddress = pageAddress;
-                });
-
                 var resultPage = await PageService.GetPage(Database, pageAddress);
 
                 var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
@@ -318,7 +318,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     }
 
     private bool CanOpenIndexView() => Page is AllocationUnitPage allocationUnitPage
-                                       && allocationUnitPage.AllocationUnit.IndexType 
+                                       && allocationUnitPage.AllocationUnit.IndexType
                                             != Internals.Engine.Database.Enums.IndexType.Heap;
 
     private bool CanGoForward() => History.CanGoForward();

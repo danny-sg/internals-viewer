@@ -75,9 +75,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
     [ObservableProperty]
-    private PfsChain _pfsChain = new();
-
-    [ObservableProperty]
     private bool _isTooltipEnabled = true;
 
     [ObservableProperty]
@@ -251,9 +248,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _saveScheduled = true;
 
-#pragma warning disable VSTHRD101 
-        // Avoid unsupported async delegates
-        // ReSharper disable once AsyncVoidMethod
         DispatcherQueue.TryEnqueue(async void () =>
         {
             _saveScheduled = false;
@@ -267,7 +261,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 Logger.LogError("Error saving layout - {Message}", e.Message);
             }
         });
-#pragma warning restore VSTHRD101 // Avoid unsupported async delegates
     }
 
     public async Task SaveLayoutAsync()
@@ -623,8 +616,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
 
-        PfsChain = database.Pfs.First().Value;
-
         _systemObjectIds = database.AllocationUnits
                                    .Values
                                    .Where(u => u.IsSystem)
@@ -859,4 +850,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         return [ioLayer, pageLayer, lockLayer, systemIoLayer, systemPageLayer, systemLockLayer];
     }
+
+    public PfsChain PfsChain { get; }
 }

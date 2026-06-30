@@ -20,7 +20,7 @@ public static class EventCategoryClassifier
 {
     public const int CategoryCount = 4;
 
-    public static EventCategory? GetCategory(EngineEvent engineEvent) => engineEvent switch
+    internal static EventCategory? GetCategory(EngineEvent engineEvent) => engineEvent switch
     {
         // A lock is always a concurrency/blocking concern.
         LockEvent => EventCategory.Concurrency,
@@ -64,8 +64,14 @@ public static class EventCategoryClassifier
         name.StartsWith("BITMAP");
 
     private static bool IsIo(string name) =>
-        name.StartsWith("PAGEIOLATCH") ||     // buffer IO
-        name == "WRITELOG" || name == "LOGBUFFER" || name.StartsWith("LOGMGR") || // transaction log IO
+        // buffer IO
+        name.StartsWith("PAGEIOLATCH") ||     
+        name == "WRITELOG"
+
+        // transaction log IO
+        || name == "LOGBUFFER" 
+        || name.StartsWith("LOGMGR") ||
+
         name.Contains("IO_COMPLETION") ||
         name == "ASYNC_IO_COMPLETION" ||
         name == "NETWORK_IO" ||

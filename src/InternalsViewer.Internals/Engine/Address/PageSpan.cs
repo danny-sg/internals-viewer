@@ -18,12 +18,11 @@ public sealed record PageSpan
 
     public PageSpan()
     {
-
     }
 
     public Color? DisplayColour { get; set; }
 
-    public PageAddress Address { get; set; } = new PageAddress();
+    public PageAddress Address { get; set; }
 
     public long SequenceFrom { get; set; }
     

@@ -6,7 +6,8 @@ internal sealed class AppLogLogger(string categoryName, AppLogService appLogServ
 
     public bool IsEnabled(LogLevel logLevel) => logLevel >= appLogService.MinimumLevel;
 
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+    public IDisposable? BeginScope<TState>(TState state)
+        where TState : notnull
     {
         var previous = CurrentScope;
         CurrentScope = state.ToString();

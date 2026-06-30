@@ -35,6 +35,8 @@ public record EngineEvent
 
     public int ThreadId { get; set; }
 
+    public EventCategory? Category { get; set; }
+
     public virtual string Description => string.Empty;
 
     public PlanNodeIdentifier? PlanNodeIdentifier { get; set; }
