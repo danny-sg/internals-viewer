@@ -40,6 +40,7 @@ on:
       dry_run:
         description: 'Logs simulated changes, no deletions are performed'
         required: false
+        default: "false"
 
 jobs:
   delete_runs:
@@ -49,7 +50,7 @@ jobs:
       contents: read
     steps:
       - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@v2
+        uses: Mattraks/delete-workflow-runs@v2.1.0
         with:
           token: ${{ github.token }}
           repository: ${{ github.repository }}
