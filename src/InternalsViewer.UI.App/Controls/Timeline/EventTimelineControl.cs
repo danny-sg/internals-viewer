@@ -24,9 +24,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private const float MarkerStripHeight = RulerBandHeight + HandleBandHeight;
     private const float HandleWidth = 7f;
 
-    // The from/to handles are drawn as short flat-top triangles in the top of the handle band (rather
-    // than full-height bars), so they present a small target that's harder to grab by accident while
-    // scrubbing the playhead. The handle is only grabbable within this top slice of the strip.
     private const float HandleHeight = 8f;
 
     private const float HandleGap = 13f;
@@ -45,6 +42,10 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     // Opacity of the I/O trace extensions (Trace I/O mode) — faint so they read as a background hint.
     private const byte TraceAlpha = 90;
+
+    // When an operator is selected, markers and trace extensions belonging to other operators fade to
+    // this alpha so the selected block's I/O and trace lines stand out.
+    private const byte FocusedDimAlpha = 70;
 
     private const double MinZoom = 1.0;
     private const double MaxZoom = 100.0;
@@ -65,7 +66,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private static readonly SKColor HandleColour = new(95, 95, 95);
     private static readonly SKColor StatementColour = new(130, 130, 130);
 
-    // Operator bar labels: a soft off-white that reads on every category colour.
     private static readonly SKColor OperatorLabelColour = new(235, 235, 235);
 
     // Per-category brightness applied to the row colour so each category band reads slightly differently.
@@ -95,8 +95,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private readonly Button _playButton;
     private readonly Button _stepBackButton;
     private readonly Button _stepForwardButton;
-    // The I/O trace extensions are always drawn; the toolbar toggle controls the (more involved)
-    // per-thread sub-lane overlay instead, which is off by default.
     private readonly ToggleButton _threadsButton;
     private bool _showThreads;
     private readonly SKXamlCanvas _skCanvas;
@@ -117,7 +115,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
     // Operator bar labels get their own font so the size can be scaled per bar (up to OperatorMaxFont).
     // The type (e.g. "Index Scan") is drawn bold, the object name that follows in the regular font.
     private readonly SKFont _operatorFont = new(SKTypeface.Default, 12f);
-    private readonly SKFont _operatorBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold), 10f);
+    private readonly SKFont _operatorBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, 
+                                                                              SKFontStyle.Bold), 
+                                                    10f);
 
     private readonly SKPaint _labelPaint = new()
     {
@@ -161,6 +161,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private const float OperatorMinFont = 7f;
 
     private readonly SKPaint _operatorTextPaint = new() { IsAntialias = true };
+
     private readonly SKPaint _playheadPaint = new()
     {
         Color = PlayheadColour,
@@ -168,24 +169,28 @@ public sealed class EventTimelineControl : Grid, IDisposable
         Style = SKPaintStyle.Stroke,
         IsAntialias = false,
     };
+
     private readonly SKPaint _playheadFill = new()
     {
         Color = PlayheadColour,
         Style = SKPaintStyle.Fill,
         IsAntialias = true,
     };
+    
     private readonly SKPaint _handlePaint = new()
     {
         Color = HandleColour,
         Style = SKPaintStyle.Fill,
         IsAntialias = true,
     };
+
     // Dims the rows outside the from/to selection so only the selected (clipped) window stands out.
     private readonly SKPaint _clipDimPaint = new()
     {
         Color = new SKColor(0, 0, 0, 120),
         Style = SKPaintStyle.Fill,
     };
+
     private readonly SKPaint _tickPaint = new()
     {
         Color = new SKColor(110, 110, 110),
@@ -194,27 +199,37 @@ public sealed class EventTimelineControl : Grid, IDisposable
         IsAntialias = false,
     };
 
-    private readonly SKColor _laneColour = new SKColor(30, 30, 30, 220);
-    private readonly SKColor _alternateLaneColour = new SKColor(30, 30, 30, 220);
+    private readonly SKColor _laneColour = new(30, 30, 30, 220);
 
-    private readonly SKPaint _separatorPaint = new SKPaint { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
+    private readonly SKColor _alternateLaneColour = new(30, 30, 30, 220);
+
+    private readonly SKPaint _separatorPaint = new() { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
 
     private List<EngineEvent> _sortedEvents = [];
+
     private List<double> _times = [];
 
     // Cached per-event-set layout data for the operator (Plan) row, rebuilt in BuildOperatorLayout.
     private List<(int Index, ExecutionOperatorEvent Op)> _orderedOperators = [];
+    
     private double _maxCost;
+    
     private long _maxRows;
 
     private double _minTime;
+
     private double _maxTime;
+    
     private double _timeRange;
 
     private double _playheadTime;
+    
     private double _playStartTime;
+    
     private double _playEndTime;
+    
     private double _playStep;
+
     private bool _isPlaying;
 
     // True once the user has dragged a handle. While false the start/end handles track the playhead.
@@ -222,15 +237,19 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private readonly DispatcherTimer _playTimer;
 
     private bool _isDragging;
+    
     private DragTarget _dragTarget;
 
     private double _startTime;
+    
     private double _endTime;
 
     private double _zoom = MinZoom;
+    
     private double _scrollX;
 
     private long _lastPressTicks;
+
     private double _lastPressX;
 
     private enum DragTarget { None, Start, End, Playhead }
@@ -247,18 +266,19 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var ctrl = (EventTimelineControl)d;
+        var control = (EventTimelineControl)d;
         var events = (List<EngineEvent>)e.NewValue;
 
-        ctrl._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
-        ctrl.BuildActiveRows();
-        ctrl.BuildTimes();
-        ctrl.BuildOperatorLayout();
+        control._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
 
-        ctrl.StopPlay();
-        ctrl.Reset();
+        control.BuildActiveRows();
+        control.BuildTimes();
+        control.BuildOperatorLayout();
 
-        ctrl._skCanvas.Invalidate();
+        control.StopPlay();
+        control.Reset();
+
+        control._skCanvas.Invalidate();
     }
 
     /// <summary>
@@ -803,6 +823,13 @@ public sealed class EventTimelineControl : Grid, IDisposable
                 _markerPaint.Color = displayColour.A == 0 ? _activeRows[rowIndex].Color : displayColour.ToSkColor();
             }
 
+            // When a block is selected, fade markers belonging to other blocks so the selected block's
+            // I/O stands out.
+            if (DimForSelection(sourceEvent))
+            {
+                _markerPaint.Color = _markerPaint.Color.WithAlpha(FocusedDimAlpha);
+            }
+
             var markerWidth = RowMarkerWidth(rowIndex);
 
             canvas.DrawRect(x, markerTop, markerWidth, markerHeight, _markerPaint);
@@ -1252,6 +1279,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
                 // Workers read a touch brighter than the envelope (coordinator) bar behind them.
                 _markerPaint.Color = ColourScale(b.BarColour, 1.12f);
+
                 canvas.DrawRect(x0, y, x1 - x0, Math.Max(1f, laneHeight - ThreadLaneGap), _markerPaint);
             }
 
@@ -1286,7 +1314,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
                 if (x1 > x0)
                 {
-                    // Map 1..DOP concurrent workers onto a 0.7→1.3 brightness ramp over the envelope.
+                    // Map 1..DOP concurrent workers onto a 0.7 → 1.3 brightness ramp over the envelope.
                     var intensity = (float)active / workers.Count;
 
                     _markerPaint.Color = ColourScale(b.BarColour, 0.7f + 0.6f * intensity);
@@ -1300,14 +1328,10 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
     }
 
-    /// <summary>
-    /// Trace mode: extends point markers out of their row to the operator that produced them, at
-    /// reduced opacity. Reads sit below the plan and extend up to the operator's bottom; log writes
-    /// sit above the plan and extend down to the modification operator's top.
-    /// </summary>
     private void DrawTraces(SKCanvas canvas, List<OperatorBar> bars, float[] rowTops, float[] rowHeights)
     {
         var byNode = new Dictionary<PlanNodeIdentifier, OperatorBar>(bars.Count);
+
         foreach (var b in bars)
         {
             if (b.Op.PlanNodeIdentifier is { } id)
@@ -1336,6 +1360,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             // Reads are below the plan: extend from the operator's bottom down to the read row.
             var ioTop = rowTops[ioRow] + RowPadding;
+
             var width = RowMarkerWidth(ioRow);
 
             for (var i = 0; i < _sortedEvents.Count; i++)
@@ -1353,7 +1378,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
                     continue;
                 }
 
-                _markerPaint.Color = TraceColour(io, ioRow);
+                _markerPaint.Color = TraceColour(io, ioRow, DimForSelection(io));
                 canvas.DrawRect(x, b.BarBottom, width, ioTop - b.BarBottom, _markerPaint);
             }
         }
@@ -1379,7 +1404,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
                     continue;
                 }
 
-                _markerPaint.Color = TraceColour(log, logRow);
+                _markerPaint.Color = TraceColour(log, logRow, DimForSelection(log));
                 canvas.DrawRect(x, logBottom, width, b.BarTop - logBottom, _markerPaint);
             }
         }
@@ -1387,8 +1412,14 @@ public sealed class EventTimelineControl : Grid, IDisposable
         canvas.Restore();
     }
 
-    private SKColor TraceColour(EngineEvent ev, int rowIndex) =>
-        (ev.DisplayColour.A == 0 ? _activeRows[rowIndex].Color : ev.DisplayColour.ToSkColor()).WithAlpha(255);
+    private SKColor TraceColour(EngineEvent ev, int rowIndex, bool dimmed) =>
+        (ev.DisplayColour.A == 0 ? _activeRows[rowIndex].Color : ev.DisplayColour.ToSkColor())
+            .WithAlpha(dimmed ? FocusedDimAlpha : (byte)255);
+
+    // True when an operator is selected and the event belongs to a different operator, so its marker and
+    // trace line are faded to let the selected block's I/O and trace lines stand out.
+    private bool DimForSelection(EngineEvent ev) =>
+        _selectedNodeId is { } selected && ev.PlanNodeIdentifier is { } id && id.NodeId != selected;
 
     private int RowIndexOf(Type eventType)
     {
@@ -1544,27 +1575,31 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private const float TwoLineGap = 2f;
 
     /// <summary>
-    /// Draws the operator type (bold) and, when present, the object name, sized to the largest that
-    /// fits the bar. The layout is chosen by priority on the bar's height and width: the object name
-    /// stacked below the type on two centred lines; failing that the two on a single line (type then
-    /// object name, left aligned); failing that the operator type alone; otherwise nothing.
+    /// Draws operator label
     /// </summary>
+    /// <remarks>
+    /// Dependent on available width and height. Options are:
+    /// 
+    ///     Two lines: Name, Object Name
+    ///     One line: Name + Object Name
+    ///     One line: Name
+    ///     No label
+    /// </remarks>
     private void DrawOperatorLabel(SKCanvas canvas,
-                                   ExecutionOperatorEvent op,
+                                   ExecutionOperatorEvent planOperator,
                                    float startX,
                                    float endX,
                                    float y,
                                    float barHeight)
     {
-        var opName = op.Name ?? string.Empty;
-        var target = op.ObjectName ?? string.Empty;
+        var opName = planOperator.Name;
+        var target = planOperator.ObjectName;
 
-        // Annotate parallel operators with their degree of parallelism (worker = non-zero thread id).
-        var dop = op.Threads.Count(t => t.ThreadId != 0);
+        var dop = planOperator.Threads.Count(t => t.ThreadId != 0);
 
-        // Write the type label (with optional DOP suffix) into a stack buffer to avoid heap allocation.
-        Span<char> typeBuf = stackalloc char[64];
-        var typeSpan = BuildTypeSpan(opName, dop, typeBuf);
+        Span<char> charBuffer = stackalloc char[64];
+
+        var typeSpan = BuildTypeSpan(opName, dop, charBuffer);
 
         if (typeSpan.Length == 0 && target.Length == 0)
         {
@@ -1572,7 +1607,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
 
         const float textPadX = 8f;
+
         var availWidth = endX - startX - textPadX * 2;
+
         if (availWidth <= 0)
         {
             return;
@@ -1583,8 +1620,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _operatorBoldFont.Size = OperatorMaxFont;
         _operatorFont.Size = OperatorMaxFont;
 
-        var typeW = typeSpan.Length > 0 ? _operatorBoldFont.MeasureText(typeSpan, null) : 0f;
-        var targetW = target.Length > 0 ? _operatorFont.MeasureText((ReadOnlySpan<char>)target, null) : 0f;
+        var typeWidth = typeSpan.Length > 0 ? _operatorBoldFont.MeasureText(typeSpan) : 0f;
+        var targetWidth = target.Length > 0 ? _operatorFont.MeasureText((ReadOnlySpan<char>)target) : 0f;
+
         var hasBoth = typeSpan.Length > 0 && target.Length > 0;
 
         _operatorTextPaint.Color = OperatorLabelColour;
@@ -1593,9 +1631,12 @@ public sealed class EventTimelineControl : Grid, IDisposable
         // the two, and the pair needs room for two rows of text plus the gap between them.
         if (hasBoth)
         {
-            var widerAtMax = Math.Max(typeW, targetW);
+            var widerAtMax = Math.Max(typeWidth, targetWidth);
+            
             var sizeByWidth = widerAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / widerAtMax;
+            
             var sizeByHeight = (barHeight - 2f - TwoLineGap) / 2f;
+
             var size = Math.Min(OperatorMaxFont, Math.Min(sizeByWidth, sizeByHeight));
 
             if (size >= OperatorMinFont)
@@ -1616,9 +1657,12 @@ public sealed class EventTimelineControl : Grid, IDisposable
         // too short for two lines but wide enough to fit both side by side.
         if (hasBoth)
         {
-            var widthAtMax = typeW + targetW + OperatorMaxFont * OperatorLabelGapFraction;
+            var widthAtMax = typeWidth + targetWidth + OperatorMaxFont * OperatorLabelGapFraction;
+            
             var sizeByWidth = widthAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / widthAtMax;
+            
             var sizeByHeight = barHeight - 2f;
+
             var size = Math.Min(OperatorMaxFont, Math.Min(sizeByWidth, sizeByHeight));
 
             if (size >= OperatorMinFont)
@@ -1630,8 +1674,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
                 var x = startX + textPadX;
 
                 DrawTextSpan(canvas, typeSpan, x, baseline, _operatorBoldFont, _operatorTextPaint);
+                
                 x += _operatorBoldFont.MeasureText(typeSpan, null) + size * OperatorLabelGapFraction;
+
                 DrawTextSpan(canvas, target, x, baseline, _operatorFont, _operatorTextPaint);
+                
                 return;
             }
         }
@@ -1641,7 +1688,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var isPrimaryType = typeSpan.Length > 0;
         var primarySpan = isPrimaryType ? typeSpan : (ReadOnlySpan<char>)target;
         var primaryFont = isPrimaryType ? _operatorBoldFont : _operatorFont;
-        var primaryWAtMax = isPrimaryType ? typeW : targetW;
+        var primaryWAtMax = isPrimaryType ? typeWidth : targetWidth;
 
         var nameSizeByWidth = primaryWAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / primaryWAtMax;
         var nameSize = Math.Min(OperatorMaxFont, Math.Min(nameSizeByWidth, barHeight - 2f));
@@ -1653,43 +1700,40 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
     }
 
-    // Writes the operator type label (with optional ×DOP suffix) into buf and returns the filled slice.
-    private static ReadOnlySpan<char> BuildTypeSpan(string opName, int dop, Span<char> buf)
+    private static ReadOnlySpan<char> BuildTypeSpan(string operatorName, int dop, Span<char> charBuffer)
     {
-        if (opName.Length == 0)
+        if (operatorName.Length == 0)
         {
             return ReadOnlySpan<char>.Empty;
         }
 
-        opName.AsSpan().CopyTo(buf);
-        var pos = opName.Length;
+        operatorName.AsSpan().CopyTo(charBuffer);
 
-        if (dop > 1 && pos + 4 <= buf.Length)
+        var pos = operatorName.Length;
+
+        if (dop > 1 && pos + 4 <= charBuffer.Length)
         {
-            buf[pos++] = ' ';
-            buf[pos++] = '×';
-            var ok = dop.TryFormat(buf[pos..], out var written);
+            charBuffer[pos++] = ' ';
+            charBuffer[pos++] = '×';
+            var ok = dop.TryFormat(charBuffer[pos..], out var written);
             pos += ok ? written : 0;
         }
 
-        return buf[..pos];
+        return charBuffer[..pos];
     }
 
-    // Creates a SKTextBlob from a char span, draws it at (x, y), then disposes it.
-    private static void DrawTextSpan(SKCanvas canvas, ReadOnlySpan<char> text, float x, float y,
+    private static void DrawTextSpan(SKCanvas canvas, 
+                                     ReadOnlySpan<char> text, float x, float y,
                                      SKFont font, SKPaint paint)
     {
         using var blob = SKTextBlob.Create(text, font, SKPoint.Empty);
+
         if (blob is not null)
         {
             canvas.DrawText(blob, x, y, paint);
         }
     }
 
-    // A short flat-top right triangle at the bottom of the handle band: the start (left) handle is a
-    // "/-" - flat top, vertical left edge, "/" slope down to a point at the bottom-left; the end (right)
-    // handle mirrors it as "-\" with the point at the bottom-right. Sitting low and small, they're easy
-    // to avoid while scrubbing the playhead just below them.
     private void DrawHandle(SKCanvas canvas, float x, bool isStart)
     {
         var top = MarkerStripHeight - HandleHeight;
@@ -1728,7 +1772,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
         return -1;
     }
 
-    // AllRows minus the Log lane unless there are transaction-log events to show.
     private void BuildActiveRows()
     {
         var hasLog = _sortedEvents.Any(e => e is TransactionLogEvent);
@@ -1738,6 +1781,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             : AllRows.Where(r => r.EventType != typeof(TransactionLogEvent)).ToArray();
 
         _rowEventCounts = new int[_activeRows.Length];
+
         foreach (var ev in _sortedEvents)
         {
             var idx = GetRowIndex(ev);
@@ -1760,7 +1804,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
     }
 
-    // Markers on rows with fewer than SparseRowThreshold events are drawn wider so they stand out.
     private float RowMarkerWidth(int rowIndex) =>
         rowIndex >= 0 && rowIndex < _rowEventCounts.Length && _rowEventCounts[rowIndex] < SparseRowThreshold
             ? SparseMarkerWidth
@@ -1769,7 +1812,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private static SKColor TintByCategory(SKColor colour, int category)
         => ColourScale(colour, CategoryShade[category]);
 
-    /// <summary>Scales a colour's RGB channels by <paramref name="factor"/> (clamped), preserving alpha.</summary>
+    /// <summary>
+    /// Scales a colour's RGB channels by <paramref name="factor"/> (clamped), preserving alpha.
+    /// </summary>
     private static SKColor ColourScale(SKColor colour, float factor) => new(
         (byte)Math.Clamp(colour.Red * factor, 0, 255),
         (byte)Math.Clamp(colour.Green * factor, 0, 255),
@@ -1808,7 +1853,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private void FirePlayhead()
     {
-        // Emit the scope first so a consumer reacting to the playhead sees the current window.
+        // Emit the scope first so a consumer reacting to the playhead sees the current window
         EmitScope();
 
         var playheadUs = ToUs(_playheadTime);
@@ -1866,7 +1911,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         var point = e.GetCurrentPoint(_overlay);
 
-        // Right-click is reserved for the context menu (ContextRequested) - don't scrub or select on it.
+        // Right-click is reserved for the context menu (ContextRequested)
         if (point.Properties.IsRightButtonPressed)
         {
             return;
@@ -1875,7 +1920,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var position = point.Position;
 
         var now = Environment.TickCount64;
+        
         var isDoubleClick = now - _lastPressTicks <= DoubleClickMs && Math.Abs(position.X - _lastPressX) <= HitArea;
+        
         _lastPressTicks = now;
         _lastPressX = position.X;
 
@@ -1883,7 +1930,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             // Reset: drop the selection so the handles re-attach to the playhead (= select all).
             DeactivateSelection();
+
             _skCanvas.Invalidate();
+            
             return;
         }
 
@@ -1923,13 +1972,16 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             // Track the selection so its row-flow path (child→parent, lit while emitting) is drawn.
             _selectedNodeId = node.NodeId;
+            
             _skCanvas.Invalidate();
+
             PlanNodeSelected?.Invoke(node);
         }
         else
         {
             // A point marker (read/lock/wait/log): reveal that event in the event grid.
             ClearOperatorSelection();
+
             EventSelected?.Invoke(hit.Value.Event);
         }
     }
@@ -1957,15 +2009,18 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         var hit = HitTestRegion(position.X, position.Y);
 
-        // Only data-access operators (scan/seek/lookup) that run against a named index get the item.
+        // Only data-access operators (scan/seek/lookup) that run against a named index get the item
         if (hit?.Event is not ExecutionOperatorEvent { Category: OperatorCategory.DataAccess, IndexName.Length: > 0 } op)
         {
             return;
         }
 
         var flyout = new MenuFlyout();
+
         var openIndex = new MenuFlyoutItem { Text = $"Open Index: {op.IndexName}" };
+        
         openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(op);
+        
         flyout.Items.Add(openIndex);
 
         flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
@@ -2031,7 +2086,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _hoverLabel = null;
     }
 
-    /// <summary>Shows a pointer-following tooltip with the name of the event under the pointer.</summary>
+    /// <summary>
+    /// Shows a pointer-following tooltip with the name of the event under the pointer.
+    /// </summary>
     private void UpdateHoverTooltip(Windows.Foundation.Point position)
     {
         var hit = HitTestRegion(position.X, position.Y);
@@ -2058,7 +2115,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private (EngineEvent Event, string? Label)? HitTestRegion(double x, double y)
     {
-        // Operators (and their phase bars) are added after markers, so iterate in reverse to prefer them.
+        // Operators (and their phase bars) are added after markers, so iterate in reverse to prefer them
         for (var i = _hitRegions.Count - 1; i >= 0; i--)
         {
             if (_hitRegions[i].Bounds.Contains((float)x, (float)y))
@@ -2125,7 +2182,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private void OnScrollBarScroll(object sender, ScrollEventArgs e)
     {
         _scrollX = e.NewValue;
+
         ClampScroll();
+        
         _skCanvas.Invalidate();
     }
 
@@ -2137,6 +2196,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             _scrollBar.Visibility = Visibility.Collapsed;
             _scrollX = 0;
+
             return;
         }
 
@@ -2174,7 +2234,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
     }
 
-    /// <summary>Double-click reset: deactivate the selection and snap the handles to the playhead.</summary>
+    /// <summary>
+    /// Double-click reset to deactivate the selection and snap the handles to the playhead
+    /// </summary>
     private void DeactivateSelection()
     {
         _selectionActivated = false;
@@ -2221,6 +2283,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         FirePlayhead();
 
         SetPlayButtonIcon(isPlaying: true);
+
         _playTimer.Start();
 
         PlayStateChanged?.Invoke(true);
