@@ -5,6 +5,7 @@ using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers.Metadata;
+using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
@@ -16,7 +17,8 @@ namespace InternalsViewer.Internals.Services.Records;
 public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordLoader,
                                   FixedVarDataRecordLoader fixedVarDataRecordLoader,
                                   CdDataRecordLoader cdDataRecordLoader,
-                                  CdIndexRecordLoader cdIndexRecordLoader) : IRecordService
+                                  CdIndexRecordLoader cdIndexRecordLoader, 
+                                  LobRecordLoader lobRecordLoader) : IRecordService
 {
     private FixedVarIndexRecordLoader FixedVarIndexRecordLoader { get; } = fixedVarIndexRecordLoader;
 
@@ -26,9 +28,12 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private CdIndexRecordLoader CdIndexRecordLoader { get; } = cdIndexRecordLoader;
 
-    public IEnumerable<IRecord> GetRecords(AllocationUnitPage page, bool isMarkEnabled = false)
+    private LobRecordLoader LobRecordLoader { get; } = lobRecordLoader;
+
+    public IEnumerable<IRecord> GetRecords(Page page, bool isMarkEnabled = false)
     {
-        var isCompressed = page.AllocationUnit.CompressionType != CompressionType.None;
+        var isCompressed = page is AllocationUnitPage allocationPage 
+                           && allocationPage.AllocationUnit.CompressionType != CompressionType.None;
 
         return page switch
         {
@@ -40,6 +45,8 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
                 => GetIndexRecords(indexPage, isMarkEnabled),
             IndexPage indexPage
                 => GetCdIndexRecords(indexPage, isMarkEnabled),
+            LobPage lobPage 
+                => GetLobRecords(lobPage, isMarkEnabled),
             _ => throw new InvalidOperationException("Unknown page type")
         };
     }
@@ -66,6 +73,18 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         }
 
         return GetFixedVarIndexRecords(page, isMarkEnabled);
+    }
+
+    private IEnumerable<IRecord> GetLobRecords(LobPage page, bool isMarkEnabled)
+    {
+        return page.OffsetTable.Select((s, index) =>
+        {
+            var record = LobRecordLoader.Load(page, s, isMarkEnabled);
+
+            record.Slot = index;
+
+            return record;
+        }).ToList();
     }
 
     private IEnumerable<DataRecord> GetFixedVarDataRecords(DataPage page, bool isMarkEnabled = false)

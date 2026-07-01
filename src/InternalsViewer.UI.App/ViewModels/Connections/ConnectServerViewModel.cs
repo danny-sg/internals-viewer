@@ -37,6 +37,8 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     [Required]
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyPropertyChangedFor(nameof(IsPasswordEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsUserIdEnabled))]
     private int _authenticationType = (int)SqlAuthenticationMethod.ActiveDirectoryIntegrated;
 
     [ObservableProperty]
@@ -62,11 +64,9 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     [ObservableProperty]
     private string _connectButtonText = "Connect";
 
-    [ObservableProperty]
-    private bool _isUserIdEnabled;
+    public bool IsUserIdEnabled => AuthenticationType != (int)SqlAuthenticationMethod.ActiveDirectoryIntegrated;
 
-    [ObservableProperty]
-    private bool _isPasswordEnabled;
+    public bool IsPasswordEnabled => AuthenticationType == (int)SqlAuthenticationMethod.SqlPassword || AuthenticationType == (int)SqlAuthenticationMethod.ActiveDirectoryPassword;
 
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
@@ -75,51 +75,15 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         base.OnPropertyChanged(e);
     }
 
-    #pragma warning disable CS0618
+
+#pragma warning disable CS0618 // Type or member is obsolete
     public List<AuthenticationTypeOption> AuthenticationTypes => new()
     {
-        new ((int)SqlAuthenticationMethod.ActiveDirectoryIntegrated, "Active Directory Integrated"),
-        new ((int)SqlAuthenticationMethod.SqlPassword, "SQL Password"),
+        new ((int)SqlAuthenticationMethod.ActiveDirectoryIntegrated, "Windows Authentication"),
+        new ((int)SqlAuthenticationMethod.SqlPassword, "SQL Server Authentication"),
         new ((int)SqlAuthenticationMethod.ActiveDirectoryPassword, "Active Directory Password")
     };
-#pragma warning restore CS0618
-
-    partial void OnAuthenticationTypeChanged(int value)
-    {
-        _builder.Authentication = (SqlAuthenticationMethod)value;
-
-        switch (_builder)
-        {
-            case { Authentication: SqlAuthenticationMethod.SqlPassword }:
-            case { Authentication: SqlAuthenticationMethod.ActiveDirectoryServicePrincipal }:
-#pragma warning disable CS0618
-            case { Authentication: SqlAuthenticationMethod.ActiveDirectoryPassword }:
-#pragma warning restore CS0618
-                IsUserIdEnabled = true;
-                IsPasswordEnabled = true;
-                break;
-            case { Authentication: SqlAuthenticationMethod.ActiveDirectoryIntegrated }:
-            case { Authentication: SqlAuthenticationMethod.ActiveDirectoryInteractive }:
-            case { Authentication: SqlAuthenticationMethod.ActiveDirectoryDeviceCodeFlow }:
-            case { Authentication: SqlAuthenticationMethod.ActiveDirectoryManagedIdentity }:
-            case { Authentication: SqlAuthenticationMethod.ActiveDirectoryMSI }:
-                IsUserIdEnabled = true;
-                IsPasswordEnabled = false;
-
-                _builder.Remove(nameof(Password));
-
-                break;
-            case { Authentication: SqlAuthenticationMethod.ActiveDirectoryDefault }:
-            case { Authentication: SqlAuthenticationMethod.NotSpecified }:
-
-                IsUserIdEnabled = false;
-                IsPasswordEnabled = false;
-
-                _builder.Remove(nameof(UserId));
-                _builder.Remove(nameof(Password));
-                break;
-        }
-    }
+#pragma warning restore CS0618 // Type or member is obsolete
 
     /// <summary>
     /// Gets the connection string from the current settings

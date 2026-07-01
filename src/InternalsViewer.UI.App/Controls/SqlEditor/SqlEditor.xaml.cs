@@ -160,12 +160,12 @@ public sealed partial class SqlEditorControl : UserControl
         : (SolidColorBrush)Application.Current.Resources["TextFillColorPrimaryBrush"];
 
     private bool _editorReady;
+
     private bool _initialized;
 
-    // Set while applying a change that originated in Monaco, so the resulting SqlText update isn't pushed
-    // straight back into the editor. Without this, Monaco normalising the text (e.g. line endings) makes
-    // the value differ on the round-trip and the editor/VM ping-pong between two states indefinitely.
     private bool _applyingEditorChange;
+
+    private string _selectedText = string.Empty;
 
     private StatementParser StatementParser { get; } = new();
 
@@ -180,26 +180,25 @@ public sealed partial class SqlEditorControl : UserControl
     private void ApplyMessagesVisibility()
     {
         MessagesRow.Height = IsMessagesVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
         MessagesSplitter.Visibility = IsMessagesVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void HandleExecuteClick()
     {
-        var payload = new ExecuteSqlPayload(SqlText, QueryOptions, StatementParser.GetStatementType(SqlText));
+        var text = string.IsNullOrEmpty(_selectedText) ? SqlText : _selectedText;
+        var payload = new ExecuteSqlPayload(text, QueryOptions, StatementParser.GetStatementType(text));
 
-        if (this.ExecuteCommand != null && this.ExecuteCommand.CanExecute(payload))
+        if (ExecuteCommand != null && ExecuteCommand.CanExecute(payload))
         {
-            // Reveal the messages panel whenever a query runs.
             IsMessagesVisible = true;
 
-            this.ExecuteCommand.Execute(payload);
+            ExecuteCommand.Execute(payload);
         }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // Re-hosting the editor (moving/re-docking its tab) raises Loaded again. Set the WebView up only
-        // once - re-navigating would reload Monaco and lose the text - and just restore the text instead.
         if (_initialized)
         {
             PushSqlTextToEditor();
@@ -255,10 +254,13 @@ public sealed partial class SqlEditorControl : UserControl
                     HandleExecuteClick();
                     break;
 
+                case "selectionChanged":
+                    _selectedText = msg.Value ?? string.Empty;
+                    break;
+
                 case "contentChanged":
                     if (SqlText != msg.Value)
                     {
-                        // The text already lives in Monaco - suppress the echo back so we don't fight it.
                         _applyingEditorChange = true;
                         try
                         {
@@ -283,12 +285,12 @@ public sealed partial class SqlEditorControl : UserControl
             return;
         };
 
-        string jsonSchema = JsonSerializer.Serialize(Schema, new JsonSerializerOptions
+        var jsonSchema = JsonSerializer.Serialize(Schema, new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
 
-        string script = $"window.setSqlSchema({jsonSchema});";
+        var script = $"window.setSqlSchema({jsonSchema});";
 
         await WebView.ExecuteScriptAsync(script);
     }
@@ -317,5 +319,6 @@ public sealed partial class SqlEditorControl : UserControl
         }
     }
 
-    private sealed record EditorMessage([property: JsonPropertyName("type")] string Type, [property: JsonPropertyName("value")] string? Value);
+    private sealed record EditorMessage([property: JsonPropertyName("type")] string Type,
+                                        [property: JsonPropertyName("value")] string? Value);
 }

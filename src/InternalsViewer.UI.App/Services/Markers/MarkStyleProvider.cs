@@ -42,7 +42,7 @@ public class MarkStyleProvider
 
         if(Debugger.IsAttached && resource == null)
         {
-            Debugger.Break();
+            // Debugger.Break();
         }
 
         if (resource == null)

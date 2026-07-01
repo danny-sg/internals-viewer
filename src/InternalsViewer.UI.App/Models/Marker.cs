@@ -42,7 +42,17 @@ public class Marker: DependencyObject
         return markers.FirstOrDefault(marker => marker.StartPosition >= startPosition & marker.EndPosition <= endPosition);
     }
 
-    public ObservableCollection<Marker> Children { get; set; } = [];
+    public ObservableCollection<Marker> Children
+    {
+        get => (ObservableCollection<Marker>)GetValue(ChildrenProperty);
+        set => SetValue(ChildrenProperty, value);
+    }
+
+    public static readonly DependencyProperty ChildrenProperty =
+        DependencyProperty.Register(nameof(Children),
+            typeof(ObservableCollection<Marker>),
+            typeof(Marker),
+            new PropertyMetadata(new ObservableCollection<Marker>()));
 
     public bool HasKey { get; set; }
 }

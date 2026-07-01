@@ -44,6 +44,16 @@
             );
         });
 
+        editor.onDidChangeCursorSelection(() => {
+            const selection = editor.getSelection();
+            const selectedText = selection && !selection.isEmpty()
+                ? editor.getModel().getValueInRange(selection)
+                : '';
+            window.chrome.webview.postMessage(
+                JSON.stringify({ type: 'selectionChanged', value: selectedText })
+            );
+        });
+
         // F5 runs the query. Captured at the window (capture phase) so it fires wherever focus is in the
         // page and preventDefault stops the WebView from reloading; the host handles the 'execute' message.
         window.addEventListener('keydown', (e) => {

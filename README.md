@@ -45,14 +45,20 @@ Steps:
 ## Advisory
 
 Use caution when running on any database. Internals Viewer does not make any modifications
-to a database, but it is not advisable to run on production servers due to the I/O 
+to a database, but it is not advisable to run on production servers due to the I/O
 overhead and risk of some functions.
 
 Use caution with the Query tracing as the default Clear Buffer Pool will run `DBCC FREEPROCCACHE`
-before executing a query. 
+before executing a query.
 
 ## Usage
 
 ### Connecting to a database
 
 Internals Viewer can either connect to a live database or an offline .MDF file.
+
+#### SQL Server
+
+The `sysadmin` role is required.
+
+Set the instance name, authentication type, User Id and Password if required for the authentication type, select the database to connect to and click Connect.

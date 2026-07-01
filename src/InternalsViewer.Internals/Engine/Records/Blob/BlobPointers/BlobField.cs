@@ -8,18 +8,23 @@ namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 /// </summary>
 public class BlobField : Field
 {
+    public BlobField()
+    {
+        IsMarkEnabled = true;
+    }
+
     /// <summary>
     /// Timestamp used by DBCC CHECKTABLE
     /// </summary>
-    [DataStructureItem(ItemType.Timestamp)]
+    [DataStructureItem(ItemType.Timestamp, "Timestamp")]
     public uint Timestamp { get; set; }
 
     public List<BlobChildLink> Links { get; set; } = new();
 
-    [DataStructureItem(ItemType.Rid)]
+    [DataStructureItem(ItemType.Rid, "RID")]
     public BlobChildLink[] LinksArray => Links.ToArray();
 
-    [DataStructureItem(ItemType.PointerType)]
+    [DataStructureItem(ItemType.PointerType, "Pointer Type")]
     public BlobFieldType PointerType { get; set; }
 
     public int Offset { get; set; }

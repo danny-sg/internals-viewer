@@ -16,11 +16,13 @@ public sealed class FixedVarRecordField(ColumnStructure columnStructure) : Recor
 
     public bool IsSparse { get; set; }
 
-    public override string Value => DataConverter.BinaryToString(Data.Span,
-                                                                 ColumnStructure.DataType,
-                                                                 ColumnStructure.Precision,
-                                                                 ColumnStructure.Scale,
-                                                                 ColumnStructure.BitPosition);
+    public override string Value => BlobInlineRoot != null 
+                                    ? string.Empty
+                                    : DataConverter.BinaryToString(Data.Span,
+                                                                   ColumnStructure.DataType,
+                                                                   ColumnStructure.Precision,
+                                                                   ColumnStructure.Scale,
+                                                                   ColumnStructure.BitPosition);
 
     public override string ToString()
     {

@@ -5,7 +5,7 @@ namespace InternalsViewer.Internals.Interfaces.Services.Records;
 
 public interface IRecordService
 {
-    IEnumerable<IRecord> GetRecords(AllocationUnitPage page, bool isMarkEnabled = false);
+    IEnumerable<IRecord> GetRecords(Page page, bool isMarkEnabled = false);
 
     IEnumerable<IRecord> GetDataRecords(DataPage page, bool isMarkEnabled = false);
 

@@ -5,6 +5,7 @@ using System.Linq;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Interfaces.Annotations;
@@ -95,7 +96,9 @@ public static class MarkerBuilder
 
             marker.Ordinal = style.Ordinal;
 
-            marker.Name = string.IsNullOrEmpty(attribute.Name) ? style.Name : attribute.Name;
+            var styleName = string.IsNullOrEmpty(style.Name) ? null : style.Name;
+
+            marker.Name = string.IsNullOrEmpty(attribute.Name) ? styleName ?? item.PropertyName.SplitCamelCase() : attribute.Name;
 
             marker.IsVisible = attribute.IsVisible;
         }
@@ -175,6 +178,9 @@ public static class MarkerBuilder
                     break;
                 case (ushort[] ushortArray, _):
                     marker.Value = StringHelpers.GetArrayString(ushortArray);
+                    break;
+                case (ColumnDescriptor[] columnDescriptors, _):
+                    marker.Value = StringHelpers.GetArrayString(columnDescriptors);
                     break;
                 case (byte byteValue, _):
                     marker.Value = $"{byteValue} (0x{byteValue:X})";

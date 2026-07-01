@@ -301,14 +301,17 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     /// </remarks>
     private static FixedVarRecordField LoadVariableLengthField(ColumnStructure column, DataRecord dataRecord, byte[] pageData)
     {
-        var field = new FixedVarRecordField(column);
+        var field = new FixedVarRecordField(column)
+        {
+            IsMarkEnabled = true
+        };
 
         short length;
         ushort offset;
         bool isLob;
 
         // Use the leaf offset to get the variable length column ordinal
-        var fieldIndex = (short)Math.Abs(column.LeafOffset) - 1;
+        var fieldIndex = Math.Abs(column.LeafOffset) - 1;
 
         if (fieldIndex == 0)
         {
@@ -342,6 +345,12 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         if (isLob)
         {
             LoadLobField(field, field.Data.ToArray(), dataRecord.Offset + offset);
+
+            dataRecord.MarkValue(ItemType.BlobData,
+                                 column.ColumnName,
+                                 field,
+                                 dataRecord.Offset + field.Offset,
+                                 field.Length);
         }
         else
         {

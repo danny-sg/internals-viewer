@@ -42,6 +42,7 @@
       <Content Remove="Assets\Help\Pages.md" />
       <Content Remove="Assets\Help\Query.md" />
       <Content Remove="Assets\Help\Start.md" />
+      <Content Remove="Assets\Samples\SampleQueries.sql" />
     </ItemGroup>
     <ItemGroup>
       <!-- Execution plan operator icons are addressed via ms-appx and must be packaged as content. -->
@@ -69,7 +70,6 @@
         <None Remove="Controls\PageAddressTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Controls\Page\HexViewControl.xaml" />
-        <None Remove="Controls\Page\MarkerDataTable.xaml" />
         <None Remove="Controls\Page\MarkerTreeView.xaml" />
         <None Remove="Controls\PasswordDialog.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
@@ -344,9 +344,6 @@
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\Page\MarkerTreeView.xaml">
-        <Generator>MSBuild:Compile</Generator>
-      </Page>
-      <Page Update="Controls\Page\MarkerDataTable.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\PasswordDialog.xaml">

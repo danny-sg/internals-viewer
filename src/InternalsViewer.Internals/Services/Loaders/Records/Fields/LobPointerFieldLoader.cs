@@ -15,7 +15,7 @@ public class LobPointerFieldLoader
 
         field.PointerType = (BlobFieldType)data[0];
 
-        field.MarkProperty("Timestamp", offset + sizeof(byte), sizeof(int));
+        field.MarkProperty("Timestamp", offset, sizeof(int));
 
         field.Timestamp = BitConverter.ToUInt32(data, 0);
 

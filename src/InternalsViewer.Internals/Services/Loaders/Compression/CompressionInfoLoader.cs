@@ -18,7 +18,9 @@ public sealed class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
     public CompressionInfo Load(AllocationUnitPage page, ushort offset)
     {
         var ci = new CompressionInfo(offset);
-
+        
+        ci.IsMarkEnabled = true;
+        
         ParseHeader(ci, page.Data, offset);
 
         var span = page.Data.AsSpan(offset);

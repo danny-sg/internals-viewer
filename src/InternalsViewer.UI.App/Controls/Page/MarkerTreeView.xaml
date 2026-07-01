@@ -9,6 +9,7 @@
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:controls1="using:InternalsViewer.UI.App.Controls"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style TargetType="controls:DataColumn">
@@ -19,14 +20,22 @@
 
         <Style TargetType="TreeViewItem">
             <!--
-                The reason why the ControlTemplate is set is because the selection checkbox although not displayed takes up space and creates
-                a large gap between the left edge of the TreeViewItem and the content. This is a workaround to remove that gap.
+                The reason why the ControlTemplate is set is that the selection checkbox although not displayed takes 
+                up space and creates a large gap between the left edge of the TreeViewItem and the content. This is a 
+                workaround to remove that gap.
             
-                The grid structure has been amended and the offending checkbox has been set to Visibility="Collapsed". It can't be removed
-                as the control still refers to it.
+                The grid structure has been amended and the offending checkbox has been set to Visibility="Collapsed". 
+                It can't be removed as the control still refers to it.
             
                 Non-relevant VisualStates have been removed to reduce the size of the template.
             -->
+            <Setter Property="Padding" Value="8,0,0,0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Enabled" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Visible" />
+            <Setter Property="ScrollViewer.IsHorizontalRailEnabled" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TreeViewItem">
@@ -216,59 +225,48 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate x:Key="TreeViewItemTemplate" x:DataType="models:Marker">
-            <TreeViewItem ItemsSource="{x:Bind Children, Mode=OneWay}" 
-                          IsExpanded="True"
-                          Padding="8,0,0,0"
-                          Margin="0"
-                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                          ScrollViewer.HorizontalScrollMode="Enabled"
-                          ScrollViewer.HorizontalScrollBarVisibility="Visible"
-                          ScrollViewer.IsHorizontalRailEnabled="True"
-                          HorizontalAlignment="Left">
-                <controls:DataRow>
-                    <!--Name Column-->
-                    <Grid Padding="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid Width="20"
-                              Height="20"
-                              Grid.Column="0"
-                              Visibility="{x:Bind HasKey, Converter={StaticResource BoolToVisibilityConverter}}"
-                              Background="{x:Bind BackColour, 
-                                                  Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
-                            <TextBlock Grid.Column="0"              
-                                       Text="00"
-                                       TextAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Foreground="{x:Bind ForeColour, 
-                                       Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
-                                       Style="{StaticResource HexStyle}"/>
-                        </Grid>
-                        <TextBlock Grid.Column="1"
-                                   Text="{x:Bind Name}" 
-                                   Style="{StaticResource ListTextBlock}" 
-                                   Margin="4,0,0,0"
-                                   TextTrimming="WordEllipsis" />
+        <DataTemplate x:Key="TreeViewItemTemplate" x:DataType="muxc:TreeViewNode">
+            <controls:DataRow>
+                <!--Name Column-->
+                <Grid Padding="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid Width="20"
+                          Height="20"
+                          Grid.Column="0"
+                          Visibility="{x:Bind ((models:Marker)Content).HasKey, Converter={StaticResource BoolToVisibilityConverter}}"
+                          Background="{x:Bind ((models:Marker)Content).BackColour,
+                                              Converter={StaticResource ColorToSolidColorBrushValueConverter}}">
+                        <TextBlock Grid.Column="0"
+                                   Text="00"
+                                   TextAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{x:Bind ((models:Marker)Content).ForeColour,
+                                   Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
+                                   Style="{StaticResource HexStyle}"/>
                     </Grid>
+                    <TextBlock Grid.Column="1"
+                               Text="{x:Bind ((models:Marker)Content).Name}"
+                               Style="{StaticResource ListTextBlock}"
+                               Margin="4,0,0,0"
+                               TextTrimming="WordEllipsis" />
+                </Grid>
 
-                    <!--Value Column-->
-                    <ContentControl ContentTemplateSelector="{StaticResource ValueTemplateSelector}" 
-                                      Content="{Binding}"/>
-                </controls:DataRow>
-            </TreeViewItem>
+                <!--Value Column-->
+                <ContentControl ContentTemplateSelector="{StaticResource ValueTemplateSelector}"
+                                  Content="{x:Bind Content}"/>
+            </controls:DataRow>
         </DataTemplate>
     </UserControl.Resources>
 
     <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1,0,1,1">
-        <controls:HeaderedTreeView 
+        <controls:HeaderedTreeView
                                    x:Name="TreeView"
-                                   ItemsSource="{x:Bind Markers, Mode=OneWay}" 
                                    SelectionMode="Single"
-                                   SelectedItem="{x:Bind SelectedMarker, Mode=TwoWay}"
+                                   SelectionChanged="TreeView_SelectionChanged"
                                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                    VerticalAlignment="Stretch"
                                    ItemTemplate="{StaticResource TreeViewItemTemplate}">

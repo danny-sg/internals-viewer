@@ -7,10 +7,13 @@ public class BlobChildLink : DataStructure
 {
     public BlobChildLink()
     {
+        IsMarkEnabled = true;
     }
 
     public BlobChildLink(RowIdentifier rowIdentifier, int offset, int length)
     {
+        IsMarkEnabled = true;
+
         RowIdentifier = rowIdentifier;
         Offset = offset;
         Length = length;

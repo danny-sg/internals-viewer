@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Services.Loaders.Records.Fields;
@@ -26,9 +25,7 @@ public abstract class FixedVarRecordLoader
         record.HasVariableLengthColumns = (record.StatusBitsA & 0b100000) != 0;
         record.HasRowVersioning = (record.StatusBitsA & 0b1000000) != 0;
 
-        var tags = new List<string>();
-
-        tags.Add(record.RecordType.ToString());
+        var tags = new List<string> { record.RecordType.ToString() };
 
         tags.AddIf("Has Null Bitmap", record.HasNullBitmap);
         tags.AddIf("Has Variable Length Columns", record.HasVariableLengthColumns);
@@ -44,20 +41,6 @@ public abstract class FixedVarRecordLoader
     {
         field.MarkProperty(nameof(field.BlobInlineRoot));
 
-        // First byte gives the Blob field type
-        switch ((BlobFieldType)data[0])
-        {
-            case BlobFieldType.LobPointer:
-                field.BlobInlineRoot = LobPointerFieldLoader.Load(data, offset);
-                break;
-
-            case BlobFieldType.LobRoot:
-                field.BlobInlineRoot = LobRootFieldLoader.Load(data, offset);
-                break;
-
-            case BlobFieldType.RowOverflow:
-                field.BlobInlineRoot = LobOverflowFieldLoader.Load(data, offset);
-                break;
-        }
+        field.BlobInlineRoot = LobFieldLoader.Load(data, offset);
     }
 }

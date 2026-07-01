@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
@@ -14,6 +15,8 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
     public int AnchorLength { get; set; }
 
     public CdRecordField? AnchorField { get; set; }
+
+    public BlobField? BlobInlineRoot { get; set; }
 
     public CdRecord Record { get; set; } = parentRecord;
 

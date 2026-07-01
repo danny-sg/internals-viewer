@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Metadata.Structures;
+using InternalsViewer.Internals.Services.Loaders.Records.Fields;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 
@@ -43,7 +44,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 ///             
 ///             The first cluster is directly after the cluster array, so less than 30 columns and there is no array.
 ///     
-///     - Long Data Region
+///     Long Data Region
 ///         Data longer than 8 bytes.
 ///         
 ///         The region has three parts:
@@ -60,7 +61,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 ///         
 ///         Defined by the offset array
 ///         
-///     - Special Information 
+///     Special Information 
 ///     
 ///         Indicated by the header byte. It could be a forwarding pointer, back pointer, or version info.
 /// </remarks>
@@ -77,7 +78,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
     public CdIndexRecord Load(AllocationUnitPage page,
                               ushort slotOffset,
                               Structure<TStructure> structure,
-                              bool isMarkEnabled = false)
+                              bool isMarkEnabled = true)
     {
         int currentPosition = slotOffset;
 
@@ -271,7 +272,8 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
         if ((data[offset] & 0x80) != 0)
         {
-            // Check if the first bit is high, if it is it indicates 2-byte int - stored big-endian with flag bit cleared
+            // Check if the first bit is high, if it is it indicates 2-byte int - stored big-endian with flag bit
+            // cleared
             size = 2;
 
             record.ColumnCount = (short)(((data[offset] ^ 0x80) << 8) | data[offset + 1]);
@@ -374,17 +376,19 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                 field.Offset = (ushort)(offset + previousOffset);
                 field.Data = data.AsMemory(field.Offset, field.Length);
 
-                var isLob = (nextOffset & 0x8000) == 0;
+                var isLob = (nextOffset & 0x8000) == 0x8000;
 
                 field.AnchorField = anchorRecord?.Fields
                                                  .Cast<CdRecordField>()
-                                                 .FirstOrDefault(f => f.ColumnStructure.ColumnId == i);
+                                                 .FirstOrDefault(f => f.ColumnStructure.ColumnId == i + 1);
 
                 record.Fields.Add(field);
 
                 if (isLob)
                 {
-                    // LoadLobField(field, field.Data, field.Offset);
+                    field.MarkProperty(nameof(field.BlobInlineRoot));
+
+                    field.BlobInlineRoot = LobFieldLoader.Load(field.Data.ToArray(), field.Offset);
                 }
 
                 record.MarkValue(ItemType.LongFieldValue, field.Name, field, field.Offset, field.Length);

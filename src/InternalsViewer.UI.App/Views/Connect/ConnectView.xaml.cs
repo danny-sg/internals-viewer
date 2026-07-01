@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Connections;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Connect;
@@ -43,10 +44,7 @@ public sealed partial class ConnectView
             }
             catch (Exception ex)
             {
-                // Logger.LogError(ex, "Error connecting");
-                // TODO: Log
-
-                throw;
+                await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
             }
         }
     }
@@ -79,7 +77,7 @@ public sealed partial class ConnectView
                 break;
             case "ConnectFilePage":
                 var connectFileViewModel = ConnectFileViewModelFactory.Create();
-                
+
                 ContentFrame.Navigate(typeof(ConnectFilePage), connectFileViewModel);
                 break;
             default:
