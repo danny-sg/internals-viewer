@@ -30,16 +30,16 @@ public class SparseVectorLoader
         sparseVector.Offset = new ushort[sparseVector.ColCount];
 
         sparseVector.MarkProperty("OffsetsDescription",
-            vectorOffset + SparseVector.ColumnsOffset + sparseVector.ColCount * sizeof(short),
+            vectorOffset + SparseVector.ColumnsOffset + (sparseVector.ColCount * sizeof(short)),
             sparseVector.ColCount * sizeof(short));
 
-        var previousOffset = 4 + sparseVector.ColCount * 4;
+        var previousOffset = 4 + (sparseVector.ColCount * 4);
 
         for (var i = 0; i < sparseVector.ColCount; i++)
         {
-            sparseVector.Columns[i] = BitConverter.ToUInt16(sparseVector.Data, 4 + i * 2);
+            sparseVector.Columns[i] = BitConverter.ToUInt16(sparseVector.Data, 4 + (i * 2));
 
-            sparseVector.Offset[i] = BitConverter.ToUInt16(sparseVector.Data, 4 + sparseVector.ColCount * 2 + i * 2);
+            sparseVector.Offset[i] = BitConverter.ToUInt16(sparseVector.Data, 4 + (sparseVector.ColCount * 2) + (i * 2));
 
             var columnData = sparseVector.Data.AsMemory(previousOffset, sparseVector.Offset[i] - previousOffset);
 

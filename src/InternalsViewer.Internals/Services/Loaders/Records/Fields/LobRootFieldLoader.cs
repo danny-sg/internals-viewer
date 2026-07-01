@@ -50,15 +50,15 @@ public class LobRootFieldLoader
         {
             field.MarkProperty("LinksArray", "Child " + i + " - ", i);
 
-            var length = BitConverter.ToInt32(data, ChildOffset + i * 12);
+            var length = BitConverter.ToInt32(data, ChildOffset + (i * 12));
 
-            var rowId = new RowIdentifier(data.AsSpan(ChildOffset + i * 12 + 4, 8));
+            var rowId = new RowIdentifier(data.AsSpan(ChildOffset + (i * 12) + 4, 8));
 
             var link = new BlobChildLink(rowId, 0, length);
 
-            link.MarkProperty("Length", offset + ChildOffset + i * 12, sizeof(int));
+            link.MarkProperty("Length", offset + ChildOffset + (i * 12), sizeof(int));
 
-            link.MarkProperty("RowIdentifier", offset + ChildOffset + i * 12 + sizeof(int), 8);
+            link.MarkProperty("RowIdentifier", offset + ChildOffset + (i * 12) + sizeof(int), 8);
 
             field.Links.Add(link);
         }

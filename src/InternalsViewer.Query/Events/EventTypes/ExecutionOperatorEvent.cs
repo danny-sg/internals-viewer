@@ -6,7 +6,7 @@ public sealed record ExecutionOperatorEvent : EngineEvent
 {
     public int NodeLevel { get; set; }
 
-    public OperatorCategory Category { get; set; }
+    public new OperatorCategory Category { get; set; }
 
     /// <summary>The node id of this operator's parent in the plan tree; <c>null</c> for a root.</summary>
     public int? ParentNodeId { get; set; }

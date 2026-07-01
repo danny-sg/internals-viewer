@@ -14,11 +14,6 @@ namespace InternalsViewer.Internals.Services.Indexes;
 /// </summary>
 public sealed class IndexService(IPageService pageService, IRecordService recordService)
 {
-    /// <summary>
-    /// Maximum number of pages read concurrently. Each read opens its own connection (server) or
-    /// file handle (data file), so this keeps demand well under the SqlClient pool limit (default
-    /// 100) and avoids a file-handle storm. Loading is otherwise sequential.
-    /// </summary>
     private const int MaxParallelPageLoads = 16;
 
     private IPageService PageService { get; } = pageService;

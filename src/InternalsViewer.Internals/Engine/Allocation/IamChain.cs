@@ -58,7 +58,7 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
             var page = pages[i];
             _pages[i] = page;
             _startExtents[i] = page.StartPage.PageId / 8;
-            _endExtents[i] = (page.StartPage.PageId + AllocationPage.AllocationExtentInterval * 8) / 8;
+            _endExtents[i] = (page.StartPage.PageId + (AllocationPage.AllocationExtentInterval * 8)) / 8;
         }
     }
 
@@ -101,7 +101,7 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
             {
                 var relIndex = extent - pages[i].StartPage.Extent;
 
-                return (pages[i].AllocationMap[relIndex >> 3] >> (relIndex & 7) & 1) != 0;
+                return ((pages[i].AllocationMap[relIndex >> 3] >> (relIndex & 7)) & 1) != 0;
             }
         }
 

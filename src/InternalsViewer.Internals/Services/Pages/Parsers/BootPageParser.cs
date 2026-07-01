@@ -50,12 +50,14 @@ public sealed class BootPageParser : PageParser, IPageParser<BootPage>
         page.CreatedVersion = BitConverter.ToInt16(page.Data, CreatedVersionOffset);
 
         page.DatabaseId = BitConverter.ToInt16(page.Data, DatabaseIdOffset);
+
         page.DatabaseName = Encoding.Unicode
-                                    .GetString(page.Data[DatabaseNameOffset..(DatabaseNameOffset + 128 * 2)])
+                                    .GetString(page.Data[DatabaseNameOffset..(DatabaseNameOffset + (128 * 2))])
                                     .TrimEnd();
 
         page.CreatedDateTime 
             = DateTimeConverters.DecodeDateTime(page.Data[CreatedDateTimeOffset..(CreatedDateTimeOffset + 8)]);
+
         page.CompatibilityLevel = BitConverter.ToInt16(page.Data, CompatibilityLevelOffset);
 
         page.MaxLogSpaceUsed = BitConverter.ToInt64(page.Data, MaxLogSpaceUsed);

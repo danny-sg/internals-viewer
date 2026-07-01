@@ -13,10 +13,6 @@ public sealed record RowIdentifier
 
     public const int Size = sizeof(short) + sizeof(short) + sizeof(int);
 
-    public PageAddress PageAddress { get; set; }
-
-    public ushort SlotId { get; set; }
-
     public RowIdentifier(byte[] address)
         : this(address.AsSpan())
     {
@@ -41,6 +37,10 @@ public sealed record RowIdentifier
         PageAddress = new PageAddress(fileId, pageId);
         SlotId = slot;
     }
+
+    public PageAddress PageAddress { get; set; }
+
+    public ushort SlotId { get; set; }
 
     public static RowIdentifier Parse(string? address)
     {

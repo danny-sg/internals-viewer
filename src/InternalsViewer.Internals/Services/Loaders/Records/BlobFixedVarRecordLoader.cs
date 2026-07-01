@@ -26,7 +26,7 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
 
         record.MarkProperty(nameof(BlobRecord.StatusBitsB), record.Offset + sizeof(byte), sizeof(byte));
 
-        record.RecordType = (RecordType)(statusByte >> 1 & 7);
+        record.RecordType = (RecordType)((statusByte >> 1) & 7);
 
         record.MarkProperty(nameof(BlobRecord.Length), record.Offset + BlobRecord.LengthOffset, sizeof(short));
 
@@ -128,10 +128,10 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
     private static BlobChildLink LoadInternalBlobChild(BlobRecord blobRecord, int index, byte[] data)
     {
         var offset = BitConverter.ToInt32(data,
-            blobRecord.Offset + BlobRecord.InternalChildOffset + index * 16);
+            blobRecord.Offset + BlobRecord.InternalChildOffset + (index * 16));
 
         var rowId = new RowIdentifier(data.AsSpan(
-            blobRecord.Offset + BlobRecord.InternalChildOffset + index * 16 + 8, 8));
+            blobRecord.Offset + BlobRecord.InternalChildOffset + (index * 16) + 8, 8));
 
         return new BlobChildLink(rowId, offset, offset);
     }
@@ -140,13 +140,13 @@ internal class BlobFixedVarRecordLoader : FixedVarRecordLoader
     {
         var blobChildLink = new BlobChildLink();
 
-        var offsetPosition = record.Offset + BlobRecord.RootChildOffset + index * 12;
+        var offsetPosition = record.Offset + BlobRecord.RootChildOffset + (index * 12);
 
         blobChildLink.MarkProperty(nameof(BlobChildLink.Offset), offsetPosition, sizeof(int));
 
         var offset = BitConverter.ToInt32(data, offsetPosition);
 
-        var rowIdPosition = record.Offset + BlobRecord.RootChildOffset + index * 12 + 4;
+        var rowIdPosition = record.Offset + BlobRecord.RootChildOffset + (index * 12) + 4;
 
         blobChildLink.MarkProperty(nameof(BlobChildLink.RowIdentifier), rowIdPosition, 8);
 

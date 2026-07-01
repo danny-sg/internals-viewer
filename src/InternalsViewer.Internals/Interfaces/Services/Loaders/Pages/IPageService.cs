@@ -10,7 +10,8 @@ public interface IPageService
 
     Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress, byte[] buffer);
 
-    Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress) where T : Page;
+    Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress) 
+        where T : Page;
 
     void ResetCache(DatabaseSource database);
 }

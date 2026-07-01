@@ -69,5 +69,4 @@ public abstract class FixedVarRecord : Record
             _ => "Unknown"
         };
     }
-
 }

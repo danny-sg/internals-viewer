@@ -27,7 +27,7 @@ public static class DictionaryLoader
 
         dictionary.EntryOffsets = new ushort[entryCount];
 
-        var startEntryOffset = sizeof(short) + sizeof(short) * entryCount;
+        var startEntryOffset = sizeof(short) + (sizeof(short) * entryCount);
 
         var currentOffset = startEntryOffset;
 
@@ -37,7 +37,7 @@ public static class DictionaryLoader
 
         for (var i = 0; i < entryCount; i++)
         {
-            dictionary.EntryOffsets[i] = BitConverter.ToUInt16(data, offset + sizeof(short) + sizeof(short) * i);
+            dictionary.EntryOffsets[i] = BitConverter.ToUInt16(data, offset + sizeof(short) + (sizeof(short) * i));
 
             var length = dictionary.EntryOffsets[i] - currentOffset;
 

@@ -63,7 +63,6 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
         var allocationPageCount = (int)Math.Ceiling(extentCount
                                                     / (decimal)AllocationPage.AllocationExtentInterval);
 
-
         Logger.LogDebug(
             "Allocation Count: {AllocationCount} ⌈Extent Count / Allocation Internal⌉ = ⌈{Count} / {Interval}⌉",
             allocationPageCount,

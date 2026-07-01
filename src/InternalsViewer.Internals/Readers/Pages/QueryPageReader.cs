@@ -12,7 +12,6 @@ namespace InternalsViewer.Internals.Readers.Pages;
 public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string connectionString) 
     : PageReader, IPageReader
 {
-
     private const int ValueIndex = 3;
 
     private const int DbccPageHexDumpOption = 2;
@@ -105,6 +104,8 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
         }
     }
 
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
     /// <summary>
     /// Identifies a memory dump line by its address prefix (16 hex characters followed by a colon), so the dump rows
     /// can be picked out without reading the ParentObject/Object filter columns.
@@ -130,6 +131,4 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
 
         return true;
     }
-
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

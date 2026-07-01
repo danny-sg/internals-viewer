@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Query.Parsing;
 
-public class StatementParser
+public sealed class StatementParser
 {
     private TSqlParser Parser { get; } = new TSql150Parser(false);
 

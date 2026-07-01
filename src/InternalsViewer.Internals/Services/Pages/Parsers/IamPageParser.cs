@@ -71,7 +71,7 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
         for (var i = 0; i < 8; i++)
         {
             page.MarkProperty($"SinglePageSlot{i}",
-                              AllocationPage.SinglePageSlotOffset + i * PageAddress.Size,
+                              AllocationPage.SinglePageSlotOffset + (i * PageAddress.Size),
                               PageAddress.Size);
         }
 

@@ -10,15 +10,15 @@ namespace InternalsViewer.Internals.Engine.Pages;
 /// </summary>
 public sealed class PageHeader : DataStructure
 {
-    public PageHeader()
-    {
-        IsMarkEnabled = true;
-    }
-
     /// <summary>
     /// Page Header is always 96 bytes
     /// </summary>
     public static readonly short Size = 96;
+
+    public PageHeader()
+    {
+        IsMarkEnabled = true;
+    }
 
     /// <summary>
     /// Type of page
