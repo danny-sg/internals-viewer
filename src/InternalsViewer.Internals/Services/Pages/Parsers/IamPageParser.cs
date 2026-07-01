@@ -35,7 +35,8 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
         iamPage.StartPage = GetIamStartPage(page);
         iamPage.SinglePageSlots = GetSinglePageSlots(page);
 
-        page.Data.AsSpan(AllocationPage.AllocationArrayOffset, AllocationPage.AllocationMapBytes)
+        page.Data
+            .AsSpan(AllocationPage.AllocationArrayOffset, AllocationPage.AllocationMapBytes)
             .CopyTo(iamPage.AllocationMap);
 
         SetIamMarkers(iamPage);

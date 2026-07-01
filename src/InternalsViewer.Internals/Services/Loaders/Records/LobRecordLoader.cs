@@ -28,6 +28,8 @@ public class LobRecordLoader : FixedVarRecordLoader
 
         LoadStatusBitsA(record, data);
 
+        record.StatusBitsB = data[record.Offset + sizeof(byte)];
+
         record.MarkProperty(nameof(LobRecord.StatusBitsB), record.Offset + sizeof(byte), sizeof(byte));
 
         record.RecordType = (RecordType)((statusByte >> 1) & 7);
@@ -168,7 +170,7 @@ public class LobRecordLoader : FixedVarRecordLoader
 
         var rowId = new RowIdentifier(data.AsSpan(rowIdPosition, 8));
 
-        blobChildLink.MarkValue(ItemType.Rid, "At", rowId, offsetPosition,  8);
+        blobChildLink.MarkValue(ItemType.Rid, "At", rowId, rowIdPosition, 8);
 
         blobChildLink.RowIdentifier = rowId;
         blobChildLink.Offset = offset;
