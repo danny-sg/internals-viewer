@@ -1,6 +1,9 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Locks;
 using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -124,6 +127,221 @@ public class EventParserTests
         var batch = Assert.IsType<BatchStartEvent>(ev);
 
         Assert.Equal(string.Empty, batch.SqlText);
+    }
+
+    [Fact]
+    public void Maps_Io_Event_From_File_Read()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser,
+            """
+            <event name="file_read_completed" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="file_id"><value>3</value></data>
+              <data name="page_id"><value>42</value></data>
+            </event>
+            """);
+
+        var io = Assert.IsType<IoEvent>(ev);
+
+        Assert.True(io.IsRead);
+        Assert.Equal(3, io.PageAddress!.Value.FileId);
+        Assert.Equal(42, io.PageAddress.Value.PageId);
+    }
+
+    [Fact]
+    public void Maps_Io_Event_PageId_From_Offset_When_Missing()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        // No page_id, so it is derived from offset / 8192.
+        var ev = Parse(parser,
+            """
+            <event name="file_write_completed" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="file_id"><value>1</value></data>
+              <data name="offset"><value>81920</value></data>
+            </event>
+            """);
+
+        var io = Assert.IsType<IoEvent>(ev);
+
+        Assert.False(io.IsRead);
+        Assert.Equal(10, io.PageAddress!.Value.PageId);
+    }
+
+    [Fact]
+    public void Maps_Wait_Event_With_Type_And_Duration()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser,
+            """
+            <event name="wait_completed" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="wait_type"><value>5</value></data>
+              <data name="duration"><value>1234</value></data>
+            </event>
+            """);
+
+        var wait = Assert.IsType<WaitEvent>(ev);
+
+        Assert.Equal(WaitType.LCK_M_X, wait.WaitType);
+        Assert.Equal(1234, wait.DurationUs);
+    }
+
+    [Fact]
+    public void Maps_Page_Lock_To_Page_Address()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser,
+            """
+            <event name="lock_acquired" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="resource_type"><value>6</value></data>
+              <data name="mode"><value>5</value></data>
+              <data name="resource_0"><value>1</value></data>
+              <data name="resource_1"><value>200</value></data>
+            </event>
+            """);
+
+        var lockEvent = Assert.IsType<LockEvent>(ev);
+
+        Assert.Equal(LockMode.X, lockEvent.LockMode);
+        Assert.Equal(LockResourceType.Page, lockEvent.ResourceType);
+        Assert.Equal(new PageAddress(1, 200), lockEvent.PageAddress);
+    }
+
+    [Fact]
+    public void Maps_Rid_Lock_To_Row_Identifier()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser,
+            """
+            <event name="lock_acquired" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="resource_type"><value>9</value></data>
+              <data name="mode"><value>5</value></data>
+              <data name="resource_0"><value>1</value></data>
+              <data name="resource_1"><value>200</value></data>
+              <data name="resource_2"><value>3</value></data>
+            </event>
+            """);
+
+        var lockEvent = Assert.IsType<LockEvent>(ev);
+
+        Assert.NotNull(lockEvent.RowIdentifier);
+        Assert.Equal(new PageAddress(1, 200), lockEvent.RowIdentifier!.PageAddress);
+        Assert.Equal(3, lockEvent.RowIdentifier.SlotId);
+    }
+
+    [Fact]
+    public void Maps_Key_Lock_To_Key_Hash()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser,
+            """
+            <event name="lock_acquired" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="resource_type"><value>7</value></data>
+              <data name="mode"><value>5</value></data>
+              <data name="resource_0"><value>255</value></data>
+            </event>
+            """);
+
+        var lockEvent = Assert.IsType<LockEvent>(ev);
+
+        Assert.Equal("(ff)", lockEvent.KeyHash);
+    }
+
+    [Fact]
+    public void Maps_Transaction_Log_Event()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser,
+            """
+            <event name="transaction_log" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="operation"><value>2</value></data>
+              <data name="context"><value>1</value></data>
+              <data name="alloc_unit_id"><value>72057594038386688</value></data>
+            </event>
+            """);
+
+        var logEvent = Assert.IsType<TransactionLogEvent>(ev);
+
+        Assert.Equal(LogOperation.LOP_INSERT_ROWS, logEvent.Operation);
+        Assert.Equal(72057594038386688, logEvent.AllocationUnitId);
+    }
+
+    [Fact]
+    public void Maps_Memory_Event()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser,
+            """
+            <event name="query_memory_grant_usage" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="used_memory_kb"><value>512</value></data>
+              <data name="granted_memory_kb"><value>1024</value></data>
+            </event>
+            """);
+
+        var memory = Assert.IsType<MemoryEvent>(ev);
+
+        Assert.Equal(512, memory.UsedMemoryKb);
+        Assert.Equal(1024, memory.GrantedMemoryKb);
+    }
+
+    [Fact]
+    public void Reads_Database_Id_From_Action()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser,
+            """
+            <event name="sql_batch_starting" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="batch_text"><value>SELECT 1</value></data>
+              <action name="database_id"><value>7</value></action>
+            </event>
+            """);
+
+        Assert.Equal(7, ev!.DatabaseId);
+    }
+
+    [Fact]
+    public void Unknown_Event_Falls_Back_To_Base_Engine_Event()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser,
+            """
+            <event name="rpc_completed" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="duration"><value>99</value></data>
+            </event>
+            """);
+
+        Assert.NotNull(ev);
+        Assert.Equal("rpc_completed", ev!.Name);
+        Assert.IsType<EngineEvent>(ev);
+    }
+
+    [Fact]
+    public void Returns_Null_For_Missing_Event_Element()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser, "<not-an-event />");
+
+        Assert.Null(ev);
+    }
+
+    [Fact]
+    public void Returns_Null_When_Timestamp_Missing()
+    {
+        var parser = new EventParser(null, new PlanHandleRegistry());
+
+        var ev = Parse(parser, """<event name="sql_batch_starting"></event>""");
+
+        Assert.Null(ev);
     }
 
     private static string EventWithPlanHandle(string planHandle) =>
