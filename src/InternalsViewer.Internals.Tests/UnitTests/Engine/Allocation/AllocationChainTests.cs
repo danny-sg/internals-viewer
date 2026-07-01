@@ -13,7 +13,7 @@ public class AllocationChainTests
 
         if (setExtent >= 0)
         {
-            page.AllocationMap[setExtent] = true;
+            page.AllocationMap[setExtent] = 1;
         }
 
         chain.Pages.Add(page);

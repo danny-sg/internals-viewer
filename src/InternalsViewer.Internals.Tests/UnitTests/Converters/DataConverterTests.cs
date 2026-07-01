@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Text;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Helpers;
 
@@ -92,5 +93,155 @@ public class DataConverterTests
         var result = DataConverter.BinaryToString(bytes, SqlDbType.Variant);
 
         Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("63", SqlDbType.TinyInt, "99")]
+    [InlineData("0F 27", SqlDbType.SmallInt, "9999")]
+    [InlineData("0F 27 00 00", SqlDbType.Int, "9999")]
+    [InlineData("0F 27 00 00 00 00 00 00", SqlDbType.BigInt, "9999")]
+    public void Can_Convert_Integer_Types_To_String(string bytesString, SqlDbType type, string expected)
+    {
+        var bytes = bytesString.ToByteArray();
+
+        var result = DataConverter.BinaryToString(bytes, type);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("D0 CF 32 00 00 00 00 00", SqlDbType.Money, "333")]
+    [InlineData("D0 CF 32 00", SqlDbType.SmallMoney, "333")]
+    [InlineData("00 80 A6 43", SqlDbType.Real, "333")]
+    [InlineData("00 00 00 00 00 D0 74 40", SqlDbType.Float, "333")]
+    public void Can_Convert_Numeric_Types_To_String(string bytesString, SqlDbType type, string expected)
+    {
+        var bytes = bytesString.ToByteArray();
+
+        var result = DataConverter.BinaryToString(bytes, type);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void Can_Convert_NVarChar_To_String()
+    {
+        var bytes = Encoding.Unicode.GetBytes("Hello");
+
+        var result = DataConverter.BinaryToString(bytes, SqlDbType.NVarChar);
+
+        Assert.Equal("Hello", result);
+    }
+
+    [Fact]
+    public void VarChar_Strips_Non_Printable_Characters()
+    {
+        var bytes = "41 00 42".ToByteArray();
+
+        var result = DataConverter.BinaryToString(bytes, SqlDbType.VarChar);
+
+        Assert.Equal("AB", result);
+    }
+
+    [Fact]
+    public void BinaryToString_Empty_Data_Returns_Empty()
+    {
+        var result = DataConverter.BinaryToString(ReadOnlySpan<byte>.Empty, SqlDbType.Int);
+
+        Assert.Equal(string.Empty, result);
+    }
+
+    [Fact]
+    public void BinaryToString_Unsupported_Type_Returns_Message()
+    {
+        var bytes = "00".ToByteArray();
+
+        var result = DataConverter.BinaryToString(bytes, SqlDbType.Xml);
+
+        Assert.Contains("not yet supported", result);
+    }
+
+    [Fact]
+    public void BinaryToGuid_Null_Returns_Empty()
+    {
+        var result = DataConverter.BinaryToGuid(null);
+
+        Assert.Equal(Guid.Empty, result);
+    }
+
+    [Fact]
+    public void BinaryToGuid_Converts_Sixteen_Bytes()
+    {
+        var bytes = "00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F".ToByteArray();
+
+        var result = DataConverter.BinaryToGuid(bytes);
+
+        Assert.Equal(new Guid(bytes), result);
+    }
+
+    [Fact]
+    public void BinaryToGuid_Invalid_Length_Throws()
+    {
+        var bytes = "00 01 02".ToByteArray();
+
+        Assert.Throws<ArgumentException>(() => DataConverter.BinaryToGuid(bytes));
+    }
+
+    [Fact]
+    public void GetValue_Null_Data_Returns_Null()
+    {
+        var result = DataConverter.GetValue(null, SqlDbType.Int, 0, 0);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void GetValue_Int_Returns_Boxed_Int()
+    {
+        var bytes = "0F 27 00 00".ToByteArray();
+
+        var result = DataConverter.GetValue(bytes, SqlDbType.Int, 0, 0);
+
+        Assert.Equal(9999, Assert.IsType<int>(result));
+    }
+
+    [Fact]
+    public void GetValue_BigInt_Returns_Boxed_Long()
+    {
+        var bytes = "0F 27 00 00 00 00 00 00".ToByteArray();
+
+        var result = DataConverter.GetValue(bytes, SqlDbType.BigInt, 0, 0);
+
+        Assert.Equal(9999L, Assert.IsType<long>(result));
+    }
+
+    [Fact]
+    public void GetValue_TinyInt_Returns_Boxed_Byte()
+    {
+        var bytes = "63".ToByteArray();
+
+        var result = DataConverter.GetValue(bytes, SqlDbType.TinyInt, 0, 0);
+
+        Assert.Equal((byte)99, Assert.IsType<byte>(result));
+    }
+
+    [Fact]
+    public void GetValue_Generic_Returns_Typed_Value()
+    {
+        var bytes = "0F 27 00 00".ToByteArray();
+
+        var result = DataConverter.GetValue<int>(bytes, SqlDbType.Int, 0, 0);
+
+        Assert.Equal(9999, result);
+    }
+
+    [Fact]
+    public void GetValue_UniqueIdentifier_Returns_Guid()
+    {
+        var bytes = "00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F".ToByteArray();
+
+        var result = DataConverter.GetValue(bytes, SqlDbType.UniqueIdentifier, 0, 0);
+
+        Assert.Equal(new Guid(bytes), Assert.IsType<Guid>(result));
     }
 }
