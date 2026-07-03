@@ -4,7 +4,7 @@ Internals Viewer is a visualisation tool for viewing the internals of the SQL Se
 
 ## Version 4.0 - New Features
 
-### Demo
+### Query Trace
 https://github.com/user-attachments/assets/b2a5af3e-8cd8-4736-a6da-06af40242ae8
 
 The new **Query tracing** feature allows you to run a query and see the actual I/O on a timeline that is linked to the query plan operators. Using the index visualizations you can see scans vs seeks, see how different join types execute and zoom into detail down to the individual page level.
