@@ -9,6 +9,10 @@ https://github.com/user-attachments/assets/b2a5af3e-8cd8-4736-a6da-06af40242ae8
 
 The new **Query tracing** feature allows you to run a query and see the actual I/O on a timeline that is linked to the query plan operators. Using the index visualizations you can see scans vs seeks, see how different join types execute and zoom into detail down to the individual page level.
 
+- Drag the tabs to rearrange layout
+- Right click on tables/indexes in the timeline to open the index view for that object
+- Zoom in and out using Ctrl + mouse wheel
+
 ## Installation
 
 ### Microsoft Store
