@@ -2,6 +2,12 @@
 
 Internals Viewer is a visualisation tool for viewing the internals of the SQL Server Storage Engine.
 
+## Version 4.0 - New Features
+
+https://github.com/danny-sg/internals-viewer/releases/download/v4.0.0/InternalsViewer-Query.mp4
+
+The new **Query tracing** feature allows you to run a query and see the actual I/O on a timeline that is linked to the query plan operators. Using the index visualizations you can see scans vs seeks, see how different join types execute and zoom into detail down to the individual page level.
+
 ## Installation
 
 ### Microsoft Store
