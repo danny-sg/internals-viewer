@@ -27,7 +27,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: ./docs/internalsviewer.com/package-lock.json
           
@@ -48,4 +48,4 @@ jobs:
           path: './docs/internalsviewer.com/.vitepress/dist'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v5
