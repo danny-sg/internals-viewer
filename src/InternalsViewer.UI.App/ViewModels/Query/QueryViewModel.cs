@@ -81,19 +81,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private bool _isTimelinePlaying;
 
-    /// <summary>
-    /// B-tree page level of the currently active page when an index view is open and the playhead is
-    /// over a page belonging to that index (0 = leaf). A value of -1 means the active page is not in
-    /// any open index (but an index may still be open — see <see cref="IsIndexOpen"/>).
-    /// </summary>
-    [ObservableProperty]
-    private int _activeIndexPageLevel = -1;
-
-    /// <summary>True when at least one index view is open. Used by the timeline to suppress the
-    /// object-based audio fallback so the index always drives pitch.</summary>
-    [ObservableProperty]
-    private bool _isIndexOpen;
-
     [ObservableProperty]
     private bool _includeLocks = false;
 
@@ -594,12 +581,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         if (_openIndexes.Count == 0)
         {
-            IsIndexOpen = false;
-            ActiveIndexPageLevel = -1;
             return;
         }
-
-        IsIndexOpen = true;
 
         var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
 
@@ -638,8 +621,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var activeRoot = activePage is { } ap ? RootPageOf(ap) : null;
 
-        var resolvedLevel = -1;
-
         foreach (var viewModel in _openIndexes.Values)
         {
             viewModel.SelectedPageAddress = activeRoot is not null && viewModel.RootPage == activeRoot
@@ -649,19 +630,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             viewModel.SelectedPageAddresses = rangeByRoot.TryGetValue(viewModel.RootPage, out var range)
                 ? range
                 : [];
-
-            if (activeRoot is not null && viewModel.RootPage == activeRoot && activePage is { } pg)
-            {
-                var node = viewModel.Nodes.FirstOrDefault(n => n.PageAddress == pg);
-
-                if (node is not null)
-                {
-                    resolvedLevel = node.Level;
-                }
-            }
         }
-
-        ActiveIndexPageLevel = resolvedLevel;
     }
 
     private static bool NameMatches(string? a, string? b) =>

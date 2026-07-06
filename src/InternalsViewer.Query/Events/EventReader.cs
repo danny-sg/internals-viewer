@@ -158,6 +158,26 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
             if (count > 1)
             {
+                var insertAt = i;
+
+                for (var k = i; k < j; k++)
+                {
+                    // Special bodge to ensure if an index root page is included in the bucket it appears first.
+                    // Needed because the database will scan an extent at a time and the root page won't necessarily
+                    // be read first.
+                    if (events[k] is IoEvent { IsRoot: true })
+                    {
+                        if (k != insertAt)
+                        {
+                            var temp = events[k];
+                            events.RemoveAt(k);
+                            events.Insert(insertAt, temp);
+                        }
+
+                        insertAt++;
+                    }
+                }
+
                 for (var k = 0; k < count; k++)
                 {
                     events[i + k].TimeUs = bucketTime + ResolutionWindowUs * k / count;

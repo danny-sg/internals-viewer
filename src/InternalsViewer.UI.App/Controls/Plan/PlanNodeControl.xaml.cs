@@ -52,10 +52,6 @@ public sealed partial class PlanNodeControl : UserControl
     private static void OnIsSelectedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).UpdateStateVisual();
 
-    /// <summary>
-    /// True while this operator is running at the timeline playhead. Drives the "active" highlight,
-    /// distinct from (and overridden by) the click selection.
-    /// </summary>
     public bool IsActive
     {
         get => (bool)GetValue(IsActiveProperty);
@@ -69,7 +65,6 @@ public sealed partial class PlanNodeControl : UserControl
     private static void OnIsActiveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).UpdateStateVisual();
 
-    // Opacity of the active "running now" background tint (matches the selection background's subtlety).
     private const byte ActiveBackgroundAlpha = 25;
 
     private void UpdateStateVisual()

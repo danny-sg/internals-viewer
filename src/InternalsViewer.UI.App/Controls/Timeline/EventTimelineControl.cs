@@ -448,33 +448,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
     }
 
-    /// <summary>
-    /// When an index view is active, this carries the B-tree level (0 = leaf) of the currently selected
-    /// page so audio pitch can vary by level instead of by object id. A negative value means the active
-    /// page is not in any open index (but an index may still be open — see <see cref="IsIndexOpen"/>).
-    /// </summary>
-    public int ActiveIndexPageLevel
-    {
-        get => (int)GetValue(ActiveIndexPageLevelProperty);
-        set => SetValue(ActiveIndexPageLevelProperty, value);
-    }
-
-    public static readonly DependencyProperty ActiveIndexPageLevelProperty =
-        DependencyProperty.Register(nameof(ActiveIndexPageLevel), typeof(int), typeof(EventTimelineControl),
-            new PropertyMetadata(-1));
-
-    /// <summary>True when at least one index view is open. When set, the index level drives audio pitch
-    /// exclusively — events whose page is not in an open index are silent.</summary>
-    public bool IsIndexOpen
-    {
-        get => (bool)GetValue(IsIndexOpenProperty);
-        set => SetValue(IsIndexOpenProperty, value);
-    }
-
-    public static readonly DependencyProperty IsIndexOpenProperty =
-        DependencyProperty.Register(nameof(IsIndexOpen), typeof(bool), typeof(EventTimelineControl),
-            new PropertyMetadata(false));
-
     public EventTimelineControl()
     {
         Background = new SolidColorBrush(Colors.Transparent);
@@ -2090,9 +2063,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
     /// <summary>
     /// Fires one plink per IoEvent read swept by the playhead in (<paramref name="fromUs"/>,
     /// <paramref name="toUs"/>] (exclusive lower bound). Uses binary search on <see cref="_readEventsByTime"/>
-    /// so the per-frame cost is O(log n + hits) regardless of total event count. When an index is open
-    /// it always drives pitch; reads whose page is not in the open index are skipped silently.
-    /// Without an open index, pitch is derived from the event's object id.
+    /// so the per-frame cost is O(log n + hits) regardless of total event count.
     /// </summary>
     private void PlayAudioForCurrentPosition(long fromUs, long toUs)
     {
@@ -2105,9 +2076,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             return;
         }
-
-        var indexLevel = ActiveIndexPageLevel;
-        var indexOpen = IsIndexOpen;
 
         // Binary search for the first event with TimeUs > lo.
         var left = 0;
@@ -2127,6 +2095,13 @@ public sealed class EventTimelineControl : Grid, IDisposable
             }
         }
 
+        // When all events are at or before lo, the search converges to the last element
+        // without finding anything in range. Guard explicitly so we don't play it.
+        if (reads[left].TimeUs <= lo)
+        {
+            return;
+        }
+
         for (var i = left; i < reads.Length; i++)
         {
             var io = reads[i];
@@ -2136,19 +2111,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
                 break;
             }
 
-            if (indexOpen)
-            {
-                if (indexLevel < 0)
-                {
-                    continue;
-                }
-
-                _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForIndexLevel(indexLevel));
-            }
-            else
-            {
-                _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForObject(io.ObjectId));
-            }
+            _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForObject(io.ObjectId));
         }
     }
 
@@ -2608,7 +2571,16 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         if (_playheadTime >= _playEndTime)
         {
-            _playheadTime = _playStartTime;
+            _playheadTime = _playEndTime;
+
+            SyncHandlesToPlayhead();
+            FirePlayhead();
+
+            _skCanvas.Invalidate();
+
+            StopPlay();
+
+            return;
         }
 
         SyncHandlesToPlayhead();

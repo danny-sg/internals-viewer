@@ -366,6 +366,10 @@ internal sealed class EventParser
             engineEvent.ObjectName = allocationUnit?.DisplayName
                                      ?? TryGetPageName(engineEvent.PageAddress.Value) ?? string.Empty;
 
+            if (engineEvent is IoEvent ioEvent && allocationUnit?.RootPage == engineEvent.PageAddress)
+            {
+                ioEvent.IsRoot = true;
+            }
 
             ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: true);
         }
@@ -377,6 +381,10 @@ internal sealed class EventParser
 
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? $"(Object Id {engineEvent.ObjectId})";
 
+            if (engineEvent is IoEvent ioEvent && allocationUnit?.RootPage == engineEvent.PageAddress)
+            {
+                ioEvent.IsRoot = true;
+            }
 
             ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: false);
         }
