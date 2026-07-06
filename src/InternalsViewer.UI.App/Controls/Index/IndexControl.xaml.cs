@@ -184,7 +184,8 @@ public sealed partial class IndexControl : IDisposable
     private float _globalMaxX;
     private int _levelCount;
 
-    private readonly SKPath _linePath = new();
+    // Reused for every parent-connector polyline so painting stays allocation-free.
+    private readonly SKPoint[] _linePoints = new SKPoint[5];
 
     private const float MinZoom = 0.05f;
     private const float MaxZoom = 10.0f;
@@ -571,7 +572,10 @@ public sealed partial class IndexControl : IDisposable
         }
 
         _linePaint.StrokeWidth = isSelected || isHighlighted ? 2.5f : 1f;
-        _linePaint.StrokeJoin = SKStrokeJoin.Round;
+
+        // The polyline is drawn as individual segments (DrawPoints), so rounded corners come from the
+        // cap rather than the join.
+        _linePaint.StrokeCap = SKStrokeCap.Round;
 
         foreach (var parent in node.Parents)
         {
@@ -603,15 +607,13 @@ public sealed partial class IndexControl : IDisposable
                 continue;
             }
 
-            _linePath.Reset();
+            _linePoints[0] = new SKPoint(x, y1Line1);
+            _linePoints[1] = new SKPoint(x2Line1, y1Line1);
+            _linePoints[2] = new SKPoint(x2Line1, y2Line2);
+            _linePoints[3] = new SKPoint(x2Line3, y2Line2);
+            _linePoints[4] = new SKPoint(x2Line3, y2Line4);
 
-            _linePath.MoveTo(x, y1Line1);
-            _linePath.LineTo(x2Line1, y1Line1);
-            _linePath.LineTo(x2Line1, y2Line2);
-            _linePath.LineTo(x2Line3, y2Line2);
-            _linePath.LineTo(x2Line3, y2Line4);
-
-            canvas.DrawPath(_linePath, _linePaint);
+            canvas.DrawPoints(SKPointMode.Polygon, _linePoints, _linePaint);
         }
     }
 
@@ -1076,7 +1078,6 @@ public sealed partial class IndexControl : IDisposable
         _detailTextPaint.Dispose();
         _detailFont.Dispose();
         _detailBoldFont.Dispose();
-        _linePath.Dispose();
 
         Loaded -= IndexControl_OnLoaded;
 

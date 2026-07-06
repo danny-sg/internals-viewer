@@ -198,7 +198,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
     public List<AllocationLayer> GridAllocationLayers
         => AllocationLayers.Where(w => string.IsNullOrEmpty(Filter)
-                                       || w.Name.ToLower().Contains(Filter.ToLower())).ToList();
+                                       || w.Name.Contains(Filter, StringComparison.CurrentCultureIgnoreCase)).ToList();
 
     public void Load(string name)
     {

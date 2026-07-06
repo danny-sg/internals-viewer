@@ -117,8 +117,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
     // Operator bar labels get their own font so the size can be scaled per bar (up to OperatorMaxFont).
     // The type (e.g. "Index Scan") is drawn bold, the object name that follows in the regular font.
     private readonly SKFont _operatorFont = new(SKTypeface.Default, 12f);
-    private readonly SKFont _operatorBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, 
-                                                                              SKFontStyle.Bold), 
+    private readonly SKFont _operatorBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName,
+                                                                              SKFontStyle.Bold),
                                                     10f);
 
     private readonly SKPaint _labelPaint = new()
@@ -178,7 +178,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         Style = SKPaintStyle.Fill,
         IsAntialias = true,
     };
-    
+
     private readonly SKPaint _handlePaint = new()
     {
         Color = HandleColour,
@@ -208,9 +208,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private readonly SKPaint _flowConnectorPaint = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
     private readonly SKPaint _outlinePaint = new() { Style = SKPaintStyle.Stroke, IsAntialias = true };
 
-    // Reused per frame in the dynamic overlay: Rewind keeps the buffer and just re-adds the points.
-    private readonly SKPath _handlePath = new();
-    private readonly SKPath _playheadTrianglePath = new();
+    // Reused per frame in the dynamic overlay: Detach hands off the built path and resets the builder.
+    private readonly SKPathBuilder _pathBuilder = new();
 
     private readonly SKColor _laneColour = new(30, 30, 30, 220);
 
@@ -242,41 +241,42 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     // Cached per-event-set layout data for the operator (Plan) row, rebuilt in BuildOperatorLayout.
     private List<(int Index, ExecutionOperatorEvent Op)> _orderedOperators = [];
-    
+
     private double _maxCost;
-    
+
     private long _maxRows;
 
     private double _minTime;
 
     private double _maxTime;
-    
+
     private double _timeRange;
 
     private double _playheadTime;
-    
+
     private double _playStartTime;
-    
+
     private double _playEndTime;
-    
+
     private double _playStep;
 
     private bool _isPlaying;
 
     // True once the user has dragged a handle. While false the start/end handles track the playhead.
     private bool _selectionActivated;
+
     private readonly DispatcherTimer _playTimer;
 
     private bool _isDragging;
-    
+
     private DragTarget _dragTarget;
 
     private double _startTime;
-    
+
     private double _endTime;
 
     private double _zoom = MinZoom;
-    
+
     private double _scrollX;
 
     private long _lastPressTicks;
@@ -402,16 +402,24 @@ public sealed class EventTimelineControl : Grid, IDisposable
     /// </summary>
     public event Action<long>? PlayheadTimeChanged;
 
-    /// <summary>Raised when a plan operator in the timeline is clicked.</summary>
+    /// <summary>
+    /// Raised when a plan operator in the timeline is clicked
+    /// </summary>
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
 
-    /// <summary>Raised when an individual event marker is clicked (to reveal it in the event grid).</summary>
+    /// <summary>
+    /// Raised when an individual event marker is clicked (to reveal it in the event grid).
+    /// </summary>
     public event Action<EngineEvent>? EventSelected;
 
-    /// <summary>Raised when "Open Index" is chosen on a scan/seek operator (carries schema/table/index).</summary>
+    /// <summary>
+    /// Raised when "Open Index" is chosen on a scan/seek operator (carries schema/table/index)
+    /// </summary>
     public event Action<ExecutionOperatorEvent>? IndexOpenRequested;
 
-    /// <summary>Raised when auto-play starts (true) or stops (false).</summary>
+    /// <summary>
+    /// Raised when auto-play starts (true) or stops (false)
+    /// </summary>
     public event Action<bool>? PlayStateChanged;
 
     /// <summary>Enables or disables audio plink feedback when the playhead passes a page-read event.</summary>
@@ -429,7 +437,14 @@ public sealed class EventTimelineControl : Grid, IDisposable
     {
         if ((bool)e.NewValue)
         {
-            await ((EventTimelineControl)d)._audioPlayer.EnsureInitializedAsync();
+            try
+            {
+                await ((EventTimelineControl)d)._audioPlayer.EnsureInitializedAsync();
+            }
+            catch
+            {
+                // No-op
+            }
         }
     }
 
@@ -607,16 +622,23 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private async void OnAudioToggled(object sender, RoutedEventArgs e)
     {
-        IsAudioEnabled = _audioButton.IsChecked == true;
-
-        if (_audioButton.Content is FontIcon icon)
+        try
         {
-            icon.Glyph = IsAudioEnabled ? "\uE995" : "\uE74F";
+            IsAudioEnabled = _audioButton.IsChecked == true;
+
+            if (_audioButton.Content is FontIcon icon)
+            {
+                icon.Glyph = IsAudioEnabled ? "\uE995" : "\uE74F";
+            }
+
+            if (IsAudioEnabled)
+            {
+                await _audioPlayer.EnsureInitializedAsync();
+            }
         }
-
-        if (IsAudioEnabled)
+        catch
         {
-            await _audioPlayer.EnsureInitializedAsync();
+            // No-op - Audio is non-critical
         }
     }
 
@@ -879,15 +901,15 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var canvas = recorder.BeginRecording(new SKRect(0, 0, w, h));
 
         var rowsTop = MarkerStripHeight;
-        
+
         var rowsHeight = h - rowsTop;
 
         var rowCount = _activeRows.Length;
 
         var totalWeight = _activeRows.Sum(r => r.Weight);
-        
+
         var rowTops = new float[rowCount];
-        
+
         var rowHeights = new float[rowCount];
 
         var totalTop = rowsTop;
@@ -1026,7 +1048,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         canvas.ClipRect(new SKRect(RowLabelWidth, 0, w, h));
 
-       if (SelectionActive)
+        if (SelectionActive)
         {
             var lo = Math.Min(TimeToX(_startTime), TimeToX(_endTime));
             var hi = Math.Max(TimeToX(_startTime), TimeToX(_endTime));
@@ -1372,7 +1394,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             var gradient = SKShader.CreateLinearGradient(new SKPoint(b.StartX, b.BarTop),
                                                          new SKPoint(b.StartX, b.BarBottom),
                                                          [
-                                                             ColourScale(b.BarColour, 1f + GradientLift), 
+                                                             ColourScale(b.BarColour, 1f + GradientLift),
                                                              ColourScale(b.BarColour, 1f - GradientLift)
                                                          ],
                                                          null,
@@ -1385,7 +1407,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
                                  b.CornerRadius, b.CornerRadius, _operatorPaint);
 
             _operatorPaint.Shader = null;
-            
+
             gradient.Dispose();
 
             if (_showThreads && b.Op.Threads.Count > 1)
@@ -1825,9 +1847,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         if (hasBoth)
         {
             var widerAtMax = Math.Max(typeWidth, targetWidth);
-            
+
             var sizeByWidth = widerAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / widerAtMax;
-            
+
             var sizeByHeight = (barHeight - 2f - TwoLineGap) / 2f;
 
             var size = Math.Min(OperatorMaxFont, Math.Min(sizeByWidth, sizeByHeight));
@@ -1851,9 +1873,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         if (hasBoth)
         {
             var widthAtMax = typeWidth + targetWidth + OperatorMaxFont * OperatorLabelGapFraction;
-            
+
             var sizeByWidth = widthAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / widthAtMax;
-            
+
             var sizeByHeight = barHeight - 2f;
 
             var size = Math.Min(OperatorMaxFont, Math.Min(sizeByWidth, sizeByHeight));
@@ -1867,11 +1889,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
                 var x = startX + textPadX;
 
                 DrawTextSpan(canvas, typeSpan, x, baseline, _operatorBoldFont, _operatorTextPaint);
-                
+
                 x += _operatorBoldFont.MeasureText(typeSpan, null) + size * OperatorLabelGapFraction;
 
                 DrawTextSpan(canvas, target, x, baseline, _operatorFont, _operatorTextPaint);
-                
+
                 return;
             }
         }
@@ -1915,7 +1937,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         return charBuffer[..pos];
     }
 
-    private static void DrawTextSpan(SKCanvas canvas, 
+    private static void DrawTextSpan(SKCanvas canvas,
                                      ReadOnlySpan<char> text, float x, float y,
                                      SKFont font, SKPaint paint)
     {
@@ -1932,26 +1954,26 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var top = MarkerStripHeight - HandleHeight;
         var half = HandleWidth / 2f;
 
-        _handlePath.Rewind();
+        _pathBuilder.MoveTo(x - half, top);
+        _pathBuilder.LineTo(x + half, top);
+        _pathBuilder.LineTo(isStart ? x - half : x + half, MarkerStripHeight);
+        _pathBuilder.Close();
 
-        _handlePath.MoveTo(x - half, top);
-        _handlePath.LineTo(x + half, top);
-        _handlePath.LineTo(isStart ? x - half : x + half, MarkerStripHeight);
-        _handlePath.Close();
+        using var path = _pathBuilder.Detach();
 
-        canvas.DrawPath(_handlePath, _handlePaint);
+        canvas.DrawPath(path, _handlePaint);
     }
 
     private void DrawPlayheadTriangle(SKCanvas canvas, float x)
     {
-        _playheadTrianglePath.Rewind();
+        _pathBuilder.MoveTo(x, MarkerStripHeight);
+        _pathBuilder.LineTo(x - TriangleHalfWidth, RulerBandHeight);
+        _pathBuilder.LineTo(x + TriangleHalfWidth, RulerBandHeight);
+        _pathBuilder.Close();
 
-        _playheadTrianglePath.MoveTo(x, MarkerStripHeight);
-        _playheadTrianglePath.LineTo(x - TriangleHalfWidth, RulerBandHeight);
-        _playheadTrianglePath.LineTo(x + TriangleHalfWidth, RulerBandHeight);
-        _playheadTrianglePath.Close();
+        using var path = _pathBuilder.Detach();
 
-        canvas.DrawPath(_playheadTrianglePath, _playheadFill);
+        canvas.DrawPath(path, _playheadFill);
     }
 
     private int GetRowIndex(EngineEvent ev)
@@ -2085,7 +2107,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
 
         var indexLevel = ActiveIndexPageLevel;
-        var indexOpen  = IsIndexOpen;
+        var indexOpen = IsIndexOpen;
 
         // Binary search for the first event with TimeUs > lo.
         var left = 0;
@@ -2185,9 +2207,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var position = point.Position;
 
         var now = Environment.TickCount64;
-        
+
         var isDoubleClick = now - _lastPressTicks <= DoubleClickMs && Math.Abs(position.X - _lastPressX) <= HitArea;
-        
+
         _lastPressTicks = now;
         _lastPressX = position.X;
 
@@ -2197,7 +2219,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             DeactivateSelection();
 
             _skCanvas.Invalidate();
-            
+
             return;
         }
 
@@ -2237,7 +2259,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             // Track the selection so its row-flow path (child→parent, lit while emitting) is drawn.
             _selectedNodeId = node.NodeId;
-            
+
             _skCanvas.Invalidate();
 
             PlanNodeSelected?.Invoke(node);
@@ -2283,9 +2305,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var flyout = new MenuFlyout();
 
         var openIndex = new MenuFlyoutItem { Text = $"Open Index: {op.IndexName}" };
-        
+
         openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(op);
-        
+
         flyout.Items.Add(openIndex);
 
         flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
@@ -2449,7 +2471,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _scrollX = e.NewValue;
 
         ClampScroll();
-        
+
         _skCanvas.Invalidate();
     }
 
@@ -2646,8 +2668,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _flowConnectorPaint.Dispose();
         _outlinePaint.Dispose();
 
-        _handlePath.Dispose();
-        _playheadTrianglePath.Dispose();
+        _pathBuilder.Dispose();
 
         _staticLayer?.Dispose();
 
