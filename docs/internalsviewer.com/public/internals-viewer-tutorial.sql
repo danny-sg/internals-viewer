@@ -205,6 +205,61 @@ FROM   dbo.ClusteredTable
 WHERE  Id = 54321
 GO
 
+-- [Indexes and data]
+--
+-- What the leaf level holds decides what happens after the seek
+-- lands.
+
+-- Non-clustered index seek + Key Lookup - CreatedDate isn't in
+-- IX_ClusteredTable_TextField, so the engine takes the clustering
+-- key (Id) from the leaf record and runs a second root-to-leaf
+-- seek into the clustered index
+
+SELECT *
+FROM   dbo.ClusteredTable
+WHERE  TextField = 'This is row 54321'
+GO
+
+-- Covering - TextField (the index key) and Id (the clustering
+-- key) are both in the leaf records, so the Key Lookup disappears
+
+SELECT Id
+      ,TextField
+FROM   dbo.ClusteredTable
+WHERE  TextField = 'This is row 54321'
+GO
+
+-- Non-clustered index on a heap - the leaf holds a RID, so the
+-- lookup is a single page read straight to the page and slot
+
+SELECT *
+FROM   dbo.HeapTable
+WHERE  NumberField = 500
+GO
+
+-- The uniquifier - a non-unique clustered index adds a hidden
+-- uniquifier to duplicate keys so the clustering key still
+-- identifies exactly one row for non-clustered indexes to
+-- reference
+
+CREATE TABLE dbo.DuplicateKeyTable
+(
+    Category  INT          NOT NULL
+   ,TextField VARCHAR(100) NOT NULL
+)
+GO
+
+CREATE CLUSTERED INDEX IX_DuplicateKeyTable_Category ON dbo.DuplicateKeyTable (Category)
+GO
+
+INSERT INTO dbo.DuplicateKeyTable
+        (Category, TextField)
+VALUES  (1, 'First row in category 1')
+       ,(1, 'Second row in category 1')
+       ,(1, 'Third row in category 1')
+       ,(2, 'Only row in category 2')
+GO
+
 -- [Joins]
 --
 -- The same join hinted three ways. Trace each with Clear Buffer

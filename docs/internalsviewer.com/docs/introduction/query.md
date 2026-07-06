@@ -50,4 +50,4 @@ The query runs with an Extended Events session filtered to the connection, captu
 See [How query tracing works](/docs/deep-dives/query-tracing) for the details.
 :::
 
-For a walkthrough, the tutorial's [Query section](/docs/tutorial/query/1-using-the-query-view) traces queries against a sample database - including [scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) and the [three join types](/docs/tutorial/query/5-joins).
+For a walkthrough, the tutorial's [Query section](/docs/tutorial/query/1-using-the-query-view) traces queries against a sample database - including [scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) and the [three join types](/docs/tutorial/query/6-joins).

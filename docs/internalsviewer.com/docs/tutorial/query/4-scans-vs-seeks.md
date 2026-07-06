@@ -37,17 +37,21 @@ WHERE  Id = 54321
 
 This time there is no sweep. Only a thin path lights up - the root page, an intermediate page, and the single leaf page containing `Id` 54321. Three pages out of hundreds, and the query is over almost as soon as it starts.
 
+::: info Reads per extent
+SQL Server will access pages on an extent basis, loading the eight pages in an extent together. Because of this more pages may appear to be accessed than appear in the I/O statistics. Internals Viewer will push the root page read to the start of an extent read but subsequently levels may appear out of order as they have already been read as part of the extent.
+:::
+
 ## Scan vs seek
 
 Scrubbing the playhead back and forward over the two traces shows the contrast:
 
-| | Scan | Seek |
-| --- | ---- | ---- |
-| Pages read | Every leaf page - hundreds | Root → intermediate → one leaf page |
-| Pattern on the Index view | A sweep across the whole leaf level | A single root-to-leaf path |
-| Read lane | A steady stream for the whole query | A handful of ticks at the start |
-| How pages are found | Following `Next Page` links | Following down page pointers |
+|                           | Scan                                | Seek                                |
+| ------------------------- | ----------------------------------- | ----------------------------------- |
+| Pages read                | Every leaf page - hundreds          | Root → intermediate → one leaf page |
+| Pattern on the Index view | A sweep across the whole leaf level | A single root-to-leaf path          |
+| Read lane                 | A steady stream for the whole query | A handful of ticks at the start     |
+| How pages are found       | Following `Next Page` links         | Following down page pointers        |
 
 The work is proportional to the table for a scan, but to the depth of the B-Tree for a seek - which is why a seek finds one row in a million-row table in three or four reads. Both queries return rows from the same pages of the same index; the difference is purely the path taken to get there.
 
-Next: [Joins](/docs/tutorial/query/5-joins)
+Next: [Indexes and data](/docs/tutorial/query/5-indexes-and-data)

@@ -12,6 +12,6 @@ This makes the behaviour of the different operator types visible:
 - **Blocking operators** have to consume input before they can produce output. A **Hash Match** join shows its two phases: the _build_ phase, where it reads the entire build input into a hash table while nothing flows downstream, then the _probe_ phase, where it streams the probe input through the hash table and starts emitting rows
 - A **Nested Loops** join shows its access pattern - one row at a time from the outer input, each driving a seek on the inner input, visible as a rapid repeating pattern of small reads in the timeline
 
-[Joins](/docs/tutorial/query/5-joins) makes these behaviours concrete by tracing the same join three ways - but first, [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) compares the two access patterns underneath every plan.
+[Joins](/docs/tutorial/query/6-joins) makes these behaviours concrete by tracing the same join three ways - but first, [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) compares the two access patterns underneath every plan.
 
 Next: [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks)
