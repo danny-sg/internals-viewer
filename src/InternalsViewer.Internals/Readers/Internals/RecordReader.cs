@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Threading;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Records.Data;
@@ -20,11 +21,14 @@ public sealed class RecordReader(ILogger<RecordReader> logger,
 
     private FixedVarDataRecordLoader FixedVarDataRecordLoader { get; } = fixedVarDataRecordLoader;
 
-    public async Task<List<DataRecord>> Read(DatabaseSource database, PageAddress startPage, TableStructure structure)
+    public async Task<List<DataRecord>> Read(DatabaseSource database, 
+                                             PageAddress startPage, 
+                                             TableStructure structure,
+                                             CancellationToken cancellationToken)
     {
         Logger.LogTrace("Reading records from {StartPage} - {@Structure}", startPage, structure);
 
-        var page = await PageService.GetPage<DataPage>(database, startPage);
+        var page = await PageService.GetPage<DataPage>(database, startPage, cancellationToken);
 
         var records = new List<DataRecord>();
 
@@ -51,7 +55,7 @@ public sealed class RecordReader(ILogger<RecordReader> logger,
 
             Logger.LogTrace("Next page: {NextPage}", nextPage);
 
-            page = await PageService.GetPage<DataPage>(database, nextPage);
+            page = await PageService.GetPage<DataPage>(database, nextPage, cancellationToken);
         }
 
         return records;

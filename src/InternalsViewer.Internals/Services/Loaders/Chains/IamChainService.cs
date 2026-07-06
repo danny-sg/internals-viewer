@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Threading;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -20,7 +21,9 @@ public sealed class IamChainService(IPageService pageService) : IIamChainService
     /// <remarks>
     /// IAM chains are linked lists of pages linked via the Next Page/Previous Page pointers in the page header
     /// </remarks>
-    public async Task<IamChain> LoadChain(DatabaseSource database, PageAddress startPageAddress)
+    public async Task<IamChain> LoadChain(DatabaseSource database, 
+                                          PageAddress startPageAddress, 
+                                          CancellationToken cancellationToken)
     {
         var iam = new IamChain();
 
@@ -28,7 +31,7 @@ public sealed class IamChainService(IPageService pageService) : IIamChainService
 
         while (true)
         {
-            var page = await PageService.GetPage<IamPage>(database, pageAddress);
+            var page = await PageService.GetPage<IamPage>(database, pageAddress, cancellationToken);
 
             iam.Pages.Add(page);
 

@@ -1,4 +1,5 @@
 using System.Data;
+using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers;
@@ -22,10 +23,13 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
     /// </summary>
     private const int HexLinePrefixLength = 20;
 
-    /// <summary>Index of the colon that terminates the address on a memory dump line.</summary>
+    /// <summary>
+    /// Index of the colon that terminates the address on a memory dump line</summary>
     private const int AddressColonIndex = 16;
 
-    /// <summary>Number of hex characters consumed from each memory dump line after the prefix.</summary>
+    /// <summary>
+    /// Number of hex characters consumed from each memory dump line after the prefix
+    /// </summary>
     private const int HexLineLength = 44;
 
     private const string DbccPageCommand = @"DBCC PAGE({0}, {1}, {2}, {3}) WITH TABLERESULTS";
@@ -37,16 +41,19 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
     /// <summary>
     /// Loads the database page using DBCC PAGE (hex dump)
     /// </summary>
-    public async Task<byte[]> Read(string name, PageAddress pageAddress)
+    public async Task<byte[]> Read(string name, PageAddress pageAddress, CancellationToken cancellationToken)
     {
         var data = new byte[PageData.Size];
 
-        await ReadInto(name, pageAddress, data);
+        await ReadInto(name, pageAddress, data, cancellationToken);
 
         return data;
     }
 
-    public async Task ReadInto(string name, PageAddress pageAddress, byte[] buffer)
+    public async Task ReadInto(string name, 
+                               PageAddress pageAddress, 
+                               byte[] buffer, 
+                               CancellationToken cancellationToken)
     {
         var pageCommand = string.Format(DbccPageCommand,
                                         name,
@@ -62,20 +69,21 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
         {
             await using var connection = new SqlConnection(ConnectionString);
 
-            await connection.OpenAsync();
+            await connection.OpenAsync(cancellationToken);
 
             await using var command = new SqlCommand(pageCommand, connection);
 
             command.CommandType = CommandType.Text;
 
-            await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, 
+                                                                      cancellationToken);
 
             if (reader.HasRows)
             {
                 // Reused across every row: prefix (skipped) plus the hex characters we consume.
                 var valueBuffer = new char[HexLinePrefixLength + HexLineLength];
 
-                #pragma warning disable VSTHRD103 // Sync Read avoids the per-row Task allocations of ReadAsync
+#pragma warning disable VSTHRD103 // Sync Read avoids the per-row Task allocations of ReadAsync
                 while (reader.Read())
                 {
                     using var valueReader = reader.GetTextReader(ValueIndex);
@@ -91,9 +99,9 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
 
                     offset = ReadData(line[HexLinePrefixLength..], offset, buffer);
                 }
-                #pragma warning restore VSTHRD103
 
-                reader.Close();
+                reader.Close();  
+#pragma warning restore VSTHRD103
             }
         }
         catch (Exception ex)

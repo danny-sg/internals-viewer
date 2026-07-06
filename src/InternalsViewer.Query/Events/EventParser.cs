@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.EventTypes;
@@ -592,7 +593,8 @@ internal sealed class EventParser
             DatabaseId = e.GetDatabaseId(),
             Operation = (LogOperation)(e.GetInt("operation") ?? 0),
             Context = (LogContext)(e.GetInt("context") ?? 0),
-            AllocationUnitId = e.GetLong("alloc_unit_id") ?? 0
+            AllocationUnitId = e.GetLong("alloc_unit_id") ?? 0,
+            TransactionId = e.GetInt("transaction_id")
         };
     }
 }

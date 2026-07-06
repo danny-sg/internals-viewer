@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Threading;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
@@ -15,16 +16,21 @@ namespace InternalsViewer.Internals.Services.Pages.Loaders;
 /// </remarks>
 public sealed class PageLoader : IPageLoader
 {
-    public async Task<PageData> Load(DatabaseSource database, PageAddress pageAddress)
+    public async Task<PageData> Load(DatabaseSource database, 
+                                     PageAddress pageAddress, 
+                                     CancellationToken cancellationToken)
     {
-        var data = await database.Connection.PageReader.Read(database.Name, pageAddress);
+        var data = await database.Connection.PageReader.Read(database.Name, pageAddress, cancellationToken);
 
         return BuildPageData(database, pageAddress, data);
     }
 
-    public async Task<PageData> LoadInto(DatabaseSource database, PageAddress pageAddress, byte[] buffer)
+    public async Task<PageData> LoadInto(DatabaseSource database, 
+                                         PageAddress pageAddress, 
+                                         byte[] buffer, 
+                                         CancellationToken cancellationToken)
     {
-        await database.Connection.PageReader.ReadInto(database.Name, pageAddress, buffer);
+        await database.Connection.PageReader.ReadInto(database.Name, pageAddress, buffer, cancellationToken);
 
         return BuildPageData(database, pageAddress, buffer);
     }

@@ -123,6 +123,8 @@
                                                StartOffset="{x:Bind ViewModel.StartOffset, Mode=OneWay}"
                                                EndOffset="{x:Bind ViewModel.EndOffset, Mode=OneWay}"
                                                ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
+                                               ActiveIndexPageLevel="{x:Bind ViewModel.ActiveIndexPageLevel, Mode=OneWay}"
+                                               IsIndexOpen="{x:Bind ViewModel.IsIndexOpen, Mode=OneWay}"
                                                Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}" />
             </Grid>
         </SplitView.Content>

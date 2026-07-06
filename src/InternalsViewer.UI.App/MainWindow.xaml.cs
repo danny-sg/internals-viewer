@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Connections.Backup;
 using InternalsViewer.Internals.Connections.File;
@@ -28,6 +24,11 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using WinUIEx;
 
 namespace InternalsViewer.UI.App;
@@ -56,6 +57,8 @@ public sealed partial class MainWindow
    
     private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
+    private CancellationTokenSource WindowCts { get; } = new();
+
     public MainWindow(IDatabaseService databaseService,
                       IEnumerable<IConnectionTypeFactory> connectionFactories,
                       MainViewModel mainViewModel,
@@ -82,6 +85,12 @@ public sealed partial class MainWindow
         ExtendsContentIntoTitleBar = true;
 
         InitializeComponent();
+
+        Closed += (_, _) =>
+        {
+            WindowCts.Cancel();
+            WindowCts.Dispose();
+        };
 
         this.SetIcon("Assets/InternalsViewer.ico");
 
@@ -326,7 +335,7 @@ public sealed partial class MainWindow
 
             await Task.Run(async () =>
             {
-                database = await DatabaseService.LoadAsync(connection.Name, connection);
+                database = await DatabaseService.LoadAsync(connection.Name, connection, WindowCts.Token);
             });
 
             var viewModel = DatabaseTabViewModelFactory.Create(database);

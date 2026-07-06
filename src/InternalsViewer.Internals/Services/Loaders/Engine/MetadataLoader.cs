@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Threading;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
@@ -59,54 +60,57 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
     ///                         
     ///     --> sys.sysprufiles - <see cref="InternalFile"/>
     /// </remarks>              
-    public async Task<InternalMetadata> Load(DatabaseSource database)
+    public async Task<InternalMetadata> Load(DatabaseSource database, CancellationToken cancellationToken)
     {
         var result = new InternalMetadata();
 
-        result.AllocationUnits = await GetAllocationUnits(database);
+        result.AllocationUnits = await GetAllocationUnits(database, cancellationToken);
 
         var rowSetsFirstPage = GetFirstPage(InternalTableConstants.RowSetId, result.AllocationUnits);
 
-        result.RowSets = await GetRowSets(rowSetsFirstPage, database);
+        result.RowSets = await GetRowSets(rowSetsFirstPage, database, cancellationToken);
 
         var objectsFirstPage = GetFirstPage(InternalTableConstants.ObjectsId, result.AllocationUnits);
 
-        result.Objects = await GetObjects(objectsFirstPage, database);
+        result.Objects = await GetObjects(objectsFirstPage, database, cancellationToken);
 
         var columnLayouts = GetFirstPage(InternalTableConstants.ColumnLayoutsId, result.AllocationUnits);
 
-        result.ColumnLayouts = await GetColumnLayouts(columnLayouts, database);
+        result.ColumnLayouts = await GetColumnLayouts(columnLayouts, database, cancellationToken);
 
         var columns = GetFirstPage(InternalTableConstants.ColumnsId, result.AllocationUnits);
 
-        result.Columns = await GetColumns(columns, database);
+        result.Columns = await GetColumns(columns, database, cancellationToken);
 
         var entitiesFirstPage = GetFirstPage(InternalTableConstants.EntitiesId, result.AllocationUnits);
 
-        result.Entities = await GetEntities(entitiesFirstPage, database);
+        result.Entities = await GetEntities(entitiesFirstPage, database, cancellationToken);
 
         var indexesFirstPage = GetFirstPage(InternalTableConstants.IndexesId, result.AllocationUnits);
 
-        result.Indexes = await GetIndexes(indexesFirstPage, database);
+        result.Indexes = await GetIndexes(indexesFirstPage, database, cancellationToken);
 
         var indexColumnsFirstPage = GetFirstPage(InternalTableConstants.IndexColumnsId, result.AllocationUnits);
 
-        result.IndexColumns = await GetIndexColumns(indexColumnsFirstPage, database);
+        result.IndexColumns = await GetIndexColumns(indexColumnsFirstPage, database, cancellationToken);
 
         var filesFirstPage = GetFirstPage(InternalTableConstants.FilesId, result.AllocationUnits);
 
-        result.Files = await GetFiles(filesFirstPage, database);
+        result.Files = await GetFiles(filesFirstPage, database, cancellationToken);
 
         return result;
     }
 
-    private async Task<List<InternalFile>> GetFiles(PageAddress pageAddress, DatabaseSource database)
+    private async Task<List<InternalFile>> GetFiles(PageAddress pageAddress, 
+                                                    DatabaseSource database, 
+                                                    CancellationToken cancellationToken)
     {
         Logger.LogTrace("Getting Files (sys.sysprufiles) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
-                                             InternalFileStructure.GetStructure(-1));
+                                             InternalFileStructure.GetStructure(-1),
+                                             cancellationToken);
 
         Logger.LogTrace("Files (sys.sysprufiles): {Count} records found. Parsing records...", records.Count);
 
@@ -117,13 +121,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<Dictionary<(int Id, byte ClassId), InternalEntityObject>> GetEntities(PageAddress pageAddress, DatabaseSource database)
+    private async Task<Dictionary<(int Id, byte ClassId), InternalEntityObject>> 
+        GetEntities(PageAddress pageAddress, DatabaseSource database, CancellationToken cancellationToken)
     {
         Logger.LogTrace("Getting Entities (sys.sysclsobjs) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
-                                             InternalEntityObjectStructure.GetStructure(-1));
+                                             InternalEntityObjectStructure.GetStructure(-1),
+                                             cancellationToken);
 
         Logger.LogTrace("Entities (sys.sysclsobjs): {Count} records found. Parsing records...", records.Count);
 
@@ -135,13 +141,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<Dictionary<int, InternalObject>> GetObjects(PageAddress pageAddress, DatabaseSource database)
+    private async Task<Dictionary<int, InternalObject>> 
+        GetObjects(PageAddress pageAddress, DatabaseSource database, CancellationToken cancellationToken)
     {
         Logger.LogTrace("Getting Objects (sys.sysschobjs) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                               pageAddress,
-                                              InternalObjectStructure.GetStructure(-1));
+                                              InternalObjectStructure.GetStructure(-1),
+                                              cancellationToken);
 
         Logger.LogTrace("Objects (sys.sysschobjs): {Count} records found. Parsing records...", records.Count);
 
@@ -153,13 +161,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<ILookup<int, InternalIndex>> GetIndexes(PageAddress pageAddress, DatabaseSource database)
+    private async Task<ILookup<int, InternalIndex>> 
+        GetIndexes(PageAddress pageAddress, DatabaseSource database, CancellationToken cancellationToken)
     {
         Logger.LogTrace("Getting Indexes (sys.sysidxstats) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                               pageAddress,
-                                              InternalIndexStructure.GetStructure(-1));
+                                              InternalIndexStructure.GetStructure(-1),
+                                              cancellationToken);
 
         Logger.LogTrace("Indexes (sys.sysidxstats): {Count} records found. Parsing records...", records.Count);
 
@@ -171,13 +181,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<ILookup<(int ObjectId, int IndexId), InternalIndexColumn>> GetIndexColumns(PageAddress pageAddress, DatabaseSource database)
+    private async Task<ILookup<(int ObjectId, int IndexId), InternalIndexColumn>> 
+        GetIndexColumns(PageAddress pageAddress, DatabaseSource database, CancellationToken cancellationToken)
     {
         Logger.LogTrace("Getting Index Columns (sys.sysiscols) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                               pageAddress,
-                                              InternalIndexColumnStructure.GetStructure(-1));
+                                              InternalIndexColumnStructure.GetStructure(-1),
+                                              cancellationToken);
 
         Logger.LogTrace("Index Columns (sys.sysiscols): {Count} records found. Parsing records...", records.Count);
 
@@ -189,13 +201,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<Dictionary<long, InternalRowSet>> GetRowSets(PageAddress pageAddress, DatabaseSource database)
+    private async Task<Dictionary<long, InternalRowSet>> 
+        GetRowSets(PageAddress pageAddress, DatabaseSource database, CancellationToken cancellationToken)
     {
         Logger.LogTrace("Getting Row Sets (sys.sysrowsets) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
-                                             pageAddress,
-                                             InternalRowSetStructure.GetStructure(-1));
+                                              pageAddress,
+                                              InternalRowSetStructure.GetStructure(-1),
+                                              cancellationToken);
 
         Logger.LogTrace("Row Sets (sys.sysrowsets): {Count} records found. Parsing records...", records.Count);
 
@@ -207,13 +221,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<ILookup<long, InternalColumnLayout>> GetColumnLayouts(PageAddress pageAddress, DatabaseSource database)
+    private async Task<ILookup<long, InternalColumnLayout>> 
+        GetColumnLayouts(PageAddress pageAddress, DatabaseSource database, CancellationToken cancellationToken)
     {
         Logger.LogTrace("Getting Column Layouts (sys.sysrscols) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                              pageAddress,
-                                             InternalColumnLayoutStructure.GetStructure(-1));
+                                             InternalColumnLayoutStructure.GetStructure(-1),
+                                             cancellationToken);
 
         Logger.LogTrace("Column Layouts (sys.sysrscols): {Count} records found. Parsing records...", records.Count);
 
@@ -225,13 +241,15 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<ILookup<int, InternalColumn>> GetColumns(PageAddress pageAddress, DatabaseSource database)
+    private async Task<ILookup<int, InternalColumn>> 
+        GetColumns(PageAddress pageAddress, DatabaseSource database, CancellationToken cancellationToken)
     {
         Logger.LogTrace("Getting Columns (sys.syscolpars) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                               pageAddress,
-                                              InternalColumnStructure.GetStructure(-1));
+                                              InternalColumnStructure.GetStructure(-1),
+                                              cancellationToken);
 
         Logger.LogTrace("Columns (sys.syscolpars): {Count} records found. Parsing records...", records.Count);
 
@@ -243,7 +261,8 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<Dictionary<long, InternalAllocationUnit>> GetAllocationUnits(DatabaseSource databaseDetail)
+    private async Task<Dictionary<long, InternalAllocationUnit>> 
+        GetAllocationUnits(DatabaseSource databaseDetail, CancellationToken cancellationToken)
     {
         var (objectId, indexId) = InternalTableConstants.ObjectsId;
 
@@ -258,7 +277,8 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
 
         var records = await RecordReader.Read(databaseDetail,
                                              databaseDetail.BootPage.FirstAllocationUnitsPage,
-                                             InternalAllocationUnitStructure.GetStructure(id));
+                                             InternalAllocationUnitStructure.GetStructure(id),
+                                             cancellationToken);
 
         Logger.LogTrace("Allocation Units (sys.sysallocunits): {Count} records found.", 
                         records.Count);
@@ -271,7 +291,8 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private PageAddress GetFirstPage((int ObjectId, int IndexId) id, Dictionary<long, InternalAllocationUnit> allocationUnits)
+    private PageAddress 
+        GetFirstPage((int ObjectId, int IndexId) id, Dictionary<long, InternalAllocationUnit> allocationUnits)
     {
         var (objectId, indexId) = id;
 

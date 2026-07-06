@@ -202,7 +202,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         await Task.Run(async () =>
             {
-                var resultPage = await PageService.GetPage(Database, pageAddress);
+                var resultPage = await PageService.GetPage(Database, pageAddress, CancellationToken);
 
                 var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
                 {
@@ -272,7 +272,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                     IsLoading = false;
                 });
-            });
+            }, CancellationToken);
 
         History.Add(PageAddress);
     }

@@ -49,7 +49,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         "sqlserver.request_id",
         "sqlserver.sql_text",
         "sqlserver.database_id",
-        "sqlserver.plan_handle"
+        "sqlserver.plan_handle",
+        "sqlserver.transaction_id"
     ];
 
     public async Task<QueryResult> TraceQuery(string sqlText,

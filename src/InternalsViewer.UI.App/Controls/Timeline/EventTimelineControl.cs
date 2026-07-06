@@ -97,6 +97,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private readonly Button _stepForwardButton;
     private readonly ToggleButton _threadsButton;
     private bool _showThreads;
+    private readonly ToggleButton _audioButton;
+    private readonly TimelineAudioPlayer _audioPlayer = new();
     private readonly SKXamlCanvas _skCanvas;
     private readonly Canvas _overlay;
     private readonly ScrollBar _scrollBar;
@@ -218,6 +220,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private List<EngineEvent> _sortedEvents = [];
 
+    // Pre-filtered and TimeUs-sorted array of read IoEvents; built whenever _sortedEvents changes.
+    // Used by PlayAudioForCurrentPosition so the per-frame audio sweep is O(log n + hits) via binary search
+    // rather than O(all events).
+    private IoEvent[] _readEventsByTime = [];
+
     // The markers/operators/traces/ruler don't change as the playhead sweeps, so they're recorded once
     // into a picture and replayed each frame; only the playhead, handles and selection dim are redrawn
     // live. The picture (and the _hitRegions built alongside it) is re-recorded only when an input that
@@ -314,6 +321,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var events = (List<EngineEvent>)e.NewValue;
 
         control._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
+        control._readEventsByTime = [.. events.OfType<IoEvent>().Where(io => io.IsRead).OrderBy(io => io.TimeUs)];
 
         control._eventsVersion++;
 
@@ -389,7 +397,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
     /// </summary>
     public event Action<long, long>? ScopeChanged;
 
-    /// <summary>Raised when the playhead moves, with its position in microseconds.</summary>
+    /// <summary>
+    /// Raised when the playhead moves, with its position in microseconds
+    /// </summary>
     public event Action<long>? PlayheadTimeChanged;
 
     /// <summary>Raised when a plan operator in the timeline is clicked.</summary>
@@ -403,6 +413,52 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     /// <summary>Raised when auto-play starts (true) or stops (false).</summary>
     public event Action<bool>? PlayStateChanged;
+
+    /// <summary>Enables or disables audio plink feedback when the playhead passes a page-read event.</summary>
+    public bool IsAudioEnabled
+    {
+        get => (bool)GetValue(IsAudioEnabledProperty);
+        set => SetValue(IsAudioEnabledProperty, value);
+    }
+
+    public static readonly DependencyProperty IsAudioEnabledProperty =
+        DependencyProperty.Register(nameof(IsAudioEnabled), typeof(bool), typeof(EventTimelineControl),
+            new PropertyMetadata(false, OnIsAudioEnabledChanged));
+
+    private static async void OnIsAudioEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if ((bool)e.NewValue)
+        {
+            await ((EventTimelineControl)d)._audioPlayer.EnsureInitializedAsync();
+        }
+    }
+
+    /// <summary>
+    /// When an index view is active, this carries the B-tree level (0 = leaf) of the currently selected
+    /// page so audio pitch can vary by level instead of by object id. A negative value means the active
+    /// page is not in any open index (but an index may still be open — see <see cref="IsIndexOpen"/>).
+    /// </summary>
+    public int ActiveIndexPageLevel
+    {
+        get => (int)GetValue(ActiveIndexPageLevelProperty);
+        set => SetValue(ActiveIndexPageLevelProperty, value);
+    }
+
+    public static readonly DependencyProperty ActiveIndexPageLevelProperty =
+        DependencyProperty.Register(nameof(ActiveIndexPageLevel), typeof(int), typeof(EventTimelineControl),
+            new PropertyMetadata(-1));
+
+    /// <summary>True when at least one index view is open. When set, the index level drives audio pitch
+    /// exclusively — events whose page is not in an open index are silent.</summary>
+    public bool IsIndexOpen
+    {
+        get => (bool)GetValue(IsIndexOpenProperty);
+        set => SetValue(IsIndexOpenProperty, value);
+    }
+
+    public static readonly DependencyProperty IsIndexOpenProperty =
+        DependencyProperty.Register(nameof(IsIndexOpen), typeof(bool), typeof(EventTimelineControl),
+            new PropertyMetadata(false));
 
     public EventTimelineControl()
     {
@@ -448,6 +504,21 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _threadsButton.Checked += OnThreadsToggled;
         _threadsButton.Unchecked += OnThreadsToggled;
 
+        _audioButton = new ToggleButton
+        {
+            Content = new FontIcon { Glyph = "\uE74F", FontSize = 12 },
+            Height = TransportButtonHeight,
+            Width = 34,
+            Margin = new Thickness(8, 2, 0, 2),
+            Padding = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Center,
+            BorderBrush = null,
+            Background = new SolidColorBrush(Color.FromArgb(0, 30, 30, 30)),
+        };
+        ToolTipService.SetToolTip(_audioButton, "Toggle audio feedback");
+        _audioButton.Checked += OnAudioToggled;
+        _audioButton.Unchecked += OnAudioToggled;
+
         var transport = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -458,6 +529,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         transport.Children.Add(_playButton);
         transport.Children.Add(_stepForwardButton);
         transport.Children.Add(_threadsButton);
+        transport.Children.Add(_audioButton);
 
         SetRow(transport, 0);
         Children.Add(transport);
@@ -531,6 +603,21 @@ public sealed class EventTimelineControl : Grid, IDisposable
     {
         _showThreads = _threadsButton.IsChecked == true;
         _skCanvas.Invalidate();
+    }
+
+    private async void OnAudioToggled(object sender, RoutedEventArgs e)
+    {
+        IsAudioEnabled = _audioButton.IsChecked == true;
+
+        if (_audioButton.Content is FontIcon icon)
+        {
+            icon.Glyph = IsAudioEnabled ? "\uE995" : "\uE74F";
+        }
+
+        if (IsAudioEnabled)
+        {
+            await _audioPlayer.EnsureInitializedAsync();
+        }
     }
 
     private void OnStepBackButtonClick(object sender, RoutedEventArgs e) => StepToAdjacentEvent(forward: false);
@@ -1891,6 +1978,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         foreach (var ev in _sortedEvents)
         {
             var idx = GetRowIndex(ev);
+
             if (idx >= 0)
             {
                 _rowEventCounts[idx]++;
@@ -1966,8 +2054,79 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         if (playheadUs != _playheadUs)
         {
+            var previousUs = _playheadUs;
             _playheadUs = playheadUs;
             PlayheadTimeChanged?.Invoke(playheadUs);
+
+            if (IsAudioEnabled)
+            {
+                PlayAudioForCurrentPosition(previousUs, playheadUs);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fires one plink per IoEvent read swept by the playhead in (<paramref name="fromUs"/>,
+    /// <paramref name="toUs"/>] (exclusive lower bound). Uses binary search on <see cref="_readEventsByTime"/>
+    /// so the per-frame cost is O(log n + hits) regardless of total event count. When an index is open
+    /// it always drives pitch; reads whose page is not in the open index are skipped silently.
+    /// Without an open index, pitch is derived from the event's object id.
+    /// </summary>
+    private void PlayAudioForCurrentPosition(long fromUs, long toUs)
+    {
+        var lo = Math.Min(fromUs, toUs);
+        var hi = Math.Max(fromUs, toUs);
+
+        var reads = _readEventsByTime;
+
+        if (reads.Length == 0)
+        {
+            return;
+        }
+
+        var indexLevel = ActiveIndexPageLevel;
+        var indexOpen  = IsIndexOpen;
+
+        // Binary search for the first event with TimeUs > lo.
+        var left = 0;
+        var right = reads.Length - 1;
+
+        while (left < right)
+        {
+            var mid = (left + right) >> 1;
+
+            if (reads[mid].TimeUs <= lo)
+            {
+                left = mid + 1;
+            }
+            else
+            {
+                right = mid;
+            }
+        }
+
+        for (var i = left; i < reads.Length; i++)
+        {
+            var io = reads[i];
+
+            if (io.TimeUs > hi)
+            {
+                break;
+            }
+
+            if (indexOpen)
+            {
+                if (indexLevel < 0)
+                {
+                    continue;
+                }
+
+                _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForIndexLevel(indexLevel));
+            }
+            else
+            {
+                _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForObject(io.ObjectId));
+            }
         }
     }
 
@@ -2447,6 +2606,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _stepForwardButton.Click -= OnStepForwardButtonClick;
         _threadsButton.Checked -= OnThreadsToggled;
         _threadsButton.Unchecked -= OnThreadsToggled;
+        _audioButton.Checked -= OnAudioToggled;
+        _audioButton.Unchecked -= OnAudioToggled;
 
         _skCanvas.PaintSurface -= OnPaintSurface;
 
@@ -2489,5 +2650,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _playheadTrianglePath.Dispose();
 
         _staticLayer?.Dispose();
+
+        _audioPlayer.Dispose();
     }
 }

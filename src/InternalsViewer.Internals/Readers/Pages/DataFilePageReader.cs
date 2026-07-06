@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers;
@@ -25,16 +26,19 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader
     /// The file has to be detached/not attached to SQL Server to be read as it will be locked by the SQL Server
     /// process.
     /// </remarks>
-    public async Task<byte[]> Read(string name, PageAddress pageAddress)
+    public async Task<byte[]> Read(string name, PageAddress pageAddress, CancellationToken cancellationToken)
     {
         var data = new byte[PageData.Size];
 
-        await ReadInto(name, pageAddress, data);
+        await ReadInto(name, pageAddress, data, cancellationToken);
 
         return data;
     }
 
-    public async Task ReadInto(string name, PageAddress pageAddress, byte[] buffer)
+    public async Task ReadInto(string name, 
+                               PageAddress pageAddress, 
+                               byte[] buffer, 
+                               CancellationToken cancellationToken)
     {
         var offset = (long)pageAddress.PageId * PageData.Size;
 
@@ -49,6 +53,6 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader
 
         file.Seek(offset, SeekOrigin.Begin);
 
-        await file.ReadExactlyAsync(buffer, 0, PageData.Size);
+        await file.ReadExactlyAsync(buffer, 0, PageData.Size, cancellationToken);
     }
 }

@@ -64,6 +64,28 @@
     <models:MarkStyle x:Key="RidMarkerStyle" ForeColour="White" BackColour="#313240" Name="RID"/>
     <models:MarkStyle x:Key="DownPagePointerMarkerStyle" ForeColour="Black" BackColour="#ffcc00" Name="Down Page Pointer"/>
 
+    <!--LOB Records-->
+
+    <models:MarkStyle x:Key="BlobIdMarkerStyle" ForeColour="White" BackColour="#5D4037" Name="Blob Id"/>
+    <models:MarkStyle x:Key="BlobLengthMarkerStyle" ForeColour="White" BackColour="#795548" Name="Length"/>
+    <models:MarkStyle x:Key="BlobTypeMarkerStyle" ForeColour="White" BackColour="#9d481b" Name="Blob Type"/>
+    <models:MarkStyle x:Key="MaxLinksMarkerStyle" ForeColour="White" BackColour="#8D6E63" Name="Max Links"/>
+    <models:MarkStyle x:Key="CurrentLinksMarkerStyle" ForeColour="White" BackColour="#6D4C41" Name="Current Links"/>
+    <models:MarkStyle x:Key="BlobSizeMarkerStyle" ForeColour="Black" BackColour="#BCAAA4" Name="Size"/>
+    <models:MarkStyle x:Key="BlobDataMarkerStyle" ForeColour="Black" BackColour="#EFEBE9" Name="Data"/>
+    <models:MarkStyle x:Key="BlobChildOffsetMarkerStyle" ForeColour="Black" BackColour="#FFB74D" Name="Child Offset"/>
+    <models:MarkStyle x:Key="BlobChildLengthMarkerStyle" ForeColour="Black" BackColour="#FFE0B2" Name="Child Length"/>
+
+    <!--LOB Pointers (in-row)-->
+
+    <models:MarkStyle x:Key="PointerTypeMarkerStyle" ForeColour="White" BackColour="#D84315" Name="Pointer Type"/>
+    <models:MarkStyle x:Key="TimestampMarkerStyle" ForeColour="White" BackColour="#4E342E" Name="Timestamp"/>
+    <models:MarkStyle x:Key="LevelMarkerStyle" ForeColour="White" BackColour="#A1887F" Name="Level"/>
+    <models:MarkStyle x:Key="UpdateSeqMarkerStyle" ForeColour="Black" BackColour="#D7CCC8" Name="Update Seq"/>
+    <models:MarkStyle x:Key="OverflowLevelMarkerStyle" ForeColour="White" BackColour="#FF8F00" Name="Overflow Level"/>
+    <models:MarkStyle x:Key="OverflowLengthMarkerStyle" ForeColour="White" BackColour="#FFA000" Name="Overflow Length"/>
+    <models:MarkStyle x:Key="UnusedMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Unused"/>
+
     <!--Compression Info-->
 
     <models:MarkStyle x:Key="HeaderMarkerStyle" ForeColour="White" BackColour="#06411a" Name="Header"/>

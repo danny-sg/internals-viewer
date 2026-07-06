@@ -128,7 +128,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
                 Logger.LogDebug("Getting nodes for index from root node: {RootPage}", RootPage);
 
-                var result = await IndexService.GetNodes(Database, RootPage);
+                var result = await IndexService.GetNodes(Database, RootPage, CancellationToken);
 
                 Logger.LogDebug("{Count} node(s) found", result.Count);
 
@@ -139,7 +139,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                     Nodes = result;
                     IsInitialized = true;
                 });
-            });
+            }, CancellationToken);
     }
 
     [RelayCommand]
@@ -185,7 +185,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             {
                 Logger.LogDebug("Loading Page: {PageAddress}", pageAddress);
 
-                page = await PageService.GetPage(Database, pageAddress);
+                page = await PageService.GetPage(Database, pageAddress, CancellationToken);
 
                 if (page is IndexPage indexPage)
                 {
@@ -200,7 +200,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
                     decodedRecords = GetDataRecordModels(RecordService.GetDataRecords(dataPage, isMarkEnabled: true));
                 }
-            });
+            }, CancellationToken);
 
         Logger.LogDebug("Decoded {Count} record(s)", decodedRecords.Count);
 

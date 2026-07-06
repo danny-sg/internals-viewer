@@ -254,7 +254,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     {
         await Task.Run(async () =>
         {
-            var result = await DatabaseService.LoadAsync(Database.Name, Database.Connection);
+            var result = await DatabaseService.LoadAsync(Database.Name, Database.Connection, CancellationToken);
 
             if (Overlay == "Buffer Pool")
             {
@@ -267,7 +267,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
                 Load(Database.Name);
             });
-        });
+        }, CancellationToken);
     }
 
     public ValueTask DisposeAsync() => Database.Connection.DisposeAsync();

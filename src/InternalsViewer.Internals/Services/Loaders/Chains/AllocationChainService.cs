@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Threading;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -26,7 +27,10 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
 {
     public ILogger<AllocationChainService> Logger { get; } = logger;
 
-    public async Task<AllocationChain> LoadChain(DatabaseSource database, short fileId, PageType pageType)
+    public async Task<AllocationChain> LoadChain(DatabaseSource database, 
+                                                 short fileId, 
+                                                 PageType pageType, 
+                                                 CancellationToken cancellationToken)
     {
         var startPage = pageType switch
         {
@@ -41,13 +45,15 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
 
         Logger.LogDebug("Loading allocation chain ({Type}) starting at {PageAddress}", pageType, startPageAddress);
 
-        return await LoadChain(database, startPageAddress);
+        return await LoadChain(database, startPageAddress, cancellationToken);
     }
 
     /// <summary>
     /// Load a Chain from a start page address
     /// </summary>
-    public async Task<AllocationChain> LoadChain(DatabaseSource database, PageAddress startPageAddress)
+    public async Task<AllocationChain> LoadChain(DatabaseSource database, 
+                                                 PageAddress startPageAddress,
+                                                 CancellationToken cancellationToken)
     {
         var allocation = new AllocationChain
         {
@@ -76,7 +82,7 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
 
             Logger.LogDebug("Page {Index}: {PageAddress}", i, address);
 
-            var page = await pageService.GetPage<AllocationPage>(database, address);
+            var page = await pageService.GetPage<AllocationPage>(database, address, cancellationToken);
 
             allocation.Pages.Add(page);
         }

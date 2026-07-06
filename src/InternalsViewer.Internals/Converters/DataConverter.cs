@@ -359,7 +359,7 @@ public static class DataConverter
 
         for (var index = 0; index < length; index++)
         {
-            bits[index] = BinaryPrimitives.ReadInt32LittleEndian(data[(1 + index * 4)..]);
+            bits[index] = BinaryPrimitives.ReadInt32LittleEndian(data[(1 + (index * 4))..]);
         }
 
         return new SqlDecimal(precision, scale, positive, bits);

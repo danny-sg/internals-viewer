@@ -196,12 +196,12 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.DataTable" Version="0.1.251217-build.2433" />
-        <PackageReference Include="GitVersion.MsBuild" Version="6.7.0">
+        <PackageReference Include="GitVersion.MsBuild" Version="6.8.1">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.VisualStudio.Sdk.Analyzers" Version="17.7.113" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15">
+        <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="18.7.23">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -216,10 +216,10 @@
 
         <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
-        <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
+        <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
 
-        <PackageReference Include="SkiaSharp" Version="3.116.0" />
-        <PackageReference Include="SkiaSharp.Views.WinUI" Version="3.116.0" />
+        <PackageReference Include="SkiaSharp" Version="4.148.0" />
+        <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.148.0" />
         <PackageReference Include="WinUIEx" Version="2.9.1" />
         <Manifest Include="$(ApplicationManifest)" />
     </ItemGroup>

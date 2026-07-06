@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.TransactionLog;
+﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query.Events.EventTypes;
 
@@ -11,4 +12,6 @@ public sealed record TransactionLogEvent : EngineEvent
     public LogContext Context { get; set; }
 
     public long AllocationUnitId { get; set; }
+
+    public int? TransactionId { get; set; }
 }

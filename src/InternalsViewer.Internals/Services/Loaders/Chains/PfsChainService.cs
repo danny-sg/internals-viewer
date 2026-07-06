@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Threading;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -10,7 +11,8 @@ namespace InternalsViewer.Internals.Services.Loaders.Chains;
 /// <summary>
 /// Service responsible for building PFS chains
 /// </summary>
-public sealed class PfsChainService(ILogger<PfsChainService> logger, IPageService pageService) : IPfsChainService
+public sealed class PfsChainService(ILogger<PfsChainService> logger, IPageService pageService) 
+    : IPfsChainService
 {
     public ILogger<PfsChainService> Logger { get; } = logger;
 
@@ -19,7 +21,9 @@ public sealed class PfsChainService(ILogger<PfsChainService> logger, IPageServic
     /// <summary>
     /// Load all PFS pages for a file
     /// </summary>
-    public async Task<PfsChain> LoadChain(DatabaseSource databaseDetail, short fileId)
+    public async Task<PfsChain> LoadChain(DatabaseSource databaseDetail,
+                                          short fileId, 
+                                          CancellationToken cancellationToken)
     {
         var fileSize = databaseDetail.GetFilePageCount(fileId);
 
@@ -36,7 +40,7 @@ public sealed class PfsChainService(ILogger<PfsChainService> logger, IPageServic
         var firstPage = new PageAddress(fileId, 1);
 
         // The first PFS page is always page 1
-        var page = await PageService.GetPage<PfsPage>(databaseDetail, new PageAddress(fileId, 1));
+        var page = await PageService.GetPage<PfsPage>(databaseDetail, new PageAddress(fileId, 1), cancellationToken);
 
         Logger.LogDebug("Page {Index}: {PageAddress}", 0, firstPage);
 
@@ -51,7 +55,7 @@ public sealed class PfsChainService(ILogger<PfsChainService> logger, IPageServic
 
                 Logger.LogDebug("Page {Index}: {PageAddress}", i, nextAddress);
 
-                var nextPage = await PageService.GetPage<PfsPage>(databaseDetail, nextAddress);
+                var nextPage = await PageService.GetPage<PfsPage>(databaseDetail, nextAddress, cancellationToken);
 
                 pfsChain.PfsPages.Add(nextPage);
             }

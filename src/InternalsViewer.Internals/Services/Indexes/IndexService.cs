@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
@@ -23,7 +24,9 @@ public sealed class IndexService(IPageService pageService, IRecordService record
     /// <summary>
     /// Gets the index nodes for an index, starting from a root node page address
     /// </summary>
-    public async Task<List<IndexNode>> GetNodes(DatabaseSource database, PageAddress rootPage)
+    public async Task<List<IndexNode>> GetNodes(DatabaseSource database, 
+                                                PageAddress rootPage,
+                                                CancellationToken cancellationToken)
     {
         var nodes = new List<IndexNode>();
 
@@ -41,7 +44,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
         while (currentLevel.Count > 0)
         {
             // I/O for the whole level, in parallel.
-            var loaded = await LoadLevel(database, currentLevel);
+            var loaded = await LoadLevel(database, currentLevel, cancellationToken);
 
             // Node construction for the next level, single-threaded and in order.
             var nextLevel = new List<IndexNode>();
@@ -92,28 +95,36 @@ public sealed class IndexService(IPageService pageService, IRecordService record
     /// <summary>
     /// Reads every page on a level in parallel, returning results in the same order as the input.
     /// </summary>
-    private async Task<LoadedPage[]> LoadLevel(DatabaseSource database, List<IndexNode> levelNodes)
+    private async Task<LoadedPage[]> LoadLevel(DatabaseSource database, 
+                                               List<IndexNode> levelNodes, 
+                                               CancellationToken cancellationToken)
     {
         var results = new LoadedPage[levelNodes.Count];
 
         await Parallel.ForEachAsync(Enumerable.Range(0, levelNodes.Count),
-                                    new ParallelOptions { MaxDegreeOfParallelism = MaxParallelPageLoads },
-                                    async (i, _) 
-                                        => results[i] = await LoadPage(database, levelNodes[i].PageAddress));
-
+                                    new ParallelOptions
+                                    {
+                                        MaxDegreeOfParallelism = MaxParallelPageLoads,
+                                        CancellationToken = cancellationToken
+                                    },
+                                    async (i, ct)
+                                        => results[i] = await LoadPage(database,
+                                                                       levelNodes[i].PageAddress,
+                                                                       ct));
+        
         return results;
     }
 
     /// <summary>
     /// Reads a single page and extracts the header fields and child pointers needed to build the tree
     /// </summary>
-    private async Task<LoadedPage> LoadPage(DatabaseSource database, PageAddress pageAddress)
+    private async Task<LoadedPage> LoadPage(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken)
     {
         var buffer = ArrayPool<byte>.Shared.Rent(PageData.Size);
 
         try
         {
-            var page = await PageService.GetPage(database, pageAddress, buffer);
+            var page = await PageService.GetPage(database, pageAddress, buffer, cancellationToken);
 
             var downPointers = new List<PageAddress>();
 

@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Threading;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
@@ -14,34 +15,41 @@ public sealed class PageService(ILogger<PageService> logger,
 {
     private ILogger<PageService> Logger { get; } = logger;
 
-    public async Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress)
+    public async Task<Page> GetPage(DatabaseSource database, 
+                                    PageAddress pageAddress, 
+                                    CancellationToken cancellationToken)
     {
         using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
         {
             Logger.LogDebug("Loading page {PageAddress}", pageAddress);
 
-            var page = await loader.Load(database, pageAddress);
+            var page = await loader.Load(database, pageAddress, cancellationToken);
 
             return ParsePage(page, pageAddress);
         }
     }
 
-    public async Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress, byte[] buffer)
+    public async Task<Page> GetPage(DatabaseSource database, 
+                                    PageAddress pageAddress, 
+                                    byte[] buffer, 
+                                    CancellationToken cancellationToken)
     {
         using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
         {
             Logger.LogDebug("Loading page {PageAddress} into buffer", pageAddress);
 
-            var page = await loader.LoadInto(database, pageAddress, buffer);
+            var page = await loader.LoadInto(database, pageAddress, buffer, cancellationToken);
 
             return ParsePage(page, pageAddress);
         }
     }
 
-    public async Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress)
+    public async Task<T> GetPage<T>(DatabaseSource database, 
+                                    PageAddress pageAddress, 
+                                    CancellationToken cancellationToken)
         where T : Page
     {
-        var page = await GetPage(database, pageAddress);
+        var page = await GetPage(database, pageAddress, cancellationToken);
 
         if (page is not T typedPage)
         {

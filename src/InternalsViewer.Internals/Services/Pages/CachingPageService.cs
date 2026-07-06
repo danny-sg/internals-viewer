@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -34,7 +35,9 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
 
     private ILogger<CachingPageService> Logger { get; } = logger;
 
-    public async Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress)
+    public async Task<Page> GetPage(DatabaseSource database, 
+                                    PageAddress pageAddress, 
+                                    CancellationToken cancellationToken)
     {
         var dbCache = _cache.GetOrCreateValue(database);
 
@@ -45,7 +48,7 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
             return cached;
         }
 
-        var page = await inner.GetPage(database, pageAddress);
+        var page = await inner.GetPage(database, pageAddress, cancellationToken);
 
         if (CacheablePageTypes.Contains(page.PageHeader.PageType))
         {
@@ -55,7 +58,10 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
         return page;
     }
 
-    public async Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress, byte[] buffer)
+    public async Task<Page> GetPage(DatabaseSource database,
+                                    PageAddress pageAddress, 
+                                    byte[] buffer,
+                                    CancellationToken cancellationToken)
     {
         var dbCache = _cache.GetOrCreateValue(database);
 
@@ -66,14 +72,14 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
             return cached;
         }
 
-        var page = await inner.GetPage(database, pageAddress, buffer);
+        var page = await inner.GetPage(database, pageAddress, buffer, cancellationToken);
 
         // If this turns out to be a cacheable type the page's Data points at the caller's reusable
         // buffer, which would be overwritten on the next traversal step. Re-read with an owned
         // allocation so the cached copy is stable.
         if (CacheablePageTypes.Contains(page.PageHeader.PageType))
         {
-            var ownedPage = await inner.GetPage(database, pageAddress);
+            var ownedPage = await inner.GetPage(database, pageAddress, cancellationToken);
 
             dbCache[pageAddress] = ownedPage;
 
@@ -83,10 +89,12 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
         return page;
     }
 
-    public async Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress)
+    public async Task<T> GetPage<T>(DatabaseSource database, 
+                                    PageAddress pageAddress, 
+                                    CancellationToken cancellationToken)
         where T : Page
     {
-        var page = await GetPage(database, pageAddress);
+        var page = await GetPage(database, pageAddress, cancellationToken);
 
         if (page is not T typedPage)
         {

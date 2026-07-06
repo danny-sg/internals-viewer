@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -42,7 +43,9 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     /// <summary>
     /// Create and load a Database object for the given database name
     /// </summary>
-    public async Task<DatabaseSource> LoadAsync(string name, IConnectionType connection)
+    public async Task<DatabaseSource> LoadAsync(string name, 
+                                                IConnectionType connection, 
+                                                CancellationToken cancellationToken)
     {
         var startTimestamp = Stopwatch.GetTimestamp();
 
@@ -56,11 +59,11 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
 
         Logger.LogDebug("Loading Boot Page: {BootPageAddress}", BootPage.BootPageAddress);
 
-        database.BootPage = await PageService.GetPage<BootPage>(database, BootPage.BootPageAddress);
+        database.BootPage = await PageService.GetPage<BootPage>(database, BootPage.BootPageAddress, cancellationToken);
 
         Logger.LogDebug("Booting database from internal tables/metadata");
 
-        await RefreshMetadata(database);
+        await RefreshMetadata(database, cancellationToken);
 
         Logger.LogDebug("Getting allocation units from metadata");
 
@@ -71,7 +74,7 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
 
         Logger.LogDebug("Reading allocations");
 
-        await RefreshAllocations(database);
+        await RefreshAllocations(database, cancellationToken);
 
         Logger.LogInformation("Database loaded in {Duration}", Stopwatch.GetElapsedTime(startTimestamp));
 
@@ -81,25 +84,25 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     /// <summary>
     /// Refresh the allocation chains/bitmaps for files and allocation units
     /// </summary>
-    public async Task RefreshAllocations(DatabaseSource database)
+    public async Task RefreshAllocations(DatabaseSource database, CancellationToken cancellationToken)
     {
         PageService.ResetCache(database);
 
-        await RefreshFileAllocations(database);
+        await RefreshFileAllocations(database, cancellationToken);
 
-        await RefreshPfs(database);
+        await RefreshPfs(database, cancellationToken);
 
-        await RefreshAllocationUnitAllocations(database);
+        await RefreshAllocationUnitAllocations(database, cancellationToken);
     }
 
-    private async Task RefreshMetadata(DatabaseSource database)
+    private async Task RefreshMetadata(DatabaseSource database, CancellationToken cancellationToken)
     {
-        var metadata = await MetadataLoader.Load(database);
+        var metadata = await MetadataLoader.Load(database, cancellationToken);
 
         database.Metadata = metadata;
     }
 
-    private async Task RefreshFileAllocations(DatabaseSource databaseDetail)
+    private async Task RefreshFileAllocations(DatabaseSource databaseDetail, CancellationToken cancellationToken)
     {
         Logger.LogDebug("Refreshing file allocations (GAM/SGAM/DCM/BCM)");
 
@@ -115,20 +118,20 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
             Logger.LogTrace("File Allocations: Refreshing File Id {FileId}", file.FileId);
 
             databaseDetail.Gam.Add(file.FileId,
-                await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Gam));
+                await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Gam, cancellationToken));
 
             databaseDetail.SGam.Add(file.FileId,
-                await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Sgam));
+                await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Sgam, cancellationToken));
 
             databaseDetail.Dcm.Add(file.FileId,
-                await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Dcm));
+                await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Dcm, cancellationToken));
 
             databaseDetail.Bcm.Add(file.FileId,
-                await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Bcm));
+                await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Bcm, cancellationToken));
         }
     }
 
-    private async Task RefreshAllocationUnitAllocations(DatabaseSource database)
+    private async Task RefreshAllocationUnitAllocations(DatabaseSource database, CancellationToken cancellationToken)
     {
         Logger.LogDebug("Refreshing allocation unit allocations (via IAMs)");
 
@@ -147,14 +150,16 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
                                 allocationUnit.AllocationUnitId,
                                 allocationUnit.FirstIamPage);
 
-                allocationUnit.IamChain = await IamChainService.LoadChain(database, allocationUnit.FirstIamPage);
+                allocationUnit.IamChain = await IamChainService.LoadChain(database, 
+                                                                          allocationUnit.FirstIamPage, 
+                                                                          cancellationToken);
             });
     }
 
     /// <summary>
     /// Refresh the PFS chains for each file
     /// </summary>
-    private async Task RefreshPfs(DatabaseSource databaseDetail)
+    private async Task RefreshPfs(DatabaseSource databaseDetail, CancellationToken cancellationToken)
     {
         Logger.LogDebug("Refreshing PFS chain");
 
@@ -164,7 +169,8 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
         {
             Logger.LogTrace("PFS: Refreshing File Id {FileId}", file.FileId);
 
-            databaseDetail.Pfs.Add(file.FileId, await PfsChainService.LoadChain(databaseDetail, file.FileId));
+            databaseDetail.Pfs.Add(file.FileId, 
+                                   await PfsChainService.LoadChain(databaseDetail, file.FileId, cancellationToken));
         }
     }
 }
