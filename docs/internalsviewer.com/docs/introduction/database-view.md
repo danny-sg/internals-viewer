@@ -14,6 +14,8 @@ The Allocation Map colour codes objects in the database.
 
 ::: tip
 Clicking on a page will open it in the [Page Viewer](/docs/introduction/page-viewer)
+
+The Allocation Map can be zoomed in and out with **Ctrl + mouse wheel**
 :::
 
 ::: details How this works
@@ -25,6 +27,8 @@ Internals Viewer decodes and reads the internal tables and follows the IAM chain
 ### Tooltip 
 
 Toggling the Tooltip button will show a tooltip when hovering over a database page. It will show the Page Id, Extent Id, the PFS status (see below) of the page, and the object the page has been allocated to.
+
+![Allocation map with tooltip](/docs/tutorial/images/screenshots/Database_allocations_with_tooltip.png)
 
 ### PFS (Page Free Space)
 
@@ -41,6 +45,8 @@ PFS, or Page Free Space pages are a way that SQL Server tracks allocations. The 
 On the Allocation Map IAM pages are represented with an I.
 
 The space usage is represented by an overlay.
+
+![Allocation map with PFS overlay](/docs/tutorial/images/screenshots/Database_allocations_with_pfs_zoomed.png)
 
 ::: details How this works
 PFS pages store the status of every page as a byte. A single PFS page covers 8088 bytes/pages. The first PFS is always at Page 1 in a database file. If a file spans more than 8088 pages the PFS repeats at this internal (page 1, then 8088, 16176 etc.)
@@ -111,9 +117,3 @@ SELECT *
 FROM   sys.system_internals_allocation_units
 ```
 :::
-
----
-next:
-  text: 'Page Viewer'
-  link: '/introduction/page-viewer'
----
