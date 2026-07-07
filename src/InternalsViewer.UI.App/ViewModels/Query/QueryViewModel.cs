@@ -28,6 +28,7 @@ using System.Drawing;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using InternalsViewer.Query.Callstack.Categories;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -166,7 +167,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [NotifyPropertyChangedFor(nameof(SelectedCallstack))]
     private EngineEvent? _selectedEvent;
 
-    public List<CallstackFrame> SelectedCallstack => SelectedEvent?.Callstack ?? [];
+    public List<CallstackFrame> SelectedCallstack
+        => SelectedEvent?.Callstack
+                        .Where(f => f.Resolved is null
+                                 || (f.Resolved.ModuleCategory.GetCategoryMetadata()?.IsInfrastructure != true
+                                  && f.Resolved.SymbolCategory.GetCategoryMetadata()?.IsInfrastructure != true))
+                        .ToList() ?? [];
 
     partial void OnIsSqlEditorVisibleChanged(bool value) => SetDocumentVisible(SqlDocument, value);
 

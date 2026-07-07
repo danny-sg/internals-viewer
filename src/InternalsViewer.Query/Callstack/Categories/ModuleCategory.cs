@@ -1,61 +1,48 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Text;
-
-namespace InternalsViewer.Query.Callstack.Categories;
-
+﻿namespace InternalsViewer.Query.Callstack.Categories;
 
 public enum ModuleCategory : byte
 {
-    [Description("Unknown")]
+    [Category(
+        "Unknown",
+        Description = "Not yet classified",
+        ForegroundColor = "#808080")]
     Unknown = 0,
 
-    [Description("Storage Engine")]
+    [Category(
+        "Storage Engine",
+        Description = "Pages, indexes, allocation maps, buffers and storage structures",
+        ForegroundColor = "#4472C4")]
     StorageEngine,
 
-    [Description("Query Processor")]
+    [Category(
+        "Query Processor",
+        Description = "Query compilation and execution",
+        ForegroundColor = "#00B050")]
     QueryProcessor,
 
-    [Description("SQL OS")]
+    [Category(
+        "SQL OS",
+        Description = "Schedulers, workers, memory management and I/O infrastructure",
+        ForegroundColor = "#7030A0")]
     SqlOs,
 
-    [Description("SQL Server Host")]
-    SqlServerHost
-}
+    [Category(
+        "SQL Server Host",
+        Description = "Top-level SQL Server executable and hosting infrastructure",
+        ForegroundColor = "#5B9BD5")]
+    SqlServerHost,
 
-public enum SymbolCategory : byte
-{
-    [Description("Unknown")]
-    Unknown = 0,
+    [Category(
+        "System",
+        Description = "Operating system and runtime thread infrastructure",
+        ForegroundColor = "#7F7F7F",
+        IsInfrastructure = true)]
+    System,
 
-    [Description("Query Operator")]
-    QueryOperator,
+    [Category(
+    "Expression Services",
+    Description = "Expression evaluation and scalar computation infrastructure",
+    ForegroundColor = "#8E44AD")]
+    ExpressionServices,
 
-    [Description("Query Execution")]
-    QueryExecution,
-
-    [Description("Row Access")]
-    RowAccess,
-
-    [Description("Dataset")]
-    Dataset,
-
-    [Description("Index Access")]
-    IndexAccess,
-
-    [Description("Buffer Manager")]
-    BufferManager,
-
-    [Description("Buffer Pool")]
-    BufferPool,
-
-    [Description("SQL OS")]
-    SqlOs,
-
-    [Description("I/O Infrastructure")]
-    IoInfrastructure,
-
-    [Description("Extended Events")]
-    XEventInfrastructure
 }

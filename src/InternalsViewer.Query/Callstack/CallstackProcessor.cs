@@ -54,7 +54,7 @@ internal class CallstackProcessor
                 {
                     if (resolver.TryResolve(frame, out var result) && !string.IsNullOrEmpty(result))
                     {
-                        frame.Resolved = ResolvedCallstackFrameParser.Parse(result);
+                        frame.Resolved = ResolvedCallstackFrameParser.Parse(frame.Module, result);
                     }
                 }
             }

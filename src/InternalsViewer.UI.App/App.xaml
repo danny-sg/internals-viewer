@@ -19,6 +19,7 @@
             <converters1:BoolNegationConverter x:Key="BoolNegationConverter" />
             <converters1:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:ColorToSolidColorBrushValueConverter x:Key="ColorToSolidColorBrushValueConverter"/>
+            <converters:HexColorToBrushConverter x:Key="HexColorToBrushConverter"/>
             <converters:PageAddressToStringConverter x:Key="StringToPageAddressConverter"/>
             <models:MarkStyle Name="Data" x:Key="MarkerStyleValue" ForeColour="Gray" BackColour="LemonChiffon" />
 

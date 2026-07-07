@@ -669,6 +669,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         FirePlayhead();
 
+        EventSelected?.Invoke(_sortedEvents[target]);
+
         EnsurePlayheadVisible();
 
         _skCanvas.Invalidate();

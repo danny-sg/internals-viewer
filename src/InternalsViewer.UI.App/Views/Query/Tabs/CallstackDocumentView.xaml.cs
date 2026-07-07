@@ -13,5 +13,7 @@ public sealed partial class CallstackDocumentView : UserControl
         InitializeComponent();
 
         DataContextChanged += (_, _) => Bindings.Update();
+
+        CallstackGrid.LoadingRow += (_, e) => e.Row.Transitions.Clear();
     }
 }

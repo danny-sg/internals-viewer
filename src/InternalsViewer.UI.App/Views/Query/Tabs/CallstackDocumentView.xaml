@@ -6,24 +6,80 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:eventTypes="using:InternalsViewer.Query.Events.EventTypes"
     mc:Ignorable="d">
     <controls:DataGrid x:Name="CallstackGrid"
                        ItemsSource="{x:Bind ViewModel.SelectedCallstack, Mode=OneWay}"
                        AutoGenerateColumns="False"
                        IsReadOnly="True"
                        GridLinesVisibility="Horizontal"
+                       Background="{ThemeResource LayerFillColorDefaultBrush}"
                        HorizontalScrollBarVisibility="Auto"
                        VerticalScrollBarVisibility="Auto">
         <controls:DataGrid.Columns>
-            <controls:DataGridTextColumn Header="Module"
-                                         Binding="{Binding Module, Mode=OneWay}"
-                                         Width="100"/>
-            <controls:DataGridTextColumn Header="Class"
-                                         Binding="{Binding Resolved.ClassName, Mode=OneWay}"
-                                         Width="*"/>
-            <controls:DataGridTextColumn Header="Method"
-                                         Binding="{Binding Resolved.MethodName, Mode=OneWay}"
-                                         Width="*"/>
+            <controls:DataGridTemplateColumn Header="Module" Width="120">
+                <controls:DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="eventTypes:CallstackFrame">
+                        <Border Background="{Binding Resolved.ModuleMetadata.ForegroundColor,
+                                                     Converter={StaticResource HexColorToBrushConverter}}"
+                                CornerRadius="3"
+                                Padding="5,1"
+                                Margin="4,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Resolved.ModuleMetadata.Name}"
+                                       Foreground="White"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"/>
+                        </Border>
+                    </DataTemplate>
+                </controls:DataGridTemplateColumn.CellTemplate>
+            </controls:DataGridTemplateColumn>
+            <controls:DataGridTemplateColumn Header="Category" Width="140">
+                <controls:DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="eventTypes:CallstackFrame">
+                        <Border Background="{Binding Resolved.SymbolMetadata.ForegroundColor,
+                                                     Converter={StaticResource HexColorToBrushConverter}}"
+                                CornerRadius="3"
+                                Padding="5,1"
+                                Margin="4,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Resolved.SymbolMetadata.Name}"
+                                       Foreground="White"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"/>
+                        </Border>
+                    </DataTemplate>
+                </controls:DataGridTemplateColumn.CellTemplate>
+            </controls:DataGridTemplateColumn>
+            <controls:DataGridTemplateColumn Header="Symbol" Width="*">
+                <controls:DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="eventTypes:CallstackFrame">
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="0"
+                                    VerticalAlignment="Center"
+                                    Margin="4,2">
+                            <TextBlock Text="{x:Bind Module, Mode=OneWay}"
+                                       Foreground="DarkGreen"
+                                       FontFamily="Consolas"/>
+                            <TextBlock Text="!"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       FontFamily="Consolas"/>
+                            <TextBlock Text="{x:Bind Resolved.ClassName, Mode=OneWay}"
+                                       Foreground="Navy"
+                                       FontWeight="Bold"
+                                       FontFamily="Consolas"/>
+                            <TextBlock Text="::"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       FontFamily="Consolas"/>
+                            <TextBlock Text="{x:Bind Resolved.MethodName, Mode=OneWay}"
+                                       Foreground="Gray"
+                                       FontFamily="Consolas"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </controls:DataGridTemplateColumn.CellTemplate>
+            </controls:DataGridTemplateColumn>
             <controls:DataGridTextColumn Header="Offset"
                                          Binding="{Binding Resolved.Offset, Mode=OneWay}"
                                          Width="80"/>

@@ -1,48 +1,25 @@
-﻿namespace InternalsViewer.Query.Callstack;
+﻿using InternalsViewer.Query.Callstack.Categories;
 
-public sealed record ResolvedCallstackFrame(string? ClassName, string? MethodName, uint? Offset);
+namespace InternalsViewer.Query.Callstack;
 
-public class ResolvedCallstackFrameParser
+public sealed record ResolvedCallstackFrame
 {
-    public static ResolvedCallstackFrame Parse(string value)
-    {
-        var plusIndex = value.LastIndexOf('+');
+    public string Module { get; init; } = "";
 
-        var symbolPart = plusIndex >= 0
-            ? value[..plusIndex]
-            : value;
+    public ModuleCategory ModuleCategory { get; init; }
 
-        var offsetPart = plusIndex >= 0
-            ? value[(plusIndex + 1)..]
-            : null;
+    public SymbolCategory SymbolCategory { get; init; }
 
-        var separator = symbolPart.LastIndexOf("::", StringComparison.Ordinal);
+    public string RawSymbol { get; init; } = string.Empty;
 
-        var className = separator >= 0 ? symbolPart[..separator] : null;
+    public string? ClassName { get; init; }
 
-        var methodName = separator >= 0 ? symbolPart[(separator + 2)..] : symbolPart;
+    public string MethodName { get; init; } = string.Empty;
 
-        uint? offset = null;
+    public uint? Offset { get; init; }
 
-        if (!string.IsNullOrEmpty(offsetPart))
-        {
-            offsetPart = offsetPart.Trim();
+    public CategoryAttribute? ModuleMetadata => ModuleCategory.GetCategoryMetadata();
 
-            if (offsetPart.StartsWith("0x",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                offsetPart = offsetPart[2..];
-            }
+    public CategoryAttribute? SymbolMetadata => SymbolCategory.GetCategoryMetadata();
 
-            if (uint.TryParse(offsetPart,
-                              System.Globalization.NumberStyles.HexNumber,
-                              null,
-                              out var offsetValue))
-            {
-                offset = offsetValue;
-            }
-        }
-
-        return new ResolvedCallstackFrame(className, methodName, offset);
-    }
 }
