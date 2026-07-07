@@ -26,7 +26,7 @@ public class QueryRunnerTests(ITestOutputHelper testOutputHelper)
         var executor = new QueryRunner(logger, eventReader, logReader);
 
         var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true,
-            CancellationToken.None);
+            new EventOptions(), @"C:\Symbols", null, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.EngineEvents);
@@ -53,7 +53,7 @@ public class QueryRunnerTests(ITestOutputHelper testOutputHelper)
         var executor = new QueryRunner(logger, eventReader, logReader);
 
         var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true,
-            CancellationToken.None);
+            new EventOptions(), @"C:\Symbols", null, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
     }

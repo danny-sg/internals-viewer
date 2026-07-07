@@ -128,7 +128,26 @@ public enum SymbolCategory : byte
         Description = "SQL OS infrastructure",
         ForegroundColor = "#7030A0",
         IsInfrastructure = true)]
-    SqlOs
+    SqlOs,
+
+    [Category(
+    "LOB Storage",
+    Description = "Large object (LOB) and off-row data access",
+    ForegroundColor = "#4BACC6")]
+    LargeObjectStorage,
+
+    [Category(
+        "Networking",
+        Description = "Tabular Data Stream (TDS) protocol processing and client communication",
+        ForegroundColor = "#F79646")]
+    Networking,
+
+    [Category(
+        "Allocation Access",
+        Description = "Allocation-order scanning and extent/page traversal",
+        ForegroundColor = "#5B9BD5")]
+    AllocationAccess,
+
 }
 
 public static class EnumExtensions

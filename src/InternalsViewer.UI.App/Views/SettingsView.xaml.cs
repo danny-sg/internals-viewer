@@ -10,11 +10,15 @@ namespace InternalsViewer.UI.App.Views;
 /// </summary>
 public sealed partial class SettingsView : Page
 {
-    internal AppLogViewModel ViewModel { get; } = App.GetService<AppLogViewModel>();
+    internal AppLogViewModel AppLogViewModel { get; } = App.GetService<AppLogViewModel>();
+
+    internal SettingsViewModel ViewModel { get; } = App.GetService<SettingsViewModel>();
 
     public SettingsView()
     {
         InitializeComponent();
+
+        _ = ViewModel.LoadAsync();
     }
 
     private async void OpenLogButton_Click(object sender, RoutedEventArgs e)
@@ -24,6 +28,6 @@ public sealed partial class SettingsView : Page
 
     private void ClearLogButton_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.ClearLogCommand.Execute(null);
+        AppLogViewModel.ClearLogCommand.Execute(null);
     }
 }

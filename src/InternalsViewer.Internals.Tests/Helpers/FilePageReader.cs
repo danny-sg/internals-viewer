@@ -50,16 +50,16 @@ public sealed class FilePageReader(string path) : PageReader, IPageReader
         return await File.ReadAllTextAsync(files[0]);
     }
 
-    public async Task<byte[]> Read(string name, PageAddress pageAddress)
+    public async Task<byte[]> Read(string name, PageAddress pageAddress, CancellationToken token)
     {
         var data = new byte[PageData.Size];
 
-        await ReadInto(name, pageAddress, data);
+        await ReadInto(name, pageAddress, data, token);
 
         return data;
     }
 
-    public async Task ReadInto(string name, PageAddress pageAddress, byte[] buffer)
+    public async Task ReadInto(string name, PageAddress pageAddress, byte[] buffer, CancellationToken token)
     {
         var pageText = await ReadPageText(name, pageAddress);
 

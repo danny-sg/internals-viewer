@@ -153,7 +153,7 @@ internal class TableVerificationService(ILogger<TableVerificationService> logger
 
     private async Task<List<IRecord>> GetInternalsRows(PageAddress pageAddress, DatabaseSource database)
     {
-        var page = await PageService.GetPage<DataPage>(database, pageAddress);
+        var page = await PageService.GetPage<DataPage>(database, pageAddress, CancellationToken.None);
 
         try
         {

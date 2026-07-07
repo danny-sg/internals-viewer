@@ -49,6 +49,19 @@ internal class SymbolCategoryDictionary
             ["CValFetchByKey"] = SymbolCategory.RowAccess,
             ["CEsExec"] = SymbolCategory.ExpressionEvaluation,
 
+            ["Blob"] = SymbolCategory.LargeObjectStorage,
+            ["BlobBase"] = SymbolCategory.LargeObjectStorage,
+            ["BlobManager"] = SymbolCategory.LargeObjectStorage,
+            ["LockBytesSS"] = SymbolCategory.LargeObjectStorage,
+
+            ["Tds"] = SymbolCategory.Networking,
+            ["SNI"] = SymbolCategory.Networking,
+            ["Net"] = SymbolCategory.Networking,
+
+            ["AllocScan"] = SymbolCategory.AllocationAccess,
+            ["AllocationOrderPageScanner"] = SymbolCategory.AllocationAccess,
+            ["HeapPageManager"] = SymbolCategory.PageAccess,
+            ["HeapDataSetSession"] = SymbolCategory.Dataset,
         };
 
 

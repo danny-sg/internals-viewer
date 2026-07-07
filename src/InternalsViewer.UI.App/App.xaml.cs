@@ -80,7 +80,8 @@ public partial class App
             services.AddTransient<EventReader>();
 
             services.AddSingleton<AppLogViewModel>();
-            
+            services.AddSingleton<SettingsViewModel>();
+
             services.AddTransient<MainViewModel>();
 
             services.AddTransient<MainWindow>();

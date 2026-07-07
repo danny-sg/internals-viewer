@@ -12,6 +12,14 @@
 
         <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">Settings</TextBlock>
 
+        <controls:SettingsCard Header="Symbols Path"
+                               Description="Local directory used to cache downloaded PDB symbol files">
+            <TextBox x:Name="SymbolsPathTextBox"
+                     Width="300"
+                     HorizontalAlignment="Right"
+                     Text="{x:Bind ViewModel.SymbolsPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+        </controls:SettingsCard>
+
         <controls:SettingsCard x:Name="AboutSettingsCard"
                                Description="Internals Viewer"
                                Header="About">

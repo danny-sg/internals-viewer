@@ -84,6 +84,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                               bool disableReadAhead,
                                               bool isModification,
                                               EventOptions eventOptions,
+                                              string symbolsPath,
                                               IProgress<string>? progress,
                                               CancellationToken cancellationToken)
     {
@@ -121,8 +122,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                    endMarker);
             if (eventOptions.IncludeCallstack)
             {
-                var symbolsPath = @"C:\Symbols";
-
                 await CallstackProcessor.Process(events, symbolsPath, progress, cancellationToken);
             }
         }
@@ -179,6 +178,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                               bool disableReadAhead,
                                               bool isModification,
                                               EventOptions eventOptions,
+                                              string symbolsPath,
                                               IProgress<string>? progress,
                                               CancellationToken cancellationToken)
     {
@@ -225,8 +225,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             if (eventOptions.IncludeCallstack)
             {
                 progress?.Report($"Processing callstack frames");
-
-                var symbolsPath = @"C:\Symbols";
 
                 await CallstackProcessor.Process(events, symbolsPath, progress, cancellationToken);
             }

@@ -36,11 +36,13 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           QueryRunner queryRunner,
                                           SettingsService settingsService,
+                                          SettingsViewModel settingsViewModel,
                                           IndexTabViewModelFactory indexTabViewModelFactory)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
                                                                  settingsService,
+                                                                 settingsViewModel,
                                                                  indexTabViewModelFactory,
                                                                  database);
 }
@@ -658,6 +660,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
                           SettingsService settingsService,
+                          SettingsViewModel settingsViewModel,
                           IndexTabViewModelFactory indexTabViewModelFactory,
                           DatabaseSource database)
     {
@@ -665,6 +668,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         QueryRunner = queryRunner;
         Database = database;
         _settingsService = settingsService;
+        _settingsViewModel = settingsViewModel;
         _indexTabViewModelFactory = indexTabViewModelFactory;
         Message = string.Empty;
 
@@ -696,7 +700,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         AllocationsDocument = DocumentViewModel.Create<AllocationDocumentView>("Allocations", this, keepAlive: true, key: "Allocations");
         PlanDocument = DocumentViewModel.Create<PlanDocumentView>("Execution Plan", this, keepAlive: true, key: "Plan");
         EventsDocument = DocumentViewModel.Create<EventsDocumentView>("Events", this, keepAlive: true, key: "Events");
-        CallstackDocument = DocumentViewModel.Create<CallstackDocumentView>("Callstack", this, keepAlive: true, key: "Callstack");
+        CallstackDocument = DocumentViewModel.Create<CallstackDocumentView>("Call Stack", this, keepAlive: true, key: "Callstack");
 
         DocumentsByKey = new Dictionary<string, DocumentViewModel>
         {
@@ -726,6 +730,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly SettingsService _settingsService;
 
+    private readonly SettingsViewModel _settingsViewModel;
+
     private readonly IndexTabViewModelFactory _indexTabViewModelFactory;
 
     // Padding (microseconds) added either side of the query crop so boundary reads aren't clipped.
@@ -753,6 +759,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                                                payload.QueryOptions.DisableReadAhead,
                                                                payload.StatementType == StatementType.Modification,
                                                                payload.EventOptions,
+                                                               _settingsViewModel.SymbolsPath,
                                                                progress,
                                                                cancellationToken);
 
