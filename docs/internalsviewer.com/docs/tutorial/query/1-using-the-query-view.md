@@ -8,7 +8,7 @@ This section of the tutorial covers:
 - [Views and layout](/docs/tutorial/query/2-views-and-layout) - the panes and how to arrange them
 - [The execution plan](/docs/tutorial/query/3-execution-plan) - the plan connected to the timeline
 - [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) - the two fundamental access patterns compared
-- [Indexes and data](/docs/tutorial/query/5-indexes-and-data) - where the data lives: key lookups, covering indexes, and RID lookups
+- [Lookups](/docs/tutorial/query/5-lookups) - key lookups, covering indexes, and RID lookups
 - [Joins](/docs/tutorial/query/6-joins) - the three physical joins and their access patterns
 
 It uses the `dbo.ClusteredTable` table and `IX_ClusteredTable_TextField` index created in Parts 2 and 3.

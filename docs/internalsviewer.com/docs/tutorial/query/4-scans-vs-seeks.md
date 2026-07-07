@@ -54,4 +54,4 @@ Scrubbing the playhead back and forward over the two traces shows the contrast:
 
 The work is proportional to the table for a scan, but to the depth of the B-Tree for a seek - which is why a seek finds one row in a million-row table in three or four reads. Both queries return rows from the same pages of the same index; the difference is purely the path taken to get there.
 
-Next: [Indexes and data](/docs/tutorial/query/5-indexes-and-data)
+Next: [Lookups](/docs/tutorial/query/5-lookups)

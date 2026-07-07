@@ -25,7 +25,7 @@ This tutorial will cover:
   - [Views and layout](/docs/tutorial/query/2-views-and-layout) - arranging the panes and watching the allocation map
   - [The execution plan](/docs/tutorial/query/3-execution-plan) - the plan connected to the timeline
   - [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) - the two access patterns on the Index view
-  - [Indexes and data](/docs/tutorial/query/5-indexes-and-data) - where the data lives: key lookups, covering indexes, and RID lookups
+  - [Lookups](/docs/tutorial/query/5-lookups) - key lookups, covering indexes, and RID lookups
   - [Joins](/docs/tutorial/query/6-joins) - Nested Loops, Merge, and Hash compared
 
 - [Part 5 - LOB data](/docs/tutorial/5-lob-data)

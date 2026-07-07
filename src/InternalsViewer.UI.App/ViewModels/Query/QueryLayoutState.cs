@@ -10,4 +10,10 @@ public sealed class QueryLayoutState
     public bool TimelineVisible { get; set; } = true;
 
     public bool SettingsOpen { get; set; }
+
+    public bool IncludeLock { get; set; } = true;
+
+    public bool IncludeWait { get; set; } = true;
+
+    public bool IncludeCallstack { get; set; }
 }

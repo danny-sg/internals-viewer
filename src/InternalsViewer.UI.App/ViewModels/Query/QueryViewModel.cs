@@ -85,6 +85,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _includeIo = false;
 
     [ObservableProperty]
+    private EventOptions _eventOptions = new();
+
+    [ObservableProperty]
     private int _extentCount;
 
     [ObservableProperty]
@@ -157,13 +160,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isEventSelectionPanelOpen;
 
     [ObservableProperty]
-    private List<CallStackFrame> _callstacks = [];
+    private List<CallstackFrame> _callstacks = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedCallstack))]
     private EngineEvent? _selectedEvent;
 
-    public List<CallStackFrame> SelectedCallstack => SelectedEvent?.Callstack ?? [];
+    public List<CallstackFrame> SelectedCallstack => SelectedEvent?.Callstack ?? [];
 
     partial void OnIsSqlEditorVisibleChanged(bool value) => SetDocumentVisible(SqlDocument, value);
 
@@ -284,7 +287,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             Root = DockLayoutSerializer.Serialize(Dock.Root),
             TimelineVisible = IsTimelineVisible,
-            SettingsOpen = IsEventSelectionPanelOpen
+            SettingsOpen = IsEventSelectionPanelOpen,
+            IncludeLock = EventOptions.IncludeLock,
+            IncludeWait = EventOptions.IncludeWait,
+            IncludeCallstack = EventOptions.IncludeCallstack
         };
 
         await _settingsService.SaveSettingAsync(LayoutSettingKey, dto);
@@ -305,6 +311,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         IsTimelineVisible = dto.TimelineVisible;
         IsEventSelectionPanelOpen = dto.SettingsOpen;
+        EventOptions = new EventOptions
+        {
+            IncludeLock = dto.IncludeLock,
+            IncludeWait = dto.IncludeWait,
+            IncludeCallstack = dto.IncludeCallstack
+        };
 
         Dock.SetRoot(root);
 
@@ -716,10 +728,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task ExecuteQuery(ExecuteSqlPayload payload, CancellationToken cancellationToken)
     {
+        EventOptions = payload.EventOptions;
+        ScheduleSaveLayout();
+
         ClearResults();
 
+        var progress = new Progress<string>(message => Message = string.IsNullOrEmpty(Message)
+                                                                 ? message
+                                                                 : Message + Environment.NewLine + message);
+
         // Run full trace on background thread
-        var (results, layers, colours) = 
+        var (results, layers, colours) =
             await Task.Run(async () =>
             {
                 var queryResult = await QueryRunner.TraceQuery(payload.SqlText,
@@ -728,6 +747,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                                                payload.QueryOptions.DisableReadAhead,
                                                                payload.StatementType == StatementType.Modification,
                                                                payload.EventOptions,
+                                                               progress,
                                                                cancellationToken);
 
                 if (!queryResult.IsSuccess)
@@ -756,7 +776,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         if (!results.IsSuccess)
         {
             IsError = true;
-            Message = results.Message;
+            Message = Message + Environment.NewLine + results.Message;
             return;
         }
 
@@ -779,7 +799,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         IsError = false;
-        Message = $"({results.RowCount} rows affected)";
+        Message = Message + Environment.NewLine + $"({results.RowCount} rows affected)";
 
         try
         {

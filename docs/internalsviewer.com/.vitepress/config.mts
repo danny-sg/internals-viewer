@@ -64,8 +64,8 @@ export default defineConfig({
                 link: "docs/tutorial/query/4-scans-vs-seeks",
               },
               {
-                text: "Indexes and data",
-                link: "docs/tutorial/query/5-indexes-and-data",
+                text: "Lookups",
+                link: "docs/tutorial/query/5-lookups",
               },
               { text: "Joins", link: "docs/tutorial/query/6-joins" },
             ],

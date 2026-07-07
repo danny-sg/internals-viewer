@@ -1,6 +1,8 @@
+using InternalsViewer.Query.Callstack;
+
 namespace InternalsViewer.Query.Events.EventTypes;
 
-public sealed record CallStackFrame
+public sealed record CallstackFrame
 {
     public string Module { get; set; } = string.Empty;
 
@@ -12,5 +14,5 @@ public sealed record CallStackFrame
 
     public uint Rva { get; set; }
 
-    public string ResolvedSymbol { get; set; } = string.Empty;
+    public ResolvedCallstackFrame? Resolved { get; set; }
 }

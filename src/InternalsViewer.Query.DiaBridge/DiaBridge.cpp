@@ -8,6 +8,10 @@
 #include <dia2.h>
 #include <wrl/client.h>
 
+#include <DbgHelp.h>
+
+#pragma comment(lib, "Dbghelp.lib")
+
 using Microsoft::WRL::ComPtr;
 
 // Source/Session are COM objects whose code lives inside msdia140.dll (DiaModule).
@@ -39,6 +43,23 @@ static std::wstring GetCurrentModuleFolder()
     std::filesystem::path p(path);
 
     return p.parent_path().wstring();
+}
+
+static std::wstring DemangleName(const wchar_t *name)
+{
+    if (!name)
+    {
+        return L"";
+    }
+
+    wchar_t buffer[4096] = {};
+
+    if (UnDecorateSymbolNameW(name, buffer, _countof(buffer), UNDNAME_NAME_ONLY))
+    {
+        return buffer;
+    }
+
+    return name;
 }
 
 void *OpenPdb(const wchar_t *pdbPath)
@@ -157,6 +178,8 @@ bool ResolveRva(void *sessionHandle, unsigned int rva, wchar_t *buffer, int buff
 {
     if (!sessionHandle)
     {
+        swprintf_s(buffer, bufferLength, L"NULL_SESSION");
+
         return false;
     }
 
@@ -166,11 +189,18 @@ bool ResolveRva(void *sessionHandle, unsigned int rva, wchar_t *buffer, int buff
 
     LONG displacement = 0;
 
-    HRESULT hr = handle->Session->findSymbolByRVAEx(rva, SymTagFunction, symbol.GetAddressOf(), &displacement);
+    HRESULT hr = handle->Session->findSymbolByRVAEx(rva, SymTagNull, symbol.GetAddressOf(), &displacement);
 
-    if (FAILED(hr) || !symbol)
+    if (FAILED(hr))
     {
-        swprintf_s(buffer, bufferLength, L"0x%X", rva);
+        swprintf_s(buffer, bufferLength, L"HRESULT=0x%08X", static_cast<unsigned>(hr));
+
+        return false;
+    }
+
+    if (!symbol)
+    {
+        swprintf_s(buffer, bufferLength, L"NO_SYMBOL");
 
         return false;
     }
@@ -181,12 +211,23 @@ bool ResolveRva(void *sessionHandle, unsigned int rva, wchar_t *buffer, int buff
 
     if (FAILED(hr) || !name)
     {
-        swprintf_s(buffer, bufferLength, L"RVA_0x%X", rva);
+        DWORD symTag = 0;
+
+        symbol->get_symTag(&symTag);
+
+        swprintf_s(buffer, bufferLength, L"TAG=%lu NO_NAME", symTag);
 
         return false;
     }
 
-    swprintf_s(buffer, bufferLength, L"%s+0x%X", name, displacement);
+    DWORD symTag = 0;
+
+    symbol->get_symTag(&symTag);
+
+    // Demangle to friendlier name
+    auto friendly = DemangleName(name);
+
+    swprintf_s(buffer, bufferLength, L"%s+0x%lX", friendly.c_str(), displacement);
 
     SysFreeString(name);
 

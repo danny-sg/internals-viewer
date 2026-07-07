@@ -102,6 +102,32 @@ SELECT sys.fn_PhysLocFormatter(%%physloc%%) AS RowLocation
 FROM   dbo.HeapTable
 GO
 
+-- Step 3 - Forwarding records
+--
+-- Fill a heap page almost completely, then grow the middle row
+-- past the remaining free space. The row moves to another page,
+-- leaving a forwarding stub at the original slot with the RID of
+-- the new location.
+
+CREATE TABLE dbo.ForwardingTable
+(
+    Id        INT           NOT NULL
+   ,TextField VARCHAR(8000) NOT NULL
+)
+GO
+
+INSERT INTO dbo.ForwardingTable
+        (Id, TextField)
+VALUES  (1, REPLICATE('A', 2500))
+       ,(2, REPLICATE('B', 2500))
+       ,(3, REPLICATE('C', 2500))
+GO
+
+UPDATE dbo.ForwardingTable
+SET    TextField = REPLICATE('B', 7000)
+WHERE  Id = 2
+GO
+
 -- Step 4 - Linked pages
 --
 -- A table with a clustered index - the data pages are the leaf
@@ -205,7 +231,7 @@ FROM   dbo.ClusteredTable
 WHERE  Id = 54321
 GO
 
--- [Indexes and data]
+-- [Lookups]
 --
 -- What the leaf level holds decides what happens after the seek
 -- lands.

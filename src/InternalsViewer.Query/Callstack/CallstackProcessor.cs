@@ -1,14 +1,14 @@
 ﻿using InternalsViewer.Query.Events.EventTypes;
 
-namespace InternalsViewer.Query.Symbols;
+namespace InternalsViewer.Query.Callstack;
 
 /// <summary>
-/// Process the call stack by using the debugging symbols to resolve function names
+/// Process the callstack by using the debugging symbols to resolve function names
 /// </summary>
 /// <remarks>
 /// This is a pretty complicated process that requires an additional C++ DLL to integrate the symbols
 ///
-/// The SQL Server call stack provides:
+/// The SQL Server callstack provides:
 /// 
 ///     Module - Name of the SQL Server module that generated the frame
 ///     PDB    - Program Database - provides the mapping between the compiled binary and the source code
@@ -32,15 +32,19 @@ namespace InternalsViewer.Query.Symbols;
 /// from C#. This is a bit of a faff but is the cleanest way to access DIA without quite heavyweight requirements, e.g.
 /// installing Build Tools. 
 /// </remarks>
-internal class CallStackProcessor
+internal class CallstackProcessor
 {
-    public static async Task Process(List<EngineEvent> events, CancellationToken cancellationToken)
+    public static async Task Process(List<EngineEvent> events, 
+                                     string symbolsPath,
+                                     IProgress<string>? progress, 
+                                     CancellationToken cancellationToken)
     {
-        var symbolsPath = @"C:\Symbols";
+        await SymbolDownloader.DownloadSymbols(events.SelectMany(e => e.Callstack), 
+                                               symbolsPath, 
+                                               progress,
+                                               cancellationToken);
 
-        await SymbolDownloader.DownloadSymbols(events.SelectMany(e => e.Callstack), symbolsPath, cancellationToken);
-
-        var resolver = new CallStackResolver(symbolsPath);
+        using var resolver = new CallstackResolver(symbolsPath);
 
         foreach (var engineEvent in events)
         {
@@ -48,7 +52,10 @@ internal class CallStackProcessor
             {
                 foreach (var frame in engineEvent.Callstack)
                 {
-                    frame.ResolvedSymbol = resolver.Resolve(frame);
+                    if (resolver.TryResolve(frame, out var result) && !string.IsNullOrEmpty(result))
+                    {
+                        frame.Resolved = ResolvedCallstackFrameParser.Parse(result);
+                    }
                 }
             }
         }

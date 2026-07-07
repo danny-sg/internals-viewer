@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace InternalsViewer.Query.Symbols;
+namespace InternalsViewer.Query.Callstack;
 
 public sealed class DiaResolver : IDisposable
 {

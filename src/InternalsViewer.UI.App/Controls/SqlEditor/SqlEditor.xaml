@@ -89,8 +89,8 @@
                                                   IsChecked="{x:Bind EventOptions.IncludeLock, Mode=TwoWay}"/>
                             <ToggleMenuFlyoutItem Text="Waits"
                                                   IsChecked="{x:Bind EventOptions.IncludeWait, Mode=TwoWay}"/>
-                            <ToggleMenuFlyoutItem Text="Call Stack"
-                                                  IsChecked="{x:Bind EventOptions.IncludeCallStack, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Callstack"
+                                                  IsChecked="{x:Bind EventOptions.IncludeCallstack, Mode=TwoWay}"/>
                         </MenuBarItem>
                     </MenuBar>
                 </AppBarElementContainer>

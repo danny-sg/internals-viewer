@@ -1,25 +1,26 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Text;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
-using InternalsViewer.Query.Symbols;
 using InternalsViewer.Query.TransactionLog;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query;
 
-public record EventOptions
+public sealed record EventOptions
 {
     public bool IncludeLock { get; set; } = true;
 
     public bool IncludeWait { get; set; } = true;
 
-    public bool IncludeCallStack { get; set; }
+    public bool IncludeCallstack { get; set; }
 }
-public sealed class QueryRunner(ILogger<QueryRunner> logger, 
-                                EventReader eventReader, 
+public sealed class QueryRunner(ILogger<QueryRunner> logger,
+                                EventReader eventReader,
                                 LogRecordReader logRecordReader)
 {
     private ILogger<QueryRunner> Logger { get; } = logger;
@@ -72,7 +73,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
     ];
 
-    private readonly string[] _callStackActions =
+    private readonly string[] _callstackActions =
     [
         "package0.callstack"
     ];
@@ -83,6 +84,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                               bool disableReadAhead,
                                               bool isModification,
                                               EventOptions eventOptions,
+                                              IProgress<string>? progress,
                                               CancellationToken cancellationToken)
     {
         long rowCount;
@@ -109,6 +111,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                                       disableReadAhead,
                                                                                       isModification,
                                                                                       eventOptions,
+                                                                                      progress,
                                                                                       cancellationToken);
 
             (events, executionPlans) = await EventReader.GetEvents(filePath,
@@ -116,14 +119,17 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                    null,
                                                                    cancellationToken,
                                                                    endMarker);
-
-            if (eventOptions.IncludeCallStack)
+            if (eventOptions.IncludeCallstack)
             {
-                await SymbolDownloader.DownloadSymbols(events.SelectMany(e => e.Callstack), @"C:\Symbols", cancellationToken);
+                var symbolsPath = @"C:\Symbols";
+
+                await CallstackProcessor.Process(events, symbolsPath, progress, cancellationToken);
             }
         }
         catch (OperationCanceledException)
         {
+            progress?.Report("Query cancelled");
+
             return new QueryResult
             {
                 IsSuccess = false,
@@ -171,8 +177,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                               DatabaseSource database,
                                               bool clearBufferPool,
                                               bool disableReadAhead,
-                                              bool isModification, 
+                                              bool isModification,
                                               EventOptions eventOptions,
+                                              IProgress<string>? progress,
                                               CancellationToken cancellationToken)
     {
         var connectionString = database.Connection.GetConnectionString();
@@ -202,7 +209,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                                       disableReadAhead,
                                                                                       isModification,
                                                                                       eventOptions,
+                                                                                      progress,
                                                                                       cancellationToken);
+
+            var eventsStart = Stopwatch.GetTimestamp();
 
             (events, executionPlans) = await EventReader.GetEvents(filePath,
                                                                    connectionString,
@@ -210,9 +220,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                    cancellationToken,
                                                                    endMarker);
 
-            if (eventOptions.IncludeCallStack)
+            progress?.Report($"{events.Count} event(s) retrieved in {Stopwatch.GetElapsedTime(eventsStart)}");
+
+            if (eventOptions.IncludeCallstack)
             {
-                await CallStackProcessor.Process(events, cancellationToken);
+                progress?.Report($"Processing callstack frames");
+
+                var symbolsPath = @"C:\Symbols";
+
+                await CallstackProcessor.Process(events, symbolsPath, progress, cancellationToken);
             }
 
             await GetEventKeyAddresses(events, database.AllocationUnits, connectionString, cancellationToken);
@@ -305,14 +321,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
 
 
-    private async Task<(string, long, List<LogRecord> logRecords)> RunQueryWithEventSession(string sessionName,
-                                                                                            string sqlText,
-                                                                                            string connectionString,
-                                                                                            bool clearBufferPool,
-                                                                                            bool disableReadAhead,
-                                                                                            bool isReplayMode,
-                                                                                            EventOptions eventOptions,
-                                                                                            CancellationToken cancellationToken)
+    private async Task<(string, long, List<LogRecord> logRecords)>
+        RunQueryWithEventSession(string sessionName,
+                                 string sqlText,
+                                 string connectionString,
+                                 bool clearBufferPool,
+                                 bool disableReadAhead,
+                                 bool isReplayMode,
+                                 EventOptions eventOptions,
+                                 IProgress<string>? progress,
+                                 CancellationToken cancellationToken)
     {
         long rowCount = 0;
 
@@ -356,6 +374,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             startLsn = await ExecuteScalar<string?>(
                 "SELECT MAX([Current LSN]) FROM fn_dblog(NULL, NULL);", connection);
+
+            progress?.Report($"Start LSN: {startLsn}");
         }
 
         // Session block that should stop the session if there is any failure
@@ -365,12 +385,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             if (isReplayMode)
             {
+                progress?.Report($"Transaction started");
+
                 await ExecuteSql($"BEGIN TRANSACTION iv_{sessionName[..28]};", connection, cancellationToken);
             }
 
             await Task.Delay(100, cancellationToken);
 
             Logger.LogDebug("SQL: {Sql}", sqlText);
+
+            var queryStart = Stopwatch.GetTimestamp();
 
             await using var reader = await new SqlCommand(sqlText, connection).ExecuteReaderAsync(cancellationToken);
 
@@ -381,11 +405,17 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             await reader.CloseAsync();
 
+            progress?.Report($"Query executed in: {Stopwatch.GetElapsedTime(queryStart)}");
+
             if (isReplayMode)
             {
                 logRecords = await LogRecordReader.GetLogRecords(connection, startLsn, sessionName);
 
+                progress?.Report($"{logRecords.Count} log record(s) retrieved");
+
                 await ExecuteSql($"ROLLBACK TRANSACTION iv_{sessionName[..28]};", connection, cancellationToken);
+
+                progress?.Report($"Transaction rolled back");
             }
         }
         finally
@@ -453,9 +483,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         return $"ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP;";
     }
 
-    private string GetCreateSessionSql(string sessionName, 
-                                       string filePath, 
-                                       short spid, 
+    private string GetCreateSessionSql(string sessionName,
+                                       string filePath,
+                                       short spid,
                                        bool isReplayMode,
                                        EventOptions eventOptions)
     {
@@ -478,9 +508,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             sessionEvents.AddRange(_waitEvents);
         }
 
-        if (eventOptions.IncludeCallStack)
+        if (eventOptions.IncludeCallstack)
         {
-            sessionActions.AddRange(_callStackActions);
+            sessionActions.AddRange(_callstackActions);
         }
 
         var stringBuilder = new StringBuilder();

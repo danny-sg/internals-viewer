@@ -44,5 +44,5 @@ public record EngineEvent
 
     public PlanNodeIdentifier? PlanNodeIdentifier { get; set; }
 
-    public List<CallStackFrame> Callstack { get; set; } = [];
+    public List<CallstackFrame> Callstack { get; set; } = [];
 }

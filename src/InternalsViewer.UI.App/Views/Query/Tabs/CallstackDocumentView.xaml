@@ -17,10 +17,16 @@
         <controls:DataGrid.Columns>
             <controls:DataGridTextColumn Header="Module"
                                          Binding="{Binding Module, Mode=OneWay}"
-                                         Width="120"/>
-            <controls:DataGridTextColumn Header="PDB"
-                                         Binding="{Binding ResolvedSymbol, Mode=OneWay}"
+                                         Width="100"/>
+            <controls:DataGridTextColumn Header="Class"
+                                         Binding="{Binding Resolved.ClassName, Mode=OneWay}"
                                          Width="*"/>
+            <controls:DataGridTextColumn Header="Method"
+                                         Binding="{Binding Resolved.MethodName, Mode=OneWay}"
+                                         Width="*"/>
+            <controls:DataGridTextColumn Header="Offset"
+                                         Binding="{Binding Resolved.Offset, Mode=OneWay}"
+                                         Width="80"/>
         </controls:DataGrid.Columns>
     </controls:DataGrid>
 </UserControl>

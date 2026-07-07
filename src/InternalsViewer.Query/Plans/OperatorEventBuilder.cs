@@ -83,7 +83,9 @@ internal sealed class OperatorEventBuilder
         }
 
         var timing = ComputeTiming(node);
+
         _timings[node.NodeId] = timing;
+        
         return timing;
     }
 

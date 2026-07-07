@@ -93,6 +93,43 @@ Selecting a range of bytes in the raw data shows a decode of those bytes in the 
 
 The status bar at the bottom shows the current offset and which structure the cursor is over.
 
+### Forwarding records
+
+Heaps have a record type of their own worth seeing. When a heap row is updated and no longer fits on its page, SQL Server moves the row to another page and leaves a **forwarding stub** at the original slot pointing to the new location - so non-clustered indexes, which point at the row by its physical address, don't all have to be updated. (Rows in a clustered index move within the B-Tree instead, so this only happens in heaps.)
+
+To create one, fill a heap page almost completely:
+
+```SQL
+CREATE TABLE dbo.ForwardingTable
+(
+    Id        INT           NOT NULL
+   ,TextField VARCHAR(8000) NOT NULL
+)
+GO
+
+INSERT INTO dbo.ForwardingTable
+        (Id, TextField)
+VALUES  (1, REPLICATE('A', 2500))
+       ,(2, REPLICATE('B', 2500))
+       ,(3, REPLICATE('C', 2500))
+GO
+```
+
+Refresh and open the table's **First Page** - three Data records in slots 0 to 2, with the page nearly full. Now grow the middle row past the remaining free space:
+
+```SQL
+UPDATE dbo.ForwardingTable
+SET    TextField = REPLICATE('B', 7000)
+WHERE  Id = 2
+GO
+```
+
+Refresh the page. The row is gone from slot 1 - in its place is a tiny **Forwarding Stub** record whose only content is the RID of the row's new location. Follow it and the moved row's record is flagged as a _forwarded record_ in its status bits, and carries a back pointer to the stub so the heap can find its way back if the row ever shrinks and returns home.
+
+The stub matters for performance: anything arriving at the original RID - a RID lookup from a non-clustered index, for example - now pays an extra page read to follow it. Part 3 comes back to this when comparing the two row locator types.
+
+See the [Forwarding Stub](/docs/reference/glossary#forwarding-stub) glossary entry and the [Data Records](/docs/reference/data-records) reference.
+
 ## Step 4 - Linked pages
 
 In Part 1 we saw that heap pages are not linked together. To see `Next Page` / `Previous Page` in action we need an index. Create a table with a clustered index and insert enough rows to fill a few hundred pages:
@@ -185,6 +222,7 @@ In this part we:
 - Opened pages by address and by navigating links
 - Decoded the page header and its fields
 - Looked at how records are stored in slots and decoded the FixedVar record format
+- Made a heap row move by growing it past its page's free space, leaving a forwarding stub behind
 - Followed the doubly linked leaf pages of a clustered index
 - Looked at the allocation pages that track storage - IAM, GAM, and PFS
 

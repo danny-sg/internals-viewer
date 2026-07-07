@@ -612,9 +612,9 @@ internal sealed class EventParser
         };
     }
 
-    private static List<CallStackFrame> ParseCallstack(string decoded)
+    private static List<CallstackFrame> ParseCallstack(string decoded)
     {
-        var frames = new List<CallStackFrame>();
+        var frames = new List<CallstackFrame>();
         var xml = decoded.AsSpan();
         var i = 0;
 
@@ -651,7 +651,7 @@ internal sealed class EventParser
                     ? uint.TryParse(rvaSpan[2..], System.Globalization.NumberStyles.HexNumber, null, out var hex) ? hex : 0U
                     : uint.TryParse(rvaSpan, out var dec) ? dec : 0U;
 
-                frames.Add(new CallStackFrame
+                frames.Add(new CallstackFrame
                 {
                     Module = module.ToString(),
                     Pdb = pdb.ToString(),

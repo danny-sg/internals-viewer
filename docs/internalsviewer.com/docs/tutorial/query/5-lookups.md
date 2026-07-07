@@ -1,4 +1,4 @@
-# Indexes and data
+# Lookups
 
 A seek walks root to leaf on the index the plan names - but what the leaf level holds depends on the kind of index, and it decides whether the query is finished when the seek lands or has more work to do. There are four cases, and each has a distinct signature on the timeline.
 
@@ -18,7 +18,7 @@ FROM   dbo.ClusteredTable
 WHERE  TextField = 'This is row 54321'
 ```
 
-The plan now has two operators: an Index Seek on `IX_ClusteredTable_TextField` and a **Key Lookup** on `PK_ClusteredTable`. The non-clustered leaf record contains `TextField` and the clustering key `Id` - but not `CreatedDate`, so the engine takes `Id` 54321 from the leaf record and runs a second root-to-leaf seek into the clustered index to fetch the rest of the row. Open both indexes from the Plan lane and two trees light up, one root-to-leaf path each.
+The plan now has two operators: an Index Seek on `IX_ClusteredTable_TextField` and a **Key Lookup** on `PK_ClusteredTable`. The lookup is a clustered index seek under the covers: the non-clustered leaf record contains `TextField` and the clustering key `Id` - but not `CreatedDate`, so the engine takes `Id` 54321 from the leaf record and runs a root-to-leaf seek into the clustered index to fetch the rest of the row. Open both indexes from the Plan lane and two trees light up, one root-to-leaf path each.
 
 That second seek is paid _per matching row_ - a predicate matching thousands of rows pays thousands of key lookups, which is why the optimizer abandons the non-clustered index for a scan when it expects too many matches.
 

@@ -14,6 +14,7 @@
                                 Message="{x:Bind ViewModel.Message, Mode=OneWay}"
                                 IsError="{x:Bind ViewModel.IsError, Mode=OneWay}"
                                 Schema="{x:Bind ViewModel.Schema, Mode=OneWay}"
+                                EventOptions="{x:Bind ViewModel.EventOptions, Mode=OneWay}"
                                 Theme="vs-light">
         <!-- Projected into the editor's messages panel; the editor knows nothing about these. -->
         <sqlEditor:SqlEditorControl.AdditionalContent>

@@ -1,20 +1,23 @@
-﻿using InternalsViewer.Query.Events.EventTypes;
-using System.Net;
+﻿using System.Net;
+using InternalsViewer.Query.Events.EventTypes;
 
-namespace InternalsViewer.Query.Symbols;
+namespace InternalsViewer.Query.Callstack;
 
 public static class SymbolDownloader
 {
+    private sealed record PdbIdentity(string Pdb, string Guid, int Age);
+
     private static readonly HttpClient HttpClient = new()
     {
         Timeout = TimeSpan.FromMinutes(5)
     };
 
-    public static async Task DownloadSymbols(IEnumerable<CallStackFrame> frames,
-                                             string symbolCacheDirectory,
+    public static async Task DownloadSymbols(IEnumerable<CallstackFrame> frames,
+                                             string symbolsDirectory,
+                                             IProgress<string>? progress,
                                              CancellationToken cancellationToken = default)
     {
-        Directory.CreateDirectory(symbolCacheDirectory);
+        Directory.CreateDirectory(symbolsDirectory);
 
         var pdbs = frames.Select(f => new PdbIdentity(f.Pdb, f.Guid, f.Age))
                          .Distinct()
@@ -22,16 +25,22 @@ public static class SymbolDownloader
 
         await Parallel.ForEachAsync(pdbs,
                                     cancellationToken,
-                                    async (pdb, ct) => await DownloadPdbAsync(pdb, symbolCacheDirectory, ct));
+                                    async (pdb, ct) => await DownloadPdbAsync(pdb, symbolsDirectory, progress, ct));
     }
 
     private static async Task DownloadPdbAsync(PdbIdentity pdb,
-                                               string symbolCacheDirectory,
+                                               string symbolsDirectory,
+                                               IProgress<string>? progress,
                                                CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(pdb.Pdb))
+        {
+            return;
+        }
+
         var symbolId = pdb.Guid.Replace("-", string.Empty) + pdb.Age;
 
-        var pdbFolder = Path.Combine(symbolCacheDirectory,
+        var pdbFolder = Path.Combine(symbolsDirectory,
                                      pdb.Pdb,
                                      symbolId.ToUpperInvariant());
 
@@ -47,21 +56,23 @@ public static class SymbolDownloader
         var url =
             $"https://msdl.microsoft.com/download/symbols/{pdb.Pdb}/{symbolId.ToUpperInvariant()}/{pdb.Pdb}";
 
+        progress?.Report($"Downloading {url} to {pdbPath}");
+
         try
         {
-            Console.WriteLine($"Downloading {pdb.Pdb}");
-
             using var response = await HttpClient.GetAsync(url,
                                                            HttpCompletionOption.ResponseHeadersRead,
                                                            cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                Console.WriteLine($"Not found: {pdb.Pdb}");
+                progress?.Report($"{url}: Not found");
                 return;
             }
 
             response.EnsureSuccessStatusCode();
+
+            var bytes = response.Content.Headers.ContentLength;
 
             await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
 
@@ -69,11 +80,11 @@ public static class SymbolDownloader
 
             await source.CopyToAsync(destination, cancellationToken);
 
-            Console.WriteLine($"Downloaded: {pdbPath}");
+            progress?.Report($"{pdb.Pdb}: Downloaded - {bytes / 1024} KB");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed: {pdb.Pdb} : {ex.Message}");
+            progress?.Report($"{pdb.Pdb}: Failed: {ex.Message}");
         }
     }
 }

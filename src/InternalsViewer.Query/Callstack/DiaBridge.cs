@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
-namespace InternalsViewer.Query.Symbols;
+namespace InternalsViewer.Query.Callstack;
 
 internal static class DiaBridge
 {
@@ -15,7 +15,6 @@ internal static class DiaBridge
                                          StringBuilder buffer,
                                          int bufferLength);
 
-    [DllImport(
-        "InternalsViewer.Query.DiaBridge.dll")]
+    [DllImport("InternalsViewer.Query.DiaBridge.dll")]
     public static extern void ClosePdb(IntPtr session);
 }
