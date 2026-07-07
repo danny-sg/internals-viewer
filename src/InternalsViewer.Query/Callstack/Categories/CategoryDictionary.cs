@@ -54,6 +54,7 @@ internal class SymbolCategoryDictionary
             ["BlobManager"] = SymbolCategory.LargeObjectStorage,
             ["LockBytesSS"] = SymbolCategory.LargeObjectStorage,
 
+            ["CTds"] = SymbolCategory.Networking,
             ["Tds"] = SymbolCategory.Networking,
             ["SNI"] = SymbolCategory.Networking,
             ["Net"] = SymbolCategory.Networking,
