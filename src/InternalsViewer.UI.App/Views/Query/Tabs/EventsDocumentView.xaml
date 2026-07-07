@@ -10,6 +10,7 @@
     mc:Ignorable="d">
     <eventGrid:EventGridControl x:Name="EventGrid"
                                   Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
+                                  SelectedItem="{x:Bind ViewModel.SelectedEvent, Mode=TwoWay}"
                                   SequenceFrom="{x:Bind ViewModel.SequenceFrom, Mode=OneWay}"
                                   SequenceTo="{x:Bind ViewModel.SequenceTo, Mode=OneWay}"
                                   PageClicked="OnPageSelected"/>

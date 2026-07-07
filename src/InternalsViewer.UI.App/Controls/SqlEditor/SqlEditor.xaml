@@ -62,7 +62,7 @@
                     </Button>
                 </AppBarElementContainer>
 
-                <AppBarElementContainer VerticalContentAlignment="Center" Height="40" Margin="0,0,8,0">
+                <AppBarElementContainer VerticalContentAlignment="Center" Height="40" Margin="0,0,0,0">
                     <Button Command="{x:Bind CancelCommand, Mode=OneWay}"
                             Background="Transparent"
                             BorderThickness="0"
@@ -76,6 +76,24 @@
                     </Button>
                 </AppBarElementContainer>
 
+                <!--Events options-->
+                <AppBarElementContainer>
+                    <MenuBar Height="48"
+                             Padding="0"
+                             Margin="0,0,9,0">
+                        <MenuBar.Resources>
+                            <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
+                        </MenuBar.Resources>
+                        <MenuBarItem Title="Events">
+                            <ToggleMenuFlyoutItem Text="Locks"
+                                                  IsChecked="{x:Bind EventOptions.IncludeLock, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Waits"
+                                                  IsChecked="{x:Bind EventOptions.IncludeWait, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Call Stack"
+                                                  IsChecked="{x:Bind EventOptions.IncludeCallStack, Mode=TwoWay}"/>
+                        </MenuBarItem>
+                    </MenuBar>
+                </AppBarElementContainer>
                 <AppBarElementContainer VerticalContentAlignment="Center">
                     <ToggleButton Margin="0,0,8,0"
                                   IsChecked="{x:Bind QueryOptions.ClearBufferPool, Mode=TwoWay}"
@@ -86,12 +104,13 @@
 
                 <AppBarElementContainer VerticalContentAlignment="Center" Margin="0,0,8,0">
                     <ToggleButton IsChecked="{x:Bind QueryOptions.DisableReadAhead, Mode=TwoWay}"
-                                  Margin="0,0,8,0" 
+                                  Margin="0,0,0,0" 
                                   BorderThickness="0"
                                   >
                         <TextBlock Text="Disable Read-Ahead" VerticalAlignment="Center" />
                     </ToggleButton>
                 </AppBarElementContainer>
+              
             </CommandBar>
 
             <CommandBar IsOpen="False"

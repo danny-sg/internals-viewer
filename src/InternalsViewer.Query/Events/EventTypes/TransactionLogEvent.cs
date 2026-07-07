@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.TransactionLog;
+﻿using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query.Events.EventTypes;
 

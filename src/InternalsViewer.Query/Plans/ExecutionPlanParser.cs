@@ -98,6 +98,15 @@ public static class ExecutionPlanParser
         if (OperatorClassifier.IsDataAccess(node))
         {
             node.ScanInfo = ParseScanInfo(element);
+
+            // Showplan XML has no Key Lookup operator - a key lookup arrives as a Clustered Index
+            // Seek with Lookup="1" on its IndexScan element. Rename it as SSMS does. (A RID Lookup
+            // also carries Lookup="1" but is already named by its PhysicalOp.)
+            if (node.ScanInfo.IsLookup &&
+                string.Equals(node.PhysicalOperator, "Clustered Index Seek", StringComparison.OrdinalIgnoreCase))
+            {
+                node.PhysicalOperator = "Key Lookup";
+            }
         }
 
         foreach (var child in children)
@@ -222,6 +231,7 @@ public static class ExecutionPlanParser
         if (indexScan != null)
         {
             scanInfo.IsOutputOrdered = (bool?)indexScan.Attribute("Ordered");
+            scanInfo.IsLookup = (bool?)indexScan.Attribute("Lookup") ?? false;
         }
 
         var scanDirection = indexScan?.Attribute("ScanDirection");

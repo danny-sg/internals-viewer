@@ -20,6 +20,9 @@ public static class EventResultExtensions
     public static string GetString(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) ? Decode(span) : string.Empty;
 
+    public static string GetStringAction(this EventResult e, string key)
+        => TryGetSpan(e.Actions, e.Buffer, key, out var span) ? Decode(span) : string.Empty;
+
     public static int GetDatabaseId(this EventResult e)
         => TryGetSpan(e.Actions, e.Buffer, "database_id", out var span) && int.TryParse(span, out var i) ? i : -1;
 

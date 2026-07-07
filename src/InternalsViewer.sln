@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.Query", "In
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.Query.Tests", "InternalsViewer.Query.Tests\InternalsViewer.Query.Tests.csproj", "{A3BCEA6E-C7B5-637B-81A3-EC388844F2C3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InternalsViewer.Query.DiaBridge", "InternalsViewer.Query.DiaBridge\InternalsViewer.Query.DiaBridge.vcxproj", "{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,22 @@ Global
 		{A3BCEA6E-C7B5-637B-81A3-EC388844F2C3}.Release|x64.Build.0 = Release|Any CPU
 		{A3BCEA6E-C7B5-637B-81A3-EC388844F2C3}.Release|x86.ActiveCfg = Release|Any CPU
 		{A3BCEA6E-C7B5-637B-81A3-EC388844F2C3}.Release|x86.Build.0 = Release|Any CPU
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Debug|Any CPU.Build.0 = Debug|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Debug|ARM64.ActiveCfg = Debug|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Debug|ARM64.Build.0 = Debug|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Debug|x64.ActiveCfg = Debug|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Debug|x64.Build.0 = Debug|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Debug|x86.ActiveCfg = Debug|Win32
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Debug|x86.Build.0 = Debug|Win32
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Release|Any CPU.ActiveCfg = Release|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Release|Any CPU.Build.0 = Release|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Release|ARM64.ActiveCfg = Release|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Release|ARM64.Build.0 = Release|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Release|x64.ActiveCfg = Release|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Release|x64.Build.0 = Release|x64
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Release|x86.ActiveCfg = Release|Win32
+		{5FF52E36-D4C2-48D2-ACD4-7D0CD1361C5D}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -162,7 +180,7 @@ Global
 		{A3BCEA6E-C7B5-637B-81A3-EC388844F2C3} = {22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		VisualSVNWorkingCopyRoot = 
 		SolutionGuid = {12A1406C-1C68-4A7F-A0FF-E4E7A65AECAE}
+		VisualSVNWorkingCopyRoot = 
 	EndGlobalSection
 EndGlobal

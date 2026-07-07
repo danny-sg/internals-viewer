@@ -63,6 +63,8 @@
                                                       IsChecked="{x:Bind ViewModel.IsExecutionPlanVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Events"
                                                       IsChecked="{x:Bind ViewModel.IsEventsVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Callstack"
+                                                      IsChecked="{x:Bind ViewModel.IsCallstackVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <ToggleMenuFlyoutItem Text="Timeline"
                                                       IsChecked="{x:Bind ViewModel.IsTimelineVisible, Mode=TwoWay}"/>

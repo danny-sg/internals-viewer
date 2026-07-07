@@ -46,7 +46,7 @@ public sealed partial class QueryView : Page
             return;
         }
 
-         DockHostControl.CaptureSizes();
+        DockHostControl.CaptureSizes();
 
         _ = viewModel.SaveLayoutAsync();
     }
@@ -77,18 +77,14 @@ public sealed partial class QueryView : Page
         }
     }
 
-    // Collapses/restores the timeline row in code (rather than binding its height) so the dock row can be
-    // forced back to star on restore. The grid splitter converts both rows to fixed pixels when dragged;
-    // left as a fixed pixel, the dock row would consume all the space and the restored timeline would get
-    // (close to) zero height.
     private void ApplyTimelineVisibility()
     {
         if (ViewModel.IsTimelineVisible)
         {
             DockRow.Height = new GridLength(1, GridUnitType.Star);
             TimelineRow.Height = _savedTimelineHeight.Value > 0
-                ? _savedTimelineHeight
-                : new GridLength(1, GridUnitType.Star);
+                                 ? _savedTimelineHeight
+                                 : new GridLength(1, GridUnitType.Star);
         }
         else
         {

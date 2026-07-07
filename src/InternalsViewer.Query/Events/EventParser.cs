@@ -1,6 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.EventTypes;
@@ -171,18 +170,18 @@ internal sealed class EventParser
             {
                 var endTag = isData ? "</data>" : "</action>";
 
-                var endRel = xml[(tagEnd + 1)..].IndexOf(endTag.AsSpan(), StringComparison.Ordinal);
+                var relativeEndPosition = xml[(tagEnd + 1)..].IndexOf(endTag.AsSpan(), StringComparison.Ordinal);
 
-                if (endRel < 0)
+                if (relativeEndPosition < 0)
                 {
                     break;
                 }
 
-                var endAbs = tagEnd + 1 + endRel;
+                var fullEndPosition = tagEnd + 1 + relativeEndPosition;
 
-                range = ReadValueRange(xml[(tagEnd + 1)..endAbs], tagEnd + 1);
+                range = ReadValueRange(xml[(tagEnd + 1)..fullEndPosition], tagEnd + 1);
 
-                next = endAbs + endTag.Length;
+                next = fullEndPosition + endTag.Length;
             }
 
             (isData ? _data : _actions)[Intern(fieldName)] = range;
@@ -202,22 +201,22 @@ internal sealed class EventParser
             return default;
         }
 
-        var tagEnd = content[valueStart..].IndexOf('>');
+        var tagEndPosition = content[valueStart..].IndexOf('>');
 
-        if (tagEnd < 0)
+        if (tagEndPosition < 0)
         {
             return default;
         }
 
-        tagEnd += valueStart;
+        tagEndPosition += valueStart;
 
         // Self-closing <value/>.
-        if (content[tagEnd - 1] == '/')
+        if (content[tagEndPosition - 1] == '/')
         {
             return default;
         }
 
-        var inner = content[(tagEnd + 1)..];
+        var inner = content[(tagEndPosition + 1)..];
 
         var endOffset = inner.IndexOf("</value>".AsSpan(), StringComparison.Ordinal);
 
@@ -226,7 +225,7 @@ internal sealed class EventParser
             return default;
         }
 
-        return new ValueRange(contentStart + tagEnd + 1, endOffset);
+        return new ValueRange(contentStart + tagEndPosition + 1, endOffset);
     }
 
     /// <summary>
@@ -346,7 +345,9 @@ internal sealed class EventParser
             }
         };
 
-        engineEvent.SequenceId = e.SequenceId;
+        var sequenceId = e.GetInt("event_sequence");
+
+        engineEvent.SequenceId = (sequenceId * 10) ?? e.SequenceId;
 
         if (e.Actions.TryGetValue("plan_handle", out var planHandle) && planHandle.Length > 0)
         {
@@ -401,6 +402,11 @@ internal sealed class EventParser
         }
 
         engineEvent.Category = EventCategoryClassifier.GetCategory(engineEvent);
+
+        if (e.Actions.ContainsKey("callstack"))
+        {
+            engineEvent.Callstack = ParseCallstack(e.GetStringAction("callstack"));
+        }
 
         return engineEvent;
     }
@@ -604,5 +610,60 @@ internal sealed class EventParser
             AllocationUnitId = e.GetLong("alloc_unit_id") ?? 0,
             TransactionId = e.GetInt("transaction_id")
         };
+    }
+
+    private static List<CallStackFrame> ParseCallstack(string decoded)
+    {
+        var frames = new List<CallStackFrame>();
+        var xml = decoded.AsSpan();
+        var i = 0;
+
+        while (i < xml.Length)
+        {
+            var offset = xml[i..].IndexOf("<frame".AsSpan(), StringComparison.Ordinal);
+
+            if (offset < 0)
+            {
+                break;
+            }
+
+            i += offset;
+
+            var tagEnd = FindTagEnd(xml, i);
+
+            if (tagEnd < 0)
+            {
+                break;
+            }
+
+            var tag = xml[i..(tagEnd + 1)];
+            var module = GetAttribute(tag, "module");
+            var pdb = GetAttribute(tag, "pdb");
+            var guid = GetAttribute(tag, "guid");
+            var ageSpan = GetAttribute(tag, "age");
+            var rvaSpan = GetAttribute(tag, "rva");
+
+            if (!module.IsEmpty)
+            {
+                int.TryParse(ageSpan, out var age);
+
+                var rvaValue = !rvaSpan.IsEmpty && rvaSpan.Length > 2 && rvaSpan[1] is 'x' or 'X'
+                    ? uint.TryParse(rvaSpan[2..], System.Globalization.NumberStyles.HexNumber, null, out var hex) ? hex : 0U
+                    : uint.TryParse(rvaSpan, out var dec) ? dec : 0U;
+
+                frames.Add(new CallStackFrame
+                {
+                    Module = module.ToString(),
+                    Pdb = pdb.ToString(),
+                    Guid = guid.ToString(),
+                    Age = age,
+                    Rva = rvaValue
+                });
+            }
+
+            i = tagEnd + 1;
+        }
+
+        return frames;
     }
 }

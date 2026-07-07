@@ -10,7 +10,6 @@ using InternalsViewer.Query;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans;
-using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Controls.SqlEditor;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
@@ -22,8 +21,6 @@ using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using Microsoft.Extensions.Logging;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -57,10 +54,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public EventFilterViewModel EventFilter { get; }
 
-    [ObservableProperty] 
+    [ObservableProperty]
     private bool _isError;
 
-    [ObservableProperty] 
+    [ObservableProperty]
     private string _message;
 
     [ObservableProperty]
@@ -106,34 +103,26 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private List<EngineEvent> _filteredEvents = [];
 
-    // Resolves event display colours on demand (its IO colour map is built once per query). Bound by the
-    // timeline and used when building allocation layers, so colours aren't stored on every event.
     [ObservableProperty]
     private EventColourProvider _eventColours = new([]);
 
     [ObservableProperty]
     private HashSet<int> _systemObjectIds;
 
-    // The scope sequence range (derived from the timeline's microsecond scope) still drives the grid and
-    // allocation views, which highlight by sequence id.
     [ObservableProperty]
     private long _sequenceFrom;
 
     [ObservableProperty]
     private long _sequenceTo;
 
-    // The query crop (microseconds): the timeline shows only [StartOffset, EndOffset], hiding pre-query
-    // events. Null = no crop (full event range).
     [ObservableProperty]
     private long? _startOffset;
 
     [ObservableProperty]
     private long? _endOffset;
 
-    // The timeline now reports position purely as time (microseconds); the view model maps it to events.
     private long _playheadTimeUs;
     private long _scopeFromUs;
-    private long _scopeToUs;
 
     [ObservableProperty]
     private DatabaseSchema? _schema;
@@ -162,7 +151,19 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isEventsVisible;
 
     [ObservableProperty]
+    private bool _isCallstackVisible;
+
+    [ObservableProperty]
     private bool _isEventSelectionPanelOpen;
+
+    [ObservableProperty]
+    private List<CallStackFrame> _callstacks = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedCallstack))]
+    private EngineEvent? _selectedEvent;
+
+    public List<CallStackFrame> SelectedCallstack => SelectedEvent?.Callstack ?? [];
 
     partial void OnIsSqlEditorVisibleChanged(bool value) => SetDocumentVisible(SqlDocument, value);
 
@@ -171,6 +172,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     partial void OnIsExecutionPlanVisibleChanged(bool value) => SetDocumentVisible(PlanDocument, value);
 
     partial void OnIsEventsVisibleChanged(bool value) => SetDocumentVisible(EventsDocument, value);
+
+    partial void OnIsCallstackVisibleChanged(bool value) => SetDocumentVisible(CallstackDocument, value);
 
     partial void OnIsTimelineVisibleChanged(bool value) => ScheduleSaveLayout();
 
@@ -201,6 +204,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         IsAllocationsVisible = Dock.Contains(AllocationsDocument);
         IsExecutionPlanVisible = Dock.Contains(PlanDocument);
         IsEventsVisible = Dock.Contains(EventsDocument);
+        IsCallstackVisible = Dock.Contains(CallstackDocument);
 
         _suppressVisibilitySync = false;
     }
@@ -215,12 +219,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private DocumentViewModel EventsDocument { get; }
 
+    private DocumentViewModel CallstackDocument { get; }
+
     private Dictionary<string, DocumentViewModel> DocumentsByKey { get; }
 
     public event Action<EngineEvent>? EventNavigationRequested;
 
     public void NavigateToEvent(EngineEvent engineEvent)
     {
+        SelectedEvent = engineEvent;
+
         IsEventsVisible = true;
 
         DispatcherQueue.TryEnqueue(() =>
@@ -253,6 +261,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _saveScheduled = true;
 
+#pragma warning disable VSTHRD101 // Avoid unsupported async delegates
         DispatcherQueue.TryEnqueue(async void () =>
         {
             _saveScheduled = false;
@@ -266,6 +275,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 Logger.LogError("Error saving layout - {Message}", e.Message);
             }
         });
+#pragma warning restore VSTHRD101 // Avoid unsupported async delegates
     }
 
     public async Task SaveLayoutAsync()
@@ -319,25 +329,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private ObservableCollection<ExecutionPlan> _executionPlans = [];
 
-    // The plan node selected from the timeline (a single operator the user clicked). Drives the plan's
-    // selection highlight and brings it into view; the timeline owns its own selection for dimming.
     [ObservableProperty]
     private PlanNode? _selectedPlanNode;
 
-    // Operators whose run-time span contains the playhead (the active call hierarchy), derived purely
-    // from the playhead time. A parallel query has several active at once.
     [ObservableProperty]
     private IReadOnlyList<PlanNode> _activePlanNodes = [];
 
-    // The subset of the active operators that have started emitting rows at the playhead (past their
-    // consume phase). These drive the data-flow arrows in the plan.
     [ObservableProperty]
     private IReadOnlyList<PlanNode> _emittingPlanNodes = [];
 
     public void SetScope(long fromUs, long toUs)
     {
         _scopeFromUs = fromUs;
-        _scopeToUs = toUs;
 
         var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
 
@@ -382,12 +385,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         // state rather than lighting up operators that merely start at time zero.
         if (timeUs <= AxisStartUs(source))
         {
-            if (_activePlanNodes.Count > 0)
+            if (ActivePlanNodes.Count > 0)
             {
                 ActivePlanNodes = [];
             }
 
-            if (_emittingPlanNodes.Count > 0)
+            if (EmittingPlanNodes.Count > 0)
             {
                 EmittingPlanNodes = [];
             }
@@ -401,7 +404,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         foreach (var op in source.OfType<ExecutionOperatorEvent>())
         {
-            // Outside the operator's [start, end] span - not running at the playhead.
             if (op.TimeUs > timeUs || timeUs > op.TimeUs + op.DurationUs)
             {
                 continue;
@@ -414,28 +416,23 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             active.Add(node);
 
-            // Past the consume phase: the operator is producing rows to its parent.
             if (op.EmitStartUs <= timeUs)
             {
                 emitting.Add(node);
             }
         }
 
-        // The sets churn on every playhead tick; only publish when they actually change so the plan
-        // doesn't refresh its highlights and flow overlays needlessly.
-        if (!_activePlanNodes.SequenceEqual(active))
+        if (!ActivePlanNodes.SequenceEqual(active))
         {
             ActivePlanNodes = active;
         }
 
-        if (!_emittingPlanNodes.SequenceEqual(emitting))
+        if (!EmittingPlanNodes.SequenceEqual(emitting))
         {
             EmittingPlanNodes = emitting;
         }
     }
 
-    // The capture-time (microseconds) of the timeline's left edge: the crop start when set, otherwise the
-    // earliest event - matching the axis origin the timeline draws as zero.
     private long AxisStartUs(IReadOnlyList<EngineEvent> source)
     {
         if (StartOffset is { } start)
@@ -469,7 +466,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SelectedPlanNode = ResolvePlanNode(identifier);
     }
 
-    // Open index tabs (transient, not persisted), keyed by schema.table.index so each index opens once.
     private readonly Dictionary<string, IndexTabViewModel> _openIndexes = new();
 
     public void OpenIndex(ExecutionOperatorEvent op)
@@ -638,7 +634,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public Visibility HasEvents
         => Events.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    
+
     private List<AllocationLayer> ObjectLayers { get; set; }
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
@@ -682,6 +678,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         AllocationsDocument = DocumentViewModel.Create<AllocationDocumentView>("Allocations", this, keepAlive: true, key: "Allocations");
         PlanDocument = DocumentViewModel.Create<PlanDocumentView>("Execution Plan", this, keepAlive: true, key: "Plan");
         EventsDocument = DocumentViewModel.Create<EventsDocumentView>("Events", this, keepAlive: true, key: "Events");
+        CallstackDocument = DocumentViewModel.Create<CallstackDocumentView>("Callstack", this, keepAlive: true, key: "Callstack");
 
         DocumentsByKey = new Dictionary<string, DocumentViewModel>
         {
@@ -689,12 +686,24 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             [AllocationsDocument.Key] = AllocationsDocument,
             [PlanDocument.Key] = PlanDocument,
             [EventsDocument.Key] = EventsDocument,
+            [CallstackDocument.Key] = CallstackDocument,
         };
 
         Dock = new DockLayoutViewModel(new TabGroupNode(SqlDocument));
+
         Dock.LayoutChanged += OnDockLayoutChanged;
 
-        DispatcherQueue.TryEnqueue(async () => await RestoreLayoutAsync());
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                await RestoreLayoutAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error restoring layout");
+            }
+        });
     }
 
     private readonly SettingsService _settingsService;
@@ -710,36 +719,39 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         ClearResults();
 
         // Run full trace on background thread
-        var (results, layers, colours) = await Task.Run(async () =>
-        {
-            var queryResult = await QueryRunner.TraceQuery(payload.SqlText,
-                                                           Database,
-                                                           payload.QueryOptions.ClearBufferPool,
-                                                           payload.QueryOptions.DisableReadAhead,
-                                                           payload.StatementType == StatementType.Modification,
-                                                           cancellationToken);
-
-            if (!queryResult.IsSuccess)
+        var (results, layers, colours) = 
+            await Task.Run(async () =>
             {
-                return (queryResult, new List<AllocationLayer>(), new EventColourProvider([]));
-            }
+                var queryResult = await QueryRunner.TraceQuery(payload.SqlText,
+                                                               Database,
+                                                               payload.QueryOptions.ClearBufferPool,
+                                                               payload.QueryOptions.DisableReadAhead,
+                                                               payload.StatementType == StatementType.Modification,
+                                                               payload.EventOptions,
+                                                               cancellationToken);
 
-            var names = Database.AllocationUnits
-                                .Values
-                                .GroupBy(u => u.ObjectId)
-                                .ToDictionary(g => g.Key, g => g.First().DisplayName);
+                if (!queryResult.IsSuccess)
+                {
+                    return (queryResult, new List<AllocationLayer>(), new EventColourProvider([]));
+                }
 
-            foreach (var e in queryResult.EngineEvents.Where(e => e.ObjectId > 0))
-            {
-                e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
-            }
+                var names = Database.AllocationUnits
+                                    .Values
+                                    .GroupBy(u => u.ObjectId)
+                                    .ToDictionary(g => g.Key, g => g.First().DisplayName);
 
-            // The colour map is built once here (per query); colours are then resolved on demand at the
-            // point of consumption rather than stored on every event.
-            var colourProvider = new EventColourProvider(queryResult.ExecutionPlans);
+                foreach (var e in queryResult.EngineEvents.Where(e => e.ObjectId > 0))
+                {
+                    e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
+                }
 
-            return (queryResult, GetEventsAllocationLayer(queryResult.EngineEvents, colourProvider), colourProvider);
-        });
+                var colourProvider = new EventColourProvider(queryResult.ExecutionPlans);
+
+                var allocationLayer = GetEventsAllocationLayer(queryResult.EngineEvents, colourProvider);
+
+                return (queryResult, allocationLayer, colourProvider);
+            },
+            cancellationToken);
 
         if (!results.IsSuccess)
         {
@@ -755,8 +767,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             if (queryNode != null)
             {
-                // Crop to the query (statement) node's span, padded so reads that sit just before/after
-                // the measured span (e.g. the first/last page accesses) aren't clipped off the timeline.
                 StartOffset = Math.Max(0, queryNode.TimeUs - CropPaddingUs);
                 EndOffset = queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs;
             }
@@ -777,6 +787,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             EventColours = colours;
 
             Events = results.EngineEvents;
+
+            Callstacks = results.EngineEvents
+                                .Where(e => e.Callstack is { Count: > 0 })
+                                .SelectMany(e => e.Callstack!)
+                                .ToList();
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
 
@@ -817,7 +832,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SequenceTo = 0;
         _playheadTimeUs = 0;
         _scopeFromUs = 0;
-        _scopeToUs = 0;
         IsTimelinePlaying = false;
         SelectedPlanNode = null;
         ActivePlanNodes = [];
@@ -825,6 +839,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Events = [];
         FilteredEvents = [];
+        Callstacks = [];
+        SelectedEvent = null;
         ExecutionPlans = [];
 
         foreach (var indexViewModel in _openIndexes.Values)

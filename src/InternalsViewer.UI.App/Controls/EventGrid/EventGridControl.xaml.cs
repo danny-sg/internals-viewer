@@ -17,6 +17,26 @@ public sealed partial class EventGridControl : UserControl
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
+    public EngineEvent? SelectedItem
+    {
+        get => (EngineEvent?)GetValue(SelectedItemProperty);
+        set => SetValue(SelectedItemProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedItemProperty =
+        DependencyProperty.Register(nameof(SelectedItem), typeof(EngineEvent), typeof(EventGridControl),
+            new PropertyMetadata(null, OnSelectedItemChanged));
+
+    private static void OnSelectedItemChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (EventGridControl)d;
+
+        if (!ReferenceEquals(control.DataGrid.SelectedItem, e.NewValue))
+        {
+            control.DataGrid.SelectedItem = e.NewValue;
+        }
+    }
+
     public List<EngineEvent> Events
     {
         get => (List<EngineEvent>)GetValue(EventsProperty);
@@ -66,8 +86,19 @@ public sealed partial class EventGridControl : UserControl
     {
         InitializeComponent();
 
-        DataGrid.LoadingRow   += OnDataGridLoadingRow;
-        DataGrid.UnloadingRow += OnDataGridUnloadingRow;
+        DataGrid.LoadingRow      += OnDataGridLoadingRow;
+        DataGrid.UnloadingRow    += OnDataGridUnloadingRow;
+        DataGrid.SelectionChanged += OnDataGridSelectionChanged;
+    }
+
+    private void OnDataGridSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var selected = DataGrid.SelectedItem as EngineEvent;
+
+        if (!ReferenceEquals(SelectedItem, selected))
+        {
+            SelectedItem = selected;
+        }
     }
 
     private void OnDataGridLoadingRow(object? sender, DataGridRowEventArgs e)

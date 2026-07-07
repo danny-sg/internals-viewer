@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using InternalsViewer.Query;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.UI.App.Models.Query;
 using InternalsViewer.UI.App.Models.Schema;
@@ -14,7 +15,10 @@ using Microsoft.Web.WebView2.Core;
 
 namespace InternalsViewer.UI.App.Controls.SqlEditor;
 
-public sealed record ExecuteSqlPayload(string SqlText, QueryOptions QueryOptions, StatementType StatementType);
+public sealed record ExecuteSqlPayload(string SqlText, 
+                                       QueryOptions QueryOptions, 
+                                       EventOptions EventOptions,
+                                       StatementType StatementType);
 
 public sealed partial class SqlEditorControl : UserControl
 {
@@ -87,6 +91,10 @@ public sealed partial class SqlEditorControl : UserControl
         DependencyProperty.Register(nameof(QueryOptions), typeof(QueryOptions), typeof(SqlEditorControl),
             new PropertyMetadata(new QueryOptions()));
 
+    public static readonly DependencyProperty EventOptionsProperty =
+        DependencyProperty.Register(nameof(EventOptions), typeof(EventOptions), typeof(SqlEditorControl),
+            new PropertyMetadata(new EventOptions()));
+
     public static readonly DependencyProperty IsExecutingProperty =
         DependencyProperty.Register(nameof(IsExecuting), typeof(bool), typeof(SqlEditorControl),
             new PropertyMetadata(false));
@@ -139,6 +147,12 @@ public sealed partial class SqlEditorControl : UserControl
         set => SetValue(QueryOptionsProperty, value);
     }
 
+    public EventOptions EventOptions
+    {
+        get => (EventOptions)GetValue(EventOptionsProperty);
+        set => SetValue(EventOptionsProperty, value);
+    }
+
     public string Theme
     {
         get => (string)GetValue(ThemeProperty);
@@ -187,7 +201,11 @@ public sealed partial class SqlEditorControl : UserControl
     private void HandleExecuteClick()
     {
         var text = string.IsNullOrEmpty(_selectedText) ? SqlText : _selectedText;
-        var payload = new ExecuteSqlPayload(text, QueryOptions, StatementParser.GetStatementType(text));
+
+        var payload = new ExecuteSqlPayload(text, 
+                                            QueryOptions, 
+                                            EventOptions, 
+                                            StatementParser.GetStatementType(text));
 
         if (ExecuteCommand != null && ExecuteCommand.CanExecute(payload))
         {

@@ -134,6 +134,69 @@ public class ExecutionPlanParserTests
     }
 
     // ------------------------------------------------------------------
+    // Key Lookup — a Clustered Index Seek with Lookup="1", renamed as SSMS does
+    // ------------------------------------------------------------------
+
+    private const string KeyLookupXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.0032875">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="Clustered Index Seek"
+                           LogicalOp="Clustered Index Seek"
+                           EstimatedTotalSubtreeCost="0.0032875"
+                           EstimateRows="1"
+                           Parallel="0">
+                      <OutputList>
+                        <ColumnReference Database="[db]" Schema="[dbo]"
+                                         Table="[ClusteredTable]" Column="CreatedDate"/>
+                      </OutputList>
+                      <IndexScan Lookup="1" Ordered="1" ScanDirection="FORWARD"
+                                 ForcedIndex="0" ForceSeek="0" ForceScan="0"
+                                 NoExpandHint="0" Storage="RowStore">
+                        <Object Database="[db]" Schema="[dbo]"
+                                Table="[ClusteredTable]" Index="[PK_ClusteredTable]"
+                                TableReferenceId="-1" IndexKind="Clustered"/>
+                      </IndexScan>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void ClusteredIndexSeek_With_Lookup_Is_Renamed_To_Key_Lookup()
+    {
+        var plan = Parse(KeyLookupXml);
+
+        var node = plan.NodesById[0];
+
+        Assert.Equal("Key Lookup", node.PhysicalOperator);
+        Assert.NotNull(node.ScanInfo);
+        Assert.True(node.ScanInfo!.IsLookup);
+    }
+
+    [Fact]
+    public void ClusteredIndexSeek_Without_Lookup_Keeps_Its_Name()
+    {
+        var plan = Parse(ClusteredIndexSeekXml);
+
+        var node = plan.NodesById[0];
+
+        Assert.Equal("Clustered Index Seek", node.PhysicalOperator);
+        Assert.False(node.ScanInfo!.IsLookup);
+    }
+
+    // ------------------------------------------------------------------
     // Table Scan (no run-time information, no IndexScan child)
     // ------------------------------------------------------------------
 

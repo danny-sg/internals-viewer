@@ -1963,10 +1963,13 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private void BuildActiveRows()
     {
         var hasLog = _sortedEvents.Any(e => e is TransactionLogEvent);
+        var hasLock = _sortedEvents.Any(e => e is LockEvent);
+        var hasWait = _sortedEvents.Any(e => e is WaitEvent);
 
-        _activeRows = hasLog
-            ? AllRows
-            : AllRows.Where(r => r.EventType != typeof(TransactionLogEvent)).ToArray();
+        _activeRows = AllRows.Where(r =>
+            (r.EventType != typeof(TransactionLogEvent) || hasLog) &&
+            (r.EventType != typeof(LockEvent) || hasLock) &&
+            (r.EventType != typeof(WaitEvent) || hasWait)).ToArray();
 
         _rowEventCounts = new int[_activeRows.Length];
 

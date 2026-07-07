@@ -43,4 +43,6 @@ public record EngineEvent
     public virtual string Description => string.Empty;
 
     public PlanNodeIdentifier? PlanNodeIdentifier { get; set; }
+
+    public List<CallStackFrame> Callstack { get; set; } = [];
 }
