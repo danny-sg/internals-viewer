@@ -14,17 +14,13 @@ internal static class ModuleCategoryDictionary
             ["ntdll"] = ModuleCategory.System
         };
 
-    public static ModuleCategory GetCategory(
-        string? module)
+    public static ModuleCategory GetCategory(string? module)
     {
         if (string.IsNullOrWhiteSpace(module))
         {
             return ModuleCategory.Unknown;
         }
 
-        return Categories.TryGetValue(module,
-out var category)
-            ? category
-            : ModuleCategory.Unknown;
+        return Categories.GetValueOrDefault(module, ModuleCategory.Unknown);
     }
 }

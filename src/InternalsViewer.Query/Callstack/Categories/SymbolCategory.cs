@@ -150,7 +150,7 @@ public enum SymbolCategory : byte
 
 }
 
-public static class EnumExtensions
+public static class CategoryEnumExtensions
 {
     public static CategoryAttribute? GetCategoryMetadata(
         this Enum value)

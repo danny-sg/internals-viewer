@@ -1,2 +1,0 @@
-﻿namespace InternalsViewer.Query.Callstack;
-

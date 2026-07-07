@@ -21,5 +21,4 @@ public sealed record ResolvedCallstackFrame
     public CategoryAttribute? ModuleMetadata => ModuleCategory.GetCategoryMetadata();
 
     public CategoryAttribute? SymbolMetadata => SymbolCategory.GetCategoryMetadata();
-
 }

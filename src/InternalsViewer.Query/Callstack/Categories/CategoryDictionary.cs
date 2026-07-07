@@ -75,9 +75,7 @@ internal class SymbolCategoryDictionary
 
         foreach (var entry in Categories)
         {
-            if (symbolClass.StartsWith(
-                    entry.Key,
-                    StringComparison.OrdinalIgnoreCase))
+            if (symbolClass.StartsWith(entry.Key, StringComparison.OrdinalIgnoreCase))
             {
                 return entry.Value;
             }
