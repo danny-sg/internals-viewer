@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Locks;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.TransactionLog;
@@ -330,6 +331,8 @@ internal sealed class EventParser
                 => MapLock(e),
             var n when n.Contains("wait")
                 => MapWait(e),
+            var n when n.Contains("latch")
+                => MapLatch(e),
             "query_thread_profile"
                 => MapQueryThread(e),
             "query_memory_grant_usage"
@@ -520,6 +523,27 @@ internal sealed class EventParser
             DatabaseId = e.GetDatabaseId(),
             WaitType = waitType,
             DurationUs = e.GetLong("duration") ?? 0
+        };
+    }
+
+    private static EngineEvent MapLatch(EventResult e)
+    {
+        var latchMode = (LatchMode)(e.GetInt("latch_mode") ?? 0);
+
+        var fileId = e.GetShort("file_id") ?? 0;
+
+        var pageId = e.GetInt("page_id") ?? 0;
+
+        var latchClass = (LatchClass) (e.GetInt("class") ?? 0);
+
+        return new LatchEvent
+        {
+            Name = e.Name,
+            Timestamp = e.Timestamp,
+            DatabaseId = e.GetDatabaseId(),
+            LatchMode = latchMode,
+            DurationUs = e.GetLong("duration") ?? 0,
+            PageAddress = new PageAddress(fileId, pageId)
         };
     }
 

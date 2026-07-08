@@ -9,4 +9,6 @@ public sealed record EventOptions
     public bool IncludeMemory { get; set; }
 
     public bool IncludeCallStack { get; set; }
+
+    public bool IncludeLatch { get; set; }
 }

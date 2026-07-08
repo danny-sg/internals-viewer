@@ -669,6 +669,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             sessionEvents.AddRange(EventConstants.WaitEvents);
         }
 
+        if (eventOptions.IncludeLatch)
+        {
+            sessionEvents.AddRange(EventConstants.LatchEvents);
+        }
+
         if (eventOptions.IncludeMemory)
         {
             sessionEvents.AddRange(EventConstants.MemoryEvents);

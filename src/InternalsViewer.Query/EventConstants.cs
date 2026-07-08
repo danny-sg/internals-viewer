@@ -41,6 +41,14 @@ internal static class EventConstants
         "sqlserver.memory_grant_updated_by_feedback"
     ];
 
+    public static readonly string[] LatchEvents =
+    [
+        "sqlserver.latch_suspend_begin",
+        "sqlserver.latch_suspend_end",
+        "latch_acquired",
+        "latch_demoted"
+    ];
+
     public static readonly string[] Actions =
     [
         "sqlserver.session_id",
@@ -50,7 +58,6 @@ internal static class EventConstants
         "sqlserver.plan_handle",
         "sqlserver.transaction_id",
         "package0.event_sequence",
-
     ];
 
     public static readonly string[] CallstackActions =

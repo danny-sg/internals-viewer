@@ -304,6 +304,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             SettingsOpen = IsEventSelectionPanelOpen,
             IncludeLock = EventOptions.IncludeLock,
             IncludeWait = EventOptions.IncludeWait,
+            IncludeLatch = EventOptions.IncludeLatch,
             IncludeCallstack = EventOptions.IncludeCallStack
         };
 

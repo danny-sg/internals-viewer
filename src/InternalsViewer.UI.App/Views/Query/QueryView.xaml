@@ -80,7 +80,9 @@
                                                       IsChecked="{x:Bind ViewModel.EventOptions.IncludeLock, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Waits"
                                                       IsChecked="{x:Bind ViewModel.EventOptions.IncludeWait, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Memory"
+                                <ToggleMenuFlyoutItem Text="Latches"
+                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeLatch, Mode=TwoWay}"/>
+                                    <ToggleMenuFlyoutItem Text="Memory"
                                                       IsChecked="{x:Bind ViewModel.EventOptions.IncludeMemory, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Call Stack"
                                                       IsChecked="{x:Bind ViewModel.EventOptions.IncludeCallStack, Mode=TwoWay}"/>

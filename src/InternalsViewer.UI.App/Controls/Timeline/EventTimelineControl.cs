@@ -80,6 +80,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         (typeof(ExecutionOperatorEvent), "Plan", SKColors.LimeGreen, 3f),
         (typeof(IoEvent),   "Read", ColourConstants.IoColour.ToSkColor().WithAlpha(255),   0.5f),
         (typeof(LockEvent), "Lock", ColourConstants.LockColour.ToSkColor().WithAlpha(255), 0.5f),
+        (typeof(LatchEvent), "Latch", ColourConstants.LatchColour.ToSkColor().WithAlpha(255), 0.5f),
         (typeof(WaitEvent), "Wait", ColourConstants.WaitColour.ToSkColor().WithAlpha(255), 0.5f),
     ];
 
@@ -1963,11 +1964,13 @@ public sealed class EventTimelineControl : Grid, IDisposable
     {
         var hasLog = _sortedEvents.Any(e => e is TransactionLogEvent);
         var hasLock = _sortedEvents.Any(e => e is LockEvent);
+        var hasLatch = _sortedEvents.Any(e => e is LatchEvent);
         var hasWait = _sortedEvents.Any(e => e is WaitEvent);
 
         _activeRows = AllRows.Where(r =>
             (r.EventType != typeof(TransactionLogEvent) || hasLog) &&
             (r.EventType != typeof(LockEvent) || hasLock) &&
+            (r.EventType != typeof(LatchEvent) || hasLatch) &&
             (r.EventType != typeof(WaitEvent) || hasWait)).ToArray();
 
         _rowEventCounts = new int[_activeRows.Length];

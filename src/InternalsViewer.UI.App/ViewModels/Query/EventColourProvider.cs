@@ -44,10 +44,10 @@ public sealed class EventColourProvider
             return ColourConstants.LogColour;
         }
 
-        // Locks and waits can be linked to an operator's object (e.g. a SCH_S/Object lock) without
-        // representing that operator's IO, so they keep their own colour rather than being tinted like the
-        // data-access events.
-        if (engineEvent is not LockEvent and not WaitEvent
+        // Locks, latches and waits can be linked to an operator's object (e.g. a SCH_S/Object lock or a
+        // page latch) without representing that operator's IO, so they keep their own colour rather than
+        // being tinted like the data-access events.
+        if (engineEvent is not LockEvent and not WaitEvent and not LatchEvent
             && engineEvent.PlanNodeIdentifier is { } id
             && _ioOperatorNodes.TryGetValue(id, out var colour))
         {
@@ -85,6 +85,7 @@ public sealed class EventColourProvider
         return engineEvent switch
         {
             LockEvent => ColourConstants.LockColour,
+            LatchEvent => ColourConstants.LatchColour,
             WaitEvent => ColourConstants.WaitColour,
             TransactionLogEvent => ColourConstants.LogColour,
             _ => Color.Gray
