@@ -10,6 +10,10 @@
             padding: 0;
             overflow: hidden;
         }
+
+        .tracked-region {
+            background-color: rgba(76, 175, 80, 0.25);
+        }
     </style>
 </head>
 <body>
@@ -17,128 +21,216 @@
 
     <script src="http://monaco.local/vs/loader.js"></script>
     <script>
-    require.config({ paths: { 'vs': 'http://monaco.local/vs' } });
+        require.config({ paths: { 'vs': 'http://monaco.local/vs' } });
 
-    require(['vs/editor/editor.main'], function () {
-        const editor = monaco.editor.create(document.getElementById('container'),
-            {
-                value: '',
-                language: 'sql',
-                theme: 'vs-light',
-                fontSize: 13,
-                fontFamily: "'Cascadia Code', 'Consolas', monospace",
-                fontLigatures: true,
-                minimap: { enabled: false },
-                overviewRulerLanes: 0,
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                wordWrap: 'off',
-                lineNumbers: 'on',
-                suggestOnTriggerCharacters: true,
-                quickSuggestions: true
-            });
+        require(['vs/editor/editor.main'], function () {
+            const editor = monaco.editor.create(document.getElementById('container'),
+                {
+                    value: '',
+                    language: 'sql',
+                    theme: 'vs-light',
+                    fontSize: 13,
+                    fontFamily: "'Cascadia Code', 'Consolas', monospace",
+                    fontLigatures: true,
+                    glyphMargin: true,
+                    minimap: {
+                        enabled: false
+                    },
+                    overviewRulerLanes: 0,
+                    automaticLayout: true,
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'off',
+                    lineNumbers: 'on',
+                    suggestOnTriggerCharacters: true,
+                    quickSuggestions: true,
+                    contextmenu: true
+                });
 
-        editor.onDidChangeModelContent(() => {
-            window.chrome.webview.postMessage(
-                JSON.stringify({ type: 'contentChanged', value: editor.getValue() })
-            );
-        });
+            let trackedRegion = null;
 
-        editor.onDidChangeCursorSelection(() => {
-            const selection = editor.getSelection();
-            const selectedText = selection && !selection.isEmpty()
-                ? editor.getModel().getValueInRange(selection)
-                : '';
-            window.chrome.webview.postMessage(
-                JSON.stringify({ type: 'selectionChanged', value: selectedText })
-            );
-        });
+            const decorations = editor.createDecorationsCollection();
 
-        // F5 runs the query. Captured at the window (capture phase) so it fires wherever focus is in the
-        // page and preventDefault stops the WebView from reloading; the host handles the 'execute' message.
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'F5') {
-                e.preventDefault();
-                e.stopPropagation();
-                window.chrome.webview.postMessage(JSON.stringify({ type: 'execute' }));
-            }
-        }, true);
+            const hasSelection =
+                editor.createContextKey(
+                    "hasSelection",
+                    false
+                );
 
-        window.setEditorValue = (val) => {
-            if (editor.getValue() !== val) {
-                editor.setValue(val);
-            }
-        };
+            const isTracking =
+                editor.createContextKey(
+                    "isTracking",
+                    false
+                );
 
-        let completionProvider; 
+            editor.addAction({
+                id: "track-region",
+                label: "Trace query selection",
+                precondition: "hasSelection",
+                contextMenuGroupId: "navigation",
 
-        window.setSqlSchema = (data) => {
-            if (completionProvider) {
-                completionProvider.dispose();
-            }
+                run: () => {
+                    const model = editor.getModel();
+                    const selection = editor.getSelection();
 
-            completionProvider = monaco.languages.registerCompletionItemProvider('sql', {
-                triggerCharacters: ['.'],
-
-                provideCompletionItems: function (model, position) {
-                    const word = model.getWordUntilPosition(position);
-
-                    const range = {
-                        startLineNumber: position.lineNumber,
-                        endLineNumber: position.lineNumber,
-                        startColumn: word.startColumn,
-                        endColumn: word.endColumn
-                    };
-
-                    const textUntilPosition = model.getValueInRange({
-                        startLineNumber: position.lineNumber,
-                        startColumn: 1,
-                        endLineNumber: position.lineNumber,
-                        endColumn: word.startColumn
-                    });
-
-                    const suggestions = [];
-
-                    // Two-part match: schema.table.
-                    const twoPartMatch = textUntilPosition.match(/([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\.$/);
-
-                    if (twoPartMatch) {
-                        const schemaPrefix = twoPartMatch[1].toLowerCase();
-                        const tablePrefix = twoPartMatch[2].toLowerCase();
-
-                        const columns = data.columns.filter(c =>
-                            c.schema.toLowerCase() === schemaPrefix &&
-                            c.table.toLowerCase() === tablePrefix
-                        );
-
-                        columns.forEach(column => {
-                            suggestions.push({
-                                label: column.name,
-                                kind: monaco.languages.CompletionItemKind.Field,
-                                insertText: column.name,
-                                detail: `Column (${twoPartMatch[1]}.${twoPartMatch[2]})`,
-                                range: range
-                            });
-                        });
-
-                        return { suggestions: suggestions };
+                    if (!selection || selection.isEmpty()) {
+                        return;
                     }
 
-                    // One-part match: schema. or table.
-                    const onePartMatch = textUntilPosition.match(/([a-zA-Z0-9_]+)\.$/);
+                    const startChar =
+                        model.getOffsetAt({
+                            lineNumber: selection.startLineNumber,
+                            column: selection.startColumn
+                        });
 
-                    if (onePartMatch) {
-                        const prefix = onePartMatch[1].toLowerCase();
+                    const endChar =
+                        model.getOffsetAt({
+                            lineNumber: selection.endLineNumber,
+                            column: selection.endColumn
+                        });
 
-                        const schemaTables = data.tables.filter(t => t.schema.toLowerCase() === prefix);
+                    trackedRegion = {
+                        range: selection,
+                        text: editor.getModel().getValueInRange(selection)
+                    };
 
-                        if (schemaTables.length > 0) {
-                            schemaTables.forEach(table => {
+                    isTracking.set(true);
+
+                    renderTrackedRegion();
+
+                    window.chrome.webview.postMessage(
+                        JSON.stringify({ type: 'trackedSelectionChanged', value: { start: startChar, end: endChar } })
+                    );
+                }
+            });
+
+            editor.addAction({
+                id: "clear-tracked-region",
+                label: "Clear query selection",
+                precondition: "isTracking",
+                contextMenuGroupId: "navigation",
+
+                run: () => {
+                    trackedRegion = null;
+
+                    isTracking.set(false);
+
+                    decorations.clear();
+
+                    renderTrackedRegion();
+
+                    window.chrome.webview.postMessage(
+                        JSON.stringify({ type: 'trackedSelectionChanged', value: null })
+                    );
+                }
+            });
+
+            editor.onDidChangeModelContent(() => {
+                window.chrome.webview.postMessage(
+                    JSON.stringify({ type: 'contentChanged', value: editor.getValue() })
+                );
+
+                if (trackedRegion) {
+                    const trackedRange = trackedRegion.range;
+
+                    let touched = false;
+
+                    for (const change of e.changes) {
+                        const changeRange = change.range;
+
+                        if (trackedRange.intersectRanges(changeRange)) {
+                            touched = true;
+                            break;
+                        }
+                    }
+
+                    if (touched) {
+                        trackedRegion = null;
+                        isTracking.set(false);
+
+                        decorations.clear();
+                    }
+                }
+            });
+
+            editor.onDidChangeCursorSelection(() => {
+                const selection = editor.getSelection();
+                const selectedText = selection && !selection.isEmpty()
+                    ? editor.getModel().getValueInRange(selection)
+                    : '';
+
+                hasSelection.set(
+                    !!selection &&
+                    !selection.isEmpty()
+                );
+
+                window.chrome.webview.postMessage(
+                    JSON.stringify({ type: 'selectionChanged', value: selectedText })
+                );
+            });
+
+            // F5 runs the query. Captured at the window (capture phase) so it fires wherever focus is in the
+            // page and preventDefault stops the WebView from reloading; the host handles the 'execute' message.
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'F5') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.chrome.webview.postMessage(JSON.stringify({ type: 'execute' }));
+                }
+            }, true);
+
+            window.setEditorValue = (val) => {
+                if (editor.getValue() !== val) {
+                    editor.setValue(val);
+                }
+            };
+
+            let completionProvider;
+
+            window.setSqlSchema = (data) => {
+                if (completionProvider) {
+                    completionProvider.dispose();
+                }
+
+                completionProvider = monaco.languages.registerCompletionItemProvider('sql', {
+                    triggerCharacters: ['.'],
+
+                    provideCompletionItems: function (model, position) {
+                        const word = model.getWordUntilPosition(position);
+
+                        const range = {
+                            startLineNumber: position.lineNumber,
+                            endLineNumber: position.lineNumber,
+                            startColumn: word.startColumn,
+                            endColumn: word.endColumn
+                        };
+
+                        const textUntilPosition = model.getValueInRange({
+                            startLineNumber: position.lineNumber,
+                            startColumn: 1,
+                            endLineNumber: position.lineNumber,
+                            endColumn: word.startColumn
+                        });
+
+                        const suggestions = [];
+
+                        // Two-part match: schema.table.
+                        const twoPartMatch = textUntilPosition.match(/([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\.$/);
+
+                        if (twoPartMatch) {
+                            const schemaPrefix = twoPartMatch[1].toLowerCase();
+                            const tablePrefix = twoPartMatch[2].toLowerCase();
+
+                            const columns = data.columns.filter(c =>
+                                c.schema.toLowerCase() === schemaPrefix &&
+                                c.table.toLowerCase() === tablePrefix
+                            );
+
+                            columns.forEach(column => {
                                 suggestions.push({
-                                    label: table.name,
-                                    kind: monaco.languages.CompletionItemKind.Class,
-                                    insertText: table.name,
-                                    detail: `Table (${table.schema})`,
+                                    label: column.name,
+                                    kind: monaco.languages.CompletionItemKind.Field,
+                                    insertText: column.name,
+                                    detail: `Column (${twoPartMatch[1]}.${twoPartMatch[2]})`,
                                     range: range
                                 });
                             });
@@ -146,54 +238,96 @@
                             return { suggestions: suggestions };
                         }
 
-                        const tableColumns = data.columns.filter(c => c.table.toLowerCase() === prefix);
+                        // One-part match: schema. or table.
+                        const onePartMatch = textUntilPosition.match(/([a-zA-Z0-9_]+)\.$/);
 
-                        tableColumns.forEach(column => {
-                            suggestions.push({
-                                label: column.name,
-                                kind: monaco.languages.CompletionItemKind.Field,
-                                insertText: column.name,
-                                detail: `Column`,
-                                range: range
+                        if (onePartMatch) {
+                            const prefix = onePartMatch[1].toLowerCase();
+
+                            const schemaTables = data.tables.filter(t => t.schema.toLowerCase() === prefix);
+
+                            if (schemaTables.length > 0) {
+                                schemaTables.forEach(table => {
+                                    suggestions.push({
+                                        label: table.name,
+                                        kind: monaco.languages.CompletionItemKind.Class,
+                                        insertText: table.name,
+                                        detail: `Table (${table.schema})`,
+                                        range: range
+                                    });
+                                });
+
+                                return { suggestions: suggestions };
+                            }
+
+                            const tableColumns = data.columns.filter(c => c.table.toLowerCase() === prefix);
+
+                            tableColumns.forEach(column => {
+                                suggestions.push({
+                                    label: column.name,
+                                    kind: monaco.languages.CompletionItemKind.Field,
+                                    insertText: column.name,
+                                    detail: `Column`,
+                                    range: range
+                                });
                             });
-                        });
+
+                            return { suggestions: suggestions };
+                        }
+
+                        // No dot context — suggest schemas and tables
+                        if (data.schemas) {
+                            data.schemas.forEach(schema => {
+                                suggestions.push({
+                                    label: schema.name,
+                                    kind: monaco.languages.CompletionItemKind.Module,
+                                    insertText: schema.name,
+                                    detail: 'Schema',
+                                    range: range
+                                });
+                            });
+                        }
+
+                        if (data.tables) {
+                            data.tables.forEach(table => {
+                                suggestions.push({
+                                    label: table.name,
+                                    kind: monaco.languages.CompletionItemKind.Class,
+                                    insertText: table.name,
+                                    detail: table.schema ? `Table (${table.schema})` : 'Table',
+                                    range: range
+                                });
+                            });
+                        }
 
                         return { suggestions: suggestions };
                     }
+                });
+            };
 
-                    // No dot context — suggest schemas and tables
-                    if (data.schemas) {
-                        data.schemas.forEach(schema => {
-                            suggestions.push({
-                                label: schema.name,
-                                kind: monaco.languages.CompletionItemKind.Module,
-                                insertText: schema.name,
-                                detail: 'Schema',
-                                range: range
-                            });
-                        });
-                    }
-
-                    if (data.tables) {
-                        data.tables.forEach(table => {
-                            suggestions.push({
-                                label: table.name,
-                                kind: monaco.languages.CompletionItemKind.Class,
-                                insertText: table.name,
-                                detail: table.schema ? `Table (${table.schema})` : 'Table',
-                                range: range
-                            });
-                        });
-                    }
-
-                    return { suggestions: suggestions };
+            function renderTrackedRegion() {
+                if (!trackedRegion) {
+                    decorations.clear();
+                    return;
                 }
-            });
-        };
 
-        window._editorReady = true;
-        window.chrome.webview.postMessage(JSON.stringify({ type: 'ready' }));
-    });
+                decorations.set([
+                    {
+                        range: trackedRegion.range,
+                        options: {
+                            className: "tracked-region",
+                            hoverMessage: {
+                                value: "Selected query to trace"
+                            },
+                        }
+                    }
+                ]);
+            }
+
+
+            window._editorReady = true;
+            window.chrome.webview.postMessage(JSON.stringify({ type: 'ready' }));
+        });
     </script>
 </body>
 </html>

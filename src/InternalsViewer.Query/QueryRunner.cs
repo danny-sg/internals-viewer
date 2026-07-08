@@ -1,15 +1,31 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.TransactionLog;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query;
+
+public sealed record QueryOptions
+{
+    public bool ClearBufferPool { get; set; } = true;
+
+    public bool DisableReadAhead { get; set; } = true;
+}
+
+public sealed record ExecuteSqlPayload(string SqlText,
+                                       QueryOptions QueryOptions,
+                                       StatementType StatementType,
+                                       TrackedSelectionRange? TrackedSelection);
+
+public sealed record TrackedSelectionRange(int Start, int End);
 
 public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                 EventReader eventReader,
@@ -33,8 +49,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         "sqlserver.query_thread_profile",
         "sqlserver.physical_page_read",
         "sqlserver.physical_page_write",
-        "sqlserver.query_post_execution_showplan",
-        "sqlserver.query_memory_grant_usage"
+        "sqlserver.query_post_execution_showplan"
     ];
 
     private readonly string[] _lockEvents =
@@ -51,6 +66,14 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     private readonly string[] _logEvents =
     [
         "sqlserver.transaction_log"
+    ];
+
+    private readonly string[] _memoryEvents =
+    [
+        "sqlserver.query_memory_grant_usage",
+        "sqlserver.hash_spill_details",
+        "sqlserver.sort_warning",
+        "sqlserver.memory_grant_updated_by_feedback"
     ];
 
     private readonly string[] _actions =
@@ -70,110 +93,24 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         "package0.callstack"
     ];
 
-    public async Task<QueryResult> TraceQuery(string sqlText,
-                                              string connectionString,
-                                              bool clearBufferPool,
-                                              bool disableReadAhead,
-                                              bool isModification,
-                                              EventOptions eventOptions,
-                                              string symbolsPath,
-                                              IProgress<string>? progress,
-                                              CancellationToken cancellationToken)
-    {
-        long rowCount;
-        var sessionId = $"QueryReplay_{Guid.NewGuid():N}";
-
-        List<EngineEvent>? events;
-        List<ExecutionPlan>? executionPlans;
-
-        Func<EngineEvent, bool>? endMarker = null;
-
-        if (isModification)
-        {
-            endMarker = e =>
-                e is BatchStartEvent batchStart &&
-                batchStart.SqlText.Contains($"ROLLBACK TRANSACTION iv_{sessionId[..28]}");
-        }
-
-        try
-        {
-            (var filePath, rowCount, var logRecords) = await RunQueryWithEventSession(sessionId,
-                                                                                      sqlText,
-                                                                                      connectionString,
-                                                                                      clearBufferPool,
-                                                                                      disableReadAhead,
-                                                                                      isModification,
-                                                                                      eventOptions,
-                                                                                      progress,
-                                                                                      cancellationToken);
-
-            (events, executionPlans) = await EventReader.GetEvents(filePath,
-                                                                   connectionString,
-                                                                   null,
-                                                                   cancellationToken,
-                                                                   endMarker);
-            if (eventOptions.IncludeCallstack)
-            {
-                await CallstackProcessor.Process(events, symbolsPath, progress, cancellationToken);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            progress?.Report("Query cancelled");
-
-            return new QueryResult
-            {
-                IsSuccess = false,
-                Message = "Query cancelled",
-                SessionId = sessionId
-            };
-        }
-        catch (SqlException ex)
-        {
-            var message = $"Msg: {ex.Number}, Level: {ex.Class}, State: {ex.State}, Line: {ex.LineNumber}"
-                          + $"{Environment.NewLine}{ex.Message}";
-
-            return new QueryResult
-            {
-                IsSuccess = false,
-                Message = message,
-                SessionId = sessionId
-            };
-        }
-        catch (Exception ex)
-        {
-            var message = "Non-Database Error:"
-                          + $"{Environment.NewLine}{ex.InnerException?.Message ?? ex.Message}"
-                          + $"{Environment.NewLine}{ex.StackTrace}";
-
-            return new QueryResult
-            {
-                IsSuccess = false,
-                Message = message,
-                SessionId = sessionId
-            };
-        }
-
-        return new QueryResult
-        {
-            IsSuccess = true,
-            EngineEvents = events,
-            ExecutionPlans = executionPlans,
-            SessionId = sessionId,
-            RowCount = rowCount
-        };
-    }
-
-    public async Task<QueryResult> TraceQuery(string sqlText,
+    public async Task<QueryResult> TraceQuery(ExecuteSqlPayload payload,
                                               DatabaseSource database,
-                                              bool clearBufferPool,
-                                              bool disableReadAhead,
-                                              bool isModification,
                                               EventOptions eventOptions,
                                               string symbolsPath,
                                               IProgress<string>? progress,
                                               CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(payload.SqlText))
+        {
+            return new QueryResult
+            {
+                IsSuccess = false,
+                RowCount = 0,
+                SessionId = "None",
+                Message = "Empty query text"
+            };
+        }
+
         var connectionString = database.Connection.GetConnectionString();
 
         var sessionId = $"QueryReplay_{Guid.NewGuid():N}";
@@ -185,21 +122,43 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         Func<EngineEvent, bool>? endMarker = null;
 
-        if (isModification)
+        var isReplayMode = false;
+
+        var (preCommands, commands, postCommands) = PayloadParser.Parse(payload);
+
+        if (commands.Length != 1
+            || (payload.TrackedSelection == null
+                && payload.StatementType is StatementType.MultiStatementSelect
+                                            or StatementType.MultiStatementModification))
+        {
+            return new QueryResult
+            {
+                IsSuccess = false,
+                RowCount = 0,
+                SessionId = "None",
+                Message = "Multi-statement queries cannot be traced. Select a single statement then right click and " +
+                          "choose 'Trace query selection'."
+            };
+        }
+
+        if (payload.StatementType == StatementType.Modification)
         {
             endMarker = e =>
                 e is BatchStartEvent batchStart &&
                 batchStart.SqlText.Contains($"ROLLBACK TRANSACTION iv_{sessionId[..28]}");
+
+            isReplayMode = true;
         }
 
         try
         {
             (var filePath, rowCount, var logRecords) = await RunQueryWithEventSession(sessionId,
-                                                                                      sqlText,
+                                                                                      preCommands,
+                                                                                      commands[0],
+                                                                                      postCommands,
                                                                                       connectionString,
-                                                                                      clearBufferPool,
-                                                                                      disableReadAhead,
-                                                                                      isModification,
+                                                                                      isReplayMode,
+                                                                                      payload.QueryOptions,
                                                                                       eventOptions,
                                                                                       progress,
                                                                                       cancellationToken);
@@ -214,7 +173,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             progress?.Report($"{events.Count} event(s) retrieved in {Stopwatch.GetElapsedTime(eventsStart)}");
 
-            if (eventOptions.IncludeCallstack)
+            if (eventOptions.IncludeCallStack)
             {
                 progress?.Report($"Processing callstack frames");
 
@@ -311,11 +270,12 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
     private async Task<(string, long, List<LogRecord> logRecords)>
         RunQueryWithEventSession(string sessionName,
-                                 string sqlText,
+                                 string[] preCommandSql,
+                                 string commandSql,
+                                 string[] postCommandSql,
                                  string connectionString,
-                                 bool clearBufferPool,
-                                 bool disableReadAhead,
                                  bool isReplayMode,
+                                 QueryOptions queryOptions,
                                  EventOptions eventOptions,
                                  IProgress<string>? progress,
                                  CancellationToken cancellationToken)
@@ -326,33 +286,47 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         await connection.OpenAsync(cancellationToken);
 
-        var logPath = (string?)await new SqlCommand(GetFileLocationSql(), connection)
-                                            .ExecuteScalarAsync(cancellationToken);
+        var logPath = await ExecuteScalar<string>(GetFileLocationSql(), connection, cancellationToken);
 
         var filePath = $"{logPath}\\{sessionName}.xel";
 
         List<LogRecord> logRecords = [];
         string? startLsn = null;
 
-        var spid = await ExecuteScalar<short>("SELECT @@SPID", connection);
+        if (preCommandSql.Length > 0)
+        {
+            progress?.Report("Pre-Trace: ");
+
+            foreach (var preCommand in preCommandSql)
+            {
+                var itemRowCount = await ExecuteSql(preCommand, connection, cancellationToken);
+
+                if (itemRowCount > -1)
+                {
+                    progress?.Report($"  {itemRowCount} row(s) affected");
+                }
+            }
+        }
+
+        var spid = await ExecuteScalar<short>("SELECT @@SPID", connection, cancellationToken);
 
         var createSessionSql = GetCreateSessionSql(sessionName, filePath, spid, isReplayMode, eventOptions);
 
         await ExecuteSql(createSessionSql, connection, cancellationToken);
 
-        if (clearBufferPool | isReplayMode)
+        if (queryOptions.ClearBufferPool | isReplayMode)
         {
             // Flush dirty pages either for DROPCLEANBUFFERS or to write the transaction log to disk 
             await ExecuteSql("CHECKPOINT", connection, cancellationToken);
         }
 
-        if (clearBufferPool)
+        if (queryOptions.ClearBufferPool)
         {
             // Removes all pages from the buffer pool so pages will come from I/O rather than the cache
             await ExecuteSql("DBCC DROPCLEANBUFFERS", connection, cancellationToken);
         }
 
-        if (disableReadAhead)
+        if (queryOptions.DisableReadAhead)
         {
             // Disable pre-fetching page scans for the session
             await ExecuteSql("DBCC TRACEON(652)", connection, cancellationToken);
@@ -361,7 +335,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         if (isReplayMode)
         {
             startLsn = await ExecuteScalar<string?>(
-                "SELECT MAX([Current LSN]) FROM fn_dblog(NULL, NULL);", connection);
+                "SELECT MAX([Current LSN]) FROM fn_dblog(NULL, NULL);", connection, cancellationToken);
 
             progress?.Report($"Start LSN: {startLsn}");
         }
@@ -378,13 +352,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 await ExecuteSql($"BEGIN TRANSACTION iv_{sessionName[..28]};", connection, cancellationToken);
             }
 
-            await Task.Delay(100, cancellationToken);
+            await Task.Delay(250, cancellationToken);
 
-            Logger.LogDebug("SQL: {Sql}", sqlText);
+            Logger.LogDebug("SQL: {Sql}", commandSql);
 
             var queryStart = Stopwatch.GetTimestamp();
 
-            await using var reader = await new SqlCommand(sqlText, connection).ExecuteReaderAsync(cancellationToken);
+            var command = new SqlCommand(commandSql, connection);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             while (await reader.ReadAsync(cancellationToken))
             {
@@ -429,21 +405,38 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             }
         }
 
+        if (postCommandSql.Length > 0)
+        {
+            progress?.Report("Post-Trace: ");
+
+            foreach (var postCommand in postCommandSql)
+            {
+                var itemRowCount = await ExecuteSql(postCommand, connection, cancellationToken);
+
+                if (itemRowCount > -1)
+                {
+                    progress?.Report($"  {itemRowCount} row(s) affected");
+                }
+            }
+        }
+
         return (filePath, rowCount, logRecords);
     }
 
-    private static async Task<T?> ExecuteScalar<T>(string sql, SqlConnection connection)
+    private static async Task<T?> ExecuteScalar<T>(string sql,
+                                                   SqlConnection connection,
+                                                   CancellationToken cancellationToken)
     {
-        var result = await new SqlCommand(sql, connection).ExecuteScalarAsync();
+        var result = await new SqlCommand(sql, connection).ExecuteScalarAsync(cancellationToken);
 
         return (T?)result;
     }
 
-    private async Task ExecuteSql(string sql, SqlConnection connection, CancellationToken cancellationToken)
+    private async Task<int> ExecuteSql(string sql, SqlConnection connection, CancellationToken cancellationToken)
     {
         Logger.LogDebug("SQL: {Sql}", sql);
 
-        await new SqlCommand(sql, connection).ExecuteNonQueryAsync(cancellationToken);
+        return await new SqlCommand(sql, connection).ExecuteNonQueryAsync(cancellationToken);
     }
 
     private string GetFileLocationSql()
@@ -496,7 +489,12 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             sessionEvents.AddRange(_waitEvents);
         }
 
-        if (eventOptions.IncludeCallstack)
+        if (eventOptions.IncludeMemory)
+        {
+            sessionEvents.AddRange(_memoryEvents);
+        }
+
+        if (eventOptions.IncludeCallStack)
         {
             sessionActions.AddRange(_callstackActions);
         }
@@ -551,4 +549,40 @@ ADD TARGET package0.event_file
 
         return stringBuilder.ToString();
     }
+}
+
+internal static partial class PayloadParser
+{
+    public static (string[] PreCommands, string[] Commands, string[] PostCommands) Parse(ExecuteSqlPayload payload)
+    {
+        if (payload.TrackedSelection == null)
+        {
+            return ([], SplitCommands(payload.SqlText), []);
+        }
+
+        var length = payload.SqlText.Length;
+        
+        var start = Math.Clamp(payload.TrackedSelection.Start, 0, length);
+        
+        var end = Math.Clamp(payload.TrackedSelection.End, start, length);
+
+        var preCommands = payload.SqlText[..start];
+        var commands = payload.SqlText[start..end];
+        var postCommands = payload.SqlText[end..];
+
+        return (SplitCommands(preCommands), SplitCommands(commands), SplitCommands(postCommands));
+    }
+
+    private static string[] SplitCommands(string sql)
+    {
+        var result = GoRegEx().Split(sql)
+                              .Where(value => !string.IsNullOrWhiteSpace(value))
+                              .ToArray();
+
+        return result;
+    }
+
+
+    [GeneratedRegex(@"^\s*GO\s*$", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex GoRegEx();
 }

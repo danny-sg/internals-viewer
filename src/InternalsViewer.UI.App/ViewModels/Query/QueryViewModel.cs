@@ -244,7 +244,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         DispatcherQueue.TryEnqueue(() =>
         {
-            Dock.Activate(EventsDocument);
             EventNavigationRequested?.Invoke(engineEvent);
         });
     }
@@ -298,7 +297,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             SettingsOpen = IsEventSelectionPanelOpen,
             IncludeLock = EventOptions.IncludeLock,
             IncludeWait = EventOptions.IncludeWait,
-            IncludeCallstack = EventOptions.IncludeCallstack
+            IncludeCallstack = EventOptions.IncludeCallStack
         };
 
         await _settingsService.SaveSettingAsync(LayoutSettingKey, dto);
@@ -323,7 +322,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             IncludeLock = dto.IncludeLock,
             IncludeWait = dto.IncludeWait,
-            IncludeCallstack = dto.IncludeCallstack
+            IncludeCallStack = dto.IncludeCallstack
         };
 
         Dock.SetRoot(root);
@@ -740,7 +739,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task ExecuteQuery(ExecuteSqlPayload payload, CancellationToken cancellationToken)
     {
-        EventOptions = payload.EventOptions;
         ScheduleSaveLayout();
 
         ClearResults();
@@ -753,12 +751,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var (results, layers, colours) =
             await Task.Run(async () =>
             {
-                var queryResult = await QueryRunner.TraceQuery(payload.SqlText,
+                var queryResult = await QueryRunner.TraceQuery(payload,
                                                                Database,
-                                                               payload.QueryOptions.ClearBufferPool,
-                                                               payload.QueryOptions.DisableReadAhead,
-                                                               payload.StatementType == StatementType.Modification,
-                                                               payload.EventOptions,
+                                                               EventOptions,
                                                                _settingsViewModel.SymbolsPath,
                                                                progress,
                                                                cancellationToken);

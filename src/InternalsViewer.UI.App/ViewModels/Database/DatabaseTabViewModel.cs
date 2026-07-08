@@ -164,8 +164,6 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         {
             var bufferPoolPages = await BufferPoolInfoProvider.GetBufferPoolEntries(Database);
 
-            // RefreshBufferPool is also called from Refresh's Task.Run, so this continuation can be on a
-            // background thread; marshal the bound-collection updates onto the UI thread.
             DispatcherQueue.TryEnqueue(() =>
             {
                 var layer = AllocationLayers.FirstOrDefault(l => l.LayerName == "Buffer Pool");

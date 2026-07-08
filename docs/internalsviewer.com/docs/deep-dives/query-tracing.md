@@ -29,10 +29,10 @@ When you press Execute, Internals Viewer runs a sequence of steps on its connect
 | `query_thread_profile` | Per-operator runtime statistics - when each plan operator was active, for the Plan lane |
 | `query_post_execution_showplan` | The actual execution plan XML - the Execution Plan view |
 | `page_split` | Page splits caused by the query |
-| `query_memory_grant_usage` | Memory granted and used by the query |
+| `query_memory_grant_usage` / `hash_spill_details` / `sort_warning` | Memory granted and used by the query, and spills to tempdb |
 | `log_flush_complete` / `file_write_completed` | Transaction log and data file write activity |
 
-Each event also carries actions - `sql_text`, `session_id`, `database_id`, `plan_handle`, and `transaction_id` - used to tie events to the right statement and plan. The Events dropdown tailors the session: the lock and wait events can be left out, and enabling _Callstack_ adds the `package0.callstack` action, attaching the raw SQL Server call stack to every event.
+Each event also carries actions - `sql_text`, `session_id`, `database_id`, `plan_handle`, and `transaction_id` - used to tie events to the right statement and plan. The Events menu tailors the session: the page I/O events are always captured, the lock, wait, and memory events can be toggled, and enabling _Call Stack_ adds the `package0.callstack` action, attaching the raw SQL Server call stack to every event.
 
 ## Building the timeline
 

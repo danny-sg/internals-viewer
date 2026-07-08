@@ -288,8 +288,8 @@ internal sealed class EventParser
             // Require an attribute boundary before the name and `="` after it, so "name" matches the attribute and
             // not a substring of another (e.g. a value).
             if (at > 0 && char.IsWhiteSpace(tag[at - 1])
-                && after + 1 < tag.Length 
-                && tag[after] == '=' 
+                && after + 1 < tag.Length
+                && tag[after] == '='
                 && tag[after + 1] == '"')
             {
                 var valueStart = after + 2;
@@ -324,17 +324,23 @@ internal sealed class EventParser
         {
             var n when n.Contains("file_") || n.Contains("physical_page")
                 => MapIoEvent(e),
-            var n when n.Contains("page") 
+            var n when n.Contains("page")
                 => MapPageEvent(e),
-            var n when n.Contains("lock_") 
+            var n when n.Contains("lock_")
                 => MapLock(e),
-            var n when n.Contains("wait") 
+            var n when n.Contains("wait")
                 => MapWait(e),
-            "query_thread_profile" 
+            "query_thread_profile"
                 => MapQueryThread(e),
-            "query_memory_grant_usage" 
+            "query_memory_grant_usage"
                 => MapMemory(e),
-            "transaction_log" 
+            "hash_spill_details"
+                => MapMemory(e),
+            "memory_grant_updated_by_feedback"
+                => MapMemory(e),
+            "sort_warning"
+                => MapMemory(e),
+            "transaction_log"
                 => MapTransactionLogEvent(e),
             "sql_batch_starting"
                 => MapBatchStart(e),
@@ -394,7 +400,7 @@ internal sealed class EventParser
             var allocationUnit = database.AllocationUnits.TryGetValue(logEvent.AllocationUnitId, out var value)
                                  ? value
                                  : AllocationUnit.Unknown;
-     
+
             engineEvent.ObjectId = allocationUnit?.ObjectId ?? 0;
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? string.Empty;
 
@@ -475,18 +481,32 @@ internal sealed class EventParser
                 return null;
         }
     }
-    
+
     private static EngineEvent MapMemory(EventResult e)
     {
-        return new MemoryEvent
+        switch (e.Name)
         {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            UsedMemoryKb = e.GetLong("used_memory_kb") ?? 0,
-            GrantedMemoryKb = e.GetLong("granted_memory_kb") ?? 0,
-            DurationUs = e.GetLong("duration") ?? 0
-        };
+            case "memory_grant_updated_by_feedback":
+                return new MemoryEvent
+                {
+                    Name = e.Name,
+                    Timestamp = e.Timestamp,
+                    DatabaseId = e.GetDatabaseId(),
+                    AdditionalMemoryBeforeKb = e.GetLong("ideal_additional_memory_before_kb") ?? 0,
+                    AdditionalMemoryAfterKb = e.GetLong("ideal_additional_memory_after_kb") ?? 0,
+                    DurationUs = e.GetLong("duration") ?? 0
+                };
+            default:
+                return new MemoryEvent
+                {
+                    Name = e.Name,
+                    Timestamp = e.Timestamp,
+                    DatabaseId = e.GetDatabaseId(),
+                    UsedMemoryKb = e.GetLong("used_memory_kb") ?? 0,
+                    GrantedMemoryKb = e.GetLong("granted_memory_kb") ?? 0,
+                    DurationUs = e.GetLong("duration") ?? 0
+                };
+        }
     }
 
     private static EngineEvent MapWait(EventResult e)

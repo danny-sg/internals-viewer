@@ -10,7 +10,7 @@ Each block represents a page, the 8 KB unit that the storage engine uses to mana
 
 Allocations are managed with individual pages and extents.
 
-The Allocation Map colour codes objects in the database. 
+The Allocation Map colour codes objects in the database.
 
 ::: tip
 Clicking on a page will open it in the [Page Viewer](/docs/introduction/page-viewer)
@@ -22,9 +22,11 @@ The Allocation Map can be zoomed in and out with **Ctrl + mouse wheel**
 The Allocation Map is a render of the IAM (Index Allocation Map) chains for all objects.
 
 Internals Viewer decodes and reads the internal tables and follows the IAM chains for each object, using the First IAM then following via the Next Page address.
+
+The `In-row data` allocation unit type is used for the map.
 :::
 
-### Tooltip 
+### Tooltip
 
 Toggling the Tooltip button will show a tooltip when hovering over a database page. It will show the Page Id, Extent Id, the PFS status (see below) of the page, and the object the page has been allocated to.
 
@@ -32,7 +34,7 @@ Toggling the Tooltip button will show a tooltip when hovering over a database pa
 
 ### PFS (Page Free Space)
 
-The PFS button will toggle an overlay of the PFS information on the Allocation Map. 
+The PFS button will toggle an overlay of the PFS information on the Allocation Map.
 
 PFS, or Page Free Space pages are a way that SQL Server tracks allocations. The PFS stores information about each page in the database, including:
 
@@ -66,10 +68,10 @@ The Allocation Info includes the Object Name, Table Name, Index Type (Clustered/
 
 ### Entry Points
 
-The entry points give information on how to find where a table or index is physically stored. 
+The entry points give information on how to find where a table or index is physically stored.
 
-| Index Type    | Root Page      |  First Page | First IAM
-| ------------- | -------------- | ----------- | --------- |
+| Index Type    | Root Page          | First Page         | First IAM          |
+| ------------- | ------------------ | ------------------ | ------------------ |
 | Clustered     | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Non-Clustered | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Heap          | :x:                | :x:                | :white_check_mark: |
@@ -116,4 +118,5 @@ SELECT *
       ,sys.fn_PhysLocFormatter(first_iam_page) AS decoded_first_iam_page
 FROM   sys.system_internals_allocation_units
 ```
+
 :::

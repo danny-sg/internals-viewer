@@ -9,11 +9,11 @@ namespace InternalsViewer.UI.App.Helpers.Converters;
 /// <summary>Converts a CSS-style hex color string (e.g. "#4472C4") to a SolidColorBrush.</summary>
 public sealed class HexColorToBrushConverter : IValueConverter
 {
-    public object? Convert(object? value, Type targetType, object parameter, string language)
+    public object Convert(object? value, Type targetType, object parameter, string language)
     {
         if (value is not string hex || string.IsNullOrWhiteSpace(hex))
         {
-            return null;
+            return new SolidColorBrush(Colors.Transparent);
         }
 
         hex = hex.TrimStart('#');
@@ -29,7 +29,7 @@ public sealed class HexColorToBrushConverter : IValueConverter
             return new SolidColorBrush(color);
         }
 
-        return null;
+        return new SolidColorBrush(Colors.Transparent);
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>

@@ -6,4 +6,6 @@ namespace InternalsViewer.UI.App.Messages;
 public sealed class ExceptionMessage(Exception exception) : AsyncRequestMessage<bool>
 {
     public Exception Exception { get; } = exception;
+
+    public string? Message { get; set; }
 }

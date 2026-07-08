@@ -1,24 +1,20 @@
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Query;
+using InternalsViewer.Query.Parsing;
+using InternalsViewer.UI.App.Messages;
+using InternalsViewer.UI.App.Models.Schema;
+using Microsoft.UI;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.Web.WebView2.Core;
 using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using InternalsViewer.Query;
-using InternalsViewer.Query.Parsing;
-using InternalsViewer.UI.App.Models.Query;
-using InternalsViewer.UI.App.Models.Schema;
-using Microsoft.UI;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.Web.WebView2.Core;
 
 namespace InternalsViewer.UI.App.Controls.SqlEditor;
-
-public sealed record ExecuteSqlPayload(string SqlText, 
-                                       QueryOptions QueryOptions, 
-                                       EventOptions EventOptions,
-                                       StatementType StatementType);
 
 public sealed partial class SqlEditorControl : UserControl
 {
@@ -91,13 +87,19 @@ public sealed partial class SqlEditorControl : UserControl
         DependencyProperty.Register(nameof(QueryOptions), typeof(QueryOptions), typeof(SqlEditorControl),
             new PropertyMetadata(new QueryOptions()));
 
-    public static readonly DependencyProperty EventOptionsProperty =
-        DependencyProperty.Register(nameof(EventOptions), typeof(EventOptions), typeof(SqlEditorControl),
-            new PropertyMetadata(new EventOptions()));
-
     public static readonly DependencyProperty IsExecutingProperty =
         DependencyProperty.Register(nameof(IsExecuting), typeof(bool), typeof(SqlEditorControl),
             new PropertyMetadata(false));
+
+    public static readonly DependencyProperty TrackedSelectionProperty =
+        DependencyProperty.Register(nameof(TrackedSelection), typeof(TrackedSelectionRange), typeof(SqlEditorControl),
+            new PropertyMetadata(null));
+
+    public TrackedSelectionRange? TrackedSelection
+    {
+        get => (TrackedSelectionRange?)GetValue(TrackedSelectionProperty);
+        set => SetValue(TrackedSelectionProperty, value);
+    }
 
     public string SqlText
     {
@@ -147,12 +149,6 @@ public sealed partial class SqlEditorControl : UserControl
         set => SetValue(QueryOptionsProperty, value);
     }
 
-    public EventOptions EventOptions
-    {
-        get => (EventOptions)GetValue(EventOptionsProperty);
-        set => SetValue(EventOptionsProperty, value);
-    }
-
     public string Theme
     {
         get => (string)GetValue(ThemeProperty);
@@ -160,6 +156,8 @@ public sealed partial class SqlEditorControl : UserControl
     }
 
     public event EventHandler<string>? SqlTextChanged;
+
+    public event EventHandler<TrackedSelectionRange?>? TrackedSelectionChanged;
 
     public string ExecuteLabel => IsExecuting ? "Executing" : "Execute";
 
@@ -202,10 +200,10 @@ public sealed partial class SqlEditorControl : UserControl
     {
         var text = string.IsNullOrEmpty(_selectedText) ? SqlText : _selectedText;
 
-        var payload = new ExecuteSqlPayload(text, 
-                                            QueryOptions, 
-                                            EventOptions, 
-                                            StatementParser.GetStatementType(text));
+        var payload = new ExecuteSqlPayload(text,
+                                            QueryOptions,
+                                            StatementParser.GetStatementType(text),
+                                            TrackedSelection);
 
         if (ExecuteCommand != null && ExecuteCommand.CanExecute(payload))
         {
@@ -217,26 +215,34 @@ public sealed partial class SqlEditorControl : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (_initialized)
+        try
         {
-            PushSqlTextToEditor();
-            return;
+            if (_initialized)
+            {
+                PushSqlTextToEditor();
+                return;
+            }
+
+            _initialized = true;
+
+            await WebView.EnsureCoreWebView2Async();
+
+            WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+
+            var assetsPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Monaco");
+
+            WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                "monaco.local",
+                assetsPath,
+                CoreWebView2HostResourceAccessKind.Allow);
+
+            WebView.CoreWebView2.Navigate("http://monaco.local/index.html");
         }
-
-        _initialized = true;
-
-        await WebView.EnsureCoreWebView2Async();
-
-        WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-
-        var assetsPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Monaco");
-
-        WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-            "monaco.local",
-            assetsPath,
-            CoreWebView2HostResourceAccessKind.Allow);
-
-        WebView.CoreWebView2.Navigate("http://monaco.local/index.html");
+        catch (Exception ex)
+        {
+            await WeakReferenceMessenger.Default.Send(
+                new ExceptionMessage(ex) { Message = "Exception initializing Monaco editor" });
+        }
     }
 
     // Pushes the current SqlText into the Monaco editor (when it is ready).
@@ -254,45 +260,69 @@ public sealed partial class SqlEditorControl : UserControl
 
     private async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        var json = e.TryGetWebMessageAsString();
-
-        if (json is not null)
+        try
         {
-            var msg = JsonSerializer.Deserialize<EditorMessage>(json);
+            var json = e.TryGetWebMessageAsString();
 
-            switch (msg?.Type)
+            if (json is not null)
             {
-                case "ready":
-                    _editorReady = true;
-                    await PushSchemaToEditorAsync();
-                    PushSqlTextToEditor();
-                    break;
+                var msg = JsonSerializer.Deserialize<EditorMessage>(json);
 
-                case "execute":
-                    HandleExecuteClick();
-                    break;
+                switch (msg?.Type)
+                {
+                    case "ready":
+                        _editorReady = true;
+                        await PushSchemaToEditorAsync();
+                        PushSqlTextToEditor();
+                        break;
 
-                case "selectionChanged":
-                    _selectedText = msg.Value ?? string.Empty;
-                    break;
+                    case "execute":
+                        HandleExecuteClick();
+                        break;
 
-                case "contentChanged":
-                    if (SqlText != msg.Value)
-                    {
-                        _applyingEditorChange = true;
-                        try
+                    case "selectionChanged":
+                        _selectedText = msg.Value?.GetString() ?? string.Empty;
+                        break;
+
+                    case "contentChanged":
+                        var newContent = msg.Value?.GetString();
+
+                        if (SqlText != newContent)
                         {
-                            SqlText = msg.Value ?? string.Empty;
-                            SqlTextChanged?.Invoke(this, SqlText);
+                            _applyingEditorChange = true;
+                            try
+                            {
+                                SqlText = newContent ?? string.Empty;
+                                SqlTextChanged?.Invoke(this, SqlText);
+                            }
+                            finally
+                            {
+                                _applyingEditorChange = false;
+                            }
                         }
-                        finally
-                        {
-                            _applyingEditorChange = false;
-                        }
-                    }
 
-                    break;
+                        break;
+
+                    case "trackedSelectionChanged":
+                        TrackedSelectionRange? range = null;
+
+                        if (msg.Value is { ValueKind: JsonValueKind.Object } rangeElement)
+                        {
+                            range = new TrackedSelectionRange(
+                                rangeElement.GetProperty("start").GetInt32(),
+                                rangeElement.GetProperty("end").GetInt32());
+                        }
+
+                        TrackedSelection = range;
+                        TrackedSelectionChanged?.Invoke(this, range);
+                        break;
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            await WeakReferenceMessenger.Default.Send(
+                new ExceptionMessage(ex) { Message = "Exception on receive web message" });
         }
     }
 
@@ -301,7 +331,8 @@ public sealed partial class SqlEditorControl : UserControl
         if (!_editorReady || Schema == null)
         {
             return;
-        };
+        }
+        ;
 
         var jsonSchema = JsonSerializer.Serialize(Schema, new JsonSerializerOptions
         {
@@ -316,7 +347,7 @@ public sealed partial class SqlEditorControl : UserControl
     private static void OnSchemaChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (SqlEditorControl)d;
-   
+
         if (control._editorReady)
         {
             _ = control.PushSchemaToEditorAsync();
@@ -338,5 +369,5 @@ public sealed partial class SqlEditorControl : UserControl
     }
 
     private sealed record EditorMessage([property: JsonPropertyName("type")] string Type,
-                                        [property: JsonPropertyName("value")] string? Value);
+                                        [property: JsonPropertyName("value")] JsonElement? Value);
 }

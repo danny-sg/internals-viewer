@@ -9,7 +9,7 @@ This section of the tutorial covers:
 - [The execution plan](/docs/tutorial/query/3-execution-plan) - the plan connected to the timeline
 - [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) - the two fundamental access patterns compared
 - [Lookups](/docs/tutorial/query/5-lookups) - key lookups, covering indexes, and RID lookups
-- [Joins](/docs/tutorial/query/6-joins) - the three physical joins and their access patterns
+- [Joins](/docs/tutorial/query/6-joins) - the three physical join operators and their access patterns
 
 It uses the `dbo.ClusteredTable` table and `IX_ClusteredTable_TextField` index created in Parts 2 and 3.
 

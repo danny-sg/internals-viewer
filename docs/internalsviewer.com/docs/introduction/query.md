@@ -13,11 +13,33 @@ Two toolbar options make the storage engine activity more visible:
 - **Clear Buffer Pool** - empties the buffer pool first (`DBCC DROPCLEANBUFFERS`) so every page the query touches is physically read. Don't use this on a server anyone else is using
 - **Disable Read-Ahead** - makes the engine read pages individually instead of pre-fetching large blocks, giving a much clearer picture of the access pattern
 
-The **Events** dropdown selects what the trace captures. **Locks** and **Waits** can be toggled off to cut noise, and **Callstack** captures the SQL Server call stack for each event - see [Call stacks](#call-stacks) below.
+The **Events** menu on the command bar selects what the trace captures:
+
+![Events menu](/docs/tutorial/images/screenshots/Query_events_menu.png)
+
+Page I/O is always captured. **Locks**, **Waits**, and **Memory** (grants, spills, and sort warnings) can be toggled on and off, and **Call Stack** captures the SQL Server call stack for each event - see [Call stacks](#call-stacks) below.
 
 ::: warning
 Data modification queries (INSERT / UPDATE / DELETE) are run inside a transaction that is rolled back after the trace is captured, so the data is left unchanged.
 :::
+
+## Multi-statement queries
+
+Only one statement can be traced at a time. Executing a query with multiple statements or `GO` batches gives the error:
+
+> Multi-statement queries cannot be traced. Select a single statement then right click and choose 'Trace query selection'.
+
+![Multi-statement query error](/docs/tutorial/images/screenshots/query-multi-statement-error.png)
+
+For scripts where the statement of interest needs setup or teardown around it - building a temp table first, say - mark just that statement: select it, right-click, and choose **Trace query selection**.
+
+![Trace query selection in the editor context menu](/docs/tutorial/images/screenshots/query-multi-statement-trace-query-selection.png)
+
+The marked statement stays highlighted in the editor. On **Execute**, everything before it runs first as untraced setup, the marked statement runs with the trace, and everything after it runs as untraced teardown - so the timeline shows only the statement of interest.
+
+![Editor with a marked query selection](/docs/tutorial/images/screenshots/query-multi-statement-trace-query-selected.png)
+
+To remove the marker, right-click and choose **Clear query selection**.
 
 ## The timeline
 
@@ -41,7 +63,7 @@ The **View** menu opens additional panes:
 - **Allocations** - the allocation map, highlighting pages as they are read during replay
 - **Execution Plan** - the captured plan, connected to the timeline to show where data is streaming and where an operator is blocked
 - **Events** - the raw list of captured events behind the timeline
-- **Call Stack** - the decoded SQL Server call stack for the current event, when the Callstack event is enabled
+- **Call Stack** - the decoded SQL Server call stack for the current event, when the Call Stack event is enabled
 - **Timeline** - the replay timeline
 - **Settings** - trace options
 
@@ -55,7 +77,7 @@ See [How query tracing works](/docs/deep-dives/query-tracing) for the details.
 
 ## Call stacks
 
-Enable **Callstack** in the Events dropdown and every captured event carries the SQL Server call stack that produced it - the chain of internal engine functions that were executing at the moment the event fired.
+Enable **Call Stack** in the Events menu and every captured event carries the SQL Server call stack that produced it - the chain of internal engine functions that were executing at the moment the event fired.
 
 ![Event options with the Call Stack pane](/docs/tutorial/images/screenshots/Query_event_options.png)
 
@@ -76,4 +98,4 @@ The cache location is the **Symbols Path** setting, in **Settings** on the start
 
 See [How query tracing works](/docs/deep-dives/query-tracing#resolving-call-stacks) for how the download and resolution work.
 
-For a walkthrough, the tutorial's [Query section](/docs/tutorial/query/1-using-the-query-view) traces queries against a sample database - including [scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) and the [three join types](/docs/tutorial/query/6-joins).
+For a walkthrough, the tutorial's [Query section](/docs/tutorial/query/1-using-the-query-view) traces queries against a sample database - including [scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) and the [three physical join operators](/docs/tutorial/query/6-joins).

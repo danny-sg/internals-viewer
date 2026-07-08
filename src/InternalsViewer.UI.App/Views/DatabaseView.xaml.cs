@@ -40,6 +40,7 @@ public sealed partial class DatabaseView : IDisposable
     private void AppBarToggleButton_Changed(object sender, RoutedEventArgs e)
     {
         var isChecked = sender is AppBarToggleButton { IsChecked: true };
+
         AllocationLayerGridRow.Height = isChecked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
         if (isChecked)

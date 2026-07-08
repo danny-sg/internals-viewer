@@ -63,7 +63,7 @@
                                                       IsChecked="{x:Bind ViewModel.IsExecutionPlanVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Events"
                                                       IsChecked="{x:Bind ViewModel.IsEventsVisible, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Callstack"
+                                <ToggleMenuFlyoutItem Text="Call Stack"
                                                       IsChecked="{x:Bind ViewModel.IsCallstackVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <ToggleMenuFlyoutItem Text="Timeline"
@@ -73,6 +73,17 @@
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Reset Layout"
                                                 Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
+                            </MenuBarItem>
+
+                            <MenuBarItem Title="Events">
+                                <ToggleMenuFlyoutItem Text="Locks"
+                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeLock, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Waits"
+                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeWait, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Memory"
+                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeMemory, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Call Stack"
+                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeCallStack, Mode=TwoWay}"/>
                             </MenuBarItem>
 
                             <!--<MenuBarItem Title="Help">

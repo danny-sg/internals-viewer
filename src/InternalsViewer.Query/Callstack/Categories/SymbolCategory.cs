@@ -2,11 +2,7 @@
 
 public enum SymbolCategory : byte
 {
-    [Category(
-        "Unknown",
-        Description = "Not yet classified",
-        ForegroundColor = "#FFFFFF",
-        BackgroundColor = "#FFFFFF")]
+    [Category("", Description = "Not yet classified")]
     Unknown = 0,
 
     [Category(
@@ -152,19 +148,14 @@ public enum SymbolCategory : byte
 
 public static class CategoryEnumExtensions
 {
-    public static CategoryAttribute? GetCategoryMetadata(
-        this Enum value)
+    public static CategoryAttribute? GetCategoryMetadata(this Enum value)
     {
-        var member =
-            value.GetType()
-                .GetMember(value.ToString())
-                .FirstOrDefault();
+        var member = value.GetType()
+                          .GetMember(value.ToString())
+                          .FirstOrDefault();
 
-        return member?
-            .GetCustomAttributes(
-                typeof(CategoryAttribute),
-                false)
-            .Cast<CategoryAttribute>()
-            .FirstOrDefault();
+        return member?.GetCustomAttributes(typeof(CategoryAttribute), false)
+                      .Cast<CategoryAttribute>()
+                      .FirstOrDefault();
     }
 }

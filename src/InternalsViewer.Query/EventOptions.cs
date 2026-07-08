@@ -6,5 +6,7 @@ public sealed record EventOptions
 
     public bool IncludeWait { get; set; } = true;
 
-    public bool IncludeCallstack { get; set; }
+    public bool IncludeMemory { get; set; }
+
+    public bool IncludeCallStack { get; set; }
 }
