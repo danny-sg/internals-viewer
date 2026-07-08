@@ -22,6 +22,7 @@ public class MarkerTemplateSelector : DataTemplateSelector
             ItemType.HeaderPageAddress,
             ItemType.NextPage,
             ItemType.PreviousPage,
+            ItemType.ForwardingStub
         };
 
         if (pointerTypes.Any(p => p == marker?.Type))

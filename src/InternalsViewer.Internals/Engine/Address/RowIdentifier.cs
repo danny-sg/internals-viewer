@@ -23,7 +23,10 @@ public sealed record RowIdentifier
         PageAddress = new PageAddress(BinaryPrimitives.ReadInt16LittleEndian(address[4..]),
                                       BinaryPrimitives.ReadInt32LittleEndian(address));
 
-        SlotId = BinaryPrimitives.ReadUInt16LittleEndian(address[6..]);
+        if (address.Length == Size)
+        {
+            SlotId = BinaryPrimitives.ReadUInt16LittleEndian(address[6..]);
+        }
     }
 
     public RowIdentifier(PageAddress page, ushort slot)
