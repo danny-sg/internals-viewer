@@ -309,8 +309,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         }
     }
 
-
-
     private async Task<(string, long, List<LogRecord> logRecords)>
         RunQueryWithEventSession(string sessionName,
                                  string sqlText,

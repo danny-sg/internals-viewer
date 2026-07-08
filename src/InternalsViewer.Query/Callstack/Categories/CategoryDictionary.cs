@@ -13,6 +13,7 @@ internal class SymbolCategoryDictionary
             ["XeSqlPkg"] = SymbolCategory.XEventInfrastructure,
             ["XEvent"] = SymbolCategory.XEventInfrastructure,
             ["CTraceData"] = SymbolCategory.XEventInfrastructure,
+            ["lck_ProduceExtendedEvent"] = SymbolCategory.XEventInfrastructure,
             ["SOS_Task"] = SymbolCategory.SqlOs,
             ["SOS_Scheduler"] = SymbolCategory.SqlOs,
             ["Worker"] = SymbolCategory.SqlOs,
