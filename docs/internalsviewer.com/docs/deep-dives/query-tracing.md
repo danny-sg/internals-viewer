@@ -32,7 +32,7 @@ When you press Execute, Internals Viewer runs a sequence of steps on its connect
 | `query_memory_grant_usage` | Memory granted and used by the query |
 | `log_flush_complete` / `file_write_completed` | Transaction log and data file write activity |
 
-Each event also carries actions - `sql_text`, `session_id`, `database_id`, `plan_handle`, and `transaction_id` - used to tie events to the right statement and plan.
+Each event also carries actions - `sql_text`, `session_id`, `database_id`, `plan_handle`, and `transaction_id` - used to tie events to the right statement and plan. The Events dropdown tailors the session: the lock and wait events can be left out, and enabling _Callstack_ adds the `package0.callstack` action, attaching the raw SQL Server call stack to every event.
 
 ## Building the timeline
 
@@ -67,6 +67,16 @@ The phases propagate up the tree: a streaming operator can't emit rows before it
 
 Lock events get one more resolution step. A row lock doesn't report which row was locked - it reports a hash of the key (the same value the `%%lockres%%` virtual column exposes). Internals Viewer queries the table for matching key hashes to resolve them back to real rows, so a lock event can point at the actual record.
 
+## Resolving call stacks
+
+The `package0.callstack` action doesn't produce function names - each raw frame identifies the **module** that generated it, the name of its **PDB** (the symbol file mapping the compiled binary back to names), a **GUID + age** pinning the exact PDB revision for that build, and the **RVA** (relative virtual address) of the frame within the binary. Turning that into `sqlmin!IndexPageManager::GetNextPage` takes three steps:
+
+1. **Download** - each distinct PDB referenced by the trace is fetched from the Microsoft public symbol server, using the standard symbol store path `https://msdl.microsoft.com/download/symbols/<pdb>/<GUID><age>/<pdb>`. The same folder layout is replicated under the local **Symbols Path** (default `C:\Symbols`), so each symbol file is only ever downloaded once - subsequent traces resolve from the cache.
+
+2. **Resolve** - the RVA is mapped to a function name against the cached PDB using the Debug Interface Access (DIA) API, giving the `module!Class::Method` symbol and the offset into the function. DIA normally comes with Visual Studio, but its redistributable `msdia140.dll` ships with Internals Viewer and is accessed registration-free through a small C++ bridge (`InternalsViewer.Query.DiaBridge`) - so there are no dependencies to install and no COM registration step.
+
+3. **Classify** - the resolved symbols are classified by a mapping dictionary into the **Module** badge (Storage Engine, Query Processor, SQL OS, SQL Server Host...) and the **Category** badge (Index Access, Row Access, Page Access, Buffer Manager, Buffer Pool, Latching, Lock Manager...) shown in the Call Stack pane. Frames belonging to infrastructure - Extended Events publishing, scheduling, thread management - are flagged so the frames doing the actual work stand out.
+
 ## Data modifications
 
 `INSERT`, `UPDATE`, and `DELETE` get special handling so they can be traced without permanently changing the database:
@@ -85,4 +95,5 @@ The trace captures everything the modification did - the pages written, the lock
 - `InternalsViewer.Query/Events/EventReader.cs` and `EventParser.cs` - reading the `.xel` file back and parsing events
 - `InternalsViewer.Query/Plans/ExecutionPlanParser.cs` and `EventPlanNodeMatcher.cs` - plan XML parsing and matching operators to profile events
 - `InternalsViewer.Query/KeyHashLookup.cs` - resolving lock key hashes to rows
+- `InternalsViewer.Query/Callstack/` - symbol download (`SymbolDownloader.cs`), DIA resolution (`CallstackResolver.cs`), and the Module / Category classification (`Categories/`)
 - `InternalsViewer.Query/TransactionLog/LogRecordReader.cs` - reading log records for modifications
