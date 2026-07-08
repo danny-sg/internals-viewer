@@ -304,6 +304,9 @@
       <None Update="Assets\DatabaseFile.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <Page Update="Controls\Results\ResultsGridControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Views\Query\Tabs\CallstackDocumentView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
@@ -507,6 +510,9 @@
 
     <ItemGroup>
       <AdditionalFiles Remove="D:\.nuget\packages\microsoft.visualstudio.threading.analyzers\17.14.15\buildTransitive\AdditionalFiles\vs-threading.MembersRequiringMainThread.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
     </ItemGroup>
 
     <ItemGroup>

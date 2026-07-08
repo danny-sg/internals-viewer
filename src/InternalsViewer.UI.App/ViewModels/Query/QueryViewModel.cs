@@ -10,6 +10,7 @@ using InternalsViewer.Query;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
@@ -161,6 +162,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private bool _isEventSelectionPanelOpen;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveResultSet))]
+    private List<QueryResultSet> _resultSets = [];
+
+    public QueryResultSet? ActiveResultSet => ResultSets.Count > 0 ? ResultSets[0] : null;
 
     [ObservableProperty]
     private List<CallstackFrame> _callstacks = [];
@@ -823,6 +830,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
 
+            ResultSets = results.ResultSets;
+
             await EventFilter.BuildAsync(Events);
 
             ShowResultTabsForFirstRun();
@@ -870,6 +879,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Callstacks = [];
         SelectedEvent = null;
         ExecutionPlans = [];
+        ResultSets = [];
 
         foreach (var indexViewModel in _openIndexes.Values)
         {
@@ -886,8 +896,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private void RefreshLayers(List<EngineEvent> engineEvents)
         => ApplyEventLayers(GetEventsAllocationLayer(engineEvents, EventColours));
 
-    // Applies the (already computed) event layers. Must run on the UI thread - it assigns bound
-    // collections.
     private void ApplyEventLayers(List<AllocationLayer> layers)
     {
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);

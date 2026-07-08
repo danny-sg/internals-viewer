@@ -11,11 +11,6 @@ using Microsoft.UI.Dispatching;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
-/// <summary>
-/// Owns the engine-event filter: the checkable event/type tree, the "include system objects"
-/// toggle, persistence of the unchecked set, and applying the filter to a set of events.
-/// Raises <see cref="FilterChanged"/> (debounced) whenever the effective filter changes.
-/// </summary>
 public sealed partial class EventFilterViewModel : ObservableObject
 {
     private const string UncheckedSettingsKey = "EventFilterUnchecked";
@@ -32,33 +27,33 @@ public sealed partial class EventFilterViewModel : ObservableObject
         "lock_released/S/Database",
     ];
 
-    private readonly SettingsService settingsService;
-    private readonly DispatcherQueue dispatcherQueue;
+    private readonly SettingsService _settingsService;
+    private readonly DispatcherQueue _dispatcherQueue;
 
-    private HashSet<int> systemObjectIds = [];
+    private HashSet<int> _systemObjectIds = [];
 
-    private bool filterRefreshPending;
-    private bool saveUncheckedPending;
-
-    [ObservableProperty]
-    private ObservableCollection<EventFilterNode> filterNodes = [];
+    private bool _filterRefreshPending;
+    private bool _saveUncheckedPending;
 
     [ObservableProperty]
-    private bool includeSystemObjects;
+    private ObservableCollection<EventFilterNode> _filterNodes = [];
+
+    [ObservableProperty]
+    private bool _includeSystemObjects;
 
     /// <summary>Raised when the effective filter changes; the owner re-applies it to its events.</summary>
     public event Action? FilterChanged;
 
     public EventFilterViewModel(SettingsService settingsService)
     {
-        this.settingsService = settingsService;
-        dispatcherQueue = DispatcherQueue.GetForCurrentThread()
+        this._settingsService = settingsService;
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread()
                           ?? throw new InvalidOperationException(
                               $"{nameof(EventFilterViewModel)} must be constructed on the UI thread.");
     }
 
     /// <summary>System object ids excluded when <see cref="IncludeSystemObjects"/> is off.</summary>
-    public void SetSystemObjectIds(HashSet<int> ids) => systemObjectIds = ids;
+    public void SetSystemObjectIds(HashSet<int> ids) => _systemObjectIds = ids;
 
     partial void OnIncludeSystemObjectsChanged(bool value) => FilterChanged?.Invoke();
 
@@ -68,7 +63,7 @@ public sealed partial class EventFilterViewModel : ObservableObject
     /// <summary>Builds the event/type tree from <paramref name="events"/>, restoring the saved unchecked set.</summary>
     public async Task BuildAsync(IReadOnlyCollection<EngineEvent> events)
     {
-        var savedUnchecked = await settingsService.ReadSettingAsync<List<string>>(UncheckedSettingsKey);
+        var savedUnchecked = await _settingsService.ReadSettingAsync<List<string>>(UncheckedSettingsKey);
 
         var uncheckedPaths = savedUnchecked is { Count: > 0 }
             ? new HashSet<string>(savedUnchecked)
@@ -128,8 +123,8 @@ public sealed partial class EventFilterViewModel : ObservableObject
     /// <summary>Applies the system-object and tree filters to <paramref name="events"/>.</summary>
     public IEnumerable<EngineEvent> Apply(IReadOnlyCollection<EngineEvent> events)
     {
-        var source = !IncludeSystemObjects && systemObjectIds.Count > 0
-            ? events.Where(e => e.ObjectId == 0 || !systemObjectIds.Contains(e.ObjectId))
+        var source = !IncludeSystemObjects && _systemObjectIds.Count > 0
+            ? events.Where(e => e.ObjectId == 0 || !_systemObjectIds.Contains(e.ObjectId))
             : events;
 
         return ApplyNodeFilter(source);
@@ -175,22 +170,23 @@ public sealed partial class EventFilterViewModel : ObservableObject
     // A single node edit can cascade to children/parents; coalesce the resulting work onto one tick.
     private void OnFilterNodeChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (!filterRefreshPending)
+        if (!_filterRefreshPending)
         {
-            filterRefreshPending = true;
-            dispatcherQueue.TryEnqueue(() =>
+            _filterRefreshPending = true;
+            _dispatcherQueue.TryEnqueue(() =>
             {
-                filterRefreshPending = false;
+                _filterRefreshPending = false;
                 FilterChanged?.Invoke();
             });
         }
 
-        if (!saveUncheckedPending)
+        if (!_saveUncheckedPending)
         {
-            saveUncheckedPending = true;
-            dispatcherQueue.TryEnqueue(async () =>
+            _saveUncheckedPending = true;
+
+            _dispatcherQueue.TryEnqueue(async () =>
             {
-                saveUncheckedPending = false;
+                _saveUncheckedPending = false;
 
                 try
                 {
@@ -224,6 +220,6 @@ public sealed partial class EventFilterViewModel : ObservableObject
             uncheckedPaths.Add(eventNode.Label);
         }
 
-        await settingsService.SaveSettingAsync(UncheckedSettingsKey, uncheckedPaths);
+        await _settingsService.SaveSettingAsync(UncheckedSettingsKey, uncheckedPaths);
     }
 }

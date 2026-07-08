@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Parsing;
+using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Schema;
 using Microsoft.UI;
@@ -68,20 +69,50 @@ public sealed partial class SqlEditorControl : UserControl
         DependencyProperty.Register(nameof(IsMessagesVisible), typeof(bool), typeof(SqlEditorControl),
             new PropertyMetadata(false, OnIsMessagesVisibleChanged));
 
+    public static readonly DependencyProperty IsResultsVisibleProperty =
+        DependencyProperty.Register(nameof(IsResultsVisible), typeof(bool), typeof(SqlEditorControl),
+            new PropertyMetadata(true, OnIsResultsVisibleChanged));
+
     public static readonly DependencyProperty AdditionalContentProperty =
         DependencyProperty.Register(nameof(AdditionalContent), typeof(object), typeof(SqlEditorControl),
             new PropertyMetadata(null));
+
+    public static readonly DependencyProperty ResultSetProperty =
+        DependencyProperty.Register(nameof(ResultSet), typeof(QueryResultSet), typeof(SqlEditorControl),
+            new PropertyMetadata(null, OnResultSetChanged));
 
     private static void OnIsErrorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (e.NewValue is true)
         {
-            ((SqlEditorControl)d).IsMessagesVisible = true;
+            var control = (SqlEditorControl)d;
+            control.IsMessagesVisible = true;
+            control.ApplyBottomPanelVisibility();
         }
     }
 
     private static void OnIsMessagesVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((SqlEditorControl)d).ApplyMessagesVisibility();
+        => ((SqlEditorControl)d).ApplyBottomPanelVisibility();
+
+    private static void OnIsResultsVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (SqlEditorControl)d;
+        control.QueryOptions = control.QueryOptions with { IncludeResults = (bool)e.NewValue };
+        control.ApplyBottomPanelVisibility();
+        control.ApplyResultsTabVisibility();
+    }
+
+    private static void OnResultSetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (SqlEditorControl)d;
+        control.ApplyBottomPanelVisibility();
+        control.ApplyResultsTabVisibility();
+
+        if (e.NewValue is not null && control.IsResultsVisible)
+        {
+            control.ResultsTabView.SelectedIndex = 1;
+        }
+    }
 
     public static readonly DependencyProperty QueryOptionsProperty =
         DependencyProperty.Register(nameof(QueryOptions), typeof(QueryOptions), typeof(SqlEditorControl),
@@ -137,10 +168,22 @@ public sealed partial class SqlEditorControl : UserControl
         set => SetValue(IsMessagesVisibleProperty, value);
     }
 
+    public bool IsResultsVisible
+    {
+        get => (bool)GetValue(IsResultsVisibleProperty);
+        set => SetValue(IsResultsVisibleProperty, value);
+    }
+
     public object? AdditionalContent
     {
         get => GetValue(AdditionalContentProperty);
         set => SetValue(AdditionalContentProperty, value);
+    }
+
+    public QueryResultSet? ResultSet
+    {
+        get => (QueryResultSet?)GetValue(ResultSetProperty);
+        set => SetValue(ResultSetProperty, value);
     }
 
     public QueryOptions QueryOptions
@@ -186,14 +229,34 @@ public sealed partial class SqlEditorControl : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
 
-        ApplyMessagesVisibility();
+        ApplyBottomPanelVisibility();
+        ApplyResultsTabVisibility();
     }
 
-    private void ApplyMessagesVisibility()
+    private void ApplyBottomPanelVisibility()
     {
-        MessagesRow.Height = IsMessagesVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        var hasResults = ResultSet is not null && IsResultsVisible;
+        var show = IsMessagesVisible || hasResults;
 
-        MessagesSplitter.Visibility = IsMessagesVisible ? Visibility.Visible : Visibility.Collapsed;
+        if (show)
+        {
+            if (MessagesRow.Height.GridUnitType == GridUnitType.Pixel && MessagesRow.Height.Value == 0)
+            {
+                MessagesRow.Height = new GridLength(1, GridUnitType.Star);
+            }
+
+            MessagesSplitter.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            MessagesRow.Height = new GridLength(0);
+            MessagesSplitter.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void ApplyResultsTabVisibility()
+    {
+        ResultsTab.Visibility = ResultSet is not null ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void HandleExecuteClick()
@@ -213,6 +276,7 @@ public sealed partial class SqlEditorControl : UserControl
         }
     }
 
+#pragma warning disable VSTHRD100 // Avoid async void methods - Required for event and using try/catch for safety
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         try
@@ -257,7 +321,9 @@ public sealed partial class SqlEditorControl : UserControl
 
         _ = WebView.ExecuteScriptAsync($"window.setEditorValue({escaped})");
     }
+#pragma warning restore VSTHRD100
 
+#pragma warning disable VSTHRD100 // Avoid async void methods - Required for event and using try/catch for safety
     private async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
         try
@@ -325,6 +391,7 @@ public sealed partial class SqlEditorControl : UserControl
                 new ExceptionMessage(ex) { Message = "Exception on receive web message" });
         }
     }
+#pragma warning restore VSTHRD100
 
     private async Task PushSchemaToEditorAsync()
     {

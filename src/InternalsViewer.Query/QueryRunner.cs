@@ -1,24 +1,17 @@
 ﻿using System.Diagnostics;
 using System.Text;
-using System.Text.RegularExpressions;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Results;
 using InternalsViewer.Query.TransactionLog;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query;
-
-public sealed record QueryOptions
-{
-    public bool ClearBufferPool { get; set; } = true;
-
-    public bool DisableReadAhead { get; set; } = true;
-}
 
 public sealed record ExecuteSqlPayload(string SqlText,
                                        QueryOptions QueryOptions,
@@ -33,65 +26,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 {
     private ILogger<QueryRunner> Logger { get; } = logger;
 
-    public EventReader EventReader { get; } = eventReader;
+    private EventReader EventReader { get; } = eventReader;
 
     private LogRecordReader LogRecordReader { get; } = logRecordReader;
-
-    private readonly string[] _events =
-    [
-        "sqlserver.sql_batch_starting",
-        "sqlserver.sql_batch_completed",
-        "sqlserver.rpc_starting",
-        "sqlserver.rpc_completed",
-        "sqlserver.file_write_completed",
-        "sqlserver.log_flush_complete",
-        "sqlserver.page_split",
-        "sqlserver.query_thread_profile",
-        "sqlserver.physical_page_read",
-        "sqlserver.physical_page_write",
-        "sqlserver.query_post_execution_showplan"
-    ];
-
-    private readonly string[] _lockEvents =
-    [
-        "sqlserver.lock_acquired",
-        "sqlserver.lock_released",
-    ];
-
-    private readonly string[] _waitEvents =
-    [
-        "sqlos.wait_info",
-    ];
-
-    private readonly string[] _logEvents =
-    [
-        "sqlserver.transaction_log"
-    ];
-
-    private readonly string[] _memoryEvents =
-    [
-        "sqlserver.query_memory_grant_usage",
-        "sqlserver.hash_spill_details",
-        "sqlserver.sort_warning",
-        "sqlserver.memory_grant_updated_by_feedback"
-    ];
-
-    private readonly string[] _actions =
-    [
-        "sqlserver.session_id",
-        "sqlserver.request_id",
-        "sqlserver.sql_text",
-        "sqlserver.database_id",
-        "sqlserver.plan_handle",
-        "sqlserver.transaction_id",
-        "package0.event_sequence",
-
-    ];
-
-    private readonly string[] _callstackActions =
-    [
-        "package0.callstack"
-    ];
 
     public async Task<QueryResult> TraceQuery(ExecuteSqlPayload payload,
                                               DatabaseSource database,
@@ -119,12 +56,54 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
+        List<QueryResultSet> resultSets;
 
         Func<EngineEvent, bool>? endMarker = null;
 
         var isReplayMode = false;
 
         var (preCommands, commands, postCommands) = PayloadParser.Parse(payload);
+
+        if (!payload.QueryOptions.Trace)
+        {
+            try
+            {
+                (rowCount, resultSets) = await RunQueryDirect(payload.SqlText,
+                                                              connectionString,
+                                                              payload.QueryOptions,
+                                                              progress,
+                                                              cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return new QueryResult { IsSuccess = false, Message = "Query cancelled", SessionId = sessionId };
+            }
+            catch (SqlException ex)
+            {
+                var msg = $"Msg: {ex.Number}, Level: {ex.Class}, State: {ex.State}, Line: {ex.LineNumber}"
+                          + $"{Environment.NewLine}{ex.Message}";
+
+                return new QueryResult { IsSuccess = false, Message = msg, SessionId = sessionId };
+            }
+            catch (Exception ex)
+            {
+                var msg = "Non-Database Error:"
+                          + $"{Environment.NewLine}{ex.InnerException?.Message ?? ex.Message}"
+                          + $"{Environment.NewLine}{ex.StackTrace}";
+
+                return new QueryResult { IsSuccess = false, Message = msg, SessionId = sessionId };
+            }
+
+            return new QueryResult
+            {
+                IsSuccess = true,
+                EngineEvents = [],
+                ExecutionPlans = [],
+                ResultSets = resultSets,
+                SessionId = sessionId,
+                RowCount = rowCount
+            };
+        }
 
         if (commands.Length != 1
             || (payload.TrackedSelection == null
@@ -152,16 +131,17 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         try
         {
-            (var filePath, rowCount, var logRecords) = await RunQueryWithEventSession(sessionId,
-                                                                                      preCommands,
-                                                                                      commands[0],
-                                                                                      postCommands,
-                                                                                      connectionString,
-                                                                                      isReplayMode,
-                                                                                      payload.QueryOptions,
-                                                                                      eventOptions,
-                                                                                      progress,
-                                                                                      cancellationToken);
+            (var filePath, rowCount, var logRecords, resultSets)
+                = await RunQueryWithEventSession(sessionId,
+                                                 preCommands,
+                                                 commands[0],
+                                                 postCommands,
+                                                 connectionString,
+                                                 isReplayMode,
+                                                 payload.QueryOptions,
+                                                 eventOptions,
+                                                 progress,
+                                                 cancellationToken);
 
             var eventsStart = Stopwatch.GetTimestamp();
 
@@ -177,7 +157,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             {
                 progress?.Report($"Processing callstack frames");
 
-                await CallstackProcessor.Process(events, symbolsPath, progress, cancellationToken);
+                var unknownSymbols = await CallstackProcessor.Process(events, symbolsPath, progress, cancellationToken);
+                
+                if(Logger.IsEnabled(LogLevel.Debug) && unknownSymbols.Length > 0)
+                {
+                    foreach (var symbol in unknownSymbols)
+                    {
+                        Logger.LogDebug($"Unknown symbol: {symbol}");
+                    }
+                }
             }
 
             await GetEventKeyAddresses(events, database.AllocationUnits, connectionString, cancellationToken);
@@ -222,6 +210,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             IsSuccess = true,
             EngineEvents = events,
             ExecutionPlans = executionPlans,
+            ResultSets = resultSets,
             SessionId = sessionId,
             RowCount = rowCount
         };
@@ -268,7 +257,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         }
     }
 
-    private async Task<(string, long, List<LogRecord> logRecords)>
+    private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets)>
         RunQueryWithEventSession(string sessionName,
                                  string[] preCommandSql,
                                  string commandSql,
@@ -284,6 +273,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         await using var connection = new SqlConnection(connectionString);
 
+        connection.FireInfoMessageEventOnUserErrors = true;
+
+        SqlInfoMessageEventHandler onInfoMessage = (_, e) =>
+        {
+            foreach (SqlError error in e.Errors)
+            {
+                progress?.Report(error.Message);
+            }
+        };
+        
         await connection.OpenAsync(cancellationToken);
 
         var logPath = await ExecuteScalar<string>(GetFileLocationSql(), connection, cancellationToken);
@@ -291,10 +290,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         var filePath = $"{logPath}\\{sessionName}.xel";
 
         List<LogRecord> logRecords = [];
+        
         string? startLsn = null;
+
+        List<QueryResultSet> resultSets;
 
         if (preCommandSql.Length > 0)
         {
+            connection.InfoMessage += onInfoMessage;
+
             progress?.Report("Pre-Trace: ");
 
             foreach (var preCommand in preCommandSql)
@@ -306,6 +310,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                     progress?.Report($"  {itemRowCount} row(s) affected");
                 }
             }
+
+            connection.InfoMessage -= onInfoMessage;
         }
 
         var spid = await ExecuteScalar<short>("SELECT @@SPID", connection, cancellationToken);
@@ -360,14 +366,62 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             var command = new SqlCommand(commandSql, connection);
 
+            command.CommandTimeout = 0;
+
+            connection.InfoMessage += onInfoMessage;
+
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            while (await reader.ReadAsync(cancellationToken))
+            resultSets = [];
+
+            do
             {
-                rowCount++;
+                if (queryOptions.IncludeResults)
+                {
+                    var columns = ReadSchema(reader);
+
+                    var stringPools = BuildStringPools(columns);
+                    
+                    var rows = new List<ResultRow>();
+
+                    while (await reader.ReadAsync(cancellationToken))
+                    {
+                        rowCount++;
+
+                        var values = new object?[columns.Count];
+
+                        for (var i = 0; i < columns.Count; i++)
+                        {
+                            var rawValue = reader.IsDBNull(i) ? null : reader.GetValue(i);
+
+                            if (rawValue is string s && stringPools.TryGetValue(i, out var pool))
+                            {
+                                rawValue = InternString(pool, s);
+                            }
+
+                            values[i] = rawValue;
+                        }
+
+                        rows.Add(new ResultRow(values));
+                    }
+
+                    resultSets.Add(new QueryResultSet { Columns = columns, Rows = rows });
+                }
+                else
+                {
+                    while (await reader.ReadAsync(cancellationToken))
+                    {
+                        rowCount++;
+                    }
+                }
             }
+            while (await reader.NextResultAsync(cancellationToken));
 
             await reader.CloseAsync();
+
+            connection.InfoMessage -= onInfoMessage;
+
+            connection.FireInfoMessageEventOnUserErrors = false;
 
             progress?.Report($"Query executed in: {Stopwatch.GetElapsedTime(queryStart)}");
 
@@ -420,7 +474,133 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             }
         }
 
-        return (filePath, rowCount, logRecords);
+        return (filePath, rowCount, logRecords, resultSets);
+    }
+
+    private async Task<(long RowCount, List<QueryResultSet> ResultSets)>
+        RunQueryDirect(string commandSql,
+                       string connectionString,
+                       QueryOptions queryOptions,
+                       IProgress<string>? progress,
+                       CancellationToken cancellationToken)
+    {
+        long rowCount = 0;
+
+        List<QueryResultSet> resultSets = [];
+
+        await using var connection = new SqlConnection(connectionString);
+
+        connection.FireInfoMessageEventOnUserErrors = true;
+
+        connection.InfoMessage += (_, e) =>
+        {
+            foreach (SqlError error in e.Errors)
+            {
+                progress?.Report(error.Message);
+            }
+        };
+
+        await connection.OpenAsync(cancellationToken);
+
+        var commands = PayloadParser.SplitCommands(commandSql);
+
+        foreach (var sql in commands)
+        {
+            var command = new SqlCommand(sql, connection) { CommandTimeout = 0 };
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            do
+            {
+                if (queryOptions.IncludeResults)
+                {
+                    var columns = ReadSchema(reader);
+                    var stringPools = BuildStringPools(columns);
+                    var rows = new List<ResultRow>();
+
+                    while (await reader.ReadAsync(cancellationToken))
+                    {
+                        rowCount++;
+
+                        var values = new object?[columns.Count];
+
+                        for (var i = 0; i < columns.Count; i++)
+                        {
+                            var rawValue = reader.IsDBNull(i) ? null : reader.GetValue(i);
+
+                            if (rawValue is string s && stringPools.TryGetValue(i, out var pool))
+                            {
+                                rawValue = InternString(pool, s);
+                            }
+
+                            values[i] = rawValue;
+                        }
+
+                        rows.Add(new ResultRow(values));
+                    }
+
+                    resultSets.Add(new QueryResultSet { Columns = columns, Rows = rows });
+                }
+                else
+                {
+                    while (await reader.ReadAsync(cancellationToken))
+                    {
+                        rowCount++;
+                    }
+                }
+            }
+            while (await reader.NextResultAsync(cancellationToken));
+
+            await reader.CloseAsync();
+        }
+
+        return (rowCount, resultSets);
+    }
+
+    private static List<ResultColumn> ReadSchema(SqlDataReader reader)
+    {
+        var schemaTable = reader.GetSchemaTable();
+
+        var columns = new List<ResultColumn>(reader.FieldCount);
+
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            var name = reader.GetName(i);
+            var typeName = reader.GetDataTypeName(i);
+            var clrType = reader.GetFieldType(i) ?? typeof(object);
+            var nullable = schemaTable?.Rows[i]["AllowDBNull"] is true;
+
+            columns.Add(new ResultColumn(i, name, typeName, clrType, nullable));
+        }
+
+        return columns;
+    }
+
+    private static Dictionary<int, Dictionary<string, string>> BuildStringPools(List<ResultColumn> columns)
+    {
+        var pools = new Dictionary<int, Dictionary<string, string>>();
+
+        foreach (var col in columns)
+        {
+            if (col.ClrType == typeof(string))
+            {
+                pools[col.Ordinal] = new Dictionary<string, string>(StringComparer.Ordinal);
+            }
+        }
+
+        return pools;
+    }
+
+    private static string InternString(Dictionary<string, string> pool, string value)
+    {
+        if (!pool.TryGetValue(value, out var interned))
+        {
+            pool[value] = value;
+
+            return value;
+        }
+
+        return interned;
     }
 
     private static async Task<T?> ExecuteScalar<T>(string sql,
@@ -464,39 +644,39 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         return $"ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP;";
     }
 
-    private string GetCreateSessionSql(string sessionName,
-                                       string filePath,
-                                       short spid,
-                                       bool isReplayMode,
-                                       EventOptions eventOptions)
+    private static string GetCreateSessionSql(string sessionName,
+                                              string filePath,
+                                              short spid,
+                                              bool isReplayMode,
+                                              EventOptions eventOptions)
     {
 
-        var sessionEvents = new List<string>(_events);
-        var sessionActions = new List<string>(_actions);
+        var sessionEvents = new List<string>(EventConstants.Events);
+        var sessionActions = new List<string>(EventConstants.Actions);
 
         if (isReplayMode)
         {
-            sessionEvents.AddRange(_logEvents);
+            sessionEvents.AddRange(EventConstants.LogEvents);
         }
 
         if (eventOptions.IncludeLock)
         {
-            sessionEvents.AddRange(_lockEvents);
+            sessionEvents.AddRange(EventConstants.LockEvents);
         }
 
         if (eventOptions.IncludeWait)
         {
-            sessionEvents.AddRange(_waitEvents);
+            sessionEvents.AddRange(EventConstants.WaitEvents);
         }
 
         if (eventOptions.IncludeMemory)
         {
-            sessionEvents.AddRange(_memoryEvents);
+            sessionEvents.AddRange(EventConstants.MemoryEvents);
         }
 
         if (eventOptions.IncludeCallStack)
         {
-            sessionActions.AddRange(_callstackActions);
+            sessionActions.AddRange(EventConstants.CallstackActions);
         }
 
         var stringBuilder = new StringBuilder();
@@ -509,7 +689,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             stringBuilder.Append($"ADD EVENT {eventName}");
 
-            if (_actions.Length > 0)
+            if (sessionActions.Count > 0)
             {
                 stringBuilder.AppendLine();
                 stringBuilder.Append("(\n    ACTION (");
@@ -546,43 +726,6 @@ ADD TARGET package0.event_file
         max_rollover_files = (2)
 );");
 
-
         return stringBuilder.ToString();
     }
-}
-
-internal static partial class PayloadParser
-{
-    public static (string[] PreCommands, string[] Commands, string[] PostCommands) Parse(ExecuteSqlPayload payload)
-    {
-        if (payload.TrackedSelection == null)
-        {
-            return ([], SplitCommands(payload.SqlText), []);
-        }
-
-        var length = payload.SqlText.Length;
-        
-        var start = Math.Clamp(payload.TrackedSelection.Start, 0, length);
-        
-        var end = Math.Clamp(payload.TrackedSelection.End, start, length);
-
-        var preCommands = payload.SqlText[..start];
-        var commands = payload.SqlText[start..end];
-        var postCommands = payload.SqlText[end..];
-
-        return (SplitCommands(preCommands), SplitCommands(commands), SplitCommands(postCommands));
-    }
-
-    private static string[] SplitCommands(string sql)
-    {
-        var result = GoRegEx().Split(sql)
-                              .Where(value => !string.IsNullOrWhiteSpace(value))
-                              .ToArray();
-
-        return result;
-    }
-
-
-    [GeneratedRegex(@"^\s*GO\s*$", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant)]
-    private static partial Regex GoRegEx();
 }

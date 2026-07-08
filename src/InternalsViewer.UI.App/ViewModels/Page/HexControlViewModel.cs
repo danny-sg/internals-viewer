@@ -5,8 +5,7 @@ using InternalsViewer.Internals.Converters.Decoder;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
-[ObservableObject]
-public partial class HexControlViewModel
+public sealed partial class HexControlViewModel : ObservableObject
 {
     [ObservableProperty]
     private bool _isDataTipOpen;

@@ -44,10 +44,18 @@
                        SmallChange="100" LargeChange="500"
                        SpinButtonPlacementMode="Compact"
                        MinWidth="100"/>
-            <Button Grid.Column="7"
-                    Command="{x:Bind ViewModel.ClearLogCommand}"
-                    Content="Clear"
-                    Style="{StaticResource AccentButtonStyle}"/>
+            <StackPanel Grid.Column="7" Orientation="Horizontal">
+                <Button Command="{x:Bind ViewModel.ExportLogCommand}"
+                        Content="Export"
+                        Margin="0,0,8,0"
+                        Style="{StaticResource AccentButtonStyle}"/>
+                <Button Command="{x:Bind ViewModel.ClearLogCommand}"
+                        Content="Clear"
+                        Margin="0,0,8,0"
+                        Style="{StaticResource AccentButtonStyle}"/>
+
+            </StackPanel>
+  
         </Grid>
 
         <ListView Grid.Row="1"

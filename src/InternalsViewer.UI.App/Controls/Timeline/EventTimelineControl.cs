@@ -422,7 +422,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
     /// </summary>
     public event Action<bool>? PlayStateChanged;
 
-    /// <summary>Enables or disables audio plink feedback when the playhead passes a page-read event.</summary>
     public bool IsAudioEnabled
     {
         get => (bool)GetValue(IsAudioEnabledProperty);
@@ -433,6 +432,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         DependencyProperty.Register(nameof(IsAudioEnabled), typeof(bool), typeof(EventTimelineControl),
             new PropertyMetadata(false, OnIsAudioEnabledChanged));
 
+#pragma warning disable VSTHRD100 // Avoid async void methods - Required for event and using try/catch for safety
     private static async void OnIsAudioEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if ((bool)e.NewValue)
@@ -447,6 +447,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             }
         }
     }
+#pragma warning restore VSTHRD100
 
     public EventTimelineControl()
     {
@@ -619,10 +620,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private void OnStepForwardButtonClick(object sender, RoutedEventArgs e) => StepToAdjacentEvent(forward: true);
 
-    /// <summary>
-    /// Jumps the playhead to the previous/next I/O read event - used to step across dead-air gaps to the
-    /// next read. Playback is not interrupted: if playing, it continues from the new position.
-    /// </summary>
     private void StepToAdjacentEvent(bool forward)
     {
         if (_sortedEvents.Count == 0)

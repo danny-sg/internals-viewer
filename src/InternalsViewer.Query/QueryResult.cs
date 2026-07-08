@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.Query;
 
@@ -12,6 +13,8 @@ public sealed record QueryResult
     public List<EngineEvent> EngineEvents { get; set; } = [];
 
     public List<ExecutionPlan> ExecutionPlans { get; set; } = [];
+
+    public List<QueryResultSet> ResultSets { get; set; } = [];
 
     public string Message { get; set; } = string.Empty;
 

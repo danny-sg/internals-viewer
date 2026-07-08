@@ -8,10 +8,9 @@ using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.ViewModels.Allocation;
 
-[ObservableObject]
-public partial class AllocationLayerGridViewModel
+public sealed partial class AllocationLayerGridViewModel : ObservableObject
 {
-    private readonly string[] refreshProperties = { nameof(Filter), nameof(DataSource) };
+    private readonly string[] _refreshProperties = [nameof(Filter), nameof(DataSource)];
 
     private List<AllocationLayer> Layers { get; set; } = [];
 
@@ -20,13 +19,13 @@ public partial class AllocationLayerGridViewModel
     private bool SortAscending { get; set; } = true;
 
     [ObservableProperty]
-    private string filter = string.Empty;
+    private string _filter = string.Empty;
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> selectedLayers = [];
+    private ObservableCollection<AllocationLayer> _selectedLayers = [];
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> dataSource = [];
+    private ObservableCollection<AllocationLayer> _dataSource = [];
 
     partial void OnFilterChanged(string? oldValue, string newValue)
     {
@@ -35,8 +34,8 @@ public partial class AllocationLayerGridViewModel
 
     private void RefreshDataSource()
     {
-        IEnumerable<AllocationLayer> filteredLayers = Layers.Where(l => l.Name.Contains(Filter, StringComparison.OrdinalIgnoreCase)
-                                                                         || string.IsNullOrEmpty(Filter));
+        var filteredLayers = Layers.Where(l => l.Name.Contains(Filter, StringComparison.OrdinalIgnoreCase)
+                                               || string.IsNullOrEmpty(Filter));
 
         if (!string.IsNullOrEmpty(SortProperty))
         {
@@ -59,7 +58,7 @@ public partial class AllocationLayerGridViewModel
 
     private void AllocationLayerGridViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if(refreshProperties.Contains(e.PropertyName))
+        if (_refreshProperties.Contains(e.PropertyName))
         {
             RefreshDataSource();
         }

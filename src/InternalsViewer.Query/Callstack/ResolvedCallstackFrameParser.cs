@@ -52,7 +52,7 @@ public class ResolvedCallstackFrameParser
             Offset = offset,
             RawSymbol = value,
             ModuleCategory = ModuleCategoryDictionary.GetCategory(module),
-            SymbolCategory = SymbolCategoryDictionary.GetCategory(className)
+            SymbolCategory = SymbolCategoryDictionary.GetCategory(className, methodName)
         };
     }
 }

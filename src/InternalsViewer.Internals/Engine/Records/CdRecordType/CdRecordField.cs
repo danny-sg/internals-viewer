@@ -49,8 +49,8 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
     /// Uses the anchor field to expand the compressed data
     /// </summary>
     /// <remarks>
-    /// In row compression the anchor record represents the longest prefix that could be used. Values don't necessarily use the whole 
-    /// anchor value.
+    /// In row compression the anchor record represents the longest prefix that could be used. Values don't necessarily
+    /// use the whole anchor value.
     /// 
     /// The length of the anchor is determined by the first one or two bytes of the data. If the first bit is set, the anchor length is 2 
     /// bytes long, else it is 1 byte long.

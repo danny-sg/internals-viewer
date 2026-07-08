@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Results.ResultsGridControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:ui="using:Windows.UI"
+    x:Name="Root">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <toolkit:DataGrid x:Name="ResultsDataGrid"
+                          Grid.Row="0"
+                          AutoGenerateColumns="False"
+                          CanUserSortColumns="False"
+                          SelectionMode="Single"
+                          IsReadOnly="True"
+                          GridLinesVisibility="All"
+                          RowHeight="28"
+                          MinColumnWidth="20"
+                          FontSize="10"
+                          Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <toolkit:DataGrid.Resources>
+                <ui:Color x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundColor">Transparent</ui:Color>
+                <ui:Color x:Key="DataGridRowSelectedUnfocusedBackgroundColor">Transparent</ui:Color>
+                <StaticResource x:Key="DataGridRowSelectedHoveredBackgroundColor"
+                                ResourceKey="SystemListLowColor" />
+                <x:Double x:Key="DataGridRowHeight">24</x:Double>
+                <Thickness x:Key="DataGridCellTheme_Padding">4,0,4,0</Thickness>
+            </toolkit:DataGrid.Resources>
+
+
+        </toolkit:DataGrid>
+        <Border Grid.Row="1"
+                Padding="8,4"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <TextBlock x:Name="StatusText"
+                       FontSize="12"
+                       TextAlignment="Right"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Border>
+    </Grid>
+</UserControl>

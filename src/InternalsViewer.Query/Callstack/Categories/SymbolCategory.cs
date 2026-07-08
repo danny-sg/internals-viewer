@@ -108,10 +108,10 @@ public enum SymbolCategory : byte
     FileControlBlock,
 
     [Category(
-        "Lock Manager",
+        "Locking",
         Description = "Lock acquisition and management",
         ForegroundColor = "#953735")]
-    LockManager,
+    Locking,
 
     [Category(
         "Latching",
@@ -144,6 +144,68 @@ public enum SymbolCategory : byte
         ForegroundColor = "#5B9BD5")]
     AllocationAccess,
 
+    [Category(
+        "Transaction Management",
+        Description = "Transaction lifecycle, commit, rollback and transaction state management",
+        ForegroundColor = "#B45F06")]
+    TransactionManagement,
+
+    [Category(
+        "Compilation",
+        Description = "Query compilation and plan construction",
+        ForegroundColor = "#16A085",
+        BackgroundColor = "#16A085")]
+    Compilation,
+
+    [Category(
+        "Optimization",
+        Description = "Query optimization and relational operator transformations",
+        ForegroundColor = "#1ABC9C",
+        BackgroundColor = "#1ABC9C")]
+    Optimization,
+
+    [Category(
+        "Metadata",
+        Description = "Metadata, catalog and object lookup infrastructure",
+        ForegroundColor = "#27AE60",
+        BackgroundColor = "#27AE60")]
+    Metadata,
+
+    [Category(
+        "Query Binding",
+        Description = "Object, schema and column binding",
+        ForegroundColor = "#2980B9",
+        BackgroundColor = "#2980B9")]
+    QueryBinding,
+
+    [Category(
+        "Query Store",
+        Description = "Query Store persistence, feedback, plan forcing and hint management",
+        ForegroundColor = "#6C5CE7",
+        BackgroundColor = "#6C5CE7")]
+    QueryStore,
+
+    [Category(
+        "Logging",
+        Description = "Transaction log, recovery and log flush processing",
+        ForegroundColor = "#E17055",
+        BackgroundColor = "#E17055")]
+    Logging,
+
+    [Category(
+        "Security",
+        Description = "Permission, security and access control evaluation",
+        ForegroundColor = "#D63031",
+        BackgroundColor = "#D63031")]
+    Security,
+
+    [Category(
+        "System",
+        Description = "Windows thread and runtime infrastructure",
+        ForegroundColor = "#636E72",
+        BackgroundColor = "#636E72",
+        IsInfrastructure = true)]
+    System,
 }
 
 public static class CategoryEnumExtensions

@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.Events.EventTypes;
+﻿using InternalsViewer.Query.Callstack.Categories;
+using InternalsViewer.Query.Events.EventTypes;
 
 namespace InternalsViewer.Query.Callstack;
 
@@ -34,11 +35,13 @@ namespace InternalsViewer.Query.Callstack;
 /// </remarks>
 internal class CallstackProcessor
 {
-    public static async Task Process(List<EngineEvent> events, 
-                                     string symbolsPath,
-                                     IProgress<string>? progress, 
-                                     CancellationToken cancellationToken)
+    public static async Task<string[]> Process(List<EngineEvent> events, 
+                                               string symbolsPath,
+                                               IProgress<string>? progress, 
+                                               CancellationToken cancellationToken)
     {
+        var unknown = new HashSet<string>();
+
         await SymbolDownloader.DownloadSymbols(events.SelectMany(e => e.Callstack), 
                                                symbolsPath, 
                                                progress,
@@ -55,9 +58,21 @@ internal class CallstackProcessor
                     if (resolver.TryResolve(frame, out var result) && !string.IsNullOrEmpty(result))
                     {
                         frame.Resolved = ResolvedCallstackFrameParser.Parse(frame.Module, result);
+
+                        if(frame.Resolved.ModuleCategory == ModuleCategory.Unknown)
+                        {
+                            unknown.Add(result);
+                        }
+
+                        if(frame.Resolved.SymbolCategory == SymbolCategory.Unknown)
+                        {
+                            unknown.Add(result);
+                        }
                     }
                 }
             }
         }
+
+        return unknown.ToArray();
     }
 }

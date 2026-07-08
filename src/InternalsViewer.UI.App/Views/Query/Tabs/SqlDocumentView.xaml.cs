@@ -3,7 +3,6 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
-/// <summary>Dock document hosting the SQL editor for the active query.</summary>
 public sealed partial class SqlDocumentView : UserControl
 {
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
