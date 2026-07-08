@@ -14,7 +14,7 @@ public class PageHeaderParserTests
 
         var reader = new FilePageReader(filePath);
 
-        var data = await reader.Read("TestDatabase", new PageAddress(1, 9));
+        var data = await reader.Read("TestDatabase", new PageAddress(1, 9), CancellationToken.None);
 
         var header = PageHeaderParser.Parse(data);
 

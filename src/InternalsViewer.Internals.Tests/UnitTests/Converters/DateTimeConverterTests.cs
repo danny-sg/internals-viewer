@@ -16,7 +16,7 @@ public class DateTimeConverterTests
         var result = DataConverter.BinaryToString(bytes, SqlDbType.DateTime);
 
         // Assert
-        Assert.Equal("12/27/2023 14:49:33", result);
+        Assert.Equal("2023-12-27 14:49:33", result);
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class DateTimeConverterTests
         var result = DataConverter.BinaryToString(bytes, SqlDbType.SmallDateTime);
 
         // Assert
-        Assert.Equal("12/27/2023 14:50:00", result);
+        Assert.Equal("2023-12-27 14:50:00", result);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class DateTimeConverterTests
         var result = DataConverter.BinaryToString(bytes, SqlDbType.Date);
 
         // Assert
-        Assert.Equal("27/12/2023", result);
+        Assert.Equal("2023-12-27", result);
     }
 
     [Theory]

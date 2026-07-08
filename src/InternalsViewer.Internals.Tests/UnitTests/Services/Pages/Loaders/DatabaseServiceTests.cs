@@ -35,13 +35,13 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
         var pageService = new Mock<IPageService>();
         var metadataProvider = new Mock<IMetadataLoader>();
 
-        metadataProvider.Setup(m => m.Load(It.IsAny<DatabaseSource>()))
+        metadataProvider.Setup(m => m.Load(It.IsAny<DatabaseSource>(), It.IsAny<CancellationToken>()))
                         .ReturnsAsync(BuildMetadataWithFiles());
 
-        allocationChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>(), It.IsAny<PageType>()))
+        allocationChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>(), It.IsAny<PageType>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AllocationChain());
 
-        pfsChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>()))
+        pfsChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PfsChain());
 
         var databaseService = new DatabaseService(TestLogger.GetLogger<DatabaseService>(TestOutputHelper),
@@ -51,7 +51,7 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
 
-        var result = await databaseService.LoadAsync("", null);
+        var result = await databaseService.LoadAsync("", null, CancellationToken.None);
 
         Assert.NotNull(result.Gam[1]);
         Assert.NotNull(result.Gam[2]);
@@ -75,13 +75,13 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
         var pfsChainService = new Mock<IPfsChainService>();
         var metadataLoader = new Mock<IMetadataLoader>();
 
-        metadataLoader.Setup(m => m.Load(It.IsAny<DatabaseSource>()))
+        metadataLoader.Setup(m => m.Load(It.IsAny<DatabaseSource>(), It.IsAny<CancellationToken>()))
                       .ReturnsAsync(BuildMetadataWithFiles());
 
-        allocationChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>(), It.IsAny<PageType>()))
+        allocationChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>(), It.IsAny<PageType>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AllocationChain());
 
-        pfsChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>()))
+        pfsChainService.Setup(a => a.LoadChain(It.IsAny<DatabaseSource>(), It.IsAny<short>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PfsChain());
 
         var databaseService = new DatabaseService(TestLogger.GetLogger<DatabaseService>(testOutput),
@@ -91,7 +91,7 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
 
-        var result = await databaseService.LoadAsync("TestDatabase", null);
+        var result = await databaseService.LoadAsync("TestDatabase", null, CancellationToken.None);
 
         Assert.NotNull(result.Pfs[1]);
         Assert.NotNull(result.Pfs[2]);

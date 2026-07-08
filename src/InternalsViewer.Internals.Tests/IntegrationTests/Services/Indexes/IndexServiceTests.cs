@@ -20,9 +20,9 @@ public class IndexServiceTests(ITestOutputHelper testOutput)
 
         var databaseService = serviceHost.GetService<IDatabaseService>();
 
-        var database = await databaseService.LoadAsync("TestDatabase", connection);
+        var database = await databaseService.LoadAsync("TestDatabase", connection, CancellationToken.None);
 
-        var result = await service.GetNodes(database, new PageAddress(1,1688));
+        var result = await service.GetNodes(database, new PageAddress(1,1688), CancellationToken.None);
 
     }
 }

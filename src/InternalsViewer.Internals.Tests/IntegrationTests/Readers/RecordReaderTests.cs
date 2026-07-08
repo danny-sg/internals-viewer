@@ -30,7 +30,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
 
         var tableStructure = InternalAllocationUnitStructure.GetStructure(72057594040549376);
 
-        var records = await dataReader.Read(database, new PageAddress(1, 20), tableStructure);
+        var records = await dataReader.Read(database, new PageAddress(1, 20), tableStructure, CancellationToken.None);
 
         var result = records.Select(InternalAllocationUnitLoader.Load).ToList();
 
@@ -50,7 +50,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
 
         var tableStructure = InternalObjectStructure.GetStructure(72057594040549376);
 
-        var records = await dataReader.Read(database, new PageAddress(1, 273), tableStructure);
+        var records = await dataReader.Read(database, new PageAddress(1, 273), tableStructure, CancellationToken.None);
 
         var result = records.Select(InternalObjectLoader.Load).ToList();
 
@@ -70,7 +70,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
 
         var tableStructure = InternalColumnStructure.GetStructure(72057594040549376);
 
-        var records = await dataReader.Read(database, new PageAddress(1, 19), tableStructure);
+        var records = await dataReader.Read(database, new PageAddress(1, 19), tableStructure, CancellationToken.None);
 
         var result = records.Select(InternalColumnLoader.Load).ToList();
 
@@ -90,7 +90,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
 
         var tableStructure = InternalRowSetStructure.GetStructure(72057594040549376);
 
-        var records = await dataReader.Read(database, new PageAddress(1, 19), tableStructure);
+        var records = await dataReader.Read(database, new PageAddress(1, 19), tableStructure, CancellationToken.None);
 
         var result = records.Select(InternalRowSetLoader.Load).ToList();
 

@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Services.Loaders.Compression;
+using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Services.Pages;
@@ -42,7 +43,8 @@ internal static class ServiceHelper
         var service = new RecordService(new FixedVarIndexRecordLoader(TestLogger.GetLogger<FixedVarIndexRecordLoader>(testOutput)),
                                         new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(testOutput)),
                                         new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(testOutput)),
-                                        new CdIndexRecordLoader(TestLogger.GetLogger<CdIndexRecordLoader>(testOutput)));
+                                        new CdIndexRecordLoader(TestLogger.GetLogger<CdIndexRecordLoader>(testOutput)),
+                                        new LobRecordLoader());
 
         return service;
     }

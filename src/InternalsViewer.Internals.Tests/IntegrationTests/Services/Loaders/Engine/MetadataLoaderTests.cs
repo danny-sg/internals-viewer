@@ -30,7 +30,7 @@ public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
 
         var service = new MetadataLoader(TestLogger.GetLogger<MetadataLoader>(TestOutput), dataReader);
 
-        var results = await service.Load(database);
+        var results = await service.Load(database, CancellationToken.None);
 
         Assert.NotEmpty(results.AllocationUnits);
         Assert.NotEmpty(results.RowSets);

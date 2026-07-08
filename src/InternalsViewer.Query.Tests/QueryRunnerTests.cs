@@ -1,6 +1,10 @@
 ﻿using System.Threading;
+using InternalsViewer.Internals.Connections.Server;
+using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
 using InternalsViewer.Query.TransactionLog;
 using Xunit.Abstractions;
@@ -25,8 +29,17 @@ public class QueryRunnerTests(ITestOutputHelper testOutputHelper)
         var logReader = new LogRecordReader(TestLogger.GetLogger<LogRecordReader>(TestOutputHelper));
         var executor = new QueryRunner(logger, eventReader, logReader);
 
-        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true,
-            new EventOptions(), @"C:\Symbols", null, CancellationToken.None);
+        var database = new DatabaseSource(
+            new ServerConnectionFactory(TestLogger.GetLogger<QueryPageReader>(TestOutputHelper))
+                .Create(c => c.ConnectionString = connectionString))
+        {
+            Name = "TestDatabase"
+        };
+
+        var payload = new ExecuteSqlPayload(query, new QueryOptions(), StatementType.Select, null);
+
+        var result = await executor.TraceQuery(payload, database, new EventOptions(), @"C:\Symbols", null,
+            CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.EngineEvents);
@@ -52,8 +65,17 @@ public class QueryRunnerTests(ITestOutputHelper testOutputHelper)
         var logReader = new LogRecordReader(TestLogger.GetLogger<LogRecordReader>(TestOutputHelper));
         var executor = new QueryRunner(logger, eventReader, logReader);
 
-        var result = await executor.TraceQuery(query, connectionString, clearBufferPool: true, true, true,
-            new EventOptions(), @"C:\Symbols", null, CancellationToken.None);
+        var database = new DatabaseSource(
+            new ServerConnectionFactory(TestLogger.GetLogger<QueryPageReader>(TestOutputHelper))
+                .Create(c => c.ConnectionString = connectionString))
+        {
+            Name = "TestDatabase"
+        };
+
+        var payload = new ExecuteSqlPayload(query, new QueryOptions(), StatementType.Select, null);
+
+        var result = await executor.TraceQuery(payload, database, new EventOptions(), @"C:\Symbols", null,
+            CancellationToken.None);
 
         Assert.False(result.IsSuccess);
     }

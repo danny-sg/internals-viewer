@@ -216,7 +216,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         };
     }
 
-    private static async Task GetEventKeyAddresses(List<EngineEvent> events,
+    internal static async Task GetEventKeyAddresses(List<EngineEvent> events,
                                                    Dictionary<long, AllocationUnit> allocationUnits,
                                                    string connectionString,
                                                    CancellationToken cancellationToken)
@@ -619,7 +619,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         return await new SqlCommand(sql, connection).ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private string GetFileLocationSql()
+    internal static string GetFileLocationSql()
     {
         return @"
                 SELECT LEFT(
@@ -629,22 +629,22 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             );";
     }
 
-    private string GetDropSessionSql(string sessionName)
+    internal static string GetDropSessionSql(string sessionName)
     {
         return $"DROP EVENT SESSION [{sessionName}] ON SERVER;";
     }
 
-    private string GetStartSessionSql(string sessionName)
+    internal static string GetStartSessionSql(string sessionName)
     {
         return $"ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = START;";
     }
 
-    private string GetStopSessionSql(string sessionName)
+    internal static string GetStopSessionSql(string sessionName)
     {
         return $"ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP;";
     }
 
-    private static string GetCreateSessionSql(string sessionName,
+    internal static string GetCreateSessionSql(string sessionName,
                                               string filePath,
                                               short spid,
                                               bool isReplayMode,

@@ -19,6 +19,6 @@ public abstract class PageParserTestsBase(ITestOutputHelper testOutput)
 
         var pageLoader = new PageLoader();
 
-        return await pageLoader.Load(database, pageAddress);
+        return await pageLoader.Load(database, pageAddress, CancellationToken.None);
     }
 }

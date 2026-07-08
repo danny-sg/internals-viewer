@@ -20,7 +20,7 @@ public class QueryPageReaderTests(ITestOutputHelper testOutputHelper)
 
         var reader = new QueryPageReader(NullLogger<QueryPageReader>.Instance, connectionString);
 
-        var result = await reader.Read("TestDatabase", new PageAddress(1, 1));
+        var result = await reader.Read("TestDatabase", new PageAddress(1, 1), CancellationToken.None);
 
         Assert.NotNull(result);
     }
@@ -32,8 +32,9 @@ public class QueryPageReaderTests(ITestOutputHelper testOutputHelper)
 
         var connection = new FileConnectionFactory().Create(c => c.Filename = "./IntegrationTests/Test Data/TestDatabase.mdf");
 
-        var result = await service.GetPage(new DatabaseSource(connection), 
-                                           new PageAddress(1, 9));
+        var result = await service.GetPage(new DatabaseSource(connection),
+                                           new PageAddress(1, 9),
+                                           CancellationToken.None);
 
         Assert.Equal(PageType.Boot, result.PageHeader.PageType);  
     }

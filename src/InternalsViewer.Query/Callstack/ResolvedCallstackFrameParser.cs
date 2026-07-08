@@ -16,9 +16,9 @@ public class ResolvedCallstackFrameParser
             ? value[(plusIndex + 1)..]
             : null;
 
-        var separator = symbolPart.LastIndexOf("::", StringComparison.Ordinal);
+        var separator = FindClassMethodSeparator(symbolPart);
 
-        var className = separator >= 0 
+        var className = separator >= 0
                         ? symbolPart[..separator].Replace("`", string.Empty).Replace("'", string.Empty)
                         : null;
 
@@ -54,5 +54,38 @@ public class ResolvedCallstackFrameParser
             ModuleCategory = ModuleCategoryDictionary.GetCategory(module),
             SymbolCategory = SymbolCategoryDictionary.GetCategory(className, methodName)
         };
+    }
+
+    /// <summary>
+    /// Finds the last "::" that separates the class from the method, ignoring any "::"
+    /// nested inside template/lambda angle brackets (e.g. lambda names like
+    /// CQDSManager::Method&lt;`Outer::Inner'::`2'::&lt;lambda_1&gt; &gt;).
+    /// </summary>
+    private static int FindClassMethodSeparator(string symbolPart)
+    {
+        var depth = 0;
+        var lastSeparator = -1;
+
+        for (var i = 0; i < symbolPart.Length; i++)
+        {
+            switch (symbolPart[i])
+            {
+                case '<':
+                    depth++;
+                    break;
+                case '>':
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                    break;
+                case ':' when depth == 0 && i + 1 < symbolPart.Length && symbolPart[i + 1] == ':':
+                    lastSeparator = i;
+                    i++;
+                    break;
+            }
+        }
+
+        return lastSeparator;
     }
 }

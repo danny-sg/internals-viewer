@@ -34,7 +34,7 @@ public class ProviderTestBase(ITestOutputHelper testOutput)
 
         var service = new MetadataLoader(TestLogger.GetLogger<MetadataLoader>(TestOutput), dataReader);
 
-        var metadata = await service.Load(database);
+        var metadata = await service.Load(database, CancellationToken.None);
 
         return metadata;
     }

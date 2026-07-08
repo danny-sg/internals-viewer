@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Engine.Allocation.Enums;
 /// <remarks>
 /// See <see cref="Parsers.PfsByteParser"/> for details of the PFS byte structure
 /// </remarks>
-public record PfsByte
+public sealed record PfsByte
 {
     public static readonly PfsByte Unknown = new() { Value = 0 };
 
