@@ -1,5 +1,6 @@
 <UserControl
     x:Class="InternalsViewer.UI.App.Controls.SqlEditor.SqlEditorControl"
+    x:Name="Root"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
@@ -143,7 +144,22 @@
             </CommandBar>
         </Grid>
 
-        <WebView2 x:Name="WebView" Grid.Row="1" />
+        <Grid Grid.Row="1">
+            <WebView2 x:Name="WebView" />
+
+            <Border x:Name="LoadingOverlay"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <StackPanel HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                    <ProgressRing Width="20"
+                                  Height="20"
+                                  IsActive="True" />
+                    <TextBlock Text="Loading..." VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <controls:GridSplitter Grid.Row="2"
                                x:Name="MessagesSplitter"

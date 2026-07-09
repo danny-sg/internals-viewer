@@ -82,9 +82,6 @@ public sealed partial class AllocationControl : IDisposable
             typeof(AllocationControl),
             null);
 
-    /// <summary>
-    /// Gets or sets the number of extents in the allocation map.
-    /// </summary>
     public int ExtentCount
     {
         get => (int)GetValue(ExtentCountProperty);
@@ -145,6 +142,30 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
+    public bool AutoScroll
+    {
+        get => (bool)GetValue(AutoScrollProperty);
+        set => SetValue(AutoScrollProperty, value);
+    }
+
+    public static readonly DependencyProperty AutoScrollProperty
+        = DependencyProperty.Register(nameof(AutoScroll),
+                                      typeof(bool),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(false, OnAutoScrollChanged));
+
+    public bool IsHeatmap
+    {
+        get => (bool)GetValue(IsHeatmapProperty);
+        set => SetValue(IsHeatmapProperty, value);
+    }
+
+    public static readonly DependencyProperty IsHeatmapProperty
+        = DependencyProperty.Register(nameof(IsHeatmap),
+                                      typeof(bool),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(false, OnPropertyChanged));
+
     public double Zoom
     {
         get => (double)GetValue(ZoomProperty);
@@ -166,11 +187,29 @@ public sealed partial class AllocationControl : IDisposable
     private static void OnPlayheadTimeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (AllocationControl)d;
+        var playheadUs = (long)e.NewValue;
+
+        if (control.AutoScroll)
+        {
+            control.ScrollToLatestPageSpan(playheadUs);
+        }
 
         if (control.Layers?.Any(l => l.PageSpans.Count > 0) == true)
         {
             control.AllocationCanvas.Invalidate();
         }
+    }
+
+    private static void OnAutoScrollChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AllocationControl)d;
+
+        if ((bool)e.NewValue)
+        {
+            control.ScrollToLatestPageSpan(control.PlayheadTimeUs);
+        }
+
+        control.AllocationCanvas.Invalidate();
     }
 
     private static readonly DependencyProperty ZoomProperty
@@ -253,7 +292,7 @@ public sealed partial class AllocationControl : IDisposable
     }
 
     private void OnLayersChanged(object? sender,
-        System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Refresh();
+                                 System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Refresh();
 
     private void OnSelectedLayersChanged(object? sender,
         System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Refresh();
@@ -273,8 +312,6 @@ public sealed partial class AllocationControl : IDisposable
 
         PointerWheelChanged += AllocationControl_PointerWheelChanged;
 
-        // The Skia canvas does not repaint itself after being reparented (e.g. when its tab is dragged
-        // into a split). Refresh on (re)load so the map is redrawn.
         Loaded += (_, _) => Refresh();
 
         SetScrollBarValues();
@@ -289,7 +326,88 @@ public sealed partial class AllocationControl : IDisposable
 
         SetScrollBarValues();
 
+        if (AutoScroll)
+        {
+            ScrollToLatestPageSpan(PlayheadTimeUs);
+        }
+
         AllocationCanvas.Invalidate();
+    }
+
+    private void ScrollToLatestPageSpan(long playheadUs)
+    {
+        if (Layers is not { Count: > 0 } || Layout.HorizontalCount <= 0 || Layout.VisibleCount <= 0)
+        {
+            return;
+        }
+
+        PageSpan? latestSpan = null;
+
+        foreach (var layer in Layers)
+        {
+            if (!layer.IsVisible || layer.Opacity == 0 || layer.PageSpans.Count == 0)
+            {
+                continue;
+            }
+
+            foreach (var span in layer.PageSpans)
+            {
+                if (span.Address.FileId != FileId || span.StartUs > playheadUs || span.EndUs < playheadUs)
+                {
+                    continue;
+                }
+
+                if (latestSpan is null
+                    || span.StartUs > latestSpan.StartUs
+                    || (span.StartUs == latestSpan.StartUs && span.EndUs >= latestSpan.EndUs))
+                {
+                    latestSpan = span;
+                }
+            }
+        }
+
+        if (latestSpan is null)
+        {
+            return;
+        }
+
+        ScrollToPage(latestSpan.Address.PageId);
+    }
+
+    private void ScrollToPage(int pageId)
+    {
+        if (pageId < 0 || Layout.HorizontalCount <= 0 || Layout.VisibleCount <= 0)
+        {
+            return;
+        }
+
+        var targetExtent = pageId / 8;
+        var firstVisible = ScrollPosition;
+        var lastVisible = ScrollPosition + Layout.VisibleCount - 1;
+
+        if (targetExtent >= firstVisible && targetExtent <= lastVisible)
+        {
+            return;
+        }
+
+        var horizontalCount = Layout.HorizontalCount;
+        var centerOffset = Layout.VisibleCount / 2;
+        var targetScroll = Math.Max(0, targetExtent - centerOffset);
+
+        targetScroll -= targetScroll % horizontalCount;
+
+        var maxStart = Math.Max(0, ExtentCount - Layout.VisibleCount);
+
+        maxStart -= maxStart % horizontalCount;
+
+        targetScroll = Math.Clamp(targetScroll, 0, maxStart);
+
+        if ((int)ScrollBar.Value == targetScroll)
+        {
+            return;
+        }
+
+        ScrollBar.Value = targetScroll;
     }
 
     private void AllocationControl_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
@@ -479,7 +597,14 @@ public sealed partial class AllocationControl : IDisposable
                 }
             }
 
-            DrawPageSpans(canvas, layout, layer);
+            if (IsHeatmap)
+            {
+                DrawPageSpanHeatmap(canvas, layout, layer);
+            }
+            else
+            {
+                DrawPageSpans(canvas, layout, layer);
+            }
         }
     }
 
@@ -512,6 +637,77 @@ public sealed partial class AllocationControl : IDisposable
 
             canvas.DrawRect(GetPagePosition(span.Address.PageId - (ScrollPosition * 8), layout), _spanPaint);
         }
+    }
+
+    private readonly Dictionary<PageAddress, (int Count, System.Drawing.Color Colour)> _heatmapVisits = new();
+
+    private const float MinHeatmapChromaRatio = 0.15F;
+
+    private void DrawPageSpanHeatmap(SKCanvas canvas, ExtentLayout layout, AllocationLayer layer)
+    {
+        var spans = layer.PageSpans;
+
+        if (spans.Count == 0)
+        {
+            return;
+        }
+
+        var playhead = PlayheadTimeUs;
+
+        _heatmapVisits.Clear();
+
+        var maxCount = 0;
+
+        for (var i = 0; i < spans.Count; i++)
+        {
+            var span = spans[i];
+
+            if (span.StartUs > playhead)
+            {
+                break;
+            }
+
+            if (span.Address.FileId != FileId)
+            {
+                continue;
+            }
+
+            var colour = span.DisplayColour ?? layer.Colour;
+
+            var count = _heatmapVisits.TryGetValue(span.Address, out var visit) ? visit.Count + 1 : 1;
+
+            _heatmapVisits[span.Address] = (count, colour);
+
+            if (count > maxCount)
+            {
+                maxCount = count;
+            }
+        }
+
+        if (maxCount == 0)
+        {
+            return;
+        }
+
+        foreach (var (address, visit) in _heatmapVisits)
+        {
+            var position = GetPagePosition(address.PageId - (ScrollPosition * 8), layout);
+
+            var ratio = (float)visit.Count / maxCount;
+
+            _spanPaint.Color = GetHeatmapColour(visit.Colour, ratio).ToSkColor();
+
+            canvas.DrawRect(position, _spanPaint);
+        }
+    }
+
+    private static System.Drawing.Color GetHeatmapColour(System.Drawing.Color baseColour, float ratio)
+    {
+        var (l, c, h) = LchColorScale.LabToLch(LchColorScale.RgbToLab(baseColour));
+
+        var chromaRatio = MinHeatmapChromaRatio + (1 - MinHeatmapChromaRatio) * ratio;
+
+        return LchColorScale.LchToRgbSafe(l, c * chromaRatio, h);
     }
 
     private void DrawExtentsCore<TChain>(SKCanvas canvas,
@@ -594,9 +790,6 @@ public sealed partial class AllocationControl : IDisposable
         return new SKRect(left, top, left + pageWidth, top + ExtentSize.Height);
     }
 
-    /// <summary>
-    /// Get Rectangle for a particular extent
-    /// </summary>
     private SKRect GetExtentPosition(int extentId, ExtentLayout layout)
     {
         var horizontalCount = layout.HorizontalCount;

@@ -151,7 +151,7 @@ internal static class AllocationLayerBuilder
             TotalPages = allocationUnit.TotalPages,
             IndexType = allocationUnit.IndexType,
             IsSystemObject = allocationUnit.IsSystem,
-            IsAllocationLayer = true,
+            IsAllocationLayer = false,
             Colour = GetLayerColour(allocationUnit, userObjectCount, ref colourIndex),
             IsVisible = true,
             Opacity = opacity

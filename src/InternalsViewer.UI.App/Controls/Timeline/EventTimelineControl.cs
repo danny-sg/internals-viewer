@@ -128,7 +128,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         IsAntialias = true,
     };
 
-    private readonly SKPaint _rowBgPaint = new() { Style = SKPaintStyle.Fill };
+    private readonly SKPaint _rowBackgroundPaint = new() { Style = SKPaintStyle.Fill };
     private readonly SKPaint _markerPaint = new() { Style = SKPaintStyle.Fill };
     private readonly SKPaint _operatorPaint = new()
     {
@@ -165,7 +165,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     // Width of the object-colour marker stripe drawn down an operator's left edge (clamped to the bar's
     // own width on very narrow bars).
-    private const float ObjectMarkerWidth = 4f;
+    private const float ObjectMarkerWidth = 8f;
 
     private readonly SKPaint _operatorTextPaint = new() { IsAntialias = true };
 
@@ -343,12 +343,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
         control._skCanvas.Invalidate();
     }
 
-    /// <summary>
-    /// Optional crop (microseconds): when set the timeline axis spans only [<see cref="StartOffset"/>,
-    /// <see cref="EndOffset"/>], hiding activity outside the window (e.g. pre-query events) so the
-    /// displayed time runs from 0 at <see cref="StartOffset"/>. Internally events keep their true time -
-    /// only the displayed ruler and the visible extent are offset. <c>null</c> means "no crop".
-    /// </summary>
     public long? StartOffset
     {
         get => (long?)GetValue(StartOffsetProperty);
@@ -906,13 +900,14 @@ public sealed class EventTimelineControl : Grid, IDisposable
             var y = rowTops[r];
             var rowHeight = rowHeights[r];
 
-            _rowBgPaint.Color = r % 2 == 0
-                ? _laneColour
-                : _alternateLaneColour;
+            _rowBackgroundPaint.Color = r % 2 == 0
+                                        ? _laneColour
+                                        : _alternateLaneColour;
 
-            canvas.DrawRect(0, y, w, rowHeight, _rowBgPaint);
+            canvas.DrawRect(0, y, w, rowHeight, _rowBackgroundPaint);
 
             var blob = r < _rowLabelBlobs.Length ? _rowLabelBlobs[r] : null;
+
             if (blob is not null)
             {
                 canvas.DrawText(blob, 2, y + rowHeight / 2 + _labelFont.Size / 2, _labelPaint);
@@ -1336,11 +1331,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
             {
                 // Size scan/seek bars by rows processed: thicker = more data, sqrt-compressed against the
                 // busiest data-access operator, with a floor so even a tiny scan stays visible.
-                var avail = availBottom - availTop;
+                var available = availBottom - availTop;
                 var fill = op.RowsProcessed > 0
                     ? Math.Clamp((float)Math.Sqrt(op.RowsProcessed / (double)maxRows), DataAccessMinFill, 1f)
                     : DataAccessMinFill;
-                var barHeight = Math.Max(1f, avail * fill);
+                var barHeight = Math.Max(1f, available * fill);
                 var centre = (availTop + availBottom) / 2f;
                 barTop = centre - barHeight / 2f;
                 barBottom = centre + barHeight / 2f;
@@ -1775,19 +1770,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _hitRegions.Add((new SKRect(consumeStartX, b.BarTop, consumeEndX, b.BarBottom), b.Op, "Consuming"));
     }
 
-    /// <summary>
-    /// A coloured stripe down the operator's left edge - effectively a coloured left border - showing the
-    /// object's own (non-greyscale) allocation-unit colour, the same colour that object's pages show on
-    /// the allocation map, so operators reading different tables read as visually distinct even when they
-    /// share the same category colour (e.g. two Index Seeks are both "data access" blue).
-    /// </summary>
-    /// <remarks>
-    /// The stripe is clamped to the visible left edge (RowLabelWidth) so it stays on screen when zoomed or
-    /// scrolled past the bar's true start. It's drawn clipped to the bar's own rounded silhouette rather
-    /// than given its own corner radius: when it sits at the bar's true (rounded) left edge the clip
-    /// carries that curve through top and bottom; when it's been clamped inward the clip has no effect
-    /// (the clamped position is inside the bar's straight interior), so it reads as a plain rectangle there.
-    /// </remarks>
     private void DrawObjectColourMarker(SKCanvas canvas, OperatorBar b)
     {
         if (ColourProvider?.GetObjectColour(b.Op.ObjectName) is not { } colour)
@@ -1954,7 +1936,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             return;
         }
 
-        const float textPadX = 8f;
+        const float textPadX = 14f;
 
         var availWidth = endX - startX - textPadX * 2;
 
@@ -2798,7 +2780,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
 
         _labelPaint.Dispose();
-        _rowBgPaint.Dispose();
+        _rowBackgroundPaint.Dispose();
         _markerPaint.Dispose();
         _operatorPaint.Dispose();
         _operatorTextPaint.Dispose();

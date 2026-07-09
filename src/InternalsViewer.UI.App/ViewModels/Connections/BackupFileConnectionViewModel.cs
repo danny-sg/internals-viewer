@@ -2,8 +2,7 @@
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 
-[ObservableObject]
-public partial class BackupFileConnectionViewModel
+public partial class BackupFileConnectionViewModel : ObservableObject
 {
     [ObservableProperty]
     private string filename = string.Empty;

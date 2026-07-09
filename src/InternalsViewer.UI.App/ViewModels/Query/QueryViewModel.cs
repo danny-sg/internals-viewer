@@ -75,6 +75,22 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private bool _isTooltipEnabled = true;
 
+    private bool _autoScroll = true;
+
+    public bool AutoScroll
+    {
+        get => _autoScroll;
+        set => SetProperty(ref _autoScroll, value);
+    }
+
+    private bool _isHeatmap;
+
+    public bool IsHeatmap
+    {
+        get => _isHeatmap;
+        set => SetProperty(ref _isHeatmap, value);
+    }
+
     [ObservableProperty]
     private bool _isTimelinePlaying;
 
@@ -799,11 +815,30 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Schema = SchemaHelper.ToSqlSchema(database);
 
-        SqlDocument = DocumentViewModel.Create<SqlDocumentView>("SQL", this, keepAlive: true, key: "Sql");
-        AllocationsDocument = DocumentViewModel.Create<AllocationDocumentView>("Allocations", this, keepAlive: true, key: "Allocations");
-        PlanDocument = DocumentViewModel.Create<PlanDocumentView>("Execution Plan", this, keepAlive: true, key: "Plan");
-        EventsDocument = DocumentViewModel.Create<EventsDocumentView>("Events", this, keepAlive: true, key: "Events");
-        CallstackDocument = DocumentViewModel.Create<CallstackDocumentView>("Call Stack", this, keepAlive: true, key: "Callstack");
+        SqlDocument = DocumentViewModel.Create<SqlDocumentView>("SQL", 
+                                                                this, 
+                                                                keepAlive: true, 
+                                                                key: "Sql");
+
+        AllocationsDocument = DocumentViewModel.Create<AllocationDocumentView>("Allocations", 
+                                                                               this, 
+                                                                               keepAlive: true, 
+                                                                               key: "Allocations");
+
+        PlanDocument = DocumentViewModel.Create<PlanDocumentView>("Execution Plan", 
+                                                                  this, 
+                                                                  keepAlive: true, 
+                                                                  key: "Plan");
+
+        EventsDocument = DocumentViewModel.Create<EventsDocumentView>("Events", 
+                                                                      this, 
+                                                                      keepAlive: true, 
+                                                                      key: "Events");
+
+        CallstackDocument = DocumentViewModel.Create<CallstackDocumentView>("Call Stack", 
+                                                                            this, 
+                                                                            keepAlive: true, 
+                                                                            key: "Callstack");
 
         DocumentsByKey = new Dictionary<string, DocumentViewModel>
         {
@@ -837,8 +872,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly IndexTabViewModelFactory _indexTabViewModelFactory;
 
-    // Padding (microseconds) added either side of the query crop so boundary reads aren't clipped.
-    private const long CropPaddingUs = 200;
+    private const long CropPaddingUs = 100;
 
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task ExecuteQuery(ExecuteSqlPayload payload, CancellationToken cancellationToken)
@@ -998,6 +1032,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private void RefreshLayers(List<EngineEvent> engineEvents)
     {
         ApplyEventLayers(GetEventsAllocationLayer(engineEvents, EventColours, StartOffset, EndOffset));
+
         RefreshIndexPageSpans(engineEvents, EventColours);
     }
 

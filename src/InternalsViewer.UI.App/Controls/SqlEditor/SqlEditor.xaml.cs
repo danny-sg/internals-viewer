@@ -162,6 +162,8 @@ public sealed partial class SqlEditorControl : UserControl
         set => SetValue(IsExecutingProperty, value);
     }
 
+    public bool IsEditorLoading { get; private set; } = true;
+
     public bool IsMessagesVisible
     {
         get => (bool)GetValue(IsMessagesVisibleProperty);
@@ -283,11 +285,15 @@ public sealed partial class SqlEditorControl : UserControl
         {
             if (_initialized)
             {
+                IsEditorLoading = !_editorReady;
+                LoadingOverlay.Visibility = _editorReady ? Visibility.Collapsed : Visibility.Visible;
                 PushSqlTextToEditor();
                 return;
             }
 
             _initialized = true;
+            IsEditorLoading = true;
+            LoadingOverlay.Visibility = Visibility.Visible;
 
             await WebView.EnsureCoreWebView2Async();
 
@@ -304,6 +310,8 @@ public sealed partial class SqlEditorControl : UserControl
         }
         catch (Exception ex)
         {
+            IsEditorLoading = false;
+            LoadingOverlay.Visibility = Visibility.Collapsed;
             await WeakReferenceMessenger.Default.Send(
                 new ExceptionMessage(ex) { Message = "Exception initializing Monaco editor" });
         }
@@ -338,6 +346,8 @@ public sealed partial class SqlEditorControl : UserControl
                 {
                     case "ready":
                         _editorReady = true;
+                        IsEditorLoading = false;
+                        LoadingOverlay.Visibility = Visibility.Collapsed;
                         await PushSchemaToEditorAsync();
                         PushSqlTextToEditor();
                         break;
@@ -387,6 +397,8 @@ public sealed partial class SqlEditorControl : UserControl
         }
         catch (Exception ex)
         {
+            IsEditorLoading = false;
+            LoadingOverlay.Visibility = Visibility.Collapsed;
             await WeakReferenceMessenger.Default.Send(
                 new ExceptionMessage(ex) { Message = "Exception on receive web message" });
         }
