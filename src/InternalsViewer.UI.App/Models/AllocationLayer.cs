@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -60,9 +59,9 @@ public sealed partial class AllocationLayer : ObservableObject
     private List<PageAddress> _singlePages = [];
 
     [ObservableProperty]
-    private IReadOnlyList<PageFlashSpan> _pageSpans = [];
+    private IReadOnlyList<PageSpan> _pageSpans = [];
 
-    public void SetPageSpans(IReadOnlyList<PageFlashSpan> spans)
+    public void SetPageSpans(IReadOnlyList<PageSpan> spans)
     {
         PageSpans = spans;
     }

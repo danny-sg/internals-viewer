@@ -9,11 +9,10 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 
 public sealed class EventColourProvider
 {
-    // Darkening factor applied to an object's own colour for a latch tied to that object - same hue,
-    // dark enough to read as "held, not read" against the object's own (brighter) I/O.
-    private const double LatchDarkenFactor = 0.35;
+    private const double LatchDarkenFactor = 0.6;
 
     private readonly Dictionary<PlanNodeIdentifier, Color> _ioOperatorNodes;
+
     private readonly IReadOnlyDictionary<string, Color> _objectColours;
 
     public EventColourProvider(IReadOnlyList<ExecutionPlan> executionPlans,

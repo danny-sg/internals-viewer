@@ -777,16 +777,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             null);
                 }
 
-                var names = Database.AllocationUnits
-                                    .Values
-                                    .GroupBy(u => u.ObjectId)
-                                    .ToDictionary(g => g.Key, g => g.First().DisplayName);
-
-                foreach (var e in queryResult.EngineEvents.Where(e => e.ObjectId > 0))
-                {
-                    e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
-                }
-
                 long? startOffset = null;
                 long? endOffset = null;
 
@@ -935,7 +925,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var queryEndUs = engineEvents.DefaultIfEmpty().Max(e => e?.TimeUs + e?.DurationUs) ?? MinFlashDurationUs;
 
-        var pageSpans = new List<PageFlashSpan>();
+        var pageSpans = new List<PageSpan>();
 
         foreach (var e in engineEvents)
         {
@@ -950,16 +940,21 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 {
                     var endUs = latchEvent.TimeUs + Math.Max(latchEvent.DurationUs, MinFlashDurationUs);
 
-                    var displayColour = colours.GetLatchMapColour(e.ObjectName) ?? colours.GetColour(e);
+                    var displayColour = colours.GetLatchMapColour(e.ObjectName) 
+                                        ?? colours.GetObjectColour(e.ObjectName) 
+                                        ?? colours.GetColour(e);
 
-                    var latchSpan = new PageFlashSpan(e.PageAddress.Value, latchEvent.TimeUs, endUs, displayColour);
+                    var latchSpan = new PageSpan(e.PageAddress.Value, latchEvent.TimeUs, endUs, displayColour);
 
                     pageSpans.Add(latchSpan);
 
                     continue;
                 }
 
-                var pageSpan = new PageFlashSpan(e.PageAddress.Value, e.TimeUs, queryEndUs, colours.GetColour(e));
+                var pageSpan = new PageSpan(e.PageAddress.Value, 
+                                                 e.TimeUs, 
+                                                 queryEndUs, 
+                                                 colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e));
 
                 pageSpans.Add(pageSpan);
             }
