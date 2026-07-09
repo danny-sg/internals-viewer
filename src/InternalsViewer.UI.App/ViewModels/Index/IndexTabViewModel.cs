@@ -97,9 +97,17 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private PageAddress? _selectedPageAddress;
 
-    /// <summary>Pages selected as a range (e.g. every page read up to the timeline playhead).</summary>
+    /// <summary>
+    /// Reads and latches against this index, sorted by StartUs - same shape as the allocation map's own
+    /// overlay: each span carries its own colour and lifetime (a read's EndUs is the query's end, so it
+    /// stays once hit; a latch's EndUs is its hold end, so it flashes), so IndexControl just draws
+    /// whichever span is active for the current playhead - no read/latch distinction needed here.
+    /// </summary>
     [ObservableProperty]
-    private IReadOnlyList<PageAddress> _selectedPageAddresses = [];
+    private IReadOnlyList<PageSpan> _pageSpans = [];
+
+    [ObservableProperty]
+    private long _playheadTimeUs;
 
     [ObservableProperty]
     private PageAddress? _selectedNextPage;

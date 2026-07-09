@@ -48,7 +48,7 @@ internal abstract class VerificationService(IDatabaseService databaseService)
 
         var connection = new ServerConnectionFactory(NullLogger<QueryPageReader>.Instance).Create(config => config.ConnectionString = connectionString);
 
-        var database = await DatabaseService.LoadAsync(databaseName, connection);
+        var database = await DatabaseService.LoadAsync(databaseName, connection, CancellationToken.None);
 
         return database;
     }

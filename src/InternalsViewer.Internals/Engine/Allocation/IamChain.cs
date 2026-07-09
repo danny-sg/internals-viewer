@@ -99,7 +99,7 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
         {
             if (pages[i].StartPage.FileId == fileId && extent >= starts[i] && extent <= ends[i])
             {
-                var relIndex = extent - pages[i].StartPage.Extent;
+                var relIndex = extent - starts[i];
 
                 return ((pages[i].AllocationMap[relIndex >> 3] >> (relIndex & 7)) & 1) != 0;
             }

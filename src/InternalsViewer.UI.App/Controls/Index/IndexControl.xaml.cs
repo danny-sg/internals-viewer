@@ -45,17 +45,34 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
-    public IReadOnlyList<PageAddress> SelectedPageAddresses
+    /// <summary>
+    /// Reads and latches against this index, sorted by StartUs, each carrying its own colour and
+    /// lifetime. See <see cref="Index.IndexTabViewModel.PageSpans"/>.
+    /// </summary>
+    public IReadOnlyList<PageSpan> PageSpans
     {
-        get => (IReadOnlyList<PageAddress>)GetValue(SelectedPageAddressesProperty);
-        set => SetValue(SelectedPageAddressesProperty, value);
+        get => (IReadOnlyList<PageSpan>)GetValue(PageSpansProperty);
+        set => SetValue(PageSpansProperty, value);
     }
 
-    public static readonly DependencyProperty SelectedPageAddressesProperty
-        = DependencyProperty.Register(nameof(SelectedPageAddresses),
-                                      typeof(IReadOnlyList<PageAddress>),
+    public static readonly DependencyProperty PageSpansProperty
+        = DependencyProperty.Register(nameof(PageSpans),
+                                      typeof(IReadOnlyList<PageSpan>),
                                       typeof(IndexControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
+
+    /// <summary>Current playhead position (microseconds) - drives which spans are currently active.</summary>
+    public long PlayheadTimeUs
+    {
+        get => (long)GetValue(PlayheadTimeUsProperty);
+        set => SetValue(PlayheadTimeUsProperty, value);
+    }
+
+    public static readonly DependencyProperty PlayheadTimeUsProperty
+        = DependencyProperty.Register(nameof(PlayheadTimeUs),
+                                      typeof(long),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(0L, OnPropertyChanged));
 
     public Windows.UI.Color SingleSelectedColour
     {
@@ -81,6 +98,7 @@ public sealed partial class IndexControl : IDisposable
             typeof(IndexControl),
             new PropertyMetadata(Microsoft.UI.Colors.White, OnPropertyChanged));
 
+    /// <summary>Fallback colour for an active span that has no <see cref="PageSpan.DisplayColour"/> of its own.</summary>
     public Windows.UI.Color RangeSelectedColour
     {
         get => (Windows.UI.Color)GetValue(RangeSelectedColourProperty);
@@ -173,8 +191,9 @@ public sealed partial class IndexControl : IDisposable
     private SKColor _singleSelectedColour = Microsoft.UI.Colors.Navy.ToSkColor();
     private SKColor _rangeSelectedColour = Microsoft.UI.Colors.Navy.ToSkColor();
 
-    // The range selection as a set, rebuilt once per paint for O(1) membership tests in the draw loop.
-    private readonly HashSet<PageAddress> _rangeSet = [];
+    // Each currently-active page's own span colour, rebuilt once per paint (bounded by the playhead, same
+    // as the allocation map's DrawPageSpans) for an O(1) lookup per node in the draw loop.
+    private readonly Dictionary<PageAddress, SKColor> _activeSpanColours = [];
 
     private readonly List<IndexTreeNode> _nodePositions = [];
 
@@ -285,15 +304,8 @@ public sealed partial class IndexControl : IDisposable
         _singleSelectedColour = SingleSelectedColour.ToSkColor();
         _rangeSelectedColour = RangeSelectedColour.ToSkColor();
 
-        _rangeSet.Clear();
-
-        if (SelectedPageAddresses is { } range)
-        {
-            foreach (var address in range)
-            {
-                _rangeSet.Add(address);
-            }
-        }
+        _activeSpanColours.Clear();
+        CollectActiveSpanColours(PageSpans, PlayheadTimeUs, _rangeSelectedColour, _activeSpanColours);
 
         // Draw levels from the bottom up
         for (var i = _levelCount; i >= 0; i--)
@@ -302,7 +314,46 @@ public sealed partial class IndexControl : IDisposable
         }
     }
 
-    private float GetNodeX(int n) 
+    /// <summary>
+    /// Maps every page whose span is currently active (StartUs &lt;= playhead &lt;= EndUs) to that span's
+    /// own colour (falling back to <paramref name="defaultColour"/> when a span has none), into
+    /// <paramref name="into"/>. Spans are sorted ascending by StartUs, so this only walks the prefix
+    /// that's started, breaking as soon as a span hasn't started yet - same bounded walk as
+    /// AllocationControl.DrawPageSpans. A read's EndUs is effectively "forever" (the query's end), so it
+    /// stays active for the rest of playback once reached; a latch's EndUs is its own hold end, so it
+    /// drops back out again once the playhead moves past it. Where a page has more than one active span
+    /// (e.g. a read still in scope and a fresh latch on top), the later one in the list wins, since it's
+    /// the more recent/specific event.
+    /// </summary>
+    private static void CollectActiveSpanColours(IReadOnlyList<PageSpan>? spans,
+                                                  long playhead,
+                                                  SKColor defaultColour,
+                                                  Dictionary<PageAddress, SKColor> into)
+    {
+        if (spans is null)
+        {
+            return;
+        }
+
+        for (var i = 0; i < spans.Count; i++)
+        {
+            var span = spans[i];
+
+            if (span.StartUs > playhead)
+            {
+                break;
+            }
+
+            if (span.EndUs < playhead)
+            {
+                continue;
+            }
+
+            into[span.Address] = span.DisplayColour?.ToSkColor() ?? defaultColour;
+        }
+    }
+
+    private float GetNodeX(int n)
         => (PageWidth + HorizontalMargin) * n;
 
     private float GetNodeY(int level, int row) 
@@ -486,15 +537,15 @@ public sealed partial class IndexControl : IDisposable
             {
                 var isHighlighted = highlightedAddresses.Contains(node.Node.PageAddress);
                 var isSelected = node.Node.PageAddress == selectedAddress;
-                var isRangeSelected = _rangeSet.Contains(node.Node.PageAddress);
+                var hasSpanColour = _activeSpanColours.TryGetValue(node.Node.PageAddress, out var spanColour);
 
                 if (miniMode)
                 {
-                    DrawMiniPage(canvas, renderX, renderY, isSelected, isHighlighted, isRangeSelected);
+                    DrawMiniPage(canvas, renderX, renderY, isSelected, isHighlighted, hasSpanColour, spanColour);
                 }
                 else
                 {
-                    DrawPage(canvas, renderX, renderY, isSelected, isHighlighted, isRangeSelected);
+                    DrawPage(canvas, renderX, renderY, isSelected, isHighlighted, hasSpanColour, spanColour);
 
                     if (!maxiMode)
                     {
@@ -622,11 +673,12 @@ public sealed partial class IndexControl : IDisposable
                           float y,
                           bool isSelected,
                           bool isHighlighted,
-                          bool isRangeSelected)
+                          bool hasSpanColour,
+                          SKColor spanColour)
     {
         var indexPageRect = new SKRect(x, y, x + PageWidth, y + PageHeight);
 
-        if (isSelected || isRangeSelected)
+        if (isSelected || hasSpanColour)
         {
             // Draw selected background
             _indexPagePaint.Style = SKPaintStyle.Fill;
@@ -637,7 +689,9 @@ public sealed partial class IndexControl : IDisposable
 
         _indexPagePaint.Style = SKPaintStyle.Stroke;
 
-        // The single (active) page wins, then a hover highlight, then the range membership.
+        // The single (active) page wins, then a hover highlight, then whichever span (read or latch) is
+        // currently active - its own colour already tells read from latch, so there's no priority to
+        // pick between them here.
         if (isSelected)
         {
             _indexPagePaint.Color = _singleSelectedColour;
@@ -646,9 +700,9 @@ public sealed partial class IndexControl : IDisposable
         {
             _indexPagePaint.Color = _highlightedBorderColour;
         }
-        else if (isRangeSelected)
+        else if (hasSpanColour)
         {
-            _indexPagePaint.Color = _rangeSelectedColour;
+            _indexPagePaint.Color = spanColour;
         }
         else
         {
@@ -666,7 +720,8 @@ public sealed partial class IndexControl : IDisposable
                               float y,
                               bool isSelected,
                               bool isHighlighted,
-                              bool isRangeSelected)
+                              bool hasSpanColour,
+                              SKColor spanColour)
     {
         var indexPageRect = new SKRect(x, y, x + PageWidth, y + PageHeight);
 
@@ -680,9 +735,9 @@ public sealed partial class IndexControl : IDisposable
         {
             _indexPagePaint.Color = _highlightedBorderColour;
         }
-        else if (isRangeSelected)
+        else if (hasSpanColour)
         {
-            _indexPagePaint.Color = _rangeSelectedColour;
+            _indexPagePaint.Color = spanColour;
         }
         else
         {

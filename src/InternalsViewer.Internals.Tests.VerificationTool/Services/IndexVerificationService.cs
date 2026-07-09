@@ -161,7 +161,7 @@ internal class IndexVerificationService(ILogger<IndexVerificationService> logger
 
     private async Task<List<IIndexRecord>> GetInternalsRows(PageAddress pageAddress, DatabaseSource database)
     {
-        var page = await PageService.GetPage<IndexPage>(database, pageAddress);
+        var page = await PageService.GetPage<IndexPage>(database, pageAddress, CancellationToken.None);
 
         var rows = RecordService.GetIndexRecords(page);
 

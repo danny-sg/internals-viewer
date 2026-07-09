@@ -135,6 +135,20 @@ public class IamChainTests
     }
 
     [Fact]
+    public void IsExtentAllocated_Correct_When_StartPage_Is_On_An_Extent_Boundary()
+    {
+        var page = new IamPage { StartPage = new PageAddress(1, 8) };
+
+        const int extent = 2;
+        var relIndex = extent - (page.StartPage.PageId / 8);
+        page.AllocationMap[relIndex >> 3] |= (byte)(1 << (relIndex & 7));
+
+        var chain = BuildChain(page);
+
+        Assert.True(chain.IsExtentAllocated(extent, fileId: 1, invert: false));
+    }
+
+    [Fact]
     public void SinglePageSlots_Defaults_To_Empty()
     {
         var chain = new IamChain();

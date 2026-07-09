@@ -15,6 +15,7 @@ internal static class Program
         builder.Services.AddTransient<ObjectPageListService>();
         builder.Services.AddTransient<IndexVerificationService>();
         builder.Services.AddTransient<TableVerificationService>();
+        builder.Services.AddTransient<IamVerificationService>();
 
         builder.Services.RegisterServices();
 
@@ -33,21 +34,59 @@ internal static class Program
 
         var tableService = services.GetRequiredService<TableVerificationService>();
         var indexService = services.GetRequiredService<IndexVerificationService>();
+        var iamService = services.GetRequiredService<IamVerificationService>();
 
         var logFilename = $"C:\\Temp\\VerificationTool_{DateTime.Now:yyyyMMddHHmm}.log";
 
         tableService.LogFilename = logFilename;
         indexService.LogFilename = logFilename;
+        iamService.LogFilename = logFilename;
 
         Console.WriteLine("Database?");
 
         var databaseName = Console.ReadLine() ?? string.Empty;
 
-        Console.WriteLine("Verify Type: Tables (T) or Indexes (I)?");
+        Console.WriteLine("Verify Type: Tables (T), Indexes (I) or Allocation/IAM (A)?");
 
         var verifyType = Console.ReadLine()?.ToLower();
 
-        if (verifyType == "t" || verifyType == "table")
+        if (verifyType == "a" || verifyType == "allocation" || verifyType == "iam")
+        {
+            Console.WriteLine("Table name or * for all?");
+
+            var tableName = Console.ReadLine() ?? string.Empty;
+
+            if (tableName == "*")
+            {
+                try
+                {
+                    await iamService.VerifyAllIam(databaseName);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.ToString());
+                }
+            }
+            else
+            {
+                Console.WriteLine("Index Id (0 for heap/clustered index)?");
+
+                var indexId = Console.ReadLine();
+
+                if (int.TryParse(indexId, out var index))
+                {
+                    try
+                    {
+                        await iamService.VerifyIam(databaseName, tableName, index);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.ToString());
+                    }
+                }
+            }
+        }
+        else if (verifyType == "t" || verifyType == "table")
         {
             Console.WriteLine("Object Id or * for all (*s for all including system tables)?");
 

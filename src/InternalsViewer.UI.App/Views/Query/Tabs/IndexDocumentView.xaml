@@ -34,7 +34,8 @@
                             IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
                             HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
                             SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
-                            SelectedPageAddresses="{x:Bind ViewModel.SelectedPageAddresses, Mode=OneWay}"
+                            PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
+                            PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
                             VerticalAlignment="Stretch"
                             HorizontalAlignment="Stretch" />
     </Grid>

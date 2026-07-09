@@ -52,7 +52,7 @@ internal static class AllocationLayerBuilder
                 layers.Add(layer);
             }
 
-            layers.Last().AllocationChains = [allocationUnit.IamChain];
+            layers.Last().AllocationChains.Add(allocationUnit.IamChain);
 
             layers.Last()
                   .SinglePages

@@ -545,7 +545,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Dock.Show(document);
 
-        // Reflect the current playhead position immediately.
+        // Reflect the already-built spans and current playhead position immediately.
+        ApplyIndexPageSpans(indexViewModel);
         SyncIndexPage(PlayheadTimeUs);
     }
 
@@ -589,11 +590,114 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return root;
     }
 
+    // Per-index-root spans, built once whenever the event set (re)builds - see RefreshIndexPageSpans -
+    // rather than rescanned per playhead tick. Same shape and colouring as the allocation map's own
+    // "Events" overlay: each span already carries its own DisplayColour and lifetime (EndUs = the query's
+    // end for a read, so it stays once hit; EndUs = the hold end for a latch, so it flashes), so
+    // IndexControl just draws whichever span is active - it has no read/latch distinction of its own.
+    private readonly Dictionary<PageAddress, IReadOnlyList<PageSpan>> _indexPageSpansByRoot = new();
+
+    // Reads only, kept separately (without colour) purely so SyncIndexPage can binary-search for the
+    // active page - a latch doesn't count as "the page being read".
+    private readonly Dictionary<PageAddress, IReadOnlyList<PageSpan>> _indexReadSpansByRoot = new();
+
     /// <summary>
-    /// Updates each open index tab from the playhead time: the single page actively being read at the
-    /// playhead, plus the range of every page the index read between the clip start and the playhead.
-    /// Working in time (not sequence) means reads from different operators at the same coarse timestamp
-    /// are resolved by where they actually sit, so each operator's index tracks correctly.
+    /// Rebuilds <see cref="_indexPageSpansByRoot"/>/<see cref="_indexReadSpansByRoot"/> from the current
+    /// event set and pushes them into every open index tab. Called whenever the event set changes (see
+    /// <see cref="RefreshLayers"/>) - not per playhead tick, since none of this depends on the playhead.
+    /// </summary>
+    private void RefreshIndexPageSpans(List<EngineEvent> engineEvents, EventColourProvider colours)
+    {
+        _indexPageSpansByRoot.Clear();
+        _indexReadSpansByRoot.Clear();
+
+        var queryEndUs = ComputeQueryEndUs(engineEvents);
+
+        var allSpans = new Dictionary<PageAddress, List<PageSpan>>();
+        var readSpans = new Dictionary<PageAddress, List<PageSpan>>();
+
+        foreach (var e in engineEvents)
+        {
+            PageSpan span;
+            var isRead = false;
+
+            switch (e)
+            {
+                case LatchEvent latch when e.PageAddress is { } pg:
+                    var endUs = latch.TimeUs + Math.Max(latch.DurationUs, MinFlashDurationUs);
+                    var latchColour = colours.GetLatchMapColour(e.ObjectName) ?? colours.GetColour(e);
+                    span = new PageSpan(pg, latch.TimeUs, endUs, latchColour);
+                    break;
+
+                case IoEvent { IsRead: true } io when e.PageAddress is { } pg:
+                    var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
+                    span = new PageSpan(pg, io.TimeUs, queryEndUs, readColour);
+                    isRead = true;
+                    break;
+
+                default:
+                    continue;
+            }
+
+            if (RootPageOf(span.Address) is not { } root)
+            {
+                continue;
+            }
+
+            AddSpan(allSpans, root, span);
+
+            if (isRead)
+            {
+                AddSpan(readSpans, root, span);
+            }
+        }
+
+        foreach (var (root, spans) in allSpans)
+        {
+            _indexPageSpansByRoot[root] = [.. spans.OrderBy(s => s.StartUs)];
+        }
+
+        foreach (var (root, spans) in readSpans)
+        {
+            _indexReadSpansByRoot[root] = [.. spans.OrderBy(s => s.StartUs)];
+        }
+
+        foreach (var viewModel in _openIndexes.Values)
+        {
+            ApplyIndexPageSpans(viewModel);
+        }
+
+        SyncIndexPage(PlayheadTimeUs);
+
+        return;
+
+        static void AddSpan(Dictionary<PageAddress, List<PageSpan>> spansByRoot, PageAddress root, PageSpan span)
+        {
+            if (!spansByRoot.TryGetValue(root, out var list))
+            {
+                list = [];
+                spansByRoot[root] = list;
+            }
+
+            list.Add(span);
+        }
+    }
+
+    private void ApplyIndexPageSpans(IndexTabViewModel viewModel)
+    {
+        viewModel.PageSpans = _indexPageSpansByRoot.TryGetValue(viewModel.RootPage, out var spans)
+            ? spans
+            : [];
+    }
+
+    private static long ComputeQueryEndUs(List<EngineEvent> engineEvents) =>
+        engineEvents.DefaultIfEmpty().Max(e => e?.TimeUs + e?.DurationUs) ?? MinFlashDurationUs;
+
+    /// <summary>
+    /// Updates each open index tab's active page (the latest read at or before the playhead) and current
+    /// playhead position. The range/flash highlighting itself is computed by IndexControl straight from
+    /// the (already time-sorted) spans pushed by RefreshIndexPageSpans, so this only needs to resolve the
+    /// single "active" page via binary search - no per-tick event scan.
     /// </summary>
     private void SyncIndexPage(long playheadUs)
     {
@@ -602,53 +706,43 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
-
-        // The active read: the latest page read at or before the playhead (by time).
-        PageAddress? activePage = null;
-
-        var activeReadTime = long.MinValue;
-
-        // The range: every page read between the clip start and the playhead, grouped by index root page.
-        var rangeByRoot = new Dictionary<PageAddress, List<PageAddress>>();
-
-        foreach (var e in source)
+        foreach (var viewModel in _openIndexes.Values)
         {
-            if (e is not IoEvent { IsRead: true } || e.PageAddress is not { } pg)
+            viewModel.PlayheadTimeUs = playheadUs;
+
+            if (!_indexReadSpansByRoot.TryGetValue(viewModel.RootPage, out var spans) || spans.Count == 0)
             {
+                viewModel.SelectedPageAddress = null;
                 continue;
             }
 
-            if (e.TimeUs <= playheadUs && e.TimeUs > activeReadTime)
-            {
-                activeReadTime = e.TimeUs;
-                activePage = pg;
-            }
+            var index = UpperBoundByStartUs(spans, playheadUs) - 1;
 
-            if (e.TimeUs >= _scopeFromUs && e.TimeUs <= playheadUs && RootPageOf(pg) is { } root)
-            {
-                if (!rangeByRoot.TryGetValue(root, out var pages))
-                {
-                    pages = [];
-                    rangeByRoot[root] = pages;
-                }
-
-                pages.Add(pg);
-            }
+            viewModel.SelectedPageAddress = index >= 0 ? spans[index].Address : null;
         }
+    }
 
-        var activeRoot = activePage is { } ap ? RootPageOf(ap) : null;
+    /// <summary>The index of the first span whose StartUs is &gt; <paramref name="value"/>.</summary>
+    private static int UpperBoundByStartUs(IReadOnlyList<PageSpan> spans, long value)
+    {
+        var lo = 0;
+        var hi = spans.Count;
 
-        foreach (var viewModel in _openIndexes.Values)
+        while (lo < hi)
         {
-            viewModel.SelectedPageAddress = activeRoot is not null && viewModel.RootPage == activeRoot
-                ? activePage
-                : null;
+            var mid = (lo + hi) / 2;
 
-            viewModel.SelectedPageAddresses = rangeByRoot.TryGetValue(viewModel.RootPage, out var range)
-                ? range
-                : [];
+            if (spans[mid].StartUs <= value)
+            {
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid;
+            }
         }
+
+        return lo;
     }
 
     private static bool NameMatches(string? a, string? b) =>
@@ -842,6 +936,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             ShowResultTabsForFirstRun();
 
             ApplyEventLayers(layers);
+            RefreshIndexPageSpans(Events, colours);
         }
         catch (Exception ex)
         {
@@ -889,8 +984,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         foreach (var indexViewModel in _openIndexes.Values)
         {
             indexViewModel.SelectedPageAddress = null;
-            indexViewModel.SelectedPageAddresses = [];
+            indexViewModel.PageSpans = [];
         }
+
+        _indexPageSpansByRoot.Clear();
+        _indexReadSpansByRoot.Clear();
 
         EventFilter.Clear();
 
@@ -898,7 +996,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     private void RefreshLayers(List<EngineEvent> engineEvents)
-        => ApplyEventLayers(GetEventsAllocationLayer(engineEvents, EventColours, StartOffset, EndOffset));
+    {
+        ApplyEventLayers(GetEventsAllocationLayer(engineEvents, EventColours, StartOffset, EndOffset));
+        RefreshIndexPageSpans(engineEvents, EventColours);
+    }
 
     private void ApplyEventLayers(AllocationLayer layer)
     {
@@ -923,7 +1024,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var overlayLayer = new AllocationLayer { Name = "Events", IsVisible = true };
 
-        var queryEndUs = engineEvents.DefaultIfEmpty().Max(e => e?.TimeUs + e?.DurationUs) ?? MinFlashDurationUs;
+        var queryEndUs = ComputeQueryEndUs(engineEvents);
 
         var pageSpans = new List<PageSpan>();
 

@@ -1254,23 +1254,25 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var top = rowTops[planRow] + RowPadding;
         var height = rowHeights[planRow] - RowPadding * 2;
 
-        var totalWeight = 0f;
+        var weights = new float[ordered.Count];
 
-        foreach (var (_, op) in ordered)
+        for (var i = 0; i < ordered.Count; i++)
         {
-            totalWeight += CostWeight(op);
+            weights[i] = CostWeight(ordered[i].Op);
         }
 
-        var unit = totalWeight > 0 ? height / totalWeight : height;
+        var totalWeight = weights.Sum();
+
+        var slotHeights = ResolveSlotHeights(weights, totalWeight, height);
 
         var slotByIndex = new Dictionary<int, (float Y, float Height)>(ordered.Count);
         var slotAcc = top;
 
-        foreach (var (index, op) in ordered)
+        for (var i = 0; i < ordered.Count; i++)
         {
-            var slot = CostWeight(op) * unit;
+            var slot = slotHeights[i];
 
-            slotByIndex[index] = (slotAcc + slot / 2f, slot);
+            slotByIndex[ordered[i].Index] = (slotAcc + slot / 2f, slot);
             slotAcc += slot;
         }
 
@@ -1431,6 +1433,78 @@ public sealed class EventTimelineControl : Grid, IDisposable
             var normalised = (float)Math.Sqrt(Math.Clamp((op.Cost ?? 0) / maxCost, 0, 1));
             return MinCostWeight + (MaxCostWeight - MinCostWeight) * normalised;
         }
+    }
+
+    /// <summary>
+    /// Turns cost weights into slot heights that always sum to exactly <paramref name="height"/> (so the
+    /// stack never leaves blank space), while keeping every operator at or above
+    /// <see cref="MinOperatorSlotHeight"/> - the floor takes priority over exact cost-proportionality,
+    /// so an operator forced up to the floor "borrows" height from the others, who then share the
+    /// remainder by their original weights. The floor itself is only given up (falling back to a plain
+    /// proportional split) when the row is too short for every operator to have it.
+    /// </summary>
+    private static float[] ResolveSlotHeights(float[] weights, float totalWeight, float height)
+    {
+        var count = weights.Length;
+        var slotHeights = new float[count];
+
+        if (count * MinOperatorSlotHeight > height)
+        {
+            // Constrained: even everyone's minimum wouldn't fit, so the floor has to give way. Fall back
+            // to a plain proportional split, which still always sums to exactly `height`.
+            var unit = totalWeight > 0 ? height / totalWeight : height / count;
+
+            for (var i = 0; i < count; i++)
+            {
+                slotHeights[i] = totalWeight > 0 ? weights[i] * unit : unit;
+            }
+
+            return slotHeights;
+        }
+
+        // Freeze any operator whose proportional share would fall under the floor at exactly the floor,
+        // then re-share the remaining height across the rest by their original weights. Repeat, since
+        // shrinking the pool for the remaining operators can push another one under the floor too -
+        // this converges because each pass either freezes at least one more operator or stops.
+        var frozen = new bool[count];
+        var remainingHeight = height;
+        var remainingWeight = totalWeight;
+
+        bool anyFrozen;
+
+        do
+        {
+            anyFrozen = false;
+
+            for (var i = 0; i < count; i++)
+            {
+                if (frozen[i] || remainingWeight <= 0)
+                {
+                    continue;
+                }
+
+                var share = remainingHeight * weights[i] / remainingWeight;
+
+                if (share < MinOperatorSlotHeight)
+                {
+                    slotHeights[i] = MinOperatorSlotHeight;
+                    frozen[i] = true;
+                    remainingHeight -= MinOperatorSlotHeight;
+                    remainingWeight -= weights[i];
+                    anyFrozen = true;
+                }
+            }
+        } while (anyFrozen);
+
+        for (var i = 0; i < count; i++)
+        {
+            if (!frozen[i])
+            {
+                slotHeights[i] = remainingWeight > 0 ? remainingHeight * weights[i] / remainingWeight : 0f;
+            }
+        }
+
+        return slotHeights;
     }
 
     /// <summary>
@@ -1824,6 +1898,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
     // minimum share (so it stays legible) and the most expensive gets the maximum.
     private const float MinCostWeight = 0.35f;
     private const float MaxCostWeight = 1.5f;
+
+    // Floor under an operator's slot height, in pixels, regardless of its cost share - guarantees every
+    // operator stays legible instead of shrinking to nothing next to a much more expensive one. Only
+    // given up (see ResolveSlotHeights) when the row is too short for every operator to have it.
+    private const float MinOperatorSlotHeight = 10f;
 
     // RGB lift/drop for the subtle vertical sheen on operator bars (±14%).
     private const float GradientLift = 0.04f;

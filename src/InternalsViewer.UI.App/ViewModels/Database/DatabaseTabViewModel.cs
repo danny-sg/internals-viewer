@@ -200,6 +200,38 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         => AllocationLayers.Where(w => string.IsNullOrEmpty(Filter)
                                        || w.Name.Contains(Filter, StringComparison.CurrentCultureIgnoreCase)).ToList();
 
+    partial void OnSelectedLayersChanged(ObservableCollection<AllocationLayer>? oldValue, ObservableCollection<AllocationLayer> newValue)
+    {
+        RefreshAllocationLayerSelection();
+    }
+
+    private void RefreshAllocationLayerSelection()
+    {
+        var hasSelection = SelectedLayers.Count > 0;
+
+        var updatedLayers = AllocationLayers.Select(s =>
+        {
+            if (s.IsAllocationLayer)
+            {
+                return s;
+
+            }
+
+            if (hasSelection)
+            {
+                s.Opacity = (byte) (SelectedLayers.Any(l => l.Name == s.Name) ? 100 : 20);
+            }
+            else
+            {
+                s.Opacity = 100;
+            }
+
+            return s;
+        }).ToList();
+
+        AllocationLayers = new ObservableCollection<AllocationLayer>(updatedLayers);
+    }
+
     public void Load(string name)
     {
         Logger.LogDebug("Loading database: {Name}", name);

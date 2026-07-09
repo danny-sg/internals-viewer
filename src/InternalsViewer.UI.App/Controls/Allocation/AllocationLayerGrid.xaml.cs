@@ -30,7 +30,7 @@ public sealed partial class AllocationLayerGrid
         = DependencyProperty.Register(nameof(Layers),
             typeof(ObservableCollection<AllocationLayer>),
             typeof(AllocationLayerGrid),
-            new PropertyMetadata(default, OnPropertyChanged));
+            new PropertyMetadata(null, OnPropertyChanged));
 
     public ObservableCollection<AllocationLayer> SelectedLayers
     {
@@ -68,6 +68,8 @@ public sealed partial class AllocationLayerGrid
 
     private void DataGrid_OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        var layers = SelectedLayers.ToList();
+
         var source = e.OriginalSource as DependencyObject;
 
         // Clicks on the page-address / view-index links navigate; they must not toggle row selection.
@@ -88,7 +90,7 @@ public sealed partial class AllocationLayerGrid
         var layer = (AllocationLayer)row.DataContext;
 
         // Snapshot selection state before the DataGrid's own handler changes anything
-        var wasSelected = SelectedLayers.Contains(layer);
+        var wasSelected = layers.Contains(layer);
 
         var isShiftHeld = (e.KeyModifiers & Windows.System.VirtualKeyModifiers.Shift) != 0;
 
@@ -96,22 +98,23 @@ public sealed partial class AllocationLayerGrid
         {
             if (wasSelected)
             {
-                SelectedLayers.Remove(layer);
+                layers.Remove(layer);
             }
             else
             {
-                SelectedLayers.Add(layer);
+                layers.Add(layer);
             }
         }
         else
         {
-            SelectedLayers.Clear();
+            layers.Clear();
 
             if (!wasSelected)
             {
-                SelectedLayers.Add(layer);
+                layers.Add(layer);
             }
         }
+        SelectedLayers = new ObservableCollection<AllocationLayer>(layers);
 
         DataGrid.SelectedItem = SelectedLayers.Count == 1 ? (object)SelectedLayers[0] : null;
 

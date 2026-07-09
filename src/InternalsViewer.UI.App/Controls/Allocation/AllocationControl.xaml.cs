@@ -542,13 +542,13 @@ public sealed partial class AllocationControl : IDisposable
 
         for (var i = ScrollPosition; i < ScrollPosition + layout.VisibleCount; i++)
         {
-            var toRender = true;
+            var toRender = false;
 
             for (var c = 0; c < chainCount; c++)
             {
-                if (!chains[c].IsExtentAllocated(i, fileId, isInverted))
+                if (chains[c].IsExtentAllocated(i, fileId, isInverted))
                 {
-                    toRender = false;
+                    toRender = true;
                     break;
                 }
             }
@@ -576,26 +576,22 @@ public sealed partial class AllocationControl : IDisposable
 
     private SKRect GetPagePosition(int pageId, ExtentLayout layout)
     {
-        // Number of pages horizontally
         var horizontalCount = layout.HorizontalCount * 8;
 
-        var row = (pageId) / horizontalCount;
-        var column = (pageId) % horizontalCount;
+        if (horizontalCount <= 0)
+        {
+            return SKRect.Empty;
+        }
+
+        var row = pageId / horizontalCount;
+        var column = pageId % horizontalCount;
 
         var pageWidth = ExtentSize.Width / 8F;
 
         var left = column * pageWidth;
         var top = row * ExtentSize.Height;
 
-        var right = left + pageWidth;
-        var bottom = top + ExtentSize.Height;
-
-        if (horizontalCount > 1)
-        {
-            return new SKRect(left, top, right, bottom);
-        }
-
-        return new SKRect(0, 0, pageWidth, ExtentSize.Height);
+        return new SKRect(left, top, left + pageWidth, top + ExtentSize.Height);
     }
 
     /// <summary>

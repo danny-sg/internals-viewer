@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
 
 namespace InternalsViewer.Internals.Extensions;
 
@@ -14,8 +15,8 @@ public static class DatabaseSourceExtensions
                              .FirstOrDefault(u =>
                                              u.IamChain.IsExtentAllocated(extent, page.FileId, false) ||
                                              u.IamChain.SinglePageSlots.Contains(page)
-                                             || u.FirstPage == page
+                                             || (u.FirstPage == page && u.IndexType == IndexType.Clustered)
                                              || u.FirstIamPage == page
-                                             || u.RootPage == page);
+                                             || (u.RootPage == page && u.IndexType == IndexType.Clustered));
     }
 }

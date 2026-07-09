@@ -69,3 +69,19 @@ internal record VerificationResult
 
     public int FailCount { get; set; }
 }
+
+/// <summary>
+/// One row outputted by DBCC IND - a page SQL Server itself considers part of the target table/index.
+/// </summary>
+internal record DatabaseIndPageRow
+{
+    public PageAddress PageAddress { get; set; }
+
+    public int ObjectId { get; set; }
+
+    public int IndexId { get; set; }
+
+    public byte PageType { get; set; }
+
+    public PageAddress IamPage { get; set; }
+}
