@@ -68,6 +68,7 @@ internal static class AllocationLayerBuilder
             ObjectName = "System Objects",
             Colour = Color.FromArgb(255, 190, 190, 205),
             IsSystemObject = true,
+            IsAllocationLayer = true,
             IsVisible = true
         };
 
@@ -96,6 +97,7 @@ internal static class AllocationLayerBuilder
             Name = "Buffer Pool",
             LayerName = "Buffer Pool",
             Colour = Color.FromArgb(200, 190, 190, 205),
+            IsAllocationLayer = true,
             IsVisible = true,
             Opacity = 0
         };
@@ -114,6 +116,7 @@ internal static class AllocationLayerBuilder
         {
             LayerName = name,
             Colour = colour,
+            IsAllocationLayer = true,
             IsVisible = true,
             IsInverted = isInverted,
             AllocationChains = allocations.Values.Select(s => s).Cast<IAllocationChain>().ToList(),
@@ -148,6 +151,7 @@ internal static class AllocationLayerBuilder
             TotalPages = allocationUnit.TotalPages,
             IndexType = allocationUnit.IndexType,
             IsSystemObject = allocationUnit.IsSystem,
+            IsAllocationLayer = true,
             Colour = GetLayerColour(allocationUnit, userObjectCount, isGreyScale, ref colourIndex),
             IsVisible = true,
             Opacity = 100

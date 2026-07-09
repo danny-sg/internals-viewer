@@ -67,6 +67,6 @@ public static class PageHelpers
     public static bool IsBcm(int pageId) 
         => (pageId - AllocationPage.FirstBcmPage) % AllocationPage.AllocationExtentInterval == 0;
     
-    public static bool IsPfs(int pageId) 
+    public static bool IsPfs(int pageId)
         => pageId == 1 || (pageId % PfsPage.PfsInterval == 1);
 }

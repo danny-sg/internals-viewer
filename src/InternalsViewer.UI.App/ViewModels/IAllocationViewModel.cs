@@ -24,4 +24,7 @@ public interface IAllocationViewModel : INotifyPropertyChanged
     long SequenceFrom { get; }
 
     long SequenceTo { get; }
+
+    /// <summary>Current playhead position (microseconds), used to drive flash spans (see <see cref="Models.AllocationLayer.FlashSpans"/>).</summary>
+    long PlayheadTimeUs { get; }
 }

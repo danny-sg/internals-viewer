@@ -24,6 +24,7 @@
                                               IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
                                               SequenceFrom="{x:Bind Parent.SequenceFrom, Mode=OneWay}"
                                               SequenceTo="{x:Bind Parent.SequenceTo, Mode=OneWay}"
+                                              PlayheadTimeUs="{x:Bind Parent.PlayheadTimeUs, Mode=OneWay}"
                                               PageClicked="OnPageSelected"
                                               x:Name="AllocationControl"/>
             </Grid>

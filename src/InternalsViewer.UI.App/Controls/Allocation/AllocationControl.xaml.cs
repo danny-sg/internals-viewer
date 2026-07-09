@@ -29,7 +29,11 @@ public sealed partial class AllocationControl : IDisposable
     private const double MinimumZoomForLines = 0.4;
 
     // Opacity percentage applied to non-selected layers while a grid selection is active.
-    private const int SelectionDimPercent = 40;
+    private const int SelectionDimPercent = 10;
+
+    // Opacity percentage (relative to the span's already-computed alpha) applied to a PageSpan once it's
+    // fallen outside the current SequenceFrom/SequenceTo scope.
+    private const int OutOfScopeDimPercent = 10;
 
     private Size ExtentSize => new((int)(80 * Zoom), (int)(10 * Zoom));
 
@@ -166,6 +170,33 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(SequenceToProperty, value);
     }
 
+    /// <summary>
+    /// Current playhead position (microseconds). Drives which <see cref="AllocationLayer.FlashSpans"/> are active
+    /// </summary>
+    public long PlayheadTimeUs
+    {
+        get => (long)GetValue(PlayheadTimeUsProperty);
+        set => SetValue(PlayheadTimeUsProperty, value);
+    }
+
+    public static readonly DependencyProperty PlayheadTimeUsProperty
+        = DependencyProperty.Register(nameof(PlayheadTimeUs),
+                                      typeof(long),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(0L, OnPlayheadTimeChanged));
+
+    private static void OnPlayheadTimeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AllocationControl)d;
+
+        // Only worth an invalidate if some layer actually has flash spans to re-evaluate - avoids paying
+        // for a repaint on every playhead tick for captures with no latches/locks.
+        if (control.Layers?.Any(l => l.FlashSpans.Count > 0) == true)
+        {
+            control.AllocationCanvas.Invalidate();
+        }
+    }
+
     private static readonly DependencyProperty ZoomProperty
         = DependencyProperty.Register(nameof(Zoom),
                                       typeof(double),
@@ -192,6 +223,12 @@ public sealed partial class AllocationControl : IDisposable
     private AllocationRenderer? _renderer;
     private SKPaint? _borderPaint;
     private Size _lastExtentSize;
+
+    // A page-span/flash-span carries its own per-object DisplayColour (so different tables' reads/latches
+    // are distinguishable) - a flat re-coloured SKPaint per draw call, rather than routing through the
+    // renderer's shader-based SetAllocationColour, which would rebuild a gradient shader every time the
+    // colour changes between adjacent (differently-coloured) spans.
+    private readonly SKPaint _spanPaint = new();
     private Color _lastGridColor;
 
     private AllocationRenderer GetOrCreateRenderer()
@@ -423,11 +460,6 @@ public sealed partial class AllocationControl : IDisposable
                 if (allocationChain.AnyExtentsAllocated(extentsFrom, extentsTo, FileId, layer.IsInverted)
                     || layer.SinglePages.Any(a => a.PageId > pagesFrom && a.PageId <= pagesTo))
                 {
-                    //}
-
-                    //if (layer.Allocations.Any(a => a.FileId == FileId && a.ExtentId > extentsFrom && a.ExtentId <= i + extentsTo)
-                    //                          || layer.SinglePages.Any(a => a.PageId > pagesFrom && a.PageId <= pagesTo))
-                    //{
                     var top = offset + i * blockSize;
                     var bottom = offset + (i + 1) * blockSize;
 
@@ -453,12 +485,11 @@ public sealed partial class AllocationControl : IDisposable
 
             var isSelected = selectedSet?.Contains(layer) ?? false;
 
-            // Opacity is a 0-100 percentage. With no grid selection every layer honours its own
-            // opacity - this is what lets overlay mode dim non-overlay layers while keeping them
-            // visible. When layers are selected the selected ones show fully and the rest dim.
-            var opacityPercent = !hasSelected
-                ? layer.Opacity
-                : isSelected ? 100 : Math.Min((int)layer.Opacity, SelectionDimPercent);
+            var opacityPercent = layer.IsAllocationLayer
+                ? 100
+                : !hasSelected
+                    ? layer.Opacity
+                    : isSelected ? 100 : Math.Min((int)layer.Opacity, SelectionDimPercent);
 
             var alpha = (byte)(opacityPercent * 255 / 100);
             var colour = layer.Colour.SetTransparency(alpha);
@@ -497,16 +528,94 @@ public sealed partial class AllocationControl : IDisposable
                 }
             }
 
-            foreach (var page in layer.PageSpans
-                         .Where(l => ((l.SequenceFrom >= SequenceFrom && l.SequenceTo <= SequenceTo)
-                                         || SequenceFrom == 0 && SequenceTo == 0)))
+            foreach (var page in layer.PageSpans)
             {
-                if (page.Address.FileId == FileId)
+                if (page.Address.FileId != FileId)
                 {
-                    renderer.DrawPage(canvas, GetPagePosition(page.Address.PageId - (ScrollPosition * 8), layout));
+                    continue;
                 }
+
+                var inScope = (SequenceFrom == 0 && SequenceTo == 0)
+                              || (page.SequenceFrom >= SequenceFrom && page.SequenceTo <= SequenceTo);
+
+                // Out-of-scope pages stay visible (so you can still see they were hit) but fade well
+                // below in-scope ones, rather than disappearing outright the moment the playhead/selection
+                // moves past them.
+                var spanAlpha = inScope ? alpha : (byte)(alpha * OutOfScopeDimPercent / 100);
+
+                _spanPaint.Color = (page.DisplayColour ?? layer.Colour).SetTransparency(spanAlpha).ToSkColor();
+                canvas.DrawRect(GetPagePosition(page.Address.PageId - (ScrollPosition * 8), layout), _spanPaint);
+            }
+
+            DrawFlashSpans(canvas, layout, layer, alpha);
+        }
+    }
+
+    /// <summary>
+    /// Draws the pages whose <see cref="AllocationLayer.FlashSpans"/> window currently contains the
+    /// playhead - unlike <see cref="AllocationLayer.PageSpans"/> these disappear again once the playhead
+    /// moves past them (a latch flash, or later a lock that clears on release).
+    /// </summary>
+    /// <remarks>
+    /// Spans are pre-sorted by StartUs (see <see cref="AllocationLayer.SetFlashSpans"/>), so a binary
+    /// search finds the first one that could still be active - any span starting before
+    /// (playhead - MaxFlashDurationUs) is guaranteed expired - bounding the scan to O(log n + active count)
+    /// regardless of how many flash events were captured.
+    /// </remarks>
+    private void DrawFlashSpans(SKCanvas canvas, ExtentLayout layout, AllocationLayer layer, byte alpha)
+    {
+        var spans = layer.FlashSpans;
+
+        if (spans.Count == 0)
+        {
+            return;
+        }
+
+        var playhead = PlayheadTimeUs;
+
+        var start = LowerBoundByStartUs(spans, playhead - layer.MaxFlashDurationUs);
+
+        for (var i = start; i < spans.Count; i++)
+        {
+            var span = spans[i];
+
+            if (span.StartUs > playhead)
+            {
+                // Sorted ascending by StartUs - nothing from here on can have started yet.
+                break;
+            }
+
+            if (span.EndUs < playhead || span.Address.FileId != FileId)
+            {
+                continue;
+            }
+
+            _spanPaint.Color = (span.DisplayColour ?? layer.Colour).SetTransparency(alpha).ToSkColor();
+            canvas.DrawRect(GetPagePosition(span.Address.PageId - (ScrollPosition * 8), layout), _spanPaint);
+        }
+    }
+
+    /// <summary>The index of the first span whose StartUs is &gt;= <paramref name="value"/>.</summary>
+    private static int LowerBoundByStartUs(IReadOnlyList<PageFlashSpan> spans, long value)
+    {
+        var lo = 0;
+        var hi = spans.Count;
+
+        while (lo < hi)
+        {
+            var mid = (lo + hi) / 2;
+
+            if (spans[mid].StartUs < value)
+            {
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid;
             }
         }
+
+        return lo;
     }
 
     private void DrawExtentsCore<TChain>(SKCanvas canvas,
@@ -756,6 +865,7 @@ public sealed partial class AllocationControl : IDisposable
     {
         _renderer?.Dispose();
         _borderPaint?.Dispose();
+        _spanPaint.Dispose();
 
         AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
         PointerWheelChanged -= AllocationControl_PointerWheelChanged;

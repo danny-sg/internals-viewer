@@ -170,6 +170,7 @@ public sealed partial class EventGridControl : UserControl
         if (events is null)
         {
             DataGrid.ItemsSource = null;
+            UpdateStatusBar([]);
             return;
         }
 
@@ -182,7 +183,25 @@ public sealed partial class EventGridControl : UserControl
             result = result.Where(ev => Matches(ev, query));
         }
 
-        DataGrid.ItemsSource = ApplySort(result);
+        var filtered = result.ToList();
+
+        DataGrid.ItemsSource = ApplySort(filtered);
+
+        UpdateStatusBar(filtered);
+    }
+
+    /// <summary>Shows a per-event-type count of the currently filtered events, e.g. "wait_info: 100   latch_acquired: 20".</summary>
+    private void UpdateStatusBar(IReadOnlyCollection<EngineEvent> filtered)
+    {
+        var counts = filtered
+            .GroupBy(ev => ev.Name)
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => $"{g.Key}: {g.Count()}");
+
+        StatusBarText.Text = filtered.Count == 0
+            ? "No events"
+            : $"Total: {filtered.Count}   {string.Join("   ", counts)}";
     }
 
     private static bool Matches(EngineEvent ev, string query) =>
@@ -252,4 +271,11 @@ public sealed partial class EventGridControl : UserControl
     // Sort pages numerically by (file, page) rather than by their textual form.
     private static long PageSortKey(EngineEvent ev) =>
         ev.PageAddress is { } page ? ((long)page.FileId << 32) | (uint)page.PageId : long.MinValue;
+}
+
+/// <summary>Formatting helpers called directly from the grid's x:Bind cell templates.</summary>
+public static class EventGridFormat
+{
+    /// <summary>Converts a <see cref="EngineEvent.TimeUs"/> value to milliseconds, e.g. "1234.500".</summary>
+    public static string TimeMs(long timeUs) => (timeUs / 1000.0).ToString("0.000");
 }

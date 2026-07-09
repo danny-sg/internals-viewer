@@ -1,60 +1,61 @@
 using System.ComponentModel;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Locks;
 
 public enum LockResourceType
 {
-    [Description("Unknown lock resource")]
+    [EventItemName("Unknown lock resource")]
     UnknownLockResource = 0,
 
-    [Description("Null resource")]
+    [EventItemName("Null resource")]
     NullResource = 1,
 
-    [Description("Database")]
+    [EventItemName("Database")]
     Database = 2,
 
-    [Description("File")]
+    [EventItemName("File")]
     File = 3,
 
-    [Description("Unused")]
+    [EventItemName("Unused")]
     Unused1 = 4,
 
-    [Description("Object")]
+    [EventItemName("Object")]
     Object = 5,
 
-    [Description("Page")]
+    [EventItemName("Page")]
     Page = 6,
 
-    [Description("Key")]
+    [EventItemName("Key")]
     Key = 7,
 
-    [Description("Extent")]
+    [EventItemName("Extent")]
     Extent = 8,
 
-    [Description("Row identifier")]
+    [EventItemName("Row identifier")]
     Rid = 9,
 
-    [Description("Application")]
+    [EventItemName("Application")]
     Application = 10,
 
-    [Description("Metadata")]
+    [EventItemName("Metadata")]
     Metadata = 11,
 
-    [Description("Heap or B-tree")]
+    [EventItemName("Heap or B-tree")]
     Hobt = 12,
 
-    [Description("Allocation unit")]
+    [EventItemName("Allocation unit")]
     AllocationUnit = 13,
 
-    [Description("OIB")]
+    [EventItemName("OIB")]
     Oib = 14,
 
-    [Description("Rowgroup")]
+    [EventItemName("Rowgroup")]
     Rowgroup = 15,
 
-    [Description("Transaction")]
+    [EventItemName("Transaction")]
     Xact = 16,
 
-    [Description("Last resource sentinel")]
+    [EventItemName("Last resource sentinel")]
     LastResource = 17
 }

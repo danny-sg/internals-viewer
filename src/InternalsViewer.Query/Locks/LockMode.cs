@@ -1,73 +1,74 @@
 ﻿using System.ComponentModel;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Locks;
 
 // ReSharper disable InconsistentNaming
 public enum LockMode
 {
-    [Description("No lock")]
+    [EventItemName("No lock")]
     NL = 0,
 
-    [Description("Schema stability")]
+    [EventItemName("Schema stability")]
     SCH_S = 1,
 
-    [Description("Schema modification")]
+    [EventItemName("Schema modification")]
     SCH_M = 2,
 
-    [Description("Shared")]
+    [EventItemName("Shared")]
     S = 3,
 
-    [Description("Update")]
+    [EventItemName("Update")]
     U = 4,
 
-    [Description("Exclusive")]
+    [EventItemName("Exclusive")]
     X = 5,
 
-    [Description("Intent shared")]
+    [EventItemName("Intent shared")]
     IS = 6,
 
-    [Description("Intent update")]
+    [EventItemName("Intent update")]
     IU = 7,
 
-    [Description("Intent exclusive")]
+    [EventItemName("Intent exclusive")]
     IX = 8,
 
-    [Description("Shared with intent update")]
+    [EventItemName("Shared with intent update")]
     SIU = 9,
 
-    [Description("Shared with intent exclusive")]
+    [EventItemName("Shared with intent exclusive")]
     SIX = 10,
 
-    [Description("Update with intent exclusive")]
+    [EventItemName("Update with intent exclusive")]
     UIX = 11,
 
-    [Description("Bulk update")]
+    [EventItemName("Bulk update")]
     BU = 12,
 
-    [Description("Range shared-shared")]
+    [EventItemName("Range shared-shared")]
     RS_S = 13,
 
-    [Description("Range shared-update")]
+    [EventItemName("Range shared-update")]
     RS_U = 14,
 
-    [Description("Range insert-null")]
+    [EventItemName("Range insert-null")]
     RI_NL = 15,
 
-    [Description("Range insert-shared")]
+    [EventItemName("Range insert-shared")]
     RI_S = 16,
 
-    [Description("Range insert-update")]
+    [EventItemName("Range insert-update")]
     RI_U = 17,
 
-    [Description("Range insert-exclusive")]
+    [EventItemName("Range insert-exclusive")]
     RI_X = 18,
 
-    [Description("Range exclusive-shared")]
+    [EventItemName("Range exclusive-shared")]
     RX_S = 19,
 
-    [Description("Range exclusive-update")]
+    [EventItemName("Range exclusive-update")]
     RX_U = 20,
 
-    [Description("Last mode sentinel")]
+    [EventItemName("Last mode sentinel")]
     LAST_MODE = 21
 }

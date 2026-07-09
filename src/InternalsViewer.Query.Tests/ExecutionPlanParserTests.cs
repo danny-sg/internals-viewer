@@ -362,6 +362,19 @@ public class ExecutionPlanParserTests
         Assert.Equal("Customers", plan.NodesById[2].Table);
     }
 
+    [Fact]
+    public void HashMatch_Root_Has_No_Table_Of_Its_Own()
+    {
+        // Regression test: a naive Descendants() search for <Object> would walk into the child RelOps
+        // and pick up the first child's table (Orders), wrongly attributing it to the join itself.
+        var plan = Parse(HashMatchXml);
+
+        var root = plan.NodesById[0];
+
+        Assert.Null(root.Table);
+        Assert.Null(root.Schema);
+    }
+
     // ------------------------------------------------------------------
     // Statement node wrapping
     // ------------------------------------------------------------------

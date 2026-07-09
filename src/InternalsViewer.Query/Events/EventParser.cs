@@ -542,6 +542,7 @@ internal sealed class EventParser
             Timestamp = e.Timestamp,
             DatabaseId = e.GetDatabaseId(),
             LatchMode = latchMode,
+            LatchClass = latchClass,
             DurationUs = e.GetLong("duration") ?? 0,
             PageAddress = new PageAddress(fileId, pageId)
         };

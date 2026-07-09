@@ -182,9 +182,7 @@ public static class ExecutionPlanParser
 
     private static void ExtractObjectInfo(XElement element, PlanNode node)
     {
-        var objectElement = element
-            .Descendants()
-            .FirstOrDefault(e => e.Name.LocalName == "Object");
+        var objectElement = FindOwnObjectElement(element);
 
         if (objectElement == null)
         {
@@ -194,6 +192,35 @@ public static class ExecutionPlanParser
         node.Schema = GetAttribute("Schema", objectElement);
         node.Table = GetAttribute("Table", objectElement);
         node.Index = GetAttribute("Index", objectElement);
+    }
+
+    /// <summary>
+    /// Finds this RelOp's own &lt;Object&gt; element (e.g. under its IndexScan/TableScan), without
+    /// descending into a nested child RelOp. A plain <c>.Descendants()</c> search would walk into child
+    /// operators too and pick up the first one's object - so a join/sort/filter with no object of its own
+    /// would wrongly inherit its first child's table.
+    /// </summary>
+    private static XElement? FindOwnObjectElement(XElement element)
+    {
+        foreach (var child in element.Elements())
+        {
+            if (child.Name.LocalName == "RelOp")
+            {
+                continue;
+            }
+
+            if (child.Name.LocalName == "Object")
+            {
+                return child;
+            }
+
+            if (FindOwnObjectElement(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private static string? GetAttribute(string attributeName, XElement element)

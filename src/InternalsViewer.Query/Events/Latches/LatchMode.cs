@@ -1,25 +1,25 @@
-﻿using System.ComponentModel;
+﻿using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Events.Latches;
 
 // ReSharper disable InconsistentNaming
 public enum LatchMode
 {
-    [Description("Null")]
+    [EventItemName("")]
     NL = 0,
 
-    [Description("Keep")]
+    [EventItemName("Keep")]
     KP = 1,
 
-    [Description("Shared")]
+    [EventItemName("Shared")]
     SH = 2,
 
-    [Description("Update")]
+    [EventItemName("Update")]
     UP = 3,
 
-    [Description("Exclusive")]
+    [EventItemName("Exclusive")]
     EX = 4,
 
-    [Description("Destroy")]
+    [EventItemName("Destroy")]
     DT = 5
 }

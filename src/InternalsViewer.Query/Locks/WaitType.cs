@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Locks;
 
@@ -6,16 +7,15 @@ namespace InternalsViewer.Query.Locks;
 // ReSharper disable IdentifierTypo
 public enum WaitType
 {
-    [Description("Unknown or unclassified wait type.")]
-  
+    [EventItemName("")]
     UNKNOWN = 0,
     LCK_M_SCH_S = 1,
-    [Description("Waiting for a Schema Modification lock. Often blocks all other access to an object.")]
+    [EventItemName("Waiting for a Schema Modification lock. Often blocks all other access to an object.")]
     LCK_M_SCH_M = 2,
-    [Description("Waiting for a Shared lock. Usually implies waiting to read data locked by a writer.")]
+    [EventItemName("Waiting for a Shared lock. Usually implies waiting to read data locked by a writer.")]
     LCK_M_S = 3,
     LCK_M_U = 4,
-    [Description("Waiting for an Exclusive lock. Usually implies waiting to write data locked by another session.")]
+    [EventItemName("Waiting for an Exclusive lock. Usually implies waiting to write data locked by another session.")]
     LCK_M_X = 5,
     LCK_M_IS = 6,
     LCK_M_IU = 7,
@@ -42,18 +42,18 @@ public enum WaitType
     LATCH_ONLY = 38,
     PAGELATCH_NL = 48,
     PAGELATCH_KP = 49,
-    [Description("Waiting for a shared memory latch on a page in the buffer pool.")]
+    [EventItemName("Waiting for a shared memory latch on a page in the buffer pool.")]
     PAGELATCH_SH = 50,
     PAGELATCH_UP = 51,
-    [Description("Waiting for an exclusive memory latch on a page in the buffer pool. Common with TempDB allocation contention.")]
+    [EventItemName("Waiting for an exclusive memory latch on a page in the buffer pool. Common with TempDB allocation contention.")]
     PAGELATCH_EX = 52,
     PAGELATCH_DT = 53,
     PAGEIOLATCH_NL = 64,
     PAGEIOLATCH_KP = 65,
-    [Description("Waiting for a physical database page to be read from disk into the buffer pool.")]
+    [EventItemName("Waiting for a physical database page to be read from disk into the buffer pool.")]
     PAGEIOLATCH_SH = 66,
     PAGEIOLATCH_UP = 67,
-    [Description("Waiting for a physical database page to be written to disk.")]
+    [EventItemName("Waiting for a physical database page to be written to disk.")]
     PAGEIOLATCH_EX = 68,
     PAGEIOLATCH_DT = 69,
     TRANMARKLATCH_NL = 80,
@@ -65,7 +65,7 @@ public enum WaitType
     SLEEP_TASK = 96,
     RESOURCE_QUEUE = 97,
     SOS_WORKER = 98,
-    [Description("Task voluntarily yielded the CPU to allow other tasks to run. High values can indicate CPU pressure.")]
+    [EventItemName("Task voluntarily yielded the CPU to allow other tasks to run. High values can indicate CPU pressure.")]
     SOS_SCHEDULER_YIELD = 99,
     SOS_VIRTUALMEMORY_LOW = 100,
     SOS_MEMORY_TOPLEVELBLOCKALLOCATOR = 101,
@@ -153,9 +153,9 @@ public enum WaitType
     SOS_LAST = 183,
     LZW_SLEEP = 184,
     IO_COMPLETION = 185,
-    [Description("Waiting for asynchronous I/O operations to complete.")]
+    [EventItemName("Waiting for asynchronous I/O operations to complete.")]
     ASYNC_IO_COMPLETION = 186,
-    [Description("Waiting for the client application to consume data packets. Often caused by a slow network or application.")]
+    [EventItemName("Waiting for the client application to consume data packets. Often caused by a slow network or application.")]
     NETWORK_IO = 187,
     PREFAULT_IO_COMPLETION = 188,
     SLEEP_BPOOL_FLUSH = 189,
@@ -171,7 +171,7 @@ public enum WaitType
     LOCK_UPDATE = 199,
     SLEEP_DCOMSTARTUP = 200,
     SLEEP_SYSTEMTASK = 201,
-    [Description("Waiting for a memory grant to execute a query. Usually indicates memory pressure or large sorts/hashes.")]
+    [EventItemName("Waiting for a memory grant to execute a query. Usually indicates memory pressure or large sorts/hashes.")]
     RESOURCE_SEMAPHORE = 202,
     DTC = 203,
     OLEDB = 204,
@@ -232,18 +232,18 @@ public enum WaitType
     BROKER_EVENTHANDLER = 269,
     FCB_REPLICA_WRITE = 270,
     FCB_REPLICA_READ = 271,
-    [Description("Waiting for a transaction log flush to disk to complete.")]
+    [EventItemName("Waiting for a transaction log flush to disk to complete.")]
     WRITELOG = 273,
     EXCHANGE = 275,
     EC = 277,
     TEMPOBJ = 278,
     XACTLOCKINFO = 279,
     LOGMGR = 280,
-    [Description("Waiting for threads to synchronize in a parallel execution plan.")]
+    [EventItemName("Waiting for threads to synchronize in a parallel execution plan.")]
     CXPACKET = 281,
     CXSYNC_CONSUMER = 282,
     CXSYNC_PORT = 283,
-    [Description("A consumer thread waiting for a producer thread in a parallel query plan. Usually benign.")]
+    [EventItemName("A consumer thread waiting for a producer thread in a parallel query plan. Usually benign.")]
     CXCONSUMER = 284,
     HASH_TABLE_REPARTITION = 285,
     HASH_TABLE_BUILD = 286,

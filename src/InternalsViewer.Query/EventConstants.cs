@@ -43,10 +43,10 @@ internal static class EventConstants
 
     public static readonly string[] LatchEvents =
     [
-        "sqlserver.latch_suspend_begin",
-        "sqlserver.latch_suspend_end",
-        "latch_acquired",
-        "latch_demoted"
+        //"sqlserver.latch_suspend_begin",
+        //"sqlserver.latch_suspend_end",
+        "sqlserver.latch_acquired",
+        "sqlserver.latch_demoted"
     ];
 
     public static readonly string[] Actions =

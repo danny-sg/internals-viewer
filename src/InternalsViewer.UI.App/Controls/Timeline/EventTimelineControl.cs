@@ -163,6 +163,10 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private const float OperatorMaxFont = 12f;
     private const float OperatorMinFont = 7f;
 
+    // Width of the object-colour marker stripe drawn down an operator's left edge (clamped to the bar's
+    // own width on very narrow bars).
+    private const float ObjectMarkerWidth = 4f;
+
     private readonly SKPaint _operatorTextPaint = new() { IsAntialias = true };
 
     private readonly SKPaint _playheadPaint = new()
@@ -220,10 +224,12 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private List<EngineEvent> _sortedEvents = [];
 
-    // Pre-filtered and TimeUs-sorted array of read IoEvents; built whenever _sortedEvents changes.
-    // Used by PlayAudioForCurrentPosition so the per-frame audio sweep is O(log n + hits) via binary search
-    // rather than O(all events).
+    // Pre-filtered and TimeUs-sorted arrays of read IoEvents / LatchEvents; built whenever _sortedEvents
+    // changes. Used by PlayAudioForCurrentPosition so the per-frame audio sweep is O(log n + hits) via
+    // binary search rather than O(all events).
     private IoEvent[] _readEventsByTime = [];
+
+    private LatchEvent[] _latchEventsByTime = [];
 
     // The markers/operators/traces/ruler don't change as the playhead sweeps, so they're recorded once
     // into a picture and replayed each frame; only the playhead, handles and selection dim are redrawn
@@ -323,6 +329,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         control._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
         control._readEventsByTime = [.. events.OfType<IoEvent>().Where(io => io.IsRead).OrderBy(io => io.TimeUs)];
+        control._latchEventsByTime = [.. events.OfType<LatchEvent>().OrderBy(latch => latch.TimeUs)];
 
         control._eventsVersion++;
 
@@ -1395,6 +1402,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
                 DrawOperatorLabel(canvas, b.Op, b.StartX, b.EndX, b.BarCentreY, b.LineWidth);
             }
 
+            DrawObjectColourMarker(canvas, b);
+
             _hitRegions.Add((new SKRect(b.StartX, b.SlotCentreY - b.SlotHeight / 2f, b.EndX,
                                         b.SlotCentreY + b.SlotHeight / 2f), b.Op, null));
         }
@@ -1534,8 +1543,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         var ioRow = RowIndexOf(typeof(IoEvent));
         var logRow = RowIndexOf(typeof(TransactionLogEvent));
+        var latchRow = RowIndexOf(typeof(LatchEvent));
 
-        if (ioRow < 0 && logRow < 0)
+        if (ioRow < 0 && logRow < 0 && latchRow < 0)
         {
             return;
         }
@@ -1571,6 +1581,36 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
                 _markerPaint.Color = TraceColour(io, ioRow, DimForSelection(io));
                 canvas.DrawRect(x, b.BarBottom, width, ioTop - b.BarBottom, _markerPaint);
+            }
+        }
+
+        if (latchRow >= 0)
+        {
+            // Latches are below the plan (like reads): extend from the operator's bottom down to the
+            // latch row, so a data-access operator's page latches are visually tied back to it - the
+            // same buffer-pool link the read trace already provides for physical I/O.
+            var latchTop = rowTops[latchRow] + RowPadding;
+
+            var width = RowMarkerWidth(latchRow);
+
+            for (var i = 0; i < _sortedEvents.Count; i++)
+            {
+                if (_sortedEvents[i] is not LatchEvent { PlanNodeIdentifier: { } id } latch ||
+                    !byNode.TryGetValue(id, out var b) ||
+                    b.BarBottom >= latchTop)
+                {
+                    continue;
+                }
+
+                var x = TimeToX(_times[i]);
+
+                if (x > rightEdge || x < RowLabelWidth - width)
+                {
+                    continue;
+                }
+
+                _markerPaint.Color = TraceColour(latch, latchRow, DimForSelection(latch));
+                canvas.DrawRect(x, b.BarBottom, width, latchTop - b.BarBottom, _markerPaint);
             }
         }
 
@@ -1659,6 +1699,42 @@ public sealed class EventTimelineControl : Grid, IDisposable
         canvas.Restore();
 
         _hitRegions.Add((new SKRect(consumeStartX, b.BarTop, consumeEndX, b.BarBottom), b.Op, "Consuming"));
+    }
+
+    /// <summary>
+    /// A coloured stripe down the operator's left edge - effectively a coloured left border - showing the
+    /// object's own (non-greyscale) allocation-unit colour, the same colour that object's pages show on
+    /// the allocation map, so operators reading different tables read as visually distinct even when they
+    /// share the same category colour (e.g. two Index Seeks are both "data access" blue).
+    /// </summary>
+    /// <remarks>
+    /// The stripe is clamped to the visible left edge (RowLabelWidth) so it stays on screen when zoomed or
+    /// scrolled past the bar's true start. It's drawn clipped to the bar's own rounded silhouette rather
+    /// than given its own corner radius: when it sits at the bar's true (rounded) left edge the clip
+    /// carries that curve through top and bottom; when it's been clamped inward the clip has no effect
+    /// (the clamped position is inside the bar's straight interior), so it reads as a plain rectangle there.
+    /// </remarks>
+    private void DrawObjectColourMarker(SKCanvas canvas, OperatorBar b)
+    {
+        if (ColourProvider?.GetObjectColour(b.Op.ObjectName) is not { } colour)
+        {
+            return;
+        }
+
+        var width = Math.Min(ObjectMarkerWidth, b.EndX - b.StartX);
+
+        var left = Math.Max(b.StartX, RowLabelWidth);
+        left = Math.Min(left, b.EndX - width);
+
+        canvas.Save();
+        canvas.ClipRoundRect(
+            new SKRoundRect(new SKRect(b.StartX, b.BarTop, b.EndX, b.BarBottom), b.CornerRadius, b.CornerRadius),
+            antialias: true);
+
+        _markerPaint.Color = colour.ToSkColor();
+        canvas.DrawRect(left, b.BarTop, width, b.BarBottom - b.BarTop, _markerPaint);
+
+        canvas.Restore();
     }
 
     /// <summary>
@@ -1781,7 +1857,12 @@ public sealed class EventTimelineControl : Grid, IDisposable
                                    float barHeight)
     {
         var opName = planOperator.Name;
-        var target = planOperator.ObjectName;
+
+        // Operators with no object of their own (joins, sorts, ...) show their logical operator
+        // (e.g. "Inner Join") on the second line instead of leaving it blank.
+        var target = planOperator.ObjectName.Length > 0
+            ? planOperator.ObjectName
+            : planOperator.LogicalOperator != planOperator.Name ? planOperator.LogicalOperator : string.Empty;
 
         var dop = planOperator.Threads.Count(t => t.ThreadId != 0);
 
@@ -2066,31 +2147,38 @@ public sealed class EventTimelineControl : Grid, IDisposable
     }
 
     /// <summary>
-    /// Fires one plink per IoEvent read swept by the playhead in (<paramref name="fromUs"/>,
-    /// <paramref name="toUs"/>] (exclusive lower bound). Uses binary search on <see cref="_readEventsByTime"/>
-    /// so the per-frame cost is O(log n + hits) regardless of total event count.
+    /// Fires one plink per IoEvent read and one tick per LatchEvent swept by the playhead in
+    /// (<paramref name="fromUs"/>, <paramref name="toUs"/>] (exclusive lower bound). Uses binary search
+    /// on the pre-sorted arrays so the per-frame cost is O(log n + hits) regardless of total event count.
     /// </summary>
     private void PlayAudioForCurrentPosition(long fromUs, long toUs)
     {
         var lo = Math.Min(fromUs, toUs);
         var hi = Math.Max(fromUs, toUs);
 
-        var reads = _readEventsByTime;
+        SweepEvents(_readEventsByTime, lo, hi,
+                    io => _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForObject(io.ObjectId)));
 
-        if (reads.Length == 0)
+        SweepEvents(_latchEventsByTime, lo, hi,
+                    latch => _audioPlayer.PlayLatchTick(TimelineAudioPlayer.FrequencyForObject(latch.ObjectId)));
+    }
+
+    private static void SweepEvents<T>(T[] eventsByTime, long lo, long hi, Action<T> play) where T : EngineEvent
+    {
+        if (eventsByTime.Length == 0)
         {
             return;
         }
 
         // Binary search for the first event with TimeUs > lo.
         var left = 0;
-        var right = reads.Length - 1;
+        var right = eventsByTime.Length - 1;
 
         while (left < right)
         {
             var mid = (left + right) >> 1;
 
-            if (reads[mid].TimeUs <= lo)
+            if (eventsByTime[mid].TimeUs <= lo)
             {
                 left = mid + 1;
             }
@@ -2102,21 +2190,21 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         // When all events are at or before lo, the search converges to the last element
         // without finding anything in range. Guard explicitly so we don't play it.
-        if (reads[left].TimeUs <= lo)
+        if (eventsByTime[left].TimeUs <= lo)
         {
             return;
         }
 
-        for (var i = left; i < reads.Length; i++)
+        for (var i = left; i < eventsByTime.Length; i++)
         {
-            var io = reads[i];
+            var ev = eventsByTime[i];
 
-            if (io.TimeUs > hi)
+            if (ev.TimeUs > hi)
             {
                 break;
             }
 
-            _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForObject(io.ObjectId));
+            play(ev);
         }
     }
 
@@ -2360,7 +2448,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             _hoverEvent = region.Event;
             _hoverLabel = region.Label;
-            _toolTipText.Text = region.Event.Description;
+            _toolTipText.Text = region.Event.Detail;
         }
 
         _toolTip.HorizontalOffset = position.X + 12;

@@ -1,3 +1,5 @@
+using InternalsViewer.Query.Helpers;
+
 namespace InternalsViewer.Query.Events.Latches;
 
 // ReSharper disable InconsistentNaming
@@ -31,6 +33,7 @@ public enum LatchClass
     BACKUP_MANAGER_DIFFERENTIAL = 25,
     BACKUP_OPERATION_LOCK = 26,
     BACKUP_FILE_HANDLE = 27,
+    [EventItemName("Buffer")]
     BUF = 28,
     CHECKPOINT_STATE = 29,
     CLR_PROC_HASHTABLE = 30,

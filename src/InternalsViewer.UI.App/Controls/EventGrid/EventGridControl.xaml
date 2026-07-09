@@ -8,12 +8,14 @@
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:events="using:InternalsViewer.Query.Events"
     xmlns:eventTypes="using:InternalsViewer.Query.Events.EventTypes"
+    xmlns:eventGrid="using:InternalsViewer.UI.App.Controls.EventGrid"
     x:Name="Root"
     mc:Ignorable="d">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <AutoSuggestBox x:Name="SearchBox"
@@ -54,10 +56,10 @@
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Time (µs)" Tag="TimeUs">
+                <toolkit:DataGridTemplateColumn Header="Time (ms)" Tag="TimeUs">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
-                            <TextBlock Text="{x:Bind TimeUs, Mode=OneTime}"
+                            <TextBlock Text="{x:Bind eventGrid:EventGridFormat.TimeMs(TimeUs), Mode=OneTime}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
                                        VerticalAlignment="Center"/>
@@ -98,7 +100,23 @@
                         </DataTemplate>
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
+
             </toolkit:DataGrid.Columns>
         </toolkit:DataGrid>
+
+        <Border Grid.Row="2"
+                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="8,4">
+            <ScrollViewer HorizontalScrollMode="Auto"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollMode="Disabled"
+                          VerticalScrollBarVisibility="Disabled">
+                <TextBlock x:Name="StatusBarText"
+                           FontSize="11"
+                           Opacity="0.7"
+                           TextWrapping="NoWrap"/>
+            </ScrollViewer>
+        </Border>
     </Grid>
 </UserControl>

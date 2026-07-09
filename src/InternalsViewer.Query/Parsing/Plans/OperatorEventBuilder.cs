@@ -9,8 +9,10 @@ namespace InternalsViewer.Query.Plans;
 /// The plan describes the operators but not when they ran; the engine events carry the timing. Timings
 /// are resolved in a single bottom-up pass (children before parents):
 ///
-/// 1. I/O - a leaf operator (scan/seek/lookup) is positioned by its own I/O events: it starts at the
-///    first page access and runs for its measured duration, never ending before its last access.
+/// 1. Data access - a leaf operator (scan/seek/lookup) is positioned by its own I/O and latch events: it
+///    starts at the first page access and runs for its measured duration, never ending before its last
+///    access. Latches count too because a page already in the buffer pool is only ever latched, never
+///    read - without them a fully cached scan would have no I/O to anchor it at all.
 ///
 /// 2. Blocking vs streaming - a parent is placed relative to its children by how it consumes each input:
 ///    <list type="bullet">
@@ -97,8 +99,9 @@ internal sealed class OperatorEventBuilder
 
         if (node.Children.Count == 0)
         {
-            // A leaf is positioned by its own I/O (the first page access), falling back to its activity.
-            start = FirstIo(nodeEvents) ?? FirstActivity(nodeEvents) ?? 0;
+            // A leaf is positioned by its own data access (I/O or latch - the first page access),
+            // falling back to its activity.
+            start = FirstDataAccess(nodeEvents) ?? FirstActivity(nodeEvents) ?? 0;
         }
         else
         {
@@ -113,18 +116,18 @@ internal sealed class OperatorEventBuilder
         // The query (statement) node spans the whole batch, so it can't start after the first page read
         // from any of its operators - even when its driving input opens later (common on very fast queries
         // where a read is timestamped before the statement's own measured start).
-        if (node.IsStatement && EarliestSubtreeIo(node) is { } firstRead)
+        if (node.IsStatement && EarliestSubtreeDataAccess(node) is { } firstRead)
         {
             start = Math.Min(start, firstRead);
         }
 
-        // The operator runs for its measured wall-clock duration, but never ends before its own I/O, its
-        // log writes, its children, or its threads.
+        // The operator runs for its measured wall-clock duration, but never ends before its own data
+        // access (I/O or latch), its log writes, its children, or its threads.
         var end = start + node.DurationUs;
 
-        if (LastIo(nodeEvents) is { } lastIo)
+        if (LastDataAccess(nodeEvents) is { } lastAccess)
         {
-            end = Math.Max(end, lastIo);
+            end = Math.Max(end, lastAccess);
         }
 
         if (LastLog(nodeEvents) is { } lastLog)
@@ -193,6 +196,7 @@ internal sealed class OperatorEventBuilder
         var operatorEvent = new ExecutionOperatorEvent
         {
             Name = node.PhysicalOperator,
+            LogicalOperator = node.LogicalOperator,
             Category = OperatorClassifier.GetCategory(node),
             PlanHandleId = _plan.PlanHandleId,
             NodeLevel = node.NodeLevel,
@@ -288,27 +292,27 @@ internal sealed class OperatorEventBuilder
     private List<EngineEvent> EventsFor(PlanNode node) =>
         _eventsByNode.TryGetValue(node.NodeId, out var list) ? list : [];
 
-    private static long? FirstIo(List<EngineEvent> events) =>
-        events.Where(e => e is IoEvent).Select(e => (long?)e.TimeUs).Min();
+    private static long? FirstDataAccess(List<EngineEvent> events) =>
+        events.Where(e => e is IoEvent or LatchEvent).Select(e => (long?)e.TimeUs).Min();
 
-    // The earliest page read anywhere in a node's subtree (the node and all its descendants).
-    private long? EarliestSubtreeIo(PlanNode node)
+    // The earliest page access (I/O or latch) anywhere in a node's subtree (the node and all its descendants).
+    private long? EarliestSubtreeDataAccess(PlanNode node)
     {
-        var earliest = FirstIo(EventsFor(node));
+        var earliest = FirstDataAccess(EventsFor(node));
 
         foreach (var child in node.Children)
         {
-            if (EarliestSubtreeIo(child) is { } childIo && (earliest is null || childIo < earliest))
+            if (EarliestSubtreeDataAccess(child) is { } childAccess && (earliest is null || childAccess < earliest))
             {
-                earliest = childIo;
+                earliest = childAccess;
             }
         }
 
         return earliest;
     }
 
-    private static long? LastIo(List<EngineEvent> events) =>
-        events.Where(e => e is IoEvent).Select(e => (long?)e.TimeUs + e.DurationUs).Max();
+    private static long? LastDataAccess(List<EngineEvent> events) =>
+        events.Where(e => e is IoEvent or LatchEvent).Select(e => (long?)e.TimeUs + e.DurationUs).Max();
 
     private static long? LastLog(List<EngineEvent> events) =>
         events.Where(e => e is TransactionLogEvent).Select(e => (long?)e.TimeUs + e.DurationUs).Max();

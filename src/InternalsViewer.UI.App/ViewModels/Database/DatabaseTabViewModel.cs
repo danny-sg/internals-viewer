@@ -100,6 +100,8 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
     public long SequenceTo => 0;
 
+    public long PlayheadTimeUs => 0;
+
     public bool IsServerConnection => Database.Connection is ServerConnectionType;
 
     [RelayCommand]

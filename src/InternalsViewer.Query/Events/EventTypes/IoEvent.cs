@@ -7,4 +7,17 @@ public sealed record IoEvent : EngineEvent
     public override string Description => $"Page {(IsRead ? "Read" : "Write")} {PageAddress}";
 
     public bool IsRoot { get; set; }
+
+    public override string Detail
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(ObjectName))
+            {
+                return $"Page {(IsRead ? "Read" : "Write")}: {PageAddress}";
+            }
+
+            return $"Page {(IsRead ? "Read" : "Write")}: {PageAddress} {ObjectName}";
+        }
+    }
 }

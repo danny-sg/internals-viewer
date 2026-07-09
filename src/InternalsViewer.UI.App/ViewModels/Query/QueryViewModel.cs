@@ -128,7 +128,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private long? _endOffset;
 
+    [ObservableProperty]
     private long _playheadTimeUs;
+
     private long _scopeFromUs;
 
     [ObservableProperty]
@@ -305,6 +307,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             IncludeLock = EventOptions.IncludeLock,
             IncludeWait = EventOptions.IncludeWait,
             IncludeLatch = EventOptions.IncludeLatch,
+            IncludeMemory = EventOptions.IncludeMemory,
             IncludeCallstack = EventOptions.IncludeCallStack
         };
 
@@ -330,6 +333,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             IncludeLock = dto.IncludeLock,
             IncludeWait = dto.IncludeWait,
+            IncludeLatch = dto.IncludeLatch,
+            IncludeMemory = dto.IncludeMemory,
             IncludeCallStack = dto.IncludeCallstack
         };
 
@@ -392,7 +397,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void SetPlayheadTime(long timeUs)
     {
-        _playheadTimeUs = timeUs;
+        PlayheadTimeUs = timeUs;
 
         UpdateActiveOperators(timeUs);
         SyncIndexPage(timeUs);
@@ -551,7 +556,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Dock.Show(document);
 
         // Reflect the current playhead position immediately.
-        SyncIndexPage(_playheadTimeUs);
+        SyncIndexPage(PlayheadTimeUs);
     }
 
     /// <summary>
@@ -664,6 +669,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private List<AllocationLayer> ObjectLayers { get; set; }
 
+    private readonly Dictionary<string, Color> _objectColoursByName;
+
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
                           SettingsService settingsService,
@@ -685,7 +692,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
             .ToArray();
 
-        ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, true);
+        ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, false);
+
+        // Keyed the same way as ExecutionOperatorEvent/EngineEvent.ObjectName ("schema.table" or
+        // "schema.table.index") so the timeline's operator marker and event colouring can look a table's
+        // own allocation-map colour straight up, without a second colour scheme.
+        _objectColoursByName = ObjectLayers
+            .Where(l => !string.IsNullOrEmpty(l.Name))
+            .GroupBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Colour, StringComparer.OrdinalIgnoreCase);
 
         ExtentCount = database.GetFilePageCount(1) / 8;
 
@@ -768,7 +783,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
                 if (!queryResult.IsSuccess)
                 {
-                    return (queryResult, new List<AllocationLayer>(), new EventColourProvider([]));
+                    return (queryResult, new List<AllocationLayer>(), new EventColourProvider([], _objectColoursByName));
                 }
 
                 var names = Database.AllocationUnits
@@ -781,7 +796,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                     e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
                 }
 
-                var colourProvider = new EventColourProvider(queryResult.ExecutionPlans);
+                var colourProvider = new EventColourProvider(queryResult.ExecutionPlans, _objectColoursByName);
 
                 var allocationLayer = GetEventsAllocationLayer(queryResult.EngineEvents, colourProvider);
 
@@ -868,7 +883,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         SequenceFrom = 0;
         SequenceTo = 0;
-        _playheadTimeUs = 0;
+        PlayheadTimeUs = 0;
         _scopeFromUs = 0;
         IsTimelinePlaying = false;
         SelectedPlanNode = null;
@@ -916,6 +931,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshLayers(FilteredEvents);
     }
 
+    // Floor applied to a flash span's (EndUs - StartUs) width so a near-instantaneous latch (DurationUs
+    // close to 0) still holds long enough on the allocation map to be seen while scrubbing.
+    private const long MinFlashDurationUs = 200;
+
     private List<AllocationLayer> GetEventsAllocationLayer(List<EngineEvent> engineEvents,
                                                           EventColourProvider colours)
     {
@@ -924,10 +943,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var ioLayer = new AllocationLayer { Name = "I/O", Colour = ColourConstants.IoColour, IsVisible = true };
         var pageLayer = new AllocationLayer { Name = "Page", Colour = ColourConstants.PageColour, IsVisible = true };
         var lockLayer = new AllocationLayer { Name = "Lock", Colour = Color.Gray, IsVisible = true };
+        var latchLayer = new AllocationLayer { Name = "Latch", Colour = ColourConstants.LatchColour, IsVisible = true };
 
         var systemIoLayer = new AllocationLayer { Name = "I/O (System)", Colour = ColourConstants.SystemIoColour, IsVisible = true };
         var systemPageLayer = new AllocationLayer { Name = "Page (System)", Colour = ColourConstants.SystemPageColour, IsVisible = true };
         var systemLockLayer = new AllocationLayer { Name = "Lock (System)", Colour = ColourConstants.SystemLockColour, IsVisible = true };
+        var systemLatchLayer = new AllocationLayer { Name = "Latch (System)", Colour = ColourConstants.SystemLatchColour, IsVisible = true };
+
+        var latchSpans = new List<PageFlashSpan>();
+        var systemLatchSpans = new List<PageFlashSpan>();
 
         foreach (var e in engineEvents)
         {
@@ -964,11 +988,30 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                         }
 
                         break;
+                    case LatchEvent latchEvent:
+                        var endUs = latchEvent.TimeUs + Math.Max(latchEvent.DurationUs, MinFlashDurationUs);
+
+                        // Allocation-map-only colouring: a dark version of the object's own (non-greyscale)
+                        // colour, falling back to the flat latch colour for unresolved/system pages. The
+                        // timeline keeps using colours.GetColour, unaffected by this.
+                        var displayColour = colours.GetLatchMapColour(e.ObjectName) ?? colours.GetColour(e);
+
+                        var span = new PageFlashSpan(e.PageAddress.Value, latchEvent.TimeUs, endUs)
+                        { DisplayColour = displayColour };
+
+                        (isSystemObject ? systemLatchSpans : latchSpans).Add(span);
+
+                        break;
                 }
             }
         }
 
-        return [ioLayer, pageLayer, lockLayer, systemIoLayer, systemPageLayer, systemLockLayer];
+        // DrawExtents binary-searches these by StartUs, so they must be sorted once here rather than
+        // on every paint.
+        latchLayer.SetFlashSpans([.. latchSpans.OrderBy(s => s.StartUs)]);
+        systemLatchLayer.SetFlashSpans([.. systemLatchSpans.OrderBy(s => s.StartUs)]);
+
+        return [ioLayer, pageLayer, lockLayer, latchLayer, systemIoLayer, systemPageLayer, systemLockLayer, systemLatchLayer];
     }
 
     public PfsChain PfsChain => new();

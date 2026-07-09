@@ -23,6 +23,13 @@ public sealed record ExecutionOperatorEvent : EngineEvent
 
     public required string OperatorDescription { get; set; }
 
+    /// <summary>
+    /// The plan's logical operator name (e.g. "Inner Join"), independent of <see cref="EngineEvent.Name"/>
+    /// (the physical operator). Used as the timeline label's second line for operators with no object of
+    /// their own (joins, sorts, ...) instead of leaving it blank.
+    /// </summary>
+    public string LogicalOperator { get; set; } = string.Empty;
+
     public long BuildPhaseTimeUs { get; set; }
 
     public long BuildPhaseDurationUs { get; set; }

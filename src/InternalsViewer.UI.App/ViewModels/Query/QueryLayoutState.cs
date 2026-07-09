@@ -17,5 +17,7 @@ public sealed class QueryLayoutState
 
     public bool IncludeLatch { get; set; }
 
+    public bool IncludeMemory { get; set; }
+
     public bool IncludeCallstack { get; set; }
 }
