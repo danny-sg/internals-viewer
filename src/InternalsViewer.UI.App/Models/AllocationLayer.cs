@@ -9,7 +9,7 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.UI.App.Models;
 
-public partial class AllocationLayer : ObservableObject
+public sealed partial class AllocationLayer : ObservableObject
 {
     [ObservableProperty]
     private Color _colour;
@@ -35,10 +35,6 @@ public partial class AllocationLayer : ObservableObject
     [ObservableProperty]
     private bool _isSystemObject;
 
-    // True for the static per-table/system/allocation-map layers built by AllocationLayerBuilder, as
-    // opposed to the dynamic event-overlay layers (I/O, Lock, Latch, ...) built per query run. These
-    // always render at full opacity - see AllocationControl.DrawExtents - since they're the map's own
-    // colouring, not something that should get dimmed just because an unrelated overlay is selected.
     [ObservableProperty]
     private bool _isAllocationLayer;
 
@@ -64,23 +60,11 @@ public partial class AllocationLayer : ObservableObject
     private List<PageAddress> _singlePages = [];
 
     [ObservableProperty]
-    private List<PageSpan> _pageSpans = [];
+    private IReadOnlyList<PageFlashSpan> _pageSpans = [];
 
-    // Sorted ascending by StartUs so DrawExtents can binary-search to the current playhead instead of
-    // scanning every span every frame. Set together with MaxFlashDurationUs - see AllocationLayer.SetFlashSpans.
-    [ObservableProperty]
-    private IReadOnlyList<PageFlashSpan> _flashSpans = [];
-
-    // The longest (StartUs..EndUs) width in FlashSpans. Bounds how far back a playhead-time lookup ever
-    // needs to scan: any span starting before (playhead - MaxFlashDurationUs) cannot still be active.
-    [ObservableProperty]
-    private long _maxFlashDurationUs;
-
-    /// <summary>Sets <see cref="FlashSpans"/> (sorted by start time) and its matching duration bound together.</summary>
-    public void SetFlashSpans(IReadOnlyList<PageFlashSpan> spans)
+    public void SetPageSpans(IReadOnlyList<PageFlashSpan> spans)
     {
-        FlashSpans = spans;
-        MaxFlashDurationUs = spans.Count == 0 ? 0 : spans.Max(s => s.EndUs - s.StartUs);
+        PageSpans = spans;
     }
 
     [ObservableProperty]

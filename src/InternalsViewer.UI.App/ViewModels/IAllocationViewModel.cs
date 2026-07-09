@@ -14,17 +14,10 @@ public interface IAllocationViewModel : INotifyPropertyChanged
     int ExtentCount { get; }
 
     ObservableCollection<AllocationLayer> AllocationLayers { get; }
-
-    ObservableCollection<AllocationLayer> SelectedLayers { get; }
-
+    
     PfsChain PfsChain { get; }
 
     bool IsPfsVisible { get; }
 
-    long SequenceFrom { get; }
-
-    long SequenceTo { get; }
-
-    /// <summary>Current playhead position (microseconds), used to drive flash spans (see <see cref="Models.AllocationLayer.FlashSpans"/>).</summary>
     long PlayheadTimeUs { get; }
 }

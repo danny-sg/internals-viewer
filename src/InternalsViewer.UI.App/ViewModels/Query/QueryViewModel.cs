@@ -8,7 +8,6 @@ using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
@@ -71,9 +70,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isPfsVisible = false;
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> _selectedLayers = [];
-
-    [ObservableProperty]
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
     [ObservableProperty]
@@ -81,12 +77,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private bool _isTimelinePlaying;
-
-    [ObservableProperty]
-    private bool _includeLocks = false;
-
-    [ObservableProperty]
-    private bool _includeIo = false;
 
     [ObservableProperty]
     private EventOptions _eventOptions = new();
@@ -689,14 +679,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Name = $"{Database.Name}: Query";
 
         DatabaseFiles = database.Files
-            .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
-            .ToArray();
+                                .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
+                                .ToArray();
 
-        ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, false);
+        ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, 20);
 
-        // Keyed the same way as ExecutionOperatorEvent/EngineEvent.ObjectName ("schema.table" or
-        // "schema.table.index") so the timeline's operator marker and event colouring can look a table's
-        // own allocation-map colour straight up, without a second colour scheme.
         _objectColoursByName = ObjectLayers
             .Where(l => !string.IsNullOrEmpty(l.Name))
             .GroupBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
@@ -771,7 +758,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                                                  : Message + Environment.NewLine + message);
 
         // Run full trace on background thread
-        var (results, layers, colours) =
+        var (results, layers, colours, startOffset, endOffset) =
             await Task.Run(async () =>
             {
                 var queryResult = await QueryRunner.TraceQuery(payload,
@@ -783,7 +770,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
                 if (!queryResult.IsSuccess)
                 {
-                    return (queryResult, new List<AllocationLayer>(), new EventColourProvider([], _objectColoursByName));
+                    return (queryResult, 
+                            new AllocationLayer(), 
+                            new EventColourProvider([], _objectColoursByName), 
+                            null, 
+                            null);
                 }
 
                 var names = Database.AllocationUnits
@@ -796,37 +787,46 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                     e.ObjectName = names.TryGetValue(e.ObjectId, out var n) ? n : $"(Object Id: {e.ObjectId})";
                 }
 
+                long? startOffset = null;
+                long? endOffset = null;
+
+                if (CropToQuery)
+                {
+                    var queryNode = queryResult.EngineEvents.FirstOrDefault(e =>
+                        e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 });
+
+                    if (queryNode != null)
+                    {
+                        startOffset = Math.Max(0, queryNode.TimeUs - CropPaddingUs);
+                        endOffset = queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs;
+                    }
+                }
+                else
+                {
+                    startOffset = null;
+                    endOffset = null;
+                }
+
                 var colourProvider = new EventColourProvider(queryResult.ExecutionPlans, _objectColoursByName);
 
-                var allocationLayer = GetEventsAllocationLayer(queryResult.EngineEvents, colourProvider);
+                var allocationLayer = GetEventsAllocationLayer(queryResult.EngineEvents, 
+                                                               colourProvider, 
+                                                               startOffset, 
+                                                               endOffset);
 
-                return (queryResult, allocationLayer, colourProvider);
+                return (queryResult, allocationLayer, colourProvider, startOffset, endOffset);
             },
             cancellationToken);
+
+        StartOffset = startOffset;
+        EndOffset = endOffset;
 
         if (!results.IsSuccess)
         {
             IsError = true;
             Message = Message + Environment.NewLine + results.Message;
+
             return;
-        }
-
-        if (CropToQuery)
-        {
-            var queryNode = results.EngineEvents.FirstOrDefault(e =>
-                e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 });
-
-            if (queryNode != null)
-            {
-                StartOffset = Math.Max(0, queryNode.TimeUs - CropPaddingUs);
-                EndOffset = queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs;
-            }
-        }
-        else
-        {
-            // No crop - show the full captured range.
-            StartOffset = null;
-            EndOffset = null;
         }
 
         IsError = false;
@@ -834,14 +834,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            // Publish the colour provider before the events so the timeline has it when it (re)paints.
             EventColours = colours;
 
             Events = results.EngineEvents;
 
             Callstacks = results.EngineEvents
                                 .Where(e => e.Callstack is { Count: > 0 })
-                                .SelectMany(e => e.Callstack!)
+                                .SelectMany(e => e.Callstack)
                                 .ToList();
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
@@ -906,22 +905,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         EventFilter.Clear();
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
-        SelectedLayers = [];
     }
 
     private void RefreshLayers(List<EngineEvent> engineEvents)
-        => ApplyEventLayers(GetEventsAllocationLayer(engineEvents, EventColours));
+        => ApplyEventLayers(GetEventsAllocationLayer(engineEvents, EventColours, StartOffset, EndOffset));
 
-    private void ApplyEventLayers(List<AllocationLayer> layers)
+    private void ApplyEventLayers(AllocationLayer layer)
     {
-        AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
-
-        foreach (var layer in layers)
-        {
-            AllocationLayers.Add(layer);
-        }
-
-        SelectedLayers = new ObservableCollection<AllocationLayer>(layers);
+        AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers) { layer };
     }
 
     public void RefreshFilteredEvents()
@@ -931,87 +922,52 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshLayers(FilteredEvents);
     }
 
-    // Floor applied to a flash span's (EndUs - StartUs) width so a near-instantaneous latch (DurationUs
-    // close to 0) still holds long enough on the allocation map to be seen while scrubbing.
     private const long MinFlashDurationUs = 200;
 
-    private List<AllocationLayer> GetEventsAllocationLayer(List<EngineEvent> engineEvents,
-                                                          EventColourProvider colours)
+    private AllocationLayer GetEventsAllocationLayer(List<EngineEvent> engineEvents,
+                                                     EventColourProvider colours,
+                                                     long? startOffset,
+                                                     long? endOffset)
     {
         var maxFileId = DatabaseFiles.Max(d => d.FileId);
 
-        var ioLayer = new AllocationLayer { Name = "I/O", Colour = ColourConstants.IoColour, IsVisible = true };
-        var pageLayer = new AllocationLayer { Name = "Page", Colour = ColourConstants.PageColour, IsVisible = true };
-        var lockLayer = new AllocationLayer { Name = "Lock", Colour = Color.Gray, IsVisible = true };
-        var latchLayer = new AllocationLayer { Name = "Latch", Colour = ColourConstants.LatchColour, IsVisible = true };
+        var overlayLayer = new AllocationLayer { Name = "Events", IsVisible = true };
 
-        var systemIoLayer = new AllocationLayer { Name = "I/O (System)", Colour = ColourConstants.SystemIoColour, IsVisible = true };
-        var systemPageLayer = new AllocationLayer { Name = "Page (System)", Colour = ColourConstants.SystemPageColour, IsVisible = true };
-        var systemLockLayer = new AllocationLayer { Name = "Lock (System)", Colour = ColourConstants.SystemLockColour, IsVisible = true };
-        var systemLatchLayer = new AllocationLayer { Name = "Latch (System)", Colour = ColourConstants.SystemLatchColour, IsVisible = true };
+        var queryEndUs = engineEvents.DefaultIfEmpty().Max(e => e?.TimeUs + e?.DurationUs) ?? MinFlashDurationUs;
 
-        var latchSpans = new List<PageFlashSpan>();
-        var systemLatchSpans = new List<PageFlashSpan>();
+        var pageSpans = new List<PageFlashSpan>();
 
         foreach (var e in engineEvents)
         {
-            if (e.PageAddress is { FileId: > 0 }
-                && e.PageAddress.Value.FileId <= maxFileId)
+            if (startOffset != null && endOffset != null && (e.TimeUs < startOffset || e.TimeUs > endOffset))
             {
-                var isSystemObject = SystemObjectIds.Contains(e.ObjectId);
+                continue;
+            }
 
-                switch (e)
+            if (e.PageAddress is { FileId: > 0 } && e.PageAddress.Value.FileId <= maxFileId)
+            {
+                if (e is LatchEvent latchEvent)
                 {
-                    case IoEvent ioEvent:
-                        if (isSystemObject)
-                        {
-                            systemIoLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId)
-                            { DisplayColour = colours.GetColour(e) });
-                        }
-                        else
-                        {
-                            ioLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId)
-                            { DisplayColour = colours.GetColour(e) });
-                        }
+                    var endUs = latchEvent.TimeUs + Math.Max(latchEvent.DurationUs, MinFlashDurationUs);
 
-                        break;
-                    case LockEvent lockEvent:
-                        if (isSystemObject)
-                        {
-                            systemLockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId)
-                            { DisplayColour = colours.GetColour(e) });
-                        }
-                        else
-                        {
-                            lockLayer.PageSpans.Add(new PageSpan(e.PageAddress.Value, e.SequenceId, e.SequenceId)
-                            { DisplayColour = colours.GetColour(e) });
-                        }
+                    var displayColour = colours.GetLatchMapColour(e.ObjectName) ?? colours.GetColour(e);
 
-                        break;
-                    case LatchEvent latchEvent:
-                        var endUs = latchEvent.TimeUs + Math.Max(latchEvent.DurationUs, MinFlashDurationUs);
+                    var latchSpan = new PageFlashSpan(e.PageAddress.Value, latchEvent.TimeUs, endUs, displayColour);
 
-                        // Allocation-map-only colouring: a dark version of the object's own (non-greyscale)
-                        // colour, falling back to the flat latch colour for unresolved/system pages. The
-                        // timeline keeps using colours.GetColour, unaffected by this.
-                        var displayColour = colours.GetLatchMapColour(e.ObjectName) ?? colours.GetColour(e);
+                    pageSpans.Add(latchSpan);
 
-                        var span = new PageFlashSpan(e.PageAddress.Value, latchEvent.TimeUs, endUs)
-                        { DisplayColour = displayColour };
-
-                        (isSystemObject ? systemLatchSpans : latchSpans).Add(span);
-
-                        break;
+                    continue;
                 }
+
+                var pageSpan = new PageFlashSpan(e.PageAddress.Value, e.TimeUs, queryEndUs, colours.GetColour(e));
+
+                pageSpans.Add(pageSpan);
             }
         }
 
-        // DrawExtents binary-searches these by StartUs, so they must be sorted once here rather than
-        // on every paint.
-        latchLayer.SetFlashSpans([.. latchSpans.OrderBy(s => s.StartUs)]);
-        systemLatchLayer.SetFlashSpans([.. systemLatchSpans.OrderBy(s => s.StartUs)]);
+        overlayLayer.SetPageSpans([.. pageSpans.OrderBy(s => s.StartUs)]);
 
-        return [ioLayer, pageLayer, lockLayer, latchLayer, systemIoLayer, systemPageLayer, systemLockLayer, systemLatchLayer];
+        return overlayLayer;
     }
 
     public PfsChain PfsChain => new();
