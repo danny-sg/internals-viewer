@@ -48,7 +48,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private const byte FocusedDimAlpha = 70;
 
     private const double MinZoom = 1.0;
-    private const double MaxZoom = 100.0;
+    private const double MaxZoom = 400.0;
     private const double ZoomStep = 1.15;
 
     // Event times/durations are stored in microseconds; the timeline axis works in milliseconds, so

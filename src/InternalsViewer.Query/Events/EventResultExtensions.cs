@@ -23,6 +23,22 @@ public static class EventResultExtensions
     public static string GetStringAction(this EventResult e, string key)
         => TryGetSpan(e.Actions, e.Buffer, key, out var span) ? Decode(span) : string.Empty;
 
+    public static bool GetBoolAction(this EventResult e, string key)
+        => TryGetSpan(e.Actions, e.Buffer, key, out var span) && Decode(span) == "true";
+
+    public static ulong? GetUlongAction(this EventResult e, string key)
+    {
+        if (!TryGetSpan(e.Actions, e.Buffer, key, out var span))
+        {
+            return null;
+        }
+
+        // Pointer-typed actions (e.g. worker_address) may render as hex; accept both.
+        return span.StartsWith("0x") || span.StartsWith("0X")
+            ? ulong.TryParse(span[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hex) ? hex : null
+            : ulong.TryParse(span, out var dec) ? dec : null;
+    }
+
     public static int GetDatabaseId(this EventResult e)
         => TryGetSpan(e.Actions, e.Buffer, "database_id", out var span) && int.TryParse(span, out var i) ? i : -1;
 
