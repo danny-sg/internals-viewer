@@ -47,6 +47,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
     // this alpha so the selected block's I/O and trace lines stand out.
     private const byte FocusedDimAlpha = 70;
 
+    private const byte DurationOverlayAlpha = 96;
+
     private const double MinZoom = 1.0;
     private const double MaxZoom = 400.0;
     private const double ZoomStep = 1.15;
@@ -931,16 +933,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             var sourceEvent = _sortedEvents[i];
 
-            // Operator events have a duration and are drawn as lines in a separate pass.
             if (sourceEvent is ExecutionOperatorEvent)
-            {
-                continue;
-            }
-
-            var x = TimeToX(_times[i]);
-
-            // Skip markers that fall outside the visible content
-            if (x > w || x < RowLabelWidth - SparseMarkerWidth)
             {
                 continue;
             }
@@ -968,30 +961,45 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
                 markerTop = innerTop + step * stepHeight;
                 markerHeight = Math.Max(2f, stepHeight - 1f);
-
-                _markerPaint.Color = TintByCategory(_activeRows[rowIndex].Color, step);
             }
             else
             {
                 markerTop = innerTop;
                 markerHeight = innerHeight;
-
-                _markerPaint.Color = ColourProvider is { } colours
-                    ? colours.GetColour(sourceEvent).ToSkColor()
-                    : _activeRows[rowIndex].Color;
             }
 
-            if (DimForSelection(sourceEvent))
-            {
-                _markerPaint.Color = _markerPaint.Color.WithAlpha(FocusedDimAlpha);
-            }
+            var markerColor = GetMarkerColor(sourceEvent, rowIndex, category);
 
             var markerWidth = RowMarkerWidth(rowIndex);
 
-            canvas.DrawRect(x, markerTop, markerWidth, markerHeight, _markerPaint);
+            var startX = TimeToX(_times[i]);
 
-            // Widen the hit target a little so the thin markers are easy to hover.
-            _hitRegions.Add((new SKRect(x - 3, markerTop, x + markerWidth + 3, markerTop + markerHeight), sourceEvent, null));
+            var hasDuration = sourceEvent.DurationUs > 0;
+
+            var endX = hasDuration
+                ? TimeToX(_times[i] + DurationMs(sourceEvent))
+                : startX + markerWidth;
+
+            if (hasDuration && endX < startX + markerWidth)
+            {
+                endX = startX + markerWidth;
+            }
+
+            if (endX < RowLabelWidth - SparseMarkerWidth || startX > w)
+            {
+                continue;
+            }
+
+            if (hasDuration)
+            {
+                _markerPaint.Color = markerColor.WithAlpha((byte)Math.Min(markerColor.Alpha, DurationOverlayAlpha));
+                canvas.DrawRect(startX, markerTop, endX - startX, markerHeight, _markerPaint);
+            }
+
+            _markerPaint.Color = markerColor;
+            canvas.DrawRect(startX, markerTop, markerWidth, markerHeight, _markerPaint);
+
+            _hitRegions.Add((new SKRect(startX - 3, markerTop, endX + 3, markerTop + markerHeight), sourceEvent, null));
         }
 
         DrawOperatorLines(canvas, rowTops, rowHeights);
@@ -1938,9 +1946,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         const float textPadX = 14f;
 
-        var availWidth = endX - startX - textPadX * 2;
+        var availableWidth = endX - startX - textPadX * 2;
 
-        if (availWidth <= 0)
+        if (availableWidth <= 0)
         {
             return;
         }
@@ -1963,7 +1971,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             var widerAtMax = Math.Max(typeWidth, targetWidth);
 
-            var sizeByWidth = widerAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / widerAtMax;
+            var sizeByWidth = widerAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availableWidth / widerAtMax;
 
             var sizeByHeight = (barHeight - 2f - TwoLineGap) / 2f;
 
@@ -1989,7 +1997,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         {
             var widthAtMax = typeWidth + targetWidth + OperatorMaxFont * OperatorLabelGapFraction;
 
-            var sizeByWidth = widthAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / widthAtMax;
+            var sizeByWidth = widthAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availableWidth / widthAtMax;
 
             var sizeByHeight = barHeight - 2f;
 
@@ -2020,7 +2028,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var primaryFont = isPrimaryType ? _operatorBoldFont : _operatorFont;
         var primaryWAtMax = isPrimaryType ? typeWidth : targetWidth;
 
-        var nameSizeByWidth = primaryWAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availWidth / primaryWAtMax;
+        var nameSizeByWidth = primaryWAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availableWidth / primaryWAtMax;
         var nameSize = Math.Min(OperatorMaxFont, Math.Min(nameSizeByWidth, barHeight - 2f));
 
         if (nameSize >= OperatorMinFont)
@@ -2147,6 +2155,22 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private static SKColor TintByCategory(SKColor colour, int category)
         => ColourScale(colour, CategoryShade[category]);
+
+    private SKColor GetMarkerColor(EngineEvent sourceEvent, int rowIndex, EventCategory? category)
+    {
+        var colour = category.HasValue
+            ? TintByCategory(_activeRows[rowIndex].Color, (int)category.Value)
+            : ColourProvider is { } colours
+                ? colours.GetColour(sourceEvent).ToSkColor()
+                : _activeRows[rowIndex].Color;
+
+        if (DimForSelection(sourceEvent))
+        {
+            return colour.WithAlpha(FocusedDimAlpha);
+        }
+
+        return colour;
+    }
 
     /// <summary>
     /// Scales a colour's RGB channels by <paramref name="factor"/> (clamped), preserving alpha.

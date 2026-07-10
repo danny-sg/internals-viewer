@@ -44,6 +44,12 @@
                        SmallChange="100" LargeChange="500"
                        SpinButtonPlacementMode="Compact"
                        MinWidth="100"/>
+            <TextBlock Grid.Column="4" Text="Search" VerticalAlignment="Center"
+                       Style="{ThemeResource CaptionTextBlockStyle}" Margin="16,0,6,0"/>
+            <TextBox Grid.Column="5"
+                     Grid.ColumnSpan="2"
+                     Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     MinWidth="220"/>
             <StackPanel Grid.Column="7" Orientation="Horizontal">
                 <Button Command="{x:Bind ViewModel.ExportLogCommand}"
                         Content="Export"

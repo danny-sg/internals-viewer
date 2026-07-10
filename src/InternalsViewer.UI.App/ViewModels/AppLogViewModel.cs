@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -18,6 +19,8 @@ namespace InternalsViewer.UI.App.ViewModels;
 public partial class AppLogViewModel : TabViewModel
 {
     private AppLogService AppLogService { get; }
+
+    private List<LogEntry> AllEntries { get; } = [];
 
     [ObservableProperty]
     private ObservableCollection<LogEntry> _logEntries = [];
@@ -51,14 +54,48 @@ public partial class AppLogViewModel : TabViewModel
     [ObservableProperty]
     private int _maxLogEntries = 1000;
 
+    private string _searchText = string.Empty;
+
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (SetProperty(ref _searchText, value))
+            {
+                DispatcherQueue.TryEnqueue(ApplyFilter);
+            }
+        }
+    }
+
     public AppLogViewModel(AppLogService appLogService)
     {
         AppLogService = appLogService;
         AppLogService.LogEntryReceived += OnLogEntryReceived;
     }
 
+    partial void OnMaxLogEntriesChanged(int value)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            while (AllEntries.Count > MaxLogEntries)
+            {
+                AllEntries.RemoveAt(0);
+            }
+
+            ApplyFilter();
+        });
+    }
+
     [RelayCommand]
-    private void ClearLog() => DispatcherQueue.TryEnqueue(() => LogEntries.Clear());
+    private void ClearLog()
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            AllEntries.Clear();
+            LogEntries.Clear();
+        });
+    }
 
     [RelayCommand]
     private async Task ExportLog()
@@ -101,12 +138,63 @@ public partial class AppLogViewModel : TabViewModel
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            while (LogEntries.Count >= MaxLogEntries)
+            while (AllEntries.Count >= MaxLogEntries)
             {
-                LogEntries.RemoveAt(0);
+                AllEntries.RemoveAt(0);
             }
 
-            LogEntries.Add(entry);
+            AllEntries.Add(entry);
+
+            ApplyFilter();
         });
+    }
+
+    private void ApplyFilter()
+    {
+        var filtered = string.IsNullOrWhiteSpace(SearchText)
+            ? AllEntries
+            : AllEntries.Where(entry => IsMatch(entry, SearchText)).ToList();
+
+        LogEntries.Clear();
+
+        foreach (var entry in filtered)
+        {
+            LogEntries.Add(entry);
+        }
+    }
+
+    private static bool IsMatch(LogEntry entry, string searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return true;
+        }
+
+        var term = searchText.Trim();
+
+        if (entry.Message.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || entry.Category.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || entry.ShortCategory.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || entry.Level.ToString().Contains(term, StringComparison.OrdinalIgnoreCase)
+            || (entry.Scope?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (entry.Exception?.ToString().Contains(term, StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            return true;
+        }
+
+        if (entry.Parameters is null)
+        {
+            return false;
+        }
+
+        foreach (var (_, value) in entry.Parameters)
+        {
+            if (value?.ToString()?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

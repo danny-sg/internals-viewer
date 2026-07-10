@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Parsers;
 using InternalsViewer.Query.Plans;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -32,7 +33,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         DateTime? startTimeStamp = null;
 
-        var eventParser = new EventParser(database, planHandles);
+        var eventParser = new XmlEventParser(database, planHandles, new EventParser());
 
         // Use buffer for XML/Name to prevent repeated string allocations for each row
         var xmlBuffer = new char[4096];
@@ -63,6 +64,15 @@ public sealed class EventReader(ILogger<EventReader> logger)
                     // Stream the event_data column into buffer
                     var length = ReadColumn(reader, 1, ref xmlBuffer);
 
+                    if (Logger.IsEnabled(LogLevel.Trace))
+                    {
+                        var xml = new string(xmlBuffer, 0, length);
+                        var eventName = new string(nameBuffer, 0, nameLength);
+
+                        Logger.LogTrace("XE Event:{Event}", 
+                                        new XEventPayload(eventName, xml));
+                    }
+
                     var engineEvent = eventParser.ParseEvent(xmlBuffer, length);
 
                     if (engineEvent is not null)
@@ -87,10 +97,10 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         connection.Close();
 
-        var orderedEvents = events.OrderBy(e => e.Timestamp).ThenBy(e => e.SequenceId).ToList();
+        var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
 
         // Spread events for ms to us resolution
-        SpreadCoincidentEvents(orderedEvents);
+        //SpreadCoincidentEvents(orderedEvents);
 
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
         EventPlanNodeMatcher.Match(orderedEvents, executionPlans);
@@ -197,4 +207,9 @@ public sealed class EventReader(ILogger<EventReader> logger)
         NULL, NULL, NULL
     );";
     }
+}
+
+public readonly record struct XEventPayload(string Name, string Value)
+{
+    public override string ToString() => Value;
 }

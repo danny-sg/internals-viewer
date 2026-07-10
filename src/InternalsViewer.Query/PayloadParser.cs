@@ -33,7 +33,6 @@ internal static partial class PayloadParser
         return result;
     }
 
-
     [GeneratedRegex(@"^\s*GO\s*$", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex GoRegEx();
 }

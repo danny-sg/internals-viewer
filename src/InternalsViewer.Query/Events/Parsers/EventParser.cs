@@ -8,318 +8,17 @@ using InternalsViewer.Query.Locks;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.TransactionLog;
 
-namespace InternalsViewer.Query.Events;
+namespace InternalsViewer.Query.Events.Parsers;
 
-/// <summary>
-/// Event XML Parser
-/// </summary>
-/// <remarks>
-/// This uses custom XML parsing for efficiency - reading a large number of XML events creates string allocations that
-/// slow the application due to GC pauses.
-/// </remarks>
-internal sealed class EventParser
+internal record WaitKey(ulong TaskAddress, WaitType WaitType);
+
+public sealed class EventParser
 {
-    private readonly DatabaseSource? _database;
+    private readonly Dictionary<ulong, LatchEvent> _latches = new();
 
-    private readonly PlanHandleRegistry _planHandles;
+    private readonly Dictionary<WaitKey, WaitEvent> _waits = new();
 
-    // Reused for every event. Values are stored as ranges into the event's character buffer, not strings,
-    // so only the few that are read as strings ever allocate (see EventResultExtensions).
-    private readonly Dictionary<string, ValueRange> _data = new();
-
-    private readonly Dictionary<string, ValueRange> _actions = new();
-
-    private readonly EventResult _result;
-
-    // Event and field names come from a small fixed vocabulary, so they're interned: each distinct name is
-    // turned into a string once and that instance is reused for every later occurrence (and shared by the
-    // EngineEvents that carry it), rather than allocating a new string per event.
-    private readonly Dictionary<string, string> _namePool = new(StringComparer.Ordinal);
-
-    public EventParser(DatabaseSource? database, PlanHandleRegistry planHandles)
-    {
-        _database = database;
-        _planHandles = planHandles;
-
-        _result = new EventResult { Name = string.Empty, Data = _data, Actions = _actions };
-    }
-
-    public EngineEvent? ParseEvent(string xml)
-    {
-        var buffer = xml.ToCharArray();
-        return ParseEvent(buffer, buffer.Length);
-    }
-
-    public EngineEvent? ParseEvent(char[] buffer, int length)
-    {
-        _result.Buffer = buffer;
-
-        if (!PopulateResult(buffer.AsSpan(0, length)))
-        {
-            return null;
-        }
-
-        if (_actions.TryGetValue("sql_text", out var sqlText)
-            && sqlText.Length > 0
-            && buffer.AsSpan(sqlText.Offset, sqlText.Length)
-                     .StartsWith("ALTER EVENT SESSION".AsSpan(), StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        return ToEngineEvent(_result, _database, _planHandles);
-    }
-
-    private bool PopulateResult(ReadOnlySpan<char> xml)
-    {
-        _data.Clear();
-        _actions.Clear();
-
-        var eventStart = xml.IndexOf("<event".AsSpan(), StringComparison.Ordinal);
-
-        if (eventStart < 0)
-        {
-            return false;
-        }
-
-        var eventTagEnd = FindTagEnd(xml, eventStart);
-
-        if (eventTagEnd < 0)
-        {
-            return false;
-        }
-
-        var openTag = xml[eventStart..(eventTagEnd + 1)];
-
-        var name = GetAttribute(openTag, "name");
-        var timestamp = GetAttribute(openTag, "timestamp");
-
-        if (name.IsEmpty || timestamp.IsEmpty)
-        {
-            return false;
-        }
-
-        _result.Name = Intern(name);
-        _result.Timestamp = DateTime.Parse(timestamp);
-
-        // Self-closing <event .../> (no fields).
-        if (xml[eventTagEnd - 1] == '/')
-        {
-            return true;
-        }
-
-        var i = eventTagEnd + 1;
-
-        while (i < xml.Length)
-        {
-            var offset = xml[i..].IndexOf('<');
-
-            if (offset < 0)
-            {
-                break;
-            }
-
-            i += offset;
-
-            if (i + 1 < xml.Length && xml[i + 1] == '/')
-            {
-                // End tag: stop at </event>, otherwise skip it.
-                if (IsElementName(xml, i + 2, "event"))
-                {
-                    break;
-                }
-
-                var close = xml[i..].IndexOf('>');
-
-                if (close < 0)
-                {
-                    break;
-                }
-
-                i += close + 1;
-                continue;
-            }
-
-            var isData = IsElementName(xml, i + 1, "data");
-            var isAction = !isData && IsElementName(xml, i + 1, "action");
-
-            var tagEnd = FindTagEnd(xml, i);
-
-            if (tagEnd < 0)
-            {
-                break;
-            }
-
-            if (!isData && !isAction)
-            {
-                i = tagEnd + 1;
-
-                continue;
-            }
-
-            var fieldName = GetAttribute(xml[i..(tagEnd + 1)], "name");
-
-            ValueRange range = default;
-            int next;
-
-            if (xml[tagEnd - 1] == '/')
-            {
-                // Self-closing <data .../> - no value.
-                next = tagEnd + 1;
-            }
-            else
-            {
-                var endTag = isData ? "</data>" : "</action>";
-
-                var relativeEndPosition = xml[(tagEnd + 1)..].IndexOf(endTag.AsSpan(), StringComparison.Ordinal);
-
-                if (relativeEndPosition < 0)
-                {
-                    break;
-                }
-
-                var fullEndPosition = tagEnd + 1 + relativeEndPosition;
-
-                range = ReadValueRange(xml[(tagEnd + 1)..fullEndPosition], tagEnd + 1);
-
-                next = fullEndPosition + endTag.Length;
-            }
-
-            (isData ? _data : _actions)[Intern(fieldName)] = range;
-
-            i = next;
-        }
-
-        return true;
-    }
-
-    private static ValueRange ReadValueRange(ReadOnlySpan<char> content, int contentStart)
-    {
-        var valueStart = content.IndexOf("<value".AsSpan(), StringComparison.Ordinal);
-
-        if (valueStart < 0)
-        {
-            return default;
-        }
-
-        var tagEndPosition = content[valueStart..].IndexOf('>');
-
-        if (tagEndPosition < 0)
-        {
-            return default;
-        }
-
-        tagEndPosition += valueStart;
-
-        // Self-closing <value/>.
-        if (content[tagEndPosition - 1] == '/')
-        {
-            return default;
-        }
-
-        var inner = content[(tagEndPosition + 1)..];
-
-        var endOffset = inner.IndexOf("</value>".AsSpan(), StringComparison.Ordinal);
-
-        if (endOffset < 0)
-        {
-            return default;
-        }
-
-        return new ValueRange(contentStart + tagEndPosition + 1, endOffset);
-    }
-
-    /// <summary>
-    /// Find the index of the XML end tag
-    /// </summary>
-    private static int FindTagEnd(ReadOnlySpan<char> xml, int tagStart)
-    {
-        var inQuote = false;
-
-        for (var i = tagStart; i < xml.Length; i++)
-        {
-            var c = xml[i];
-
-            if (c == '"')
-            {
-                inQuote = !inQuote;
-            }
-            else if (c == '>' && !inQuote)
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    private static bool IsElementName(ReadOnlySpan<char> xml, int nameStart, string element)
-    {
-        if (nameStart + element.Length > xml.Length)
-        {
-            return false;
-        }
-
-        if (!xml.Slice(nameStart, element.Length).SequenceEqual(element))
-        {
-            return false;
-        }
-
-        var after = xml[nameStart + element.Length];
-
-        return after is ' ' or '\t' or '\r' or '\n' or '>' or '/';
-    }
-
-    private static ReadOnlySpan<char> GetAttribute(ReadOnlySpan<char> tag, string attribute)
-    {
-        var from = 0;
-
-        while (true)
-        {
-            var offset = tag[from..].IndexOf(attribute.AsSpan(), StringComparison.Ordinal);
-
-            if (offset < 0)
-            {
-                return default;
-            }
-
-            var at = from + offset;
-            var after = at + attribute.Length;
-
-            // Require an attribute boundary before the name and `="` after it, so "name" matches the attribute and
-            // not a substring of another (e.g. a value).
-            if (at > 0 && char.IsWhiteSpace(tag[at - 1])
-                && after + 1 < tag.Length
-                && tag[after] == '='
-                && tag[after + 1] == '"')
-            {
-                var valueStart = after + 2;
-                var end = tag[valueStart..].IndexOf('"');
-
-                return end < 0 ? default : tag.Slice(valueStart, end);
-            }
-
-            from = after;
-        }
-    }
-
-    private string Intern(ReadOnlySpan<char> name)
-    {
-        var lookup = _namePool.GetAlternateLookup<ReadOnlySpan<char>>();
-
-        if (lookup.TryGetValue(name, out var existing))
-        {
-            return existing;
-        }
-
-        var interned = name.ToString();
-
-        _namePool[interned] = interned;
-
-        return interned;
-    }
-
-    private static EngineEvent ToEngineEvent(EventResult e, DatabaseSource? database, PlanHandleRegistry planHandles)
+    public EngineEvent? ToEngineEvent(EventResult e, DatabaseSource? database, PlanHandleRegistry planHandles)
     {
         var engineEvent = e.Name switch
         {
@@ -354,6 +53,11 @@ internal sealed class EventParser
             }
         };
 
+        if (engineEvent is null)
+        {
+            return engineEvent;
+        }
+
         var sequenceId = e.GetInt("event_sequence");
 
         engineEvent.SequenceId = (sequenceId * 10) ?? e.SequenceId;
@@ -386,8 +90,8 @@ internal sealed class EventParser
         else if (engineEvent.ObjectId > 0)
         {
             var allocationUnit = database.AllocationUnits
-                                         .Values
-                                         .FirstOrDefault(f => f.ObjectId == engineEvent.ObjectId);
+                .Values
+                .FirstOrDefault(f => f.ObjectId == engineEvent.ObjectId);
 
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? $"(Object Id {engineEvent.ObjectId})";
 
@@ -401,8 +105,8 @@ internal sealed class EventParser
         else if (engineEvent is TransactionLogEvent { AllocationUnitId: > 0 } logEvent)
         {
             var allocationUnit = database.AllocationUnits.TryGetValue(logEvent.AllocationUnitId, out var value)
-                                 ? value
-                                 : AllocationUnit.Unknown;
+                ? value
+                : AllocationUnit.Unknown;
 
             engineEvent.ObjectId = allocationUnit?.ObjectId ?? 0;
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? string.Empty;
@@ -512,11 +216,29 @@ internal sealed class EventParser
         }
     }
 
-    private static EngineEvent MapWait(EventResult e)
+    private WaitEvent? MapWait(EventResult e)
     {
         var waitType = (WaitType)(e.GetInt("wait_type") ?? 0);
+        var taskAddress = e.GetUlongAction("task_address");
 
-        return new WaitEvent
+        WaitKey? key = null;
+
+        if (taskAddress.HasValue)
+        {
+            key = new WaitKey(taskAddress.Value, waitType);
+        }
+
+        if (key != null && e.Name == "wait_completed")
+        {
+            if (_waits.Remove(key, out var completed))
+            {
+                completed.DurationUs = e.GetLong("duration") ?? completed.DurationUs;
+            }
+
+            return null;
+        }
+
+        var waitEvent = new WaitEvent
         {
             Name = e.Name,
             Timestamp = e.Timestamp,
@@ -524,19 +246,53 @@ internal sealed class EventParser
             WaitType = waitType,
             DurationUs = e.GetLong("duration") ?? 0
         };
+
+        // Link to an existing latch via wait_resource
+        if ((waitType.IsPageLatchWait() || waitType.IsPageIoLatchWait())
+            && _latches.TryGetValue(e.GetUlong("wait_resource") ?? 0, out var latch))
+        {
+            waitEvent.LatchEvent = latch;
+        }
+
+        if (key != null)
+        {
+            _waits[key] = waitEvent;
+        }
+
+        return waitEvent;
     }
 
-    private static EngineEvent MapLatch(EventResult e)
+    private EngineEvent? MapLatch(EventResult e)
     {
-        var latchMode = (LatchMode)(e.GetInt("latch_mode") ?? 0);
+        var address = e.GetUlong("address");
+
+        if (e.Name is "latch_suspend_begin" or "latch_suspend_end" && address is not null)
+        {
+            if (_latches.TryGetValue(address.Value, out var latch))
+            {
+                latch.IsSuspended = e.Name == "latch_suspend_begin";
+
+                var duration = e.GetLong("duration");
+
+                if (!latch.IsSuspended && duration is not null)
+                {
+                    latch.DurationUs = duration.Value;
+                    latch.TimeUs -= duration.Value;
+                }
+            }
+
+            return null;
+        }
+
+        var latchMode = (LatchMode)(e.GetInt("mode") ?? 0);
 
         var fileId = e.GetShort("file_id") ?? 0;
 
         var pageId = e.GetInt("page_id") ?? 0;
 
-        var latchClass = (LatchClass) (e.GetInt("class") ?? 0);
+        var latchClass = (LatchClass)(e.GetInt("class") ?? 0);
 
-        return new LatchEvent
+        var latchEvent = new LatchEvent
         {
             Name = e.Name,
             Timestamp = e.Timestamp,
@@ -546,6 +302,13 @@ internal sealed class EventParser
             DurationUs = e.GetLong("duration") ?? 0,
             PageAddress = new PageAddress(fileId, pageId)
         };
+
+        if (address is not null)
+        {
+            _latches[address.Value] = latchEvent;
+        }
+
+        return latchEvent;
     }
 
     private static EngineEvent MapQueryThread(EventResult e)
@@ -674,7 +437,7 @@ internal sealed class EventParser
 
             i += offset;
 
-            var tagEnd = FindTagEnd(xml, i);
+            var tagEnd = XmlEventTagParser.FindTagEnd(xml, i);
 
             if (tagEnd < 0)
             {
@@ -682,11 +445,11 @@ internal sealed class EventParser
             }
 
             var tag = xml[i..(tagEnd + 1)];
-            var module = GetAttribute(tag, "module");
-            var pdb = GetAttribute(tag, "pdb");
-            var guid = GetAttribute(tag, "guid");
-            var ageSpan = GetAttribute(tag, "age");
-            var rvaSpan = GetAttribute(tag, "rva");
+            var module = XmlEventAttributeParser.GetAttribute(tag, "module");
+            var pdb = XmlEventAttributeParser.GetAttribute(tag, "pdb");
+            var guid = XmlEventAttributeParser.GetAttribute(tag, "guid");
+            var ageSpan = XmlEventAttributeParser.GetAttribute(tag, "age");
+            var rvaSpan = XmlEventAttributeParser.GetAttribute(tag, "rva");
 
             if (!module.IsEmpty)
             {

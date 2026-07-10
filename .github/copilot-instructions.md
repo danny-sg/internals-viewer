@@ -1,4 +1,4 @@
-# C# Rules
+# Copilot Instructions
 
 ## General
 - Target `.NET 10` and use the language version configured by the project.
@@ -8,6 +8,7 @@
 - Prefer private properties over private fields.
 - Prefer primary constructors for classes/records when they improve clarity.
 - Break long parameter lists onto multiple lines using consistent indentation.
+- When implementing changes, do not add explanatory comments in code.
 
 ## Naming
 - Do not use abbreviations; keep names concise and clear.

@@ -14,9 +14,6 @@ public static class EventResultExtensions
     public static long? GetLong(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) && long.TryParse(span, out var i) ? i : null;
 
-    public static ulong? GetUlong(this EventResult e, string key)
-        => TryGetSpan(e.Data, e.Buffer, key, out var span) && ulong.TryParse(span, out var i) ? i : null;
-
     public static string GetString(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) ? Decode(span) : string.Empty;
 
@@ -26,17 +23,22 @@ public static class EventResultExtensions
     public static bool GetBoolAction(this EventResult e, string key)
         => TryGetSpan(e.Actions, e.Buffer, key, out var span) && Decode(span) == "true";
 
+    public static ulong? GetUlong(this EventResult e, string key)
+        => TryGetSpan(e.Data, e.Buffer, key, out var span) && TryParseUlong(span, out var value) ? value : null;
+    
     public static ulong? GetUlongAction(this EventResult e, string key)
+        => TryGetSpan(e.Actions, e.Buffer, key, out var span) && TryParseUlong(span, out var value)
+            ? value
+            : null;
+
+    private static bool TryParseUlong(ReadOnlySpan<char> span, out ulong value)
     {
-        if (!TryGetSpan(e.Actions, e.Buffer, key, out var span))
+        if (span.StartsWith("0x") || span.StartsWith("0X"))
         {
-            return null;
+            return ulong.TryParse(span[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
         }
 
-        // Pointer-typed actions (e.g. worker_address) may render as hex; accept both.
-        return span.StartsWith("0x") || span.StartsWith("0X")
-            ? ulong.TryParse(span[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hex) ? hex : null
-            : ulong.TryParse(span, out var dec) ? dec : null;
+        return ulong.TryParse(span, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
     }
 
     public static int GetDatabaseId(this EventResult e)

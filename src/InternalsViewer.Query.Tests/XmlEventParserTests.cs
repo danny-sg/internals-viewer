@@ -1,20 +1,20 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Parsers;
 using InternalsViewer.Query.Locks;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query.Tests;
 
-public class EventParserTests
+public class XmlEventParserTests
 {
-    private static EngineEvent? Parse(EventParser parser, string xml) => parser.ParseEvent(xml);
+    private static EngineEvent? Parse(XmlEventParser parser, string xml) => parser.ParseEvent(xml);
 
     [Fact]
     public void Parses_Name_Timestamp_And_Page_Fields()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         // page_location 0x100020000 => fileId 1, pageId 0x20000. The <type> metadata before <value>
         // must be skipped.
@@ -38,7 +38,7 @@ public class EventParserTests
     public void Interns_Plan_Handle_To_Shared_Id()
     {
         var registry = new PlanHandleRegistry();
-        var parser = new EventParser(null, registry);
+        var parser = new XmlEventParser(null, registry, new EventParser());
 
         var a = Parse(parser, EventWithPlanHandle("0xAABB"));
         var b = Parse(parser, EventWithPlanHandle("0xAABB"));
@@ -52,7 +52,7 @@ public class EventParserTests
     [Fact]
     public void Reused_Parser_Does_Not_Leak_Fields_Between_Events()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         // First event carries an object_id action; the second does not. The reused dictionaries must be
         // cleared so the second event doesn't inherit the first's object id.
@@ -80,7 +80,7 @@ public class EventParserTests
     [Fact]
     public void Skips_Alter_Event_Session_Statements()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -95,7 +95,7 @@ public class EventParserTests
     [Fact]
     public void Decodes_Xml_Entities_In_Values()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -112,7 +112,7 @@ public class EventParserTests
     [Fact]
     public void Handles_Self_Closing_And_Missing_Values()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         // An empty self-closing <value/> and a <data/> with no value at all must not throw, and the event
         // is still produced.
@@ -132,7 +132,7 @@ public class EventParserTests
     [Fact]
     public void Maps_Io_Event_From_File_Read()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -152,7 +152,7 @@ public class EventParserTests
     [Fact]
     public void Maps_Io_Event_PageId_From_Offset_When_Missing()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         // No page_id, so it is derived from offset / 8192.
         var ev = Parse(parser,
@@ -172,7 +172,7 @@ public class EventParserTests
     [Fact]
     public void Maps_Wait_Event_With_Type_And_Duration()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -191,7 +191,7 @@ public class EventParserTests
     [Fact]
     public void Maps_Page_Lock_To_Page_Address()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -213,7 +213,7 @@ public class EventParserTests
     [Fact]
     public void Maps_Rid_Lock_To_Row_Identifier()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -236,7 +236,7 @@ public class EventParserTests
     [Fact]
     public void Maps_Key_Lock_To_Key_Hash()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -255,7 +255,7 @@ public class EventParserTests
     [Fact]
     public void Maps_Transaction_Log_Event()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -275,7 +275,7 @@ public class EventParserTests
     [Fact]
     public void Maps_Memory_Event()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -294,7 +294,7 @@ public class EventParserTests
     [Fact]
     public void Reads_Database_Id_From_Action()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -310,7 +310,7 @@ public class EventParserTests
     [Fact]
     public void Unknown_Event_Falls_Back_To_Base_Engine_Event()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser,
             """
@@ -327,7 +327,7 @@ public class EventParserTests
     [Fact]
     public void Returns_Null_For_Missing_Event_Element()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser, "<not-an-event />");
 
@@ -337,7 +337,7 @@ public class EventParserTests
     [Fact]
     public void Returns_Null_When_Timestamp_Missing()
     {
-        var parser = new EventParser(null, new PlanHandleRegistry());
+        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
 
         var ev = Parse(parser, """<event name="sql_batch_starting"></event>""");
 

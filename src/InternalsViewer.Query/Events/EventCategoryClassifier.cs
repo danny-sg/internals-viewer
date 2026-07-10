@@ -3,15 +3,6 @@ using InternalsViewer.Query.Locks;
 
 namespace InternalsViewer.Query.Events;
 
-/// <summary>Coarse buckets used to group lock and wait events for display.</summary>
-public enum EventCategory
-{
-    Io = 0,
-    Cpu = 1,
-    Concurrency = 2,
-    Parallelism = 3,
-}
-
 /// <summary>
 /// Buckets lock and wait events into one of four families (IO, CPU, Concurrency, Parallelism),
 /// classifying waits by wait-type name in the same spirit as the SQL Server wait categories.

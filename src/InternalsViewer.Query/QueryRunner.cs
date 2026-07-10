@@ -1,9 +1,9 @@
 ﻿using System.Diagnostics;
-using System.Text;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
@@ -80,18 +80,18 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             }
             catch (SqlException ex)
             {
-                var msg = $"Msg: {ex.Number}, Level: {ex.Class}, State: {ex.State}, Line: {ex.LineNumber}"
-                          + $"{Environment.NewLine}{ex.Message}";
+                var message = $"Msg: {ex.Number}, Level: {ex.Class}, State: {ex.State}, Line: {ex.LineNumber}"
+                              + $"{Environment.NewLine}{ex.Message}";
 
-                return new QueryResult { IsSuccess = false, Message = msg, SessionId = sessionId };
+                return new QueryResult { IsSuccess = false, Message = message, SessionId = sessionId };
             }
             catch (Exception ex)
             {
-                var msg = "Non-Database Error:"
-                          + $"{Environment.NewLine}{ex.InnerException?.Message ?? ex.Message}"
-                          + $"{Environment.NewLine}{ex.StackTrace}";
+                var message = "Non-Database Error:"
+                              + $"{Environment.NewLine}{ex.InnerException?.Message ?? ex.Message}"
+                              + $"{Environment.NewLine}{ex.StackTrace}";
 
-                return new QueryResult { IsSuccess = false, Message = msg, SessionId = sessionId };
+                return new QueryResult { IsSuccess = false, Message = message, SessionId = sessionId };
             }
 
             return new QueryResult
@@ -158,8 +158,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 progress?.Report($"Processing callstack frames");
 
                 var unknownSymbols = await CallstackProcessor.Process(events, symbolsPath, progress, cancellationToken);
-                
-                if(Logger.IsEnabled(LogLevel.Debug) && unknownSymbols.Length > 0)
+
+                if (Logger.IsEnabled(LogLevel.Debug) && unknownSymbols.Length > 0)
                 {
                     foreach (var symbol in unknownSymbols)
                     {
@@ -217,9 +217,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     }
 
     internal static async Task GetEventKeyAddresses(List<EngineEvent> events,
-                                                   Dictionary<long, AllocationUnit> allocationUnits,
-                                                   string connectionString,
-                                                   CancellationToken cancellationToken)
+                                                    Dictionary<long, AllocationUnit> allocationUnits,
+                                                    string connectionString,
+                                                    CancellationToken cancellationToken)
     {
         var keyLockEvents = events.Where(e => e is LockEvent { KeyHash: not null }).Cast<LockEvent>();
 
@@ -282,15 +282,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 progress?.Report(error.Message);
             }
         };
-        
+
         await connection.OpenAsync(cancellationToken);
 
-        var logPath = await ExecuteScalar<string>(GetFileLocationSql(), connection, cancellationToken);
+        var logPath = await connection.ExecuteScalar<string>(EventSql.GetFileLocationSql(), cancellationToken);
 
         var filePath = $"{logPath}\\{sessionName}.xel";
 
         List<LogRecord> logRecords = [];
-        
+
         string? startLsn = null;
 
         List<QueryResultSet> resultSets;
@@ -303,7 +303,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             foreach (var preCommand in preCommandSql)
             {
-                var itemRowCount = await ExecuteSql(preCommand, connection, cancellationToken);
+                var itemRowCount = await connection.ExecuteSql(preCommand, cancellationToken, Logger);
 
                 if (itemRowCount > -1)
                 {
@@ -314,48 +314,48 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             connection.InfoMessage -= onInfoMessage;
         }
 
-        var spid = await ExecuteScalar<short>("SELECT @@SPID", connection, cancellationToken);
+        var spid = await connection.ExecuteScalar<short>("SELECT @@SPID", cancellationToken, Logger);
 
-        var createSessionSql = GetCreateSessionSql(sessionName, filePath, spid, isReplayMode, eventOptions);
+        var createSessionSql = EventSql.GetCreateSessionSql(sessionName, filePath, spid, isReplayMode, eventOptions);
 
-        await ExecuteSql(createSessionSql, connection, cancellationToken);
+        await connection.ExecuteSql(createSessionSql, cancellationToken, Logger);
 
         if (queryOptions.ClearBufferPool | isReplayMode)
         {
             // Flush dirty pages either for DROPCLEANBUFFERS or to write the transaction log to disk 
-            await ExecuteSql("CHECKPOINT", connection, cancellationToken);
+            await connection.ExecuteSql("CHECKPOINT", cancellationToken, Logger);
         }
 
         if (queryOptions.ClearBufferPool)
         {
             // Removes all pages from the buffer pool so pages will come from I/O rather than the cache
-            await ExecuteSql("DBCC DROPCLEANBUFFERS", connection, cancellationToken);
+            await connection.ExecuteSql("DBCC DROPCLEANBUFFERS", cancellationToken, Logger);
         }
 
         if (queryOptions.DisableReadAhead)
         {
             // Disable pre-fetching page scans for the session
-            await ExecuteSql("DBCC TRACEON(652)", connection, cancellationToken);
+            await connection.ExecuteSql("DBCC TRACEON(652)", cancellationToken, Logger);
         }
 
         if (isReplayMode)
         {
-            startLsn = await ExecuteScalar<string?>(
-                "SELECT MAX([Current LSN]) FROM fn_dblog(NULL, NULL);", connection, cancellationToken);
+            startLsn = await connection.ExecuteScalar<string?>(
+                "SELECT MAX([Current LSN]) FROM fn_dblog(NULL, NULL);", cancellationToken, Logger);
 
             progress?.Report($"Start LSN: {startLsn}");
         }
 
-        // Session block that should stop the session if there is any failure
+        // Session try/catch block that should stop the session if there is any failure
         try
         {
-            await ExecuteSql(GetStartSessionSql(sessionName), connection, cancellationToken);
+            await connection.ExecuteSql(EventSql.GetStartSessionSql(sessionName), cancellationToken, Logger);
 
             if (isReplayMode)
             {
                 progress?.Report($"Transaction started");
 
-                await ExecuteSql($"BEGIN TRANSACTION iv_{sessionName[..28]};", connection, cancellationToken);
+                await connection.ExecuteSql($"BEGIN TRANSACTION iv_{sessionName[..28]};", cancellationToken, Logger);
             }
 
             await Task.Delay(250, cancellationToken);
@@ -381,7 +381,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                     var columns = ReadSchema(reader);
 
                     var stringPools = BuildStringPools(columns);
-                    
+
                     var rows = new List<ResultRow>();
 
                     while (await reader.ReadAsync(cancellationToken))
@@ -414,8 +414,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                         rowCount++;
                     }
                 }
-            }
-            while (await reader.NextResultAsync(cancellationToken));
+            } while (await reader.NextResultAsync(cancellationToken));
 
             await reader.CloseAsync();
 
@@ -431,7 +430,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 progress?.Report($"{logRecords.Count} log record(s) retrieved");
 
-                await ExecuteSql($"ROLLBACK TRANSACTION iv_{sessionName[..28]};", connection, cancellationToken);
+                await connection.ExecuteSql($"ROLLBACK TRANSACTION iv_{sessionName[..28]};", 
+                                            cancellationToken, 
+                                            Logger);
 
                 progress?.Report($"Transaction rolled back");
             }
@@ -442,7 +443,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             // token - otherwise the Extended Events session is left running on the server.
             try
             {
-                await ExecuteSql(GetStopSessionSql(sessionName), connection, CancellationToken.None);
+                await connection.ExecuteSql(EventSql.GetStopSessionSql(sessionName), CancellationToken.None, Logger);
             }
             catch
             {
@@ -451,7 +452,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             try
             {
-                await ExecuteSql(GetDropSessionSql(sessionName), connection, CancellationToken.None);
+                await connection.ExecuteSql(EventSql.GetDropSessionSql(sessionName), CancellationToken.None, Logger);
             }
             catch
             {
@@ -465,7 +466,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             foreach (var postCommand in postCommandSql)
             {
-                var itemRowCount = await ExecuteSql(postCommand, connection, cancellationToken);
+                var itemRowCount = await connection.ExecuteSql(postCommand, cancellationToken, Logger);
 
                 if (itemRowCount > -1)
                 {
@@ -601,136 +602,5 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         }
 
         return interned;
-    }
-
-    private static async Task<T?> ExecuteScalar<T>(string sql,
-                                                   SqlConnection connection,
-                                                   CancellationToken cancellationToken)
-    {
-        var result = await new SqlCommand(sql, connection).ExecuteScalarAsync(cancellationToken);
-
-        return (T?)result;
-    }
-
-    private async Task<int> ExecuteSql(string sql, SqlConnection connection, CancellationToken cancellationToken)
-    {
-        Logger.LogDebug("SQL: {Sql}", sql);
-
-        return await new SqlCommand(sql, connection).ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    internal static string GetFileLocationSql()
-    {
-        return @"
-                SELECT LEFT(
-                    CAST(SERVERPROPERTY('ErrorLogFileName') AS NVARCHAR(4000)),
-                    LEN(CAST(SERVERPROPERTY('ErrorLogFileName') AS NVARCHAR(4000)))
-                    - CHARINDEX('\', REVERSE(CAST(SERVERPROPERTY('ErrorLogFileName') AS NVARCHAR(4000))))
-            );";
-    }
-
-    internal static string GetDropSessionSql(string sessionName)
-    {
-        return $"DROP EVENT SESSION [{sessionName}] ON SERVER;";
-    }
-
-    internal static string GetStartSessionSql(string sessionName)
-    {
-        return $"ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = START;";
-    }
-
-    internal static string GetStopSessionSql(string sessionName)
-    {
-        return $"ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP;";
-    }
-
-    internal static string GetCreateSessionSql(string sessionName,
-                                              string filePath,
-                                              short spid,
-                                              bool isReplayMode,
-                                              EventOptions eventOptions)
-    {
-
-        var sessionEvents = new List<string>(EventConstants.Events);
-        var sessionActions = new List<string>(EventConstants.Actions);
-
-        if (isReplayMode)
-        {
-            sessionEvents.AddRange(EventConstants.LogEvents);
-        }
-
-        if (eventOptions.IncludeLock)
-        {
-            sessionEvents.AddRange(EventConstants.LockEvents);
-        }
-
-        if (eventOptions.IncludeWait)
-        {
-            sessionEvents.AddRange(EventConstants.WaitEvents);
-        }
-
-        if (eventOptions.IncludeLatch)
-        {
-            sessionEvents.AddRange(EventConstants.LatchEvents);
-        }
-
-        if (eventOptions.IncludeMemory)
-        {
-            sessionEvents.AddRange(EventConstants.MemoryEvents);
-        }
-
-        if (eventOptions.IncludeCallStack)
-        {
-            sessionActions.AddRange(EventConstants.CallstackActions);
-        }
-
-        var stringBuilder = new StringBuilder();
-
-        stringBuilder.AppendLine($"CREATE EVENT SESSION [{sessionName}] ON SERVER");
-
-        for (var i = 0; i < sessionEvents.Count; i++)
-        {
-            var eventName = sessionEvents[i];
-
-            stringBuilder.Append($"ADD EVENT {eventName}");
-
-            if (sessionActions.Count > 0)
-            {
-                stringBuilder.AppendLine();
-                stringBuilder.Append("(\n    ACTION (");
-
-                stringBuilder.Append(string.Join(", ", sessionActions));
-
-                stringBuilder.Append(")\n");
-                stringBuilder.Append("    WHERE (");
-
-                stringBuilder.Append($"sqlserver.session_id = {spid}");
-                stringBuilder.Append($" AND sqlserver.sql_text NOT LIKE '%LOG_READ_{sessionName}%'");
-
-                stringBuilder.Append(")");
-
-                stringBuilder.Append("\n)");
-            }
-
-            if (i < sessionEvents.Count - 1)
-            {
-                stringBuilder.AppendLine(",");
-            }
-            else
-            {
-                stringBuilder.AppendLine();
-            }
-        }
-
-
-        stringBuilder.AppendLine($@"
-ADD TARGET package0.event_file
-(
-    SET filename = '{filePath}',
-        max_file_size = (100),
-        max_rollover_files = (2)
-);");
-
-        return stringBuilder.ToString();
     }
 }

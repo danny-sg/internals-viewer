@@ -6,12 +6,12 @@ internal static class EventConstants
     [
         "sqlserver.sql_batch_starting",
         "sqlserver.sql_batch_completed",
-        "sqlserver.rpc_starting",
-        "sqlserver.rpc_completed",
         "sqlserver.file_write_completed",
         "sqlserver.log_flush_complete",
         "sqlserver.page_split",
         "sqlserver.query_thread_profile",
+        "sqlserver.file_read",
+        "sqlserver.file_read_completed",
         "sqlserver.physical_page_read",
         "sqlserver.physical_page_write",
         "sqlserver.query_post_execution_showplan"
@@ -25,7 +25,7 @@ internal static class EventConstants
 
     public static readonly string[] WaitEvents =
     [
-        "sqlos.wait_info",
+        "sqlos.wait_info"
     ];
 
     public static readonly string[] LogEvents =
@@ -43,10 +43,12 @@ internal static class EventConstants
 
     public static readonly string[] LatchEvents =
     [
-        //"sqlserver.latch_suspend_begin",
-        //"sqlserver.latch_suspend_end",
+        "sqlserver.latch_suspend_begin",
+        "sqlserver.latch_suspend_end",
         "sqlserver.latch_acquired",
-        "sqlserver.latch_demoted"
+        "sqlserver.latch_released",
+        "sqlserver.latch_demoted",
+        "sqlserver.latch_promoted"
     ];
 
     public static readonly string[] Actions =
@@ -58,6 +60,8 @@ internal static class EventConstants
         "sqlserver.plan_handle",
         "sqlserver.transaction_id",
         "package0.event_sequence",
+        "sqlos.task_address",
+        "sqlos.worker_address"
     ];
 
     public static readonly string[] CallstackActions =

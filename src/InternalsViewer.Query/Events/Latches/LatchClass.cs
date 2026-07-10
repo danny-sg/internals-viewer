@@ -1,4 +1,5 @@
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.Locks;
 
 namespace InternalsViewer.Query.Events.Latches;
 

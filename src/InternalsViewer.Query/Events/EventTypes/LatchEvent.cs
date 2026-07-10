@@ -12,6 +12,8 @@ public sealed record LatchEvent : EngineEvent
 
     public override string Description => $"Latch: {LatchClass} {LatchMode} - {PageAddress}";
 
+    public bool IsSuspended { get; set; }
+
     public override string Detail
     {
         get

@@ -85,3 +85,20 @@ internal record DatabaseIndPageRow
 
     public PageAddress IamPage { get; set; }
 }
+
+/// <summary>
+/// One row outputted by sys.dm_db_database_page_allocations - SQL Server's own record of which
+/// allocation unit an allocated page belongs to.
+/// </summary>
+internal record DatabasePageAllocationRow
+{
+    public PageAddress PageAddress { get; set; }
+
+    public long AllocationUnitId { get; set; }
+
+    public int ObjectId { get; set; }
+
+    public int IndexId { get; set; }
+
+    public byte PageType { get; set; }
+}

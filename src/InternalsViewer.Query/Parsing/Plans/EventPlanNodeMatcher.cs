@@ -131,6 +131,49 @@ public static class EventPlanNodeMatcher
                 };
             }
         }
+
+        MatchPageEvents(plan, events, windows);
+    }
+
+    private static void MatchPageEvents(ExecutionPlan plan,
+                                        List<EngineEvent> events,
+                                        Dictionary<int, NodeWindow> windows)
+    {
+        var nodeIdsByPage = events.Where(e => e.PlanNodeIdentifier is { } && e.PageAddress is not null)
+                                  .GroupBy(e => e.PageAddress!.Value)
+                                  .ToDictionary(g => g.Key,
+                                                g => g.Select(e => e.PlanNodeIdentifier!.NodeId)
+                                                      .Distinct()
+                                                      .ToList());
+
+        foreach (var engineEvent in events)
+        {
+            if (engineEvent.PlanNodeIdentifier is not null
+                || engineEvent.PageAddress is not { } pageAddress
+                || engineEvent is not (LatchEvent or WaitEvent)
+                || !nodeIdsByPage.TryGetValue(pageAddress, out var nodeIds)
+                || nodeIds.Count == 0)
+            {
+                continue;
+            }
+
+            var candidates = nodeIds.Where(plan.NodesById.ContainsKey)
+                                    .Select(id => plan.NodesById[id])
+                                    .ToList();
+
+            var node = Choose(candidates, engineEvent, windows);
+
+            if (node is null)
+            {
+                continue;
+            }
+
+            engineEvent.PlanNodeIdentifier = new PlanNodeIdentifier
+            {
+                PlanHandleId = plan.PlanHandleId,
+                NodeId = node.NodeId
+            };
+        }
     }
 
     private static PlanNode? ResolveNode(EngineEvent engineEvent,

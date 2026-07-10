@@ -12,7 +12,10 @@ namespace InternalsViewer.Internals.Tests.VerificationTool.Services;
 /// <summary>
 /// Cross-checks the app's own page-to-allocation-unit tracking (DatabaseSource.FindPageAllocationUnit,
 /// backed by each AllocationUnit's IamChain) against DBCC IND - SQL Server's own list of pages it
-/// considers part of a table/index.
+/// considers part of a table/index - and against sys.dm_db_database_page_allocations, which additionally
+/// confirms the exact AllocationUnitId a page belongs to (DBCC IND only reports object/index id, so it
+/// can't distinguish between the multiple allocation units - e.g. IN_ROW_DATA vs LOB_DATA - that can
+/// share the same object/index id).
 /// </summary>
 internal class IamVerificationService(ObjectService objectService,
                                       IDatabaseService databaseService) : VerificationService(databaseService)
@@ -97,6 +100,53 @@ internal class IamVerificationService(ObjectService objectService,
         }
 
         results.AddRange(VerifyReverseAllocation(database, objectId, indexId, indPages));
+
+        results.AddRange(await VerifyAllocationUnitIds(databaseName, objectId, indexId, database));
+
+        return results;
+    }
+
+    private async Task<List<VerificationResult>> VerifyAllocationUnitIds(string databaseName,
+                                                                          int objectId,
+                                                                          int indexId,
+                                                                          DatabaseSource database)
+    {
+        var results = new List<VerificationResult>();
+
+        var pageAllocations = await GetPageAllocations(databaseName, objectId, indexId);
+
+        WriteMessage($"{pageAllocations.Count} page(s) reported by sys.dm_db_database_page_allocations for " +
+                     $"ObjectId {objectId}, IndexId {indexId}");
+
+        foreach (var pageAllocation in pageAllocations)
+        {
+            var result = new VerificationResult { PageAddress = pageAllocation.PageAddress };
+
+            var allocationUnit = database.FindPageAllocationUnit(pageAllocation.PageAddress);
+
+            if (allocationUnit is null)
+            {
+                result.FailCount = 1;
+
+                WriteError($"{pageAllocation.PageAddress} (PageType {pageAllocation.PageType}) - not tracked by any allocation unit " +
+                           $"(expected AllocationUnitId {pageAllocation.AllocationUnitId})");
+            }
+            else if (allocationUnit.AllocationUnitId != pageAllocation.AllocationUnitId)
+            {
+                result.FailCount = 1;
+
+                WriteError($"{pageAllocation.PageAddress} (PageType {pageAllocation.PageType}) - tracked under AllocationUnitId " +
+                           $"{allocationUnit.AllocationUnitId} ({allocationUnit.SchemaName}.{allocationUnit.TableName}." +
+                           $"{allocationUnit.IndexName}) instead of AllocationUnitId {pageAllocation.AllocationUnitId} " +
+                           "reported by sys.dm_db_database_page_allocations");
+            }
+            else
+            {
+                result.PassCount = 1;
+            }
+
+            results.Add(result);
+        }
 
         return results;
     }
@@ -229,6 +279,45 @@ internal class IamVerificationService(ObjectService objectService,
         return results;
     }
 
+    private async Task<List<DatabasePageAllocationRow>> GetPageAllocations(string databaseName, int objectId, int indexId)
+    {
+        var connectionString = ConnectionStringHelper.GetConnectionString(databaseName);
+
+        await using var connection = new SqlConnection(connectionString);
+
+        var sql = @"
+            SELECT allocated_page_file_id, allocated_page_page_id, allocation_unit_id, object_id, index_id, page_type
+            FROM   sys.dm_db_database_page_allocations(DB_ID(), @ObjectId, @IndexId, NULL, 'DETAILED')
+            WHERE  is_allocated = 1";
+
+        await connection.OpenAsync();
+
+        await using var command = new SqlCommand(sql, connection);
+
+        command.Parameters.AddWithValue("@ObjectId", objectId);
+        command.Parameters.AddWithValue("@IndexId", indexId);
+
+        var results = new List<DatabasePageAllocationRow>();
+
+        var reader = await command.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            results.Add(new DatabasePageAllocationRow
+            {
+                PageAddress = new PageAddress(GetInt16(reader, 0), GetInt32(reader, 1)),
+                AllocationUnitId = GetInt64(reader, 2),
+                ObjectId = GetInt32(reader, 3),
+                IndexId = GetInt32(reader, 4),
+                PageType = (byte)GetInt32(reader, 5)
+            });
+        }
+
+        reader.Close();
+
+        return results;
+    }
+
     // DBCC IND's column types aren't consistent across SQL Server versions (some report as smallint,
     // some as int), so read via the boxed value and convert rather than assuming a specific reader
     // method - GetInt32/GetInt16 throw InvalidCastException the moment the actual type doesn't match.
@@ -237,4 +326,7 @@ internal class IamVerificationService(ObjectService objectService,
 
     private static int GetInt32(SqlDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? 0 : Convert.ToInt32(reader.GetValue(ordinal));
+
+    private static long GetInt64(SqlDataReader reader, int ordinal) =>
+        reader.IsDBNull(ordinal) ? 0 : Convert.ToInt64(reader.GetValue(ordinal));
 }

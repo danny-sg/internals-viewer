@@ -13,11 +13,11 @@ public record EngineEvent
 
     public string Name { get; set; } = string.Empty;
 
-    public long TimeUs { get; set; }
+    public virtual long TimeUs { get; set; }
 
-    public long DurationUs { get; set; }
+    public virtual long DurationUs { get; set; }
 
-    public PageAddress? PageAddress { get; set; }
+    public virtual PageAddress? PageAddress { get; set; }
 
     public int ObjectId { get; set; }
 
