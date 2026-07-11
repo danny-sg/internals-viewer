@@ -213,10 +213,18 @@ public sealed partial class EventGridControl : UserControl
         ev.Description,
         ev.TimeUs,
         ev.DurationUs,
-        ev.PageAddress,
+        PageOf(ev),
         ev.ObjectName,
         ev.SequenceId,
         ev.PlanNodeIdentifier);
+
+    // The representative page of an event: its single page, or the first page of a multi-page read group.
+    private static PageAddress? PageOf(EngineEvent ev) => ev switch
+    {
+        PageEngineEvent { PageAddress: { } page } => page,
+        NonCachedReadEventGroup { PageAddress: { } page } => page,
+        _ => null,
+    };
 
     private void OnSorting(object? sender, DataGridColumnEventArgs e)
     {
@@ -270,7 +278,7 @@ public sealed partial class EventGridControl : UserControl
 
     // Sort pages numerically by (file, page) rather than by their textual form.
     private static long PageSortKey(EngineEvent ev) =>
-        ev.PageAddress is { } page ? ((long)page.FileId << 32) | (uint)page.PageId : long.MinValue;
+        PageOf(ev) is { } page ? ((long)page.FileId << 32) | (uint)page.PageId : long.MinValue;
 }
 
 /// <summary>Formatting helpers called directly from the grid's x:Bind cell templates.</summary>

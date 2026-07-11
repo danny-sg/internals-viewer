@@ -1,3 +1,5 @@
+using InternalsViewer.Query.Events.EventTypes;
+
 namespace InternalsViewer.Query.Events;
 
 public sealed record EventResult
@@ -15,4 +17,5 @@ public sealed record EventResult
     public Dictionary<string, ValueRange> Data { get; set; } = new();
 
     public Dictionary<string, ValueRange> Actions { get; set; } = new();
+
 }

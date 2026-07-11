@@ -11,6 +11,9 @@ public static class EventResultExtensions
     public static int? GetInt(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) && int.TryParse(span, out var i) ? i : null;
 
+    public static byte? GetByte(this EventResult e, string key)
+        => TryGetSpan(e.Data, e.Buffer, key, out var span) && byte.TryParse(span, out var i) ? i : null;
+
     public static long? GetLong(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) && long.TryParse(span, out var i) ? i : null;
 

@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Query.Events.EventTypes;
 
-public sealed record PageEvent : EngineEvent
+public sealed record PageEvent : PageEngineEvent
 {
     public required string Type { get; init; }
 

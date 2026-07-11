@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.EventTypes;
 
 namespace InternalsViewer.Query.Plans;
@@ -139,18 +140,18 @@ public static class EventPlanNodeMatcher
                                         List<EngineEvent> events,
                                         Dictionary<int, NodeWindow> windows)
     {
-        var nodeIdsByPage = events.Where(e => e.PlanNodeIdentifier is { } && e.PageAddress is not null)
-                                  .GroupBy(e => e.PageAddress!.Value)
+        var nodeIdsByPage = events.Where(e => e.PlanNodeIdentifier is not null)
+                                  .SelectMany(e => PagesOf(e).Select(page => (Page: page, Node: e.PlanNodeIdentifier!.NodeId)))
+                                  .GroupBy(x => x.Page)
                                   .ToDictionary(g => g.Key,
-                                                g => g.Select(e => e.PlanNodeIdentifier!.NodeId)
+                                                g => g.Select(x => x.Node)
                                                       .Distinct()
                                                       .ToList());
 
         foreach (var engineEvent in events)
         {
             if (engineEvent.PlanNodeIdentifier is not null
-                || engineEvent.PageAddress is not { } pageAddress
-                || engineEvent is not (LatchEvent or WaitEvent)
+                || engineEvent is not LatchEvent { PageAddress: { } pageAddress }
                 || !nodeIdsByPage.TryGetValue(pageAddress, out var nodeIds)
                 || nodeIds.Count == 0)
             {
@@ -175,6 +176,14 @@ public static class EventPlanNodeMatcher
             };
         }
     }
+
+    // The pages an event anchors: a read group links to all of them, a single-page event to its one.
+    private static IEnumerable<PageAddress> PagesOf(EngineEvent engineEvent) => engineEvent switch
+    {
+        NonCachedReadEventGroup group => group.Pages,
+        PageEngineEvent { PageAddress: { } page } => [page],
+        _ => [],
+    };
 
     private static PlanNode? ResolveNode(EngineEvent engineEvent,
                                          List<PlanNode> dataNodes,

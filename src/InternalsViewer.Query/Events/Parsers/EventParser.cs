@@ -10,22 +10,16 @@ using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query.Events.Parsers;
 
-internal record WaitKey(ulong TaskAddress, WaitType WaitType);
-
 public sealed class EventParser
 {
-    private readonly Dictionary<ulong, LatchEvent> _latches = new();
-
-    private readonly Dictionary<WaitKey, WaitEvent> _waits = new();
-
     public EngineEvent? ToEngineEvent(EventResult e, DatabaseSource? database, PlanHandleRegistry planHandles)
     {
         var engineEvent = e.Name switch
         {
-            var n when n.Contains("file_") || n.Contains("physical_page")
+            var n when n.Contains("file_")
+                => MapFileEvent(e),
+            var n when n.Contains("physical_page")
                 => MapIoEvent(e),
-            var n when n.Contains("page")
-                => MapPageEvent(e),
             var n when n.Contains("lock_")
                 => MapLock(e),
             var n when n.Contains("wait")
@@ -58,8 +52,14 @@ public sealed class EventParser
             return engineEvent;
         }
 
+        var taskAddress = e.GetUlongAction("task_address");
+
+        var workerAddress = e.GetUlongAction("worker_address");
+
         var sequenceId = e.GetInt("event_sequence");
 
+        engineEvent.WorkerAddress = workerAddress;
+        engineEvent.TaskAddress = taskAddress;
         engineEvent.SequenceId = (sequenceId * 10) ?? e.SequenceId;
 
         if (e.Actions.TryGetValue("plan_handle", out var planHandle) && planHandle.Length > 0)
@@ -72,15 +72,15 @@ public sealed class EventParser
             return engineEvent;
         }
 
-        if (engineEvent is { ObjectId: 0, PageAddress: not null })
+        if (engineEvent is PageEngineEvent { ObjectId: 0, PageAddress: { } pageAddress } pageEvent)
         {
-            var allocationUnit = database.FindPageAllocationUnit(engineEvent.PageAddress.Value);
+            var allocationUnit = database.FindPageAllocationUnit(pageAddress);
 
             engineEvent.ObjectId = allocationUnit?.ObjectId ?? 0;
             engineEvent.ObjectName = allocationUnit?.DisplayName
-                                     ?? TryGetPageName(engineEvent.PageAddress.Value) ?? string.Empty;
+                                     ?? TryGetPageName(pageAddress) ?? string.Empty;
 
-            if (engineEvent is IoEvent ioEvent && allocationUnit?.RootPage == engineEvent.PageAddress)
+            if (pageEvent is IoEvent ioEvent && allocationUnit?.RootPage == pageAddress)
             {
                 ioEvent.IsRoot = true;
             }
@@ -95,7 +95,7 @@ public sealed class EventParser
 
             engineEvent.ObjectName = allocationUnit?.DisplayName ?? $"(Object Id {engineEvent.ObjectId})";
 
-            if (engineEvent is IoEvent ioEvent && allocationUnit?.RootPage == engineEvent.PageAddress)
+            if (engineEvent is IoEvent ioEvent && allocationUnit?.RootPage == ioEvent.PageAddress)
             {
                 ioEvent.IsRoot = true;
             }
@@ -118,7 +118,7 @@ public sealed class EventParser
 
         if (e.Actions.ContainsKey("callstack"))
         {
-            engineEvent.Callstack = ParseCallstack(e.GetStringAction("callstack"));
+            engineEvent.Callstack = XmlCallStackParser.ParseCallstack(e.GetStringAction("callstack"));
         }
 
         return engineEvent;
@@ -219,24 +219,11 @@ public sealed class EventParser
     private WaitEvent? MapWait(EventResult e)
     {
         var waitType = (WaitType)(e.GetInt("wait_type") ?? 0);
-        var taskAddress = e.GetUlongAction("task_address");
+        var isEnd = e.GetString("opcode") == "End";
 
-        WaitKey? key = null;
+        var waitResource = e.GetUlong("wait_resource");
 
-        if (taskAddress.HasValue)
-        {
-            key = new WaitKey(taskAddress.Value, waitType);
-        }
-
-        if (key != null && e.Name == "wait_completed")
-        {
-            if (_waits.Remove(key, out var completed))
-            {
-                completed.DurationUs = e.GetLong("duration") ?? completed.DurationUs;
-            }
-
-            return null;
-        }
+        var duration = e.GetLong("duration") ?? 0;
 
         var waitEvent = new WaitEvent
         {
@@ -244,20 +231,10 @@ public sealed class EventParser
             Timestamp = e.Timestamp,
             DatabaseId = e.GetDatabaseId(),
             WaitType = waitType,
-            DurationUs = e.GetLong("duration") ?? 0
+            IsEnd = isEnd,
+            WaitResource = waitResource,
+            DurationUs = duration,
         };
-
-        // Link to an existing latch via wait_resource
-        if ((waitType.IsPageLatchWait() || waitType.IsPageIoLatchWait())
-            && _latches.TryGetValue(e.GetUlong("wait_resource") ?? 0, out var latch))
-        {
-            waitEvent.LatchEvent = latch;
-        }
-
-        if (key != null)
-        {
-            _waits[key] = waitEvent;
-        }
 
         return waitEvent;
     }
@@ -265,25 +242,7 @@ public sealed class EventParser
     private EngineEvent? MapLatch(EventResult e)
     {
         var address = e.GetUlong("address");
-
-        if (e.Name is "latch_suspend_begin" or "latch_suspend_end" && address is not null)
-        {
-            if (_latches.TryGetValue(address.Value, out var latch))
-            {
-                latch.IsSuspended = e.Name == "latch_suspend_begin";
-
-                var duration = e.GetLong("duration");
-
-                if (!latch.IsSuspended && duration is not null)
-                {
-                    latch.DurationUs = duration.Value;
-                    latch.TimeUs -= duration.Value;
-                }
-            }
-
-            return null;
-        }
-
+        
         var latchMode = (LatchMode)(e.GetInt("mode") ?? 0);
 
         var fileId = e.GetShort("file_id") ?? 0;
@@ -299,15 +258,11 @@ public sealed class EventParser
             DatabaseId = e.GetDatabaseId(),
             LatchMode = latchMode,
             LatchClass = latchClass,
+            LatchAddress = address,
             DurationUs = e.GetLong("duration") ?? 0,
             PageAddress = new PageAddress(fileId, pageId)
         };
-
-        if (address is not null)
-        {
-            _latches[address.Value] = latchEvent;
-        }
-
+        
         return latchEvent;
     }
 
@@ -368,37 +323,39 @@ public sealed class EventParser
         };
     }
 
-    private static PageEvent MapPageEvent(EventResult e)
+    private static IoEvent MapIoEvent(EventResult e)
     {
-        var location = e.GetUlong("page_location") ?? 0;
+        var fileId = e.GetShort("file_id") ?? 0;
+        var pageId = e.GetInt("page_id") ?? 0;
 
-        var fileId = (short)(location >> 32);
-
-        var rawPageId = (uint)(location & 0xFFFFFFFF);
-
-        var pageId = rawPageId <= int.MaxValue ? (int)rawPageId : 0;
-
-        return new PageEvent
+        return new IoEvent
         {
             Name = e.Name,
             Timestamp = e.Timestamp,
             DatabaseId = e.GetDatabaseId(),
             PageAddress = new PageAddress(fileId, pageId),
-            Type = e.GetString("type")
+            IsRead = e.Name?.Contains("read") ?? false
         };
     }
 
-    private static IoEvent MapIoEvent(EventResult e)
+    private static FileEvent MapFileEvent(EventResult e)
     {
         var offset = e.GetLong("offset") ?? 0;
+        var size = e.GetLong("size") ?? 0;
 
         var fileId = e.GetShort("file_id") ?? 0;
 
         var pageId = e.GetInt("page_id") ?? (int)(offset / 8192);
 
-        return new IoEvent
+        var mode = (ReadMode)(e.GetByte("mode") ?? 0);
+
+        return new FileEvent
         {
             Name = e.Name,
+            Size = size,
+            Offset = offset,
+            Mode = mode,
+            FileId = fileId,
             Timestamp = e.Timestamp,
             DatabaseId = e.GetDatabaseId(),
             PageAddress = new PageAddress(fileId, pageId),
@@ -418,60 +375,5 @@ public sealed class EventParser
             AllocationUnitId = e.GetLong("alloc_unit_id") ?? 0,
             TransactionId = e.GetInt("transaction_id")
         };
-    }
-
-    private static List<CallstackFrame> ParseCallstack(string decoded)
-    {
-        var frames = new List<CallstackFrame>();
-        var xml = decoded.AsSpan();
-        var i = 0;
-
-        while (i < xml.Length)
-        {
-            var offset = xml[i..].IndexOf("<frame".AsSpan(), StringComparison.Ordinal);
-
-            if (offset < 0)
-            {
-                break;
-            }
-
-            i += offset;
-
-            var tagEnd = XmlEventTagParser.FindTagEnd(xml, i);
-
-            if (tagEnd < 0)
-            {
-                break;
-            }
-
-            var tag = xml[i..(tagEnd + 1)];
-            var module = XmlEventAttributeParser.GetAttribute(tag, "module");
-            var pdb = XmlEventAttributeParser.GetAttribute(tag, "pdb");
-            var guid = XmlEventAttributeParser.GetAttribute(tag, "guid");
-            var ageSpan = XmlEventAttributeParser.GetAttribute(tag, "age");
-            var rvaSpan = XmlEventAttributeParser.GetAttribute(tag, "rva");
-
-            if (!module.IsEmpty)
-            {
-                int.TryParse(ageSpan, out var age);
-
-                var rvaValue = !rvaSpan.IsEmpty && rvaSpan.Length > 2 && rvaSpan[1] is 'x' or 'X'
-                    ? uint.TryParse(rvaSpan[2..], System.Globalization.NumberStyles.HexNumber, null, out var hex) ? hex : 0U
-                    : uint.TryParse(rvaSpan, out var dec) ? dec : 0U;
-
-                frames.Add(new CallstackFrame
-                {
-                    Module = module.ToString(),
-                    Pdb = pdb.ToString(),
-                    Guid = guid.ToString(),
-                    Age = age,
-                    Rva = rvaValue
-                });
-            }
-
-            i = tagEnd + 1;
-        }
-
-        return frames;
     }
 }

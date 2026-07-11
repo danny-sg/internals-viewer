@@ -38,6 +38,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private const float SparseMarkerWidth = 4f;
     private const int SparseRowThreshold = 25;
 
+    // Pixel separation between a read's per-page return rails, which bunch at its end (the pages hit the buffer together
+    // on I/O completion) — purely for legibility, not real timing.
+    private const float PageRailGapPx = 3f;
+
+
     private const double TransportButtonHeight = 26;
 
     // Opacity of the I/O trace extensions (Trace I/O mode) — faint so they read as a background hint.
@@ -80,9 +85,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
     [
         (typeof(TransactionLogEvent), "Log",  ColourConstants.LogColour.ToSkColor().WithAlpha(255),  0.5f),
         (typeof(ExecutionOperatorEvent), "Plan", SKColors.LimeGreen, 3f),
-        (typeof(IoEvent),   "Read", ColourConstants.IoColour.ToSkColor().WithAlpha(255),   0.5f),
+        (typeof(NonCachedReadEventGroup), "Read", ColourConstants.IoColour.ToSkColor().WithAlpha(255), 0.5f),
         (typeof(LockEvent), "Lock", ColourConstants.LockColour.ToSkColor().WithAlpha(255), 0.5f),
-        (typeof(LatchEvent), "Latch", ColourConstants.LatchColour.ToSkColor().WithAlpha(255), 0.5f),
+        (typeof(LatchEvent), "Latch", ColourConstants.LatchColour.ToSkColor().WithAlpha(255), 0.167f),
         (typeof(WaitEvent), "Wait", ColourConstants.WaitColour.ToSkColor().WithAlpha(255), 0.5f),
     ];
 
@@ -215,6 +220,23 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private readonly SKPaint _flowConnectorPaint = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
     private readonly SKPaint _outlinePaint = new() { Style = SKPaintStyle.Stroke, IsAntialias = true };
 
+    // A read's call rail: a dotted vertical from the operator down to the top of the read (the iterator invoking it).
+    private readonly SKPaint _readBoundaryPaint = new()
+    {
+        StrokeWidth = 1,
+        Style = SKPaintStyle.Stroke,
+        IsAntialias = false,
+        PathEffect = SKPathEffect.CreateDash([2f, 2f], 0f),
+    };
+
+    // A read's return rail: a solid vertical from the operator down through the full read (the row handed back).
+    private readonly SKPaint _readReturnPaint = new()
+    {
+        StrokeWidth = 1.5f,
+        Style = SKPaintStyle.Stroke,
+        IsAntialias = false,
+    };
+
     // Reused per frame in the dynamic overlay: Detach hands off the built path and resets the builder.
     private readonly SKPathBuilder _pathBuilder = new();
 
@@ -226,10 +248,10 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private List<EngineEvent> _sortedEvents = [];
 
-    // Pre-filtered and TimeUs-sorted arrays of read IoEvents / LatchEvents; built whenever _sortedEvents
+    // Pre-filtered and TimeUs-sorted arrays of read groups / LatchEvents; built whenever _sortedEvents
     // changes. Used by PlayAudioForCurrentPosition so the per-frame audio sweep is O(log n + hits) via
     // binary search rather than O(all events).
-    private IoEvent[] _readEventsByTime = [];
+    private NonCachedReadEventGroup[] _readEventsByTime = [];
 
     private LatchEvent[] _latchEventsByTime = [];
 
@@ -330,7 +352,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var events = (List<EngineEvent>)e.NewValue;
 
         control._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
-        control._readEventsByTime = [.. events.OfType<IoEvent>().Where(io => io.IsRead).OrderBy(io => io.TimeUs)];
+        control._readEventsByTime = [.. events.OfType<NonCachedReadEventGroup>().OrderBy(read => read.TimeUs)];
         control._latchEventsByTime = [.. events.OfType<LatchEvent>().OrderBy(latch => latch.TimeUs)];
 
         control._eventsVersion++;
@@ -639,7 +661,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         for (var i = 0; i < _sortedEvents.Count; i++)
         {
-            if (_sortedEvents[i] is not IoEvent { IsRead: true })
+            if (_sortedEvents[i] is not NonCachedReadEventGroup)
             {
                 continue;
             }
@@ -750,7 +772,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
             // Operators occupy [start, start + duration]; point events are an instant at start. Events
             // sharing a coarse timestamp are already spread to distinct times upstream (see
-            // EventReader.SpreadCoincidentEvents), so nothing is fanned out here.
+            // EventReader.SpreadEvents), so nothing is fanned out here.
             var end = ev is ExecutionOperatorEvent ? start + DurationMs(ev) : start;
 
             if (end > max)
@@ -952,7 +974,10 @@ public sealed class EventTimelineControl : Grid, IDisposable
             float markerTop;
             float markerHeight;
 
-            var category = sourceEvent.Category;
+            // The Read lane holds only NonCachedReadEventGroup, so it fills the row rather than being split into the
+            // category sub-bands used by the mixed Wait/Latch lanes; nulling the category also routes it through the
+            // per-node colour provider instead of the flat category tint.
+            var category = sourceEvent is NonCachedReadEventGroup ? null : sourceEvent.Category;
 
             if (category.HasValue)
             {
@@ -997,7 +1022,12 @@ public sealed class EventTimelineControl : Grid, IDisposable
             }
 
             _markerPaint.Color = markerColor;
-            canvas.DrawRect(startX, markerTop, markerWidth, markerHeight, _markerPaint);
+
+            // A read is considered actioned at its end (the row is returned there), so its solid tick sits at the end
+            // edge to line up with the solid return rail; other lanes keep the tick at the event's start.
+            var tickX = sourceEvent is NonCachedReadEventGroup && hasDuration ? endX - markerWidth : startX;
+
+            canvas.DrawRect(tickX, markerTop, markerWidth, markerHeight, _markerPaint);
 
             _hitRegions.Add((new SKRect(startX - 3, markerTop, endX + 3, markerTop + markerHeight), sourceEvent, null));
         }
@@ -1618,7 +1648,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             }
         }
 
-        var ioRow = RowIndexOf(typeof(IoEvent));
+        var ioRow = RowIndexOf(typeof(NonCachedReadEventGroup));
         var logRow = RowIndexOf(typeof(TransactionLogEvent));
         var latchRow = RowIndexOf(typeof(LatchEvent));
 
@@ -1635,29 +1665,52 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         if (ioRow >= 0)
         {
-            // Reads are below the plan: extend from the operator's bottom down to the read row.
-            var ioTop = rowTops[ioRow] + RowPadding;
+            // Reads are below the plan and modelled as a Volcano call/return: a dotted call rail drops from the
+            // operator to the TOP of the read (the iterator asking for rows) at the read's start, and one solid return
+            // rail per page it moved drops from the operator through the FULL height of the read. The per-page rails are
+            // spread evenly across the read's span, so a denser cluster of rails reads as more pages moved.
+            var readTop = rowTops[ioRow] + RowPadding;
+
+            var readBottom = rowTops[ioRow] + rowHeights[ioRow] - RowPadding;
 
             var width = RowMarkerWidth(ioRow);
 
             for (var i = 0; i < _sortedEvents.Count; i++)
             {
-                if (_sortedEvents[i] is not IoEvent { PlanNodeIdentifier: { } id } io ||
+                if (_sortedEvents[i] is not NonCachedReadEventGroup { PlanNodeIdentifier: { } id } io ||
                     !byNode.TryGetValue(id, out var b) ||
-                    b.BarBottom >= ioTop)
+                    b.BarBottom >= readTop)
                 {
                     continue;
                 }
 
-                var x = TimeToX(_times[i]);
+                var startX = TimeToX(_times[i]);
 
-                if (x > rightEdge || x < RowLabelWidth - width)
+                var endX = io.DurationUs > 0 ? TimeToX(_times[i] + DurationMs(io)) : startX;
+
+                if (startX > rightEdge || endX < RowLabelWidth - width)
                 {
                     continue;
                 }
 
-                _markerPaint.Color = TraceColour(io, ioRow, DimForSelection(io));
-                canvas.DrawRect(x, b.BarBottom, width, ioTop - b.BarBottom, _markerPaint);
+                var colour = TraceColour(io, ioRow, DimForSelection(io));
+
+                _readBoundaryPaint.Color = colour;
+                canvas.DrawLine(startX, b.BarBottom, startX, readTop, _readBoundaryPaint);
+
+                _readReturnPaint.Color = colour;
+
+                // The pages land in the buffer together when the I/O completes, so — absent real per-page timing — the
+                // return rails bunch at the read's END, only slightly separated for legibility. A single-page read is
+                // therefore one rail at the end.
+                var pageCount = Math.Max(1, io.PageCount);
+
+                for (var p = 0; p < pageCount; p++)
+                {
+                    var x = Math.Max(startX, endX - p * PageRailGapPx);
+
+                    canvas.DrawLine(x, b.BarBottom, x, readBottom, _readReturnPaint);
+                }
             }
         }
 
@@ -2156,8 +2209,17 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private static SKColor TintByCategory(SKColor colour, int category)
         => ColourScale(colour, CategoryShade[category]);
 
+    // Cached reads share the Read lane with non-cached (physical) reads; a darker blue-green sets them apart from the
+    // bright blue of a disk read.
+    private static readonly SKColor CachedReadColour = new(26, 96, 110);
+
     private SKColor GetMarkerColor(EngineEvent sourceEvent, int rowIndex, EventCategory? category)
     {
+        if (sourceEvent is NonCachedReadEventGroup { Kind: ReadKind.Cached })
+        {
+            return DimForSelection(sourceEvent) ? CachedReadColour.WithAlpha(FocusedDimAlpha) : CachedReadColour;
+        }
+
         var colour = category.HasValue
             ? TintByCategory(_activeRows[rowIndex].Color, (int)category.Value)
             : ColourProvider is { } colours
@@ -2817,6 +2879,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
         _traceLayerPaint.Dispose();
         _flowConnectorPaint.Dispose();
         _outlinePaint.Dispose();
+        _readBoundaryPaint.Dispose();
+        _readReturnPaint.Dispose();
 
         _pathBuilder.Dispose();
 

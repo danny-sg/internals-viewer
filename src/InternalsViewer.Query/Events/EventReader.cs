@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Parsers;
 using InternalsViewer.Query.Plans;
@@ -99,19 +100,26 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
 
-        // Spread events for ms to us resolution
-        //SpreadCoincidentEvents(orderedEvents);
+        // Consolidate: fold Begin/End pairs into single events, then bind the storage events of each page
+        // read into a single NonCachedReadEventGroup.
+        var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
+
+        var consolidatedEvents = ColdReadGrouper.Group(collapsedEvents);
+
+        // Recover a serial-order timeline from the millisecond-resolution timestamps by laying each worker's events
+        // end-to-end using their microsecond durations, so a read overrunning its bucket pushes the next one out.
+        SpreadEvents(consolidatedEvents);
 
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
-        EventPlanNodeMatcher.Match(orderedEvents, executionPlans);
+        EventPlanNodeMatcher.Match(consolidatedEvents, executionPlans);
 
         // Build the operator events (timeline bars) bottom-up from each plan and its matched events.
-        var operatorEvents = executionPlans.SelectMany(plan => new OperatorEventBuilder(plan, orderedEvents).Build())
+        var operatorEvents = executionPlans.SelectMany(plan => new OperatorEventBuilder(plan, consolidatedEvents).Build())
                                            .ToList();
 
-        orderedEvents.AddRange(operatorEvents);
+        consolidatedEvents.AddRange(operatorEvents);
 
-        return (orderedEvents, executionPlans);
+        return (consolidatedEvents, executionPlans);
     }
 
     private static int ReadColumn(SqlDataReader reader, int ordinal, ref char[] buffer)
@@ -138,65 +146,84 @@ public sealed class EventReader(ILogger<EventReader> logger)
         return total;
     }
 
-    private const long ResolutionWindowUs = 1000;
+    // Timestamps resolve only to the millisecond (a true time is within +/-500us of its bucket); durations are the
+    // microsecond-accurate signal. Events sharing a bucket are spread across it rather than left stacked.
+    private const long BucketUs = 1_000;
+
+    // Smallest gap kept between two events so they never render touching ("adjacent"); also the overflow spacing.
+    private const long MinGapUs = 40;
 
     /// <summary>
-    /// Spreads events over 1ms timestamp window
+    /// Spreads the millisecond-bucketed events across their window using the microsecond durations, per lane
     /// </summary>
     /// <remarks>
-    /// Spreads each bucket of events that share a coarse (millisecond-resolution) timestamp evenly across its
-    /// resolution window, in the existing (timestamp, sequence-id) order, so each event gets a distinct, individually
-    /// addressable time. The k-th of n coincident events is offset by ResolutionWindowUs * k / n, so they stay within
-    /// the window and keep their capture order.
+    /// Each lane (event type — reads, latches, waits...) is a separate visual row, so overlap only matters within a
+    /// lane; every lane is spread independently. Within a lane the query is serial (task_address is constant, so there
+    /// is one stream), so events are ordered by their bucket and, for the events sharing a bucket, distributed across
+    /// [bucket, bucket + 1000us]: each event is centred in its share of the window — <c>start = slotStart +
+    /// (slot - duration) / 2</c> — which keeps a gap on both sides so they are neither overlapping nor adjacent.
+    ///
+    /// When a lane's events do not fit (a read whose duration overruns its slot, or a busy bucket) a running cursor
+    /// pushes each following event out past the previous one's end plus a minimum gap, overflowing into later buckets
+    /// rather than overlapping. Envelope events (per-thread profile totals, memory grants) are left alone as their
+    /// durations span, rather than sit within, the stream.
     /// </remarks>
-    private static void SpreadCoincidentEvents(List<EngineEvent> events)
+    internal static void SpreadEvents(List<EngineEvent> events)
     {
+        foreach (var lane in events.Where(IsSerialWork).GroupBy(e => e.GetType()))
+        {
+            SpreadLane([.. lane.OrderBy(e => e.TimeUs).ThenBy(e => e.SequenceId)]);
+        }
+    }
+
+    private static void SpreadLane(List<EngineEvent> lane)
+    {
+        // Earliest start the next event may take so it neither precedes its bucket nor touches the previous event.
+        var cursor = long.MinValue;
+
         var i = 0;
 
-        while (i < events.Count)
+        while (i < lane.Count)
         {
-            var bucketTime = events[i].TimeUs;
+            var bucket = lane[i].TimeUs / BucketUs * BucketUs;
 
             var j = i;
 
-            while (j < events.Count && events[j].TimeUs == bucketTime)
+            while (j < lane.Count && lane[j].TimeUs / BucketUs * BucketUs == bucket)
             {
                 j++;
             }
 
             var count = j - i;
 
-            if (count > 1)
+            var windowStart = Math.Max(bucket, cursor);
+
+            // The window runs to the next bucket; a previous overflow can eat into it, so the slot is floored at 1.
+            var slot = Math.Max(1, (bucket + BucketUs - windowStart) / count);
+
+            for (var k = 0; k < count; k++)
             {
-                var insertAt = i;
+                var e = lane[i + k];
 
-                for (var k = i; k < j; k++)
-                {
-                    // Special bodge to ensure if an index root page is included in the bucket it appears first.
-                    // Needed because the database will scan an extent at a time and the root page won't necessarily
-                    // be read first.
-                    if (events[k] is IoEvent { IsRoot: true })
-                    {
-                        if (k != insertAt)
-                        {
-                            var temp = events[k];
-                            events.RemoveAt(k);
-                            events.Insert(insertAt, temp);
-                        }
+                // Centre the event in its slot, then hold it at or after both the window start (so it never precedes
+                // its own bucket) and the cursor (so it can never overlap or touch the one before) — an over-long
+                // event just starts on its boundary and pushes the rest out.
+                var centred = windowStart + k * slot + (slot - e.DurationUs) / 2;
 
-                        insertAt++;
-                    }
-                }
+                var start = Math.Max(centred, Math.Max(cursor, windowStart));
 
-                for (var k = 0; k < count; k++)
-                {
-                    events[i + k].TimeUs = bucketTime + ResolutionWindowUs * k / count;
-                }
+                e.TimeUs = start;
+
+                cursor = start + e.DurationUs + MinGapUs;
             }
 
             i = j;
         }
     }
+
+    // Events whose duration is elapsed serial work (so must not overlap the next in their lane), as opposed to the
+    // envelope durations of query_thread_profile totals and memory grants that span the whole stream.
+    private static bool IsSerialWork(EngineEvent e) => e is not (QueryThreadEvent or MemoryEvent);
 
     private static string GetResultsSql(string filename)
     {

@@ -3,7 +3,7 @@ using InternalsViewer.Query.Locks;
 
 namespace InternalsViewer.Query.Events.EventTypes;
 
-public sealed record LockEvent : EngineEvent
+public sealed record LockEvent : PageEngineEvent
 {
     public LockMode LockMode { get; init; }
 

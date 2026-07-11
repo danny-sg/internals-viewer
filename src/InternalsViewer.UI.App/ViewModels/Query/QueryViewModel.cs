@@ -632,32 +632,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var allSpans = new Dictionary<PageAddress, List<PageSpan>>();
         var readSpans = new Dictionary<PageAddress, List<PageSpan>>();
 
-        foreach (var e in engineEvents)
+        void Add(PageSpan span, bool isRead)
         {
-            PageSpan span;
-            var isRead = false;
-
-            switch (e)
-            {
-                case LatchEvent latch when e.PageAddress is { } pg:
-                    var endUs = latch.TimeUs + Math.Max(latch.DurationUs, MinFlashDurationUs);
-                    var latchColour = colours.GetLatchMapColour(e.ObjectName) ?? colours.GetColour(e);
-                    span = new PageSpan(pg, latch.TimeUs, endUs, latchColour);
-                    break;
-
-                case IoEvent { IsRead: true } io when e.PageAddress is { } pg:
-                    var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
-                    span = new PageSpan(pg, io.TimeUs, queryEndUs, readColour);
-                    isRead = true;
-                    break;
-
-                default:
-                    continue;
-            }
-
             if (RootPageOf(span.Address) is not { } root)
             {
-                continue;
+                return;
             }
 
             AddSpan(allSpans, root, span);
@@ -665,6 +644,32 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             if (isRead)
             {
                 AddSpan(readSpans, root, span);
+            }
+        }
+
+        foreach (var e in engineEvents)
+        {
+            switch (e)
+            {
+                case LatchEvent { PageAddress: { } pg } latch:
+                    var endUs = latch.TimeUs + Math.Max(latch.DurationUs, MinFlashDurationUs);
+                    var latchColour = colours.GetLatchMapColour(e.ObjectName) ?? colours.GetColour(e);
+                    Add(new PageSpan(pg, latch.TimeUs, endUs, latchColour), isRead: false);
+                    break;
+
+                case IoEvent { IsRead: true, PageAddress: { } pg } io:
+                    var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
+                    Add(new PageSpan(pg, io.TimeUs, queryEndUs, readColour), isRead: true);
+                    break;
+
+                case NonCachedReadEventGroup group:
+                    // A read spans many pages now, so add a read span for each page it touched.
+                    var groupColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
+                    foreach (var page in group.Pages)
+                    {
+                        Add(new PageSpan(page, e.TimeUs, queryEndUs, groupColour), isRead: true);
+                    }
+                    break;
             }
         }
 
@@ -1070,26 +1075,42 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 continue;
             }
 
-            if (e.PageAddress is { FileId: > 0 } && e.PageAddress.Value.FileId <= maxFileId)
+            // A read now spans many pages, so flash each page of the group on the allocation map.
+            if (e is NonCachedReadEventGroup group)
+            {
+                var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
+
+                foreach (var p in group.Pages)
+                {
+                    if (p.FileId > 0 && p.FileId <= maxFileId)
+                    {
+                        pageSpans.Add(new PageSpan(p, e.TimeUs, queryEndUs, readColour));
+                    }
+                }
+
+                continue;
+            }
+
+            if (e is PageEngineEvent { PageAddress: { FileId: > 0 } page } && page.FileId <= maxFileId)
             {
                 if (e is LatchEvent latchEvent)
                 {
                     var endUs = latchEvent.TimeUs + Math.Max(latchEvent.DurationUs, MinFlashDurationUs);
 
-                    var displayColour = colours.GetLatchMapColour(e.ObjectName) 
-                                        ?? colours.GetObjectColour(e.ObjectName) 
+                    var displayColour = colours.GetLatchMapColour(e.ObjectName)
+                                        ?? colours.GetObjectColour(e.ObjectName)
                                         ?? colours.GetColour(e);
 
-                    var latchSpan = new PageSpan(e.PageAddress.Value, latchEvent.TimeUs, endUs, displayColour);
+                    var latchSpan = new PageSpan(page, latchEvent.TimeUs, endUs, displayColour);
 
                     pageSpans.Add(latchSpan);
 
                     continue;
                 }
 
-                var pageSpan = new PageSpan(e.PageAddress.Value, 
-                                                 e.TimeUs, 
-                                                 queryEndUs, 
+                var pageSpan = new PageSpan(page,
+                                                 e.TimeUs,
+                                                 queryEndUs,
                                                  colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e));
 
                 pageSpans.Add(pageSpan);

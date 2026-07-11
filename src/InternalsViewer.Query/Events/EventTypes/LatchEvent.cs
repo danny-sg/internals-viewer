@@ -4,15 +4,13 @@ using InternalsViewer.Query.Helpers;
 namespace InternalsViewer.Query.Events.EventTypes;
 
 [EventItemName("Latch")]
-public sealed record LatchEvent : EngineEvent
+public sealed record LatchEvent : PageEngineEvent
 {
     public LatchMode LatchMode { get; init; }
 
     public LatchClass LatchClass { get; init; }
 
     public override string Description => $"Latch: {LatchClass} {LatchMode} - {PageAddress}";
-
-    public bool IsSuspended { get; set; }
 
     public override string Detail
     {
@@ -36,4 +34,6 @@ public sealed record LatchEvent : EngineEvent
             return $"{latchClassName} {name}{latchModeName}: {PageAddress} - {ObjectName}";
         }
     }
+
+    public ulong? LatchAddress { get; set; }
 }

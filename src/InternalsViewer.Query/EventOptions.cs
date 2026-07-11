@@ -10,5 +10,5 @@ public sealed record EventOptions
 
     public bool IncludeCallStack { get; set; }
 
-    public bool IncludeLatch { get; set; }
+    public bool IncludeLatch { get; set; } = true;
 }

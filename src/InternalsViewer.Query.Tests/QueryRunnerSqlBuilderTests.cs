@@ -3,12 +3,12 @@ using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Query.Tests;
 
-public class QueryRunnerSqlBuilderTests
+public class EventSqlTests
 {
     [Fact]
     public void GetStartSessionSql_References_Session_By_Name()
     {
-        var sql = QueryRunner.GetStartSessionSql("MySession");
+        var sql = EventSql.GetStartSessionSql("MySession");
 
         Assert.Equal("ALTER EVENT SESSION [MySession] ON SERVER STATE = START;", sql);
     }
@@ -16,7 +16,7 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetStopSessionSql_References_Session_By_Name()
     {
-        var sql = QueryRunner.GetStopSessionSql("MySession");
+        var sql = EventSql.GetStopSessionSql("MySession");
 
         Assert.Equal("ALTER EVENT SESSION [MySession] ON SERVER STATE = STOP;", sql);
     }
@@ -24,7 +24,7 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetDropSessionSql_References_Session_By_Name()
     {
-        var sql = QueryRunner.GetDropSessionSql("MySession");
+        var sql = EventSql.GetDropSessionSql("MySession");
 
         Assert.Equal("DROP EVENT SESSION [MySession] ON SERVER;", sql);
     }
@@ -32,7 +32,7 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetFileLocationSql_Queries_ErrorLogFileName_ServerProperty()
     {
-        var sql = QueryRunner.GetFileLocationSql();
+        var sql = EventSql.GetFileLocationSql();
 
         Assert.Contains("SERVERPROPERTY('ErrorLogFileName')", sql);
     }
@@ -40,7 +40,7 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetCreateSessionSql_Includes_Filename_And_Spid_Filter()
     {
-        var sql = QueryRunner.GetCreateSessionSql("MySession", @"C:\Trace\MySession.xel", 52, false, new EventOptions());
+        var sql = EventSql.GetCreateSessionSql("MySession", @"C:\Trace\MySession.xel", 52, false, new EventOptions());
 
         Assert.Contains("CREATE EVENT SESSION [MySession] ON SERVER", sql);
         Assert.Contains(@"filename = 'C:\Trace\MySession.xel'", sql);
@@ -53,7 +53,7 @@ public class QueryRunnerSqlBuilderTests
     {
         var options = new EventOptions { IncludeLock = false, IncludeWait = false, IncludeMemory = false };
 
-        var sql = QueryRunner.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
+        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
 
         var addEventCount = CountOccurrences(sql, "ADD EVENT ");
 
@@ -65,7 +65,7 @@ public class QueryRunnerSqlBuilderTests
     {
         var options = new EventOptions { IncludeLock = false, IncludeWait = false, IncludeMemory = false };
 
-        var sql = QueryRunner.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, true, options);
+        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, true, options);
 
         var addEventCount = CountOccurrences(sql, "ADD EVENT ");
 
@@ -88,7 +88,7 @@ public class QueryRunnerSqlBuilderTests
             IncludeMemory = includeMemory
         };
 
-        var sql = QueryRunner.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
+        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
 
         var extraCount = (includeLock ? EventConstants.LockEvents.Length : 0)
                           + (includeWait ? EventConstants.WaitEvents.Length : 0)
@@ -102,10 +102,10 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetCreateSessionSql_Includes_Callstack_Action_Only_When_Requested()
     {
-        var withCallstack = QueryRunner.GetCreateSessionSql(
+        var withCallstack = EventSql.GetCreateSessionSql(
             "Sess", @"C:\Trace\Sess.xel", 1, false, new EventOptions { IncludeCallStack = true });
 
-        var withoutCallstack = QueryRunner.GetCreateSessionSql(
+        var withoutCallstack = EventSql.GetCreateSessionSql(
             "Sess", @"C:\Trace\Sess.xel", 1, false, new EventOptions { IncludeCallStack = false });
 
         Assert.Contains("package0.callstack", withCallstack);

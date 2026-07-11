@@ -17,8 +17,6 @@ public record EngineEvent
 
     public virtual long DurationUs { get; set; }
 
-    public virtual PageAddress? PageAddress { get; set; }
-
     public int ObjectId { get; set; }
 
     public string ObjectName { get; set; } = string.Empty;
@@ -42,4 +40,8 @@ public record EngineEvent
     public PlanNodeIdentifier? PlanNodeIdentifier { get; set; }
 
     public IReadOnlyList<CallstackFrame> Callstack { get; set; } = [];
+
+    public ulong? TaskAddress { get; set; }
+
+    public ulong? WorkerAddress { get; set; }
 }

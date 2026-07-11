@@ -143,34 +143,6 @@ public class EventPlanNodeMatcherTests
         Assert.Equal(0, latch.PlanNodeIdentifier!.NodeId);
     }
 
-    [Fact]
-    public void Wait_With_PageAddress_Matches_Node_From_Page_Mapped_Event()
-    {
-        var plan = PlanWith(
-            Node(0, "Index Seek", table: "Orders", index: "IX_Orders_CustomerId"));
-
-        var read = new IoEvent
-        {
-            Name = "physical_page_read",
-            PlanHandleId = PlanHandleId,
-            TableName = "Orders",
-            IndexName = "IX_Orders_CustomerId",
-            PageAddress = new PageAddress(1, 456)
-        };
-
-        var wait = new WaitEvent
-        {
-            Name = "wait_info",
-            PlanHandleId = PlanHandleId,
-            PageAddress = new PageAddress(1, 456)
-        };
-
-        EventPlanNodeMatcher.Match([wait, read], [plan]);
-
-        Assert.NotNull(wait.PlanNodeIdentifier);
-        Assert.Equal(0, wait.PlanNodeIdentifier!.NodeId);
-    }
-
     private static ExecutionPlan PlanWith(params PlanNode[] nodes)
     {
         var plan = new ExecutionPlan(PlanHandleId);

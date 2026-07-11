@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Query.Events.EventTypes;
 
-public sealed record IoEvent : EngineEvent
+public sealed record IoEvent : PageEngineEvent
 {
     public bool IsRead { get; init; }
 

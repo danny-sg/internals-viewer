@@ -82,9 +82,11 @@
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventTypes:EngineEvent">
                             <Grid>
-                                <HyperlinkButton Content="{x:Bind PageAddress, Mode=OneTime}"
+                                <!-- Classic Binding (not x:Bind): PageAddress lives on the page-event subtypes and the
+                                     read group, not the EngineEvent base, so it resolves per runtime type. -->
+                                <HyperlinkButton Content="{Binding PageAddress}"
                                                  Style="{StaticResource PageAddressStyle}"
-                                                 Tag="{x:Bind PageAddress}"
+                                                 Tag="{Binding PageAddress}"
                                                  Click="HyperlinkButton_Click"/>
                             </Grid>
                         </DataTemplate>
