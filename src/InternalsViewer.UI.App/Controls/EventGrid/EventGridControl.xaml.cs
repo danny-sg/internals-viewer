@@ -31,11 +31,32 @@ public sealed partial class EventGridControl : UserControl
     {
         var control = (EventGridControl)d;
 
-        if (!ReferenceEquals(control.DataGrid.SelectedItem, e.NewValue))
+        if (!ReferenceEquals((control.DataGrid.SelectedItem as EventRow)?.Event, e.NewValue))
         {
-            control.DataGrid.SelectedItem = e.NewValue;
+            control.SelectRow(e.NewValue as EngineEvent);
         }
     }
+
+    // Selects the row for an event, expanding its parent group first if the event is a currently-collapsed child.
+    private void SelectRow(EngineEvent? engineEvent)
+    {
+        if (engineEvent is null)
+        {
+            DataGrid.SelectedItem = null;
+
+            return;
+        }
+
+        if (_parentOf.TryGetValue(engineEvent, out var parent) && _expanded.Add(parent))
+        {
+            ApplyFilter();
+        }
+
+        DataGrid.SelectedItem = FindRow(engineEvent);
+    }
+
+    private EventRow? FindRow(EngineEvent engineEvent) =>
+        (DataGrid.ItemsSource as IEnumerable<EventRow>)?.FirstOrDefault(r => ReferenceEquals(r.Event, engineEvent));
 
     public List<EngineEvent> Events
     {
@@ -49,7 +70,25 @@ public sealed partial class EventGridControl : UserControl
 
     private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((EventGridControl)d).ApplyFilter();
+        var control = (EventGridControl)d;
+
+        control.RebuildParentMap();
+        control.ApplyFilter();
+    }
+
+    // Maps each child event back to the read group that owns it, so an external selection of a child can expand it.
+    private void RebuildParentMap()
+    {
+        _parentOf.Clear();
+        _expanded.Clear();
+
+        foreach (var group in (Events ?? []).OfType<NonCachedReadEventGroup>())
+        {
+            foreach (var child in group.Events)
+            {
+                _parentOf[child] = group;
+            }
+        }
     }
 
     public long SequenceFrom
@@ -79,6 +118,10 @@ public sealed partial class EventGridControl : UserControl
 
     private readonly Dictionary<DataGridRow, EngineEvent> _visibleRows = new();
 
+    // Read groups the user has expanded, and the parent group of each child event (for expanding on selection).
+    private readonly HashSet<EngineEvent> _expanded = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<EngineEvent, EngineEvent> _parentOf = new(ReferenceEqualityComparer.Instance);
+
     private string? _sortTag;
     private bool _sortAscending = true;
 
@@ -93,7 +136,7 @@ public sealed partial class EventGridControl : UserControl
 
     private void OnDataGridSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var selected = DataGrid.SelectedItem as EngineEvent;
+        var selected = (DataGrid.SelectedItem as EventRow)?.Event;
 
         if (!ReferenceEquals(SelectedItem, selected))
         {
@@ -103,10 +146,24 @@ public sealed partial class EventGridControl : UserControl
 
     private void OnDataGridLoadingRow(object? sender, DataGridRowEventArgs e)
     {
-        if (e.Row.DataContext is EngineEvent ev)
+        if (e.Row.DataContext is EventRow row)
         {
-            _visibleRows[e.Row] = ev;
-            ApplyHighlight(e.Row, ev);
+            _visibleRows[e.Row] = row.Event;
+            ApplyHighlight(e.Row, row.Event);
+        }
+    }
+
+    // Expands or collapses a read group's children in place, rebuilding the flattened row list.
+    private void OnExpanderClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is EventRow { HasChildren: true } row)
+        {
+            if (!_expanded.Remove(row.Event))
+            {
+                _expanded.Add(row.Event);
+            }
+
+            ApplyFilter();
         }
     }
 
@@ -137,16 +194,18 @@ public sealed partial class EventGridControl : UserControl
     /// <summary>Selects and scrolls the grid to the given event, clearing the search filter if it hides it.</summary>
     public void NavigateToEvent(EngineEvent ev)
     {
-        if (SearchBox is { Text.Length: > 0 } box &&
-            DataGrid.ItemsSource is IEnumerable<EngineEvent> source && !source.Contains(ev))
+        if (SearchBox is { Text.Length: > 0 } box && FindRow(ev) is null)
         {
             box.Text = string.Empty;   // clears the filter (triggers ApplyFilter via OnSearchTextChanged)
         }
 
-        DataGrid.SelectedItem = ev;
+        // A child event's group must be expanded before its row exists.
+        SelectRow(ev);
+
+        var row = FindRow(ev);
 
         // Defer the scroll so it runs after any tab switch / filter change has laid the grid out.
-        DispatcherQueue.TryEnqueue(() => DataGrid.ScrollIntoView(ev, null));
+        DispatcherQueue.TryEnqueue(() => { if (row is not null) DataGrid.ScrollIntoView(row, null); });
     }
 
     private void HyperlinkButton_Click(object sender, RoutedEventArgs e)
@@ -183,11 +242,40 @@ public sealed partial class EventGridControl : UserControl
             result = result.Where(ev => Matches(ev, query));
         }
 
-        var filtered = result.ToList();
+        var filtered = ApplySort(result.ToList());
 
-        DataGrid.ItemsSource = ApplySort(filtered);
+        DataGrid.ItemsSource = BuildRows(filtered);
 
         UpdateStatusBar(filtered);
+    }
+
+    // Flattens the top-level events into grid rows, following each expanded read group with its child events indented.
+    private List<EventRow> BuildRows(List<EngineEvent> topLevel)
+    {
+        var rows = new List<EventRow>(topLevel.Count);
+
+        foreach (var engineEvent in topLevel)
+        {
+            var children = engineEvent is NonCachedReadEventGroup group ? group.Events : [];
+
+            var hasChildren = children.Count > 0;
+
+            var expanded = hasChildren && _expanded.Contains(engineEvent);
+
+            rows.Add(new EventRow(engineEvent, depth: 0, hasChildren, expanded));
+
+            if (!expanded)
+            {
+                continue;
+            }
+
+            foreach (var child in children)
+            {
+                rows.Add(new EventRow(child, depth: 1, hasChildren: false, isExpanded: false));
+            }
+        }
+
+        return rows;
     }
 
     /// <summary>Shows a per-event-type count of the currently filtered events, e.g. "wait_info: 100   latch_acquired: 20".</summary>

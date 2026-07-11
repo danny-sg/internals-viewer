@@ -44,7 +44,7 @@ public class ReadGroupingTests(ITestOutputHelper testOutputHelper)
         {
             var detail = e is FileEvent f ? $" [Mode={f.Mode} Size={f.Size} {f.FromPageAddress}-{f.ToPageAddress}]" : "";
 
-            TestOutputHelper.WriteLine($"{e.TimeUs}:{e.DurationUs} {e.Name} - {e.Description}{detail}");
+            TestOutputHelper.WriteLine($"{e.TimeUs}:{e.DurationUs} {e.Name} - {e.Description}{detail}  OBJ=[{e.ObjectName}]");
 
             if (e is NonCachedReadEventGroup grouped)
             {

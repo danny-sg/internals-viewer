@@ -38,7 +38,7 @@ public static class ColdReadGrouper
 
         CollectCachedReads(events, members, consumed);
 
-        EstimateGatherDurations(events, members);
+        EstimateGatherDurations(members);
 
         var result = new List<EngineEvent>(events.Count);
 
@@ -175,33 +175,19 @@ public static class ColdReadGrouper
         }
     }
 
-    // Gather reads carry no measured duration, so estimate one: the read phase's wall time (span of the read events)
-    // is shared out across the gather reads in proportion to the pages each moved, per the average byte-rate model.
-    private static void EstimateGatherDurations(
-        IReadOnlyList<EngineEvent> events,
-        Dictionary<EngineEvent, List<EngineEvent>> members)
+    // A file read's completed event carries no measured duration and its timestamp is only accurate to the
+    // millisecond, so the read finished somewhere within that ms. Cap its span at 1ms rather than expanding it across
+    // the whole read phase — that would assume continuous I/O, but the phase has gaps from other server activity.
+    private const long UnmeasuredReadUs = 1_000;
+
+    private static void EstimateGatherDurations(Dictionary<EngineEvent, List<EngineEvent>> members)
     {
-        var spines = members.Keys.OfType<FileEvent>().ToList();
-
-        if (spines.Count == 0)
+        foreach (var spine in members.Keys.OfType<FileEvent>())
         {
-            return;
-        }
-
-        var totalPages = spines.Sum(PageCountOf);
-
-        if (totalPages <= 0)
-        {
-            return;
-        }
-
-        var reads = events.Where(e => e is IoEvent { IsRead: true } or FileEvent).ToList();
-
-        var span = reads.Count == 0 ? 0 : reads.Max(e => e.TimeUs) - reads.Min(e => e.TimeUs);
-
-        foreach (var spine in spines)
-        {
-            spine.DurationUs = span * PageCountOf(spine) / totalPages;
+            if (spine.DurationUs <= 0)
+            {
+                spine.DurationUs = UnmeasuredReadUs;
+            }
         }
     }
 

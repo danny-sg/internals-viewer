@@ -33,8 +33,8 @@ public sealed record NonCachedReadEventGroup : EngineEvent
     public int PageCount => Pages.Count;
 
     public override string Description => PageCount > 1
-        ? $"{KindLabel} Read: {PageCount} pages from {PageAddress}"
-        : $"{KindLabel} Read: {PageAddress}";
+        ? $"{KindLabel}: {PageCount} pages from {PageAddress}"
+        : $"{KindLabel}: {PageAddress}";
 
-    private string KindLabel => Kind == ReadKind.NonCached ? "Non-Cached" : "Cached";
+    private string KindLabel => Kind == ReadKind.NonCached ? "Read (Non-Cached)" : "Read (Buffer Pool)";
 }
