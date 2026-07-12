@@ -1,6 +1,7 @@
-﻿using System.Net;
+﻿using InternalsViewer.Query.Callstack;
+using System.Net;
 
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack.Symbols;
 
 public static class SymbolDownloader
 {

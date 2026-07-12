@@ -63,8 +63,6 @@ public sealed class CallStackTree
         return collapsed;
     }
 
-    // Frames are innermost-first (index 0 = event site, last = thread start), so they are walked outermost→innermost:
-    // common roots merge and the leaf is the innermost frame.
     private CallStackNode Insert(IReadOnlyList<CallstackFrame> frames,
                                  Func<CallstackFrame, string> keyOf,
                                  EngineEvent? engineEvent)
@@ -97,15 +95,11 @@ public sealed class CallStackTree
         return node;
     }
 
-    // A stack is truncated at its OUTER (thread-start) end, so the same function can surface both directly under the
-    // root (its caller was dropped) and deeper under a fuller path. Where a root child's function also appears with a
-    // real caller elsewhere, treat the root child as that same function truncated and merge it onto the deeper node.
     private void GraftTruncatedRoots()
     {
-        var deeperByKey = Nodes()
-            .Where(node => node.Parent is { IsRoot: false })
-            .GroupBy(node => node.Key)
-            .ToDictionary(group => group.Key, group => group.First());
+        var deeperByKey = Nodes().Where(node => node.Parent is { IsRoot: false })
+                                 .GroupBy(node => node.Key)
+                                 .ToDictionary(group => group.Key, group => group.First());
 
         foreach (var rootChild in Root.Children.Values.ToList())
         {
@@ -118,8 +112,6 @@ public sealed class CallStackTree
         }
     }
 
-    // Folds source into target: source's events move over (repointed) and its children merge by key, re-parenting any
-    // that target does not already have.
     private static void MergeInto(CallStackNode target, CallStackNode source)
     {
         foreach (var engineEvent in source.Events)
@@ -149,9 +141,6 @@ public sealed class CallStackTree
         }
     }
 
-    /// <summary>
-    /// The query window the activity histogram is bucketed over, and its busiest bucket — set by <see cref="ComputeActivity"/>
-    /// </summary>
     public long ActivityMinUs { get; private set; }
 
     public long ActivityMaxUs { get; private set; }
@@ -160,16 +149,8 @@ public sealed class CallStackTree
 
     public double ActivityHeight { get; private set; }
 
-    // The most events any single node's bucket holds — the height the bars are normalised against (tree-wide).
     public int ActivityBusiest { get; private set; }
 
-    /// <summary>
-    /// Fills each node's <see cref="CallStackNode.ActivityCounts"/> — its subtree's events bucketed across the query window
-    /// </summary>
-    /// <remarks>
-    /// Each node's events are bucketed by time and summed up the tree; the busiest bucket tree-wide is recorded so the
-    /// view can normalise a selected node's bars to pixel heights (taller = hotter) and highlight the event's bucket.
-    /// </remarks>
     public void ComputeActivity(long minUs, long maxUs, int buckets, double height)
     {
         ActivityMinUs = minUs;
@@ -191,7 +172,7 @@ public sealed class CallStackTree
     }
 
     /// <summary>
-    /// The histogram bucket an event's timestamp falls in
+    /// Histogram bucket an event's timestamp falls in
     /// </summary>
     public int BucketOf(long timeUs)
     {
@@ -231,9 +212,6 @@ public sealed class CallStackTree
         return bucket;
     }
 
-    /// <summary>
-    /// Every frame-bearing node in the tree, depth first — used to resolve each frame once
-    /// </summary>
     public IEnumerable<CallStackNode> Nodes()
     {
         var stack = new Stack<CallStackNode>();
@@ -256,9 +234,6 @@ public sealed class CallStackTree
         }
     }
 
-    /// <summary>
-    /// An indented text rendering of the tree (each node its symbol, event count in brackets) for tests and debugging
-    /// </summary>
     public string Render()
     {
         var builder = new StringBuilder();
@@ -289,8 +264,6 @@ public sealed class CallStackTree
 
     private static string RvaKey(CallstackFrame frame) => $"{frame.Module}!{frame.Rva}";
 
-    // Once resolved, a function is identified by its module + class + method so its call sites collapse together;
-    // unresolved frames fall back to their RVA so they stay distinct.
     private static string FunctionKey(CallstackFrame frame) =>
         frame.Resolved is { } resolved ? $"{frame.Module}!{resolved.ClassName}::{resolved.MethodName}" : RvaKey(frame);
 }

@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack.Dia;
 
 internal static class DiaBridge
 {

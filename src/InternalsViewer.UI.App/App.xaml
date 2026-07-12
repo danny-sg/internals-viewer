@@ -20,6 +20,7 @@
             <converters1:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:ColorToSolidColorBrushValueConverter x:Key="ColorToSolidColorBrushValueConverter"/>
             <converters:HexColorToBrushConverter x:Key="HexColorToBrushConverter"/>
+            <converters:OperatorCategoryToBrushConverter x:Key="OperatorCategoryToBrushConverter"/>
             <!-- Squares the category badge's trailing corners only when an operator segment follows it. -->
             <converters:BoolToCornerRadiusConverter x:Key="CategoryBadgeCornerConverter"
                                                     TrueRadius="3,0,0,3"

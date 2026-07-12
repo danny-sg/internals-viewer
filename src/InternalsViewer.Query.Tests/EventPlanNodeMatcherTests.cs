@@ -3,6 +3,7 @@ using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Plans;
 
 namespace InternalsViewer.Query.Tests;
@@ -43,8 +44,7 @@ public class EventPlanNodeMatcherTests
         {
             Name = "physical_page_read",
             PlanHandleId = PlanHandleId,
-            TableName = "Orders",
-            IndexName = "IX_Orders_CustomerId"
+            AllocationUnit = new() { TableName = "Orders", IndexName = "IX_Orders_CustomerId" }
         };
 
         EventPlanNodeMatcher.Match([seekRead], [plan]);
@@ -87,8 +87,7 @@ public class EventPlanNodeMatcherTests
         {
             Name = "physical_page_read",
             PlanHandleId = PlanHandleId,
-            TableName = "Orders",
-            IndexName = "IX_Orders_CustomerId",
+            AllocationUnit = new() { TableName = "Orders", IndexName = "IX_Orders_CustomerId" },
             Timestamp = start.AddMilliseconds(25)
         };
 
@@ -108,8 +107,7 @@ public class EventPlanNodeMatcherTests
         {
             Name = "physical_page_read",
             PlanHandleId = PlanHandleId,
-            TableName = "Customers",
-            IndexName = "PK_Customers"
+            AllocationUnit = new() { TableName = "Customers", IndexName = "PK_Customers" }
         };
 
         EventPlanNodeMatcher.Match([read], [plan]);
@@ -127,8 +125,7 @@ public class EventPlanNodeMatcherTests
         {
             Name = "physical_page_read",
             PlanHandleId = PlanHandleId,
-            TableName = "Orders",
-            IndexName = "IX_Orders_CustomerId",
+            AllocationUnit = new() { TableName = "Orders", IndexName = "IX_Orders_CustomerId" },
             PageAddress = new PageAddress(1, 123)
         };
 

@@ -2,14 +2,20 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack.Dia;
 
+/// <summary>
+/// Decode Symbols using DIA SDK to resolve RVAs to demangled function names
+/// </summary>
 public sealed class DiaResolver : IDisposable
 {
     private readonly IntPtr _session;
 
     private readonly ConcurrentDictionary<uint, string> _cache = new();
 
+    /// <summary>
+    /// Creates a cached resolver for the PDB at <paramref name="pdbPath"/>
+    /// </summary>
     public DiaResolver(string pdbPath)
     {
         NativeLibrary.Load(Path.Combine(AppContext.BaseDirectory,
@@ -26,6 +32,9 @@ public sealed class DiaResolver : IDisposable
         }
     }
 
+    /// <summary>
+    /// Resolve an RVA (Relative Virtual Address) to a demangled function name
+    /// </summary>
     public string Resolve(uint rva)
     {
         return _cache.GetOrAdd(rva, ResolveInternal);
@@ -49,12 +58,9 @@ public sealed class DiaResolver : IDisposable
     }
 
     /// <summary>
-    /// The demangled names of every public symbol in the PDB whose name starts with <paramref name="prefix"/>
+    /// Enumerate all symbols with a given prefix
     /// </summary>
-    /// <remarks>
-    /// Used to seed the operator mapping — e.g. enumerate everything beginning <c>CQ</c> to see the iterator classes.
-    /// </remarks>
-    public IEnumerable<string> EnumerateSymbols(string prefix)
+    internal IEnumerable<string> EnumerateSymbols(string prefix)
     {
         var enumerator = DiaBridge.BeginEnumSymbols(_session, prefix);
 

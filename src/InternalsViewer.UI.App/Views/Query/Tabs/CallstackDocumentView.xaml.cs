@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -7,7 +6,6 @@ using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
@@ -15,30 +13,28 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
 public sealed partial class CallstackDocumentView : UserControl
 {
-    // Maps each call stack node to its tree node, so a selected event's leaf can be expanded to and selected.
     private readonly Dictionary<CallStackNode, TreeViewNode> _nodes = new();
 
-    // The nodes to show: null shows the whole (collapsed) tree; otherwise only the selection's call paths.
     private HashSet<CallStackNode>? _visible;
 
-    // When a scoped selection's whole path is infrastructure, hiding it would leave nothing — so reveal the path's
-    // infrastructure frames rather than show an empty tree.
     private bool _revealInfrastructure;
 
-    // The symbol the tree roots at (from the Start dropdown); empty/null roots at the post-infrastructure top.
     private string? _startSymbol = "CSQLSource::Execute";
 
-    // "Query Operators" filter toggle: when on, only operator (CQScan iterator) nodes are shown.
     private bool _operatorsOnly;
 
-    // The node currently showing the activity histogram, so it can be cleared when the selection moves.
+    // "Plan Operators" mode: root the tree at the plan's operator hierarchy, each operator holding the call tree of
+    // its OWN events (matched by PlanNodeIdentifier) above its child operators, instead of one merged call tree.
+    private bool _planMode;
+
+    // The operator rows built in plan mode, so only they are auto-expanded (their call frames stay collapsed).
+    private readonly List<TreeViewNode> _operatorNodes = new();
+
     private CallStackNode? _histogramNode;
 
-    // Histogram bar colours: the selected event's time bucket is highlighted, every other bucket is grey.
     private const string HistogramGrey = "#606060";
     private const string HistogramHighlight = "#4CA3E0";
 
-    // The tree node the Expand All / Collapse All context menu acts on (captured on right-tap, before the menu opens).
     private TreeViewNode? _contextNode;
 
     private QueryViewModel? _viewModel;
@@ -68,7 +64,17 @@ public sealed partial class CallstackDocumentView : UserControl
         ApplyScope(_viewModel?.SelectedEvent);
     }
 
-    // A right-tapped row's own DataContext is its TreeViewNode; captured before the context menu opens.
+    private void OnModeChanged(object sender, RoutedEventArgs e)
+    {
+        _planMode = PlanModeToggle.IsChecked == true;
+
+        // The Start root and Query Operators filter only shape the merged tree.
+        StartCombo.IsEnabled = !_planMode;
+        QueryOperatorsToggle.IsEnabled = !_planMode;
+
+        ApplyScope(_viewModel?.SelectedEvent);
+    }
+
     private void OnNodeRightTapped(object sender, RightTappedRoutedEventArgs e) =>
         _contextNode = (sender as FrameworkElement)?.DataContext as TreeViewNode;
 
@@ -76,7 +82,6 @@ public sealed partial class CallstackDocumentView : UserControl
 
     private void OnCollapseAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: false);
 
-    // Expands or collapses a node and its whole subtree.
     private static void SetExpanded(TreeViewNode? node, bool expanded)
     {
         if (node is null)
@@ -111,18 +116,24 @@ public sealed partial class CallstackDocumentView : UserControl
 
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(QueryViewModel.CallStack) or nameof(QueryViewModel.SelectedEvent))
+        // A new query (CallStack) always rebuilds. A selection change rescopes the merged tree, but in plan mode it
+        // must not — the plan tree is selection-independent, so rebuilding would only reset the user's expansion.
+        if (e.PropertyName == nameof(QueryViewModel.CallStack)
+            || (e.PropertyName == nameof(QueryViewModel.SelectedEvent) && !_planMode))
         {
             ApplyScope(_viewModel?.SelectedEvent);
         }
     }
 
-    // Scopes the tree to the selected event's (or operator's/group's) call paths so anything else — noise from
-    // out-of-scope events — is hidden; with nothing selected the whole tree is shown, collapsed. A single event
-    // selects its own leaf; several (an operator or a grouped read) select where they converge — their common
-    // ancestor (e.g. reads all share BPool::Get).
     private void ApplyScope(EngineEvent? selected)
     {
+        if (_planMode)
+        {
+            BuildPlanTree();
+
+            return;
+        }
+
         var events = selected is null ? [] : ScopeEvents(selected).ToList();
 
         var leaves = events.Where(e => e.CallStack is not null).Select(e => e.CallStack!).Distinct().ToList();
@@ -133,9 +144,6 @@ public sealed partial class CallstackDocumentView : UserControl
 
         BuildTree();
 
-        // The selection's whole path can be infrastructure (a data read, a scheduler-side event); hiding it as noise
-        // would leave nothing, so reveal the path's infrastructure and rebuild rather than show an empty tree. (When
-        // the operators-only filter is on, an empty result is expected — the selection just has no operators.)
         if (_visible is not null && _nodes.Count == 0 && !_operatorsOnly)
         {
             _revealInfrastructure = true;
@@ -143,7 +151,6 @@ public sealed partial class CallstackDocumentView : UserControl
             BuildTree();
         }
 
-        // Expand the shown nodes now they are attached to the tree, so a scoped path opens down to the selection.
         if (_visible is not null)
         {
             foreach (var treeNode in _nodes.Values)
@@ -164,15 +171,9 @@ public sealed partial class CallstackDocumentView : UserControl
         SetHistogram(shown, events);
     }
 
-    // Shows the activity histogram on the selected node only: its subtree activity as grey bars, with the bucket(s) the
-    // selected event(s) land in highlighted, so you can see where in the query's life this instance ran. Cleared off
-    // whatever node last carried it.
     private void SetHistogram(CallStackNode? node, IReadOnlyList<EngineEvent> events)
     {
-        if (_histogramNode is not null)
-        {
-            _histogramNode.DisplayBars = [];
-        }
+        _histogramNode?.DisplayBars = [];
 
         _histogramNode = node;
 
@@ -186,13 +187,11 @@ public sealed partial class CallstackDocumentView : UserControl
         var highlight = events.Select(e => tree.BucketOf(e.TimeUs)).ToHashSet();
 
         node.DisplayBars = node.ActivityCounts
-                               .Select((count, bucket) => new ActivityBar(
-                                   count * tree.ActivityHeight / tree.ActivityBusiest,
-                                   highlight.Contains(bucket) ? HistogramHighlight : HistogramGrey))
+                               .Select((count, bucket) => new ActivityBar(count * tree.ActivityHeight / tree.ActivityBusiest,
+                                                                          highlight.Contains(bucket) ? HistogramHighlight : HistogramGrey))
                                .ToList();
     }
 
-    // Every node on the paths from the leaves up to the root.
     private static HashSet<CallStackNode> VisibleFrom(List<CallStackNode> leaves)
     {
         var visible = new HashSet<CallStackNode>();
@@ -208,7 +207,6 @@ public sealed partial class CallstackDocumentView : UserControl
         return visible;
     }
 
-    // The deepest node that is an ancestor of every leaf — where the group's paths converge.
     private static CallStackNode? CommonAncestor(List<CallStackNode> leaves)
     {
         var common = AncestorsAndSelf(leaves[0]).ToHashSet();
@@ -241,7 +239,6 @@ public sealed partial class CallstackDocumentView : UserControl
         return depth;
     }
 
-    // Selects the node, walking up to the nearest shown one (the target may be hidden infrastructure), and returns it.
     private CallStackNode? SelectNode(CallStackNode? target)
     {
         for (var node = target; node is { IsRoot: false }; node = node.Parent)
@@ -250,6 +247,8 @@ public sealed partial class CallstackDocumentView : UserControl
             {
                 Tree.SelectedNode = treeNode;
 
+                BringIntoView(treeNode);
+
                 return node;
             }
         }
@@ -257,8 +256,15 @@ public sealed partial class CallstackDocumentView : UserControl
         return null;
     }
 
-    // The in-scope events: an operator scopes to every event anchored to it, a read group to its child events,
-    // otherwise it is the single selected event.
+    private void BringIntoView(TreeViewNode node) =>
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (Tree.ContainerFromNode(node) is FrameworkElement container)
+            {
+                container.StartBringIntoView();
+            }
+        });
+
     private IEnumerable<EngineEvent> ScopeEvents(EngineEvent selected)
     {
         if (selected is ExecutionOperatorEvent { PlanNodeIdentifier: { } id })
@@ -277,6 +283,7 @@ public sealed partial class CallstackDocumentView : UserControl
     private void BuildTree()
     {
         _nodes.Clear();
+
         Tree.RootNodes.Clear();
 
         foreach (var root in StartRoots())
@@ -288,14 +295,10 @@ public sealed partial class CallstackDocumentView : UserControl
         }
     }
 
-    // The nodes the tree roots at: the whole (post-infrastructure) top when no start symbol is chosen, otherwise the
-    // topmost occurrences of the chosen frame (e.g. CSQLSource::Execute) so the SQLOS preamble above it is cut.
     private IEnumerable<CallStackNode> StartRoots()
     {
         var roots = _viewModel?.CallStackRoots ?? [];
 
-        // When scoped to a selection, root at the real top so the selection's path always shows — the Start crop is
-        // only for the unscoped overview, and cropping to a symbol the selection sits above would blank the tree.
         if (_visible is not null || string.IsNullOrEmpty(_startSymbol))
         {
             return roots;
@@ -327,10 +330,6 @@ public sealed partial class CallstackDocumentView : UserControl
         }
     }
 
-    // The tree nodes to show for a call stack node's subtree: itself (with its visible children) when shown, or its
-    // promoted visible descendants when hidden. Nodes are hidden if infrastructure (Extended Events, Tracing…) or,
-    // when scoped, off the selection's paths. Children are ordered by first-seen so a start/finish sequence reads in
-    // order; when scoped, everything is expanded so the selected node is revealed.
     private IEnumerable<TreeViewNode> BuildVisible(CallStackNode node)
     {
         var children = node.ChildNodes
@@ -342,7 +341,6 @@ public sealed partial class CallstackDocumentView : UserControl
 
         var infrastructureHidden = node.IsInfrastructure && !_revealInfrastructure;
 
-        // "Query Operators" filter: keep only operator (CQScan) nodes, promoting their operator descendants up.
         var nonOperatorHidden = _operatorsOnly && !node.HasOperator;
 
         if (outOfScope || infrastructureHidden || nonOperatorHidden)
@@ -355,11 +353,192 @@ public sealed partial class CallstackDocumentView : UserControl
             yield break;
         }
 
-        // IsExpanded is set later, once the node is attached to the tree — WinUI's TreeView can fail to realise a
-        // subtree whose IsExpanded was set while the node was still detached, leaving the scoped view blank.
         var treeNode = new TreeViewNode { Content = node };
 
         _nodes[node] = treeNode;
+
+        foreach (var child in children)
+        {
+            treeNode.Children.Add(child);
+        }
+
+        yield return treeNode;
+    }
+
+    // Plan Operators mode: root the tree at the plan's operators. Each operator row carries the call tree of its own
+    // events, then its child operators; an operator whose whole subtree captured no call stacks is dropped.
+    private void BuildPlanTree()
+    {
+        _nodes.Clear();
+        _operatorNodes.Clear();
+        Tree.RootNodes.Clear();
+
+        if (_histogramNode is not null)
+        {
+            _histogramNode.DisplayBars = [];
+            _histogramNode = null;
+        }
+
+        var operators = (_viewModel?.Events ?? [])
+            .OfType<ExecutionOperatorEvent>()
+            .Where(o => o.PlanNodeIdentifier is not null)
+            .ToList();
+
+        if (operators.Count == 0)
+        {
+            return;
+        }
+
+        var childrenByParent = operators
+            .Where(o => o.ParentNodeId is not null)
+            .ToLookup(o => (o.PlanNodeIdentifier!.PlanHandleId, o.ParentNodeId!.Value));
+
+        var nodeIds = operators.Select(o => o.PlanNodeIdentifier!.NodeId).ToHashSet();
+
+        // Roots are operators with no parent in the captured set — the statement node, or the top operators when the
+        // statement node itself was not built.
+        var roots = operators
+            .Where(o => o.ParentNodeId is null || !nodeIds.Contains(o.ParentNodeId.Value))
+            .OrderBy(o => o.PlanNodeIdentifier!.NodeId);
+
+        foreach (var root in roots)
+        {
+            if (BuildOperatorNode(root, childrenByParent) is { } node)
+            {
+                Tree.RootNodes.Add(node);
+            }
+        }
+
+        // Expand the operator hierarchy once the nodes are attached (WinUI can drop a subtree expanded while detached);
+        // the call frames under each operator stay collapsed so the plan stays readable.
+        foreach (var operatorNode in _operatorNodes)
+        {
+            operatorNode.IsExpanded = true;
+        }
+    }
+
+    // A tree node for an operator: its own call tree followed by its child operators, or null when neither it nor any
+    // descendant captured a call stack (so empty operators do not clutter the plan).
+    private TreeViewNode? BuildOperatorNode(
+        ExecutionOperatorEvent op,
+        ILookup<(short PlanHandleId, int NodeId), ExecutionOperatorEvent> childrenByParent)
+    {
+        var callNodes = BuildOperatorCallTree(op);
+
+        var key = (op.PlanNodeIdentifier!.PlanHandleId, op.PlanNodeIdentifier.NodeId);
+
+        var childOperatorNodes = childrenByParent[key]
+            .OrderBy(child => child.PlanNodeIdentifier!.NodeId)
+            .Select(child => BuildOperatorNode(child, childrenByParent))
+            .OfType<TreeViewNode>()
+            .ToList();
+
+        if (callNodes.Count == 0 && childOperatorNodes.Count == 0)
+        {
+            return null;
+        }
+
+        var operatorNode = new TreeViewNode { Content = op };
+
+        foreach (var callNode in callNodes)
+        {
+            operatorNode.Children.Add(callNode);
+        }
+
+        foreach (var childOperatorNode in childOperatorNodes)
+        {
+            operatorNode.Children.Add(childOperatorNode);
+        }
+
+        _operatorNodes.Add(operatorNode);
+
+        return operatorNode;
+    }
+
+    // The scoped call tree for an operator's OWN events (infrastructure hidden), or an empty list when it captured no
+    // stacks. Falls back to revealing infrastructure if hiding it would leave the operator's paths empty.
+    private List<TreeViewNode> BuildOperatorCallTree(ExecutionOperatorEvent op)
+    {
+        var leaves = OperatorLeaves(op);
+
+        if (leaves.Count == 0)
+        {
+            return [];
+        }
+
+        var visible = VisibleFrom(leaves);
+
+        var nodes = ScopedCallNodes(visible, revealInfrastructure: false);
+
+        return nodes.Count > 0 ? nodes : ScopedCallNodes(visible, revealInfrastructure: true);
+    }
+
+    private List<TreeViewNode> ScopedCallNodes(HashSet<CallStackNode> visible, bool revealInfrastructure)
+    {
+        var nodes = new List<TreeViewNode>();
+
+        foreach (var root in _viewModel?.CallStackRoots ?? [])
+        {
+            nodes.AddRange(BuildScopedCall(root, visible, revealInfrastructure));
+        }
+
+        return nodes;
+    }
+
+    // The leaf call-stack nodes of an operator's own events (read groups expanded to their children), deduplicated.
+    private List<CallStackNode> OperatorLeaves(ExecutionOperatorEvent op)
+    {
+        var id = op.PlanNodeIdentifier;
+
+        var leaves = new List<CallStackNode>();
+
+        foreach (var e in _viewModel?.Events ?? [])
+        {
+            if (e is ExecutionOperatorEvent || e.PlanNodeIdentifier != id)
+            {
+                continue;
+            }
+
+            if (e is ReadEventGroup group)
+            {
+                leaves.AddRange(group.Events.Where(c => c.CallStack is not null).Select(c => c.CallStack!));
+            }
+            else if (e.CallStack is not null)
+            {
+                leaves.Add(e.CallStack);
+            }
+        }
+
+        return leaves.Distinct().ToList();
+    }
+
+    // Renders a call-stack node's subtree scoped to visible, hiding infrastructure (promoting its visible children) and
+    // out-of-scope frames — the same projection BuildVisible does, but for a supplied scope set.
+    private IEnumerable<TreeViewNode> BuildScopedCall(
+        CallStackNode node,
+        HashSet<CallStackNode> visible,
+        bool revealInfrastructure)
+    {
+        var children = node.ChildNodes
+                           .OrderBy(child => child.Order)
+                           .SelectMany(child => BuildScopedCall(child, visible, revealInfrastructure))
+                           .ToList();
+
+        var outOfScope = !visible.Contains(node);
+
+        var infrastructureHidden = node.IsInfrastructure && !revealInfrastructure;
+
+        if (outOfScope || infrastructureHidden)
+        {
+            foreach (var child in children)
+            {
+                yield return child;
+            }
+
+            yield break;
+        }
+
+        var treeNode = new TreeViewNode { Content = node };
 
         foreach (var child in children)
         {

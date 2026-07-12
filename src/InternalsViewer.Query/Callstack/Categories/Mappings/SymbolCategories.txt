@@ -12,7 +12,12 @@ Module|Class|Function|Category|Iterator
 sqlmin|CQueryScan|GetRow|QueryOperator|Iterator
 sqlmin|CQScanProfileNew|GetRow|QueryOperator|Profiling
 sqlmin|CQScanHashAgg*|*|QueryOperator|Hash Match (Aggregate)
+
+# Hash match + Build/Probe
+sqlmin|CQScanHash|ConsumeBuild|QueryOperator|Hash Match Build
+sqlmin|CQScanHash|ConsumeProbe|QueryOperator|Hash Match Probe
 sqlmin|CQScanHash*|*|QueryOperator|Hash Match
+
 sqlmin|CQScanMergeJoin*|*|QueryOperator|Merge Join
 sqlmin|CQScanNLJoin*|*|QueryOperator|Nested Loops
 sqlmin|CQScanStreamAgg*|*|QueryOperator|Stream Aggregate

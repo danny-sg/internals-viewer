@@ -984,12 +984,20 @@ public sealed class EventTimelineControl : Grid, IDisposable
             float markerTop;
             float markerHeight;
 
-            // The Read lane holds only NonCachedReadEventGroup, so it fills the row rather than being split into the
-            // category sub-bands used by the mixed Wait/Latch lanes; nulling the category also routes it through the
-            // per-node colour provider instead of the flat category tint.
+            // The Read lane holds only ReadEventGroup; nulling the category routes it through the per-node colour
+            // provider (Kind-based) instead of the flat category tint used by the mixed Wait/Latch lanes.
             var category = sourceEvent is ReadEventGroup ? null : sourceEvent.Category;
 
-            if (category.HasValue)
+            if (sourceEvent is ReadEventGroup readGroup)
+            {
+                // The read band is split into two lanes: cached (buffer-pool) reads on the top half, non-cached
+                // (physical) reads on the bottom half.
+                var laneHeight = innerHeight / 2f;
+
+                markerTop = innerTop + (readGroup.ReadType == ReadType.Cached ? 0f : laneHeight);
+                markerHeight = Math.Max(2f, laneHeight - 1f);
+            }
+            else if (category.HasValue)
             {
                 var stepHeight = innerHeight / EventCategoryClassifier.CategoryCount;
                 var step = (int)category.Value;
@@ -1709,11 +1717,17 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
                 var colour = TraceColour(io, ioRow, DimForSelection(io));
 
+                // Terminate the rails at the read's own lane (cached = top half, non-cached = bottom half) so they line
+                // up with the split read band.
+                var laneHeight = (readBottom - readTop) / 2f;
+                var railTop = io.ReadType == ReadType.Cached ? readTop : readTop + laneHeight;
+                var railBottom = io.ReadType == ReadType.Cached ? readTop + laneHeight : readBottom;
+
                 // Only draw the dotted call rail when it is far enough left of the end return rail to read as distinct.
                 if (endX - startX > MinCallRailGapPx)
                 {
                     _readBoundaryPaint.Color = colour;
-                    canvas.DrawLine(startX, b.BarBottom, startX, readTop, _readBoundaryPaint);
+                    canvas.DrawLine(startX, b.BarBottom, startX, railTop, _readBoundaryPaint);
                 }
 
                 _readReturnPaint.Color = colour;
@@ -1727,7 +1741,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
                 {
                     var x = Math.Max(startX, endX - p * PageRailGapPx);
 
-                    canvas.DrawLine(x, b.BarBottom, x, readBottom, _readReturnPaint);
+                    canvas.DrawLine(x, b.BarBottom, x, railBottom, _readReturnPaint);
                 }
             }
         }
@@ -2228,17 +2242,10 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private static SKColor TintByCategory(SKColor colour, int category)
         => ColourScale(colour, CategoryShade[category]);
 
-    // Cached reads share the Read lane with non-cached (physical) reads; a darker blue-green sets them apart from the
-    // bright blue of a disk read.
-    private static readonly SKColor CachedReadColour = new(26, 96, 110);
-
     private SKColor GetMarkerColor(EngineEvent sourceEvent, int rowIndex, EventCategory? category)
     {
-        if (sourceEvent is ReadEventGroup { Kind: ReadKind.Cached })
-        {
-            return DimForSelection(sourceEvent) ? CachedReadColour.WithAlpha(FocusedDimAlpha) : CachedReadColour;
-        }
-
+        // Cached (buffer-pool) and non-cached (physical) reads share a colour — the split read band (cached on top,
+        // non-cached on the bottom) already tells them apart.
         var colour = category.HasValue
             ? TintByCategory(_activeRows[rowIndex].Color, (int)category.Value)
             : ColourProvider is { } colours

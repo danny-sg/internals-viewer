@@ -1,5 +1,3 @@
-using InternalsViewer.Query.Events.EventTypes;
-
 namespace InternalsViewer.Query.Events;
 
 public sealed record EventResult

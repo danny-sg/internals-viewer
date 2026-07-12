@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.Callstack.Categories;
+using InternalsViewer.Query.CallStack.Symbols;
 
 namespace InternalsViewer.Query.Callstack;
 
@@ -16,21 +17,19 @@ namespace InternalsViewer.Query.Callstack;
 ///     Age    - PDB revision number
 ///     RVA    - Relative Virtual Address - the offset of the function in the binary
 ///
-/// First symbols are downloaded from the Microsoft symbol server and cached locally. A path is constructed from
-/// PDB\Guid+Age\PDB. This path identifies the correct file from the symbols server and is replicated in the local
-/// cache.
+/// First symbols are downloaded from the Microsoft symbol server and cached locally. A path is constructed from PDB\Guid+Age\PDB. This
+/// path identifies the correct file from the symbols server and is replicated in the local cache.
 ///
-/// Symbols are then resolved using the Debug Interface Access (DIA) API. DIA allows the mapping of the RVA to the
-/// function name with the .PDB files.
+/// Symbols are then resolved using the Debug Interface Access (DIA) API. DIA allows the mapping of the RVA to the function name with the
+/// .PDB files.
 ///
-/// To mitigate the need for the DIA SDK to be installed separately on every deployment the redistributable .dll,
-/// msdia140.dll is included. Note - msdia140.dll is specifically listed as an allowed redistributable component -
-/// see: https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution
+/// To mitigate the need for the DIA SDK to be installed separately on every deployment the redistributable .dll, msdia140.dll is included.
+/// Note - msdia140.dll is specifically listed as an allowed redistributable component -see:
+///     https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution
 ///
-/// DIA is a COM API and requires the msdia140.dll to be registered. Rather than requiring the user to register the DLL
-/// manually we use InternalsViewer.Query.DiaBridge to provide registration-free access to DIA that can be P/Invoke'd
-/// from C#. This is a bit of a faff but is the cleanest way to access DIA without quite heavyweight requirements, e.g.
-/// installing Build Tools. 
+/// DIA is a COM API and requires the msdia140.dll to be registered. Rather than requiring the user to register the DLL manually we use
+/// InternalsViewer.Query.DiaBridge to provide registration-free access to DIA that can be P/Invoke'd from C#. This is a bit of a faff but
+/// is the cleanest way to access DIA without quite heavyweight requirements, e.g. installing Build Tools. 
 /// </remarks>
 internal class CallstackProcessor
 {
@@ -44,7 +43,7 @@ internal class CallstackProcessor
         // The tree already merged identical frames, so each is downloaded and resolved once rather than per event.
         var frames = callStack.Nodes().Select(node => node.Frame!).ToList();
 
-        HealUnsymbolisedFrames(frames);
+        FixUnsymbolisedFrames(frames);
 
         await SymbolDownloader.DownloadSymbols(frames, symbolsPath, progress, cancellationToken);
 
@@ -71,11 +70,16 @@ internal class CallstackProcessor
         return unknown.ToArray();
     }
 
-    // SQL sometimes emits a frame without symbol info — no pdb/guid and the address baked into the module name
-    // ("sqllang@0x7FFD2D950584") — even though the same address is fully symbolised on another frame. Recover it: each
-    // module's load base is address - rva from a symbolised frame, so an address-only frame gets rva = address - base
-    // and borrows that module's pdb/guid. It then resolves, and merges with its symbolised twin in the function tree.
-    private static void HealUnsymbolisedFrames(List<CallstackFrame> frames)
+    /// <summary>
+    /// Fixes missing symbol info
+    /// </summary>
+    /// <remarks>
+    /// SQL sometimes emits a frame without symbol info — no pdb/guid and the address baked into the module name ("sqllang@0x7FFD2D950584")
+    /// — even though the same address is fully symbolised on another frame. Recover it: each module's load base is address - rva from a
+    /// symbolised frame, so an address-only frame gets rva = address - base and borrows that module's pdb/guid. It then resolves, and
+    /// merges with its symbolised twin in the function tree.
+    /// </remarks>
+    private static void FixUnsymbolisedFrames(List<CallstackFrame> frames)
     {
         var modules = new Dictionary<string, (ulong Base, string Pdb, string Guid, int Age)>(StringComparer.OrdinalIgnoreCase);
 

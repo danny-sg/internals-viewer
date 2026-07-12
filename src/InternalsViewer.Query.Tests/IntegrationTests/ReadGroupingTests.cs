@@ -56,7 +56,7 @@ public class ReadGroupingTests(ITestOutputHelper testOutputHelper)
 
             var flag = kp > 0 && !hasPhysical ? "   <-- KP but NO physical_page_read" : "";
 
-            TestOutputHelper.WriteLine($"{g.Kind,-9} {g.Description,-34} phys={hasPhysical,-5} file={hasFileRead,-5} "
+            TestOutputHelper.WriteLine($"{g.ReadType,-9} {g.Description,-34} phys={hasPhysical,-5} file={hasFileRead,-5} "
                 + $"EX={ex} SH={sh} KP={kp}{flag}");
         }
 

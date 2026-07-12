@@ -250,7 +250,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
                 continue;
             }
 
-            using var resolver = new Callstack.DiaResolver(pdbPath);
+            using var resolver = new Query.CallStack.Dia.DiaResolver(pdbPath);
 
             var classes = resolver.EnumerateSymbols("CQScan")
                 // The class (the part before ::) is what the operator map keys on; drop RTTI and template noise.

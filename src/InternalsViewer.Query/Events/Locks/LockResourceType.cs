@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Events.Locks;

@@ -16,17 +16,11 @@ public sealed class CategoryMappings
 
     public IReadOnlyList<SymbolCategoryRule> Rules => _rules;
 
-    /// <summary>
-    /// The category of a module, or <see cref="ModuleCategory.Unknown"/> when unmapped
-    /// </summary>
     public ModuleCategory GetModuleCategory(string? module) =>
         !string.IsNullOrWhiteSpace(module) && _modules.TryGetValue(module, out var category)
             ? category
             : ModuleCategory.Unknown;
 
-    /// <summary>
-    /// The category and iterator of a frame — the most detailed matching rule, or Unknown/null when none match
-    /// </summary>
     public (SymbolCategory Category, string? Iterator) Classify(string? module, string? className, string? methodName)
     {
         SymbolCategoryRule? best = null;
@@ -46,9 +40,6 @@ public sealed class CategoryMappings
         return best is null ? (SymbolCategory.Unknown, null) : (best.Category, best.Iterator);
     }
 
-    /// <summary>
-    /// Builds the mappings from the core readers, with optional override readers appended (override wins ties)
-    /// </summary>
     public static CategoryMappings Load(TextReader modules,
                                         TextReader symbols,
                                         TextReader? overrideModules = null,

@@ -26,7 +26,7 @@ public class ReadGroupingTests
 
         var group = Assert.IsType<ReadEventGroup>(Assert.Single(result));
 
-        Assert.Equal(ReadKind.NonCached, group.Kind);
+        Assert.Equal(ReadType.NonCached, group.ReadType);
         Assert.Equal(2_000, group.TimeUs);
         Assert.Equal(922, group.DurationUs);
         Assert.Contains(read, group.Events);
@@ -43,7 +43,7 @@ public class ReadGroupingTests
 
         var group = Assert.IsType<ReadEventGroup>(Assert.Single(result));
 
-        Assert.Equal(ReadKind.Cached, group.Kind);
+        Assert.Equal(ReadType.Cached, group.ReadType);
         Assert.Equal(1_000, group.TimeUs);
         Assert.Equal(50, group.DurationUs);
     }
@@ -58,7 +58,7 @@ public class ReadGroupingTests
         var result = ReadGrouping.Group([first, second]);
 
         Assert.Equal(2, result.OfType<ReadEventGroup>().Count());
-        Assert.All(result.OfType<ReadEventGroup>(), g => Assert.Equal(ReadKind.Cached, g.Kind));
+        Assert.All(result.OfType<ReadEventGroup>(), g => Assert.Equal(ReadType.Cached, g.ReadType));
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class ReadGroupingTests
 
         var group = result.OfType<ReadEventGroup>().Single();
 
-        Assert.Equal(ReadKind.NonCached, group.Kind);
+        Assert.Equal(ReadType.NonCached, group.ReadType);
         Assert.Equal(4, group.PageCount);
         Assert.Contains(readA, group.Events);
         Assert.Contains(readB, group.Events);
@@ -123,7 +123,7 @@ public class ReadGroupingTests
 
         var group = result.OfType<ReadEventGroup>().Single();
 
-        Assert.Equal(ReadKind.NonCached, group.Kind);
+        Assert.Equal(ReadType.NonCached, group.ReadType);
         Assert.Equal(1, group.PageCount);
         Assert.Contains(read, group.Events);
     }
@@ -149,6 +149,68 @@ public class ReadGroupingTests
         Assert.Empty(result);
     }
 
+    [Fact]
+    public void Trailing_Buffer_Latch_On_The_Just_Loaded_Page_Folds_Into_The_Non_Cached_Read()
+    {
+        // The worker resumes a scheduling quantum after the load and reads the page it just brought in - a bare SH
+        // acquire on the SAME page and buffer-latch address, ~10ms later. It is the tail of that read, not a second one.
+        var suspend = Suspend(latchAddress: 200, page: new PageAddress(1, 1_784), timeUs: 2_000, durationUs: 72);
+
+        var read = new IoEvent
+        {
+            Name = "physical_page_read",
+            IsRead = true,
+            PageAddress = new PageAddress(1, 1_784),
+            TimeUs = 2_000,
+        };
+
+        var trailingRead = BufferLatch("latch_acquired", latchAddress: 200, page: new PageAddress(1, 1_784), timeUs: 12_000, durationUs: 0);
+
+        var result = ReadGrouping.Group([suspend, read, trailingRead]);
+
+        var group = Assert.IsType<ReadEventGroup>(Assert.Single(result));
+
+        Assert.Equal(ReadType.NonCached, group.ReadType);
+        Assert.Contains(trailingRead, group.Events);
+    }
+
+    [Fact]
+    public void Buffer_Latch_Long_After_The_Load_Stays_A_Separate_Cached_Read()
+    {
+        // A re-read of the (still resident) page much later in the query is a genuine cached read, not the load's tail.
+        var suspend = Suspend(latchAddress: 200, page: new PageAddress(1, 1_784), timeUs: 2_000, durationUs: 72);
+
+        var read = new IoEvent { Name = "physical_page_read", IsRead = true, PageAddress = new PageAddress(1, 1_784), TimeUs = 2_000 };
+
+        var later = BufferLatch("latch_acquired", latchAddress: 200, page: new PageAddress(1, 1_784), timeUs: 30_000, durationUs: 40);
+
+        var result = ReadGrouping.Group([suspend, read, later]);
+
+        Assert.Equal(2, result.OfType<ReadEventGroup>().Count());
+
+        var cached = result.OfType<ReadEventGroup>().Single(g => g.ReadType == ReadType.Cached);
+
+        Assert.Contains(later, cached.Events);
+    }
+
+    [Fact]
+    public void Buffer_Latch_On_A_Recycled_Frame_Does_Not_Fold_Into_The_Prior_Read()
+    {
+        // Same buffer-latch address but a DIFFERENT page: the frame was reused for another page, so the SH acquire is
+        // its own read and must not be pulled into the earlier page's group.
+        var suspend = Suspend(latchAddress: 200, page: new PageAddress(1, 1_784), timeUs: 2_000, durationUs: 72);
+
+        var read = new IoEvent { Name = "physical_page_read", IsRead = true, PageAddress = new PageAddress(1, 1_784), TimeUs = 2_000 };
+
+        var recycled = BufferLatch("latch_acquired", latchAddress: 200, page: new PageAddress(1, 9_999), timeUs: 4_000, durationUs: 40);
+
+        var result = ReadGrouping.Group([suspend, read, recycled]);
+
+        var cached = result.OfType<ReadEventGroup>().Single(g => g.ReadType == ReadType.Cached);
+
+        Assert.Contains(recycled, cached.Events);
+    }
+
     private static LatchEvent Suspend(ulong latchAddress, PageAddress page, long timeUs, long durationUs) => new()
     {
         Name = "latch_suspend_begin",
@@ -160,11 +222,12 @@ public class ReadGroupingTests
         DurationUs = durationUs,
     };
 
-    private static LatchEvent BufferLatch(string name, PageAddress page, long timeUs, long durationUs) => new()
+    private static LatchEvent BufferLatch(string name, PageAddress page, long timeUs, long durationUs, ulong latchAddress = 0) => new()
     {
         Name = name,
         LatchClass = LatchClass.BUF,
         LatchMode = LatchMode.SH,
+        LatchAddress = latchAddress == 0 ? null : latchAddress,
         PageAddress = page,
         TimeUs = timeUs,
         DurationUs = durationUs,

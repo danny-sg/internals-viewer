@@ -23,7 +23,7 @@
     <ItemGroup>
         <!-- Callstack category mappings: the core file ships embedded with the app (a downloadable update file may
              override it from the user's app-data folder later). -->
-        <EmbeddedResource Include="Callstack\Categories\Mappings\*.txt" />
+        <EmbeddedResource Include="CallStack\Categories\Mappings\*.txt" />
     </ItemGroup>
 
     <ItemGroup>
@@ -34,7 +34,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Locks\" />
+      <Compile Remove="Locks\**" />
+      <EmbeddedResource Remove="Locks\**" />
+      <None Remove="Locks\**" />
     </ItemGroup>
 
 </Project>

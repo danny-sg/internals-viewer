@@ -7,11 +7,109 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:callstack="using:InternalsViewer.Query.Callstack"
+    xmlns:operators="using:InternalsViewer.Query.Events.Operators"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Tabs"
     mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <!-- A call frame row: the Category | Operator badge, the resolved symbol, and (on the selected node) the
+             activity histogram. Used for every node in the merged tree, and for the call frames under each operator
+             in Plan Operators mode. -->
+        <DataTemplate x:Key="CallFrameTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" RightTapped="OnNodeRightTapped">
+                <StackPanel.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
+                        <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
+                    </MenuFlyout>
+                </StackPanel.ContextFlyout>
+
+                <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
+                     tone (the operator name) is appended, otherwise the category badge stands alone. -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
+                            CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                            Padding="5,2,5,3">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
+                                   Foreground="White"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="0,3,3,0"
+                            Padding="5,2,5,3"
+                            Background="#4A4A55"
+                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Operator}"
+                                   Foreground="White"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+
+                <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Symbol}"
+                           FontFamily="Consolas"
+                           FontSize="11"
+                           VerticalAlignment="Center"/>
+
+                <!-- Activity histogram: shown only on the selected node — its subtree activity over the query
+                     window (taller = hotter), with the selected event's time bucket highlighted, the rest grey.
+                     The white background spans the full window so the chart's range is visible even where empty. -->
+                <Border Background="White"
+                        CornerRadius="2"
+                        Padding="1"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        Visibility="{x:Bind ((callstack:CallStackNode)Content).HasHistogram, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ItemsControl ItemsSource="{x:Bind ((callstack:CallStackNode)Content).DisplayBars}"
+                                  Height="14">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="callstack:ActivityBar">
+                                <Rectangle Width="3"
+                                           Height="{x:Bind Height}"
+                                           Margin="0,0,1,0"
+                                           VerticalAlignment="Bottom"
+                                           Fill="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- An operator row (Plan Operators mode): a category-coloured pill with the operator, then its table/index.
+             Its children are the operator's own call tree followed by its child operators. -->
+        <DataTemplate x:Key="OperatorNodeTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Border Background="{x:Bind ((operators:ExecutionOperatorEvent)Content).Category, Converter={StaticResource OperatorCategoryToBrushConverter}}"
+                        CornerRadius="3"
+                        Padding="6,2,6,3">
+                    <TextBlock Text="{x:Bind ((operators:ExecutionOperatorEvent)Content).OperatorDescription}"
+                               Foreground="White"
+                               FontSize="10"
+                               FontWeight="SemiBold"/>
+                </Border>
+                <TextBlock Text="{x:Bind ((operators:ExecutionOperatorEvent)Content).TargetLabel}"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <local:CallstackNodeTemplateSelector x:Key="NodeTemplateSelector"
+                                             FrameTemplate="{StaticResource CallFrameTemplate}"
+                                             OperatorTemplate="{StaticResource OperatorNodeTemplate}"/>
+    </UserControl.Resources>
 
     <!-- The whole query's call stacks merged into one tree: each node is a function, its children the functions it
          called. Infrastructure frames are hidden; the Start dropdown chooses where the tree roots. Populated
-         node-first in code-behind so the path to a selected event can be expanded and selected; starts collapsed. -->
+         node-first in code-behind so the path to a selected event can be expanded and selected; starts collapsed.
+         In "Plan Operators" mode the roots are the plan's operators instead, each holding the call tree of its own
+         events above its child operators. -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="44"/>
@@ -52,7 +150,7 @@
                 </AppBarElementContainer>
             </CommandBar>
 
-            <!-- Filter toggles (right): each narrows the tree to a node type. -->
+            <!-- Filter toggles (right): each narrows or regroups the tree. -->
             <CommandBar IsOpen="False"
                         Padding="0"
                         VerticalAlignment="Center"
@@ -66,11 +164,18 @@
                         BorderThickness="0,0,0,1"
                         Background="Transparent">
                 <AppBarElementContainer VerticalContentAlignment="Center" Margin="0,0,8,0">
-                    <ToggleButton x:Name="QueryOperatorsToggle"
-                                  BorderThickness="0"
-                                  Click="OnFilterChanged">
-                        <TextBlock Text="Query Operators" VerticalAlignment="Center"/>
-                    </ToggleButton>
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <ToggleButton x:Name="PlanModeToggle"
+                                      BorderThickness="0"
+                                      Click="OnModeChanged">
+                            <TextBlock Text="Plan Operators" VerticalAlignment="Center"/>
+                        </ToggleButton>
+                        <ToggleButton x:Name="QueryOperatorsToggle"
+                                      BorderThickness="0"
+                                      Click="OnFilterChanged">
+                            <TextBlock Text="Query Operators" VerticalAlignment="Center"/>
+                        </ToggleButton>
+                    </StackPanel>
                 </AppBarElementContainer>
             </CommandBar>
         </Grid>
@@ -80,90 +185,17 @@
                        SelectionMode="Single"
                        CanDragItems="False"
                        CanReorderItems="False"
-                       Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <!-- Stretch each row's content to the full item width so the histogram can pin to the right edge. -->
+                       Background="{ThemeResource LayerFillColorDefaultBrush}"
+                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                       ScrollViewer.HorizontalScrollMode="Enabled"
+                       ItemTemplateSelector="{StaticResource NodeTemplateSelector}">
+            <!-- Let rows size to their content so a long symbol overflows (and the tree scrolls horizontally) rather
+                 than being trimmed; the histogram sits inline after the symbol. -->
             <muxc:TreeView.ItemContainerStyle>
                 <Style TargetType="muxc:TreeViewItem">
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
                 </Style>
             </muxc:TreeView.ItemContainerStyle>
-            <muxc:TreeView.ItemTemplate>
-                <DataTemplate x:DataType="muxc:TreeViewNode">
-                    <Grid HorizontalAlignment="Stretch" RightTapped="OnNodeRightTapped">
-                        <Grid.ContextFlyout>
-                            <MenuFlyout>
-                                <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
-                                <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
-                            </MenuFlyout>
-                        </Grid.ContextFlyout>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
-                                 tone (the operator name) is appended, otherwise the category badge stands alone. -->
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
-                                        CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
-                                        Padding="5,2,5,3">
-                                    <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
-                                               Foreground="White"
-                                               FontSize="9"
-                                               FontWeight="SemiBold"/>
-                                </Border>
-                                <Border CornerRadius="0,3,3,0"
-                                        Padding="5,2,5,3"
-                                        Background="#4A4A55"
-                                        Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
-                                    <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Operator}"
-                                               Foreground="White"
-                                               FontSize="9"
-                                               FontWeight="SemiBold"/>
-                                </Border>
-                            </StackPanel>
-
-                            <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Symbol}"
-                                       FontFamily="Consolas"
-                                       FontSize="11"
-                                       TextTrimming="CharacterEllipsis"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <!-- Activity histogram: right-aligned, shown only on the selected node — its subtree activity
-                             over the query window (taller = hotter), with the selected event's time bucket highlighted,
-                             the rest grey. The white background spans the full window so the chart's range (the whole
-                             query life) is visible even where buckets are empty. -->
-                        <Border Grid.Column="1"
-                                Background="White"
-                                CornerRadius="2"
-                                Padding="1"
-                                Margin="10,0,8,0"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
-                                Visibility="{x:Bind ((callstack:CallStackNode)Content).HasHistogram, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <ItemsControl ItemsSource="{x:Bind ((callstack:CallStackNode)Content).DisplayBars}"
-                                          Height="14">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="callstack:ActivityBar">
-                                        <Rectangle Width="3"
-                                                   Height="{x:Bind Height}"
-                                                   Margin="0,0,1,0"
-                                                   VerticalAlignment="Bottom"
-                                                   Fill="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"/>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </Border>
-                    </Grid>
-                </DataTemplate>
-            </muxc:TreeView.ItemTemplate>
         </muxc:TreeView>
     </Grid>
 </UserControl>

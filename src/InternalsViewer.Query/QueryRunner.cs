@@ -163,12 +163,22 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             // Trim events (and, below, the call stack) to the executed query's window so surrounding noise —
             // compilation, other statements, background work the trace also captured — is dropped.
-            if (eventOptions.CropToQuery && CropWindow(events) is (var start, var end))
+            //
+            // "The query's window" is a time span, but it is NOT the whole story: an event matched to this query's plan
+            // belongs to the query even when its timestamp lands outside the span. That happens because the window is
+            // derived from the spread operator layout while the events keep their own times — a read whose spread
+            // position drifts out, or a thread sample (query_thread_profile, not laid out by SpreadEvents) taken before
+            // the first page read. Dropping those on time alone would strip the reads and entry stacks the timeline's
+            // Plan Operators view and the call stack need, so plan-matched events are kept alongside the in-window ones.
+            if (eventOptions.CropToQuery && CropWindow(events) is (var start, var end, var planHandle))
             {
                 cropStart = start;
                 cropEnd = end;
 
-                events = events.Where(e => e.TimeUs >= start && e.TimeUs <= end).ToList();
+                events = events
+                    .Where(e => (e.TimeUs >= start && e.TimeUs <= end)
+                                || e.PlanNodeIdentifier?.PlanHandleId == planHandle)
+                    .ToList();
             }
 
             if (eventOptions.IncludeCallStack)
@@ -252,14 +262,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     // Padding kept either side of the query window so an event landing just on its boundary is not clipped.
     private const long CropPaddingUs = 100;
 
-    // The executed query's time window, taken from the whole-query operator event (plan NodeId -1) and padded, or null.
-    private static (long Start, long End)? CropWindow(List<EngineEvent> events)
+    // The executed query's time window, taken from the whole-query operator event (plan NodeId -1) and padded, plus the
+    // plan it belongs to (so plan-matched events can be kept for the call stack regardless of timestamp), or null.
+    private static (long Start, long End, short PlanHandle)? CropWindow(List<EngineEvent> events)
     {
         var queryNode = events.FirstOrDefault(e => e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 });
 
-        return queryNode is null
+        return queryNode?.PlanNodeIdentifier is not { } id
             ? null
-            : (Math.Max(0, queryNode.TimeUs - CropPaddingUs), queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs);
+            : (Math.Max(0, queryNode.TimeUs - CropPaddingUs), queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs,
+               id.PlanHandleId);
     }
 
     // The events whose call-stack frames survive the crop: the kept events, plus the child events inside each read

@@ -64,12 +64,9 @@ public static class ReadGrouping
         return result;
     }
 
-    // Contiguous single-page cold read: the folded latch suspend is the spine (its wait duration is the real read
-    // time) and the wait, physical read, file read and BUF latches attach by buffer latch address or page.
-    private static void CollectContiguousNonCachedReads(
-        IReadOnlyList<EngineEvent> events,
-        Dictionary<EngineEvent, List<EngineEvent>> members,
-        HashSet<EngineEvent> consumed)
+    private static void CollectContiguousNonCachedReads(IReadOnlyList<EngineEvent> events,
+                                                        Dictionary<EngineEvent, List<EngineEvent>> members,
+                                                        HashSet<EngineEvent> consumed)
     {
         var spines = events.OfType<LatchEvent>().Where(IsSuspend).ToList();
 
@@ -78,15 +75,13 @@ public static class ReadGrouping
             return;
         }
 
-        var byLatchAddress = spines
-            .Where(s => s.LatchAddress is not null)
-            .GroupBy(s => s.LatchAddress!.Value)
-            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.TimeUs).ToList());
+        var byLatchAddress = spines.Where(s => s.LatchAddress is not null)
+                                   .GroupBy(s => s.LatchAddress!.Value)
+                                   .ToDictionary(g => g.Key, g => g.OrderBy(s => s.TimeUs).ToList());
 
-        var byPage = spines
-            .Where(s => s.PageAddress is not null)
-            .GroupBy(s => s.PageAddress!.Value)
-            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.TimeUs).ToList());
+        var byPage = spines.Where(s => s.PageAddress is not null)
+                           .GroupBy(s => s.PageAddress!.Value)
+                           .ToDictionary(g => g.Key, g => g.OrderBy(s => s.TimeUs).ToList());
 
         foreach (var spine in spines)
         {
@@ -113,18 +108,13 @@ public static class ReadGrouping
         }
     }
 
-    // File-read-spined cold read: a completed file read (Size gives the page range — one page for Contiguous, many for
-    // Scatter/Gather) that the suspend pass did not consume. The physical reads and EX BUF latches for pages in its
-    // range attach. Catches Scatter/Gather reads (which never suspend) and Contiguous reads that finished without
-    // suspending (fast I/O), so a single-page read with no suspend no longer falls through ungrouped.
-    private static void CollectGatherReads(
-        IReadOnlyList<EngineEvent> events,
-        Dictionary<EngineEvent, List<EngineEvent>> members,
-        HashSet<EngineEvent> consumed)
+    private static void CollectGatherReads(IReadOnlyList<EngineEvent> events,
+                                           Dictionary<EngineEvent, List<EngineEvent>> members,
+                                           HashSet<EngineEvent> consumed)
     {
         var spines = events
             .OfType<FileEvent>()
-            .Where(f => f.Size > 0 && f.PageAddress is not null && !consumed.Contains(f) && !members.ContainsKey(f))
+            .Where(f => f is { Size: > 0, PageAddress: not null } && !consumed.Contains(f) && !members.ContainsKey(f))
             .ToList();
 
         if (spines.Count == 0)
@@ -157,28 +147,83 @@ public static class ReadGrouping
         }
     }
 
-    // Cached read: a page already in the buffer pool, read under a bare BUF SH latch with no load. Any such acquire the
-    // cold passes did not consume is its own single-page cached read (its folded release supplies the hold duration).
-    private static void CollectCachedReads(
-        IReadOnlyList<EngineEvent> events,
-        Dictionary<EngineEvent, List<EngineEvent>> members,
-        HashSet<EngineEvent> consumed)
+    private static void CollectCachedReads(IReadOnlyList<EngineEvent> events,
+                                           Dictionary<EngineEvent, List<EngineEvent>> members,
+                                           HashSet<EngineEvent> consumed)
     {
+        var nonCachedByAddress = new Dictionary<ulong, EngineEvent>();
+
+        foreach (var (spine, group) in members)
+        {
+            if (spine is not FileEvent && !group.Any(IsColdMarker))
+            {
+                continue;
+            }
+
+            foreach (var member in group)
+            {
+                if (member is LatchEvent { LatchAddress: { } address })
+                {
+                    nonCachedByAddress[address] = spine;
+                }
+            }
+        }
+
         foreach (var e in events)
         {
-            if (e is LatchEvent latch
-                && !consumed.Contains(latch)
-                && !members.ContainsKey(latch)
-                && IsCachedBufferAcquire(latch))
+            if (e is not LatchEvent latch
+                || consumed.Contains(latch)
+                || members.ContainsKey(latch)
+                || !IsCachedBufferAcquire(latch))
+            {
+                continue;
+            }
+
+            if (FoldTarget(latch, members, nonCachedByAddress) is { } spine)
+            {
+                members[spine].Add(latch);
+
+                consumed.Add(latch);
+            }
+            else
             {
                 members[latch] = [latch];
             }
         }
     }
 
-    // A file read's completed event carries no measured duration and its timestamp is only accurate to the
-    // millisecond, so the read finished somewhere within that ms. Cap its span at 1ms rather than expanding it across
-    // the whole read phase — that would assume continuous I/O, but the phase has gaps from other server activity.
+    // A page just read from disk stays in its buffer frame, so the scan's own SH read of it can land a scheduling
+    // quantum after the load. This window bounds how far a bare SH acquire may trail a non-cached read and still count
+    // as its tail rather than a genuinely separate cached re-read of the (still resident) page later in the query.
+    private const long CachedFoldToleranceUs = 15_000;
+
+    private static EngineEvent? FoldTarget(LatchEvent latch,
+                                           Dictionary<EngineEvent, List<EngineEvent>> members,
+                                           Dictionary<ulong, EngineEvent> nonCachedByAddress)
+    {
+        if (latch.LatchAddress is not { } address
+            || latch.PageAddress is not { } page
+            || !nonCachedByAddress.TryGetValue(address, out var spine))
+        {
+            return null;
+        }
+
+        var group = members[spine];
+
+        var touchesPage = group.OfType<PageEngineEvent>().Any(m => m.PageAddress == page);
+
+        if (!touchesPage)
+        {
+            return null;
+        }
+
+        var start = group.Min(m => m.TimeUs);
+
+        var end = group.Max(m => m.TimeUs + m.DurationUs);
+
+        return latch.TimeUs >= start && latch.TimeUs <= end + CachedFoldToleranceUs ? spine : null;
+    }
+
     private const long UnmeasuredReadUs = 1_000;
 
     private static void EstimateGatherDurations(Dictionary<EngineEvent, List<EngineEvent>> members)
@@ -192,10 +237,9 @@ public static class ReadGrouping
         }
     }
 
-    private static LatchEvent? ResolveSuspend(
-        EngineEvent e,
-        Dictionary<ulong, List<LatchEvent>> byLatchAddress,
-        Dictionary<PageAddress, List<LatchEvent>> byPage)
+    private static LatchEvent? ResolveSuspend(EngineEvent e,
+                                              Dictionary<ulong, List<LatchEvent>> byLatchAddress,
+                                              Dictionary<PageAddress, List<LatchEvent>> byPage)
     {
         return e switch
         {
@@ -207,9 +251,6 @@ public static class ReadGrouping
         };
     }
 
-    // Quantization slop: capture timestamps round to the millisecond, so a member landing just outside a spine's
-    // window still belongs to it. The nearest-in-time fall back only applies within this bound so a point window
-    // (an unpaired suspend that kept DurationUs 0) cannot swallow events from elsewhere in the query.
     private const long ToleranceUs = 1_000;
 
     private static LatchEvent? Nearest<TKey>(Dictionary<TKey, List<LatchEvent>> index, TKey key, long timeUs)
@@ -233,7 +274,6 @@ public static class ReadGrouping
         return nearest is not null && WindowDistance(nearest, timeUs) <= ToleranceUs ? nearest : null;
     }
 
-    // Gap between a time and a spine's [TimeUs, TimeUs + DurationUs] window, zero when the time falls inside it.
     private static long WindowDistance(LatchEvent spine, long timeUs)
     {
         if (timeUs < spine.TimeUs)
@@ -246,7 +286,6 @@ public static class ReadGrouping
         return timeUs > end ? timeUs - end : 0;
     }
 
-    // The gather read whose page range covers the page, nearest in time when more than one range does.
     private static FileEvent? ContainingGather(List<FileEvent> spines, PageAddress page, long timeUs)
     {
         FileEvent? best = null;
@@ -279,34 +318,25 @@ public static class ReadGrouping
 
     private static ReadEventGroup BuildGroup(EngineEvent spine, List<EngineEvent> members)
     {
-        // A gather file read is itself a physical I/O, so its group is non-cached regardless of which members landed;
-        // a suspend/cached group is non-cached only if a cold marker (a physical read or PAGEIOLATCH wait) attached.
-        var kind = spine is FileEvent || members.Any(IsColdMarker) ? ReadKind.NonCached : ReadKind.Cached;
+        var kind = spine is FileEvent || members.Any(IsColdMarker) ? ReadType.NonCached : ReadType.Cached;
 
-        // The spine (suspend or gather file read) carries no table identity itself, so it is taken from whichever
-        // member resolved it (a physical read or latch, enriched with the allocation unit), falling back to the spine.
         var identity = members.FirstOrDefault(m => !string.IsNullOrEmpty(m.TableName)) ?? spine;
 
-        // The plan handle links the group back to its execution plan, so it is preserved from any member
-        // that carries one (0 is the "no handle" sentinel).
         var planHandleId = members.Select(m => m.PlanHandleId).FirstOrDefault(h => h != 0);
 
-        // Every distinct page the read touched (physical reads and BUF latches), so the group links to all of them
-        // rather than a single page — the spine's own page is included as it is itself a member.
-        var pages = members
-            .OfType<PageEngineEvent>()
-            .Where(m => m.PageAddress is not null)
-            .Select(m => m.PageAddress!.Value)
-            .Distinct()
-            .OrderBy(p => p.FileId)
-            .ThenBy(p => p.PageId)
-            .ToList();
+        var pages = members.OfType<PageEngineEvent>()
+                           .Where(m => m.PageAddress is not null)
+                           .Select(m => m.PageAddress!.Value)
+                           .Distinct()
+                           .OrderBy(p => p.FileId)
+                           .ThenBy(p => p.PageId)
+                           .ToList();
 
         return new ReadEventGroup
         {
             Name = "Page Read",
             Events = members,
-            Kind = kind,
+            ReadType = kind,
             Pages = pages,
             // Timing comes from the spine: a suspend's folded DurationUs is the SQL-measured read time, a gather's is
             // the estimated one; a min/max envelope over the children would only reflect their ms-quantised timestamps.
@@ -318,11 +348,7 @@ public static class ReadGrouping
             TaskAddress = spine.TaskAddress,
             WorkerAddress = spine.WorkerAddress,
             PlanHandleId = planHandleId,
-            ObjectId = identity.ObjectId,
-            ObjectName = identity.ObjectName,
-            SchemaName = identity.SchemaName,
-            TableName = identity.TableName,
-            IndexName = identity.IndexName,
+            AllocationUnit = identity.AllocationUnit,
         };
     }
 
@@ -335,13 +361,8 @@ public static class ReadGrouping
 
     private static bool IsSuspend(LatchEvent e) => e.Name == "latch_suspend_begin";
 
-    // Pages in a gather read's range; at least one so a range read never estimates to zero pages.
     private static int PageCountOf(FileEvent f) => Math.Max(1, f.ToPageAddress.PageId - f.FromPageAddress.PageId);
 
-    // Events that make up a gather read: the physical page reads, the EX BUF latches that load each page into a frame,
-    // and the KP (keep) latches taken as each page is accessed straight after the load. Together with the file read
-    // they are the non-cached signature (the contiguous/suspend path already groups these by latch address). SH latches
-    // (the later scan re-read of the now-resident page) are left out — a lone SH is its own cached read.
     private static bool IsGatherMember(EngineEvent e) => e switch
     {
         IoEvent { IsRead: true } => true,
@@ -357,8 +378,6 @@ public static class ReadGrouping
         _ => null,
     };
 
-    // A shared buffer latch acquire on a page: the fingerprint of a cached read (a page read straight from the buffer
-    // pool with no load). Its release has already been folded in, so this single event carries the hold duration.
     private static bool IsCachedBufferAcquire(LatchEvent e) =>
         e is { LatchClass: LatchClass.BUF, LatchMode: LatchMode.SH, PageAddress: not null, Name: "latch_acquired" };
 }

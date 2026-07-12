@@ -14,4 +14,10 @@ namespace InternalsViewer.Query.Events.EventTypes;
 public abstract record PageEngineEvent : EngineEvent
 {
     public virtual PageAddress? PageAddress { get; set; }
+
+    // A page with no allocation unit is a special page (allocation map, file header, …), named from its address.
+    public override string ObjectName =>
+        AllocationUnit?.DisplayName
+        ?? (PageAddress is { } page ? PageNameHelper.TryGetPageName(page) : null)
+        ?? string.Empty;
 }

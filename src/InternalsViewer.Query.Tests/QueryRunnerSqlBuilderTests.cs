@@ -125,7 +125,7 @@ public class EventSqlTests
     [Fact]
     public async Task GetEventKeyAddresses_Skips_Lookup_When_No_AllocationUnit_Matches_ObjectId()
     {
-        var lockEvent = new LockEvent { ObjectId = 42, KeyHash = "somehash" };
+        var lockEvent = new LockEvent { LockObjectId = 42, KeyHash = "somehash" };
 
         var events = new List<EngineEvent> { lockEvent };
 
@@ -138,7 +138,7 @@ public class EventSqlTests
     [Fact]
     public async Task GetEventKeyAddresses_Ignores_LockEvents_Without_KeyHash()
     {
-        var lockEvent = new LockEvent { ObjectId = 42, KeyHash = null };
+        var lockEvent = new LockEvent { LockObjectId = 42, KeyHash = null };
 
         var events = new List<EngineEvent> { lockEvent };
 

@@ -24,6 +24,30 @@ public sealed record ExecutionOperatorEvent : EngineEvent
 
     public required string OperatorDescription { get; set; }
 
+    // An operator's object identity comes from the plan node (schema/table/index), not an allocation unit, so it is
+    // stored here and surfaced through the base name getters.
+    public string OperatorObjectName { get; init; } = string.Empty;
+
+    public string OperatorSchemaName { get; init; } = string.Empty;
+
+    public string OperatorTableName { get; init; } = string.Empty;
+
+    public string OperatorIndexName { get; init; } = string.Empty;
+
+    public override string ObjectName => OperatorObjectName;
+
+    public override string SchemaName => OperatorSchemaName;
+
+    public override string TableName => OperatorTableName;
+
+    public override string IndexName => OperatorIndexName;
+
+    /// <summary>The table (and index) this operator targets, for display, or empty when it has no object of its own</summary>
+    public string TargetLabel =>
+        TableName.Length == 0
+            ? string.Empty
+            : IndexName.Length == 0 ? TableName : $"{TableName}.{IndexName}";
+
     /// <summary>
     /// The plan's logical operator name (e.g. "Inner Join"), independent of <see cref="EngineEvent.Name"/>
     /// (the physical operator). Used as the timeline label's second line for operators with no object of

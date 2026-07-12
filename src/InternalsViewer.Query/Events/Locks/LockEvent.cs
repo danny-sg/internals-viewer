@@ -13,5 +13,14 @@ public sealed record LockEvent : PageEngineEvent
 
     public string? KeyHash { get; set; }
 
+    // The lock's raw object id (from the event) — a lock is on an object, not an allocation unit, and it drives both
+    // the enrichment lookup and the key-hash grouping, so it is kept even when no allocation unit resolves.
+    public int LockObjectId { get; init; }
+
+    public override int ObjectId => LockObjectId;
+
+    public override string ObjectName =>
+        AllocationUnit?.DisplayName ?? (LockObjectId > 0 ? $"(Object Id {LockObjectId})" : base.ObjectName);
+
     public override string Description => $"Lock: {LockMode}/{ResourceType}";
 }

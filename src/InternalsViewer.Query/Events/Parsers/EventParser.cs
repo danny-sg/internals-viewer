@@ -2,7 +2,6 @@
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Internals.Extensions;
-using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Plans;
@@ -79,46 +78,28 @@ public sealed class EventParser
             return engineEvent;
         }
 
+        // Object identity is a reference to the shared allocation unit; names are read from it on demand (page-only,
+        // object-id-only and special-page fallbacks live on the event subtypes).
         if (engineEvent is PageEngineEvent { ObjectId: 0, PageAddress: { } pageAddress } pageEvent)
         {
             var allocationUnit = database.FindPageAllocationUnit(pageAddress);
 
-            engineEvent.ObjectId = allocationUnit?.ObjectId ?? 0;
-            engineEvent.ObjectName = allocationUnit?.DisplayName
-                                     ?? TryGetPageName(pageAddress) ?? string.Empty;
+            engineEvent.AllocationUnit = allocationUnit;
 
             if (pageEvent is IoEvent ioEvent && allocationUnit?.RootPage == pageAddress)
             {
                 ioEvent.IsRoot = true;
             }
-
-            ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: true);
         }
         else if (engineEvent.ObjectId > 0)
         {
-            var allocationUnit = database.AllocationUnits
-                .Values
-                .FirstOrDefault(f => f.ObjectId == engineEvent.ObjectId);
-
-            engineEvent.ObjectName = allocationUnit?.DisplayName ?? $"(Object Id {engineEvent.ObjectId})";
-
-            if (engineEvent is IoEvent ioEvent && allocationUnit?.RootPage == ioEvent.PageAddress)
-            {
-                ioEvent.IsRoot = true;
-            }
-
-            ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: false);
+            engineEvent.AllocationUnit = database.FindObjectIdAllocationUnit(engineEvent.ObjectId);
         }
         else if (engineEvent is TransactionLogEvent { AllocationUnitId: > 0 } logEvent)
         {
-            var allocationUnit = database.AllocationUnits.TryGetValue(logEvent.AllocationUnitId, out var value)
+            engineEvent.AllocationUnit = database.AllocationUnits.TryGetValue(logEvent.AllocationUnitId, out var value)
                 ? value
                 : AllocationUnit.Unknown;
-
-            engineEvent.ObjectId = allocationUnit?.ObjectId ?? 0;
-            engineEvent.ObjectName = allocationUnit?.DisplayName ?? string.Empty;
-
-            ApplyObjectIdentity(engineEvent, allocationUnit, includeIndex: true);
         }
 
         engineEvent.Category = EventCategoryClassifier.GetCategory(engineEvent);
@@ -129,8 +110,6 @@ public sealed class EventParser
 
             if (frames.Count > 0)
             {
-                // Merge this event's frames into the shared tree and link it at the leaf, rather than holding a frame
-                // list per event.
                 engineEvent.CallStack = callStack.Add(frames, engineEvent);
             }
         }
@@ -147,60 +126,6 @@ public sealed class EventParser
             DatabaseId = e.GetDatabaseId(),
             SqlText = e.GetString("batch_text")
         };
-    }
-
-    private static void ApplyObjectIdentity(EngineEvent engineEvent, AllocationUnit? allocationUnit, bool includeIndex)
-    {
-        if (allocationUnit is null)
-        {
-            return;
-        }
-
-        engineEvent.SchemaName = allocationUnit.SchemaName;
-        engineEvent.TableName = allocationUnit.TableName;
-
-        if (includeIndex)
-        {
-            engineEvent.IndexName = allocationUnit.IndexName;
-        }
-    }
-
-    private static string? TryGetPageName(PageAddress pageAddress)
-    {
-        switch (pageAddress.PageId)
-        {
-            case 0:
-                return "File Header";
-            case 9:
-                return "Boot page";
-            default:
-                if (PageHelpers.IsBcm(pageAddress.PageId))
-                {
-                    return "BCM";
-                }
-
-                if (PageHelpers.IsDcm(pageAddress.PageId))
-                {
-                    return "DCM";
-                }
-
-                if (PageHelpers.IsGam(pageAddress.PageId))
-                {
-                    return "GAM";
-                }
-
-                if (PageHelpers.IsSgam(pageAddress.PageId))
-                {
-                    return "SGAM";
-                }
-
-                if (PageHelpers.IsPfs(pageAddress.PageId))
-                {
-                    return "PFS";
-                }
-
-                return null;
-        }
     }
 
     private static EngineEvent MapMemory(EventResult e)
@@ -318,7 +243,7 @@ public sealed class EventParser
             DatabaseId = e.GetDatabaseId(),
             LockMode = lockMode,
             ResourceType = (LockResourceType)(e.GetInt("resource_type") ?? 0),
-            ObjectId = e.GetInt("object_id") ?? 0
+            LockObjectId = e.GetInt("object_id") ?? 0
         };
 
         return resourceType switch

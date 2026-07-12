@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.Callstack;
+﻿using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Plans;
 
 namespace InternalsViewer.Query.Events.EventTypes;
@@ -17,15 +18,17 @@ public record EngineEvent
 
     public virtual long DurationUs { get; set; }
 
-    public int ObjectId { get; set; }
+    public AllocationUnit? AllocationUnit { get; set; }
 
-    public string ObjectName { get; set; } = string.Empty;
+    public virtual int ObjectId => AllocationUnit?.ObjectId ?? 0;
 
-    public string SchemaName { get; set; } = string.Empty;
+    public virtual string ObjectName => AllocationUnit?.DisplayName ?? string.Empty;
 
-    public string TableName { get; set; } = string.Empty;
+    public virtual string SchemaName => AllocationUnit?.SchemaName ?? string.Empty;
 
-    public string IndexName { get; set; } = string.Empty;
+    public virtual string TableName => AllocationUnit?.TableName ?? string.Empty;
+
+    public virtual string IndexName => AllocationUnit?.IndexName ?? string.Empty;
 
     internal short PlanHandleId { get; set; }
 
@@ -39,13 +42,6 @@ public record EngineEvent
 
     public PlanNodeIdentifier? PlanNodeIdentifier { get; set; }
 
-    /// <summary>
-    /// The leaf node of this event's path in the shared call stack tree (null if no stack was captured)
-    /// </summary>
-    /// <remarks>
-    /// The frames themselves live once in <see cref="Callstack.CallStackTree"/>; walk <see cref="CallStackNode.Parent"/>
-    /// from here for this event's path.
-    /// </remarks>
     public CallStackNode? CallStack { get; set; }
 
     public ulong? TaskAddress { get; set; }
