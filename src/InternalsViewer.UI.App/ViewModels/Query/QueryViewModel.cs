@@ -28,6 +28,7 @@ using System.Drawing;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Callstack.Categories;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
@@ -181,11 +182,21 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<CallstackFrame> _callstacks = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CallStackRoots))]
+    private CallStackTree? _callStack;
+
+    /// <summary>
+    /// The top-level frames (thread starts) of the query's merged call stack tree, for the call tree view
+    /// </summary>
+    public IEnumerable<CallStackNode> CallStackRoots => CallStack?.Root.ChildNodes ?? [];
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedCallstack))]
     private EngineEvent? _selectedEvent;
 
+    // The selected event's path is recovered by walking its leaf node up the shared call stack tree.
     public List<CallstackFrame> SelectedCallstack
-        => SelectedEvent?.Callstack
+        => SelectedEvent?.CallStack?.Path()
                         .Where(f => f.Resolved is null
                                  || (f.Resolved.ModuleCategory.GetCategoryMetadata()?.IsInfrastructure != true
                                   && f.Resolved.SymbolCategory.GetCategoryMetadata()?.IsInfrastructure != true))
@@ -663,11 +674,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                     break;
 
                 case NonCachedReadEventGroup group:
-                    // A read spans many pages now, so add a read span for each page it touched.
+                    // A read spans many pages now, so add a read span for each page it touched, timed at the read's END
+                    // (the pages hit the buffer on completion, matching the timeline read band's end-bunched rails).
                     var groupColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
+                    var groupReadAtUs = e.TimeUs + e.DurationUs;
                     foreach (var page in group.Pages)
                     {
-                        Add(new PageSpan(page, e.TimeUs, queryEndUs, groupColour), isRead: true);
+                        Add(new PageSpan(page, groupReadAtUs, queryEndUs, groupColour), isRead: true);
                     }
                     break;
             }
@@ -961,10 +974,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             Events = results.EngineEvents;
 
-            Callstacks = results.EngineEvents
-                                .Where(e => e.Callstack is { Count: > 0 })
-                                .SelectMany(e => e.Callstack)
-                                .ToList();
+            // The distinct frames now live once in the shared tree rather than per event.
+            Callstacks = results.CallStack?.Nodes().Select(n => n.Frame!).ToList() ?? [];
+
+            CallStack = results.CallStack;
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
 
@@ -1080,11 +1093,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             {
                 var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
 
+                // The pages hit the buffer when the read COMPLETES, not when it is issued, so light them at the read's
+                // end — matching the timeline read band, whose return rails bunch at the end (see EventTimelineControl).
+                var readAtUs = e.TimeUs + e.DurationUs;
+
                 foreach (var p in group.Pages)
                 {
                     if (p.FileId > 0 && p.FileId <= maxFileId)
                     {
-                        pageSpans.Add(new PageSpan(p, e.TimeUs, queryEndUs, readColour));
+                        pageSpans.Add(new PageSpan(p, readAtUs, queryEndUs, readColour));
                     }
                 }
 

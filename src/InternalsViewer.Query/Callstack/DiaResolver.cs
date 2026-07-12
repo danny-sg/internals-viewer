@@ -48,6 +48,36 @@ public sealed class DiaResolver : IDisposable
         return buffer.ToString();
     }
 
+    /// <summary>
+    /// The demangled names of every public symbol in the PDB whose name starts with <paramref name="prefix"/>
+    /// </summary>
+    /// <remarks>
+    /// Used to seed the operator mapping — e.g. enumerate everything beginning <c>CQ</c> to see the iterator classes.
+    /// </remarks>
+    public IEnumerable<string> EnumerateSymbols(string prefix)
+    {
+        var enumerator = DiaBridge.BeginEnumSymbols(_session, prefix);
+
+        if (enumerator == IntPtr.Zero)
+        {
+            yield break;
+        }
+
+        try
+        {
+            var buffer = new StringBuilder(4096);
+
+            while (DiaBridge.NextSymbol(enumerator, buffer, buffer.Capacity))
+            {
+                yield return buffer.ToString();
+            }
+        }
+        finally
+        {
+            DiaBridge.EndEnumSymbols(enumerator);
+        }
+    }
+
     public void Dispose()
     {
         if (_session != IntPtr.Zero)

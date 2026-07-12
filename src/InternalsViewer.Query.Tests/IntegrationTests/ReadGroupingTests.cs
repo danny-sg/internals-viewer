@@ -23,7 +23,7 @@ public class ReadGroupingTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public async Task Are_Read_Events_Grouped_For_Heap()
     {
-        var query = "SELECT TOP 10 * FROM dbo.HeapTable";
+        var query = "SELECT TOP 100 * FROM dbo.HeapTable";
 
         await TestQuery(query);
     }
@@ -34,6 +34,44 @@ public class ReadGroupingTests(ITestOutputHelper testOutputHelper)
         var query = "SELECT TOP 10 * FROM dbo.ClusteredTable";
 
         await TestQuery(query);
+    }
+
+    [Fact]
+    public async Task Diagnose_KP_Reads_And_Physical_Reads()
+    {
+        var results = await RunQuery("SELECT TOP 100 * FROM dbo.HeapTable");
+
+        TestOutputHelper.WriteLine("=== grouped reads: composition ===");
+
+        foreach (var g in results.EngineEvents.OfType<NonCachedReadEventGroup>())
+        {
+            var m = g.Events;
+
+            var hasPhysical = m.Any(e => e.Name == "physical_page_read");
+            var hasFileRead = m.Any(e => e.Name == "file_read");
+            var ex = m.Count(e => e is LatchEvent { LatchMode: Events.Latches.LatchMode.EX });
+            var sh = m.Count(e => e is LatchEvent { LatchMode: Events.Latches.LatchMode.SH });
+            var kp = m.Count(e => e is LatchEvent { LatchMode: Events.Latches.LatchMode.KP });
+
+            var flag = kp > 0 && !hasPhysical ? "   <-- KP but NO physical_page_read" : "";
+
+            TestOutputHelper.WriteLine($"{g.Kind,-9} {g.Description,-34} phys={hasPhysical,-5} file={hasFileRead,-5} "
+                + $"EX={ex} SH={sh} KP={kp}{flag}");
+        }
+
+        var grouped = results.EngineEvents.OfType<NonCachedReadEventGroup>().SelectMany(g => g.Events).ToHashSet();
+
+        var bareKp = results.EngineEvents.OfType<LatchEvent>()
+            .Where(l => l.LatchMode == Events.Latches.LatchMode.KP && !grouped.Contains(l))
+            .ToList();
+
+        TestOutputHelper.WriteLine("");
+        TestOutputHelper.WriteLine($"=== bare BUF KP latches (not grouped): {bareKp.Count} ===");
+
+        foreach (var latch in bareKp)
+        {
+            TestOutputHelper.WriteLine($"{latch.TimeUs} bare KP {latch.PageAddress}");
+        }
     }
 
     private async Task TestQuery(string sql)

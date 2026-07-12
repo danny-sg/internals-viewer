@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Parsers;
@@ -13,7 +14,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 {
     public ILogger<EventReader> Logger { get; } = logger;
 
-    public async Task<(List<EngineEvent>, List<ExecutionPlan>)> GetEvents(string filePath,
+    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree)> GetEvents(string filePath,
                                                                           string connectionString,
                                                                           DatabaseSource? database,
                                                                           CancellationToken cancellationToken,
@@ -119,7 +120,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         consolidatedEvents.AddRange(operatorEvents);
 
-        return (consolidatedEvents, executionPlans);
+        return (consolidatedEvents, executionPlans, eventParser.CallStack);
     }
 
     private static int ReadColumn(SqlDataReader reader, int ordinal, ref char[] buffer)
@@ -212,12 +213,31 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
                 var start = Math.Max(centred, Math.Max(cursor, windowStart));
 
-                e.TimeUs = start;
+                ShiftTo(e, start);
 
                 cursor = start + e.DurationUs + MinGapUs;
             }
 
             i = j;
+        }
+    }
+
+    // Moves an event to its spread start; a grouped read carries its members with it (by the same delta) so its child
+    // events stay aligned under it. The group's spread position is the corrected timeline — the members' own timestamps
+    // are the ms-quantised ones the spread exists to replace — so without this the members would show earlier than the
+    // group they belong to.
+    private static void ShiftTo(EngineEvent e, long start)
+    {
+        var delta = start - e.TimeUs;
+
+        e.TimeUs = start;
+
+        if (delta != 0 && e is NonCachedReadEventGroup group)
+        {
+            foreach (var member in group.Events)
+            {
+                member.TimeUs += delta;
+            }
         }
     }
 

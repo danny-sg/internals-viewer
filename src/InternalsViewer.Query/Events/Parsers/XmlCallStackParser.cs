@@ -31,7 +31,9 @@ public static class XmlCallStackParser
             var tag = xml[i..(tagEnd + 1)];
             
             var module = XmlEventAttributeParser.GetAttribute(tag, "module");
-            
+
+            var addressSpan = XmlEventAttributeParser.GetAttribute(tag, "address");
+
             var pdb = XmlEventAttributeParser.GetAttribute(tag, "pdb");
             
             var guid = XmlEventAttributeParser.GetAttribute(tag, "guid");
@@ -50,9 +52,16 @@ public static class XmlCallStackParser
                         : 0U
                     : uint.TryParse(rvaSpan, out var dec) ? dec : 0U;
 
+                var address = !addressSpan.IsEmpty && addressSpan.Length > 2 && addressSpan[1] is 'x' or 'X'
+                    ? ulong.TryParse(addressSpan[2..], System.Globalization.NumberStyles.HexNumber, null, out var addr)
+                        ? addr
+                        : 0UL
+                    : 0UL;
+
                 frames.Add(new CallstackFrame
                 {
                     Module = module.ToString(),
+                    Address = address,
                     Pdb = pdb.ToString(),
                     Guid = guid.ToString(),
                     Age = age,

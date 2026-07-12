@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Query.Callstack;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.EventTypes;
@@ -12,7 +13,10 @@ namespace InternalsViewer.Query.Events.Parsers;
 
 public sealed class EventParser
 {
-    public EngineEvent? ToEngineEvent(EventResult e, DatabaseSource? database, PlanHandleRegistry planHandles)
+    public EngineEvent? ToEngineEvent(EventResult e,
+                                      DatabaseSource? database,
+                                      PlanHandleRegistry planHandles,
+                                      CallStackTree callStack)
     {
         var engineEvent = e.Name switch
         {
@@ -118,7 +122,14 @@ public sealed class EventParser
 
         if (e.Actions.ContainsKey("callstack"))
         {
-            engineEvent.Callstack = XmlCallStackParser.ParseCallstack(e.GetStringAction("callstack"));
+            var frames = XmlCallStackParser.ParseCallstack(e.GetStringAction("callstack"));
+
+            if (frames.Count > 0)
+            {
+                // Merge this event's frames into the shared tree and link it at the leaf, rather than holding a frame
+                // list per event.
+                engineEvent.CallStack = callStack.Add(frames, engineEvent);
+            }
         }
 
         return engineEvent;

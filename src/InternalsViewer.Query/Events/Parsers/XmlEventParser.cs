@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
 
@@ -18,6 +19,11 @@ internal sealed class XmlEventParser
     private readonly PlanHandleRegistry _planHandles;
 
     private readonly EventParser _eventParser;
+
+    /// <summary>
+    /// The shared call stack tree built from every parsed event's frames
+    /// </summary>
+    public CallStackTree CallStack { get; } = new();
 
     // Reused for every event. Values are stored as ranges into the event's character buffer, not strings,
     // so only the few that are read as strings ever allocate (see EventResultExtensions).
@@ -65,7 +71,7 @@ internal sealed class XmlEventParser
             return null;
         }
 
-        return _eventParser.ToEngineEvent(_result, _database, _planHandles);
+        return _eventParser.ToEngineEvent(_result, _database, _planHandles, CallStack);
     }
 
     private bool PopulateResult(ReadOnlySpan<char> xml)

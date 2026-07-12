@@ -5,84 +5,128 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
-    xmlns:eventTypes="using:InternalsViewer.Query.Events.EventTypes"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:callstack="using:InternalsViewer.Query.Callstack"
     mc:Ignorable="d">
-    <controls:DataGrid x:Name="CallstackGrid"
-                       ItemsSource="{x:Bind ViewModel.SelectedCallstack, Mode=OneWay}"
-                       AutoGenerateColumns="False"
-                       IsReadOnly="True"
-                       GridLinesVisibility="Horizontal"
-                       Background="{ThemeResource LayerFillColorDefaultBrush}"
-                       HorizontalScrollBarVisibility="Auto"
-                       VerticalScrollBarVisibility="Auto">
-        <controls:DataGrid.Columns>
-            <controls:DataGridTemplateColumn Header="Module" Width="120">
-                <controls:DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate x:DataType="eventTypes:CallstackFrame">
-                        <Border Background="{Binding Resolved.ModuleMetadata.ForegroundColor,
-                                                     Converter={StaticResource HexColorToBrushConverter}}"
-                                CornerRadius="3"
-                                Padding="5,1"
-                                Margin="4,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Resolved.ModuleMetadata.Name}"
-                                       Foreground="White"
-                                       FontSize="10"
-                                       FontWeight="SemiBold"/>
-                        </Border>
-                    </DataTemplate>
-                </controls:DataGridTemplateColumn.CellTemplate>
-            </controls:DataGridTemplateColumn>
-            <controls:DataGridTemplateColumn Header="Category" Width="140">
-                <controls:DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate x:DataType="eventTypes:CallstackFrame">
-                        <Border Background="{Binding Resolved.SymbolMetadata.ForegroundColor,
-                                                     Converter={StaticResource HexColorToBrushConverter}}"
-                                CornerRadius="3"
-                                Padding="5,1"
-                                Margin="4,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Resolved.SymbolMetadata.Name}"
-                                       Foreground="White"
-                                       FontSize="10"
-                                       FontWeight="SemiBold"/>
-                        </Border>
-                    </DataTemplate>
-                </controls:DataGridTemplateColumn.CellTemplate>
-            </controls:DataGridTemplateColumn>
-            <controls:DataGridTemplateColumn Header="Symbol" Width="*">
-                <controls:DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate x:DataType="eventTypes:CallstackFrame">
-                        <StackPanel Orientation="Horizontal"
-                                    Spacing="0"
-                                    VerticalAlignment="Center"
-                                    Margin="4,2">
-                            <TextBlock Text="{x:Bind Module, Mode=OneWay}"
-                                       Foreground="DarkGreen"
-                                       FontFamily="Consolas"/>
-                            <TextBlock Text="!"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                       FontFamily="Consolas"/>
-                            <TextBlock Text="{x:Bind Resolved.ClassName, Mode=OneWay}"
-                                       Foreground="Navy"
-                                       FontWeight="Bold"
-                                       FontFamily="Consolas"/>
-                            <TextBlock Text="::"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                       FontFamily="Consolas"/>
-                            <TextBlock Text="{x:Bind Resolved.MethodName, Mode=OneWay}"
-                                       Foreground="Gray"
-                                       FontFamily="Consolas"/>
+
+    <!-- The whole query's call stacks merged into one tree: each node is a function, its children the functions it
+         called. Infrastructure frames are hidden; the Start dropdown chooses where the tree roots. Populated
+         node-first in code-behind so the path to a selected event can be expanded and selected; starts collapsed. -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Padding="8,4"
+                    VerticalAlignment="Center">
+            <TextBlock Text="Start:" VerticalAlignment="Center"/>
+            <ComboBox x:Name="StartCombo"
+                      MinWidth="140"
+                      SelectionChanged="OnStartChanged">
+                <!-- Tag is the symbol to root at; empty roots at the (post-infrastructure) top. -->
+                <ComboBoxItem Content="Execute" Tag="CSQLSource::Execute"/>
+                <ComboBoxItem Content="User Thread" Tag=""/>
+            </ComboBox>
+        </StackPanel>
+
+        <muxc:TreeView x:Name="Tree"
+                       Grid.Row="1"
+                       SelectionMode="Single"
+                       CanDragItems="False"
+                       CanReorderItems="False"
+                       Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <!-- Stretch each row's content to the full item width so the histogram can pin to the right edge. -->
+            <muxc:TreeView.ItemContainerStyle>
+                <Style TargetType="muxc:TreeViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                </Style>
+            </muxc:TreeView.ItemContainerStyle>
+            <muxc:TreeView.ItemTemplate>
+                <DataTemplate x:DataType="muxc:TreeViewNode">
+                    <Grid HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
+                                    CornerRadius="3"
+                                    Padding="5,0"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
+                                           Foreground="White"
+                                           FontSize="9"
+                                           FontWeight="SemiBold"/>
+                            </Border>
+
+                            <!-- Operator badge: two-tone pill (Name | Kind, e.g. "Table Scan | Iterator") shown when
+                                 the frame is a CQScan iterator mapped to a plan operator. -->
+                            <StackPanel Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Border CornerRadius="3,0,0,3"
+                                        Padding="5,0"
+                                        Background="#2E7D9A">
+                                    <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).OperatorTag.Name}"
+                                               Foreground="White"
+                                               FontSize="9"
+                                               FontWeight="SemiBold"/>
+                                </Border>
+                                <Border CornerRadius="0,3,3,0"
+                                        Padding="5,0"
+                                        Background="#4A4A55">
+                                    <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).OperatorTag.Kind}"
+                                               Foreground="White"
+                                               FontSize="9"
+                                               FontWeight="SemiBold"/>
+                                </Border>
+                            </StackPanel>
+
+                            <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Symbol}"
+                                       FontFamily="Consolas"
+                                       FontSize="11"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"/>
                         </StackPanel>
-                    </DataTemplate>
-                </controls:DataGridTemplateColumn.CellTemplate>
-            </controls:DataGridTemplateColumn>
-            <controls:DataGridTextColumn Header="Offset"
-                                         Binding="{Binding Resolved.Offset, Mode=OneWay}"
-                                         Width="80"/>
-        </controls:DataGrid.Columns>
-    </controls:DataGrid>
+
+                        <!-- Activity histogram: right-aligned, shown only on the selected node — its subtree activity
+                             over the query window (taller = hotter), with the selected event's time bucket highlighted,
+                             the rest grey. The white background spans the full window so the chart's range (the whole
+                             query life) is visible even where buckets are empty. -->
+                        <Border Grid.Column="1"
+                                Background="White"
+                                CornerRadius="2"
+                                Padding="1"
+                                Margin="10,0,8,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Visibility="{x:Bind ((callstack:CallStackNode)Content).HasHistogram, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ItemsControl ItemsSource="{x:Bind ((callstack:CallStackNode)Content).DisplayBars}"
+                                          Height="14">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="callstack:ActivityBar">
+                                        <Rectangle Width="3"
+                                                   Height="{x:Bind Height}"
+                                                   Margin="0,0,1,0"
+                                                   VerticalAlignment="Bottom"
+                                                   Fill="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </muxc:TreeView.ItemTemplate>
+        </muxc:TreeView>
+    </Grid>
 </UserControl>

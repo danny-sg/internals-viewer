@@ -234,6 +234,101 @@ bool ResolveRva(void *sessionHandle, unsigned int rva, wchar_t *buffer, int buff
     return true;
 }
 
+// Holds a live symbol enumeration and the prefix to filter on. The enumerator is bound to its session, so it must be
+// released (End) before the session is closed.
+struct EnumHandle
+{
+    ComPtr<IDiaEnumSymbols> Symbols;
+    std::wstring Prefix;
+};
+
+void *BeginEnumSymbols(void *sessionHandle, const wchar_t *prefix)
+{
+    if (!sessionHandle)
+    {
+        return nullptr;
+    }
+
+    auto handle = static_cast<DiaHandle *>(sessionHandle);
+
+    ComPtr<IDiaSymbol> global;
+
+    if (FAILED(handle->Session->get_globalScope(global.GetAddressOf())) || !global)
+    {
+        return nullptr;
+    }
+
+    ComPtr<IDiaEnumSymbols> symbols;
+
+    // Public symbols cover the exported/public functions found in the symbol-server PDBs (which are public PDBs).
+    if (FAILED(global->findChildren(SymTagPublicSymbol, nullptr, nsNone, symbols.GetAddressOf())) || !symbols)
+    {
+        return nullptr;
+    }
+
+    auto enumerator = new EnumHandle();
+
+    enumerator->Symbols = symbols;
+    enumerator->Prefix = prefix ? prefix : L"";
+
+    return enumerator;
+}
+
+bool NextSymbol(void *enumeratorHandle, wchar_t *buffer, int bufferLength)
+{
+    if (!enumeratorHandle)
+    {
+        return false;
+    }
+
+    auto enumerator = static_cast<EnumHandle *>(enumeratorHandle);
+
+    for (;;)
+    {
+        ComPtr<IDiaSymbol> symbol;
+
+        ULONG fetched = 0;
+
+        if (FAILED(enumerator->Symbols->Next(1, symbol.GetAddressOf(), &fetched)) || fetched != 1)
+        {
+            return false;
+        }
+
+        BSTR name = nullptr;
+
+        std::wstring friendly;
+
+        if (SUCCEEDED(symbol->get_name(&name)) && name)
+        {
+            friendly = DemangleName(name);
+
+            SysFreeString(name);
+        }
+
+        // rfind(prefix, 0) == 0 is a StartsWith test.
+        if (!friendly.empty() && (enumerator->Prefix.empty() || friendly.rfind(enumerator->Prefix, 0) == 0))
+        {
+            swprintf_s(buffer, bufferLength, L"%s", friendly.c_str());
+
+            return true;
+        }
+    }
+}
+
+void EndEnumSymbols(void *enumeratorHandle)
+{
+    if (!enumeratorHandle)
+    {
+        return;
+    }
+
+    auto enumerator = static_cast<EnumHandle *>(enumeratorHandle);
+
+    enumerator->Symbols.Reset();
+
+    delete enumerator;
+}
+
 void ClosePdb(void *sessionHandle)
 {
     if (!sessionHandle)

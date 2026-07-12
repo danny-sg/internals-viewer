@@ -63,9 +63,39 @@ public class SpreadEventsTests
         Assert.InRange(latch.TimeUs, 252_000, 253_000);
     }
 
+    [Fact]
+    public void Members_Move_With_Their_Group_So_None_Precede_It()
+    {
+        // A grouped read whose members sit at its start and 500us in. An earlier long read forces the group to overflow
+        // forward when spread — its members must move with it, not stay at their raw (pre-spread) times.
+        var member0 = new LatchEvent { Name = "latch_suspend_begin", TimeUs = 252_000, TaskAddress = 1 };
+
+        var member1 = new LatchEvent { Name = "latch_acquired", TimeUs = 252_500, TaskAddress = 1 };
+
+        var group = new NonCachedReadEventGroup
+        {
+            Name = "Page Read",
+            Events = [member0, member1],
+            TimeUs = 252_000,
+            DurationUs = 100,
+            TaskAddress = 1,
+        };
+
+        var earlier = Read(timeUs: 251_000, durationUs: 1_500);
+
+        EventReader.SpreadEvents([earlier, group]);
+
+        Assert.True(group.TimeUs > 252_000, "the earlier long read should have pushed the group forward");
+
+        // The members kept their relative offsets but moved by the group's delta, so none start before the group.
+        Assert.Equal(group.TimeUs, member0.TimeUs);
+        Assert.Equal(group.TimeUs + 500, member1.TimeUs);
+        Assert.All(group.Events, m => Assert.True(m.TimeUs >= group.TimeUs, "no member should precede its group"));
+    }
+
     private static NonCachedReadEventGroup Read(long timeUs, long durationUs) => new()
     {
-        Name = "page_read",
+        Name = "Page Read",
         Events = [],
         TimeUs = timeUs,
         DurationUs = durationUs,

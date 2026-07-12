@@ -14,6 +14,11 @@ public sealed record QueryResult
 
     public List<ExecutionPlan> ExecutionPlans { get; set; } = [];
 
+    /// <summary>
+    /// The whole query run's call stacks merged into one tree, with events linked at their leaf
+    /// </summary>
+    public Callstack.CallStackTree? CallStack { get; set; }
+
     public List<QueryResultSet> ResultSets { get; set; } = [];
 
     public string Message { get; set; } = string.Empty;

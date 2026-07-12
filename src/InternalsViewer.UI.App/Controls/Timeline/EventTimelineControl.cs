@@ -42,6 +42,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
     // on I/O completion) — purely for legibility, not real timing.
     private const float PageRailGapPx = 3f;
 
+    // Minimum start-to-end pixel gap for the dotted call rail to be worth drawing: on a short read the call rail (at the
+    // start) and the solid return rail (at the end) would sit on top of each other, so below this the return rail alone
+    // stands for the read.
+    private const float MinCallRailGapPx = 4f;
+
 
     private const double TransportButtonHeight = 26;
 
@@ -995,11 +1000,15 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
             var markerColor = GetMarkerColor(sourceEvent, rowIndex, category);
 
-            var markerWidth = RowMarkerWidth(rowIndex);
+            // Latches are demoted (the read grouping carries the timing now), so a latch is always a fixed 1px tick —
+            // it never widens on a sparse row and never scales by its (folded hold) duration.
+            var isLatch = sourceEvent is LatchEvent;
+
+            var markerWidth = isLatch ? MarkerWidth : RowMarkerWidth(rowIndex);
 
             var startX = TimeToX(_times[i]);
 
-            var hasDuration = sourceEvent.DurationUs > 0;
+            var hasDuration = sourceEvent.DurationUs > 0 && !isLatch;
 
             var endX = hasDuration
                 ? TimeToX(_times[i] + DurationMs(sourceEvent))
@@ -1695,8 +1704,12 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
                 var colour = TraceColour(io, ioRow, DimForSelection(io));
 
-                _readBoundaryPaint.Color = colour;
-                canvas.DrawLine(startX, b.BarBottom, startX, readTop, _readBoundaryPaint);
+                // Only draw the dotted call rail when it is far enough left of the end return rail to read as distinct.
+                if (endX - startX > MinCallRailGapPx)
+                {
+                    _readBoundaryPaint.Color = colour;
+                    canvas.DrawLine(startX, b.BarBottom, startX, readTop, _readBoundaryPaint);
+                }
 
                 _readReturnPaint.Color = colour;
 
@@ -1721,7 +1734,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
             // same buffer-pool link the read trace already provides for physical I/O.
             var latchTop = rowTops[latchRow] + RowPadding;
 
-            var width = RowMarkerWidth(latchRow);
+            // Match the fixed 1px latch ticks rather than widening on a sparse row.
+            var width = MarkerWidth;
 
             for (var i = 0; i < _sortedEvents.Count; i++)
             {

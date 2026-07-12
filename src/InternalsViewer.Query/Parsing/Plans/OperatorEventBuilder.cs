@@ -214,10 +214,10 @@ internal sealed class OperatorEventBuilder
             Threads = BuildThreads(node, start),
             SequenceId = NearestSequenceId(start) - sequenceOffset,
             OperatorDescription = description,
-            Callstack = EventsFor(node)
+            CallStack = EventsFor(node)
                             .OfType<QueryThreadEvent>()
-                            .Select(e => e.Callstack)
-                            .FirstOrDefault(c => c is { Count: > 0 }) ?? []
+                            .Select(e => e.CallStack)
+                            .FirstOrDefault(c => c is not null)
         };
 
         ApplyPhases(operatorEvent, node, emitStart, end);

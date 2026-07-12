@@ -35,44 +35,78 @@ namespace InternalsViewer.Query.Callstack;
 /// </remarks>
 internal class CallstackProcessor
 {
-    public static async Task<string[]> Process(List<EngineEvent> events, 
+    public static async Task<string[]> Process(CallStackTree callStack,
                                                string symbolsPath,
-                                               IProgress<string>? progress, 
+                                               IProgress<string>? progress,
                                                CancellationToken cancellationToken)
     {
         var unknown = new HashSet<string>();
 
-        await SymbolDownloader.DownloadSymbols(events.SelectMany(e => e.Callstack), 
-                                               symbolsPath, 
-                                               progress,
-                                               cancellationToken);
+        // The tree already merged identical frames, so each is downloaded and resolved once rather than per event.
+        var frames = callStack.Nodes().Select(node => node.Frame!).ToList();
+
+        HealUnsymbolisedFrames(frames);
+
+        await SymbolDownloader.DownloadSymbols(frames, symbolsPath, progress, cancellationToken);
 
         using var resolver = new CallstackResolver(symbolsPath);
 
-        foreach (var engineEvent in events)
+        foreach (var frame in frames)
         {
-            if (engineEvent.Callstack.Count > 0)
+            if (resolver.TryResolve(frame, out var result) && !string.IsNullOrEmpty(result))
             {
-                foreach (var frame in engineEvent.Callstack)
+                frame.Resolved = ResolvedCallstackFrameParser.Parse(frame.Module, result);
+
+                if (frame.Resolved.ModuleCategory == ModuleCategory.Unknown)
                 {
-                    if (resolver.TryResolve(frame, out var result) && !string.IsNullOrEmpty(result))
-                    {
-                        frame.Resolved = ResolvedCallstackFrameParser.Parse(frame.Module, result);
+                    unknown.Add(result);
+                }
 
-                        if(frame.Resolved.ModuleCategory == ModuleCategory.Unknown)
-                        {
-                            unknown.Add(result);
-                        }
-
-                        if(frame.Resolved.SymbolCategory == SymbolCategory.Unknown)
-                        {
-                            unknown.Add(result);
-                        }
-                    }
+                if (frame.Resolved.SymbolCategory == SymbolCategory.Unknown)
+                {
+                    unknown.Add(result);
                 }
             }
         }
 
         return unknown.ToArray();
+    }
+
+    // SQL sometimes emits a frame without symbol info — no pdb/guid and the address baked into the module name
+    // ("sqllang@0x7FFD2D950584") — even though the same address is fully symbolised on another frame. Recover it: each
+    // module's load base is address - rva from a symbolised frame, so an address-only frame gets rva = address - base
+    // and borrows that module's pdb/guid. It then resolves, and merges with its symbolised twin in the function tree.
+    private static void HealUnsymbolisedFrames(List<CallstackFrame> frames)
+    {
+        var modules = new Dictionary<string, (ulong Base, string Pdb, string Guid, int Age)>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var frame in frames)
+        {
+            if (frame.Pdb.Length > 0 && frame.Address >= frame.Rva && !modules.ContainsKey(frame.Module))
+            {
+                modules[frame.Module] = (frame.Address - frame.Rva, frame.Pdb, frame.Guid, frame.Age);
+            }
+        }
+
+        foreach (var frame in frames)
+        {
+            if (frame.Pdb.Length > 0 || frame.Address == 0)
+            {
+                continue;
+            }
+
+            var at = frame.Module.IndexOf('@');
+
+            var module = at >= 0 ? frame.Module[..at] : frame.Module;
+
+            if (modules.TryGetValue(module, out var info) && frame.Address >= info.Base)
+            {
+                frame.Module = module;
+                frame.Pdb = info.Pdb;
+                frame.Guid = info.Guid;
+                frame.Age = info.Age;
+                frame.Rva = (uint)(frame.Address - info.Base);
+            }
+        }
     }
 }

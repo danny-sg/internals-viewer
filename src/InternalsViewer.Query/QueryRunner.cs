@@ -56,6 +56,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
+        CallStackTree callStack = new();
         List<QueryResultSet> resultSets;
 
         Func<EngineEvent, bool>? endMarker = null;
@@ -145,7 +146,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             var eventsStart = Stopwatch.GetTimestamp();
 
-            (events, executionPlans) = await EventReader.GetEvents(filePath,
+            (events, executionPlans, callStack) = await EventReader.GetEvents(filePath,
                                                                    connectionString,
                                                                    database,
                                                                    cancellationToken,
@@ -157,7 +158,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             {
                 progress?.Report($"Processing callstack frames");
 
-                var unknownSymbols = await CallstackProcessor.Process(events, symbolsPath, progress, cancellationToken);
+                var unknownSymbols = await CallstackProcessor.Process(callStack, symbolsPath, progress, cancellationToken);
+
+                // Now the frames are resolved, merge each function's call sites into one node (and repoint events).
+                callStack = callStack.CollapseToFunctions();
+
+                if (events.Count > 0)
+                {
+                    // Per-node activity histogram across the query window (24 buckets, 14px tall).
+                    callStack.ComputeActivity(events.Min(e => e.TimeUs), events.Max(e => e.TimeUs), buckets: 24, height: 14);
+                }
 
                 if (Logger.IsEnabled(LogLevel.Debug) && unknownSymbols.Length > 0)
                 {
@@ -210,6 +220,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             IsSuccess = true,
             EngineEvents = events,
             ExecutionPlans = executionPlans,
+            CallStack = callStack,
             ResultSets = resultSets,
             SessionId = sessionId,
             RowCount = rowCount

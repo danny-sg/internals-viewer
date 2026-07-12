@@ -303,7 +303,7 @@ public static class ColdReadGrouper
 
         return new NonCachedReadEventGroup
         {
-            Name = "page_read",
+            Name = "Page Read",
             Events = members,
             Kind = kind,
             Pages = pages,
@@ -337,13 +337,14 @@ public static class ColdReadGrouper
     // Pages in a gather read's range; at least one so a range read never estimates to zero pages.
     private static int PageCountOf(FileEvent f) => Math.Max(1, f.ToPageAddress.PageId - f.FromPageAddress.PageId);
 
-    // Events that make up a gather read: the physical page reads and the paired EX BUF latches that load each page
-    // into a frame. Together with the file read they are the non-cached signature. SH latches (the later scan read of
-    // the now-resident page) are NOT part of the load and are left out.
+    // Events that make up a gather read: the physical page reads, the EX BUF latches that load each page into a frame,
+    // and the KP (keep) latches taken as each page is accessed straight after the load. Together with the file read
+    // they are the non-cached signature (the contiguous/suspend path already groups these by latch address). SH latches
+    // (the later scan re-read of the now-resident page) are left out — a lone SH is its own cached read.
     private static bool IsGatherMember(EngineEvent e) => e switch
     {
         IoEvent { IsRead: true } => true,
-        LatchEvent { LatchClass: LatchClass.BUF, LatchMode: LatchMode.EX } => true,
+        LatchEvent { LatchClass: LatchClass.BUF, LatchMode: LatchMode.EX or LatchMode.KP } => true,
         _ => false,
     };
 
