@@ -893,8 +893,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly IndexTabViewModelFactory _indexTabViewModelFactory;
 
-    private const long CropPaddingUs = 100;
-
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task ExecuteQuery(ExecuteSqlPayload payload, CancellationToken cancellationToken)
     {
@@ -905,6 +903,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var progress = new Progress<string>(message => Message = string.IsNullOrEmpty(Message)
                                                                  ? message
                                                                  : Message + Environment.NewLine + message);
+
+        // The QueryRunner does the crop now (trimming events and the call stack to the query's window).
+        EventOptions.CropToQuery = CropToQuery;
 
         // Run full trace on background thread
         var (results, layers, colours, startOffset, endOffset) =
@@ -919,41 +920,22 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
                 if (!queryResult.IsSuccess)
                 {
-                    return (queryResult, 
-                            new AllocationLayer(), 
-                            new EventColourProvider([], _objectColoursByName), 
-                            null, 
-                            null);
-                }
-
-                long? startOffset = null;
-                long? endOffset = null;
-
-                if (CropToQuery)
-                {
-                    var queryNode = queryResult.EngineEvents.FirstOrDefault(e =>
-                        e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 });
-
-                    if (queryNode != null)
-                    {
-                        startOffset = Math.Max(0, queryNode.TimeUs - CropPaddingUs);
-                        endOffset = queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs;
-                    }
-                }
-                else
-                {
-                    startOffset = null;
-                    endOffset = null;
+                    return (queryResult,
+                            new AllocationLayer(),
+                            new EventColourProvider([], _objectColoursByName),
+                            (long?)null,
+                            (long?)null);
                 }
 
                 var colourProvider = new EventColourProvider(queryResult.ExecutionPlans, _objectColoursByName);
 
-                var allocationLayer = GetEventsAllocationLayer(queryResult.EngineEvents, 
-                                                               colourProvider, 
-                                                               startOffset, 
-                                                               endOffset);
+                // Events are already trimmed to the window; its bounds feed the timeline axis.
+                var allocationLayer = GetEventsAllocationLayer(queryResult.EngineEvents,
+                                                               colourProvider,
+                                                               queryResult.CropStartUs,
+                                                               queryResult.CropEndUs);
 
-                return (queryResult, allocationLayer, colourProvider, startOffset, endOffset);
+                return (queryResult, allocationLayer, colourProvider, queryResult.CropStartUs, queryResult.CropEndUs);
             },
             cancellationToken);
 

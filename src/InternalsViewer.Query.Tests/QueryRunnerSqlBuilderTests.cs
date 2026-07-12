@@ -1,5 +1,6 @@
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Query.Events.Locks;
 
 namespace InternalsViewer.Query.Tests;
 

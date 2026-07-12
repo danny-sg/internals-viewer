@@ -24,4 +24,11 @@ public sealed record QueryResult
     public string Message { get; set; } = string.Empty;
 
     public long RowCount { get; set; }
+
+    /// <summary>
+    /// The query's time window (microseconds) when cropped to the executed query, otherwise null — for the timeline axis
+    /// </summary>
+    public long? CropStartUs { get; set; }
+
+    public long? CropEndUs { get; set; }
 }

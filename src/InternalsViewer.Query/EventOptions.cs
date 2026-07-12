@@ -11,4 +11,9 @@ public sealed record EventOptions
     public bool IncludeCallStack { get; set; }
 
     public bool IncludeLatch { get; set; } = true;
+
+    /// <summary>
+    /// Trim events (and the call stack) outside the executed query's time window, dropping surrounding noise
+    /// </summary>
+    public bool CropToQuery { get; set; } = true;
 }

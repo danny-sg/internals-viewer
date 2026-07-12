@@ -19,6 +19,20 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
     public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;
 
     [Fact]
+    public async Task Diagnose_Operators_Survive_Crop()
+    {
+        var result = await RunQuery("SELECT TOP 10 * FROM dbo.ClusteredTable");
+
+        TestOutputHelper.WriteLine($"Crop window: {result.CropStartUs}..{result.CropEndUs}   events: {result.EngineEvents.Count}");
+
+        foreach (var op in result.EngineEvents.OfType<Query.Events.Operators.ExecutionOperatorEvent>())
+        {
+            TestOutputHelper.WriteLine($"  Node {op.PlanNodeIdentifier?.NodeId,3} {op.Category,-14} '{op.Name}' "
+                + $"Index='{op.IndexName}' TimeUs={op.TimeUs} Dur={op.DurationUs}");
+        }
+    }
+
+    [Fact]
     public async Task Dump_Call_Stack_Tree_For_Heap()
     {
         await DumpTree("SELECT TOP 100 * FROM dbo.HeapTable");

@@ -31,20 +31,26 @@ public sealed class CallStackTree
     /// <summary>
     /// Rebuilds the tree keyed on the resolved function, merging a function's call sites and repointing events
     /// </summary>
-    public CallStackTree CollapseToFunctions()
+    /// <remarks>
+    /// <paramref name="include"/> trims the tree to the query's scope: only kept events' frames are carried over, so a
+    /// function reached only by dropped (out-of-window) events leaves no node. Null keeps every event.
+    /// </remarks>
+    public CallStackTree CollapseToFunctions(Func<EngineEvent, bool>? include = null)
     {
         var collapsed = new CallStackTree();
 
         // Insert leaves earliest-event-first so the collapsed nodes are created — and thus ordered — as first seen.
         var leaves = Nodes()
             .Where(node => node.Events.Count > 0)
-            .OrderBy(node => node.Events.Min(e => e.SequenceId));
+            .Select(node => (Node: node, Events: include is null ? node.Events : node.Events.Where(include).ToList()))
+            .Where(leaf => leaf.Events.Count > 0)
+            .OrderBy(leaf => leaf.Events.Min(e => e.SequenceId));
 
-        foreach (var node in leaves)
+        foreach (var (node, events) in leaves)
         {
             var leaf = collapsed.Insert([.. node.Path()], FunctionKey, engineEvent: null);
 
-            foreach (var engineEvent in node.Events)
+            foreach (var engineEvent in events)
             {
                 leaf.Events.Add(engineEvent);
 

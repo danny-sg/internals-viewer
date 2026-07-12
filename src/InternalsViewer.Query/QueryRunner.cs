@@ -4,6 +4,8 @@ using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans;
@@ -59,6 +61,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         List<ExecutionPlan>? executionPlans;
         CallStackTree callStack;
         List<QueryResultSet> resultSets;
+
+        // The executed query's time window when cropping — trims surrounding-noise events and call-stack frames.
+        long? cropStart = null;
+        long? cropEnd = null;
 
         Func<EngineEvent, bool>? endMarker = null;
 
@@ -155,14 +161,27 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             progress?.Report($"{events.Count} event(s) retrieved in {Stopwatch.GetElapsedTime(eventsStart)}");
 
+            // Trim events (and, below, the call stack) to the executed query's window so surrounding noise —
+            // compilation, other statements, background work the trace also captured — is dropped.
+            if (eventOptions.CropToQuery && CropWindow(events) is (var start, var end))
+            {
+                cropStart = start;
+                cropEnd = end;
+
+                events = events.Where(e => e.TimeUs >= start && e.TimeUs <= end).ToList();
+            }
+
             if (eventOptions.IncludeCallStack)
             {
                 progress?.Report($"Processing callstack frames");
 
                 var unknownSymbols = await CallstackProcessor.Process(callStack, symbolsPath, progress, cancellationToken);
 
-                // Now the frames are resolved, merge each function's call sites into one node (and repoint events).
-                callStack = callStack.CollapseToFunctions();
+                // Now the frames are resolved, merge each function's call sites into one node (and repoint events);
+                // when cropped, only the surviving events' frames are carried over, trimming the tree to the query.
+                var keep = cropStart is null ? null : KeepSet(events);
+
+                callStack = callStack.CollapseToFunctions(keep is null ? null : keep.Contains);
 
                 if (events.Count > 0)
                 {
@@ -224,8 +243,45 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             CallStack = callStack,
             ResultSets = resultSets,
             SessionId = sessionId,
-            RowCount = rowCount
+            RowCount = rowCount,
+            CropStartUs = cropStart,
+            CropEndUs = cropEnd
         };
+    }
+
+    // Padding kept either side of the query window so an event landing just on its boundary is not clipped.
+    private const long CropPaddingUs = 100;
+
+    // The executed query's time window, taken from the whole-query operator event (plan NodeId -1) and padded, or null.
+    private static (long Start, long End)? CropWindow(List<EngineEvent> events)
+    {
+        var queryNode = events.FirstOrDefault(e => e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 });
+
+        return queryNode is null
+            ? null
+            : (Math.Max(0, queryNode.TimeUs - CropPaddingUs), queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs);
+    }
+
+    // The events whose call-stack frames survive the crop: the kept events, plus the child events inside each read
+    // group (they carry the read's frames but are not themselves in the top-level list).
+    private static HashSet<EngineEvent> KeepSet(List<EngineEvent> events)
+    {
+        var keep = new HashSet<EngineEvent>(ReferenceEqualityComparer.Instance);
+
+        foreach (var e in events)
+        {
+            keep.Add(e);
+
+            if (e is ReadEventGroup group)
+            {
+                foreach (var child in group.Events)
+                {
+                    keep.Add(child);
+                }
+            }
+        }
+
+        return keep;
     }
 
     internal static async Task GetEventKeyAddresses(List<EngineEvent> events,

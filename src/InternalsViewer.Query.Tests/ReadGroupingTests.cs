@@ -3,7 +3,7 @@ using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Locks;
+using InternalsViewer.Query.Events.Locks;
 
 namespace InternalsViewer.Query.Tests;
 
