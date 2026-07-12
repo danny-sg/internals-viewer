@@ -92,7 +92,15 @@ internal static class EventSql
 
                 stringBuilder.Append("\n    ACTION (");
 
-                stringBuilder.Append(string.Join(", ", sessionActions));
+                if (EventConstants.CallstackExcludeEvents.Contains(eventName))
+                {
+                    stringBuilder.Append(string.Join(", ", 
+                                                     sessionActions.Except(EventConstants.CallstackActions)));
+                }
+                else
+                {
+                    stringBuilder.Append(string.Join(", ", sessionActions));
+                }
 
                 stringBuilder.Append(")\n");
                 stringBuilder.Append("    WHERE (");

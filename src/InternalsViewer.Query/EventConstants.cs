@@ -68,4 +68,12 @@ internal static class EventConstants
     [
         "package0.callstack"
     ];
+
+    public static readonly string[] CallstackExcludeEvents =
+    [
+        "sqlserver.sql_batch_starting",
+        "sqlserver.sql_batch_completed",
+        "sqlserver.query_post_execution_showplan",
+        "sqlserver.query_thread_profile",
+    ];
 }

@@ -56,7 +56,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
-        CallStackTree callStack = new();
+        CallStackTree callStack;
         List<QueryResultSet> resultSets;
 
         Func<EngineEvent, bool>? endMarker = null;
