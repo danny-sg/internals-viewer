@@ -24,6 +24,8 @@ internal static class SqlConnectionExtensions
     {
         logger?.LogDebug("Executing SQL: {Command}", sql);
 
-        return await new SqlCommand(sql, connection).ExecuteNonQueryAsync(cancellationToken);
+        using var command = new SqlCommand(sql, connection);
+
+        return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 }

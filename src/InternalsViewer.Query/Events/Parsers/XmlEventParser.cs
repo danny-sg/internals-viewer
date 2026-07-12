@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+﻿using System.Globalization;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
@@ -104,7 +105,10 @@ internal sealed class XmlEventParser
         }
 
         _result.Name = Intern(name);
-        _result.Timestamp = DateTime.Parse(timestamp);
+        _result.Timestamp = DateTime.Parse(
+            timestamp,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind);
 
         // Self-closing <event .../> (no fields).
         if (xml[eventTagEnd - 1] == '/')
