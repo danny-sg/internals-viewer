@@ -44,6 +44,10 @@ public class ResolvedCallstackFrameParser
             }
         }
 
+        var mappings = CategoryMappings.Default;
+
+        var (symbolCategory, iterator) = mappings.Classify(module, className, methodName);
+
         return new ResolvedCallstackFrame
         {
             ClassName = className,
@@ -51,8 +55,9 @@ public class ResolvedCallstackFrameParser
             Module = module,
             Offset = offset,
             RawSymbol = value,
-            ModuleCategory = ModuleCategoryDictionary.GetCategory(module),
-            SymbolCategory = SymbolCategoryDictionary.GetCategory(className, methodName)
+            ModuleCategory = mappings.GetModuleCategory(module),
+            SymbolCategory = symbolCategory,
+            Iterator = iterator
         };
     }
 

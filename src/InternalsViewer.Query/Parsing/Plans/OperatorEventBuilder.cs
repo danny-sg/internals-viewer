@@ -1,4 +1,7 @@
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.Plans;
 
@@ -293,7 +296,7 @@ internal sealed class OperatorEventBuilder
         _eventsByNode.TryGetValue(node.NodeId, out var list) ? list : [];
 
     private static long? FirstDataAccess(List<EngineEvent> events) =>
-        events.Where(e => e is IoEvent or LatchEvent or NonCachedReadEventGroup).Select(e => (long?)e.TimeUs).Min();
+        events.Where(e => e is IoEvent or LatchEvent or ReadEventGroup).Select(e => (long?)e.TimeUs).Min();
 
     // The earliest page access (I/O or latch) anywhere in a node's subtree (the node and all its descendants).
     private long? EarliestSubtreeDataAccess(PlanNode node)
@@ -312,7 +315,7 @@ internal sealed class OperatorEventBuilder
     }
 
     private static long? LastDataAccess(List<EngineEvent> events) =>
-        events.Where(e => e is IoEvent or LatchEvent or NonCachedReadEventGroup).Select(e => (long?)e.TimeUs + e.DurationUs).Max();
+        events.Where(e => e is IoEvent or LatchEvent or ReadEventGroup).Select(e => (long?)e.TimeUs + e.DurationUs).Max();
 
     private static long? LastLog(List<EngineEvent> events) =>
         events.Where(e => e is TransactionLogEvent).Select(e => (long?)e.TimeUs + e.DurationUs).Max();

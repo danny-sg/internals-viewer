@@ -3,7 +3,9 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Plans;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -105,7 +107,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
         // read into a single NonCachedReadEventGroup.
         var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
 
-        var consolidatedEvents = ColdReadGrouper.Group(collapsedEvents);
+        var consolidatedEvents = ReadGrouping.Group(collapsedEvents);
 
         // Recover a serial-order timeline from the millisecond-resolution timestamps by laying each worker's events
         // end-to-end using their microsecond durations, so a read overrunning its bucket pushes the next one out.
@@ -232,7 +234,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         e.TimeUs = start;
 
-        if (delta != 0 && e is NonCachedReadEventGroup group)
+        if (delta != 0 && e is ReadEventGroup group)
         {
             foreach (var member in group.Events)
             {

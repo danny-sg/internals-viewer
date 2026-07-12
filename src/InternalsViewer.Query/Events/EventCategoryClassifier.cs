@@ -1,5 +1,6 @@
 using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Locks;
+using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Waits;
 
 namespace InternalsViewer.Query.Events;
 

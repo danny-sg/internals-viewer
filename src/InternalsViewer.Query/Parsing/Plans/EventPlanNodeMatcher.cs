@@ -1,5 +1,8 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.Plans;
 
@@ -180,7 +183,7 @@ public static class EventPlanNodeMatcher
     // The pages an event anchors: a read group links to all of them, a single-page event to its one.
     private static IEnumerable<PageAddress> PagesOf(EngineEvent engineEvent) => engineEvent switch
     {
-        NonCachedReadEventGroup group => group.Pages,
+        ReadEventGroup group => group.Pages,
         PageEngineEvent { PageAddress: { } page } => [page],
         _ => [],
     };

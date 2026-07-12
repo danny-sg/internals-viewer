@@ -2,11 +2,12 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Locks;
 
 namespace InternalsViewer.Query.Tests;
 
-public class ColdReadGrouperTests
+public class ReadGroupingTests
 {
     [Fact]
     public void Suspend_With_Physical_Read_Becomes_A_Non_Cached_Group_Timed_From_The_Spine()
@@ -21,9 +22,9 @@ public class ColdReadGrouperTests
             TimeUs = 2_000,
         };
 
-        var result = ColdReadGrouper.Group([suspend, read]);
+        var result = ReadGrouping.Group([suspend, read]);
 
-        var group = Assert.IsType<NonCachedReadEventGroup>(Assert.Single(result));
+        var group = Assert.IsType<ReadEventGroup>(Assert.Single(result));
 
         Assert.Equal(ReadKind.NonCached, group.Kind);
         Assert.Equal(2_000, group.TimeUs);
@@ -38,9 +39,9 @@ public class ColdReadGrouperTests
         // hold time.
         var acquire = BufferLatch("latch_acquired", page: new PageAddress(1, 472), timeUs: 1_000, durationUs: 50);
 
-        var result = ColdReadGrouper.Group([acquire]);
+        var result = ReadGrouping.Group([acquire]);
 
-        var group = Assert.IsType<NonCachedReadEventGroup>(Assert.Single(result));
+        var group = Assert.IsType<ReadEventGroup>(Assert.Single(result));
 
         Assert.Equal(ReadKind.Cached, group.Kind);
         Assert.Equal(1_000, group.TimeUs);
@@ -54,10 +55,10 @@ public class ColdReadGrouperTests
 
         var second = BufferLatch("latch_acquired", page: new PageAddress(1, 200), timeUs: 2_000, durationUs: 60);
 
-        var result = ColdReadGrouper.Group([first, second]);
+        var result = ReadGrouping.Group([first, second]);
 
-        Assert.Equal(2, result.OfType<NonCachedReadEventGroup>().Count());
-        Assert.All(result.OfType<NonCachedReadEventGroup>(), g => Assert.Equal(ReadKind.Cached, g.Kind));
+        Assert.Equal(2, result.OfType<ReadEventGroup>().Count());
+        Assert.All(result.OfType<ReadEventGroup>(), g => Assert.Equal(ReadKind.Cached, g.Kind));
     }
 
     [Fact]
@@ -85,9 +86,9 @@ public class ColdReadGrouperTests
 
         var outsideRange = new IoEvent { Name = "physical_page_read", IsRead = true, PageAddress = new PageAddress(1, 2_000), TimeUs = 5_000 };
 
-        var result = ColdReadGrouper.Group([gather, readA, readB, load, outsideRange]);
+        var result = ReadGrouping.Group([gather, readA, readB, load, outsideRange]);
 
-        var group = result.OfType<NonCachedReadEventGroup>().Single();
+        var group = result.OfType<ReadEventGroup>().Single();
 
         Assert.Equal(ReadKind.NonCached, group.Kind);
         Assert.Equal(4, group.PageCount);
@@ -118,9 +119,9 @@ public class ColdReadGrouperTests
 
         var read = new IoEvent { Name = "physical_page_read", IsRead = true, PageAddress = new PageAddress(1, 500), TimeUs = 3_000 };
 
-        var result = ColdReadGrouper.Group([file, read]);
+        var result = ReadGrouping.Group([file, read]);
 
-        var group = result.OfType<NonCachedReadEventGroup>().Single();
+        var group = result.OfType<ReadEventGroup>().Single();
 
         Assert.Equal(ReadKind.NonCached, group.Kind);
         Assert.Equal(1, group.PageCount);
@@ -143,7 +144,7 @@ public class ColdReadGrouperTests
             TimeUs = 3_000,
         };
 
-        var result = ColdReadGrouper.Group([orphan]);
+        var result = ReadGrouping.Group([orphan]);
 
         Assert.Empty(result);
     }

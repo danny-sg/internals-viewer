@@ -14,6 +14,11 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
+using InternalsViewer.Query.Events.Waits;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
@@ -90,7 +95,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
     [
         (typeof(TransactionLogEvent), "Log",  ColourConstants.LogColour.ToSkColor().WithAlpha(255),  0.5f),
         (typeof(ExecutionOperatorEvent), "Plan", SKColors.LimeGreen, 3f),
-        (typeof(NonCachedReadEventGroup), "Read", ColourConstants.IoColour.ToSkColor().WithAlpha(255), 0.5f),
+        (typeof(ReadEventGroup), "Read", ColourConstants.IoColour.ToSkColor().WithAlpha(255), 0.5f),
         (typeof(LockEvent), "Lock", ColourConstants.LockColour.ToSkColor().WithAlpha(255), 0.5f),
         (typeof(LatchEvent), "Latch", ColourConstants.LatchColour.ToSkColor().WithAlpha(255), 0.167f),
         (typeof(WaitEvent), "Wait", ColourConstants.WaitColour.ToSkColor().WithAlpha(255), 0.5f),
@@ -256,7 +261,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
     // Pre-filtered and TimeUs-sorted arrays of read groups / LatchEvents; built whenever _sortedEvents
     // changes. Used by PlayAudioForCurrentPosition so the per-frame audio sweep is O(log n + hits) via
     // binary search rather than O(all events).
-    private NonCachedReadEventGroup[] _readEventsByTime = [];
+    private ReadEventGroup[] _readEventsByTime = [];
 
     private LatchEvent[] _latchEventsByTime = [];
 
@@ -357,7 +362,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var events = (List<EngineEvent>)e.NewValue;
 
         control._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
-        control._readEventsByTime = [.. events.OfType<NonCachedReadEventGroup>().OrderBy(read => read.TimeUs)];
+        control._readEventsByTime = [.. events.OfType<ReadEventGroup>().OrderBy(read => read.TimeUs)];
         control._latchEventsByTime = [.. events.OfType<LatchEvent>().OrderBy(latch => latch.TimeUs)];
 
         control._eventsVersion++;
@@ -666,7 +671,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         for (var i = 0; i < _sortedEvents.Count; i++)
         {
-            if (_sortedEvents[i] is not NonCachedReadEventGroup)
+            if (_sortedEvents[i] is not ReadEventGroup)
             {
                 continue;
             }
@@ -982,7 +987,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             // The Read lane holds only NonCachedReadEventGroup, so it fills the row rather than being split into the
             // category sub-bands used by the mixed Wait/Latch lanes; nulling the category also routes it through the
             // per-node colour provider instead of the flat category tint.
-            var category = sourceEvent is NonCachedReadEventGroup ? null : sourceEvent.Category;
+            var category = sourceEvent is ReadEventGroup ? null : sourceEvent.Category;
 
             if (category.HasValue)
             {
@@ -1034,7 +1039,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
             // A read is considered actioned at its end (the row is returned there), so its solid tick sits at the end
             // edge to line up with the solid return rail; other lanes keep the tick at the event's start.
-            var tickX = sourceEvent is NonCachedReadEventGroup && hasDuration ? endX - markerWidth : startX;
+            var tickX = sourceEvent is ReadEventGroup && hasDuration ? endX - markerWidth : startX;
 
             canvas.DrawRect(tickX, markerTop, markerWidth, markerHeight, _markerPaint);
 
@@ -1657,7 +1662,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
             }
         }
 
-        var ioRow = RowIndexOf(typeof(NonCachedReadEventGroup));
+        var ioRow = RowIndexOf(typeof(ReadEventGroup));
         var logRow = RowIndexOf(typeof(TransactionLogEvent));
         var latchRow = RowIndexOf(typeof(LatchEvent));
 
@@ -1686,7 +1691,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
             for (var i = 0; i < _sortedEvents.Count; i++)
             {
-                if (_sortedEvents[i] is not NonCachedReadEventGroup { PlanNodeIdentifier: { } id } io ||
+                if (_sortedEvents[i] is not ReadEventGroup { PlanNodeIdentifier: { } id } io ||
                     !byNode.TryGetValue(id, out var b) ||
                     b.BarBottom >= readTop)
                 {
@@ -2229,7 +2234,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private SKColor GetMarkerColor(EngineEvent sourceEvent, int rowIndex, EventCategory? category)
     {
-        if (sourceEvent is NonCachedReadEventGroup { Kind: ReadKind.Cached })
+        if (sourceEvent is ReadEventGroup { Kind: ReadKind.Cached })
         {
             return DimForSelection(sourceEvent) ? CachedReadColour.WithAlpha(FocusedDimAlpha) : CachedReadColour;
         }

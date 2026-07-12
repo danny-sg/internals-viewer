@@ -206,6 +206,12 @@ public enum SymbolCategory : byte
         BackgroundColor = "#636E72",
         IsInfrastructure = true)]
     System,
+
+    [Category(
+        "Storage",
+        Description = "Storage/Recovery context",
+        ForegroundColor = "#76923C")]
+    Storage
 }
 
 public static class CategoryEnumExtensions

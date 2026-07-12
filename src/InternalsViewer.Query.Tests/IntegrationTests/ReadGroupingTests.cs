@@ -9,10 +9,11 @@ using InternalsViewer.Query.TransactionLog;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using InternalsViewer.Query.Events.EventTypes;
 using Microsoft.Extensions.Logging;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Xunit.Abstractions;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Latches;
 
 namespace InternalsViewer.Query.Tests.IntegrationTests;
 
@@ -43,7 +44,7 @@ public class ReadGroupingTests(ITestOutputHelper testOutputHelper)
 
         TestOutputHelper.WriteLine("=== grouped reads: composition ===");
 
-        foreach (var g in results.EngineEvents.OfType<NonCachedReadEventGroup>())
+        foreach (var g in results.EngineEvents.OfType<ReadEventGroup>())
         {
             var m = g.Events;
 
@@ -59,7 +60,7 @@ public class ReadGroupingTests(ITestOutputHelper testOutputHelper)
                 + $"EX={ex} SH={sh} KP={kp}{flag}");
         }
 
-        var grouped = results.EngineEvents.OfType<NonCachedReadEventGroup>().SelectMany(g => g.Events).ToHashSet();
+        var grouped = results.EngineEvents.OfType<ReadEventGroup>().SelectMany(g => g.Events).ToHashSet();
 
         var bareKp = results.EngineEvents.OfType<LatchEvent>()
             .Where(l => l.LatchMode == Events.Latches.LatchMode.KP && !grouped.Contains(l))
@@ -84,7 +85,7 @@ public class ReadGroupingTests(ITestOutputHelper testOutputHelper)
 
             TestOutputHelper.WriteLine($"{e.TimeUs}:{e.DurationUs} {e.Name} - {e.Description}{detail}  OBJ=[{e.ObjectName}]");
 
-            if (e is NonCachedReadEventGroup grouped)
+            if (e is ReadEventGroup grouped)
             {
                 foreach (var g in grouped.Events)
                 {

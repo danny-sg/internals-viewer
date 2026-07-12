@@ -1,6 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Events.EventTypes;
 
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events.Reads;
 
 /// <summary>
 /// A page-read episode built from the storage events that make up a single read
@@ -13,7 +14,7 @@ namespace InternalsViewer.Query.Events.EventTypes;
 /// min/max envelope over the children: child timestamps are quantised to the millisecond, so an envelope stretches to
 /// a full 1000us of slop, whereas the folded suspend carries the microsecond-accurate SQL-measured read duration.
 /// </remarks>
-public sealed record NonCachedReadEventGroup : EngineEvent
+public sealed record ReadEventGroup : EngineEvent
 {
     public required IReadOnlyList<EngineEvent> Events { get; init; }
 

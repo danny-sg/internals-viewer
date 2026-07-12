@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using InternalsViewer.Query.Events.EventTypes;
 
 namespace InternalsViewer.Query.Callstack;
 

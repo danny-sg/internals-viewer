@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Locks;
+using InternalsViewer.Query.Events.EventTypes;
 
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events.Locks;
 
 public sealed record LockEvent : PageEngineEvent
 {

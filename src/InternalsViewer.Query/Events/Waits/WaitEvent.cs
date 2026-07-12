@@ -1,6 +1,6 @@
-﻿using InternalsViewer.Query.Locks;
+﻿using InternalsViewer.Query.Events.EventTypes;
 
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events.Waits;
 
 public sealed record WaitEvent : EngineEvent
 {

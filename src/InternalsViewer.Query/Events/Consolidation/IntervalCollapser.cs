@@ -1,4 +1,7 @@
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Waits;
 
 namespace InternalsViewer.Query.Events.Consolidation;
 

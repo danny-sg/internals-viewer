@@ -1,7 +1,8 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
-using InternalsViewer.Query.Locks;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Waits;
 
 namespace InternalsViewer.Query.Events.Consolidation;
 
@@ -22,7 +23,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 ///
 /// Members link to a spine by address, page, or range rather than capture order, which mixes begins and ends.
 /// </remarks>
-public static class ColdReadGrouper
+public static class ReadGrouping
 {
     public static List<EngineEvent> Group(IReadOnlyList<EngineEvent> events)
     {
@@ -32,7 +33,7 @@ public static class ColdReadGrouper
 
         var consumed = new HashSet<EngineEvent>(ReferenceEqualityComparer.Instance);
 
-        CollectContiguousColdReads(events, members, consumed);
+        CollectContiguousNonCachedReads(events, members, consumed);
 
         CollectGatherReads(events, members, consumed);
 
@@ -65,7 +66,7 @@ public static class ColdReadGrouper
 
     // Contiguous single-page cold read: the folded latch suspend is the spine (its wait duration is the real read
     // time) and the wait, physical read, file read and BUF latches attach by buffer latch address or page.
-    private static void CollectContiguousColdReads(
+    private static void CollectContiguousNonCachedReads(
         IReadOnlyList<EngineEvent> events,
         Dictionary<EngineEvent, List<EngineEvent>> members,
         HashSet<EngineEvent> consumed)
@@ -276,7 +277,7 @@ public static class ColdReadGrouper
         return best;
     }
 
-    private static NonCachedReadEventGroup BuildGroup(EngineEvent spine, List<EngineEvent> members)
+    private static ReadEventGroup BuildGroup(EngineEvent spine, List<EngineEvent> members)
     {
         // A gather file read is itself a physical I/O, so its group is non-cached regardless of which members landed;
         // a suspend/cached group is non-cached only if a cold marker (a physical read or PAGEIOLATCH wait) attached.
@@ -301,7 +302,7 @@ public static class ColdReadGrouper
             .ThenBy(p => p.PageId)
             .ToList();
 
-        return new NonCachedReadEventGroup
+        return new ReadEventGroup
         {
             Name = "Page Read",
             Events = members,

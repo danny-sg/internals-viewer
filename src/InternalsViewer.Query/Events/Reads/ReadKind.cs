@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events.Reads;
 
 /// <summary>
 /// Classifies a page-read episode by where the page came from

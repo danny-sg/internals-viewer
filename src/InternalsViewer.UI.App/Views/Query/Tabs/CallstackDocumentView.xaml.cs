@@ -4,8 +4,12 @@ using System.ComponentModel;
 using System.Linq;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.UI.App.ViewModels.Query;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
@@ -24,12 +28,18 @@ public sealed partial class CallstackDocumentView : UserControl
     // The symbol the tree roots at (from the Start dropdown); empty/null roots at the post-infrastructure top.
     private string? _startSymbol = "CSQLSource::Execute";
 
+    // "Query Operators" filter toggle: when on, only operator (CQScan iterator) nodes are shown.
+    private bool _operatorsOnly;
+
     // The node currently showing the activity histogram, so it can be cleared when the selection moves.
     private CallStackNode? _histogramNode;
 
     // Histogram bar colours: the selected event's time bucket is highlighted, every other bucket is grey.
     private const string HistogramGrey = "#606060";
     private const string HistogramHighlight = "#4CA3E0";
+
+    // The tree node the Expand All / Collapse All context menu acts on (captured on right-tap, before the menu opens).
+    private TreeViewNode? _contextNode;
 
     private QueryViewModel? _viewModel;
 
@@ -49,6 +59,37 @@ public sealed partial class CallstackDocumentView : UserControl
         _startSymbol = (StartCombo.SelectedItem as ComboBoxItem)?.Tag as string;
 
         ApplyScope(_viewModel?.SelectedEvent);
+    }
+
+    private void OnFilterChanged(object sender, RoutedEventArgs e)
+    {
+        _operatorsOnly = QueryOperatorsToggle.IsChecked == true;
+
+        ApplyScope(_viewModel?.SelectedEvent);
+    }
+
+    // A right-tapped row's own DataContext is its TreeViewNode; captured before the context menu opens.
+    private void OnNodeRightTapped(object sender, RightTappedRoutedEventArgs e) =>
+        _contextNode = (sender as FrameworkElement)?.DataContext as TreeViewNode;
+
+    private void OnExpandAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: true);
+
+    private void OnCollapseAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: false);
+
+    // Expands or collapses a node and its whole subtree.
+    private static void SetExpanded(TreeViewNode? node, bool expanded)
+    {
+        if (node is null)
+        {
+            return;
+        }
+
+        node.IsExpanded = expanded;
+
+        foreach (var child in node.Children)
+        {
+            SetExpanded(child, expanded);
+        }
     }
 
     private void OnViewModelChanged()
@@ -93,8 +134,9 @@ public sealed partial class CallstackDocumentView : UserControl
         BuildTree();
 
         // The selection's whole path can be infrastructure (a data read, a scheduler-side event); hiding it as noise
-        // would leave nothing, so reveal the path's infrastructure and rebuild rather than show an empty tree.
-        if (_visible is not null && _nodes.Count == 0)
+        // would leave nothing, so reveal the path's infrastructure and rebuild rather than show an empty tree. (When
+        // the operators-only filter is on, an empty result is expected — the selection just has no operators.)
+        if (_visible is not null && _nodes.Count == 0 && !_operatorsOnly)
         {
             _revealInfrastructure = true;
 
@@ -224,7 +266,7 @@ public sealed partial class CallstackDocumentView : UserControl
             return (_viewModel?.Events ?? []).Where(e => e.PlanNodeIdentifier == id);
         }
 
-        if (selected is NonCachedReadEventGroup group)
+        if (selected is ReadEventGroup group)
         {
             return group.Events;
         }
@@ -300,7 +342,10 @@ public sealed partial class CallstackDocumentView : UserControl
 
         var infrastructureHidden = node.IsInfrastructure && !_revealInfrastructure;
 
-        if (outOfScope || infrastructureHidden)
+        // "Query Operators" filter: keep only operator (CQScan) nodes, promoting their operator descendants up.
+        var nonOperatorHidden = _operatorsOnly && !node.HasOperator;
+
+        if (outOfScope || infrastructureHidden || nonOperatorHidden)
         {
             foreach (var child in children)
             {

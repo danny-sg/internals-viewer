@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Query.Events.EventTypes;
+﻿using InternalsViewer.Query.Callstack;
 
 namespace InternalsViewer.Query.Events.Parsers;
 

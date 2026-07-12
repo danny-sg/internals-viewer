@@ -5,9 +5,12 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
-using InternalsViewer.Query.Locks;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.Query.Events.Waits;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.Events.Parsers;
 
@@ -230,6 +233,12 @@ public sealed class EventParser
     private WaitEvent? MapWait(EventResult e)
     {
         var waitType = (WaitType)(e.GetInt("wait_type") ?? 0);
+
+        if(EventFilter.CanIgnore(waitType.ToString()))
+        {
+            return null;
+        }
+
         var isEnd = e.GetString("opcode") == "End";
 
         var waitResource = e.GetUlong("wait_resource");

@@ -1,7 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Consolidation;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.Tests;
 

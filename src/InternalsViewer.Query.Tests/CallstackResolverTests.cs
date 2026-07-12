@@ -1,5 +1,4 @@
 using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Events.EventTypes;
 
 namespace InternalsViewer.Query.Tests;
 

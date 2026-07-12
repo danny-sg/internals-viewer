@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using InternalsViewer.Query.Events.EventTypes;
 
 namespace InternalsViewer.Query.Callstack;
 

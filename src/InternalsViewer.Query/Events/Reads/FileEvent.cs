@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Events.EventTypes;
 
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events.Reads;
 
 public sealed record FileEvent : PageEngineEvent
 {

@@ -14,24 +14,66 @@
          node-first in code-behind so the path to a selected event can be expanded and selected; starts collapsed. -->
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="44"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0"
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    Padding="8,4"
-                    VerticalAlignment="Center">
-            <TextBlock Text="Start:" VerticalAlignment="Center"/>
-            <ComboBox x:Name="StartCombo"
-                      MinWidth="140"
-                      SelectionChanged="OnStartChanged">
-                <!-- Tag is the symbol to root at; empty roots at the (post-infrastructure) top. -->
-                <ComboBoxItem Content="Execute" Tag="CSQLSource::Execute"/>
-                <ComboBoxItem Content="User Thread" Tag=""/>
-            </ComboBox>
-        </StackPanel>
+        <Grid Grid.Row="0" Padding="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Start root selector (left) -->
+            <CommandBar IsOpen="False"
+                        Padding="0"
+                        VerticalAlignment="Center"
+                        DefaultLabelPosition="Right"
+                        Grid.Column="0"
+                        HorizontalAlignment="Left"
+                        VerticalContentAlignment="Top"
+                        MinHeight="0"
+                        OverflowButtonVisibility="Collapsed"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
+                        Background="Transparent">
+                <AppBarElementContainer VerticalContentAlignment="Center" Margin="8,0,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="Start:" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="StartCombo"
+                                  MinWidth="140"
+                                  FontSize="11"
+                                  SelectionChanged="OnStartChanged">
+                            <!-- Tag is the symbol to root at; empty roots at the (post-infrastructure) top. -->
+                            <ComboBoxItem Content="Execute" Tag="CSQLSource::Execute"/>
+                            <ComboBoxItem Content="User Thread" Tag=""/>
+                        </ComboBox>
+                    </StackPanel>
+                </AppBarElementContainer>
+            </CommandBar>
+
+            <!-- Filter toggles (right): each narrows the tree to a node type. -->
+            <CommandBar IsOpen="False"
+                        Padding="0"
+                        VerticalAlignment="Center"
+                        DefaultLabelPosition="Right"
+                        Grid.Column="0"
+                        HorizontalAlignment="Right"
+                        VerticalContentAlignment="Top"
+                        MinHeight="0"
+                        OverflowButtonVisibility="Collapsed"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
+                        Background="Transparent">
+                <AppBarElementContainer VerticalContentAlignment="Center" Margin="0,0,8,0">
+                    <ToggleButton x:Name="QueryOperatorsToggle"
+                                  BorderThickness="0"
+                                  Click="OnFilterChanged">
+                        <TextBlock Text="Query Operators" VerticalAlignment="Center"/>
+                    </ToggleButton>
+                </AppBarElementContainer>
+            </CommandBar>
+        </Grid>
 
         <muxc:TreeView x:Name="Tree"
                        Grid.Row="1"
@@ -47,40 +89,35 @@
             </muxc:TreeView.ItemContainerStyle>
             <muxc:TreeView.ItemTemplate>
                 <DataTemplate x:DataType="muxc:TreeViewNode">
-                    <Grid HorizontalAlignment="Stretch">
+                    <Grid HorizontalAlignment="Stretch" RightTapped="OnNodeRightTapped">
+                        <Grid.ContextFlyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
+                                <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
+                            </MenuFlyout>
+                        </Grid.ContextFlyout>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
-                                    CornerRadius="3"
-                                    Padding="5,0"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
-                                           Foreground="White"
-                                           FontSize="9"
-                                           FontWeight="SemiBold"/>
-                            </Border>
-
-                            <!-- Operator badge: two-tone pill (Name | Kind, e.g. "Table Scan | Iterator") shown when
-                                 the frame is a CQScan iterator mapped to a plan operator. -->
-                            <StackPanel Orientation="Horizontal"
-                                        VerticalAlignment="Center"
-                                        Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <Border CornerRadius="3,0,0,3"
-                                        Padding="5,0"
-                                        Background="#2E7D9A">
-                                    <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).OperatorTag.Name}"
+                            <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
+                                 tone (the operator name) is appended, otherwise the category badge stands alone. -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
+                                        CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                                        Padding="5,2,5,3">
+                                    <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
                                                Foreground="White"
                                                FontSize="9"
                                                FontWeight="SemiBold"/>
                                 </Border>
                                 <Border CornerRadius="0,3,3,0"
-                                        Padding="5,0"
-                                        Background="#4A4A55">
-                                    <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).OperatorTag.Kind}"
+                                        Padding="5,2,5,3"
+                                        Background="#4A4A55"
+                                        Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Operator}"
                                                Foreground="White"
                                                FontSize="9"
                                                FontWeight="SemiBold"/>

@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using InternalsViewer.Query.Helpers;
 
-namespace InternalsViewer.Query.Locks;
+namespace InternalsViewer.Query.Events.Waits;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo

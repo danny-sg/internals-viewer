@@ -1,7 +1,8 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Parsers;
-using InternalsViewer.Query.Locks;
+using InternalsViewer.Query.Events.Waits;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.TransactionLog;
 

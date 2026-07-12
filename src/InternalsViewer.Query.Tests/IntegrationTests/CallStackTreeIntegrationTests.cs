@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
 using InternalsViewer.Query.TransactionLog;
@@ -49,7 +50,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
             + $"{events.Count(e => e.CallStack is not null)}");
 
         // First read group.
-        var group = events.OfType<NonCachedReadEventGroup>().FirstOrDefault();
+        var group = events.OfType<ReadEventGroup>().FirstOrDefault();
 
         if (group is not null)
         {
@@ -61,7 +62,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
         }
 
         // First single event that carries a call stack.
-        var single = events.FirstOrDefault(e => e is not NonCachedReadEventGroup && e.CallStack is not null);
+        var single = events.FirstOrDefault(e => e is not ReadEventGroup && e.CallStack is not null);
 
         if (single is not null)
         {
@@ -70,7 +71,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 
         // How many single events would scope to an EMPTY tree because their whole path is infrastructure.
         var allInfra = events
-            .Where(e => e is not NonCachedReadEventGroup && e.CallStack is not null)
+            .Where(e => e is not ReadEventGroup && e.CallStack is not null)
             .Where(e => AncestorsOf(e.CallStack!).All(n => n.IsInfrastructure))
             .ToList();
 
@@ -237,7 +238,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 
             using var resolver = new Callstack.DiaResolver(pdbPath);
 
-            var classes = resolver.EnumerateSymbols("CQ")
+            var classes = resolver.EnumerateSymbols("CQScan")
                 // The class (the part before ::) is what the operator map keys on; drop RTTI and template noise.
                 .Select(s => s.Split("::", 2)[0])
                 .Where(s => !s.Contains('`') && !s.Contains('<'))
@@ -270,13 +271,16 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 
         foreach (var (pdb, classes) in classesByModule)
         {
-            var scan = classes.Where(c => c.StartsWith("CQScan", StringComparison.Ordinal)).ToList();
+            var scan = classes.Where(c => c.StartsWith("CQ", StringComparison.Ordinal)).ToList();
 
             TestOutputHelper.WriteLine($"{pdb}: {classes.Count} CQ* classes, {scan.Count} CQScan*");
 
-            foreach (var name in scan)
+            if (pdb != "qds.pdb")
             {
-                TestOutputHelper.WriteLine($"    {name}");
+                foreach (var name in scan)
+                {
+                    TestOutputHelper.WriteLine($"    {name}");
+                }
             }
         }
     }

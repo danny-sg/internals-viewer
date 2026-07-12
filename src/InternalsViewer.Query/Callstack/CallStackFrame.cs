@@ -1,6 +1,4 @@
-using InternalsViewer.Query.Callstack;
-
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Callstack;
 
 public sealed record CallstackFrame
 {

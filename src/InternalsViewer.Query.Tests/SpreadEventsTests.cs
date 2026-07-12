@@ -1,5 +1,6 @@
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -72,7 +73,7 @@ public class SpreadEventsTests
 
         var member1 = new LatchEvent { Name = "latch_acquired", TimeUs = 252_500, TaskAddress = 1 };
 
-        var group = new NonCachedReadEventGroup
+        var group = new ReadEventGroup
         {
             Name = "Page Read",
             Events = [member0, member1],
@@ -93,7 +94,7 @@ public class SpreadEventsTests
         Assert.All(group.Events, m => Assert.True(m.TimeUs >= group.TimeUs, "no member should precede its group"));
     }
 
-    private static NonCachedReadEventGroup Read(long timeUs, long durationUs) => new()
+    private static ReadEventGroup Read(long timeUs, long durationUs) => new()
     {
         Name = "Page Read",
         Events = [],

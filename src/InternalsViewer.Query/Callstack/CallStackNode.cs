@@ -37,11 +37,11 @@ public sealed class CallStackNode
     public bool IsInfrastructure => Frame?.Resolved?.SymbolMetadata?.IsInfrastructure ?? false;
 
     /// <summary>
-    /// The plan operator this frame implements if it is a CQScan iterator, otherwise null
+    /// The plan operator this frame implements if it is a query iterator, otherwise null
     /// </summary>
-    public OperatorTag? OperatorTag => OperatorSymbols.Classify(Frame?.Resolved?.ClassName);
+    public string? Operator => Frame?.Resolved?.Iterator;
 
-    public bool HasOperator => OperatorTag is not null;
+    public bool HasOperator => Operator is not null;
 
     /// <summary>
     /// Per-time-bucket event counts for this node's subtree, filled by <see cref="CallStackTree.ComputeActivity"/>

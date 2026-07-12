@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans;

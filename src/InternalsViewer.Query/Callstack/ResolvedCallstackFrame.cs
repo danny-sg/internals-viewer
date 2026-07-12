@@ -12,6 +12,11 @@ public sealed record ResolvedCallstackFrame
 
     public string RawSymbol { get; init; } = string.Empty;
 
+    /// <summary>
+    /// The plan operator this frame implements if it is a query iterator (e.g. Top, Hash Match), otherwise null
+    /// </summary>
+    public string? Iterator { get; init; }
+
     public string? ClassName { get; init; }
 
     public string MethodName { get; init; } = string.Empty;

@@ -1,0 +1,10 @@
+# Module -> ModuleCategory mappings for call-stack frame classification.
+# Pipe-delimited. Lines starting with # and blank lines are ignored. The category must match a ModuleCategory enum name.
+Module|ModuleCategory
+sqlmin|StorageEngine
+sqllang|QueryProcessor
+SqlDK|SqlOs
+sqlservr|SqlServerHost
+SqlTsEs|ExpressionServices
+kernel32|System
+ntdll|System

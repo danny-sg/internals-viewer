@@ -1,7 +1,7 @@
-﻿using InternalsViewer.Query.Events.Latches;
+﻿using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Helpers;
 
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events.Latches;
 
 [EventItemName("Latch")]
 public sealed record LatchEvent : PageEngineEvent

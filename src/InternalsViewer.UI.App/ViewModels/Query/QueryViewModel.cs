@@ -31,6 +31,9 @@ using System.Threading.Tasks;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Callstack.Categories;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -673,7 +676,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                     Add(new PageSpan(pg, io.TimeUs, queryEndUs, readColour), isRead: true);
                     break;
 
-                case NonCachedReadEventGroup group:
+                case ReadEventGroup group:
                     // A read spans many pages now, so add a read span for each page it touched, timed at the read's END
                     // (the pages hit the buffer on completion, matching the timeline read band's end-bunched rails).
                     var groupColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
@@ -1089,7 +1092,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             }
 
             // A read now spans many pages, so flash each page of the group on the allocation map.
-            if (e is NonCachedReadEventGroup group)
+            if (e is ReadEventGroup group)
             {
                 var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
 

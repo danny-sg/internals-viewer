@@ -20,6 +20,15 @@ public class ResolvedCallstackFrameParserTests
     }
 
     [Fact]
+    public void Operator_Frame_Populates_Iterator()
+    {
+        var result = ResolvedCallstackFrameParser.Parse("sqlmin", "CQScanTopNew::GetRow+0x1a");
+
+        Assert.Equal(SymbolCategory.QueryOperator, result.SymbolCategory);
+        Assert.Equal("Top", result.Iterator);
+    }
+
+    [Fact]
     public void Symbol_Without_Offset_Leaves_Offset_Null()
     {
         var result = ResolvedCallstackFrameParser.Parse("sqlmin", "CQScan::GetRow");

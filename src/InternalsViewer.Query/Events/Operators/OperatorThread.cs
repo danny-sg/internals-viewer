@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Events.EventTypes;
+﻿namespace InternalsViewer.Query.Events.Operators;
 
 /// <summary>
 /// A single operator thread: its span (capture-relative microseconds) from query_thread_profile and

@@ -1,0 +1,72 @@
+namespace InternalsViewer.Query.Callstack.Categories;
+
+/// <summary>
+/// Parses the pipe-delimited mapping files into module entries and symbol rules
+/// </summary>
+/// <remarks>
+/// Blank lines, <c>#</c> comments and the header row are skipped; cells are trimmed. A row whose category cell is not a
+/// known enum name (a bad row, or the header) is skipped rather than throwing, so one malformed line can't break loading.
+/// </remarks>
+public static class MappingParser
+{
+    public static IEnumerable<(string Module, ModuleCategory Category)> ParseModules(TextReader reader)
+    {
+        foreach (var cells in ReadRows(reader, minCells: 2))
+        {
+            if (Enum.TryParse<ModuleCategory>(cells[1], ignoreCase: true, out var category))
+            {
+                yield return (cells[0], category);
+            }
+        }
+    }
+
+    public static IEnumerable<SymbolCategoryRule> ParseSymbols(TextReader reader, int startOrder = 0)
+    {
+        var order = startOrder;
+
+        foreach (var cells in ReadRows(reader, minCells: 5))
+        {
+            if (!Enum.TryParse<SymbolCategory>(cells[3], ignoreCase: true, out var category))
+            {
+                continue;
+            }
+
+            yield return new SymbolCategoryRule
+            {
+                Module = GlobPattern.Parse(cells[0]),
+                Class = GlobPattern.Parse(cells[1]),
+                Function = GlobPattern.Parse(cells[2]),
+                Category = category,
+                Iterator = string.IsNullOrWhiteSpace(cells[4]) ? null : cells[4].Trim(),
+                DefinitionOrder = order++,
+            };
+        }
+    }
+
+    private static IEnumerable<string[]> ReadRows(TextReader reader, int minCells)
+    {
+        while (reader.ReadLine() is { } line)
+        {
+            var trimmed = line.Trim();
+
+            if (trimmed.Length == 0 || trimmed.StartsWith('#'))
+            {
+                continue;
+            }
+
+            var cells = line.Split('|');
+
+            if (cells.Length < minCells)
+            {
+                continue;
+            }
+
+            for (var i = 0; i < cells.Length; i++)
+            {
+                cells[i] = cells[i].Trim();
+            }
+
+            yield return cells;
+        }
+    }
+}

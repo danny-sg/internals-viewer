@@ -4,8 +4,12 @@ using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.UI.App.Controls.Allocation;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.EventGrid;
@@ -82,7 +86,7 @@ public sealed partial class EventGridControl : UserControl
         _parentOf.Clear();
         _expanded.Clear();
 
-        foreach (var group in (Events ?? []).OfType<NonCachedReadEventGroup>())
+        foreach (var group in (Events ?? []).OfType<ReadEventGroup>())
         {
             foreach (var child in group.Events)
             {
@@ -125,6 +129,10 @@ public sealed partial class EventGridControl : UserControl
     private string? _sortTag;
     private bool _sortAscending = true;
 
+    // Whether the in-progress click changed the selection: a click on the already-selected row raises no
+    // SelectionChanged, so the tap handler uses this to tell "selected a new row" from "clicked the selected row".
+    private bool _selectionChanged;
+
     public EventGridControl()
     {
         InitializeComponent();
@@ -132,16 +140,58 @@ public sealed partial class EventGridControl : UserControl
         DataGrid.LoadingRow      += OnDataGridLoadingRow;
         DataGrid.UnloadingRow    += OnDataGridUnloadingRow;
         DataGrid.SelectionChanged += OnDataGridSelectionChanged;
+
+        // handledEventsToo so the tap still reaches us after the DataGrid has handled the pointer for selection.
+        DataGrid.AddHandler(UIElement.TappedEvent, new TappedEventHandler(OnDataGridTapped), handledEventsToo: true);
     }
 
     private void OnDataGridSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        _selectionChanged = true;
+
         var selected = (DataGrid.SelectedItem as EventRow)?.Event;
 
         if (!ReferenceEquals(SelectedItem, selected))
         {
             SelectedItem = selected;
         }
+    }
+
+    // Click-to-deselect: clicking the already-selected row clears the selection. SelectionChanged fires on pointer
+    // press (before this tap on release), so if it did NOT fire this click, the tapped row was already selected.
+    private void OnDataGridTapped(object sender, TappedRoutedEventArgs e)
+    {
+        var changedThisClick = _selectionChanged;
+
+        _selectionChanged = false;
+
+        if (changedThisClick)
+        {
+            return;
+        }
+
+        if (RowFromSource(e.OriginalSource) is { } row && ReferenceEquals(DataGrid.SelectedItem, row))
+        {
+            DataGrid.SelectedItem = null;
+        }
+    }
+
+    private static EventRow? RowFromSource(object? source)
+    {
+        var node = source as DependencyObject;
+
+        while (node is not null and not DataGridRow)
+        {
+            // A tap on the expander chevron or a page-address link isn't a row deselect — those have their own action.
+            if (node is ButtonBase)
+            {
+                return null;
+            }
+
+            node = VisualTreeHelper.GetParent(node);
+        }
+
+        return (node as DataGridRow)?.DataContext as EventRow;
     }
 
     private void OnDataGridLoadingRow(object? sender, DataGridRowEventArgs e)
@@ -256,7 +306,7 @@ public sealed partial class EventGridControl : UserControl
 
         foreach (var engineEvent in topLevel)
         {
-            var children = engineEvent is NonCachedReadEventGroup group ? group.Events : [];
+            var children = engineEvent is ReadEventGroup group ? group.Events : [];
 
             var hasChildren = children.Count > 0;
 
@@ -310,7 +360,7 @@ public sealed partial class EventGridControl : UserControl
     private static PageAddress? PageOf(EngineEvent ev) => ev switch
     {
         PageEngineEvent { PageAddress: { } page } => page,
-        NonCachedReadEventGroup { PageAddress: { } page } => page,
+        ReadEventGroup { PageAddress: { } page } => page,
         _ => null,
     };
 

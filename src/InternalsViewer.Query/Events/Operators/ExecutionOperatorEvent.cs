@@ -1,6 +1,7 @@
-﻿using InternalsViewer.Query.Plans;
+﻿using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Plans;
 
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events.Operators;
 
 public sealed record ExecutionOperatorEvent : EngineEvent
 {

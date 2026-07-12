@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Callstack;
+﻿using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Plans;
 
 namespace InternalsViewer.Query.Events.EventTypes;
