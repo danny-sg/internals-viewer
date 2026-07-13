@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Events.EventTypes;
+﻿using InternalsViewer.Query.Events.EventTypes;
 
 namespace InternalsViewer.Query.Events.Locks;
 
@@ -7,55 +6,36 @@ public sealed record LockEvent : PageEngineEvent
 {
     public LockMode LockMode { get; init; }
 
-    public LockResourceType ResourceType { get; init; }
-
-    public RowIdentifier? RowIdentifier { get; set; }
-
-    public string? KeyHash { get; set; }
-
-    public int LockObjectId { get; init; }
-
-    public long? HobtId { get; set; }
+    public required LockResource Resource { get; init; }
 
     public LockOwnerContext? LockOwnerContext { get; set; }
 
-    /// <summary>Identifies the locked resource (from resource_0/1/2 + type), so acquire/release pair in the IntervalCollapser</summary>
-    public ulong Key { get; init; }
+    public LockIdentity Identity => new(ResourceKey: Resource.Key,
+                                        LockMode: LockMode,
+                                        OwnerType: LockOwnerContext?.OwnerType ?? LockOwnerType.Unknown,
+                                        WorkspaceId: LockOwnerContext?.WorkspaceId ?? 0,
+                                        SubId: LockOwnerContext?.SubId ?? 0,
+                                        NestId: LockOwnerContext?.NestId ?? 0,
+                                        TransactionId: LockOwnerContext?.TransactionId
+    );
 
-    public override int ObjectId => LockObjectId;
+    public override int ObjectId => Resource.ObjectId;
 
     public override string ObjectName =>
-        AllocationUnit?.DisplayName ?? (LockObjectId > 0 ? $"(Object Id {LockObjectId})" : base.ObjectName);
+        AllocationUnit?.DisplayName ?? (Resource.ObjectId > 0 ? $"(Object Id {Resource.ObjectId})" : base.ObjectName);
 
-    public override string Description => $"Lock: {LockMode}/{ResourceType}";
+    public override string Description => $"Lock: {LockMode}/{Resource.ResourceType}";
 }
 
-public sealed record LockResource
-{
-    public LockResourceType ResourceType { get; init; }
+public readonly record struct LockIdentity
+(
+    ulong ResourceKey,
+    LockMode LockMode,
 
-    public ulong ResourceKey { get; init; }
+    LockOwnerType OwnerType,
+    ulong WorkspaceId,
+    uint SubId,
+    uint NestId,
 
-    public int ObjectId { get; init; }
-
-    public long? HobtId { get; init; }
-
-    public RowIdentifier? RowIdentifier { get; init; }
-
-    public string? KeyHash { get; init; }
-}
-
-public sealed record LockOwnerContext
-{
-    public LockOwnerType OwnerType { get; set; }
-
-    public long? TransactionId { get; init; }
-    
-    public int? SessionId { get; init; }
-
-    public ulong WorkspaceId { get; set; }
-
-    public uint SubId { get; set; }
-
-    public uint NestId { get; set; }
-}
+    long? TransactionId
+);

@@ -60,11 +60,11 @@ public static class IntervalCollapser
         // Fold each lock hold: the acquire keeps its place and the release folds in, becoming a single "Lock" that is
         // no longer an acquire/release. Prefer the release's own measured duration, but lock events tend to report it
         // as 0, so fall back to the elapsed hold (release time less acquire time). Paired per resource in time order.
-        FoldByKey(
+        FoldByKey<LockIdentity>(
             events,
             dropped,
-            begin: e => e is LockEvent { Name: "lock_acquired" } l ? l.Key : null,
-            end: e => e is LockEvent { Name: "lock_released" } l ? l.Key : null,
+            begin: e => e is LockEvent { Name: "lock_acquired" } l ? l.Identity : null,
+            end: e => e is LockEvent { Name: "lock_released" } l ? l.Identity : null,
             onPair: (begin, end) =>
             {
                 begin.Name = "Lock";
@@ -74,7 +74,7 @@ public static class IntervalCollapser
 
         // Fold each file read: only the completed carries the size (the page range) and duration, so copy them onto the begin, which keeps
         // its place; the two are paired by file offset. Writes fold the same way.
-        FoldByKey(
+        FoldByKey<ulong>(
             events,
             dropped,
             begin: e => e is FileEvent f && !IsCompleted(f) ? (ulong)f.Offset : null,
@@ -99,17 +99,18 @@ public static class IntervalCollapser
         return result;
     }
 
-    private static void FoldByKey(IReadOnlyList<EngineEvent> events,
+    private static void FoldByKey<TKey>(IReadOnlyList<EngineEvent> events,
                                   HashSet<EngineEvent> dropped,
-                                  Func<EngineEvent, ulong?> begin,
-                                  Func<EngineEvent, ulong?> end,
+                                  Func<EngineEvent, TKey?> begin,
+                                  Func<EngineEvent, TKey?> end,
                                   Action<EngineEvent, EngineEvent>? onPair = null)
+        where TKey : struct
     {
         onPair ??= static (b, e) => b.DurationUs = e.DurationUs;
 
-        var begins = new Dictionary<ulong, List<EngineEvent>>();
+        var begins = new Dictionary<TKey, List<EngineEvent>>();
 
-        var ends = new Dictionary<ulong, List<EngineEvent>>();
+        var ends = new Dictionary<TKey, List<EngineEvent>>();
 
         foreach (var e in events)
         {
@@ -145,7 +146,8 @@ public static class IntervalCollapser
         }
     }
 
-    private static List<EngineEvent> Bucket(Dictionary<ulong, List<EngineEvent>> map, ulong key)
+    private static List<EngineEvent> Bucket<TKey>(Dictionary<TKey, List<EngineEvent>> map, TKey key)
+        where TKey : struct
     {
         if (!map.TryGetValue(key, out var list))
         {

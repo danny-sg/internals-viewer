@@ -212,7 +212,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 }
             }
 
-            await GetEventKeyAddresses(events, database.AllocationUnits, connectionString, cancellationToken);
+            await GetEventKeyAddresses(events, connectionString, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -301,11 +301,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     }
 
     internal static async Task GetEventKeyAddresses(List<EngineEvent> events,
-                                                    Dictionary<long, AllocationUnit> allocationUnits,
                                                     string connectionString,
                                                     CancellationToken cancellationToken)
     {
-        var keyLockEvents = events.Where(e => e is LockEvent { KeyHash: not null }).Cast<LockEvent>();
+        var keyLockEvents = events.Where(e => e is LockEvent { Resource.KeyHash: not null }).Cast<LockEvent>();
 
         var byAllocationUnitId = keyLockEvents.GroupBy(g => g.AllocationUnit);
 
@@ -320,7 +319,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             var objectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
 
-            var hashes = grouping.Select(s => s.KeyHash ?? string.Empty).Where(h => !string.IsNullOrEmpty(h)).ToList();
+            var hashes = grouping.Select(s => s.Resource.KeyHash ?? string.Empty).Where(h => !string.IsNullOrEmpty(h)).ToList();
 
             var keyHashRowIdentifiers = await KeyHashLookup.GetKeyHashRowIdentifiers(objectName,
                                                                                      hashes,
@@ -329,11 +328,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             foreach (var lockEvent in grouping)
             {
-                if (lockEvent.KeyHash is not null
-                    && keyHashRowIdentifiers.TryGetValue(lockEvent.KeyHash,
+                if (lockEvent.Resource.KeyHash is not null
+                    && keyHashRowIdentifiers.TryGetValue(lockEvent.Resource.KeyHash,
                                                          out var rowIdentifier))
                 {
-                    lockEvent.RowIdentifier = rowIdentifier;
+                    lockEvent.Resource.RowIdentifier = rowIdentifier;
                 }
             }
         }

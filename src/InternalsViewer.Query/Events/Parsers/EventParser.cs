@@ -27,7 +27,7 @@ public sealed class EventParser
             var n when n.Contains("physical_page")
                 => MapIoEvent(e),
             var n when n.Contains("lock_")
-                => MapLock(e),
+                => LockEventParser.MapLock(e),
             var n when n.Contains("wait")
                 => MapWait(e),
             var n when n.Contains("latch")
@@ -101,9 +101,9 @@ public sealed class EventParser
                 ? value
                 : AllocationUnit.Unknown;
         }
-        else if (engineEvent is LockEvent { HobtId: not null } lockEvent)
+        else if (engineEvent is LockEvent { Resource.HobtId: not null } lockEvent)
         {
-            engineEvent.AllocationUnit = database.FindHobtIdAllocationUnit(lockEvent.HobtId.Value);
+            engineEvent.AllocationUnit = database.FindHobtIdAllocationUnit(lockEvent.Resource.HobtId.Value);
         }
 
         engineEvent.Category = EventCategoryClassifier.GetCategory(engineEvent);
@@ -228,89 +228,6 @@ public sealed class EventParser
             ThreadId = threadId,
             NodeId = nodeId,
             DurationUs = e.GetLong("total_time_us") ?? 0
-        };
-    }
-
-    /// <remarks>
-    /// +-----------------+-----------------------------+-----------------------------+----------------------+---------------------+
-    /// | Resource Type   | resource_0                  | resource_1                  | resource_2           | associated_object_id|
-    /// +-----------------+-----------------------------+-----------------------------+----------------------+---------------------+
-    /// | DATABASE        | Database ID                 | 0                           | 0                    | 0                   |
-    /// | FILE            | File ID                     | File subresource            | 0                    | 0                   |
-    /// | OBJECT          | Object ID                   | Lock partition              | 0                    | Object ID           |
-    /// | HOBT            | HoBT ID(encoded part)       | HoBT ID (encoded part)      | 0                    | HoBT ID             |
-    /// | PAGE            | Page ID                     | File ID                     | 0                    | HoBT ID             |
-    /// | EXTENT          | Extent ID                   | File ID                     | 0                    | HoBT ID             |
-    /// | RID             | Page ID                     | Encoded File ID + Slot ID   | 0                    | HoBT ID             |
-    /// | KEY             | Encoded key hash            | 0                           | HoBT ID              |                     |
-    /// | ALLOCATION_UNIT | Allocation Unit Id          | Internal / varies           | Internal / varies    | Allocation Unit ID  |
-    /// | METADATA        | Internal metadata identifier| Internal metadata identifier| Internal identifier  | Internal / varies   |
-    /// | APPLICATION     | Identifier/hash             | Internal / varies           | Internal / varies    | Usually 0           |
-    /// | XACT            | Transaction identifier      | Internal / varies           | Internal / varies    | Transaction related |
-    /// | OIB             | Internal OIB resource       | Internal OIB resource       | Internal OIB         | Internal / varies   |
-    /// | ROW_GROUP       | Rowgroup Id                 | Internal / varies           | Rowgroup / partition |                     | 
-    /// +-----------------+-----------------------------+-----------------------------+----------------------+---------------------+
-    ///
-    /// OIB = Online Index Build (out of scope)
-    /// </remarks>
-    private static EngineEvent MapLock(EventResult e)
-    {
-        var lockMode = (LockMode)(e.GetInt("mode") ?? 0);
-        var resourceType = (LockResourceType)(e.GetInt("resource_type") ?? 0);
-
-        var duration = e.GetLong("duration") ?? 0;
-
-        var resource0 = e.GetUlong("resource_0") ?? 0;
-        var resource1 = e.GetUlong("resource_1") ?? 0;
-        var resource2 = e.GetUlong("resource_2") ?? 0;
-
-        // The lock owner's workspace (a pointer), stable across its acquire and release. Included so two owners locking
-        // the same resource pair separately; sub_id/nest_id are left out as they can differ acquire→release.
-        var workspace = e.GetUlong("lockspace_workspace_id") ?? 0;
-
-        // A key for the lock instance, identical for its acquire and release (mode is deliberately excluded so a convert
-        // still pairs), mixing owner + the three resource words + the type. 64-bit, so collisions across a query's
-        // distinct locks are negligible.
-        var resourceKey = resource0
-                          ^ (resource1 * 0x9E3779B97F4A7C15UL)
-                          ^ (resource2 * 0xC2B2AE3D27D4EB4FUL)
-                          ^ (workspace * 0xD6E8FEB86659FD93UL)
-                          ^ ((ulong)(int)resourceType << 5);
-
-        var associatedObjectId = e.GetLong("associated_object_id");
-
-        var lockEvent = new LockEvent
-        {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            DurationUs = duration,
-            LockMode = lockMode,
-            ResourceType = (LockResourceType)(e.GetInt("resource_type") ?? 0),
-            LockObjectId = e.GetInt("object_id") ?? 0,
-            Key = resourceKey
-        };
-
-        return resourceType switch
-        {
-            LockResourceType.Page =>
-                lockEvent with
-                {
-                    PageAddress = new PageAddress((short)resource1, (int)resource0)
-                },
-            LockResourceType.Rid =>
-                lockEvent with
-                {
-                    RowIdentifier = new RowIdentifier((short)resource0, (int)resource1, (ushort)resource2),
-                },
-            LockResourceType.Key =>
-                lockEvent with
-                {
-                    KeyHash = $"({resource0:x})",
-                    HobtId = associatedObjectId
-                },
-
-            _ => lockEvent
         };
     }
 
