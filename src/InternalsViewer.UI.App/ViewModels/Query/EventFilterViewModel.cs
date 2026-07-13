@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.UI.App.Services;
 using Microsoft.UI.Dispatching;
 
@@ -123,11 +124,23 @@ public sealed partial class EventFilterViewModel : ObservableObject
     /// <summary>Applies the system-object and tree filters to <paramref name="events"/>.</summary>
     public IEnumerable<EngineEvent> Apply(IReadOnlyCollection<EngineEvent> events)
     {
-        var source = !IncludeSystemObjects && _systemObjectIds.Count > 0
-            ? events.Where(e => e.ObjectId == 0 || !_systemObjectIds.Contains(e.ObjectId))
-            : events;
+        var source = IncludeSystemObjects
+            ? events
+            : events.Where(IsUserObject);
 
         return ApplyNodeFilter(source);
+    }
+
+    // Whether an event belongs to a user object (kept when system objects are hidden). Metadata and database locks are
+    // engine bookkeeping with no user object (ObjectId 0), so the id set alone can't catch them — exclude them by type.
+    private bool IsUserObject(EngineEvent e)
+    {
+        if (e is LockEvent { Resource.ResourceType: LockResourceType.Metadata or LockResourceType.Database })
+        {
+            return false;
+        }
+
+        return e.ObjectId == 0 || !_systemObjectIds.Contains(e.ObjectId);
     }
 
     private IEnumerable<EngineEvent> ApplyNodeFilter(IEnumerable<EngineEvent> source)

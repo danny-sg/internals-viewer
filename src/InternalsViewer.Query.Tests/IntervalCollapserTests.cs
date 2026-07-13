@@ -94,7 +94,7 @@ public class IntervalCollapserTests
     private static LockEvent Lock(string name, ulong resourceKey, long timeUs) => new()
     {
         Name = name,
-        Key = resourceKey,
+        Resource = new LockResource { Key = resourceKey },
         TimeUs = timeUs,
     };
 

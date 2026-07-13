@@ -118,35 +118,31 @@ public class EventSqlTests
     {
         var events = new List<EngineEvent>();
 
-        await QueryRunner.GetEventKeyAddresses(events, new Dictionary<long, AllocationUnit>(), "irrelevant",
-                                               CancellationToken.None);
+        await QueryRunner.GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
     }
 
     [Fact]
     public async Task GetEventKeyAddresses_Skips_Lookup_When_No_AllocationUnit_Matches_ObjectId()
     {
-        var lockEvent = new LockEvent { LockObjectId = 42, KeyHash = "somehash" };
+        var lockEvent = new LockEvent { Resource = new LockResource { ObjectId = 42, KeyHash = "somehash" } };
 
         var events = new List<EngineEvent> { lockEvent };
 
-        await QueryRunner.GetEventKeyAddresses(events, new Dictionary<long, AllocationUnit>(), "irrelevant",
-                                               CancellationToken.None);
+        await QueryRunner.GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
 
-        Assert.Null(lockEvent.RowIdentifier);
+        Assert.Null(lockEvent.Resource.RowIdentifier);
     }
 
     [Fact]
     public async Task GetEventKeyAddresses_Ignores_LockEvents_Without_KeyHash()
     {
-        var lockEvent = new LockEvent { LockObjectId = 42, KeyHash = null };
+        var lockEvent = new LockEvent { Resource = new LockResource { ObjectId = 42, KeyHash = null } };
 
         var events = new List<EngineEvent> { lockEvent };
 
-        var allocationUnits = new Dictionary<long, AllocationUnit> { [1] = new() { ObjectId = 42 } };
+        await QueryRunner.GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
 
-        await QueryRunner.GetEventKeyAddresses(events, allocationUnits, "irrelevant", CancellationToken.None);
-
-        Assert.Null(lockEvent.RowIdentifier);
+        Assert.Null(lockEvent.Resource.RowIdentifier);
     }
 
     private static int CountOccurrences(string source, string value)

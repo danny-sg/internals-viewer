@@ -80,7 +80,18 @@ public sealed class EventParser
 
         // Object identity is a reference to the shared allocation unit; names are read from it on demand (page-only,
         // object-id-only and special-page fallbacks live on the event subtypes).
-        if (engineEvent is PageEngineEvent { ObjectId: 0, PageAddress: { } pageAddress } pageEvent)
+        if (engineEvent is LockEvent lockEvent)
+        {
+            // A lock resolves to its object's allocation unit: an object lock carries object_id directly, while a
+            // finer-grained lock (page/rid/key) carries only the HoBT (partition), so those resolve via the partition
+            // id. Either way the resolved AllocationUnit.ObjectId is the consistent object an escalation groups on.
+            engineEvent.AllocationUnit = lockEvent.Resource.ObjectId > 0
+                ? database.FindObjectIdAllocationUnit(lockEvent.Resource.ObjectId)
+                : lockEvent.Resource.HobtId is { } hobtId and > 0
+                    ? database.FindHobtIdAllocationUnit(hobtId)
+                    : null;
+        }
+        else if (engineEvent is PageEngineEvent { ObjectId: 0, PageAddress: { } pageAddress } pageEvent)
         {
             var allocationUnit = database.FindPageAllocationUnit(pageAddress);
 
@@ -100,10 +111,6 @@ public sealed class EventParser
             engineEvent.AllocationUnit = database.AllocationUnits.TryGetValue(logEvent.AllocationUnitId, out var value)
                 ? value
                 : AllocationUnit.Unknown;
-        }
-        else if (engineEvent is LockEvent { Resource.HobtId: not null } lockEvent)
-        {
-            engineEvent.AllocationUnit = database.FindHobtIdAllocationUnit(lockEvent.Resource.HobtId.Value);
         }
 
         engineEvent.Category = EventCategoryClassifier.GetCategory(engineEvent);

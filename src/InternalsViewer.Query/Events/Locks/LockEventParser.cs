@@ -92,22 +92,20 @@ internal class LockEventParser
         var resource1 = e.GetUlong("resource_1") ?? 0;
         var resource2 = e.GetUlong("resource_2") ?? 0;
 
-        var workspace = e.GetUlong("lockspace_workspace_id") ?? 0;
-
         var resourceKey = resource0
                           ^ (resource1 * 0x9E3779B97F4A7C15UL)
                           ^ (resource2 * 0xC2B2AE3D27D4EB4FUL)
-                          ^ (workspace * 0xD6E8FEB86659FD93UL)
                           ^ ((ulong)(int)resourceType << 5);
 
-
+        var objectId = e.GetLong("object_id") ?? 0;
         var associatedObjectId = e.GetLong("associated_object_id") ?? 0;
 
         var lockResource = new LockResource
         {
             ResourceType = resourceType,
             Key = resourceKey,
-            ObjectId = (int) associatedObjectId
+            ObjectId = (int)objectId,
+            HobtId = associatedObjectId
         };
 
         return resourceType switch
@@ -125,8 +123,7 @@ internal class LockEventParser
             LockResourceType.Key =>
                 lockResource with
                 {
-                    KeyHash = $"({resource0:x})",
-                    HobtId = associatedObjectId
+                    KeyHash = $"({resource0:x})"
                 },
 
             _ => lockResource

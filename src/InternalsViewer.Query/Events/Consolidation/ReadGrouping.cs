@@ -48,20 +48,24 @@ namespace InternalsViewer.Query.Events.Consolidation;
 ///
 /// There are two modes for disk reads:
 ///
-/// - Scatter/Gather - Multiple pages are read into the buffer pool. Used for scans where read-ahead is on or heap scans
 /// - Contiguous     - Single page reads. Used when read-ahead is off (non-heap) or seeks
+/// - Scatter/Gather - Multiple pages are read into the buffer pool. Used for scans where read-ahead is on or heap scans
+///
+/// Both modes give out a signal via a BUF SH latch suspend begin/end - this has duration that accurately corresponds to the read duration.
+///
+/// This suspend is when the page(s) are not in the buffer pool, and it switches to file based read.
+///
+/// 
 /// </remarks>
 public static class ReadGrouping
 {
     public static List<EngineEvent> Group(IReadOnlyList<EngineEvent> events)
     {
-        // Keyed by reference: EngineEvent records compare by value, so value-equal events would otherwise collide. Each
-        // spine (a suspend, a gather file read, or a cached acquire) maps to the storage events that make up that read.
         var members = new Dictionary<EngineEvent, List<EngineEvent>>(ReferenceEqualityComparer.Instance);
 
         var consumed = new HashSet<EngineEvent>(ReferenceEqualityComparer.Instance);
 
-        CollectContiguousNonCachedReads(events, members, consumed);
+        CollectContiguousDiskReads(events, members, consumed);
 
         CollectGatherReads(events, members, consumed);
 
@@ -92,10 +96,11 @@ public static class ReadGrouping
         return result;
     }
 
-    private static void CollectContiguousNonCachedReads(IReadOnlyList<EngineEvent> events,
-                                                        Dictionary<EngineEvent, List<EngineEvent>> members,
-                                                        HashSet<EngineEvent> consumed)
+    private static void CollectContiguousDiskReads(IReadOnlyList<EngineEvent> events,
+                                                   Dictionary<EngineEvent, List<EngineEvent>> members,
+                                                   HashSet<EngineEvent> consumed)
     {
+        // Find spines for the grouping based on suspended latches
         var spines = events.OfType<LatchEvent>().Where(IsSuspend).ToList();
 
         if (spines.Count == 0)
@@ -105,7 +110,8 @@ public static class ReadGrouping
 
         var byLatchAddress = spines.Where(s => s.LatchAddress is not null)
                                    .GroupBy(s => s.LatchAddress!.Value)
-                                   .ToDictionary(g => g.Key, g => g.OrderBy(s => s.TimeUs).ToList());
+                                   .ToDictionary(g => g.Key, g => g.OrderBy(s => s.TimeUs)
+                                   .ToList());
 
         var byPage = spines.Where(s => s.PageAddress is not null)
                            .GroupBy(s => s.PageAddress!.Value)
@@ -140,10 +146,10 @@ public static class ReadGrouping
                                            Dictionary<EngineEvent, List<EngineEvent>> members,
                                            HashSet<EngineEvent> consumed)
     {
-        var spines = events
-            .OfType<FileEvent>()
-            .Where(f => f is { Size: > 0, PageAddress: not null } && !consumed.Contains(f) && !members.ContainsKey(f))
-            .ToList();
+        // Find spines for the grouping based on file reads
+        var spines = events.OfType<FileEvent>()
+                           .Where(f => f is { Size: > 0, PageAddress: not null } && !consumed.Contains(f) && !members.ContainsKey(f))
+                           .ToList();
 
         if (spines.Count == 0)
         {
@@ -184,6 +190,15 @@ public static class ReadGrouping
         foreach (var (spine, group) in members)
         {
             if (spine is not FileEvent && !group.Any(IsFileReadMarker))
+            {
+                continue;
+            }
+
+            // Only a SINGLE-page non-cached read absorbs a trailing SH re-read (the load-then-immediately-reread of that
+            // one page). A multi-page read-ahead (gather) read must NOT swallow the scan's later SH reads of the pages
+            // it prefetched — those are the scan iterator's own page reads and must surface as individual cached reads
+            // spread across the scan, not collapse into the early prefetch. (For a big scan this is thousands of them.)
+            if (DistinctPageCount(group) > 1)
             {
                 continue;
             }
@@ -366,8 +381,6 @@ public static class ReadGrouping
             Events = members,
             ReadType = kind,
             Pages = pages,
-            // Timing comes from the spine: a suspend's folded DurationUs is the SQL-measured read time, a gather's is
-            // the estimated one; a min/max envelope over the children would only reflect their ms-quantised timestamps.
             TimeUs = spine.TimeUs,
             DurationUs = spine.DurationUs,
             DatabaseId = spine.DatabaseId,
@@ -408,4 +421,12 @@ public static class ReadGrouping
 
     private static bool IsCachedBufferAcquire(LatchEvent e) =>
         e is { LatchClass: LatchClass.BUF, LatchMode: LatchMode.SH, PageAddress: not null, Name: "latch_acquired" };
+
+    private static int DistinctPageCount(List<EngineEvent> group) =>
+        group.OfType<PageEngineEvent>()
+             .Where(m => m.PageAddress is not null)
+             .Select(m => m.PageAddress!.Value)
+             .Distinct()
+             .Take(2)
+             .Count();
 }

@@ -114,7 +114,14 @@ public sealed class EventReader(ILogger<EventReader> logger)
         // read into a single NonCachedReadEventGroup.
         var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
 
+        // Collapse a burst of identical buffer latches on one page (a scan re-latching a page per row) into one, so
+        // the read grouping forms a single buffer-pool read per page visit and the spread can't smear them.
+        collapsedEvents = BufferLatchCoalescing.Coalesce(collapsedEvents);
+
         var consolidatedEvents = ReadGrouping.Group(collapsedEvents);
+
+        // Bind each transaction's locks on one object into a single LockGroup (the escalation chain).
+        consolidatedEvents = LockGrouping.Group(consolidatedEvents);
 
         // Recover a serial-order timeline from the millisecond-resolution timestamps by laying each worker's events
         // end-to-end using their microsecond durations, so a read overrunning its bucket pushes the next one out.
@@ -255,7 +262,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
     // Locks are held CONCURRENTLY (a query holds many at once, each spanning acquire→release), so they are NOT serial
     // work — laying them end-to-end by their (now sizeable) hold durations would push later locks far past the query.
     // They keep their raw timestamps and overlap instead.
-    private static bool IsSerialWork(EngineEvent e) => e is not (QueryThreadEvent or MemoryEvent or LockEvent);
+    private static bool IsSerialWork(EngineEvent e) => e is not (QueryThreadEvent or MemoryEvent or LockEvent or LockGroup);
 
     private static string GetResultsSql(string filename)
     {

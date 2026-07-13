@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.UI.App.Controls.Allocation;
@@ -86,11 +87,11 @@ public sealed partial class EventGridControl : UserControl
         _parentOf.Clear();
         _expanded.Clear();
 
-        foreach (var group in (Events ?? []).OfType<ReadEventGroup>())
+        foreach (var group in (Events ?? []).OfType<IEventGroup>())
         {
             foreach (var child in group.Events)
             {
-                _parentOf[child] = group;
+                _parentOf[child] = (EngineEvent)group;
             }
         }
     }
@@ -306,7 +307,7 @@ public sealed partial class EventGridControl : UserControl
 
         foreach (var engineEvent in topLevel)
         {
-            var children = engineEvent is ReadEventGroup group ? group.Events : [];
+            var children = engineEvent is IEventGroup group ? group.Events : [];
 
             var hasChildren = children.Count > 0;
 

@@ -208,8 +208,8 @@ public class XmlEventParserTests
         var lockEvent = Assert.IsType<LockEvent>(ev);
 
         Assert.Equal(LockMode.X, lockEvent.LockMode);
-        Assert.Equal(LockResourceType.Page, lockEvent.ResourceType);
-        Assert.Equal(new PageAddress(1, 200), lockEvent.PageAddress);
+        Assert.Equal(LockResourceType.Page, lockEvent.Resource.ResourceType);
+        Assert.Equal(new PageAddress(1, 200), lockEvent.Resource.PageAddress);
     }
 
     [Fact]
@@ -230,9 +230,9 @@ public class XmlEventParserTests
 
         var lockEvent = Assert.IsType<LockEvent>(ev);
 
-        Assert.NotNull(lockEvent.RowIdentifier);
-        Assert.Equal(new PageAddress(1, 200), lockEvent.RowIdentifier!.PageAddress);
-        Assert.Equal(3, lockEvent.RowIdentifier.SlotId);
+        Assert.NotNull(lockEvent.Resource.RowIdentifier);
+        Assert.Equal(new PageAddress(1, 200), lockEvent.Resource.RowIdentifier!.PageAddress);
+        Assert.Equal(3, lockEvent.Resource.RowIdentifier.SlotId);
     }
 
     [Fact]
@@ -251,7 +251,7 @@ public class XmlEventParserTests
 
         var lockEvent = Assert.IsType<LockEvent>(ev);
 
-        Assert.Equal("(ff)", lockEvent.KeyHash);
+        Assert.Equal("(ff)", lockEvent.Resource.KeyHash);
     }
 
     [Fact]

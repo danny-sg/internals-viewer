@@ -73,6 +73,10 @@ public sealed class EventTimelineControl : Grid, IDisposable
     // opaquely hiding the shorter ones beneath it.
     private const byte LockOverlayAlpha = 150;
 
+    // Lock escalation granularity levels for the staircase: row (rid/key) at the bottom, page in the middle, object
+    // (object/hobt) at the top — escalation climbs these over time.
+    private const int LockLevels = 3;
+
     private const byte DurationOverlayAlpha = 96;
 
     private const double MinZoom = 1.0;
@@ -439,17 +443,18 @@ public sealed class EventTimelineControl : Grid, IDisposable
         control._skCanvas.Invalidate();
     }
 
-    // Each event, plus the non-IO members of every read group (its latches, waits and locks) so they render on their
-    // own bands alongside the group. The read/file IO members are left inside the group (the group is their marker).
+    // Each event, plus the non-IO members of every read group (its latches, waits) so they render on their own bands
+    // alongside the group. Read IO members stay inside the group (the group is their marker), and a lock group's child
+    // locks stay inside it too — the group draws them itself, one per-granularity lane (see DrawLockGroups).
     private static IEnumerable<EngineEvent> ExpandGroupedEvents(List<EngineEvent> events)
     {
         foreach (var engineEvent in events)
         {
             yield return engineEvent;
 
-            if (engineEvent is ReadEventGroup group)
+            if (engineEvent is ReadEventGroup readGroup)
             {
-                foreach (var member in group.Events)
+                foreach (var member in readGroup.Events)
                 {
                     if (member is not IoEvent and not FileEvent)
                     {
@@ -1101,15 +1106,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
             var markerColor = GetMarkerColor(sourceEvent, rowIndex, category);
 
-            // Latches are demoted (the read grouping carries the timing now), so a latch is always a fixed 1px tick —
-            // it never widens on a sparse row and never scales by its (folded hold) duration.
-            var isLatch = sourceEvent is LatchEvent;
-
-            var markerWidth = isLatch ? MarkerWidth : RowMarkerWidth(rowIndex);
+            var markerWidth = RowMarkerWidth(rowIndex);
 
             var startX = TimeToX(_times[i]);
 
-            var hasDuration = sourceEvent.DurationUs > 0 && !isLatch;
+            var hasDuration = sourceEvent.DurationUs > 0;
 
             var endX = hasDuration
                 ? TimeToX(_times[i] + DurationMs(sourceEvent))
@@ -1141,6 +1142,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
             _hitRegions.Add((new SKRect(startX - 3, markerTop, endX + 3, markerTop + markerHeight), sourceEvent, null));
         }
+
+        DrawLockGroups(canvas, rowTops, rowHeights);
 
         DrawOperatorLines(canvas, rowTops, rowHeights);
 
@@ -1746,6 +1749,70 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
     }
 
+    private static int GranularityLevel(LockResourceType resourceType) => resourceType switch
+    {
+        LockResourceType.Rid or LockResourceType.Key => 0,
+        LockResourceType.Page or LockResourceType.Extent => 1,
+        _ => 2,
+    };
+
+    // Draws each lock group's locks with their granularity levels in their OWN lanes — object at the top, page in the
+    // middle, row at the bottom — so a held object lock (a wide bar up top) can't eclipse the finer locks: they show as
+    // their own teeth in the lanes below it. Individual grouped locks aren't drawn elsewhere (the grid holds the
+    // per-lock detail); escalation reads as the finer lanes filling in / the coarse lane taking over over time.
+    private void DrawLockGroups(SKCanvas canvas, float[] rowTops, float[] rowHeights)
+    {
+        var lockRow = RowIndexOf(typeof(LockEvent));
+
+        if (lockRow < 0)
+        {
+            return;
+        }
+
+        var innerTop = rowTops[lockRow] + RowPadding;
+        var innerHeight = rowHeights[lockRow] - RowPadding * 2;
+        var laneHeight = innerHeight / LockLevels;
+        var rightEdge = CanvasWidth;
+
+        foreach (var group in _sortedEvents.OfType<LockGroup>())
+        {
+            // Two dimensions: the lane (Y) is resource escalation (row -> page -> object), the colour is the lock mode.
+            var alpha = (byte)(DimForSelection(group) ? FocusedDimAlpha : LockOverlayAlpha);
+
+            foreach (var lockEvent in group.Events.OfType<LockEvent>())
+            {
+                var level = GranularityLevel(lockEvent.Resource.ResourceType);
+
+                // Level 0 (row) sits in the bottom lane, the coarsest (object) at the top.
+                var markerTop = innerTop + (LockLevels - 1 - level) * laneHeight + 0.5f;
+                var markerHeight = Math.Max(1f, laneHeight - 1f);
+
+                var fill = LockModeColour(lockEvent.LockMode).WithAlpha(alpha);
+
+                var startX = TimeToX(lockEvent.TimeUs / AxisUnitsPerMs);
+
+                var endX = lockEvent.DurationUs > 0
+                    ? TimeToX((lockEvent.TimeUs + lockEvent.DurationUs) / AxisUnitsPerMs)
+                    : startX + MarkerWidth;
+
+                if (endX < startX + MarkerWidth)
+                {
+                    endX = startX + MarkerWidth;
+                }
+
+                if (endX < RowLabelWidth || startX > rightEdge)
+                {
+                    continue;
+                }
+
+                _markerPaint.Color = fill;
+                canvas.DrawRect(startX, markerTop, endX - startX, markerHeight, _markerPaint);
+
+                _hitRegions.Add((new SKRect(startX - 1, markerTop, endX + 1, markerTop + markerHeight), lockEvent, null));
+            }
+        }
+    }
+
     private void DrawTraces(SKCanvas canvas, List<OperatorBar> bars, float[] rowTops, float[] rowHeights)
     {
         var byNode = new Dictionary<PlanNodeIdentifier, OperatorBar>(bars.Count);
@@ -1760,9 +1827,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         var ioRow = RowIndexOf(typeof(ReadEventGroup));
         var logRow = RowIndexOf(typeof(TransactionLogEvent));
-        var latchRow = RowIndexOf(typeof(LatchEvent));
 
-        if (ioRow < 0 && logRow < 0 && latchRow < 0)
+        if (ioRow < 0 && logRow < 0)
         {
             return;
         }
@@ -1831,37 +1897,6 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
                     canvas.DrawLine(x, b.BarBottom, x, railBottom, _readReturnPaint);
                 }
-            }
-        }
-
-        if (latchRow >= 0)
-        {
-            // Latches are below the plan (like reads): extend from the operator's bottom down to the
-            // latch row, so a data-access operator's page latches are visually tied back to it - the
-            // same buffer-pool link the read trace already provides for physical I/O.
-            var latchTop = rowTops[latchRow] + RowPadding;
-
-            // Match the fixed 1px latch ticks rather than widening on a sparse row.
-            var width = MarkerWidth;
-
-            for (var i = 0; i < _sortedEvents.Count; i++)
-            {
-                if (_sortedEvents[i] is not LatchEvent { PlanNodeIdentifier: { } id } latch ||
-                    !byNode.TryGetValue(id, out var b) ||
-                    b.BarBottom >= latchTop)
-                {
-                    continue;
-                }
-
-                var x = TimeToX(_times[i]);
-
-                if (x > rightEdge || x < RowLabelWidth - width)
-                {
-                    continue;
-                }
-
-                _markerPaint.Color = TraceColour(latch, latchRow, DimForSelection(latch));
-                canvas.DrawRect(x, b.BarBottom, width, latchTop - b.BarBottom, _markerPaint);
             }
         }
 
@@ -2287,7 +2322,7 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private void BuildActiveRows()
     {
         var hasLog = _sortedEvents.Any(e => e is TransactionLogEvent);
-        var hasLock = ShowLocks && _sortedEvents.Any(e => e is LockEvent);
+        var hasLock = ShowLocks && _sortedEvents.Any(e => e is LockEvent or LockGroup);
         var hasLatch = ShowLatches && _sortedEvents.Any(e => e is LatchEvent);
         var hasWait = ShowWaits && _sortedEvents.Any(e => e is WaitEvent);
 
@@ -2361,11 +2396,14 @@ public sealed class EventTimelineControl : Grid, IDisposable
     {
         // Cached (buffer-pool) and non-cached (physical) reads share a colour — the split read band (cached on top,
         // non-cached on the bottom) already tells them apart.
-        var colour = category.HasValue
-            ? TintByCategory(_activeRows[rowIndex].Color, (int)category.Value)
-            : ColourProvider is { } colours
-                ? colours.GetColour(sourceEvent).ToSkColor()
-                : _activeRows[rowIndex].Color;
+        // Locks are coloured by their mode (read / update / write / schema / range), matching the grouped-lock lanes.
+        var colour = sourceEvent is LockEvent { LockMode: var lockMode }
+            ? LockModeColour(lockMode)
+            : category.HasValue
+                ? TintByCategory(_activeRows[rowIndex].Color, (int)category.Value)
+                : ColourProvider is { } colours
+                    ? colours.GetColour(sourceEvent).ToSkColor()
+                    : _activeRows[rowIndex].Color;
 
         var alpha = sourceEvent is LockEvent ? LockOverlayAlpha : (byte)255;
 
@@ -2377,6 +2415,20 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
         return colour.WithAlpha(alpha);
     }
+
+    /// <summary>
+    /// Colour for a lock mode, by its broad category — the second dimension of the lock display (the lane is the first)
+    /// </summary>
+    private static SKColor LockModeColour(LockMode mode) => LockModeClassifier.Categorise(mode) switch
+    {
+        LockModeCategory.Read => new SKColor(76, 175, 80),    // green  — shared / intent-shared reads
+        LockModeCategory.Update => new SKColor(255, 179, 0),  // amber  — update family (may escalate to a write)
+        LockModeCategory.Write => new SKColor(229, 57, 53),   // red    — exclusive / intent-exclusive writes
+        LockModeCategory.Schema => new SKColor(156, 39, 176), // purple — schema modification
+        LockModeCategory.Range => new SKColor(33, 150, 243),  // blue   — serializable key-range protection
+        LockModeCategory.Bulk => new SKColor(0, 150, 136),    // teal   — bulk update
+        _ => new SKColor(120, 120, 120)                       // grey   — no / unknown mode
+    };
 
     /// <summary>
     /// Scales a colour's RGB channels by <paramref name="factor"/> (clamped), preserving alpha.

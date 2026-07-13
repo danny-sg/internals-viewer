@@ -4,6 +4,8 @@ using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
@@ -331,6 +333,130 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
         TestOutputHelper.WriteLine($"crop window={result.CropStartUs}..{result.CropEndUs}  events={result.EngineEvents.Count}"
             + $"  readGroups={readGroups}  eventsWithStack={withStack}  treeRoots={roots}  treeNodes={nodes}");
     }
+
+    [Fact]
+    public async Task Diagnose_Lock_Pairing()
+    {
+        // HOLDLOCK holds key/page/object locks to the end of the statement, so there are real (non-metadata) locks to
+        // inspect for allocation-unit resolution.
+        var result = await RunQuery("SELECT * FROM dbo.ClusteredTable WITH (HOLDLOCK)");
+
+        // Locks are now inside LockGroups; flatten those back out plus any top-level (ungrouped) locks.
+        var locks = result.EngineEvents.OfType<LockEvent>()
+            .Concat(result.EngineEvents.OfType<Query.Events.Locks.LockGroup>().SelectMany(g => g.Events.OfType<LockEvent>()))
+            .ToList();
+
+        var withPlanHandle = locks.Count(l => l.PlanHandleId != 0);
+
+        var lockStart = locks.Count > 0 ? locks.Min(l => l.TimeUs) : 0;
+        var lockEnd = locks.Count > 0 ? locks.Max(l => l.TimeUs + l.DurationUs) : 0;
+
+        TestOutputHelper.WriteLine($"locks={locks.Count}  withPlanHandle={withPlanHandle}");
+        TestOutputHelper.WriteLine($"crop window={result.CropStartUs}..{result.CropEndUs}   lock span={lockStart}..{lockEnd}");
+
+        // Per resource type: distinct object_ids / HoBT ids (uniform object key?), and how many carry a plan_handle.
+        foreach (var g in locks.GroupBy(l => l.Resource.ResourceType))
+        {
+            var objIds = g.Select(l => l.Resource.ObjectId).Distinct().OrderBy(x => x).ToList();
+
+            TestOutputHelper.WriteLine($"  type={g.Key,-10} count={g.Count(),-5} withPlanHandle={g.Count(l => l.PlanHandleId != 0),-5} "
+                + $"objectIds=[{string.Join(",", objIds.Take(6))}]");
+        }
+    }
+
+    [Fact]
+    public async Task Diagnose_Scan_Latches_Vs_Reads()
+    {
+        // A full clustered-index scan of a warm table: most pages are already resident, so their access should show as
+        // BUF SH cached reads, not bare latches. This dumps what actually survives read grouping so we can see whether
+        // the "purple" latches are BUF/SH/latch_acquired (which SHOULD have grouped) or some other class/mode/name.
+        //
+        // Warm the buffer pool first (its own trace run) so the MEASURED run reads resident pages (the cached path),
+        // rather than loading them from disk as non-cached reads. Point this at whatever large table reproduces the
+        // scan you are investigating; dbo.ClusteredTable is the standard fixture used by the other diagnostics here.
+        const string sql = "SELECT * FROM dbo.ClusteredTable";
+
+        await RunQuery(sql);
+
+        var result = await RunQuery(sql);
+
+        var reads = result.EngineEvents.OfType<ReadEventGroup>().ToList();
+
+        TestOutputHelper.WriteLine($"crop window={result.CropStartUs}..{result.CropEndUs}  events={result.EngineEvents.Count}");
+        TestOutputHelper.WriteLine($"reads={reads.Count}  cached={reads.Count(r => r.ReadType == ReadType.Cached)}  "
+            + $"nonCached={reads.Count(r => r.ReadType == ReadType.NonCached)}");
+
+        if (reads.Count > 0)
+        {
+            var readStart = reads.Min(r => r.TimeUs);
+            var readEnd = reads.Max(r => r.TimeUs + r.DurationUs);
+
+            var withTable = reads.Count(r => !string.IsNullOrEmpty(r.TableName));
+            var matched = reads.Count(r => r.PlanNodeIdentifier is not null);
+
+            TestOutputHelper.WriteLine($"read span={readStart}..{readEnd}  withTableName={withTable}  matchedToNode={matched}");
+        }
+
+        // Every operator's span (the statement/SELECT node is the one that drives the crop window).
+        foreach (var op in result.EngineEvents.OfType<Query.Events.Operators.ExecutionOperatorEvent>())
+        {
+            TestOutputHelper.WriteLine($"operator node={op.PlanNodeIdentifier?.NodeId,3} '{op.Name}' "
+                + $"TimeUs={op.TimeUs} end={op.TimeUs + op.DurationUs}");
+        }
+
+        // What actually occupies the TAIL — everything ending latest, so we can see what generates the gap past the
+        // last read. Grouped by type with the max end per type.
+        TestOutputHelper.WriteLine("");
+        TestOutputHelper.WriteLine("latest end per event type:");
+
+        // query_thread_profile / memory events are end-anchored (TimeUs is the close), so their real end is TimeUs.
+        static long EndUs(EngineEvent e) =>
+            e is Query.Events.Operators.QueryThreadEvent or MemoryEvent ? e.TimeUs : e.TimeUs + e.DurationUs;
+
+        foreach (var g in result.EngineEvents
+                     .GroupBy(e => e.GetType().Name)
+                     .Select(g => (Type: g.Key, End: g.Max(EndUs), Count: g.Count()))
+                     .OrderByDescending(x => x.End))
+        {
+            TestOutputHelper.WriteLine($"  {g.Type,-24} maxEnd={g.End,-10} count={g.Count}");
+        }
+
+        // Where do BUF SH latches actually end up? Count them in three buckets: top-level (ungrouped — should be a
+        // cached read), inside a NON-cached read (folded as the just-loaded-page tail), inside a cached read.
+        var topLevelLatches = result.EngineEvents.OfType<LatchEvent>().ToList();
+
+        var bufShTop = topLevelLatches.Count(IsBufSh);
+
+        var membersByReadType = reads
+            .SelectMany(r => r.Events.OfType<LatchEvent>().Where(IsBufSh).Select(_ => r.ReadType))
+            .ToList();
+
+        TestOutputHelper.WriteLine("");
+        TestOutputHelper.WriteLine($"BUF SH latch_acquired:  topLevel(ungrouped)={bufShTop}  "
+            + $"insideNonCachedRead={membersByReadType.Count(t => t == ReadType.NonCached)}  "
+            + $"insideCachedRead={membersByReadType.Count(t => t == ReadType.Cached)}");
+
+        // Every TOP-LEVEL latch that survived grouping, bucketed by (class, mode, name). A BUF/SH/latch_acquired row
+        // here is a bug — it should have been consumed into a cached read.
+        TestOutputHelper.WriteLine("");
+        TestOutputHelper.WriteLine($"ungrouped top-level latches={topLevelLatches.Count}");
+
+        foreach (var g in topLevelLatches
+                     .GroupBy(l => (l.LatchClass, l.LatchMode, l.Name))
+                     .OrderByDescending(g => g.Count()))
+        {
+            var (latchClass, mode, name) = g.Key;
+
+            var withPage = g.Count(l => l.PageAddress is { PageId: > 0 });
+            var withPlanHandle = g.Count(l => l.PlanHandleId != 0);
+
+            TestOutputHelper.WriteLine($"  class={latchClass,-10} mode={mode,-3} name='{name}' count={g.Count(),-5} "
+                + $"withPage={withPage,-5} withPlanHandle={withPlanHandle}");
+        }
+    }
+
+    private static bool IsBufSh(LatchEvent l) =>
+        l is { LatchClass: LatchClass.BUF, LatchMode: LatchMode.SH, Name: "latch_acquired" };
 
     private async Task<QueryResult> RunQuery(string sql)
     {

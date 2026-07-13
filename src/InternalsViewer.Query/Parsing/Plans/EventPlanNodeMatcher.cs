@@ -345,9 +345,8 @@ public static class EventPlanNodeMatcher
 
             if (windows.TryGetValue(threadEvent.NodeId, out var existing))
             {
-                windows[threadEvent.NodeId] = new NodeWindow(
-                    start < existing.Start ? start : existing.Start,
-                    end > existing.End ? end : existing.End);
+                windows[threadEvent.NodeId] = new NodeWindow(start < existing.Start ? start : existing.Start,
+                                                             end > existing.End ? end : existing.End);
             }
             else
             {

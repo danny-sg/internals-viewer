@@ -176,13 +176,27 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             // misses the reads (no AU) they would be cropped and the call stack/icicle would come out empty.
             if (eventOptions.CropToQuery && CropWindow(events) is var (start, end, planHandle))
             {
-                cropStart = start;
-                cropEnd = end;
-
+                // Keep an event whose span OVERLAPS the window, not just one whose start falls inside it: something
+                // already in progress when the statement begins (a lock or latch acquired just before the first read,
+                // or a read still completing as it ends) belongs to the query even though it started outside. Overlap =
+                // starts on/before the window end AND ends on/after its start; a zero-duration event reduces to plain
+                // containment.
                 events = events
-                    .Where(e => (e.TimeUs >= start && e.TimeUs <= end)
+                    .Where(e => (e.TimeUs <= end && e.TimeUs + e.DurationUs >= start)
                                 || (planHandle != PlanHandleRegistry.None && e.PlanHandleId == planHandle))
                     .ToList();
+
+                // The visible window brackets everything kept, not just the operator-timing span: the query's locks
+                // straddle its data access (an object intent lock is taken before the first read and released after the
+                // last), so the operator window alone would leave them off the axis.
+                //
+                // query_thread_profile / memory-grant events are END-anchored — their TimeUs is the operator close and
+                // DurationUs the elapsed leading up to it — so their real end is TimeUs; TimeUs + DurationUs would
+                // double-count the elapsed and push the crop a whole statement-length past the true end.
+                static long EndUs(EngineEvent e) => e is QueryThreadEvent or MemoryEvent ? e.TimeUs : e.TimeUs + e.DurationUs;
+
+                cropStart = events.Count > 0 ? Math.Min(start, events.Min(e => e.TimeUs)) : start;
+                cropEnd = events.Count > 0 ? Math.Max(end, events.Max(EndUs)) : end;
             }
 
             if (eventOptions.IncludeCallStack)
