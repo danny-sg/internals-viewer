@@ -7,21 +7,49 @@ using InternalsViewer.Query.Events.Waits;
 namespace InternalsViewer.Query.Events.Consolidation;
 
 /// <summary>
-/// Second consolidation step that binds the storage events of a page read into a single NonCachedReadEventGroup
+/// Read event consolidation
 /// </summary>
 /// <remarks>
-/// SQL Server reads pages three ways, each with its own spine (the event that anchors one read):
+/// Page reads are comprised of multiple events. This helps to group them together so the read can be used as a single unit, with the
+/// component events embedded.
 ///
-/// - Contiguous single-page reads (typically clustered system tables) block the worker, so they carry a
-///   <c>latch_suspend</c> + <c>PAGEIOLATCH</c> wait whose folded duration is the real microsecond read time. The
-///   suspend is the spine; storage events attach by buffer latch address or page.
-/// - Scatter/Gather reads pull a whole page range in one physical I/O and never suspend. The <c>file_read</c> (folded
-///   from its begin/completed pair, carrying the range in <c>Size</c>) is the spine; <c>physical_page_read</c>s and BUF
-///   latches attach by page-in-range. Nothing here is measured, so durations are estimated from bytes over the read
-///   phase (see <see cref="EstimateGatherDurations"/>).
-/// - Cached reads never touch disk: a bare BUF SH latch on a page the two cold passes did not consume.
+/// There are several types of reads depending on whether a page is cached in the buffer pool and what disk access method is used:
 ///
-/// Members link to a spine by address, page, or range rather than capture order, which mixes begins and ends.
+///     1. Buffer Pool Reads - Page is in the buffer pool (memory) and does not need to be read from disk
+///     2. Contiguous Disk Reads - A single page is read at a time
+///     3. Scatter/Gather Disk Reads - Multiple pages are read in one operation
+///
+/// This works by choosing a "spine" event - the event a consolidated event is going to be built around and factors in the timestamps
+/// provided by the event knowing that they are only accurate to 1 millisecond, when the resolution needs to be in microseconds.
+///
+/// Latches are important for this process. The database engine will latch any pages it is going use so this is signal used. Latch events
+/// have address which corresponds to the memory address of the page in the buffer pool. This will be consistent at minimum across the
+/// latching for a single read (acquire/suspend/escalate/release etc.)
+///
+/// Note: This is based on observed behaviour of events and the call stack rather than anything documented, it could change from version to
+/// version.
+///
+/// When a page is needed the BPool::Get method is called.
+///
+/// Buffer Pool Reads
+/// -----------------
+///
+/// Buffer Pool reads are indicated by SH BUF latches on a page (shared latch on BUF structure).
+///
+/// There can also be EX BUF (exclusive) or KP BUF (keep) latches too, but this is less consistent.
+///
+/// Disk Reads
+/// ----------
+///
+/// If a page is not in the buffer pool it will be loaded into it via a disk read.
+///
+/// A query could read a page more than once, so the first read could be from disk, and subsequent reads from the buffer pool.
+///
+///
+/// There are two modes for disk reads:
+///
+/// - Scatter/Gather - Multiple pages are read into the buffer pool. Used for scans where read-ahead is on or heap scans
+/// - Contiguous     - Single page reads. Used when read-ahead is off (non-heap) or seeks
 /// </remarks>
 public static class ReadGrouping
 {
@@ -37,7 +65,7 @@ public static class ReadGrouping
 
         CollectGatherReads(events, members, consumed);
 
-        CollectCachedReads(events, members, consumed);
+        CollectBufferPoolReads(events, members, consumed);
 
         EstimateGatherDurations(members);
 
@@ -147,15 +175,15 @@ public static class ReadGrouping
         }
     }
 
-    private static void CollectCachedReads(IReadOnlyList<EngineEvent> events,
-                                           Dictionary<EngineEvent, List<EngineEvent>> members,
-                                           HashSet<EngineEvent> consumed)
+    private static void CollectBufferPoolReads(IReadOnlyList<EngineEvent> events,
+                                               Dictionary<EngineEvent, List<EngineEvent>> members,
+                                               HashSet<EngineEvent> consumed)
     {
-        var nonCachedByAddress = new Dictionary<ulong, EngineEvent>();
+        var byAddress = new Dictionary<ulong, EngineEvent>();
 
         foreach (var (spine, group) in members)
         {
-            if (spine is not FileEvent && !group.Any(IsColdMarker))
+            if (spine is not FileEvent && !group.Any(IsFileReadMarker))
             {
                 continue;
             }
@@ -164,7 +192,7 @@ public static class ReadGrouping
             {
                 if (member is LatchEvent { LatchAddress: { } address })
                 {
-                    nonCachedByAddress[address] = spine;
+                    byAddress[address] = spine;
                 }
             }
         }
@@ -179,7 +207,7 @@ public static class ReadGrouping
                 continue;
             }
 
-            if (FoldTarget(latch, members, nonCachedByAddress) is { } spine)
+            if (FoldTarget(latch, members, byAddress) is { } spine)
             {
                 members[spine].Add(latch);
 
@@ -318,7 +346,7 @@ public static class ReadGrouping
 
     private static ReadEventGroup BuildGroup(EngineEvent spine, List<EngineEvent> members)
     {
-        var kind = spine is FileEvent || members.Any(IsColdMarker) ? ReadType.NonCached : ReadType.Cached;
+        var kind = spine is FileEvent || members.Any(IsFileReadMarker) ? ReadType.NonCached : ReadType.Cached;
 
         var identity = members.FirstOrDefault(m => !string.IsNullOrEmpty(m.TableName)) ?? spine;
 
@@ -352,7 +380,7 @@ public static class ReadGrouping
         };
     }
 
-    private static bool IsColdMarker(EngineEvent e) => e switch
+    private static bool IsFileReadMarker(EngineEvent e) => e switch
     {
         IoEvent { IsRead: true } => true,
         WaitEvent w => w.WaitType.IsPageIoLatchWait(),

@@ -53,6 +53,11 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private float _zoom = 1;
 
+    // When on, the index control keeps the whole tree fitted to the viewport (and re-fits on resize); turned off
+    // automatically when the user zooms manually.
+    [ObservableProperty]
+    private bool _isZoomToFit = true;
+
     [ObservableProperty]
     private PageAddress _rootPage;
 

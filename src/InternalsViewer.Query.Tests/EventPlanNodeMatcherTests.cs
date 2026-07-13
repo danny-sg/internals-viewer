@@ -2,6 +2,7 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Plans;

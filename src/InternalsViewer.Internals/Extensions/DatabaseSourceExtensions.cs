@@ -32,4 +32,20 @@ public static class DatabaseSourceExtensions
                              .FirstOrDefault(f => f.ObjectId == objectId 
                                                   && f.AllocationUnitType == AllocationUnitType.InRowData);
     }
+
+    /// <summary>
+    /// Find allocation unit from a HoBT Id
+    /// </summary>
+    /// <remarks>
+    /// HoBT Id is sys.partitions.hobt_id - internally sys.sysrowsets.rowsetid
+    ///
+    /// Maps to Allocation Unit Partition Id/Container Id
+    /// </remarks>
+    public static AllocationUnit? FindHobtIdAllocationUnit(this DatabaseSource databaseSource, long hobtId)
+    {
+        return databaseSource.AllocationUnits
+                             .Values
+                             .FirstOrDefault(f => f.PartitionId == hobtId
+                                                  && f.AllocationUnitType == AllocationUnitType.InRowData);
+    }
 }

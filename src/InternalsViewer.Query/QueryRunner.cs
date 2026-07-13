@@ -154,30 +154,34 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             var eventsStart = Stopwatch.GetTimestamp();
 
             (events, executionPlans, callStack) = await EventReader.GetEvents(filePath,
-                                                                   connectionString,
-                                                                   database,
-                                                                   cancellationToken,
-                                                                   endMarker);
+                                                                              connectionString,
+                                                                              database,
+                                                                              eventOptions.IncludeSystemObjects,
+                                                                              cancellationToken,
+                                                                              endMarker);
 
             progress?.Report($"{events.Count} event(s) retrieved in {Stopwatch.GetElapsedTime(eventsStart)}");
 
             // Trim events (and, below, the call stack) to the executed query's window so surrounding noise —
             // compilation, other statements, background work the trace also captured — is dropped.
             //
-            // "The query's window" is a time span, but it is NOT the whole story: an event matched to this query's plan
-            // belongs to the query even when its timestamp lands outside the span. That happens because the window is
-            // derived from the spread operator layout while the events keep their own times — a read whose spread
-            // position drifts out, or a thread sample (query_thread_profile, not laid out by SpreadEvents) taken before
-            // the first page read. Dropping those on time alone would strip the reads and entry stacks the timeline's
-            // Plan Operators view and the call stack need, so plan-matched events are kept alongside the in-window ones.
-            if (eventOptions.CropToQuery && CropWindow(events) is (var start, var end, var planHandle))
+            // "The query's window" is a time span, but it is NOT the whole story: an event carrying this query's
+            // plan_handle belongs to the query even when its timestamp lands outside the span. That happens because the
+            // window is derived from the spread operator layout while the events keep their own times — a read whose
+            // spread position drifts out, or a thread sample (query_thread_profile, not laid out by SpreadEvents) taken
+            // before the first page read. Dropping those on time alone strips the reads and entry stacks the timeline's
+            // Plan Operators view and the call stack need. Key this off the RAW PlanHandleId (set at parse time from the
+            // plan_handle action, on every event) — NOT PlanNodeIdentifier, which only exists once EventPlanNodeMatcher
+            // resolves an event to an operator, and that resolution leans on flaky page→allocation-unit lookups; when it
+            // misses the reads (no AU) they would be cropped and the call stack/icicle would come out empty.
+            if (eventOptions.CropToQuery && CropWindow(events) is var (start, end, planHandle))
             {
                 cropStart = start;
                 cropEnd = end;
 
                 events = events
                     .Where(e => (e.TimeUs >= start && e.TimeUs <= end)
-                                || e.PlanNodeIdentifier?.PlanHandleId == planHandle)
+                                || (planHandle != PlanHandleRegistry.None && e.PlanHandleId == planHandle))
                     .ToList();
             }
 
@@ -303,15 +307,13 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     {
         var keyLockEvents = events.Where(e => e is LockEvent { KeyHash: not null }).Cast<LockEvent>();
 
-        var keyLockEventsByObjectId = keyLockEvents.GroupBy(g => g.ObjectId);
+        var byAllocationUnitId = keyLockEvents.GroupBy(g => g.AllocationUnit);
 
-        foreach (var grouping in keyLockEventsByObjectId)
+        foreach (var grouping in byAllocationUnitId)
         {
-            var objectId = grouping.Key;
+            var allocationUnit = grouping.Key;
 
-            var allocationUnit = allocationUnits.Values.FirstOrDefault(f => f.ObjectId == objectId);
-
-            if (allocationUnit is null)
+            if (allocationUnit is null || allocationUnit.IsSystem)
             {
                 continue;
             }

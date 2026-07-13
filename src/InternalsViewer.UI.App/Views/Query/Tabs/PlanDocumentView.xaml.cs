@@ -42,6 +42,7 @@ public sealed partial class PlanDocumentView : UserControl
             p.SelectedNode = ViewModel?.SelectedPlanNode;
             p.ActiveNodes = ViewModel?.ActivePlanNodes;
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
+            p.Events = ViewModel?.Events;
         });
     }
 
@@ -89,6 +90,9 @@ public sealed partial class PlanDocumentView : UserControl
             case nameof(QueryViewModel.EmittingPlanNodes):
                 ApplyToPlans(p => p.EmittingNodes = _subscribed.EmittingPlanNodes);
                 break;
+            case nameof(QueryViewModel.Events):
+                ApplyToPlans(p => p.Events = _subscribed.Events);
+                break;
         }
     }
 
@@ -99,6 +103,7 @@ public sealed partial class PlanDocumentView : UserControl
             planControl.SelectedNode = viewModel.SelectedPlanNode;
             planControl.ActiveNodes = viewModel.ActivePlanNodes;
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
+            planControl.Events = viewModel.Events;
 
             // ItemsRepeater recycles elements, so guard against subscribing the same control twice.
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;

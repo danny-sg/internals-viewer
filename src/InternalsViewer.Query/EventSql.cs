@@ -45,20 +45,12 @@ internal static class EventSql
             sessionEvents.AddRange(EventConstants.LogEvents);
         }
 
-        if (eventOptions.IncludeLock)
-        {
-            sessionEvents.AddRange(EventConstants.LockEvents);
-        }
+        // Always include lock, wait, and latch events for event grouping
+        sessionEvents.AddRange(EventConstants.LockEvents);
 
-        if (eventOptions.IncludeWait)
-        {
-            sessionEvents.AddRange(EventConstants.WaitEvents);
-        }
+        sessionEvents.AddRange(EventConstants.WaitEvents);
 
-        if (eventOptions.IncludeLatch)
-        {
-            sessionEvents.AddRange(EventConstants.LatchEvents);
-        }
+        sessionEvents.AddRange(EventConstants.LatchEvents);
 
         if (eventOptions.IncludeMemory)
         {
@@ -94,7 +86,7 @@ internal static class EventSql
 
                 if (EventConstants.CallstackExcludeEvents.Contains(eventName))
                 {
-                    stringBuilder.Append(string.Join(", ", 
+                    stringBuilder.Append(string.Join(", ",
                                                      sessionActions.Except(EventConstants.CallstackActions)));
                 }
                 else

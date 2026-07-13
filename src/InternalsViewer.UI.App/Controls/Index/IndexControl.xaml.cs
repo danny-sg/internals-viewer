@@ -33,6 +33,19 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(1F, OnPropertyChanged));
 
+    /// <summary>When on, the tree is zoomed to fit the viewport and re-fitted on resize.</summary>
+    public bool IsZoomToFit
+    {
+        get => (bool)GetValue(IsZoomToFitProperty);
+        set => SetValue(IsZoomToFitProperty, value);
+    }
+
+    public static readonly DependencyProperty IsZoomToFitProperty
+        = DependencyProperty.Register(nameof(IsZoomToFit),
+                                      typeof(bool),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(true, OnPropertyChanged));
+
     public PageAddress? SelectedPageAddress
     {
         get => (PageAddress?)GetValue(SelectedPageAddressProperty);
@@ -148,6 +161,16 @@ public sealed partial class IndexControl : IDisposable
             null);
 
     private float _zoom = 1f;
+
+    private bool _isZoomToFit = true;
+
+    // True only while a fit-driven zoom is being applied, so that self-triggered zoom change is not mistaken for a
+    // manual one (which would switch fit off).
+    private bool _applyingFit;
+
+    // Fit the content a touch inside the viewport; the slack stops the scrollbars flickering on at the exact boundary
+    // (a full-bleed fit can leave content == viewport, which flips a scrollbar on, shrinking the viewport, and so on).
+    private const float FitPadding = 0.95f;
 
     private const float ZoomMiniMode = 0.4f;
     private const float ZoomMaxiMode = 4f;
@@ -280,6 +303,18 @@ public sealed partial class IndexControl : IDisposable
         if (e.Property == ZoomProperty)
         {
             control._zoom = (float)e.NewValue;
+
+            // A zoom the user drove (wheel, or the view's Ctrl+wheel writing Zoom) disengages fit; a fit-driven zoom
+            // keeps it on.
+            if (!control._applyingFit)
+            {
+                control.IsZoomToFit = false;
+            }
+        }
+
+        if (e.Property == IsZoomToFitProperty)
+        {
+            control._isZoomToFit = (bool)e.NewValue;
         }
 
         if (e.Property == ZoomProperty || e.Property == NodesProperty)
@@ -288,7 +323,59 @@ public sealed partial class IndexControl : IDisposable
             control.UpdateScrollbars();
         }
 
+        // Re-fit when the tree changes or fit is (re-)enabled.
+        if (e.Property == NodesProperty || (e.Property == IsZoomToFitProperty && control._isZoomToFit))
+        {
+            control.ApplyZoomToFit();
+        }
+
         control.IndexCanvas.Invalidate();
+    }
+
+    /// <summary>
+    /// When fit mode is on, sets <see cref="Zoom"/> so the whole tree fits the viewport
+    /// </summary>
+    /// <remarks>
+    /// Every layout dimension scales linearly with the zoom, so the fitting zoom is the current zoom scaled by the
+    /// smaller of the width/height viewport-to-content ratios. Setting <see cref="Zoom"/> rebuilds and repaints.
+    /// </remarks>
+    private void ApplyZoomToFit()
+    {
+        if (!_isZoomToFit || _nodePositions.Count == 0)
+        {
+            return;
+        }
+
+        var canvasWidth = (float)IndexCanvas.ActualWidth;
+        var canvasHeight = (float)IndexCanvas.ActualHeight;
+
+        if (canvasWidth <= 0 || canvasHeight <= 0)
+        {
+            return;
+        }
+
+        var contentWidth = _globalMaxX + PageWidth + HorizontalMargin * 2;
+        var contentHeight = _nodePositions.Max(n => n.Y) + PageHeight + VerticalMargin;
+
+        if (contentWidth <= 0 || contentHeight <= 0)
+        {
+            return;
+        }
+
+        var fit = _zoom * Math.Min(canvasWidth / contentWidth, canvasHeight / contentHeight) * FitPadding;
+
+        fit = Math.Clamp(fit, MinZoom, MaxZoom);
+
+        if (Math.Abs(fit - _zoom) < 0.0001f)
+        {
+            return;
+        }
+
+        _applyingFit = true;
+
+        Zoom = fit;
+
+        _applyingFit = false;
     }
 
     private void IndexCanvas_PaintSurface(object? sender, SKPaintSurfaceEventArgs e)
@@ -935,12 +1022,16 @@ public sealed partial class IndexControl : IDisposable
 
     private void IndexControl_OnLoaded(object sender, RoutedEventArgs e)
     {
+        ApplyZoomToFit();
+
         IndexCanvas.Invalidate();
     }
 
     private void UserControl_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateScrollbars();
+
+        ApplyZoomToFit();
     }
 
     private void IndexCanvas_OnPointerExited(object sender, PointerRoutedEventArgs e)

@@ -21,6 +21,8 @@
                     <MenuFlyout>
                         <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
                         <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
+                        <MenuFlyoutSeparator/>
+                        <MenuFlyoutItem Text="Copy to clipboard" Click="OnCopyClick"/>
                     </MenuFlyout>
                 </StackPanel.ContextFlyout>
 

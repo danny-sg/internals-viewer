@@ -238,27 +238,42 @@ public sealed class CallStackTree
     {
         var builder = new StringBuilder();
 
-        Render(Root, 0, builder);
+        foreach (var child in Root.Children.Values.OrderBy(c => c.Order))
+        {
+            RenderNode(child, 0, builder);
+        }
 
         return builder.ToString();
     }
 
-    private static void Render(CallStackNode node, int depth, StringBuilder builder)
+    /// <summary>
+    /// Renders a single node and its descendants to the same indented text as <see cref="Render()"/>
+    /// </summary>
+    public static string Render(CallStackNode node)
     {
+        var builder = new StringBuilder();
+
+        RenderNode(node, 0, builder);
+
+        return builder.ToString();
+    }
+
+    private static void RenderNode(CallStackNode node, int depth, StringBuilder builder)
+    {
+        builder.Append(' ', depth * 2);
+
+        builder.Append(node.Symbol.Length > 0 ? node.Symbol : node.Key);
+
+        if (node.Events.Count > 0)
+        {
+            builder.Append($" [{node.Events.Count}]");
+        }
+
+        builder.AppendLine();
+
         foreach (var child in node.Children.Values.OrderBy(c => c.Order))
         {
-            builder.Append(' ', depth * 2);
-
-            builder.Append(child.Symbol.Length > 0 ? child.Symbol : child.Key);
-
-            if (child.Events.Count > 0)
-            {
-                builder.Append($" [{child.Events.Count}]");
-            }
-
-            builder.AppendLine();
-
-            Render(child, depth + 1, builder);
+            RenderNode(child, depth + 1, builder);
         }
     }
 

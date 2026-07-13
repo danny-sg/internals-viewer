@@ -71,3 +71,5 @@ public enum LockMode
     [EventItemName("Last mode sentinel")]
     LAST_MODE = 21
 }
+
+// ReSharper disable IdentifierTypo

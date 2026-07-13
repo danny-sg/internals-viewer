@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using Windows.ApplicationModel.DataTransfer;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Operators;
@@ -81,6 +82,21 @@ public sealed partial class CallstackDocumentView : UserControl
     private void OnExpandAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: true);
 
     private void OnCollapseAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: false);
+
+    // Copies the right-tapped node's subtree as the indented text dump CallStackTree.Render produces.
+    private void OnCopyClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextNode?.Content is not CallStackNode node)
+        {
+            return;
+        }
+
+        var package = new DataPackage();
+
+        package.SetText(CallStackTree.Render(node));
+
+        Clipboard.SetContent(package);
+    }
 
     private static void SetExpanded(TreeViewNode? node, bool expanded)
     {

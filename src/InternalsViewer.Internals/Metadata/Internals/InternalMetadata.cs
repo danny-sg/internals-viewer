@@ -26,7 +26,8 @@ public sealed class InternalMetadata
     /// Columns physical layout table - sys.sysrscols
     /// </summary>
     /// <remarks>Grouped by PartitionId (rsid).</remarks>
-    public ILookup<long, InternalColumnLayout> ColumnLayouts { get; set; } = Enumerable.Empty<InternalColumnLayout>().ToLookup(c => c.PartitionId);
+    public ILookup<long, InternalColumnLayout> ColumnLayouts { get; set; } = Enumerable.Empty<InternalColumnLayout>()
+                                                                                       .ToLookup(c => c.PartitionId);
 
     /// <summary>
     /// Columns table - sys.syscolpars
@@ -50,7 +51,9 @@ public sealed class InternalMetadata
     /// Index Columns table - sys.sysiscols
     /// </summary>
     /// <remarks>Grouped by (ObjectId, IndexId) (idmajor, idminor).</remarks>
-    public ILookup<(int ObjectId, int IndexId), InternalIndexColumn> IndexColumns { get; set; } = Enumerable.Empty<InternalIndexColumn>().ToLookup(c => (c.ObjectId, c.IndexId));
+    public ILookup<(int ObjectId, int IndexId), InternalIndexColumn> IndexColumns { get; set; } 
+        = Enumerable.Empty<InternalIndexColumn>()
+                    .ToLookup(c => (c.ObjectId, c.IndexId));
 
     /// <summary>
     /// Files table - sys.sysprufiles

@@ -315,6 +315,23 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
         TestOutputHelper.WriteLine(tree.Render());
     }
 
+    [Fact]
+    public async Task Diagnose_Crop_Keeps_Plan_Handle_Reads()
+    {
+        var result = await RunQuery("SELECT TOP 10 * FROM dbo.ClusteredTable");
+
+        var readGroups = result.EngineEvents.OfType<ReadEventGroup>().Count();
+
+        var withStack = result.EngineEvents.Count(e => e.CallStack is not null)
+                        + result.EngineEvents.OfType<ReadEventGroup>().Sum(g => g.Events.Count(c => c.CallStack is not null));
+
+        var roots = result.CallStack?.Root.ChildNodes.Count() ?? 0;
+        var nodes = result.CallStack?.Nodes().Count() ?? 0;
+
+        TestOutputHelper.WriteLine($"crop window={result.CropStartUs}..{result.CropEndUs}  events={result.EngineEvents.Count}"
+            + $"  readGroups={readGroups}  eventsWithStack={withStack}  treeRoots={roots}  treeNodes={nodes}");
+    }
+
     private async Task<QueryResult> RunQuery(string sql)
     {
         var logger = TestLogger.GetLogger<QueryRunner>(TestOutputHelper, LogLevel.Information);

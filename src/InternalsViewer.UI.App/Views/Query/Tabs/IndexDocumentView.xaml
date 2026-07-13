@@ -10,33 +10,62 @@
     <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
           VerticalAlignment="Stretch"
           HorizontalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-        <!--Loading spinner shown until the index tree is built-->
-        <StackPanel Padding="10"
-                    HorizontalAlignment="Center"
+        <!--Command bar: view options for the index tree-->
+        <CommandBar Grid.Row="0"
+                    IsOpen="False"
+                    Padding="0"
                     VerticalAlignment="Center"
-                    Orientation="Horizontal"
-                    Visibility="{x:Bind ViewModel.IsInitialized,
-                            Mode=OneWay,
-                            Converter={StaticResource BoolToVisibilityConverter},
-                            ConverterParameter=True}">
-            <ProgressRing IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
-            <TextBlock Margin="10,0,0,0">Loading...</TextBlock>
-        </StackPanel>
+                    DefaultLabelPosition="Right"
+                    HorizontalAlignment="Left"
+                    VerticalContentAlignment="Top"
+                    MinHeight="0"
+                    OverflowButtonVisibility="Collapsed"
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"
+                    Background="Transparent">
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ToggleButton Margin="12,0,12,0"
+                              BorderThickness="0"
+                              IsChecked="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}">
+                    <TextBlock Text="Zoom to Fit" VerticalAlignment="Center" />
+                </ToggleButton>
+            </AppBarElementContainer>
+        </CommandBar>
 
-        <index:IndexControl x:Name="IndexControl"
-                            Background="Transparent"
-                            Visibility="{x:Bind ViewModel.IsInitialized,
-                                            Mode=OneWay,
-                                            Converter={StaticResource BoolToVisibilityConverter}}"
-                            Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
-                            Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
-                            IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
-                            HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
-                            SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
-                            PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
-                            PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
-                            VerticalAlignment="Stretch"
-                            HorizontalAlignment="Stretch" />
+        <Grid Grid.Row="1">
+            <!--Loading spinner shown until the index tree is built-->
+            <StackPanel Padding="10"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal"
+                        Visibility="{x:Bind ViewModel.IsInitialized,
+                                Mode=OneWay,
+                                Converter={StaticResource BoolToVisibilityConverter},
+                                ConverterParameter=True}">
+                <ProgressRing IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
+                <TextBlock Margin="10,0,0,0">Loading...</TextBlock>
+            </StackPanel>
+
+            <index:IndexControl x:Name="IndexControl"
+                                Background="Transparent"
+                                Visibility="{x:Bind ViewModel.IsInitialized,
+                                                Mode=OneWay,
+                                                Converter={StaticResource BoolToVisibilityConverter}}"
+                                Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
+                                Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
+                                IsZoomToFit="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}"
+                                IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
+                                HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
+                                SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
+                                PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
+                                PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
+                                VerticalAlignment="Stretch"
+                                HorizontalAlignment="Stretch" />
+        </Grid>
     </Grid>
 </UserControl>

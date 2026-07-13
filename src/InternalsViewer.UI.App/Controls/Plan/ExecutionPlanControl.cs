@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Windows.Foundation;
 using Windows.UI;
+using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -20,13 +23,22 @@ namespace InternalsViewer.UI.App.Controls.Plan;
 public sealed class ExecutionPlanControl : Canvas
 {
     private const double NodeWidth = 150;
-    private const double NodeHeight = 90;
+    private const double BaseNodeHeight = 90;
     private const double HorizontalGap = 46;
     private const double VerticalGap = 22;
     private const double CanvasMargin = 24;
 
+    // Extra height reserved under a node for its call-stack icicle, only when the plan has captured stacks to show.
+    private const double IcicleStripHeight = 28;
+    private const double IcicleWidth = 134;
+    private const double IcicleHeight = 24;
+    private const int MaxIcicleLevels = 8;
+
+    // Node height grows to make room for the icicle when the plan has linked call stacks, else stays compact.
+    private double _nodeHeight = BaseNodeHeight;
+
     private const double ColumnPitch = NodeWidth + HorizontalGap;
-    private const double RowPitch = NodeHeight + VerticalGap;
+    private double RowPitch => _nodeHeight + VerticalGap;
 
     private static readonly Color ConnectorColor = Color.FromArgb(255, 185, 185, 185);
 
@@ -145,6 +157,24 @@ public sealed class ExecutionPlanControl : Canvas
     private static void OnEmittingNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).UpdateFlows();
 
+    /// <summary>
+    /// The query's events, so each operator can show a mini icicle of its linked call stacks (see
+    /// <see cref="OperatorIcicle"/>). Null/empty leaves the nodes compact with no icicle strip.
+    /// </summary>
+    public IReadOnlyList<EngineEvent>? Events
+    {
+        get => (IReadOnlyList<EngineEvent>?)GetValue(EventsProperty);
+        set => SetValue(EventsProperty, value);
+    }
+
+    public static readonly DependencyProperty EventsProperty =
+        DependencyProperty.Register(nameof(Events), typeof(IReadOnlyList<EngineEvent>), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnEventsChanged));
+
+    // The icicles (and the node height that makes room for them) depend on the events, so rebuild when they arrive.
+    private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).Rebuild();
+
     public event EventHandler<PlanNode?>? NodeSelected;
 
     /// <summary>Raised when "Open Index" is chosen on a data-access node that runs against a named index.</summary>
@@ -168,6 +198,9 @@ public sealed class ExecutionPlanControl : Canvas
             Height = 0;
             return;
         }
+
+        // Reserve the icicle strip only when this plan actually has linked call stacks to draw.
+        _nodeHeight = HasLinkedCallstacks() ? BaseNodeHeight + IcicleStripHeight : BaseNodeHeight;
 
         var positions = new Dictionary<PlanNode, Point>();
         var leaf = new LeafCursor();
@@ -200,17 +233,48 @@ public sealed class ExecutionPlanControl : Canvas
         var maxY = positions.Values.Max(p => p.Y);
 
         Width = maxX + NodeWidth + CanvasMargin;
-        Height = maxY + NodeHeight + CanvasMargin;
+        Height = maxY + _nodeHeight + CanvasMargin;
 
         SelectByNode(SelectedNode);
         UpdateActiveHighlights();
         UpdateFlows();
     }
 
-    private static double AssignPositions(PlanNode node,
-                                          int depth,
-                                          Dictionary<PlanNode, Point> positions,
-                                          LeafCursor leaf)
+    // True when any of the query's events is matched to this plan and carries a call stack (reads via their members).
+    private bool HasLinkedCallstacks()
+    {
+        if (Plan is null || Events is null)
+        {
+            return false;
+        }
+
+        foreach (var e in Events)
+        {
+            if (e is ExecutionOperatorEvent || e.PlanNodeIdentifier is not { } id || id.PlanHandleId != Plan.PlanHandleId)
+            {
+                continue;
+            }
+
+            if (e is ReadEventGroup group)
+            {
+                if (group.Events.Any(c => c.CallStack is not null))
+                {
+                    return true;
+                }
+            }
+            else if (e.CallStack is not null)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private double AssignPositions(PlanNode node,
+                                   int depth,
+                                   Dictionary<PlanNode, Point> positions,
+                                   LeafCursor leaf)
     {
         var x = CanvasMargin + depth * ColumnPitch;
         double y;
@@ -249,8 +313,15 @@ public sealed class ExecutionPlanControl : Canvas
             Node = node,
             CostPercent = costFraction,
             Width = NodeWidth,
-            Height = NodeHeight
+            Height = _nodeHeight
         };
+
+        if (Plan is { } plan && Events is { } events)
+        {
+            var id = new PlanNodeIdentifier(plan.PlanHandleId, node.NodeId);
+
+            control.IcicleSegments = OperatorIcicle.Build(id, events, IcicleWidth, IcicleHeight, MaxIcicleLevels);
+        }
 
         SetLeft(control, point.X);
         SetTop(control, point.Y);
@@ -261,8 +332,8 @@ public sealed class ExecutionPlanControl : Canvas
     private (Polyline Connector, Polygon Arrow) DrawConnector(Point parent, Point child, double childCostFraction,
                                                              PlanNode parentNode, PlanNode childNode)
     {
-        var start = new Point(child.X, child.Y + NodeHeight / 2);
-        var end = new Point(parent.X + NodeWidth, parent.Y + NodeHeight / 2);
+        var start = new Point(child.X, child.Y + _nodeHeight / 2);
+        var end = new Point(parent.X + NodeWidth, parent.Y + _nodeHeight / 2);
 
         var elbowX = (start.X + end.X) / 2;
 

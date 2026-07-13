@@ -12,6 +12,8 @@ public sealed record EventOptions
 
     public bool IncludeLatch { get; set; } = true;
 
+    public bool IncludeSystemObjects { get; set; } 
+
     /// <summary>
     /// Trim events (and the call stack) outside the executed query's time window, dropping surrounding noise
     /// </summary>

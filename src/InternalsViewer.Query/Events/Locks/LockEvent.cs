@@ -13,9 +13,14 @@ public sealed record LockEvent : PageEngineEvent
 
     public string? KeyHash { get; set; }
 
-    // The lock's raw object id (from the event) — a lock is on an object, not an allocation unit, and it drives both
-    // the enrichment lookup and the key-hash grouping, so it is kept even when no allocation unit resolves.
     public int LockObjectId { get; init; }
+
+    public long? HobtId { get; set; }
+
+    public LockOwnerContext? LockOwnerContext { get; set; }
+
+    /// <summary>Identifies the locked resource (from resource_0/1/2 + type), so acquire/release pair in the IntervalCollapser</summary>
+    public ulong Key { get; init; }
 
     public override int ObjectId => LockObjectId;
 
@@ -23,4 +28,34 @@ public sealed record LockEvent : PageEngineEvent
         AllocationUnit?.DisplayName ?? (LockObjectId > 0 ? $"(Object Id {LockObjectId})" : base.ObjectName);
 
     public override string Description => $"Lock: {LockMode}/{ResourceType}";
+}
+
+public sealed record LockResource
+{
+    public LockResourceType ResourceType { get; init; }
+
+    public ulong ResourceKey { get; init; }
+
+    public int ObjectId { get; init; }
+
+    public long? HobtId { get; init; }
+
+    public RowIdentifier? RowIdentifier { get; init; }
+
+    public string? KeyHash { get; init; }
+}
+
+public sealed record LockOwnerContext
+{
+    public LockOwnerType OwnerType { get; set; }
+
+    public long? TransactionId { get; init; }
+    
+    public int? SessionId { get; init; }
+
+    public ulong WorkspaceId { get; set; }
+
+    public uint SubId { get; set; }
+
+    public uint NestId { get; set; }
 }

@@ -39,6 +39,13 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private const float RowPadding = 2f;
     private const float MarkerWidth = 1f;
 
+    // The split Read row's three stacked labels (Buffer / Read / Disk): shown only when the row can fit them with a
+    // gap between each.
+    private const float MinLabelGap = 1f;
+
+    // Top/bottom inset so the "Buffer"/"Disk" labels don't sit flush against the row edges.
+    private const float VerticalLabelPad = 1f;
+
     // Rows with few events use a wider marker so the sparse ticks are easier to see.
     private const float SparseMarkerWidth = 4f;
     private const int SparseRowThreshold = 25;
@@ -61,6 +68,10 @@ public sealed class EventTimelineControl : Grid, IDisposable
     // When an operator is selected, markers and trace extensions belonging to other operators fade to
     // this alpha so the selected block's I/O and trace lines stand out.
     private const byte FocusedDimAlpha = 70;
+
+    // Locks are drawn semi-transparent so concurrent, overlapping holds all show through instead of the longest one
+    // opaquely hiding the shorter ones beneath it.
+    private const byte LockOverlayAlpha = 150;
 
     private const byte DurationOverlayAlpha = 96;
 
@@ -252,7 +263,8 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
     private readonly SKColor _laneColour = new(30, 30, 30, 220);
 
-    private readonly SKColor _alternateLaneColour = new(30, 30, 30, 220);
+    // A touch lighter than _laneColour so adjacent major bands read apart subtly.
+    private readonly SKColor _alternateLaneColour = new(44, 44, 44, 220);
 
     private readonly SKPaint _separatorPaint = new() { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
 
@@ -336,6 +348,52 @@ public sealed class EventTimelineControl : Grid, IDisposable
         DependencyProperty.Register(nameof(Events), typeof(List<EngineEvent>), typeof(EventTimelineControl),
             new PropertyMetadata(new List<EngineEvent>(), OnEventsChanged));
 
+    // Lock/latch/wait events are always captured (the read grouping needs them); these decide only whether their band
+    // is shown on the timeline. Off → the band is dropped and its markers (top-level AND read-group members) are
+    // skipped, since GetRowIndex returns -1 for an event whose row isn't active.
+
+    public bool ShowLocks
+    {
+        get => (bool)GetValue(ShowLocksProperty);
+        set => SetValue(ShowLocksProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowLocksProperty =
+        DependencyProperty.Register(nameof(ShowLocks), typeof(bool), typeof(EventTimelineControl),
+            new PropertyMetadata(true, OnRowVisibilityChanged));
+
+    public bool ShowLatches
+    {
+        get => (bool)GetValue(ShowLatchesProperty);
+        set => SetValue(ShowLatchesProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowLatchesProperty =
+        DependencyProperty.Register(nameof(ShowLatches), typeof(bool), typeof(EventTimelineControl),
+            new PropertyMetadata(true, OnRowVisibilityChanged));
+
+    public bool ShowWaits
+    {
+        get => (bool)GetValue(ShowWaitsProperty);
+        set => SetValue(ShowWaitsProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowWaitsProperty =
+        DependencyProperty.Register(nameof(ShowWaits), typeof(bool), typeof(EventTimelineControl),
+            new PropertyMetadata(true, OnRowVisibilityChanged));
+
+    private static void OnRowVisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (EventTimelineControl)d;
+
+        control.BuildActiveRows();
+
+        // Bump the version so the cached static layer is re-recorded with the new set of bands.
+        control._eventsVersion++;
+
+        control._skCanvas.Invalidate();
+    }
+
     /// <summary>Resolves each event's display colour on demand (colours aren't stored on the events).</summary>
     public EventColourProvider? ColourProvider
     {
@@ -361,7 +419,11 @@ public sealed class EventTimelineControl : Grid, IDisposable
         var control = (EventTimelineControl)d;
         var events = (List<EngineEvent>)e.NewValue;
 
-        control._sortedEvents = [.. events.OrderBy(ev => ev.SequenceId)];
+        // A read is shown as its consolidated group, but its underlying NON-IO members (the latches, waits and locks
+        // folded into it) are also surfaced onto their own bands, so e.g. a PAGEIOLATCH wait or a BUF latch is visible
+        // in the context of the read it belongs to. The IO members (physical / file reads) stay inside the group. Only
+        // the render list gains the members; the audio arrays stay the top-level events so playback isn't flooded.
+        control._sortedEvents = [.. ExpandGroupedEvents(events).OrderBy(ev => ev.SequenceId)];
         control._readEventsByTime = [.. events.OfType<ReadEventGroup>().OrderBy(read => read.TimeUs)];
         control._latchEventsByTime = [.. events.OfType<LatchEvent>().OrderBy(latch => latch.TimeUs)];
 
@@ -375,6 +437,27 @@ public sealed class EventTimelineControl : Grid, IDisposable
         control.Reset();
 
         control._skCanvas.Invalidate();
+    }
+
+    // Each event, plus the non-IO members of every read group (its latches, waits and locks) so they render on their
+    // own bands alongside the group. The read/file IO members are left inside the group (the group is their marker).
+    private static IEnumerable<EngineEvent> ExpandGroupedEvents(List<EngineEvent> events)
+    {
+        foreach (var engineEvent in events)
+        {
+            yield return engineEvent;
+
+            if (engineEvent is ReadEventGroup group)
+            {
+                foreach (var member in group.Events)
+                {
+                    if (member is not IoEvent and not FileEvent)
+                    {
+                        yield return member;
+                    }
+                }
+            }
+        }
     }
 
     public long? StartOffset
@@ -940,11 +1023,16 @@ public sealed class EventTimelineControl : Grid, IDisposable
 
             canvas.DrawRect(0, y, w, rowHeight, _rowBackgroundPaint);
 
-            var blob = r < _rowLabelBlobs.Length ? _rowLabelBlobs[r] : null;
-
-            if (blob is not null)
+            // The split Read band labels its two lanes (Buffer / Disk) when tall enough; every other row (and a Read
+            // row too short for three labels) keeps its single centred, left-aligned label.
+            if (_activeRows[r].EventType != typeof(ReadEventGroup) || !TryDrawReadRowLabels(canvas, y, rowHeight))
             {
-                canvas.DrawText(blob, 2, y + rowHeight / 2 + _labelFont.Size / 2, _labelPaint);
+                var blob = r < _rowLabelBlobs.Length ? _rowLabelBlobs[r] : null;
+
+                if (blob is not null)
+                {
+                    canvas.DrawText(blob, 2, y + rowHeight / 2 + _labelFont.Size / 2, _labelPaint);
+                }
             }
 
             canvas.DrawLine(0, y + rowHeight, w, y + rowHeight, _separatorPaint);
@@ -2199,9 +2287,9 @@ public sealed class EventTimelineControl : Grid, IDisposable
     private void BuildActiveRows()
     {
         var hasLog = _sortedEvents.Any(e => e is TransactionLogEvent);
-        var hasLock = _sortedEvents.Any(e => e is LockEvent);
-        var hasLatch = _sortedEvents.Any(e => e is LatchEvent);
-        var hasWait = _sortedEvents.Any(e => e is WaitEvent);
+        var hasLock = ShowLocks && _sortedEvents.Any(e => e is LockEvent);
+        var hasLatch = ShowLatches && _sortedEvents.Any(e => e is LatchEvent);
+        var hasWait = ShowWaits && _sortedEvents.Any(e => e is WaitEvent);
 
         _activeRows = AllRows.Where(r =>
             (r.EventType != typeof(TransactionLogEvent) || hasLog) &&
@@ -2234,6 +2322,33 @@ public sealed class EventTimelineControl : Grid, IDisposable
         }
     }
 
+    // Draws the split Read row's three labels — "Buffer" top-aligned (the cached lane), "Disk" bottom-aligned (the
+    // physical lane), "Read" centred — all left-aligned (x=2) like the single-label rows. Returns false (drawing
+    // nothing) when the row is too short to fit all three with at least a 1px gap between them, so the caller falls
+    // back to plain "Read".
+    private bool TryDrawReadRowLabels(SKCanvas canvas, float rowTop, float rowHeight)
+    {
+        var metrics = _labelFont.Metrics;
+
+        var textHeight = metrics.Descent - metrics.Ascent;
+
+        if (rowHeight < textHeight * 3 + MinLabelGap * 2 + VerticalLabelPad * 2)
+        {
+            return false;
+        }
+
+        // metrics.Ascent is negative (above the baseline); offsetting by it places the glyph box's top/bottom on the
+        // row's top/bottom edge (inset by VerticalLabelPad), and its centre on the row's centre.
+        canvas.DrawText("Buffer", 2, rowTop + VerticalLabelPad - metrics.Ascent, SKTextAlign.Left, _labelFont, _labelPaint);
+
+        canvas.DrawText("Read", 2, rowTop + rowHeight / 2 - (metrics.Ascent + metrics.Descent) / 2,
+                        SKTextAlign.Left, _labelFont, _labelPaint);
+
+        canvas.DrawText("Disk", 2, rowTop + rowHeight - VerticalLabelPad - metrics.Descent, SKTextAlign.Left, _labelFont, _labelPaint);
+
+        return true;
+    }
+
     private float RowMarkerWidth(int rowIndex) =>
         rowIndex >= 0 && rowIndex < _rowEventCounts.Length && _rowEventCounts[rowIndex] < SparseRowThreshold
             ? SparseMarkerWidth
@@ -2252,12 +2367,15 @@ public sealed class EventTimelineControl : Grid, IDisposable
                 ? colours.GetColour(sourceEvent).ToSkColor()
                 : _activeRows[rowIndex].Color;
 
-        if (DimForSelection(sourceEvent))
+        var alpha = sourceEvent is LockEvent ? LockOverlayAlpha : (byte)255;
+
+        // Dimming an out-of-focus event only lowers the alpha, never raises it above a lock's overlay alpha.
+        if (DimForSelection(sourceEvent) && FocusedDimAlpha < alpha)
         {
-            return colour.WithAlpha(FocusedDimAlpha);
+            alpha = FocusedDimAlpha;
         }
 
-        return colour;
+        return colour.WithAlpha(alpha);
     }
 
     /// <summary>

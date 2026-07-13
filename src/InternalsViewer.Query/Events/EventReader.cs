@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Parsers;
 using InternalsViewer.Query.Events.Reads;
@@ -17,10 +18,11 @@ public sealed class EventReader(ILogger<EventReader> logger)
     public ILogger<EventReader> Logger { get; } = logger;
 
     public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree)> GetEvents(string filePath,
-                                                                          string connectionString,
-                                                                          DatabaseSource? database,
-                                                                          CancellationToken cancellationToken,
-                                                                          Func<EngineEvent, bool>? endMarker = null)
+                                                                                         string connectionString,
+                                                                                         DatabaseSource? database,
+                                                                                         bool includeSystemObjects,
+                                                                                         CancellationToken cancellationToken,
+                                                                                         Func<EngineEvent, bool>? endMarker = null)
     {
         await using var connection = new SqlConnection(connectionString);
 
@@ -73,7 +75,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
                         var xml = new string(xmlBuffer, 0, length);
                         var eventName = new string(nameBuffer, 0, nameLength);
 
-                        Logger.LogTrace("XE Event:{Event}", 
+                        Logger.LogTrace("XE Event:{Event}",
                                         new XEventPayload(eventName, xml));
                     }
 
@@ -81,6 +83,11 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
                     if (engineEvent is not null)
                     {
+                        if (!includeSystemObjects && engineEvent.AllocationUnit?.IsSystem == true)
+                        {
+                            continue;
+                        }
+
                         startTimeStamp ??= engineEvent.Timestamp;
 
                         // Gaps in sequence ids to allow the plan nodes to be slotted in
@@ -245,7 +252,10 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
     // Events whose duration is elapsed serial work (so must not overlap the next in their lane), as opposed to the
     // envelope durations of query_thread_profile totals and memory grants that span the whole stream.
-    private static bool IsSerialWork(EngineEvent e) => e is not (QueryThreadEvent or MemoryEvent);
+    // Locks are held CONCURRENTLY (a query holds many at once, each spanning acquire→release), so they are NOT serial
+    // work — laying them end-to-end by their (now sizeable) hold durations would push later locks far past the query.
+    // They keep their raw timestamps and overlap instead.
+    private static bool IsSerialWork(EngineEvent e) => e is not (QueryThreadEvent or MemoryEvent or LockEvent);
 
     private static string GetResultsSql(string filename)
     {

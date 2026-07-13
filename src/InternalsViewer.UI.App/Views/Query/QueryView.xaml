@@ -77,11 +77,11 @@
 
                             <MenuBarItem Title="Events">
                                 <ToggleMenuFlyoutItem Text="Locks"
-                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeLock, Mode=TwoWay}"/>
+                                                      IsChecked="{x:Bind ViewModel.ShowLocks, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Waits"
-                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeWait, Mode=TwoWay}"/>
+                                                      IsChecked="{x:Bind ViewModel.ShowWaits, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Latches"
-                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeLatch, Mode=TwoWay}"/>
+                                                      IsChecked="{x:Bind ViewModel.ShowLatches, Mode=TwoWay}"/>
                                     <ToggleMenuFlyoutItem Text="Memory"
                                                       IsChecked="{x:Bind ViewModel.EventOptions.IncludeMemory, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Call Stack"
@@ -95,8 +95,8 @@
                     </CommandBar.Content>
 
                     <CommandBar.PrimaryCommands>
-                        <AppBarToggleButton Label="SQL Editor"
-                                            IsChecked="{x:Bind ViewModel.IsSqlEditorVisible, Mode=TwoWay}">
+                        <AppBarToggleButton Label="Details"
+                                            IsChecked="{x:Bind ViewModel.IsDetailsVisible, Mode=TwoWay}">
                             <AppBarToggleButton.Icon>
                                 <FontIcon Glyph="&#xE943;"/>
                             </AppBarToggleButton.Icon>
@@ -120,7 +120,7 @@
                 <!--Timeline splitter-->
                 <controls:GridSplitter Grid.Row="2"
                                Height="2"
-                               Visibility="{x:Bind ViewModel.TimelineSplitterVisibility, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.SplitterVisibility, Mode=OneWay}"
                                Background="{ThemeResource ControlStrokeColorDefaultBrush}"
                                VerticalAlignment="Stretch">
                     <controls:GridSplitter.Template>
@@ -138,6 +138,9 @@
                                                StartOffset="{x:Bind ViewModel.StartOffset, Mode=OneWay}"
                                                EndOffset="{x:Bind ViewModel.EndOffset, Mode=OneWay}"
                                                ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
+                                               ShowLocks="{x:Bind ViewModel.ShowLocks, Mode=OneWay}"
+                                               ShowLatches="{x:Bind ViewModel.ShowLatches, Mode=OneWay}"
+                                               ShowWaits="{x:Bind ViewModel.ShowWaits, Mode=OneWay}"
                                                Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}" />
             </Grid>
         </SplitView.Content>

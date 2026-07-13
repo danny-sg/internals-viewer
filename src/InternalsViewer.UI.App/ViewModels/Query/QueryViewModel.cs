@@ -101,6 +101,23 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private EventOptions _eventOptions = new();
 
+    // Lock/latch/wait are always captured (the read grouping needs them); these decide only whether they show on the
+    // timeline. Mirrored into EventOptions so the saved layout persists the choice.
+    [ObservableProperty]
+    private bool _showLocks = true;
+
+    [ObservableProperty]
+    private bool _showLatches = true;
+
+    [ObservableProperty]
+    private bool _showWaits = true;
+
+    partial void OnShowLocksChanged(bool value) => EventOptions.IncludeLock = value;
+
+    partial void OnShowLatchesChanged(bool value) => EventOptions.IncludeLatch = value;
+
+    partial void OnShowWaitsChanged(bool value) => EventOptions.IncludeWait = value;
+
     [ObservableProperty]
     private int _extentCount;
 
@@ -148,14 +165,22 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TimelineRowHeight))]
-    [NotifyPropertyChangedFor(nameof(TimelineSplitterVisibility))]
+    [NotifyPropertyChangedFor(nameof(SplitterVisibility))]
     private bool _isTimelineVisible = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DetailsRowHeight))]
+    [NotifyPropertyChangedFor(nameof(SplitterVisibility))]
+    private bool _isDetailsVisible = true;
 
     public GridLength TimelineRowHeight
         => IsTimelineVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
-    public Visibility TimelineSplitterVisibility
-        => IsTimelineVisible ? Visibility.Visible : Visibility.Collapsed;
+    public GridLength DetailsRowHeight
+        => IsDetailsVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility SplitterVisibility
+        => (IsTimelineVisible && IsDetailsVisible) ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     private bool _isSqlEditorVisible = true;
@@ -357,6 +382,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             IncludeMemory = dto.IncludeMemory,
             IncludeCallStack = dto.IncludeCallstack
         };
+
+        ShowLocks = dto.IncludeLock;
+        ShowLatches = dto.IncludeLatch;
+        ShowWaits = dto.IncludeWait;
 
         Dock.SetRoot(root);
 

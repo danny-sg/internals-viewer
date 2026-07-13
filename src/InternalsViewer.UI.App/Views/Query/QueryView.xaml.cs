@@ -66,26 +66,36 @@ public sealed partial class QueryView : Page
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.PropertyChanged += OnViewModelPropertyChanged;
-            ApplyTimelineVisibility();
+            ApplyRowVisibility();
         }
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(QueryViewModel.IsTimelineVisible))
+        if (e.PropertyName is nameof(QueryViewModel.IsTimelineVisible) or nameof(QueryViewModel.IsDetailsVisible))
         {
-            ApplyTimelineVisibility();
+            ApplyRowVisibility();
         }
     }
 
-    private void ApplyTimelineVisibility()
+    private void ApplyRowVisibility()
     {
-        if (ViewModel.IsTimelineVisible)
+        if (ViewModel is { IsTimelineVisible: true, IsDetailsVisible: true })
         {
             DockRow.Height = new GridLength(1, GridUnitType.Star);
             TimelineRow.Height = _savedTimelineHeight.Value > 0
                                  ? _savedTimelineHeight
                                  : new GridLength(1, GridUnitType.Star);
+        }
+        else if (ViewModel is { IsTimelineVisible: true, IsDetailsVisible: false })
+        {
+            if (TimelineRow.Height.Value > 0)
+            {
+                _savedTimelineHeight = TimelineRow.Height;
+            }
+
+            DockRow.Height = new GridLength(0);
+            TimelineRow.Height = new GridLength(1, GridUnitType.Star);
         }
         else
         {

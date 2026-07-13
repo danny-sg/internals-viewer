@@ -1,5 +1,6 @@
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Waits;
 
@@ -14,6 +15,8 @@ namespace InternalsViewer.Query.Events.Consolidation;
 ///     latch_suspend
 ///     latch_acquired
 ///     latch_released
+///     lock_acquired
+///     lock_released
 ///     file_read
 ///     file_read_completed
 ///
@@ -22,7 +25,8 @@ namespace InternalsViewer.Query.Events.Consolidation;
 ///
 /// Capture order is unreliable — an End is frequently buffered ahead of its Begin — so pairing does not scan forward. Instead the Begins
 /// and Ends sharing a key (wait_resource for waits, latch address for suspends) are each sorted by time and zipped positionally: the same
-/// key is only ever suspended once at a time, so the Nth Begin closes with the Nth End regardless of the order they were captured in.
+/// key (wait_resource for waits, latch address for suspends/holds, resource key for locks) is only ever held once at a time, so the
+/// Nth Begin closes with the Nth End regardless of the order they were captured in.
 ///
 /// Duration is taken from the End's SQL-measured value rather than a timestamp delta, so the fold is immune to the quantised, out-of-order
 /// capture timestamps.
@@ -52,6 +56,21 @@ public static class IntervalCollapser
             dropped,
             begin: e => e is LatchEvent { Name: "latch_acquired" } l ? l.LatchAddress : null,
             end: e => e is LatchEvent { Name: "latch_released" } l ? l.LatchAddress : null);
+
+        // Fold each lock hold: the acquire keeps its place and the release folds in, becoming a single "Lock" that is
+        // no longer an acquire/release. Prefer the release's own measured duration, but lock events tend to report it
+        // as 0, so fall back to the elapsed hold (release time less acquire time). Paired per resource in time order.
+        FoldByKey(
+            events,
+            dropped,
+            begin: e => e is LockEvent { Name: "lock_acquired" } l ? l.Key : null,
+            end: e => e is LockEvent { Name: "lock_released" } l ? l.Key : null,
+            onPair: (begin, end) =>
+            {
+                begin.Name = "Lock";
+
+                begin.DurationUs = end.DurationUs > 0 ? end.DurationUs : Math.Max(0, end.TimeUs - begin.TimeUs);
+            });
 
         // Fold each file read: only the completed carries the size (the page range) and duration, so copy them onto the begin, which keeps
         // its place; the two are paired by file offset. Writes fold the same way.

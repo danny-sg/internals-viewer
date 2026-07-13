@@ -1,6 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.Tests;
@@ -60,6 +61,42 @@ public class IntervalCollapserTests
         Assert.Equal("file_read", kept.Name);
         Assert.Equal(4 * 8_192, kept.Size);
     }
+
+    [Fact]
+    public void Lock_Release_Is_Folded_Into_Its_Acquire_With_The_Elapsed_Hold()
+    {
+        // Locks carry no measured duration, so the fold gives the acquire the elapsed hold (release time less acquire
+        // time) and drops the release. Paired by resource key even though the release was captured first.
+        var release = Lock("lock_released", resourceKey: 900, timeUs: 5_000);
+
+        var acquire = Lock("lock_acquired", resourceKey: 900, timeUs: 2_000);
+
+        var result = IntervalCollapser.Collapse([release, acquire]);
+
+        var kept = Assert.IsType<LockEvent>(Assert.Single(result));
+
+        Assert.Equal("Lock", kept.Name);
+        Assert.Equal(3_000, kept.DurationUs);
+    }
+
+    [Fact]
+    public void Locks_On_Different_Resources_Are_Not_Paired()
+    {
+        var acquire = Lock("lock_acquired", resourceKey: 1, timeUs: 1_000);
+
+        var release = Lock("lock_released", resourceKey: 2, timeUs: 2_000);
+
+        var result = IntervalCollapser.Collapse([acquire, release]);
+
+        Assert.Equal(2, result.Count);
+    }
+
+    private static LockEvent Lock(string name, ulong resourceKey, long timeUs) => new()
+    {
+        Name = name,
+        Key = resourceKey,
+        TimeUs = timeUs,
+    };
 
     private static LatchEvent Latch(string name, ulong latchAddress, long timeUs, long durationUs) => new()
     {
