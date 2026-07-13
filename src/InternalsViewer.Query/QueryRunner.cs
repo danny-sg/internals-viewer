@@ -225,8 +225,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                     }
                 }
             }
-
-            await GetEventKeyAddresses(events, connectionString, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -314,43 +312,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         return keep;
     }
 
-    internal static async Task GetEventKeyAddresses(List<EngineEvent> events,
-                                                    string connectionString,
-                                                    CancellationToken cancellationToken)
-    {
-        var keyLockEvents = events.Where(e => e is LockEvent { Resource.KeyHash: not null }).Cast<LockEvent>();
-
-        var byAllocationUnitId = keyLockEvents.GroupBy(g => g.AllocationUnit);
-
-        foreach (var grouping in byAllocationUnitId)
-        {
-            var allocationUnit = grouping.Key;
-
-            if (allocationUnit is null || allocationUnit.IsSystem)
-            {
-                continue;
-            }
-
-            var objectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
-
-            var hashes = grouping.Select(s => s.Resource.KeyHash ?? string.Empty).Where(h => !string.IsNullOrEmpty(h)).ToList();
-
-            var keyHashRowIdentifiers = await KeyHashLookup.GetKeyHashRowIdentifiers(objectName,
-                                                                                     hashes,
-                                                                                     connectionString,
-                                                                                     cancellationToken);
-
-            foreach (var lockEvent in grouping)
-            {
-                if (lockEvent.Resource.KeyHash is not null
-                    && keyHashRowIdentifiers.TryGetValue(lockEvent.Resource.KeyHash,
-                                                         out var rowIdentifier))
-                {
-                    lockEvent.Resource.RowIdentifier = rowIdentifier;
-                }
-            }
-        }
-    }
+  
 
     private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets)>
         RunQueryWithEventSession(string sessionName,
