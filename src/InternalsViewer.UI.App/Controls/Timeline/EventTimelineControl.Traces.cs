@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Reads;
@@ -13,10 +12,19 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
-    // Draws each lock group's locks with their granularity levels in their OWN lanes — object at the top, page in the
-    // middle, row at the bottom — so a held object lock (a wide bar up top) can't eclipse the finer locks: they show as
-    // their own teeth in the lanes below it. Individual grouped locks aren't drawn elsewhere (the grid holds the
-    // per-lock detail); escalation reads as the finer lanes filling in / the coarse lane taking over over time.
+    // A discrete lock line is at least this tall; a band that can't fit its concurrency as lines this tall falls back to
+    // a density shade instead of sub-pixel lines.
+    private const float MinLockLineHeight = 2f;
+
+    // A discrete (non-overlapping) lock line is near-opaque.
+    private const byte LockLineAlpha = 220;
+
+    // Draws the Lock band as one EQUAL-height sub-band per lock-mode category present (Read/Update/Write/Schema/Range/…),
+    // ordered by category, so a busy category can't crowd out the others. Within a band each lock is a bar spanning its
+    // held duration; if the band's max concurrency fits as lines at least MinLockLineHeight tall they are packed into
+    // sub-lanes (a lone lock fills the band as a bar), otherwise it switches to a density shade — translucent full-height
+    // bars that blend darker where more locks are held at once. Shows lock type (band + colour), level (band order),
+    // concurrency (lines / shade) and duration (bar width) together.
     private void DrawLockGroups(SKCanvas canvas, float[] rowTops, float[] rowHeights)
     {
         var lockRow = _rows.IndexOf(typeof(LockEvent));
@@ -28,45 +36,195 @@ public sealed partial class EventTimelineControl
 
         var innerTop = rowTops[lockRow] + RowPadding;
         var innerHeight = rowHeights[lockRow] - RowPadding * 2;
-        var laneHeight = innerHeight / LockLevels;
         var rightEdge = CanvasWidth;
 
-        foreach (var group in _sortedEvents.OfType<LockGroup>())
+        // Every lock on the band: the members of each group plus any ungrouped locks.
+        var locks = _sortedEvents.OfType<LockGroup>()
+                                 .SelectMany(g => g.Events.OfType<LockEvent>())
+                                 .Concat(_sortedEvents.OfType<LockEvent>());
+
+        // One band per non-empty category, most exclusive at the top so an escalation to a coarser lock steps UP.
+        var categories = locks.GroupBy(l => LockModeClassifier.Categorise(l.LockMode))
+                              .Where(g => g.Key != LockModeCategory.None)
+                              .OrderByDescending(g => TimelineColours.LockCategoryLevel(g.Key))
+                              .ToList();
+
+        if (categories.Count == 0)
         {
-            // Two dimensions: the lane (Y) is resource escalation (row -> page -> object), the colour is the lock mode.
-            var alpha = (byte)(DimForSelection(group) ? FocusedDimAlpha : LockOverlayAlpha);
+            return;
+        }
 
-            foreach (var lockEvent in group.Events.OfType<LockEvent>())
+        var bandHeight = innerHeight / categories.Count;
+        var availableLanes = Math.Max(1, (int)(bandHeight / MinLockLineHeight));
+
+        var cursorY = innerTop;
+
+        foreach (var category in categories)
+        {
+            var bandTop = cursorY;
+
+            cursorY += bandHeight;
+
+            // Pack into sub-lanes (greedy by start time) so concurrent holds don't overlap; the lane count is the max
+            // concurrency in this band.
+            var laneEnds = new List<long>();
+
+            var placed = new List<(LockEvent Lock, int Lane)>();
+
+            foreach (var lockEvent in category.OrderBy(l => l.TimeUs))
             {
-                var level = TimelineColours.GranularityLevel(lockEvent.Resource.ResourceType);
+                var end = lockEvent.TimeUs + Math.Max(0, lockEvent.DurationUs);
 
-                // Level 0 (row) sits in the bottom lane, the coarsest (object) at the top.
-                var markerTop = innerTop + (LockLevels - 1 - level) * laneHeight + 0.5f;
-                var markerHeight = Math.Max(1f, laneHeight - 1f);
+                var lane = laneEnds.FindIndex(laneEnd => laneEnd <= lockEvent.TimeUs);
 
-                var fill = TimelineColours.LockModeColour(lockEvent.LockMode).WithAlpha(alpha);
-
-                var startX = TimeToX(lockEvent.TimeUs / AxisUnitsPerMs);
-
-                var endX = lockEvent.DurationUs > 0
-                    ? TimeToX((lockEvent.TimeUs + lockEvent.DurationUs) / AxisUnitsPerMs)
-                    : startX + MarkerWidth;
-
-                if (endX < startX + MarkerWidth)
+                if (lane < 0)
                 {
-                    endX = startX + MarkerWidth;
+                    lane = laneEnds.Count;
+
+                    laneEnds.Add(end);
+                }
+                else
+                {
+                    laneEnds[lane] = end;
                 }
 
-                if (endX < RowLabelWidth || startX > rightEdge)
-                {
-                    continue;
-                }
-
-                _markerPaint.Color = fill;
-                canvas.DrawRect(startX, markerTop, endX - startX, markerHeight, _markerPaint);
-
-                _hitRegions.Add((new SKRect(startX - 1, markerTop, endX + 1, markerTop + markerHeight), lockEvent, null));
+                placed.Add((lockEvent, lane));
             }
+
+            var colour = TimelineColours.LockModeColour(placed[0].Lock.LockMode);
+
+            // Discrete lines while the concurrency fits at a legible height; otherwise a jagged density profile.
+            if (laneEnds.Count <= availableLanes)
+            {
+                var laneHeight = bandHeight / laneEnds.Count;
+
+                foreach (var (lockEvent, lane) in placed)
+                {
+                    var startX = TimeToX(lockEvent.TimeUs / AxisUnitsPerMs);
+
+                    var endX = lockEvent.DurationUs > 0
+                        ? TimeToX((lockEvent.TimeUs + lockEvent.DurationUs) / AxisUnitsPerMs)
+                        : startX + MarkerWidth;
+
+                    if (endX < startX + MarkerWidth)
+                    {
+                        endX = startX + MarkerWidth;
+                    }
+
+                    if (endX < RowLabelWidth || startX > rightEdge)
+                    {
+                        continue;
+                    }
+
+                    var top = bandTop + lane * laneHeight + 0.5f;
+                    var height = Math.Max(1f, laneHeight - 1f);
+
+                    var alpha = (byte)(DimForSelection(lockEvent) ? FocusedDimAlpha : LockLineAlpha);
+
+                    _markerPaint.Color = colour.WithAlpha(alpha);
+                    canvas.DrawRect(startX, top, endX - startX, height, _markerPaint);
+
+                    _hitRegions.Add((new SKRect(startX - 1, top, endX + 1, top + height), lockEvent, null));
+                }
+            }
+            else
+            {
+                DrawLockDensity(canvas, placed, bandTop, bandHeight, colour, rightEdge);
+            }
+        }
+    }
+
+    // Draws a band's locks as a per-pixel concurrency profile: each column's height is how many locks are held at that
+    // moment, so the outline is jagged at each acquire/release the pixel resolution can show and merges (a taller
+    // column) only where several boundaries fall in one pixel. Preserves start/end structure a flat shade would hide.
+    private void DrawLockDensity(SKCanvas canvas,
+                                 List<(LockEvent Lock, int Lane)> locks,
+                                 float bandTop,
+                                 float bandHeight,
+                                 SKColor colour,
+                                 float rightEdge)
+    {
+        var x0 = (int)MathF.Floor(RowLabelWidth);
+        var x1 = (int)MathF.Ceiling(rightEdge);
+        var span = x1 - x0;
+
+        if (span <= 0)
+        {
+            return;
+        }
+
+        // Difference array over pixel columns: +1 at each lock's start, -1 at its end.
+        var concurrency = new int[span + 1];
+
+        foreach (var (lockEvent, _) in locks)
+        {
+            var startX = TimeToX(lockEvent.TimeUs / AxisUnitsPerMs);
+
+            var endX = lockEvent.DurationUs > 0
+                ? TimeToX((lockEvent.TimeUs + lockEvent.DurationUs) / AxisUnitsPerMs)
+                : startX + MarkerWidth;
+
+            if (endX < startX + MarkerWidth)
+            {
+                endX = startX + MarkerWidth;
+            }
+
+            if (endX < RowLabelWidth || startX > rightEdge)
+            {
+                continue;
+            }
+
+            var start = (int)MathF.Round(Math.Clamp(startX, x0, x1)) - x0;
+            var end = (int)MathF.Round(Math.Clamp(endX, x0, x1)) - x0;
+
+            if (end <= start)
+            {
+                end = start + 1;
+            }
+
+            concurrency[start]++;
+            concurrency[Math.Min(end, span)]--;
+
+            _hitRegions.Add((new SKRect(startX - 1, bandTop, endX + 1, bandTop + bandHeight), lockEvent, null));
+        }
+
+        // Prefix-sum the deltas into a per-column concurrency, tracking the peak to normalise the height.
+        var running = 0;
+        var peak = 0;
+
+        for (var i = 0; i < span; i++)
+        {
+            running += concurrency[i];
+            concurrency[i] = running;
+
+            if (running > peak)
+            {
+                peak = running;
+            }
+        }
+
+        if (peak <= 0)
+        {
+            return;
+        }
+
+        var bandBottom = bandTop + bandHeight;
+
+        _markerPaint.Color = colour.WithAlpha(230);
+
+        for (var i = 0; i < span; i++)
+        {
+            var count = concurrency[i];
+
+            if (count <= 0)
+            {
+                continue;
+            }
+
+            // At least MinLockLineHeight so an isolated lock still shows, scaling to the full band at the peak.
+            var height = MinLockLineHeight + (bandHeight - MinLockLineHeight) * count / peak;
+
+            canvas.DrawRect(x0 + i, bandBottom - height, 1f, height, _markerPaint);
         }
     }
 
@@ -190,8 +348,6 @@ public sealed partial class EventTimelineControl
         (ColourProvider is { } colours ? colours.GetColour(ev).ToSkColor() : _rows.Active[rowIndex].Color)
             .WithAlpha(dimmed ? FocusedDimAlpha : (byte)255);
 
-    // True when an operator is selected and the event belongs to a different operator, so its marker and
-    // trace line are faded to let the selected block's I/O and trace lines stand out.
     private bool DimForSelection(EngineEvent ev) =>
         _selectedNodeId is { } selected && ev.PlanNodeIdentifier is { } id && id.NodeId != selected;
 }

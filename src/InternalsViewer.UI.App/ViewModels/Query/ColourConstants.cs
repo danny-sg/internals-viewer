@@ -19,7 +19,7 @@ internal static class ColourConstants
 
     // Transaction-log / data-modification red (distinct from the Lock salmon). Used for the Log lane,
     // log event markers, and modification operators.
-    public static readonly Color LogColour = Color.FromArgb(255, 214, 48, 49);
+    public static readonly Color LogColour = Color.FromArgb(255, 116, 129, 211);
 
     public static readonly Color SystemIoColour = Desaturate(IoColour, 0.20);
     public static readonly Color SystemPageColour = Desaturate(PageColour, 0.20);

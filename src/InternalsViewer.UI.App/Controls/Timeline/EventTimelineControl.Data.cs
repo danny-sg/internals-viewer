@@ -10,9 +10,6 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
-    // Each event, plus the non-IO members of every read group (its latches, waits) so they render on their own bands
-    // alongside the group. Read IO members stay inside the group (the group is their marker), and a lock group's child
-    // locks stay inside it too — the group draws them itself, one per-granularity lane (see DrawLockGroups).
     private static IEnumerable<EngineEvent> ExpandGroupedEvents(List<EngineEvent> events)
     {
         foreach (var engineEvent in events)
@@ -32,11 +29,6 @@ public sealed partial class EventTimelineControl
         }
     }
 
-    /// <summary>
-    /// Positions are simply each event's start time in milliseconds (sequence id is only used for
-    /// ordering). The axis spans the first start to the last end, where an operator's end is its
-    /// start plus its duration.
-    /// </summary>
     private void BuildTimes()
     {
         _times = new List<double>(_sortedEvents.Count);
@@ -46,6 +38,7 @@ public sealed partial class EventTimelineControl
             _minTime = 0;
             _maxTime = 1;
             _timeRange = 1;
+
             return;
         }
 
@@ -81,7 +74,6 @@ public sealed partial class EventTimelineControl
         _timeRange = Math.Max(_maxTime - _minTime, 1.0);
     }
 
-    // Precomputes the ordered operator list and per-set aggregates used every paint frame.
     private void BuildOperatorLayout()
     {
         var operators = new List<(int Index, ExecutionOperatorEvent Op)>();
@@ -94,10 +86,9 @@ public sealed partial class EventTimelineControl
             }
         }
 
-        _orderedOperators = [.. operators
-            .OrderBy(o => o.Op.NodeLevel)
-            .ThenBy(o => _times[o.Index])
-            .ThenBy(o => o.Op.PlanNodeIdentifier?.NodeId ?? 0)];
+        _orderedOperators = [.. operators.OrderBy(o => o.Op.NodeLevel)
+                                         .ThenBy(o => _times[o.Index])
+                                         .ThenBy(o => o.Op.PlanNodeIdentifier?.NodeId ?? 0)];
 
         _maxCost = operators.Count > 0
             ? operators.Where(o => o.Op.NodeLevel > 0).Select(o => o.Op.Cost ?? 0).DefaultIfEmpty(0).Max()

@@ -2,7 +2,6 @@ using System;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -185,6 +184,7 @@ public sealed partial class EventTimelineControl
         }
 
         var x = Math.Clamp(e.GetCurrentPoint(_overlay).Position.X, RowLabelWidth, CanvasWidth);
+
         var t = XToTime(x);
 
         switch (_dragTarget)

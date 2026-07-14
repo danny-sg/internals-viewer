@@ -83,7 +83,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
                     if (engineEvent is not null)
                     {
-                        if (!includeSystemObjects && engineEvent.AllocationUnit?.IsSystem == true)
+                        if (!includeSystemObjects && IsSystemObjectEvent(engineEvent))
                         {
                             continue;
                         }
@@ -114,6 +114,10 @@ public sealed class EventReader(ILogger<EventReader> logger)
         // read into a single NonCachedReadEventGroup.
         var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
 
+        // Give never-released lock acquires (fine-grained locks dropped by escalation, or held to a commit outside the
+        // window) their held duration, so they render as held bars rather than zero-duration points.
+        // HeldLockCloser.Close(collapsedEvents);
+
         // Collapse a burst of identical buffer latches on one page (a scan re-latching a page per row) into one, so
         // the read grouping forms a single buffer-pool read per page visit and the spread can't smear them.
         collapsedEvents = BufferLatchCoalescing.Coalesce(collapsedEvents);
@@ -141,6 +145,13 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         return (consolidatedEvents, executionPlans, eventParser.CallStack);
     }
+
+    // System-object events hidden unless IncludeSystemObjects is on: allocation-unit events on a system object, and the
+    // metadata/database-scoped locks (engine bookkeeping, resource database_id = 1). Those locks carry no allocation
+    // unit, so the IsSystem check alone can't catch them — they must be matched by resource type.
+    private static bool IsSystemObjectEvent(EngineEvent engineEvent) =>
+        engineEvent.AllocationUnit?.IsSystem == true
+        || engineEvent is LockEvent { Resource.ResourceType: LockResourceType.Metadata or LockResourceType.Database };
 
     private static int ReadColumn(SqlDataReader reader, int ordinal, ref char[] buffer)
     {
@@ -170,23 +181,21 @@ public sealed class EventReader(ILogger<EventReader> logger)
     // microsecond-accurate signal. Events sharing a bucket are spread across it rather than left stacked.
     private const long BucketUs = 1_000;
 
-    // Smallest gap kept between two events so they never render touching ("adjacent"); also the overflow spacing.
-    private const long MinGapUs = 40;
-
     /// <summary>
-    /// Spreads the millisecond-bucketed events across their window using the microsecond durations, per lane
+    /// Spreads the millisecond-bucketed events across their own window, per lane, by how many share the window
     /// </summary>
     /// <remarks>
     /// Each lane (event type — reads, latches, waits...) is a separate visual row, so overlap only matters within a
-    /// lane; every lane is spread independently. Within a lane the query is serial (task_address is constant, so there
-    /// is one stream), so events are ordered by their bucket and, for the events sharing a bucket, distributed across
-    /// [bucket, bucket + 1000us]: each event is centred in its share of the window — <c>start = slotStart +
-    /// (slot - duration) / 2</c> — which keeps a gap on both sides so they are neither overlapping nor adjacent.
+    /// lane; every lane is spread independently. Events are ms-quantized, so many land on the same millisecond. Within a
+    /// lane the events sharing a bucket are distributed across [bucket, bucket + 1000us], each CENTRED in its 1/count
+    /// slice — density is the COUNT sharing the window: a busy bucket simply packs tighter (thinner slices, eventually
+    /// overlapping) rather than pushing later events forward.
     ///
-    /// When a lane's events do not fit (a read whose duration overruns its slot, or a busy bucket) a running cursor
-    /// pushes each following event out past the previous one's end plus a minimum gap, overflowing into later buckets
-    /// rather than overlapping. Envelope events (per-thread profile totals, memory grants) are left alone as their
-    /// durations span, rather than sit within, the stream.
+    /// Critically the layout is CONFINED to each event's own bucket — it does NOT carry a cursor across buckets. Laying
+    /// events end-to-end by duration (the old model) let a dense run overrun the real elapsed time and drag the read
+    /// lane out past the operator/lock it belongs to; keeping each within its captured millisecond avoids that, at the
+    /// cost of letting a genuinely over-full bucket overlap. Envelope events (per-thread profile totals, memory grants)
+    /// are left alone as their durations span, rather than sit within, the stream.
     /// </remarks>
     internal static void SpreadEvents(List<EngineEvent> events)
     {
@@ -198,9 +207,6 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
     private static void SpreadLane(List<EngineEvent> lane)
     {
-        // Earliest start the next event may take so it neither precedes its bucket nor touches the previous event.
-        var cursor = long.MinValue;
-
         var i = 0;
 
         while (i < lane.Count)
@@ -216,25 +222,18 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
             var count = j - i;
 
-            var windowStart = Math.Max(bucket, cursor);
-
-            // The window runs to the next bucket; a previous overflow can eat into it, so the slot is floored at 1.
-            var slot = Math.Max(1, (bucket + BucketUs - windowStart) / count);
+            // Density = how many events share this millisecond: each gets an equal 1/count slice of the window.
+            var slot = Math.Max(1, BucketUs / count);
 
             for (var k = 0; k < count; k++)
             {
                 var e = lane[i + k];
 
-                // Centre the event in its slot, then hold it at or after both the window start (so it never precedes
-                // its own bucket) and the cursor (so it can never overlap or touch the one before) — an over-long
-                // event just starts on its boundary and pushes the rest out.
-                var centred = windowStart + k * slot + (slot - e.DurationUs) / 2;
+                // Centre the event in its slice; never let it precede its own bucket. Confined to the bucket — a busy
+                // bucket packs tighter (and, when truly over-full, overlaps) instead of overflowing into later ones.
+                var centred = bucket + k * slot + (slot - e.DurationUs) / 2;
 
-                var start = Math.Max(centred, Math.Max(cursor, windowStart));
-
-                ShiftTo(e, start);
-
-                cursor = start + e.DurationUs + MinGapUs;
+                ShiftTo(e, Math.Max(bucket, centred));
             }
 
             i = j;
@@ -277,9 +276,9 @@ public sealed class EventReader(ILogger<EventReader> logger)
     );";
     }
 
-    internal static async Task GetEventKeyAddresses(List<EngineEvent> events,
-                                                    string connectionString,
-                                                    CancellationToken cancellationToken)
+    internal async Task GetEventKeyAddresses(List<EngineEvent> events,
+                                             string connectionString,
+                                             CancellationToken cancellationToken)
     {
         var keyLockEvents = events.Where(e => e is LockEvent { Resource.KeyHash: not null }).Cast<LockEvent>();
 
@@ -294,14 +293,23 @@ public sealed class EventReader(ILogger<EventReader> logger)
                 continue;
             }
 
+            Logger.LogDebug("Getting lock key hash values for {AllocationUnitName}", allocationUnit.DisplayName);
+
             var objectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
 
-            var hashes = grouping.Select(s => s.Resource.KeyHash ?? string.Empty).Where(h => !string.IsNullOrEmpty(h)).ToList();
+            var hashes = grouping.Select(s => s.Resource.KeyHash ?? string.Empty)
+                                 .Where(h => !string.IsNullOrEmpty(h))
+                                 .Distinct()
+                                 .ToList();
+
+            Logger.LogDebug("- {Count} keys", hashes.Count);
 
             var keyHashRowIdentifiers = await KeyHashLookup.GetKeyHashRowIdentifiers(objectName,
                                                                                      hashes,
                                                                                      connectionString,
                                                                                      cancellationToken);
+
+            Logger.LogDebug("- found {Count} key hash -> RID mappings", keyHashRowIdentifiers.Count);
 
             foreach (var lockEvent in grouping)
             {
@@ -312,6 +320,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
                     lockEvent.Resource.RowIdentifier = rowIdentifier;
                 }
             }
+
         }
     }
 }

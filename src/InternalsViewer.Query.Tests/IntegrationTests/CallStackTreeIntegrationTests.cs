@@ -1,5 +1,7 @@
+using InternalsViewer.Internals;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.Events;
@@ -10,6 +12,9 @@ using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
 using InternalsViewer.Query.TransactionLog;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Xunit.Abstractions;
@@ -19,6 +24,26 @@ namespace InternalsViewer.Query.Tests.IntegrationTests;
 public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;
+
+    [Fact]
+    public async Task Diagnose_Crop_Start()
+    {
+        var result = await RunQuery(
+            """
+            SELECT TOP 1000 *
+            FROM dbo.LockEscalationDemo WITH (UPDLOCK)
+            WHERE Category = 1;
+            """);
+
+        TestOutputHelper.WriteLine($"cropStart={result.CropStartUs}  cropEnd={result.CropEndUs}");
+
+        // The earliest kept events — whatever sits near TimeUs 0 is what pulls cropStart back before the query.
+        foreach (var e in result.EngineEvents.OrderBy(e => e.TimeUs).Take(18))
+        {
+            TestOutputHelper.WriteLine($"  TimeUs={e.TimeUs,-8} dur={e.DurationUs,-9} {e.GetType().Name,-26} "
+                + $"'{e.Name}' planHandle={e.PlanHandleId}");
+        }
+    }
 
     [Fact]
     public async Task Diagnose_Operators_Survive_Crop()
@@ -335,6 +360,200 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
     }
 
     [Fact]
+    public async Task Diagnose_Lock_Escalation()
+    {
+        // UPDLOCK + HOLDLOCK takes RS_U range key locks and holds them; with enough rows it escalates to an object lock.
+        // The question: do the key locks get a lock_released (so they pair), or are they unpaired (no release captured)?
+        var database = await LoadDatabase();
+
+        var result = await RunQuery(
+            """
+            SELECT *
+            FROM dbo.LockEscalationDemo WITH (UPDLOCK, HOLDLOCK)
+            WHERE Category = 1;
+            """, database);
+
+        var locks = result.EngineEvents.OfType<LockEvent>()
+            .Concat(result.EngineEvents.OfType<Query.Events.Locks.LockGroup>().SelectMany(g => g.Events.OfType<LockEvent>()))
+            .ToList();
+
+        var groups = result.EngineEvents.OfType<Query.Events.Locks.LockGroup>().ToList();
+
+        // After IntervalCollapser a paired lock is renamed "Lock"; an unpaired acquire stays "lock_acquired"; an
+        // unpaired release stays "lock_released". So the names tell us the pairing outcome directly.
+        TestOutputHelper.WriteLine($"locks={locks.Count}  lockGroups={groups.Count}  "
+            + $"paired(Lock)={locks.Count(l => l.Name == "Lock")}  "
+            + $"unpairedAcquire={locks.Count(l => l.Name == "lock_acquired")}  "
+            + $"unpairedRelease={locks.Count(l => l.Name == "lock_released")}");
+
+        // Is a single group correct? Show how many distinct (object, transaction) pairs the locks actually span, and the
+        // composition of each group — a group should be exactly one object + one transaction.
+        var distinctKeys = locks
+            .Select(l => (Obj: l.AllocationUnit?.ObjectId ?? 0, Txn: l.LockOwnerContext?.TransactionId ?? 0))
+            .Distinct()
+            .ToList();
+
+        TestOutputHelper.WriteLine($"distinct (object,transaction) pairs across all locks = {distinctKeys.Count}");
+
+        var topLevelLocks = result.EngineEvents.OfType<LockEvent>().Count();
+
+        TestOutputHelper.WriteLine($"top-level (ungrouped) locks left over = {topLevelLocks}");
+
+        foreach (var group in groups)
+        {
+            var members = group.Events.OfType<LockEvent>().ToList();
+
+            var objects = members.Select(l => l.AllocationUnit?.ObjectId ?? 0).Distinct().ToList();
+            var txns = members.Select(l => l.LockOwnerContext?.TransactionId ?? 0).Distinct().ToList();
+
+            TestOutputHelper.WriteLine($"  group '{group.Description}' members={members.Count} "
+                + $"objects=[{string.Join(",", objects.Take(4))}] transactions=[{string.Join(",", txns.Take(4))}]");
+        }
+
+        // Do the fine key locks end at the escalation (object X acquire), well before the statement end?
+        var keys = locks.Where(l => l.Resource.ResourceType == Query.Events.Locks.LockResourceType.Key).ToList();
+
+        // KEY locks carry their HoBT in resource_2 — after the parse fix these should be populated (was all 0).
+        TestOutputHelper.WriteLine($"key locks={keys.Count}  withHobtId={keys.Count(l => l.Resource.HobtId is > 0)}  "
+            + $"withAllocationUnit={keys.Count(l => l.AllocationUnit is not null)}  "
+            + $"distinctHobt=[{string.Join(",", keys.Select(l => l.Resource.HobtId).Distinct().Take(4))}]");
+
+        var objectX = locks.Where(l => l.Resource.ResourceType == Query.Events.Locks.LockResourceType.Object
+                                       && l.LockMode == Query.Events.Locks.LockMode.X).ToList();
+
+        if (keys.Count > 0 && objectX.Count > 0)
+        {
+            var escalationTime = objectX.Min(l => l.TimeUs);
+
+            // Fine key locks in the escalating transaction should end AT the escalation, not at the statement end.
+            TestOutputHelper.WriteLine($"key lock span={keys.Min(l => l.TimeUs)}..{keys.Max(l => l.TimeUs + l.DurationUs)}  "
+                + $"escalation(objectX acquire)={escalationTime}  statementEnd~={locks.Max(l => l.TimeUs)}  "
+                + $"keysEndingAtEscalation={keys.Count(l => Math.Abs(l.TimeUs + l.DurationUs - escalationTime) < 5000)}/{keys.Count}");
+        }
+
+        // Per (type, mode, name): count, and how many have a duration (paired => non-zero).
+        foreach (var g in locks
+                     .GroupBy(l => (l.Resource.ResourceType, l.LockMode, l.Name))
+                     .OrderByDescending(g => g.Count()))
+        {
+            var (type, mode, name) = g.Key;
+
+            TestOutputHelper.WriteLine($"  type={type,-8} mode={mode,-5} name='{name,-13}' count={g.Count(),-5} "
+                + $"withDuration={g.Count(l => l.DurationUs > 0)}");
+        }
+    }
+
+    [Fact]
+    public async Task Diagnose_Raw_Lock_Events()
+    {
+        // Read the RAW .xel (pre-consolidation) and count lock_acquired vs lock_released by resource type + mode. TOP 10
+        // stays under the escalation threshold, so the RS_U keys should be released at commit (captured) rather than
+        // bulk-dropped by escalation — i.e. this should show RS_U releases the full-table run did not.
+        var result = await RunQuery(
+            """
+            SELECT TOP 10 *
+            FROM dbo.LockEscalationDemo WITH (UPDLOCK, HOLDLOCK)
+            WHERE Category = 1;
+            """);
+
+        var connectionString = ConnectionStringHelper.GetConnectionString("Local");
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(CancellationToken.None);
+
+        string? logPath;
+
+        await using (var locationCommand = new SqlCommand(EventSql.GetFileLocationSql(), connection))
+        {
+            logPath = (string?)await locationCommand.ExecuteScalarAsync(CancellationToken.None);
+        }
+
+        var path = $"{logPath}\\{result.SessionId}*.xel";
+
+        TestOutputHelper.WriteLine($"reading {path}");
+
+        const string sql = """
+            SELECT object_name AS event_name,
+                   CONVERT(XML, event_data).value('(event/data[@name="resource_type"]/text)[1]', 'varchar(30)') AS resource_type,
+                   CONVERT(XML, event_data).value('(event/data[@name="mode"]/text)[1]', 'varchar(30)') AS mode
+            FROM sys.fn_xe_file_target_read_file(@p, NULL, NULL, NULL)
+            WHERE object_name IN ('lock_acquired', 'lock_released')
+            """;
+
+        var counts = new Dictionary<(string Name, string ResourceType, string Mode), int>();
+
+        await using (var command = new SqlCommand(sql, connection))
+        {
+            command.Parameters.AddWithValue("@p", path);
+
+            await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+
+            while (await reader.ReadAsync(CancellationToken.None))
+            {
+                var key = (reader.GetString(0),
+                           reader.IsDBNull(1) ? "?" : reader.GetString(1),
+                           reader.IsDBNull(2) ? "?" : reader.GetString(2));
+
+                counts[key] = counts.GetValueOrDefault(key) + 1;
+            }
+        }
+
+        foreach (var (key, count) in counts.OrderBy(k => k.Key.ResourceType).ThenBy(k => k.Key.Name))
+        {
+            TestOutputHelper.WriteLine($"  {key.Name,-14} resource_type={key.ResourceType,-10} mode={key.Mode,-6} count={count}");
+        }
+    }
+
+    [Fact]
+    public async Task Diagnose_Key_Lock_Hash()
+    {
+        var database = await LoadDatabase();
+
+        var result = await RunQuery(
+            """
+            SELECT *
+            FROM dbo.LockEscalationDemo WITH (UPDLOCK, HOLDLOCK)
+            WHERE Category = 1;
+            """, database);
+
+        var keys = result.EngineEvents.OfType<LockEvent>()
+            .Concat(result.EngineEvents.OfType<Query.Events.Locks.LockGroup>().SelectMany(g => g.Events.OfType<LockEvent>()))
+            .Where(l => l.Resource.ResourceType == Query.Events.Locks.LockResourceType.Key)
+            .ToList();
+
+        var ourHashes = keys.Select(l => l.Resource.KeyHash).Where(h => h is not null).Distinct().ToHashSet();
+
+        // End-to-end: GetEventKeyAddresses (run in the pipeline) matches our KeyHash against the table's %%lockres%% and
+        // sets RowIdentifier — so a resolved RowIdentifier proves our hash format matches what SQL computes.
+        var resolved = keys.Count(l => l.Resource.RowIdentifier is not null);
+
+        TestOutputHelper.WriteLine($"key locks={keys.Count}  distinct hashes={ourHashes.Count}  "
+            + $"rowIdentifierResolved={resolved}");
+
+        // Direct check: how many of our hashes SQL finds against the table's clustered %%lockres%%.
+        var connectionString = ConnectionStringHelper.GetConnectionString("Local");
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(CancellationToken.None);
+
+        await using var command = new SqlCommand(
+            "SELECT %%lockres%% AS hash FROM dbo.LockEscalationDemo", connection);
+
+        var realHashes = new HashSet<string>();
+
+        await using (var reader = await command.ExecuteReaderAsync(CancellationToken.None))
+        {
+            while (await reader.ReadAsync(CancellationToken.None))
+            {
+                realHashes.Add(reader.GetString(0));
+            }
+        }
+
+        TestOutputHelper.WriteLine($"table rows={realHashes.Count}  ourHashesFoundInTable={ourHashes.Count(h => realHashes.Contains(h!))}");
+        TestOutputHelper.WriteLine($"sample ours = [{string.Join(", ", ourHashes.Take(4))}]");
+    }
+
+    [Fact]
     public async Task Diagnose_Lock_Pairing()
     {
         // HOLDLOCK holds key/page/object locks to the end of the statement, so there are real (non-metadata) locks to
@@ -458,7 +677,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
     private static bool IsBufSh(LatchEvent l) =>
         l is { LatchClass: LatchClass.BUF, LatchMode: LatchMode.SH, Name: "latch_acquired" };
 
-    private async Task<QueryResult> RunQuery(string sql)
+    private async Task<QueryResult> RunQuery(string sql, DatabaseSource? database = null)
     {
         var logger = TestLogger.GetLogger<QueryRunner>(TestOutputHelper, LogLevel.Information);
 
@@ -469,7 +688,9 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
         var logReader = new LogRecordReader(TestLogger.GetLogger<LogRecordReader>(TestOutputHelper, LogLevel.Information));
         var executor = new QueryRunner(logger, eventReader, logReader);
 
-        var database = new DatabaseSource(
+        // A bare DatabaseSource loads no allocation units, so lock/read events resolve no object; pass a LoadDatabase()
+        // result to exercise the full HoBT/object -> allocation-unit path the way the app does.
+        database ??= new DatabaseSource(
             new ServerConnectionFactory(TestLogger.GetLogger<QueryPageReader>(TestOutputHelper))
                 .Create(c => c.ConnectionString = connectionString))
         {
@@ -485,5 +706,25 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
             CancellationToken.None);
 
         return result;
+    }
+
+    // Loads a real DatabaseSource (metadata + allocation units) from the "Local" connection, so lock/read events resolve
+    // their allocation unit exactly as in the app — the bare DatabaseSource in RunQuery loads none.
+    private async Task<DatabaseSource> LoadDatabase()
+    {
+        var connectionString = ConnectionStringHelper.GetConnectionString("Local");
+
+        using var host = Host.CreateDefaultBuilder()
+                             .ConfigureServices((_, services) => services.RegisterServices())
+                             .Build();
+
+        var databaseService = host.Services.GetRequiredService<IDatabaseService>();
+
+        var connection = new ServerConnectionFactory(TestLogger.GetLogger<QueryPageReader>(TestOutputHelper))
+            .Create(c => c.ConnectionString = connectionString);
+
+        var databaseName = new SqlConnectionStringBuilder(connectionString).InitialCatalog;
+
+        return await databaseService.LoadAsync(databaseName, connection, CancellationToken.None);
     }
 }

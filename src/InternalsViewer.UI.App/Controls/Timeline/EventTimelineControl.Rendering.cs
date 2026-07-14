@@ -117,7 +117,8 @@ public sealed partial class EventTimelineControl
         {
             var sourceEvent = _sortedEvents[i];
 
-            if (sourceEvent is ExecutionOperatorEvent)
+            // Locks (grouped and ungrouped) are drawn by DrawLockGroups as the category-banded Lock lane, not here.
+            if (sourceEvent is ExecutionOperatorEvent or LockEvent)
             {
                 continue;
             }
@@ -187,7 +188,8 @@ public sealed partial class EventTimelineControl
 
             if (hasDuration)
             {
-                _markerPaint.Color = markerColor.WithAlpha((byte)Math.Min(markerColor.Alpha, DurationOverlayAlpha));
+                _markerPaint.Color = markerColor.WithAlpha(Math.Min(markerColor.Alpha, DurationOverlayAlpha));
+
                 canvas.DrawRect(startX, markerTop, endX - startX, markerHeight, _markerPaint);
             }
 
@@ -395,8 +397,6 @@ public sealed partial class EventTimelineControl
             return false;
         }
 
-        // metrics.Ascent is negative (above the baseline); offsetting by it places the glyph box's top/bottom on the
-        // row's top/bottom edge (inset by VerticalLabelPad), and its centre on the row's centre.
         canvas.DrawText("Buffer", 2, rowTop + VerticalLabelPad - metrics.Ascent, SKTextAlign.Left, _labelFont, _labelPaint);
 
         canvas.DrawText("Read", 2, rowTop + rowHeight / 2 - (metrics.Ascent + metrics.Descent) / 2,
@@ -411,16 +411,13 @@ public sealed partial class EventTimelineControl
 
     private SKColor GetMarkerColor(EngineEvent sourceEvent, int rowIndex, EventCategory? category)
     {
-        // Cached (buffer-pool) and non-cached (physical) reads share a colour — the split read band (cached on top,
-        // non-cached on the bottom) already tells them apart.
-        // Locks are coloured by their mode (read / update / write / schema / range), matching the grouped-lock lanes.
         var colour = sourceEvent is LockEvent { LockMode: var lockMode }
-            ? TimelineColours.LockModeColour(lockMode)
-            : category.HasValue
-                ? TimelineColours.TintByCategory(_rows.Active[rowIndex].Color, (int)category.Value)
-                : ColourProvider is { } colours
-                    ? colours.GetColour(sourceEvent).ToSkColor()
-                    : _rows.Active[rowIndex].Color;
+                     ? TimelineColours.LockModeColour(lockMode)
+                     : category.HasValue
+                         ? TimelineColours.TintByCategory(_rows.Active[rowIndex].Color, (int)category.Value)
+                         : ColourProvider is { } colours
+                             ? colours.GetColour(sourceEvent).ToSkColor()
+                             : _rows.Active[rowIndex].Color;
 
         var alpha = sourceEvent is LockEvent ? LockOverlayAlpha : (byte)255;
 

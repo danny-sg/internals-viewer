@@ -120,9 +120,8 @@ internal static class EventSql
         stringBuilder.AppendLine($@"
 ADD TARGET package0.event_file
 (
-    SET filename = '{filePath}',
-        max_file_size = (100),
-        max_rollover_files = (2)
+    SET FILENAME           = '{filePath}'
+       ,MAX_ROLLOVER_FILES = (2)
 );");
 
         return stringBuilder.ToString();

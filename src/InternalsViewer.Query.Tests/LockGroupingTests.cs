@@ -67,9 +67,33 @@ public class LockGroupingTests
         Assert.Contains(unresolved, result);
     }
 
-    private static LockEvent Lock(int objectId, long transactionId, int sequenceId, long timeUs) => new()
+    [Fact]
+    public void Schema_Locks_Group_Separately_From_The_Data_Locks()
+    {
+        // Same object + transaction, but schema-stability locks guard the object's shape, not its rows, so they form
+        // their own "Object Schema Locks" group apart from the data-lock chain.
+        var data1 = Lock(objectId: 42, transactionId: 100, sequenceId: 1, timeUs: 1_000);
+        var data2 = Lock(objectId: 42, transactionId: 100, sequenceId: 2, timeUs: 2_000);
+
+        var schema1 = Lock(objectId: 42, transactionId: 100, sequenceId: 3, timeUs: 3_000, mode: LockMode.SCH_S);
+        var schema2 = Lock(objectId: 42, transactionId: 100, sequenceId: 4, timeUs: 4_000, mode: LockMode.SCH_S);
+
+        var groups = LockGrouping.Group([data1, data2, schema1, schema2]).OfType<LockGroup>().ToList();
+
+        Assert.Equal(2, groups.Count);
+        Assert.Contains(groups, g => g.Name == "Object Locks" && g.Events.Contains(data1) && g.Events.Contains(data2));
+        Assert.Contains(groups, g => g.Name == "Object Schema Locks"
+                                     && g.Events.Contains(schema1) && g.Events.Contains(schema2));
+    }
+
+    private static LockEvent Lock(int objectId,
+                                  long transactionId,
+                                  int sequenceId,
+                                  long timeUs,
+                                  LockMode mode = LockMode.NL) => new()
     {
         Name = "Lock",
+        LockMode = mode,
         Resource = new LockResource { ResourceType = LockResourceType.Key },
         LockOwnerContext = new LockOwnerContext { TransactionId = transactionId },
         AllocationUnit = new AllocationUnit { ObjectId = objectId },

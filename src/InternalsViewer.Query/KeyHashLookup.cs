@@ -17,6 +17,7 @@ public sealed class KeyHashLookup(ILogger<KeyHashLookup> logger)
                                  CancellationToken cancellationToken)
     {
         await using var connection = new SqlConnection(connectionString);
+
         await connection.OpenAsync(cancellationToken);
 
         var result = new Dictionary<string, RowIdentifier>();
@@ -27,6 +28,13 @@ public sealed class KeyHashLookup(ILogger<KeyHashLookup> logger)
 
             var paramNames = batch.Select((_, i) => $"@h{i}").ToList();
 
+            // TODO: %%lockres%% is INDEX-SPECIFIC (the hash is over the accessed index's key columns), and WHERE
+            // %%lockres%% isn't sargable so this clustered-scans and computes CLUSTERED key hashes. That resolves
+            // clustered/heap key locks (the common escalation case) but NOT a lock taken on a nonclustered index —
+            // its hashes never match. Fix: the caller (GetEventKeyAddresses) already groups by AllocationUnit, which
+            // IS one specific index, so pass its index name through and force it — FROM {objectName} WITH
+            // (INDEX([indexName])) — for a non-clustered rowset. (Note: %%physloc%% under a forced NC scan is the
+            // index entry's location, not the base row's.)
             var sql = $@"
 SELECT %%physloc%% AS RowIdentifier
       ,%%lockres%% AS [LockHash]

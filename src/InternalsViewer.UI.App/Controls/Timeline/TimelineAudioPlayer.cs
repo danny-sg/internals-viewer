@@ -8,7 +8,7 @@ using Windows.Storage.Streams;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
-/// <summary>
+/// <remarks>
 /// Synthesizes short pitched clicks for timeline scrubbing feedback.
 /// Each object id maps to a distinct note on a pentatonic scale so reads from different objects
 /// are audibly distinguishable. Reads and latches are additionally hard-panned to opposite stereo
@@ -16,7 +16,7 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 /// when both land on the same tick they'd otherwise mask each other in a mono mix; on separate
 /// channels both remain audible. All <see cref="MediaPlayer"/> instances are pre-built at init time so
 /// <see cref="PlayPlink"/> is a synchronous seek-and-play with zero allocation.
-/// </summary>
+/// </remarks>
 internal sealed class TimelineAudioPlayer : IDisposable
 {
     // Two-octave pentatonic scale. Ten distinct pitches cover the most common object-id spread.
@@ -74,8 +74,7 @@ internal sealed class TimelineAudioPlayer : IDisposable
     }
 
     /// <summary>
-    /// Pre-builds all <see cref="MediaPlayer"/> / <see cref="MediaSource"/> pairs for every
-    /// pentatonic frequency. Safe to call multiple times; subsequent calls are no-ops.
+    /// Pre-builds all <see cref="MediaPlayer"/> / <see cref="MediaSource"/> pairs for every pentatonic frequency
     /// </summary>
     public async Task EnsureInitializedAsync()
     {
@@ -121,11 +120,6 @@ internal sealed class TimelineAudioPlayer : IDisposable
         return players;
     }
 
-    /// <summary>
-    /// Plays one click at <paramref name="frequencyHz"/> on the next available pool slot.
-    /// Seeks the pre-built player back to position zero and calls <see cref="MediaPlayer.Play"/>.
-    /// No allocation or async I/O occurs on the calling thread.
-    /// </summary>
     public void PlayPlink(double frequencyHz)
     {
         if (!_initialized || _disposed)
@@ -146,10 +140,6 @@ internal sealed class TimelineAudioPlayer : IDisposable
         player.Play();
     }
 
-    /// <summary>
-    /// Plays one latch "tick" at <paramref name="frequencyHz"/> - the same pentatonic pitch mapping as
-    /// <see cref="PlayPlink"/>, but a distinct buzzier timbre so latches read as a different instrument.
-    /// </summary>
     public void PlayLatchTick(double frequencyHz)
     {
         if (!_initialized || _disposed)
@@ -170,7 +160,6 @@ internal sealed class TimelineAudioPlayer : IDisposable
         player.Play();
     }
 
-    /// <param name="pan">-1 = hard left, 0 = centre, 1 = hard right (constant-power law).</param>
     private static byte[] BuildWav(double frequencyHz, Waveform waveform, double decaySeconds, float pan)
     {
         var attackSamples = (int)(SampleRate * AttackSeconds);

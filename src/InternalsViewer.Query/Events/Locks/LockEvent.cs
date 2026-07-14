@@ -1,5 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Events.Locks;
 
@@ -22,12 +24,12 @@ public sealed record LockEvent : PageEngineEvent
 
     public override int ObjectId => Resource.ObjectId;
 
-    public override PageAddress? PageAddress => Resource.PageAddress;
+    public override PageAddress? PageAddress => Resource.PageAddress ?? Resource.RowIdentifier?.PageAddress;
 
     public override string ObjectName =>
         AllocationUnit?.DisplayName ?? (Resource.ObjectId > 0 ? $"(Object Id {Resource.ObjectId})" : base.ObjectName);
 
-    public override string Description => $"Lock: {LockMode}/{Resource.ResourceType}";
+    public override string Description => $"Lock: {Resource.ResourceType} {LockMode} ({EventItemName.Get(LockMode)})";
 }
 
 public readonly record struct LockIdentity

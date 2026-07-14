@@ -27,7 +27,7 @@ public sealed class EventParser
             var n when n.Contains("physical_page")
                 => MapIoEvent(e),
             var n when n.Contains("lock_")
-                => LockEventParser.MapLock(e),
+                => LockEventParser.Map(database!, e),
             var n when n.Contains("wait")
                 => MapWait(e),
             var n when n.Contains("latch")
@@ -82,14 +82,9 @@ public sealed class EventParser
         // object-id-only and special-page fallbacks live on the event subtypes).
         if (engineEvent is LockEvent lockEvent)
         {
-            // A lock resolves to its object's allocation unit: an object lock carries object_id directly, while a
-            // finer-grained lock (page/rid/key) carries only the HoBT (partition), so those resolve via the partition
-            // id. Either way the resolved AllocationUnit.ObjectId is the consistent object an escalation groups on.
-            engineEvent.AllocationUnit = lockEvent.Resource.ObjectId > 0
-                ? database.FindObjectIdAllocationUnit(lockEvent.Resource.ObjectId)
-                : lockEvent.Resource.HobtId is { } hobtId and > 0
-                    ? database.FindHobtIdAllocationUnit(hobtId)
-                    : null;
+            
+            // No-op - this will be refactored as the LockEventParser manages this
+       
         }
         else if (engineEvent is PageEngineEvent { ObjectId: 0, PageAddress: { } pageAddress } pageEvent)
         {

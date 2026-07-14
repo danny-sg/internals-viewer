@@ -30,7 +30,8 @@ public sealed record LockGroup : EngineEvent, IEventGroup
 
             var target = AllocationUnit is { } au ? $"{au.SchemaName}.{au.TableName}" : ObjectName;
 
-            return $"Locks on {target}: {string.Join(", ", byType)}";
+            // Name distinguishes the data-lock chain ("Object Locks") from the schema locks ("Object Schema Locks").
+            return $"{Name} on {target}: {string.Join(", ", byType)}";
         }
     }
 }

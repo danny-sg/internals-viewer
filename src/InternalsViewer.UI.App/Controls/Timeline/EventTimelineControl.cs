@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Windows.UI;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -116,9 +115,9 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private const float OperatorMaxFont = 12f;
     private const float OperatorMinFont = 7f;
 
-    // Width of the object-colour marker stripe drawn down an operator's left edge (clamped to the bar's
-    // own width on very narrow bars).
-    private const float ObjectMarkerWidth = 8f;
+    // Object-colour marker dot in a data-access operator's top-left corner: 3px inset, 8px diameter (4px radius).
+    private const float ObjectMarkerMargin = 3f;
+    private const float ObjectMarkerRadius = 4f;
 
     // The statement (SELECT) band is a fixed slim share, independent of cost.
     private const float StatementBandWeight = 0.5f;

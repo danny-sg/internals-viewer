@@ -66,7 +66,11 @@ public static class OperatorIcicle
 
         foreach (var (leaf, count) in leafCounts)
         {
-            for (var node = leaf; node is not null; node = node.Parent)
+            // One node per function means a recursive frame can make a node its own ancestor (a cycle); the visited set
+            // stops the walk from looping forever.
+            var seen = new HashSet<CallStackNode>();
+
+            for (var node = leaf; node is not null && seen.Add(node); node = node.Parent)
             {
                 weights[node] = weights.GetValueOrDefault(node) + count;
 
@@ -156,7 +160,10 @@ public static class OperatorIcicle
 
     private static IEnumerable<CallStackNode> AncestorsAndSelf(CallStackNode node)
     {
-        for (var current = node; current is { IsRoot: false }; current = current.Parent)
+        // seen.Add guards against a cycle from a recursive frame (a node merged as its own ancestor).
+        var seen = new HashSet<CallStackNode>();
+
+        for (var current = node; current is { IsRoot: false } && seen.Add(current); current = current.Parent)
         {
             yield return current;
         }
@@ -166,7 +173,9 @@ public static class OperatorIcicle
     {
         var depth = 0;
 
-        for (var current = node.Parent; current is not null; current = current.Parent)
+        var seen = new HashSet<CallStackNode> { node };
+
+        for (var current = node.Parent; current is not null && seen.Add(current); current = current.Parent)
         {
             depth++;
         }

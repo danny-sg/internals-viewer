@@ -1,6 +1,5 @@
 using System;
 using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
@@ -176,8 +175,7 @@ public sealed partial class EventTimelineControl
     }
 
     /// <summary>
-    /// Emits the in-scope window (microseconds) the other views highlight. With an explicit selection
-    /// that is the selected range; otherwise it runs from the axis start up to the playhead.
+    /// Emits the in-scope time window (microseconds)
     /// </summary>
     private void EmitScope()
     {
@@ -225,11 +223,6 @@ public sealed partial class EventTimelineControl
         }
     }
 
-    /// <summary>
-    /// Fires one plink per IoEvent read and one tick per LatchEvent swept by the playhead in
-    /// (<paramref name="fromUs"/>, <paramref name="toUs"/>] (exclusive lower bound). Uses binary search
-    /// on the pre-sorted arrays so the per-frame cost is O(log n + hits) regardless of total event count.
-    /// </summary>
     private void PlayAudioForCurrentPosition(long fromUs, long toUs)
     {
         var lo = Math.Min(fromUs, toUs);
@@ -267,8 +260,6 @@ public sealed partial class EventTimelineControl
             }
         }
 
-        // When all events are at or before lo, the search converges to the last element
-        // without finding anything in range. Guard explicitly so we don't play it.
         if (eventsByTime[left].TimeUs <= lo)
         {
             return;

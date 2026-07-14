@@ -103,13 +103,32 @@ public sealed class CallStackTree
 
         foreach (var rootChild in Root.Children.Values.ToList())
         {
-            if (deeperByKey.TryGetValue(rootChild.Key, out var deeper) && !ReferenceEquals(deeper, rootChild))
+            // Grafting only makes sense when the fuller copy is a SEPARATE subtree. When the deeper node lies inside the
+            // root child's own subtree (a recursive frame — the same function reappears below it), re-parenting the root
+            // child under its own descendant would make that descendant its own ancestor: a cycle that hangs every
+            // later parent-walk (the operator icicle, tree rendering). Skip it and leave the root child in place.
+            if (deeperByKey.TryGetValue(rootChild.Key, out var deeper)
+                && !ReferenceEquals(deeper, rootChild)
+                && !IsDescendantOf(deeper, rootChild))
             {
                 MergeInto(deeper, rootChild);
 
                 Root.Children.Remove(rootChild.Key);
             }
         }
+    }
+
+    private static bool IsDescendantOf(CallStackNode node, CallStackNode ancestor)
+    {
+        for (var current = node.Parent; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, ancestor))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void MergeInto(CallStackNode target, CallStackNode source)

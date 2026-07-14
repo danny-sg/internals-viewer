@@ -1,6 +1,5 @@
 using System;
 using InternalsViewer.Query.Events.EventTypes;
-using Microsoft.UI.Xaml;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
@@ -36,8 +35,11 @@ public sealed partial class EventTimelineControl
     }
 
     private float CanvasWidth => (float)_overlay.ActualWidth;
+
     private float DrawWidth => CanvasWidth - RowLabelWidth;
+    
     private double ContentWidth => DrawWidth * _zoom;
+    
     private double MaxScroll => Math.Max(0, ContentWidth - DrawWidth);
 
     private float TimeToX(double effectiveTimeMs)

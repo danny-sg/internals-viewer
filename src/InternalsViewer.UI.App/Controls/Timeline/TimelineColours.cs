@@ -42,4 +42,16 @@ internal static class TimelineColours
         LockResourceType.Page or LockResourceType.Extent => 1,
         _ => 2,
     };
+
+    // Escalation/exclusivity rank of a lock category — the higher this is, the higher its band sits on the lock lane,
+    // so an escalation to a coarser, more exclusive lock (e.g. range/update keys -> an exclusive object lock) steps UP.
+    public static int LockCategoryLevel(LockModeCategory category) => category switch
+    {
+        LockModeCategory.Schema => 5,
+        LockModeCategory.Write => 4,
+        LockModeCategory.Update => 3,
+        LockModeCategory.Range => 2,
+        LockModeCategory.Bulk => 1,
+        _ => 0, // Read / None
+    };
 }

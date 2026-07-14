@@ -41,4 +41,11 @@ public static class LockModeClassifier
 
         _ => LockModeCategory.None
     };
+
+    /// <summary>
+    /// Whether a mode is a full lock that SUPERSEDES finer locks (the target of a lock escalation), as opposed to a
+    /// pure intent mode (IS/IU/IX) that is held alongside them
+    /// </summary>
+    public static bool IsSuperseding(LockMode mode) =>
+        mode is LockMode.X or LockMode.U or LockMode.S or LockMode.SIX or LockMode.UIX;
 }

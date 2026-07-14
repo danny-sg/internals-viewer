@@ -2,6 +2,9 @@
 
 namespace InternalsViewer.Query.Events.Locks;
 
+/// <summary>
+/// Defines the resource that a lock is being held on
+/// </summary>
 public sealed record LockResource
 {
     public LockResourceType ResourceType { get; init; }

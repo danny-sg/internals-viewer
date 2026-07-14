@@ -372,20 +372,24 @@ public sealed partial class EventTimelineControl
             return;
         }
 
-        var width = Math.Min(ObjectMarkerWidth, b.EndX - b.StartX);
+        // A small object-colour dot in the operator bar's top-left corner (3px inset, 4px across).
+        var centreX = b.StartX + ObjectMarkerMargin + ObjectMarkerRadius;
+        var centreY = b.BarTop + ObjectMarkerMargin + ObjectMarkerRadius;
 
-        var left = Math.Max(b.StartX, RowLabelWidth);
-        left = Math.Min(left, b.EndX - width);
+        // Skip if the bar is too small to hold the dot inside its corner.
+        if (centreX + ObjectMarkerRadius > b.EndX)
+        {
+            return;
+        }
 
-        canvas.Save();
-        canvas.ClipRoundRect(
-            new SKRoundRect(new SKRect(b.StartX, b.BarTop, b.EndX, b.BarBottom), b.CornerRadius, b.CornerRadius),
-            antialias: true);
+        var wasAntialias = _markerPaint.IsAntialias;
 
+        _markerPaint.IsAntialias = true;
         _markerPaint.Color = colour.ToSkColor();
-        canvas.DrawRect(left, b.BarTop, width, b.BarBottom - b.BarTop, _markerPaint);
 
-        canvas.Restore();
+        canvas.DrawCircle(centreX, centreY, ObjectMarkerRadius, _markerPaint);
+
+        _markerPaint.IsAntialias = wasAntialias;
     }
 
     /// <summary>
@@ -436,6 +440,7 @@ public sealed partial class EventTimelineControl
     {
         // Rows flow from the child while it is emitting: [EmitStart, End].
         var x0 = Math.Max(RowLabelWidth, TimeToX(child.Op.EmitStartUs / AxisUnitsPerMs));
+
         var x1 = Math.Min(CanvasWidth, TimeToX((child.Op.TimeUs + child.Op.DurationUs) / AxisUnitsPerMs));
 
         if (x1 <= x0)
@@ -445,9 +450,11 @@ public sealed partial class EventTimelineControl
 
         // Bridge the two bars from the top edge of the upper to the bottom edge of the lower.
         var yLo = Math.Min(child.BarTop, parent.BarTop);
+
         var yHi = Math.Max(child.BarBottom, parent.BarBottom);
 
         _flowConnectorPaint.Color = FlowConnectorColour;
+
         canvas.DrawRect(x0, yLo, x1 - x0, yHi - yLo, _flowConnectorPaint);
     }
 
@@ -485,8 +492,8 @@ public sealed partial class EventTimelineControl
         // Operators with no object of their own (joins, sorts, ...) show their logical operator
         // (e.g. "Inner Join") on the second line instead of leaving it blank.
         var target = planOperator.ObjectName.Length > 0
-            ? planOperator.ObjectName
-            : planOperator.LogicalOperator != planOperator.Name ? planOperator.LogicalOperator : string.Empty;
+                     ? planOperator.ObjectName
+                     : planOperator.LogicalOperator != planOperator.Name ? planOperator.LogicalOperator : string.Empty;
 
         var dop = planOperator.Threads.Count(t => t.ThreadId != 0);
 
@@ -602,22 +609,27 @@ public sealed partial class EventTimelineControl
 
         operatorName.AsSpan().CopyTo(charBuffer);
 
-        var pos = operatorName.Length;
+        var position = operatorName.Length;
 
-        if (dop > 1 && pos + 4 <= charBuffer.Length)
+        if (dop > 1 && position + 4 <= charBuffer.Length)
         {
-            charBuffer[pos++] = ' ';
-            charBuffer[pos++] = '×';
-            var ok = dop.TryFormat(charBuffer[pos..], out var written);
-            pos += ok ? written : 0;
+            charBuffer[position++] = ' ';
+            charBuffer[position++] = '×';
+
+            var ok = dop.TryFormat(charBuffer[position..], out var written);
+            
+            position += ok ? written : 0;
         }
 
-        return charBuffer[..pos];
+        return charBuffer[..position];
     }
 
     private static void DrawTextSpan(SKCanvas canvas,
-                                     ReadOnlySpan<char> text, float x, float y,
-                                     SKFont font, SKPaint paint)
+                                     ReadOnlySpan<char> text, 
+                                     float x, 
+                                     float y,
+                                     SKFont font, 
+                                     SKPaint paint)
     {
         using var blob = SKTextBlob.Create(text, font, SKPoint.Empty);
 

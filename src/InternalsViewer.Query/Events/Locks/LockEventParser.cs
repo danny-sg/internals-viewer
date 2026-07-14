@@ -1,8 +1,12 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Buffers.Binary;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Extensions;
+using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Locks;
 
-internal class LockEventParser
+internal class LockEventParser: IEventParser<LockEvent>
 {
     /// <summary>
     /// Parses a lock event
@@ -12,7 +16,7 @@ internal class LockEventParser
     /// 
     ///     Lock owner --> [Lock Mode] --> Lock Resource
     /// </remarks>
-    public static LockEvent MapLock(EventResult e)
+    public static LockEvent Map(DatabaseSource databaseSource, EventResult e)
     {
         var lockMode = (LockMode)(e.GetInt("mode") ?? 0);
 
@@ -28,6 +32,12 @@ internal class LockEventParser
             Resource = ParseResource(e),
             LockOwnerContext = ParseLockOwnerContext(e),
         };
+
+        lockEvent.AllocationUnit = lockEvent.Resource.ObjectId > 0
+            ? databaseSource.FindObjectIdAllocationUnit(lockEvent.Resource.ObjectId)
+            : lockEvent.Resource.HobtId is { } hobtId and > 0
+                ? databaseSource.FindHobtIdAllocationUnit(hobtId)
+                : null;
 
         return lockEvent;
     }
@@ -105,7 +115,7 @@ internal class LockEventParser
             ResourceType = resourceType,
             Key = resourceKey,
             ObjectId = (int)objectId,
-            HobtId = associatedObjectId
+            HobtId = associatedObjectId,
         };
 
         return resourceType switch
@@ -123,10 +133,31 @@ internal class LockEventParser
             LockResourceType.Key =>
                 lockResource with
                 {
-                    KeyHash = $"({resource0:x})"
+                    KeyHash = BuildKeyHash(resource1, resource2)
                 },
 
             _ => lockResource
         };
+    }
+
+    /// <summary>
+    /// Builds a KEY lock's <c>%%lockres%%</c> hash string from its resource DWORDs
+    /// </summary>
+    /// <remarks>
+    /// Decode is:
+    /// 
+    ///     High 2 bytes = resource_1 (big-endian/byte-swapped)
+    ///     Low 4 bytes = resource_2 (big-endian/byte-swapped)
+    /// 
+    /// </remarks>
+    internal static string BuildKeyHash(ulong resource1, ulong resource2)
+    {
+        var high = BinaryPrimitives.ReverseEndianness((ushort)(resource1 >> 16));
+
+        var low = BinaryPrimitives.ReverseEndianness((uint)resource2);
+
+        var hash = ((ulong)high << 32) | low;
+
+        return $"({hash:x12})";
     }
 }

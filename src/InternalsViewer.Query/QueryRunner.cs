@@ -176,27 +176,35 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             // misses the reads (no AU) they would be cropped and the call stack/icicle would come out empty.
             if (eventOptions.CropToQuery && CropWindow(events) is var (start, end, planHandle))
             {
-                // Keep an event whose span OVERLAPS the window, not just one whose start falls inside it: something
-                // already in progress when the statement begins (a lock or latch acquired just before the first read,
-                // or a read still completing as it ends) belongs to the query even though it started outside. Overlap =
-                // starts on/before the window end AND ends on/after its start; a zero-duration event reduces to plain
-                // containment.
+                // An event belongs to the query's execution when its span OVERLAPS the window — something already in
+                // progress when the statement begins (a lock/latch acquired just before the first read, or a read still
+                // completing as it ends). Overlap = starts on/before the window end AND ends on/after its start; a
+                // zero-duration event reduces to plain containment.
+                bool Overlaps(EngineEvent e) => e.TimeUs <= end && e.TimeUs + e.DurationUs >= start;
+
+                // Keep the overlapping events, PLUS non-lock events carrying the plan_handle — that clause rescues a
+                // read/call-stack whose position sits outside the operator window. Locks are kept only by overlap (a
+                // plan-handle lock can be a compile-phase schema lock taken before the statement).
                 events = events
-                    .Where(e => (e.TimeUs <= end && e.TimeUs + e.DurationUs >= start)
-                                || (planHandle != PlanHandleRegistry.None && e.PlanHandleId == planHandle))
+                    .Where(e => Overlaps(e)
+                                || (e is not LockEvent
+                                    && planHandle != PlanHandleRegistry.None
+                                    && e.PlanHandleId == planHandle))
                     .ToList();
 
-                // The visible window brackets everything kept, not just the operator-timing span: the query's locks
-                // straddle its data access (an object intent lock is taken before the first read and released after the
-                // last), so the operator window alone would leave them off the axis.
-                //
                 // query_thread_profile / memory-grant events are END-anchored — their TimeUs is the operator close and
                 // DurationUs the elapsed leading up to it — so their real end is TimeUs; TimeUs + DurationUs would
                 // double-count the elapsed and push the crop a whole statement-length past the true end.
                 static long EndUs(EngineEvent e) => e is QueryThreadEvent or MemoryEvent ? e.TimeUs : e.TimeUs + e.DurationUs;
 
-                cropStart = events.Count > 0 ? Math.Min(start, events.Min(e => e.TimeUs)) : start;
-                cropEnd = events.Count > 0 ? Math.Max(end, events.Max(EndUs)) : end;
+                // The axis brackets the events that OVERLAP the window (the query's own execution, plus a lock that
+                // straddles its start) — NOT the plan-handle stragglers kept only for the call stack. A compile-phase
+                // read carrying the plan_handle sits back near time 0 and would otherwise drag cropStart there, leaving
+                // an empty gap before the query.
+                var windowEvents = events.Where(Overlaps).ToList();
+
+                cropStart = windowEvents.Count > 0 ? Math.Min(start, windowEvents.Min(e => e.TimeUs)) : start;
+                cropEnd = windowEvents.Count > 0 ? Math.Max(end, windowEvents.Max(EndUs)) : end;
             }
 
             if (eventOptions.IncludeCallStack)

@@ -80,6 +80,53 @@ public class IntervalCollapserTests
     }
 
     [Fact]
+    public void Repeated_Lock_Holds_On_One_Resource_Pair_In_Time_Order_Regardless_Of_Capture_Order()
+    {
+        // Two acquire/release cycles on the SAME resource, captured fully out of order (both releases ahead of both
+        // acquires). The fold buckets acquires and releases by key separately, sorts each by time and zips positionally,
+        // so hold 1 = [1000,1500] and hold 2 = [3000,3800] — never a cross-paired [1000,3800].
+        var release1 = Lock("lock_released", resourceKey: 7, timeUs: 1_500);
+
+        var release2 = Lock("lock_released", resourceKey: 7, timeUs: 3_800);
+
+        var acquire1 = Lock("lock_acquired", resourceKey: 7, timeUs: 1_000);
+
+        var acquire2 = Lock("lock_acquired", resourceKey: 7, timeUs: 3_000);
+
+        var result = IntervalCollapser.Collapse([release2, release1, acquire2, acquire1]);
+
+        var holds = result.OfType<LockEvent>().OrderBy(l => l.TimeUs).ToList();
+
+        Assert.Equal(2, holds.Count);
+        Assert.All(holds, h => Assert.Equal("Lock", h.Name));
+        Assert.Equal(500, holds[0].DurationUs); // 1000 -> 1500
+        Assert.Equal(800, holds[1].DurationUs); // 3000 -> 3800
+    }
+
+    [Fact]
+    public void An_Acquire_With_No_Release_Is_Left_Unpaired_As_An_Open_Hold()
+    {
+        // The other lock in the batch has both ends; the lone acquire must survive as an open (unfolded) acquire, not
+        // steal the unrelated release.
+        var acquire = Lock("lock_acquired", resourceKey: 10, timeUs: 1_000);
+
+        var pairedAcquire = Lock("lock_acquired", resourceKey: 20, timeUs: 2_000);
+
+        var pairedRelease = Lock("lock_released", resourceKey: 20, timeUs: 2_500);
+
+        var result = IntervalCollapser.Collapse([pairedRelease, acquire, pairedAcquire]).OfType<LockEvent>().ToList();
+
+        var open = Assert.Single(result, l => l.Resource.Key == 10);
+
+        Assert.Equal("lock_acquired", open.Name);
+        Assert.Equal(0, open.DurationUs);
+
+        var folded = Assert.Single(result, l => l.Resource.Key == 20);
+
+        Assert.Equal("Lock", folded.Name);
+    }
+
+    [Fact]
     public void Locks_On_Different_Resources_Are_Not_Paired()
     {
         var acquire = Lock("lock_acquired", resourceKey: 1, timeUs: 1_000);

@@ -1,6 +1,8 @@
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events.Locks;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -118,7 +120,7 @@ public class EventSqlTests
     {
         var events = new List<EngineEvent>();
 
-        await QueryRunner.GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
+        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
     }
 
     [Fact]
@@ -128,7 +130,7 @@ public class EventSqlTests
 
         var events = new List<EngineEvent> { lockEvent };
 
-        await QueryRunner.GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
+        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
 
         Assert.Null(lockEvent.Resource.RowIdentifier);
     }
@@ -140,7 +142,7 @@ public class EventSqlTests
 
         var events = new List<EngineEvent> { lockEvent };
 
-        await QueryRunner.GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
+        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
 
         Assert.Null(lockEvent.Resource.RowIdentifier);
     }
