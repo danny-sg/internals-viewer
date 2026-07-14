@@ -21,6 +21,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
                                                                                          string connectionString,
                                                                                          DatabaseSource? database,
                                                                                          bool includeSystemObjects,
+                                                                                         IProgress<string>? progress,
                                                                                          CancellationToken cancellationToken,
                                                                                          Func<EngineEvent, bool>? endMarker = null)
     {
@@ -61,6 +62,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
                 if (nameBuffer.AsSpan(0, nameLength) is "query_post_execution_showplan")
                 {
+                    progress?.Report("Parsing query plan");
+
                     var plan = ExecutionPlanParser.Parse(reader.GetString(1), planHandles);
 
                     executionPlans.Add(plan);
@@ -108,33 +111,11 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         connection.Close();
 
-        var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
+        progress?.Report("Processing events");
 
-        // Consolidate: fold Begin/End pairs into single events, then bind the storage events of each page
-        // read into a single NonCachedReadEventGroup.
-        var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
+        var consolidatedEvents = await PostProcessEvents(events, connectionString, progress, cancellationToken);
 
-        // Give never-released lock acquires (fine-grained locks dropped by escalation, or held to a commit outside the
-        // window) their held duration, so they render as held bars rather than zero-duration points. Without this a
-        // serializable scan's RS_S range locks — held to commit, so no release is captured — stay zero-width and never
-        // light up the timeline or the allocation-map borders even though their pages resolve.
-        HeldLockCloser.Close(collapsedEvents);
-
-        // Collapse a burst of identical buffer latches on one page (a scan re-latching a page per row) into one, so
-        // the read grouping forms a single buffer-pool read per page visit and the spread can't smear them.
-        collapsedEvents = BufferLatchCoalescing.Coalesce(collapsedEvents);
-
-
-        await GetEventKeyAddresses(collapsedEvents, connectionString, cancellationToken);
-
-        var consolidatedEvents = ReadGrouping.Group(collapsedEvents);
-
-        // Bind each transaction's locks on one object into a single LockGroup (the escalation chain).
-        consolidatedEvents = LockGrouping.Group(consolidatedEvents);
-
-        // Recover a serial-order timeline from the millisecond-resolution timestamps by laying each worker's events
-        // end-to-end using their microsecond durations, so a read overrunning its bucket pushes the next one out.
-        SpreadEvents(consolidatedEvents);
+        progress?.Report("Matching events to execution plan");
 
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
         EventPlanNodeMatcher.Match(consolidatedEvents, executionPlans);
@@ -146,6 +127,30 @@ public sealed class EventReader(ILogger<EventReader> logger)
         consolidatedEvents.AddRange(operatorEvents);
 
         return (consolidatedEvents, executionPlans, eventParser.CallStack);
+    }
+
+    private async Task<List<EngineEvent>> PostProcessEvents(List<EngineEvent> events, 
+                                                            string connectionString,
+                                                            IProgress<string>? progress, 
+                                                            CancellationToken cancellationToken)
+    {
+        var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
+
+        var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
+
+        HeldLockCloser.Close(collapsedEvents);
+
+        collapsedEvents = BufferLatchCoalescing.Coalesce(collapsedEvents);
+
+        await GetEventKeyAddresses(collapsedEvents, connectionString, progress, cancellationToken);
+
+        var consolidatedEvents = ReadGrouping.Group(collapsedEvents);
+
+        consolidatedEvents = LockGrouping.Group(consolidatedEvents);
+
+        SpreadEvents(consolidatedEvents);
+
+        return consolidatedEvents;
     }
 
     // System-object events hidden unless IncludeSystemObjects is on: allocation-unit events on a system object, and the
@@ -261,11 +266,6 @@ public sealed class EventReader(ILogger<EventReader> logger)
         }
     }
 
-    // Events whose duration is elapsed serial work (so must not overlap the next in their lane), as opposed to the
-    // envelope durations of query_thread_profile totals and memory grants that span the whole stream.
-    // Locks are held CONCURRENTLY (a query holds many at once, each spanning acquire→release), so they are NOT serial
-    // work — laying them end-to-end by their (now sizeable) hold durations would push later locks far past the query.
-    // They keep their raw timestamps and overlap instead.
     private static bool IsSerialWork(EngineEvent e) => e is not (QueryThreadEvent or MemoryEvent or LockEvent or LockGroup);
 
     private static string GetResultsSql(string filename)
@@ -279,8 +279,9 @@ public sealed class EventReader(ILogger<EventReader> logger)
     }
 
     internal async Task GetEventKeyAddresses(List<EngineEvent> events,
-                                             string connectionString,
-                                             CancellationToken cancellationToken)
+                                            string connectionString,
+                                            IProgress<string>? progress,
+                                            CancellationToken cancellationToken)
     {
         var keyLockEvents = events.Where(e => e is LockEvent { Resource.KeyHash: not null }).Cast<LockEvent>();
 
@@ -295,7 +296,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
                 continue;
             }
 
-            Logger.LogDebug("Getting lock key hash values for {AllocationUnitName}", allocationUnit.DisplayName);
+            progress?.Report($"Getting lock key hash values for {allocationUnit.DisplayName}");
 
             var objectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
 

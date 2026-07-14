@@ -243,9 +243,8 @@ public sealed partial class AllocationControl : IDisposable
 
     private readonly SKPaint _spanPaint = new();
 
-    // Stroke for lock-border outlines (the colour, and solid-vs-dotted, are set per border). Crisp, square edges: no
-    // antialiasing so the 2px lines land on whole pixels, and square caps so the separately-drawn edges meet cleanly at
-    // corners (a dotted border swaps to round caps so the dashes read as dots — see DrawBorders).
+    // Stroke for lock-border outlines (the colour is set per border). Crisp, square edges: no antialiasing so the 2px
+    // lines land on whole pixels, and square caps so the separately-drawn edges meet cleanly at corners.
     private readonly SKPaint _overlayBorderPaint = new()
     {
         Style = SKPaintStyle.Stroke,
@@ -253,9 +252,6 @@ public sealed partial class AllocationControl : IDisposable
         StrokeCap = SKStrokeCap.Square,
         IsAntialias = false,
     };
-
-    // Dash for intent-lock outlines: a zero-length on-dash under round caps renders as evenly spaced dots.
-    private readonly SKPathEffect _dottedBorderEffect = SKPathEffect.CreateDash([0f, 5f], 0f);
 
     private Color _lastGridColor;
 
@@ -691,8 +687,6 @@ public sealed partial class AllocationControl : IDisposable
             }
 
             _overlayBorderPaint.Color = border.Colour.ToSkColor();
-            _overlayBorderPaint.PathEffect = border.Dotted ? _dottedBorderEffect : null;
-            _overlayBorderPaint.StrokeCap = border.Dotted ? SKStrokeCap.Round : SKStrokeCap.Square;
 
             foreach (var cell in cells)
             {
@@ -1083,7 +1077,6 @@ public sealed partial class AllocationControl : IDisposable
         _borderPaint?.Dispose();
         _spanPaint.Dispose();
         _overlayBorderPaint.Dispose();
-        _dottedBorderEffect.Dispose();
 
         AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
         PointerWheelChanged -= AllocationControl_PointerWheelChanged;

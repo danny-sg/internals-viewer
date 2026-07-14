@@ -104,8 +104,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private EventOptions _eventOptions = new();
 
-    // Lock/latch/wait are always captured (the read grouping needs them); these decide only whether they show on the
-    // timeline. Mirrored into EventOptions so the saved layout persists the choice.
     [ObservableProperty]
     private bool _showLocks = true;
 
@@ -165,8 +163,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private long _playheadTimeUs;
-
-    private long _scopeFromUs;
 
     [ObservableProperty]
     private DatabaseSchema? _schema;
@@ -429,8 +425,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void SetScope(long fromUs, long toUs)
     {
-        _scopeFromUs = fromUs;
-
         var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
 
         var from = long.MaxValue;
@@ -970,7 +964,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SequenceFrom = 0;
         SequenceTo = 0;
         PlayheadTimeUs = 0;
-        _scopeFromUs = 0;
         IsTimelinePlaying = false;
         SelectedPlanNode = null;
         ActivePlanNodes = [];

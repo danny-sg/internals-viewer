@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Events.EventTypes;
 using Microsoft.UI.Xaml;
 
@@ -8,10 +9,12 @@ namespace InternalsViewer.UI.App.Controls.EventGrid;
 /// </summary>
 /// <remarks>
 /// The grid stays a flat DataGrid; hierarchy (a read group over its child events) is achieved by flattening the tree
-/// into indented rows with an expander, so filtering, sorting, selection and row highlighting all keep working. Rows
-/// are rebuilt on expand/collapse, so the expander state is captured at construction rather than observed.
+/// into indented rows with an expander, so filtering, sorting, selection and row highlighting all keep working.
+/// Expand/collapse toggles <see cref="IsExpanded"/> on the existing row (inserting/removing the child rows in place)
+/// rather than rebuilding the whole list, so the grid keeps its scroll position — hence the expander state is observed.
 /// </remarks>
-public sealed class EventRow(EngineEvent engineEvent, int depth, bool hasChildren, bool isExpanded)
+public sealed partial class EventRow(EngineEvent engineEvent, int depth, bool hasChildren, bool isExpanded)
+    : ObservableObject
 {
     public EngineEvent Event { get; } = engineEvent;
 
@@ -19,7 +22,9 @@ public sealed class EventRow(EngineEvent engineEvent, int depth, bool hasChildre
 
     public bool HasChildren { get; } = hasChildren;
 
-    public bool IsExpanded { get; } = isExpanded;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ExpanderGlyph))]
+    private bool _isExpanded = isExpanded;
 
     public Thickness Indent => new(Depth * 16, 0, 0, 0);
 

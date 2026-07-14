@@ -41,9 +41,8 @@ internal static class EventBorderBuilder
 
             borders.Add(new AllocationBorder(AllocationBorderScope.Page,
                                              group.Key.FileId,
-                                             LockCategoryColour(group.First().LockMode),
-                                             cells,
-                                             group.Key.Intent));
+                                             LockCategoryColour(group.First().LockMode, group.Key.Intent),
+                                             cells));
         }
     }
 
@@ -73,7 +72,7 @@ internal static class EventBorderBuilder
                 continue;
             }
 
-            var colour = LockCategoryColour(group.First().LockMode);
+            var colour = LockCategoryColour(group.First().LockMode, group.Key.Intent);
 
             foreach (var file in databaseSource.Files)
             {
@@ -86,7 +85,7 @@ internal static class EventBorderBuilder
 
                 var cells = group.SelectMany(l => ranges.Select(r => TimedRangeFor(r.From, r.To, l))).ToList();
 
-                borders.Add(new AllocationBorder(AllocationBorderScope.Page, file.FileId, colour, cells, group.Key.Intent));
+                borders.Add(new AllocationBorder(AllocationBorderScope.Page, file.FileId, colour, cells));
             }
         }
     }
@@ -95,12 +94,25 @@ internal static class EventBorderBuilder
 
     private static bool IsIntentLock(LockMode mode) => mode is LockMode.IS or LockMode.IU or LockMode.IX;
 
-    private static Color LockCategoryColour(LockMode mode)
+    // How far an intent lock's colour is blended towards white — enough to read as the same hue, a shade lighter.
+    private const double IntentLightenAmount = 0.5;
+
+    // The category colour, lightened for intent modes: an intent lock only flags finer locks below the resource, so it
+    // reads as a paler shade of the real S/U/X lock's colour rather than a distinct one.
+    private static Color LockCategoryColour(LockMode mode, bool isIntent)
     {
         var colour = TimelineColours.LockModeColour(mode);
 
-        return Color.FromArgb(colour.Alpha, colour.Red, colour.Green, colour.Blue);
+        var category = Color.FromArgb(colour.Alpha, colour.Red, colour.Green, colour.Blue);
+
+        return isIntent ? Lighten(category, IntentLightenAmount) : category;
     }
+
+    private static Color Lighten(Color colour, double amount) =>
+        Color.FromArgb(colour.A,
+                       colour.R + (int)((255 - colour.R) * amount),
+                       colour.G + (int)((255 - colour.G) * amount),
+                       colour.B + (int)((255 - colour.B) * amount));
 
     private static TimedRange TimedRangeFor(int fromCell, int toCell, LockEvent lockEvent) =>
         new(fromCell, toCell, lockEvent.TimeUs, lockEvent.TimeUs + Math.Max(lockEvent.DurationUs, MinLockBorderDurationUs));

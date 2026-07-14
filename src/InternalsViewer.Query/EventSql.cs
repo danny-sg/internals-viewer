@@ -98,7 +98,7 @@ internal static class EventSql
                 stringBuilder.Append("    WHERE (");
 
                 stringBuilder.Append($"sqlserver.session_id = {spid}");
-                stringBuilder.Append($" AND sqlserver.sql_text NOT LIKE '%LOG_READ_{sessionName}%'");
+                stringBuilder.Append($" AND sqlserver.sql_text NOT LIKE '%{sessionName}%'");
 
                 stringBuilder.Append(")");
 

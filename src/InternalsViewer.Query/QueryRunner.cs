@@ -157,62 +157,32 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                               connectionString,
                                                                               database,
                                                                               eventOptions.IncludeSystemObjects,
+                                                                              progress,
                                                                               cancellationToken,
                                                                               endMarker);
 
             progress?.Report($"{events.Count} event(s) retrieved in {Stopwatch.GetElapsedTime(eventsStart)}");
 
-            // Trim events (and, below, the call stack) to the executed query's window so surrounding noise —
-            // compilation, other statements, background work the trace also captured — is dropped.
-            //
-            // "The query's window" is a time span, but it is NOT the whole story: an event carrying this query's
-            // plan_handle belongs to the query even when its timestamp lands outside the span. That happens because the
-            // window is derived from the spread operator layout while the events keep their own times — a read whose
-            // spread position drifts out, or a thread sample (query_thread_profile, not laid out by SpreadEvents) taken
-            // before the first page read. Dropping those on time alone strips the reads and entry stacks the timeline's
-            // Plan Operators view and the call stack need. Key this off the RAW PlanHandleId (set at parse time from the
-            // plan_handle action, on every event) — NOT PlanNodeIdentifier, which only exists once EventPlanNodeMatcher
-            // resolves an event to an operator, and that resolution leans on flaky page→allocation-unit lookups; when it
-            // misses the reads (no AU) they would be cropped and the call stack/icicle would come out empty.
             if (eventOptions.CropToQuery && CropWindow(events) is var (start, end, planHandle))
             {
-                // An event belongs to the query's execution when its span OVERLAPS the window — something already in
-                // progress when the statement begins (a lock/latch acquired just before the first read, or a read still
-                // completing as it ends). Overlap = starts on/before the window end AND ends on/after its start; a
-                // zero-duration event reduces to plain containment.
                 bool Overlaps(EngineEvent e) => e.TimeUs <= end && e.TimeUs + e.DurationUs >= start;
 
-                // Keep the overlapping events, PLUS non-lock events carrying the plan_handle — that clause rescues a
-                // read/call-stack whose position sits outside the operator window. Locks are kept only by overlap (a
-                // plan-handle lock can be a compile-phase schema lock taken before the statement).
-                events = events
-                    .Where(e => Overlaps(e)
-                                || (e is not LockEvent
-                                    && planHandle != PlanHandleRegistry.None
-                                    && e.PlanHandleId == planHandle))
-                    .ToList();
-
-                // query_thread_profile / memory-grant events are END-anchored — their TimeUs is the operator close and
-                // DurationUs the elapsed leading up to it — so their real end is TimeUs; TimeUs + DurationUs would
-                // double-count the elapsed and push the crop a whole statement-length past the true end.
+                events = events.Where(e => Overlaps(e)
+                                           || (e is not LockEvent
+                                               && planHandle != PlanHandleRegistry.None
+                                               && e.PlanHandleId == planHandle))
+                               .ToList();
+    
                 static long EndUs(EngineEvent e) => e is QueryThreadEvent or MemoryEvent ? e.TimeUs : e.TimeUs + e.DurationUs;
 
-                // The axis brackets the events that OVERLAP the window (the query's own execution, plus a lock that
-                // straddles its start) — NOT the plan-handle stragglers kept only for the call stack. A compile-phase
-                // read carrying the plan_handle sits back near time 0 and would otherwise drag cropStart there, leaving
-                // an empty gap before the query.
                 var windowEvents = events.Where(Overlaps).ToList();
 
-                // Pad the axis window either side so the playhead has somewhere to sit before the first event and after
-                // the last.
                 cropStart = (windowEvents.Count > 0 ? Math.Min(start, windowEvents.Min(e => e.TimeUs)) : start)
                             - AxisPaddingUs;
+
                 cropEnd = (windowEvents.Count > 0 ? Math.Max(end, windowEvents.Max(EndUs)) : end)
                           + AxisPaddingUs;
 
-                // The timeline derives its axis solely from the events it is handed (it knows nothing about the crop), so
-                // stretch the whole-query operator bar to the padded window — being the widest event, it sets the axis
-                // extent and carries the lead-in/out to the timeline.
                 if (events.FirstOrDefault(e => e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 }) is { } query)
                 {
                     query.TimeUs = cropStart.Value;
@@ -226,8 +196,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 var unknownSymbols = await CallstackProcessor.Process(callStack, symbolsPath, progress, cancellationToken);
 
-                // Now the frames are resolved, merge each function's call sites into one node (and repoint events);
-                // when cropped, only the surviving events' frames are carried over, trimming the tree to the query.
                 var keep = cropStart is null ? null : KeepSet(events);
 
                 callStack = callStack.CollapseToFunctions(keep is null ? null : keep.Contains);
@@ -247,10 +215,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 }
             }
 
-            // The plan-handle stragglers were kept only so their call-stack frames survive (above); drop them from the
-            // returned events now. They sit outside the query window — a compile-phase read or thread sample back near
-            // time 0 — and the timeline brackets whatever events it is handed, so leaving them in would drag its axis
-            // back to the compile phase.
             if (cropStart is { } trimStart && cropEnd is { } trimEnd)
             {
                 events = events.Where(e => e.TimeUs <= trimEnd && e.TimeUs + e.DurationUs >= trimStart).ToList();

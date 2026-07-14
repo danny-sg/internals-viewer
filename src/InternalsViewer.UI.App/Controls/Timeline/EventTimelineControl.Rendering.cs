@@ -407,7 +407,7 @@ public sealed partial class EventTimelineControl
     }
 
     // Draws the split Read row's three labels — "Buffer" top-aligned (the cached lane), "Disk" bottom-aligned (the
-    // physical lane), "Read" centred — all left-aligned (x=2) like the single-label rows. Returns false (drawing
+    // physical lane), "Read" centred — all left-aligned (x=2/4) like the single-label rows. Returns false (drawing
     // nothing) when the row is too short to fit all three with at least a 1px gap between them, so the caller falls
     // back to plain "Read".
     private bool TryDrawReadRowLabels(SKCanvas canvas, float rowTop, float rowHeight)
@@ -421,12 +421,12 @@ public sealed partial class EventTimelineControl
             return false;
         }
 
-        canvas.DrawText("Buffer", 2, rowTop + VerticalLabelPad - metrics.Ascent, SKTextAlign.Left, _labelFont, _labelPaint);
+        canvas.DrawText("Buffer", 4, rowTop + VerticalLabelPad - metrics.Ascent, SKTextAlign.Left, _labelFont, _labelPaint);
 
         canvas.DrawText("Read", 2, rowTop + rowHeight / 2 - (metrics.Ascent + metrics.Descent) / 2,
                         SKTextAlign.Left, _labelFont, _labelPaint);
 
-        canvas.DrawText("Disk", 2, rowTop + rowHeight - VerticalLabelPad - metrics.Descent, SKTextAlign.Left, _labelFont, _labelPaint);
+        canvas.DrawText("Disk", 4, rowTop + rowHeight - VerticalLabelPad - metrics.Descent, SKTextAlign.Left, _labelFont, _labelPaint);
 
         return true;
     }

@@ -34,5 +34,4 @@ public readonly record struct TimedRange(int FromCell, int ToCell, long StartUs,
 public sealed record AllocationBorder(AllocationBorderScope Scope,
                                       short FileId,
                                       Color Colour,
-                                      IReadOnlyList<TimedRange> Cells,
-                                      bool Dotted = false);
+                                      IReadOnlyList<TimedRange> Cells);

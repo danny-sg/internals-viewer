@@ -49,7 +49,7 @@
                                         Padding="0"
                                         MinWidth="16" Width="16" MinHeight="16" Height="16"
                                         VerticalAlignment="Center">
-                                    <FontIcon Glyph="{x:Bind ExpanderGlyph, Mode=OneTime}" FontSize="10"/>
+                                    <FontIcon Glyph="{x:Bind ExpanderGlyph, Mode=OneWay}" FontSize="10"/>
                                 </Button>
                                 <TextBlock Text="{x:Bind Event.Name, Mode=OneTime}"
                                            Margin="4,0"
@@ -80,10 +80,10 @@
                     </toolkit:DataGridTemplateColumn.CellTemplate>
                 </toolkit:DataGridTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Duration (µs)" Tag="DurationUs">
+                <toolkit:DataGridTemplateColumn Header="Duration (ms)" Tag="DurationUs">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventRow">
-                            <TextBlock Text="{x:Bind Event.DurationUs, Mode=OneTime}"
+                            <TextBlock Text="{x:Bind eventGrid:EventGridFormat.TimeMs(Event.DurationUs), Mode=OneTime}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
                                        VerticalAlignment="Center"/>

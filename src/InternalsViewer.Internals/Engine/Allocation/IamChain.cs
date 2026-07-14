@@ -86,16 +86,8 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
     }
 
     /// <summary>
-    /// Enumerates the object's footprint in the given file as contiguous page ranges, <c>From</c> .. <c>To</c> inclusive
+    /// Enumerate a list of page ranges (From-To) for the allocations
     /// </summary>
-    /// <remarks>
-    /// The footprint at page resolution: each run of uniformly-allocated extents as one range (eight pages per extent,
-    /// adjacent extents merged — so a large contiguous object is a handful of ranges, not thousands of pages), plus the
-    /// single-page allocations off mixed extents and the IAM page itself as one-page ranges (a single page, not a whole
-    /// extent). A small object living entirely in mixed extents has no uniform extents, so the single-page slots are
-    /// what put it on the map. Bounded to the extent ranges the chain's IAM pages cover; costs O(object extents).
-    /// Depends on <see cref="BuildLookup"/> having run.
-    /// </remarks>
     public IEnumerable<(int From, int To)> GetAllocatedPageRanges(short fileId)
     {
         for (var i = 0; i < _pages.Length; i++)
@@ -124,8 +116,6 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
 
             var map = page.AllocationMap;
 
-            // Read the interval's bitmap directly (one bit per extent) rather than probing IsExtentAllocated per extent,
-            // which would rescan every page each call. Coalesce runs of adjacent allocated extents into a single range.
             var runStart = -1;
 
             var runEndExclusive = -1;
@@ -137,7 +127,7 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
                     continue;
                 }
 
-                var extentPage = firstExtentPage + relative * 8;
+                var extentPage = firstExtentPage + (relative * 8);
 
                 if (extentPage == runEndExclusive)
                 {

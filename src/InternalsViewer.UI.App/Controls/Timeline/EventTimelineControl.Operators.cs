@@ -372,24 +372,45 @@ public sealed partial class EventTimelineControl
             return;
         }
 
-        // A small object-colour dot in the operator bar's top-left corner (3px inset, 4px across).
+        // When the bar is too short for the corner dot to sit inside it (the 3px inset plus the dot's 8px height would
+        // overflow the bottom), draw a full-height colour band down the bar's left edge instead. Clipping to the bar's
+        // rounded rect gives the band the bar's own rounded left corners and keeps its right edge flush inside the bar.
+        if (b.BarBottom - b.BarTop < ObjectMarkerMargin + 2 * ObjectMarkerRadius)
+        {
+            var bandWidth = Math.Min(ObjectMarkerBandWidth, b.EndX - b.StartX);
+
+            if (bandWidth <= 0)
+            {
+                return;
+            }
+
+            canvas.Save();
+            canvas.ClipRoundRect(
+                new SKRoundRect(new SKRect(b.StartX, b.BarTop, b.EndX, b.BarBottom), b.CornerRadius, b.CornerRadius), antialias: true);
+
+            _markerPaint.Color = colour.ToSkColor();
+
+            canvas.DrawRect(b.StartX, b.BarTop, bandWidth, b.BarBottom - b.BarTop, _markerPaint);
+
+            canvas.Restore();
+
+            return;
+        }
+
+        // Otherwise a small object-colour dot in the operator bar's top-left corner (3px inset, 4px across).
         var centreX = b.StartX + ObjectMarkerMargin + ObjectMarkerRadius;
         var centreY = b.BarTop + ObjectMarkerMargin + ObjectMarkerRadius;
 
-        // Skip if the bar is too small to hold the dot inside its corner.
+        // Skip if the bar is too narrow to hold the dot inside its corner.
         if (centreX + ObjectMarkerRadius > b.EndX)
         {
             return;
         }
 
-        var wasAntialias = _markerPaint.IsAntialias;
-
         _markerPaint.IsAntialias = true;
         _markerPaint.Color = colour.ToSkColor();
 
         canvas.DrawCircle(centreX, centreY, ObjectMarkerRadius, _markerPaint);
-
-        _markerPaint.IsAntialias = wasAntialias;
     }
 
     /// <summary>

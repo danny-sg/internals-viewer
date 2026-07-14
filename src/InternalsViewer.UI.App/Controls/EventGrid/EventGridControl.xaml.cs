@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
@@ -127,6 +128,10 @@ public sealed partial class EventGridControl : UserControl
     private readonly HashSet<EngineEvent> _expanded = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<EngineEvent, EngineEvent> _parentOf = new(ReferenceEqualityComparer.Instance);
 
+    // The grid's bound rows. Expand/collapse mutates this in place so the DataGrid keeps its scroll offset; only a
+    // filter/sort/new-events change replaces it.
+    private ObservableCollection<EventRow> _rows = [];
+
     private string? _sortTag;
     private bool _sortAscending = true;
 
@@ -204,18 +209,44 @@ public sealed partial class EventGridControl : UserControl
         }
     }
 
-    // Expands or collapses a read group's children in place, rebuilding the flattened row list.
+    // Expands or collapses a read group's children by mutating the bound rows in place (inserting/removing the child
+    // rows and toggling the header's chevron), so the DataGrid keeps its scroll position instead of snapping to the top.
     private void OnExpanderClick(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is EventRow { HasChildren: true } row)
+        if ((sender as FrameworkElement)?.DataContext is not EventRow { HasChildren: true } row)
         {
-            if (!_expanded.Remove(row.Event))
-            {
-                _expanded.Add(row.Event);
-            }
-
-            ApplyFilter();
+            return;
         }
+
+        var index = _rows.IndexOf(row);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        if (_expanded.Remove(row.Event))
+        {
+            while (index + 1 < _rows.Count && _rows[index + 1].Depth > row.Depth)
+            {
+                _rows.RemoveAt(index + 1);
+            }
+        }
+        else
+        {
+            _expanded.Add(row.Event);
+
+            var children = row.Event is IEventGroup group ? group.Events : [];
+
+            var insertAt = index + 1;
+
+            foreach (var child in children)
+            {
+                _rows.Insert(insertAt++, new EventRow(child, row.Depth + 1, hasChildren: false, isExpanded: false));
+            }
+        }
+
+        row.IsExpanded = _expanded.Contains(row.Event);
     }
 
     private void OnDataGridUnloadingRow(object? sender, DataGridRowEventArgs e)
@@ -295,7 +326,8 @@ public sealed partial class EventGridControl : UserControl
 
         var filtered = ApplySort(result.ToList());
 
-        DataGrid.ItemsSource = BuildRows(filtered);
+        _rows = new ObservableCollection<EventRow>(BuildRows(filtered));
+        DataGrid.ItemsSource = _rows;
 
         UpdateStatusBar(filtered);
     }
