@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Events;
@@ -62,7 +63,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         CallStackTree callStack;
         List<QueryResultSet> resultSets;
 
-        // The executed query's time window when cropping — trims surrounding-noise events and call-stack frames.
         long? cropStart = null;
         long? cropEnd = null;
 
@@ -162,6 +162,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                                               endMarker);
 
             progress?.Report($"{events.Count} event(s) retrieved in {Stopwatch.GetElapsedTime(eventsStart)}");
+
+            if (eventOptions.AutoDeleteTrace && !string.IsNullOrWhiteSpace(eventOptions.TraceDirectory))
+            {
+                DeleteTraceFiles(filePath, progress);
+            }
 
             if (eventOptions.CropToQuery && CropWindow(events) is var (start, end, planHandle))
             {
@@ -276,8 +281,32 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     // and after the last.
     private const long AxisPaddingUs = 500;
 
-    // The executed query's time window, taken from the whole-query operator event (plan NodeId -1) and padded, plus the
-    // plan it belongs to (so plan-matched events can be kept for the call stack regardless of timestamp), or null.
+    private void DeleteTraceFiles(string filePath, IProgress<string>? progress)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(filePath);
+
+            var sessionName = Path.GetFileNameWithoutExtension(filePath);
+
+            if (string.IsNullOrEmpty(directory) || string.IsNullOrEmpty(sessionName))
+            {
+                return;
+            }
+
+            foreach (var file in Directory.EnumerateFiles(directory, $"{sessionName}*.xel"))
+            {
+                File.Delete(file);
+            }
+
+            progress?.Report("Trace file deleted");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to delete trace file(s) for {FilePath}", filePath);
+        }
+    }
+
     private static (long Start, long End, short PlanHandle)? CropWindow(List<EngineEvent> events)
     {
         var queryNode = events.FirstOrDefault(e => e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 });
@@ -340,9 +369,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         await connection.OpenAsync(cancellationToken);
 
-        var logPath = await connection.ExecuteScalar<string>(EventSql.GetFileLocationSql(), cancellationToken);
+        var directory = string.IsNullOrWhiteSpace(eventOptions.TraceDirectory)
+                        ? await connection.ExecuteScalar<string>(EventSql.GetFileLocationSql(), cancellationToken)
+                        : eventOptions.TraceDirectory.TrimEnd('\\');
 
-        var filePath = $"{logPath}\\{sessionName}.xel";
+        var filePath = $"{directory}\\{sessionName}.xel";
 
         List<LogRecord> logRecords = [];
 

@@ -18,6 +18,8 @@
             <Thickness x:Key="NavigationViewContentMargin">0,48,0,0</Thickness>
             <converters1:BoolNegationConverter x:Key="BoolNegationConverter" />
             <converters1:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <!-- Custom converter (IsInverse): true collapses, false shows -->
+            <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" IsInverse="True"/>
             <converters:ColorToSolidColorBrushValueConverter x:Key="ColorToSolidColorBrushValueConverter"/>
             <converters:HexColorToBrushConverter x:Key="HexColorToBrushConverter"/>
             <converters:OperatorCategoryToBrushConverter x:Key="OperatorCategoryToBrushConverter"/>

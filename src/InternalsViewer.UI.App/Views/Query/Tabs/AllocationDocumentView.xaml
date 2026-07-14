@@ -36,6 +36,10 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
 
         <CommandBar IsOpen="False"
                     Padding="0"            
@@ -43,6 +47,31 @@
                     DefaultLabelPosition="Right"
                     Grid.Column="0"
                     HorizontalAlignment="Left"
+                    VerticalContentAlignment="Top"
+                    MinHeight="0"
+                    Grid.Row="0"
+                    OverflowButtonVisibility="Collapsed"
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"
+                    Background="Transparent">
+
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ToggleButton Margin="12,0,12,0"
+                              BorderThickness="0"
+                              x:Name="BufferPoolToggle"
+                              IsChecked="{x:Bind ViewModel.ShowBufferPool, Mode=OneWay}"
+                              Command="{x:Bind ViewModel.ToggleBufferPoolCommand}"
+                              CommandParameter="{x:Bind BufferPoolToggle.IsChecked, Mode=OneWay}" >
+                    <TextBlock Text="Buffer Pool" VerticalAlignment="Center" />
+                </ToggleButton>
+            </AppBarElementContainer>
+        </CommandBar>
+        <CommandBar IsOpen="False"
+                    Padding="0"            
+                    VerticalAlignment="Center"
+                    DefaultLabelPosition="Right"
+                    Grid.Column="1"
+                    HorizontalAlignment="Right"
                     VerticalContentAlignment="Top"
                     MinHeight="0"
                     Grid.Row="0"
@@ -72,6 +101,7 @@
                        HorizontalAlignment="Stretch"
                        VerticalAlignment="Stretch"
                        Grid.Row="1"
+                       Grid.ColumnSpan="2"
                        ItemsSource="{x:Bind ViewModel.DatabaseFiles, Mode=OneWay}"
                        Layout="{StaticResource VerticalStackLayout}"
                        ItemTemplate="{StaticResource AllocationFileTemplate}" />

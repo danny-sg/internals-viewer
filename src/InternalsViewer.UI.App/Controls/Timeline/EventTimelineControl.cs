@@ -103,34 +103,23 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private const float OperatorMaxFont = 12f;
     private const float OperatorMinFont = 7f;
 
-    // Object-colour marker dot in a data-access operator's top-left corner: 3px inset, 8px diameter (4px radius). When
-    // the bar is too short for the dot to fit (below the inset plus the dot's height), it becomes a full-height colour
-    // band down the bar's left edge this wide instead.
     private const float ObjectMarkerMargin = 3f;
     private const float ObjectMarkerRadius = 6f;
     private const float ObjectMarkerBandWidth = 12f;
 
-    // The statement (SELECT) band is a fixed slim share, independent of cost.
     private const float StatementBandWeight = 0.5f;
 
-    // Operator slot heights scale with cost between these weights: the cheapest operator gets the
-    // minimum share (so it stays legible) and the most expensive gets the maximum.
     private const float MinCostWeight = 0.35f;
     private const float MaxCostWeight = 1.5f;
 
-    // RGB lift/drop for the subtle vertical sheen on operator bars (±14%).
     private const float GradientLift = 0.04f;
 
-    // Translucent black overlay that dims the consume phase of a blocking operator (building/sorting
-    // but not yet emitting), so it reads as "started but not producing rows".
     private static readonly SKColor ConsumeShadeColour = new(0, 0, 0, 115);
 
     private const float OperatorLabelGapFraction = 0.5f;
 
     private const float TwoLineGap = 2f;
 
-    // Row-flow overlay (shown when an operator is clicked): a translucent ribbon links each operator to
-    // its parent over the window rows are flowing; the path operators are outlined, the clicked one brighter.
     private static readonly SKColor FlowConnectorColour = new(120, 200, 255, 70);
     private static readonly SKColor FlowPathColour = new(200, 200, 200, 200);
     private static readonly SKColor FlowSelectedColour = new(255, 255, 255, 230);
@@ -138,6 +127,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private readonly TimelineRowSet _rows = new();
 
     private bool _showThreads;
+
     private readonly TimelineAudioPlayer _audioPlayer = new();
     private readonly TimelineTransport _transport;
     private readonly SKXamlCanvas _skCanvas;
@@ -158,8 +148,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private readonly SKFont _labelFont = new(SKTypeface.Default, 10f);
 
     private readonly SKFont _operatorFont = new(SKTypeface.Default, 12f);
-    private readonly SKFont _operatorBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName,
-                                                                              SKFontStyle.Bold),
+    private readonly SKFont _operatorBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold),
                                                     10f);
 
     private readonly SKPaint _labelPaint = new()

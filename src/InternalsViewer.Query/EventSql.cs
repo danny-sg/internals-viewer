@@ -117,11 +117,16 @@ internal static class EventSql
             }
         }
 
+        // MAX_FILE_SIZE is in MB; when unset (0) SQL Server's default (1 GB) applies.
+        var maxFileSize = eventOptions.MaxTraceSizeMb > 0
+            ? $"\n       ,MAX_FILE_SIZE      = ({eventOptions.MaxTraceSizeMb})"
+            : string.Empty;
+
         stringBuilder.AppendLine($@"
 ADD TARGET package0.event_file
 (
-    SET FILENAME           = '{filePath}'
-       ,MAX_ROLLOVER_FILES = (2)
+    SET FILENAME           = '{filePath}'{maxFileSize}
+       ,MAX_ROLLOVER_FILES = (1)
 );");
 
         return stringBuilder.ToString();

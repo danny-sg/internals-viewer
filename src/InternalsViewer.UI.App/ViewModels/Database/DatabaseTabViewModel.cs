@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
@@ -24,27 +25,35 @@ namespace InternalsViewer.UI.App.ViewModels.Database;
 
 public sealed class DatabaseTabViewModelFactory(ILogger<DatabaseTabViewModel> logger,
                                                 IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                                IDatabaseService databaseService)
+                                                IDatabaseService databaseService,
+                                                SettingsService settingsService)
 {
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; } = bufferPoolInfoProvider;
 
     private IDatabaseService DatabaseService { get; } = databaseService;
 
+    private SettingsService SettingsService { get; } = settingsService;
+
     public DatabaseTabViewModel Create(DatabaseSource database)
-        => new(logger, database, BufferPoolInfoProvider, DatabaseService);
+        => new(logger, database, BufferPoolInfoProvider, DatabaseService, SettingsService);
 }
 
 public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> logger,
                                                  DatabaseSource database,
                                                  IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                                 IDatabaseService databaseService)
+                                                 IDatabaseService databaseService,
+                                                 SettingsService settingsService)
     : TabViewModel, IAllocationViewModel, IAsyncDisposable
 {
+    private const string TooltipEnabledKey = "DatabaseTooltipEnabled";
+
     private ILogger<DatabaseTabViewModel> Logger { get; } = logger;
 
     private IDatabaseService DatabaseService { get; } = databaseService;
 
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; } = bufferPoolInfoProvider;
+
+    private SettingsService SettingsService { get; } = settingsService;
 
     [ObservableProperty]
     private DatabaseSource _database = database;
@@ -90,8 +99,9 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     [ObservableProperty]
     private bool _isQueryReplayVisible;
 
+    // Persisted preference (default on), shared across database tabs — see LoadTooltipEnabledAsync / the change handler.
     [ObservableProperty]
-    private bool _isTooltipEnabled;
+    private bool _isTooltipEnabled = true;
 
     [ObservableProperty]
     private short _fileId = 1;
@@ -175,7 +185,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
                 if (layer != null)
                 {
-                    layer.SinglePages = bufferPoolPages.Dirty;
+                    layer.SinglePages = [..bufferPoolPages.Dirty, ..bufferPoolPages.Clean];
 
                     AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
                 }
@@ -247,8 +257,26 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
         IsLoading = true;
 
+        _ = LoadTooltipEnabledAsync();
+
         // Generating the allocation layers walks the whole allocation map, so build it off the UI thread.
         _ = LoadAllocationLayersAsync();
+    }
+
+    // Started on the UI thread, so the property set (which raises PropertyChanged for the toggle binding) resumes there.
+    private async Task LoadTooltipEnabledAsync()
+    {
+        var saved = await SettingsService.ReadSettingAsync<bool?>(TooltipEnabledKey);
+
+        if (saved.HasValue)
+        {
+            IsTooltipEnabled = saved.Value;
+        }
+    }
+
+    partial void OnIsTooltipEnabledChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TooltipEnabledKey, value);
     }
 
     private async Task LoadAllocationLayersAsync()

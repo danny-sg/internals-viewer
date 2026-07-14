@@ -105,10 +105,11 @@ internal static class AllocationLayerBuilder
         {
             Name = "Buffer Pool",
             LayerName = "Buffer Pool",
-            Colour = Color.FromArgb(200, 190, 190, 205),
+            Colour = Color.FromArgb(200, 190, 100, 100),
             IsAllocationLayer = true,
             IsVisible = true,
-            Opacity = 0
+            Opacity = 0,
+            LayerType = LayerType.TopLeft
         };
 
         layers.Add(bufferPoolLayer);

@@ -39,8 +39,6 @@
                 <toolkit:DataGridTemplateColumn Header="Event" Tag="Event">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventRow">
-                            <!-- Hierarchy is flattened: Indent offsets child rows, the expander toggles a group's
-                                 children (collapsed for leaf rows). -->
                             <StackPanel Orientation="Horizontal" Margin="{x:Bind Indent, Mode=OneTime}" VerticalAlignment="Center">
                                 <Button Click="OnExpanderClick"
                                         Visibility="{x:Bind ExpanderVisibility, Mode=OneTime}"
@@ -95,8 +93,6 @@
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventRow">
                             <Grid>
-                                <!-- Classic Binding (not x:Bind): PageAddress lives on the page-event subtypes and the
-                                     read group, not the EngineEvent base, so it resolves per runtime type. -->
                                 <HyperlinkButton Content="{Binding Event.PageAddress}"
                                                  Style="{StaticResource PageAddressStyle}"
                                                  Tag="{Binding Event.PageAddress}"

@@ -61,6 +61,7 @@ public partial class App
             services.AddTransient<ActivationHandler<LaunchActivatedEventArgs>, DefaultActivationHandler>();
 
             services.AddSingleton<SettingsService>();
+            services.AddSingleton<TraceDirectoryService>();
 
             services.AddSingleton<AppLogService>();
             services.AddSingleton<ILoggerProvider, AppLogLoggerProvider>();

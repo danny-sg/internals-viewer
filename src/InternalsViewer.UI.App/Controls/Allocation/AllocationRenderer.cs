@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
@@ -37,6 +38,8 @@ public sealed class AllocationRenderer : IDisposable
     private Color LastColourFrom { get; set; } = Color.White;
 
     private Color LastColourTo { get; set; } = Color.White;
+
+    private SKPathBuilder PathBuilder { get; } = new();
 
     public void SetAllocationColour(Color colourFrom, Color colourTo)
     {
@@ -126,9 +129,39 @@ public sealed class AllocationRenderer : IDisposable
         g.DrawRect(rect, AllocationPaint);
     }
 
-    internal void DrawPage(SKCanvas g, SKRect rect)
+    internal void DrawPage(SKCanvas g, SKRect rect, LayerType layerLayerType)
     {
-        g.DrawRect(rect, PagePaint);
+        switch (layerLayerType)
+        {
+            case LayerType.TopLeft:
+                {
+                    var insetX = rect.Width * 0.12f;
+                    var insetY = rect.Height * 0.12f;
+
+                    var originX = -1 + rect.Left + insetX;
+                    var originY = -1 + rect.Top + insetY;
+
+                    var wedgeWidth = rect.Width * 0.65f;
+                    var wedgeHeight = rect.Height * 0.65f;
+
+                    var p1 = new SKPoint(originX, originY);
+                    var p2 = new SKPoint(originX + wedgeWidth, originY);
+                    var p3 = new SKPoint(originX, originY + wedgeHeight);
+
+                    PathBuilder.MoveTo(p1);
+                    PathBuilder.LineTo(p2);
+                    PathBuilder.LineTo(p3);
+
+                    using var path = PathBuilder.Detach();
+
+                    g.DrawPath(path, PagePaint);
+                }
+                break;
+            default:
+                g.DrawRect(rect, PagePaint);
+                break;
+        }
+
     }
 
     internal void DrawBackgroundExtents(SKCanvas g,
@@ -213,5 +246,6 @@ public sealed class AllocationRenderer : IDisposable
         BorderPaint.Dispose();
         BackgroundPaint.Dispose();
         PagePaint.Dispose();
+        PathBuilder.Dispose();
     }
 }

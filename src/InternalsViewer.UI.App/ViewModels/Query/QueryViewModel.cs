@@ -5,9 +5,13 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Providers.Server;
 using InternalsViewer.Query;
+using InternalsViewer.Query.Callstack;
+using InternalsViewer.Query.Callstack.Categories;
 using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
@@ -18,6 +22,7 @@ using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Index;
+using InternalsViewer.UI.App.ViewModels.Query.Events;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using Microsoft.Extensions.Logging;
@@ -28,11 +33,8 @@ using System.Drawing;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Callstack.Categories;
+using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
-using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.UI.App.ViewModels.Query.Events;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -40,21 +42,27 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           QueryRunner queryRunner,
                                           SettingsService settingsService,
                                           SettingsViewModel settingsViewModel,
-                                          IndexTabViewModelFactory indexTabViewModelFactory)
+                                          IndexTabViewModelFactory indexTabViewModelFactory,
+                                          TraceDirectoryService traceDirectoryService,
+                                          IBufferPoolInfoProvider bufferPoolInfoProvider)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
                                                                  settingsService,
                                                                  settingsViewModel,
                                                                  indexTabViewModelFactory,
+                                                                 traceDirectoryService,
+                                                                 bufferPoolInfoProvider,
                                                                  database);
 }
 
 public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 {
-    public ILogger<QueryViewModel> Logger { get; }
+    private ILogger<QueryViewModel> Logger { get; }
 
-    public QueryRunner QueryRunner { get; }
+    private QueryRunner QueryRunner { get; }
+
+    private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
     public DatabaseSource Database { get; }
 
@@ -75,7 +83,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
-    // Lock outlines drawn over the allocation map, time-gated to each lock's hold (see AllocationControl.Borders).
     [ObservableProperty]
     private IReadOnlyList<AllocationBorder> _allocationBorders = [];
 
@@ -112,6 +119,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private bool _showWaits = true;
+
+    [ObservableProperty]
+    private bool _showBufferPool;
 
     partial void OnShowLocksChanged(bool value)
     {
@@ -635,12 +645,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    // Caches each page's owning index root page, so the per-playhead range scan doesn't repeatedly
-    // resolve the same pages' allocation units.
-
-
-
-
     // Per-index-root spans, built once whenever the event set (re)builds - see RefreshIndexPageSpans -
     // rather than rescanned per playhead tick. Same shape and colouring as the allocation map's own
     // "Events" overlay: each span already carries its own DisplayColour and lifetime (EndUs = the query's
@@ -756,14 +760,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           SettingsService settingsService,
                           SettingsViewModel settingsViewModel,
                           IndexTabViewModelFactory indexTabViewModelFactory,
+                          TraceDirectoryService traceDirectoryService,
+                          IBufferPoolInfoProvider bufferPoolInfoProvider,
                           DatabaseSource database)
     {
         Logger = logger;
         QueryRunner = queryRunner;
+        BufferPoolInfoProvider = bufferPoolInfoProvider;
         Database = database;
         _settingsService = settingsService;
         _settingsViewModel = settingsViewModel;
         _indexTabViewModelFactory = indexTabViewModelFactory;
+        _traceDirectoryService = traceDirectoryService;
         Message = string.Empty;
 
         Name = $"{Database.Name}: Query";
@@ -774,10 +782,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, 20);
 
-        _objectColoursByName = ObjectLayers
-            .Where(l => !string.IsNullOrEmpty(l.Name))
-            .GroupBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().Colour, StringComparer.OrdinalIgnoreCase);
+        _objectColoursByName = ObjectLayers.Where(l => !string.IsNullOrEmpty(l.Name))
+                                           .GroupBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
+                                           .ToDictionary(g => g.Key, g => g.First().Colour, StringComparer.OrdinalIgnoreCase);
 
         ExtentCount = database.GetFilePageCount(1) / 8;
 
@@ -790,7 +797,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                    .ToHashSet();
 
         EventFilter = new EventFilterViewModel(settingsService);
-        
+
         EventFilter.SetSystemObjectIds(_systemObjectIds);
 
         EventFilter.FilterChanged += RefreshFilteredEvents;
@@ -854,6 +861,31 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly IndexTabViewModelFactory _indexTabViewModelFactory;
 
+    private readonly TraceDirectoryService _traceDirectoryService;
+
+    [RelayCommand]
+    private async Task ToggleBufferPool(bool isSelected)
+    {
+        ShowBufferPool = isSelected;
+
+        var layer = AllocationLayers.FirstOrDefault(l => l.LayerName == "Buffer Pool");
+
+        if (layer == null)
+        {
+            return;
+        }
+
+        if (isSelected)
+        {
+            await RefreshBufferPool();
+        }
+        else
+        {
+            layer.Opacity = 0;
+            AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+        }
+    }
+
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task ExecuteQuery(ExecuteSqlPayload payload, CancellationToken cancellationToken)
     {
@@ -867,10 +899,25 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         EventOptions.CropToQuery = CropToQuery;
 
+        // When a custom trace directory is configured, SQL Server writes the .xel there — ensure its service account can
+        // (grant on use). Null falls back to the SQL Server log directory.
+        var traceDirectory = _settingsViewModel.ActiveTraceDirectory;
+
+        EventOptions.TraceDirectory = traceDirectory;
+
+        EventOptions.MaxTraceSizeMb = (int)_settingsViewModel.MaxTraceSizeMb;
+
+        EventOptions.AutoDeleteTrace = _settingsViewModel.AutoDeleteTrace;
+
         // Run full trace on background thread
         var (results, layers, colours, startOffset, endOffset) =
             await Task.Run(async () =>
             {
+                if (traceDirectory is not null)
+                {
+                    _traceDirectoryService.GrantPermissions(traceDirectory);
+                }
+
                 var queryResult = await QueryRunner.TraceQuery(payload,
                                                                Database,
                                                                EventOptions,
@@ -933,6 +980,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             ApplyEventLayers(layers);
             RefreshIndexPageSpans(Events, colours);
             RefreshLockBorders();
+
+            if (ShowBufferPool)
+            {
+                await Task.Run(async () => { await RefreshBufferPool(); }, cancellationToken);
+            }
         }
         catch (Exception ex)
         {
@@ -1029,6 +1081,36 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         overlayLayer.SetPageSpans([.. pageSpans.OrderBy(s => s.StartUs)]);
 
         return overlayLayer;
+    }
+
+    private async Task RefreshBufferPool()
+    {
+        var layer = AllocationLayers.FirstOrDefault(l => l.LayerName == "Buffer Pool");
+
+        if (!ShowBufferPool)
+        {
+            return;
+        }
+
+        try
+        {
+            var bufferPoolPages = await BufferPoolInfoProvider.GetBufferPoolEntries(Database);
+
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (layer != null)
+                {
+                    layer.Opacity = 80;
+                    layer.SinglePages = [.. bufferPoolPages.Dirty, .. bufferPoolPages.Clean];
+
+                    AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh buffer pool overlay for database: {Name}", Database.Name);
+        }
     }
 
     private void RefreshLockBorders()

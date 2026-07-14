@@ -16,7 +16,7 @@ using System.Drawing;
 using System.Linq;
 using Windows.System;
 using Windows.UI.Core;
-using AllocationOverViewModel = InternalsViewer.UI.App.ViewModels.Allocation.AllocationOverViewModel;
+using InternalsViewer.UI.App.ViewModels.Allocation;
 using Color = Windows.UI.Color;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
@@ -621,7 +621,7 @@ public sealed partial class AllocationControl : IDisposable
             {
                 if (page.FileId == FileId)
                 {
-                    renderer.DrawPage(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout));
+                    renderer.DrawPage(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout), layer.LayerType);
                 }
             }
 
@@ -1035,8 +1035,14 @@ public sealed partial class AllocationControl : IDisposable
 
         if (IsTooltipEnabled)
         {
+            // Position before opening so the popup never appears for a frame at its previous/zero offset.
             TooltipPopup.HorizontalOffset = position.X + 5;
             TooltipPopup.VerticalOffset = position.Y + 5;
+
+            if (!TooltipPopup.IsOpen)
+            {
+                TooltipPopup.IsOpen = true;
+            }
         }
     }
 
@@ -1063,12 +1069,12 @@ public sealed partial class AllocationControl : IDisposable
 
     private void AllocationCanvas_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-        AllocationOver.IsOpen = false;
+        TooltipPopup.IsOpen = false;
     }
 
     private void AllocationCanvas_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        AllocationOver.IsOpen = IsTooltipEnabled;
+      //  AllocationOver.IsOpen = IsTooltipEnabled;
     }
 
     public void Dispose()
