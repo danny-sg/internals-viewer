@@ -115,8 +115,10 @@ public sealed class EventReader(ILogger<EventReader> logger)
         var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
 
         // Give never-released lock acquires (fine-grained locks dropped by escalation, or held to a commit outside the
-        // window) their held duration, so they render as held bars rather than zero-duration points.
-        // HeldLockCloser.Close(collapsedEvents);
+        // window) their held duration, so they render as held bars rather than zero-duration points. Without this a
+        // serializable scan's RS_S range locks — held to commit, so no release is captured — stay zero-width and never
+        // light up the timeline or the allocation-map borders even though their pages resolve.
+        HeldLockCloser.Close(collapsedEvents);
 
         // Collapse a burst of identical buffer latches on one page (a scan re-latching a page per row) into one, so
         // the read grouping forms a single buffer-pool read per page visit and the spread can't smear them.

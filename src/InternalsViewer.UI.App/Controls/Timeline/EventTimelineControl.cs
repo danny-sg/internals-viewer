@@ -18,27 +18,15 @@ using InternalsViewer.Query.Events.Operators;
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
 /// <summary>
-/// Interactive timeline of a query's engine events: a plan-operator band flanked by read/lock/latch/wait
-/// bands, with scrubbing, range selection, zoom, playback and audio feedback
+/// Interactive timeline of a query's engine events
 /// </summary>
 public sealed partial class EventTimelineControl : Grid, IDisposable
 {
-    private const float RulerBandHeight = 18f;
-    private const float HandleBandHeight = 16f;
-    private const float MarkerStripHeight = RulerBandHeight + HandleBandHeight;
-    private const float HandleWidth = 7f;
 
-    private const float HandleHeight = 8f;
 
-    private const float HandleGap = 13f;
-    private const float TriangleHalfWidth = 9f;
+
     private const double HitArea = 7;
     private const long DoubleClickMs = 300;
-    private const float RowLabelWidth = 36f;
-    private const float RowPadding = 2f;
-    private const float MarkerWidth = 1f;
-
-    private const float MinLabelGap = 1f;
 
     private const float VerticalLabelPad = 1f;
 
@@ -159,13 +147,13 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private EngineEvent? _hoverEvent;
     private string? _hoverLabel;
 
-    // The plan node id of the clicked operator, whose row-flow path (up to the root) is highlighted.
     private int? _selectedNodeId;
+
+    private string _selectedSchema = string.Empty;
+    private string _selectedTable = string.Empty;
 
     private readonly SKFont _labelFont = new(SKTypeface.Default, 10f);
 
-    // Operator bar labels get their own font so the size can be scaled per bar (up to OperatorMaxFont).
-    // The type (e.g. "Index Scan") is drawn bold, the object name that follows in the regular font.
     private readonly SKFont _operatorFont = new(SKTypeface.Default, 12f);
     private readonly SKFont _operatorBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName,
                                                                               SKFontStyle.Bold),
@@ -178,7 +166,9 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     };
 
     private readonly SKPaint _rowBackgroundPaint = new() { Style = SKPaintStyle.Fill };
+    
     private readonly SKPaint _markerPaint = new() { Style = SKPaintStyle.Fill };
+    
     private readonly SKPaint _operatorPaint = new()
     {
         Color = SKColors.LimeGreen,
@@ -210,7 +200,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         IsAntialias = true,
     };
 
-    // Dims the rows outside the from/to selection so only the selected (clipped) window stands out.
     private readonly SKPaint _clipDimPaint = new()
     {
         Color = new SKColor(0, 0, 0, 120),
@@ -225,13 +214,12 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         IsAntialias = false,
     };
 
-    // Composites the trace extensions through one half-opacity layer (see DrawTraces).
     private readonly SKPaint _traceLayerPaint = new() { Color = SKColors.White.WithAlpha(TraceAlpha) };
 
     private readonly SKPaint _flowConnectorPaint = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
+    
     private readonly SKPaint _outlinePaint = new() { Style = SKPaintStyle.Stroke, IsAntialias = true };
 
-    // A read's call rail: a dotted vertical from the operator down to the top of the read (the iterator invoking it).
     private readonly SKPaint _readBoundaryPaint = new()
     {
         StrokeWidth = 1,
@@ -240,23 +228,12 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         PathEffect = SKPathEffect.CreateDash([2f, 2f], 0f),
     };
 
-    // A read's return rail: a solid vertical from the operator down through the full read (the row handed back).
     private readonly SKPaint _readReturnPaint = new()
     {
         StrokeWidth = 1.5f,
         Style = SKPaintStyle.Stroke,
         IsAntialias = false,
     };
-
-    // Reused per frame in the dynamic overlay: Detach hands off the built path and resets the builder.
-    private readonly SKPathBuilder _pathBuilder = new();
-
-    private readonly SKColor _laneColour = new(30, 30, 30, 220);
-
-    // A touch lighter than _laneColour so adjacent major bands read apart subtly.
-    private readonly SKColor _alternateLaneColour = new(44, 44, 44, 220);
-
-    private readonly SKPaint _separatorPaint = new() { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
 
     private List<EngineEvent> _sortedEvents = [];
 
@@ -272,9 +249,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     // live. The picture (and the _hitRegions built alongside it) is re-recorded only when an input that
     // affects the static content changes - see StaticLayerKey. This keeps the per-frame cost of playback
     // and hover off the O(event count) draw path.
-    private SKPicture? _staticLayer;
-
-    private StaticLayerKey _staticLayerKey;
 
     // Bumped whenever the event set (and the layout derived from it) is rebuilt, so the cached static
     // layer is invalidated without having to compare the events themselves.
@@ -293,16 +267,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private double _maxTime;
 
     private double _timeRange;
-
-    private double _playheadTime;
-
-    private double _playStartTime;
-
-    private double _playEndTime;
-
-    private double _playStep;
-
-    private bool _isPlaying;
 
     // True once the user has dragged a handle. While false the start/end handles track the playhead.
     private bool _selectionActivated;
@@ -337,11 +301,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     public event Action<long, long>? ScopeChanged;
 
     /// <summary>
-    /// Raised when the playhead moves, with its position in microseconds
-    /// </summary>
-    public event Action<long>? PlayheadTimeChanged;
-
-    /// <summary>
     /// Raised when a plan operator in the timeline is clicked
     /// </summary>
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
@@ -355,11 +314,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     /// Raised when "Open Index" is chosen on a scan/seek operator (carries schema/table/index)
     /// </summary>
     public event Action<ExecutionOperatorEvent>? IndexOpenRequested;
-
-    /// <summary>
-    /// Raised when auto-play starts (true) or stops (false)
-    /// </summary>
-    public event Action<bool>? PlayStateChanged;
 
     public List<EngineEvent> Events
     {
@@ -459,51 +413,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         control.StopPlay();
         control.Reset();
 
-        control._skCanvas.Invalidate();
-    }
-
-    public long? StartOffset
-    {
-        get => (long?)GetValue(StartOffsetProperty);
-        set => SetValue(StartOffsetProperty, value);
-    }
-
-    public static readonly DependencyProperty StartOffsetProperty =
-        DependencyProperty.Register(nameof(StartOffset), typeof(long?), typeof(EventTimelineControl),
-            new PropertyMetadata(null, OnCropChanged));
-
-    public long? EndOffset
-    {
-        get => (long?)GetValue(EndOffsetProperty);
-        set => SetValue(EndOffsetProperty, value);
-    }
-
-    public static readonly DependencyProperty EndOffsetProperty =
-        DependencyProperty.Register(nameof(EndOffset), typeof(long?), typeof(EventTimelineControl),
-            new PropertyMetadata(null, OnCropChanged));
-
-    private static void OnCropChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (EventTimelineControl)d;
-
-        control.BuildTimes();
-
-        if (control._sortedEvents.Count > 0)
-        {
-            // Pull the playhead (and any non-activated handles) back into the cropped range, then
-            // re-emit so the scope/active operator the other views show follows the clamped position.
-            var clamped = Math.Clamp(control._playheadTime, control._minTime, control._maxTime);
-
-            if (Math.Abs(clamped - control._playheadTime) > 0.1)
-            {
-                control._playheadTime = clamped;
-
-                control.SyncHandlesToPlayhead();
-                control.FirePlayhead();
-            }
-        }
-
-        control.UpdateScrollBar();
         control._skCanvas.Invalidate();
     }
 
@@ -610,6 +519,8 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         _zoom = MinZoom;
         _scrollX = 0;
         _selectedNodeId = null;
+        _selectedSchema = string.Empty;
+        _selectedTable = string.Empty;
 
         _selectionActivated = false;
         _playheadTime = _minTime;

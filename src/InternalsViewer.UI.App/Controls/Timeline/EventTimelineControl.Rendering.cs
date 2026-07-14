@@ -13,6 +13,30 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
+    private const float RulerBandHeight = 18f;
+    private const float HandleBandHeight = 16f;
+    private const float MarkerStripHeight = RulerBandHeight + HandleBandHeight;
+    private const float HandleWidth = 7f;
+    private const float HandleHeight = 8f;
+    private const float HandleGap = 13f;
+    private const float TriangleHalfWidth = 9f;
+    private const float RowLabelWidth = 36f;
+    private const float RowPadding = 2f;
+
+    private const float MinLabelGap = 1f;
+
+    private SKPicture? _staticLayer;
+
+    private StaticLayerKey _staticLayerKey;
+
+    private readonly SKPathBuilder _pathBuilder = new();
+
+    private readonly SKColor _laneColour = new(30, 30, 30, 220);
+
+    private readonly SKColor _alternateLaneColour = new(44, 44, 44, 220);
+
+    private readonly SKPaint _separatorPaint = new() { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
+
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
         var canvas = e.Surface.Canvas;
@@ -42,10 +66,10 @@ public sealed partial class EventTimelineControl
     }
 
     /// <summary>
-    /// Static freeze record of the timeline
+    /// Static freeze record picture of the timeline
     /// </summary>
     /// <remarks>
-    /// Changes on zoom, scroll, resize, operator selection, or crop
+    /// Changes on zoom, scroll, resize, or operator selection
     /// </remarks>
     private SKPicture RecordStaticLayer(int w, int h)
     {

@@ -88,10 +88,12 @@ internal sealed class TimelineRowSet : IDisposable
     public int IndexOf(EngineEvent ev)
     {
         for (var i = 0; i < _active.Length; i++)
+        {
             if (_active[i].EventType.IsInstanceOfType(ev))
             {
                 return i;
             }
+        }
 
         return -1;
     }

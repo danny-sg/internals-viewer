@@ -67,10 +67,10 @@ public sealed partial class EventTimelineControl
             }
         }
 
-        // Apply the optional crop: a set Start/EndOffset (microseconds) overrides the natural event
-        // extent so that activity outside the cropped window falls off the axis (clipped by the canvas).
-        _minTime = StartOffset.HasValue ? StartOffset.Value / 1000.0 : min;
-        _maxTime = EndOffset.HasValue ? EndOffset.Value / 1000.0 : max;
+        // The axis is simply the extent of the events given to the control — any windowing (the query crop, its
+        // padding) is the caller's job upstream; the timeline knows nothing about it.
+        _minTime = min;
+        _maxTime = max;
         _timeRange = Math.Max(_maxTime - _minTime, 1.0);
     }
 

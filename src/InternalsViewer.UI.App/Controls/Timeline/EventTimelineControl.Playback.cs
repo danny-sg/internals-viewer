@@ -6,6 +6,24 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
+    private double _playheadTime;
+
+    private double _playEndTime;
+
+    private double _playStep;
+
+    private bool _isPlaying;
+
+    /// <summary>
+    /// Raised when the playhead moves, with its position in microseconds
+    /// </summary>
+    public event Action<long>? PlayheadTimeChanged;
+
+    /// <summary>
+    /// Raised when auto-play starts (true) or stops (false)
+    /// </summary>
+    public event Action<bool>? PlayStateChanged;
+
     private void OnPlayPauseRequested()
     {
         if (_isPlaying)
@@ -107,7 +125,6 @@ public sealed partial class EventTimelineControl
 
         var (rangeStart, rangeEnd) = ActiveRange;
 
-        _playStartTime = rangeStart;
         _playEndTime = rangeEnd;
 
         if (_playheadTime < rangeStart || _playheadTime >= rangeEnd)

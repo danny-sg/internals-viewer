@@ -203,8 +203,21 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 // an empty gap before the query.
                 var windowEvents = events.Where(Overlaps).ToList();
 
-                cropStart = windowEvents.Count > 0 ? Math.Min(start, windowEvents.Min(e => e.TimeUs)) : start;
-                cropEnd = windowEvents.Count > 0 ? Math.Max(end, windowEvents.Max(EndUs)) : end;
+                // Pad the axis window either side so the playhead has somewhere to sit before the first event and after
+                // the last.
+                cropStart = (windowEvents.Count > 0 ? Math.Min(start, windowEvents.Min(e => e.TimeUs)) : start)
+                            - AxisPaddingUs;
+                cropEnd = (windowEvents.Count > 0 ? Math.Max(end, windowEvents.Max(EndUs)) : end)
+                          + AxisPaddingUs;
+
+                // The timeline derives its axis solely from the events it is handed (it knows nothing about the crop), so
+                // stretch the whole-query operator bar to the padded window — being the widest event, it sets the axis
+                // extent and carries the lead-in/out to the timeline.
+                if (events.FirstOrDefault(e => e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 }) is { } query)
+                {
+                    query.TimeUs = cropStart.Value;
+                    query.DurationUs = cropEnd.Value - cropStart.Value;
+                }
             }
 
             if (eventOptions.IncludeCallStack)
@@ -232,6 +245,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                         Logger.LogDebug($"Unknown symbol: {symbol}");
                     }
                 }
+            }
+
+            // The plan-handle stragglers were kept only so their call-stack frames survive (above); drop them from the
+            // returned events now. They sit outside the query window — a compile-phase read or thread sample back near
+            // time 0 — and the timeline brackets whatever events it is handed, so leaving them in would drag its axis
+            // back to the compile phase.
+            if (cropStart is { } trimStart && cropEnd is { } trimEnd)
+            {
+                events = events.Where(e => e.TimeUs <= trimEnd && e.TimeUs + e.DurationUs >= trimStart).ToList();
             }
         }
         catch (OperationCanceledException)
@@ -285,6 +307,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
     // Padding kept either side of the query window so an event landing just on its boundary is not clipped.
     private const long CropPaddingUs = 100;
+
+    // Extra room left either side of the events on the timeline axis, so the playhead can sit before the first event
+    // and after the last.
+    private const long AxisPaddingUs = 500;
 
     // The executed query's time window, taken from the whole-query operator event (plan NodeId -1) and padded, plus the
     // plan it belongs to (so plan-matched events can be kept for the call stack regardless of timestamp), or null.

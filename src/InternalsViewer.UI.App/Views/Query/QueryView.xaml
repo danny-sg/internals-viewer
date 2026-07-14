@@ -135,8 +135,6 @@
                                                x:Name="EventTimeline"
                                                VerticalAlignment="Stretch"
                                                HorizontalAlignment="Stretch"
-                                               StartOffset="{x:Bind ViewModel.StartOffset, Mode=OneWay}"
-                                               EndOffset="{x:Bind ViewModel.EndOffset, Mode=OneWay}"
                                                ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
                                                ShowLocks="{x:Bind ViewModel.ShowLocks, Mode=OneWay}"
                                                ShowLatches="{x:Bind ViewModel.ShowLatches, Mode=OneWay}"

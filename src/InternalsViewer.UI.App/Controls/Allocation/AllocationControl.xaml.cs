@@ -118,6 +118,20 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
+    // Cell-group outlines drawn over the map (a Tetris-piece perimeter per group). The caller supplies the cell ranges
+    // and colour; the control draws the borders (see DrawBorders). Locks are the first use — see AllocationBorder.
+    public IReadOnlyList<AllocationBorder>? Borders
+    {
+        get => (IReadOnlyList<AllocationBorder>?)GetValue(BordersProperty);
+        set => SetValue(BordersProperty, value);
+    }
+
+    public static readonly DependencyProperty BordersProperty
+        = DependencyProperty.Register(nameof(Borders),
+                                      typeof(IReadOnlyList<AllocationBorder>),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
+
     public PfsChain PfsChain
     {
         get => (PfsChain)GetValue(PfsChainProperty);
@@ -194,7 +208,8 @@ public sealed partial class AllocationControl : IDisposable
             control.ScrollToLatestPageSpan(playheadUs);
         }
 
-        if (control.Layers?.Any(l => l.PageSpans.Count > 0) == true)
+        if (control.Layers?.Any(l => l.PageSpans.Count > 0) == true
+            || control.Borders is { Count: > 0 })
         {
             control.AllocationCanvas.Invalidate();
         }
@@ -227,6 +242,20 @@ public sealed partial class AllocationControl : IDisposable
     private Size _lastExtentSize;
 
     private readonly SKPaint _spanPaint = new();
+
+    // Stroke for lock-border outlines (the colour, and solid-vs-dotted, are set per border). Crisp, square edges: no
+    // antialiasing so the 2px lines land on whole pixels, and square caps so the separately-drawn edges meet cleanly at
+    // corners (a dotted border swaps to round caps so the dashes read as dots — see DrawBorders).
+    private readonly SKPaint _overlayBorderPaint = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 2,
+        StrokeCap = SKStrokeCap.Square,
+        IsAntialias = false,
+    };
+
+    // Dash for intent-lock outlines: a zero-length on-dash under round caps renders as evenly spaced dots.
+    private readonly SKPathEffect _dottedBorderEffect = SKPathEffect.CreateDash([0f, 5f], 0f);
 
     private Color _lastGridColor;
 
@@ -490,6 +519,9 @@ public sealed partial class AllocationControl : IDisposable
                                    renderLayout.RemainingCount);
         }
 
+        // After the grid — the borders sit on cell boundaries, so they must paint over the grid lines, not under them.
+        DrawBorders(canvas, renderLayout);
+
         if (SelectedLayers is { Count: > 0 })
         {
             foreach (var selectedLayer in SelectedLayers)
@@ -607,6 +639,105 @@ public sealed partial class AllocationControl : IDisposable
             }
         }
     }
+
+    // Outlines each lock's cell group (pages or extents) as a Tetris-piece perimeter in the lock's colour — an edge is
+    // drawn only where a group cell borders a non-group cell, so contiguous cells merge and gaps show, with no per-cell
+    // borders. Time-gated by the playhead like the page spans.
+    private void DrawBorders(SKCanvas canvas, ExtentLayout layout)
+    {
+        if (Borders is not { Count: > 0 } borders || layout.HorizontalCount <= 0)
+        {
+            return;
+        }
+
+        var playhead = PlayheadTimeUs;
+
+        // Draw earliest-starting first so a lock that begins later paints over one already held — the newer scope wins
+        // the overlap.
+        foreach (var border in borders.OrderBy(BorderStartUs))
+        {
+            if (border.FileId != FileId)
+            {
+                continue;
+            }
+
+            var extentScope = border.Scope == AllocationBorderScope.Extent;
+
+            var gridWidth = extentScope ? layout.HorizontalCount : layout.HorizontalCount * 8;
+
+            // Visible cell window, so we only outline what's on screen (a cell adjacent to an off-screen group cell
+            // still correctly omits that shared edge).
+            var firstCell = extentScope ? ScrollPosition : ScrollPosition * 8;
+            var lastCell = firstCell + (extentScope ? layout.VisibleCount : layout.VisibleCount * 8);
+
+            // Expand only the ranges live at the playhead, so the outline tracks each lock's hold as it comes and goes
+            // and we never materialise the (potentially huge) full page set — just what is held right now.
+            var cells = new HashSet<int>();
+
+            foreach (var range in border.Cells)
+            {
+                if (range.StartUs <= playhead && range.EndUs >= playhead)
+                {
+                    for (var cell = range.FromCell; cell <= range.ToCell; cell++)
+                    {
+                        cells.Add(cell);
+                    }
+                }
+            }
+
+            if (cells.Count == 0)
+            {
+                continue;
+            }
+
+            _overlayBorderPaint.Color = border.Colour.ToSkColor();
+            _overlayBorderPaint.PathEffect = border.Dotted ? _dottedBorderEffect : null;
+            _overlayBorderPaint.StrokeCap = border.Dotted ? SKStrokeCap.Round : SKStrokeCap.Square;
+
+            foreach (var cell in cells)
+            {
+                if (cell < firstCell || cell >= lastCell)
+                {
+                    continue;
+                }
+
+                var rect = extentScope
+                    ? GetExtentPosition(cell - firstCell, layout)
+                    : GetPagePosition(cell - firstCell, layout);
+
+                var column = cell % gridWidth;
+
+                // Bring the outermost columns in by 1px so a 2px stroke on the control's left/right edge is not clipped
+                // half-off; interior boundaries sit on the true cell edge.
+                var leftX = column == 0 ? rect.Left + 1 : rect.Left;
+                var rightX = column == gridWidth - 1 ? rect.Right - 1 : rect.Right;
+
+                if (column == 0 || !cells.Contains(cell - 1))
+                {
+                    canvas.DrawLine(leftX, rect.Top, leftX, rect.Bottom, _overlayBorderPaint);
+                }
+
+                if (column == gridWidth - 1 || !cells.Contains(cell + 1))
+                {
+                    canvas.DrawLine(rightX, rect.Top, rightX, rect.Bottom, _overlayBorderPaint);
+                }
+
+                if (!cells.Contains(cell - gridWidth))
+                {
+                    canvas.DrawLine(leftX, rect.Top, rightX, rect.Top, _overlayBorderPaint);
+                }
+
+                if (!cells.Contains(cell + gridWidth))
+                {
+                    canvas.DrawLine(leftX, rect.Bottom, rightX, rect.Bottom, _overlayBorderPaint);
+                }
+            }
+        }
+    }
+
+    // A border's paint order key: the earliest hold across its ranges (empty sorts last, though it is skipped anyway).
+    private static long BorderStartUs(AllocationBorder border) =>
+        border.Cells.Count == 0 ? long.MaxValue : border.Cells.Min(c => c.StartUs);
 
     private void DrawPageSpans(SKCanvas canvas, ExtentLayout layout, AllocationLayer layer)
     {
@@ -951,6 +1082,8 @@ public sealed partial class AllocationControl : IDisposable
         _renderer?.Dispose();
         _borderPaint?.Dispose();
         _spanPaint.Dispose();
+        _overlayBorderPaint.Dispose();
+        _dottedBorderEffect.Dispose();
 
         AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
         PointerWheelChanged -= AllocationControl_PointerWheelChanged;

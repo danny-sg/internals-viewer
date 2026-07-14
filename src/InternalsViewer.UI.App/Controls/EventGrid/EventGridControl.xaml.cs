@@ -256,7 +256,7 @@ public sealed partial class EventGridControl : UserControl
         var row = FindRow(ev);
 
         // Defer the scroll so it runs after any tab switch / filter change has laid the grid out.
-        DispatcherQueue.TryEnqueue(() => { if (row is not null) DataGrid.ScrollIntoView(row, null); });
+        DispatcherQueue.TryEnqueue(() => { if (row is not null) { DataGrid.ScrollIntoView(row, null); } });
     }
 
     private void HyperlinkButton_Click(object sender, RoutedEventArgs e)

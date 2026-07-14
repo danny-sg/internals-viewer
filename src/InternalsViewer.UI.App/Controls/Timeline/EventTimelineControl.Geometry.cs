@@ -61,6 +61,7 @@ public sealed partial class EventTimelineControl
         }
 
         var contentX = (_playheadTime - _minTime) / _timeRange * ContentWidth;
+
         const double margin = 24;
 
         if (contentX < _scrollX + margin)

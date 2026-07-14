@@ -5,9 +5,9 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
-using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
@@ -31,9 +31,8 @@ using System.Threading.Tasks;
 using InternalsViewer.Query.Callstack;
 using InternalsViewer.Query.Callstack.Categories;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
-using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.UI.App.ViewModels.Query.Events;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -76,6 +75,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
+    // Lock outlines drawn over the allocation map, time-gated to each lock's hold (see AllocationControl.Borders).
+    [ObservableProperty]
+    private IReadOnlyList<AllocationBorder> _allocationBorders = [];
+
     [ObservableProperty]
     private bool _isTooltipEnabled = true;
 
@@ -112,7 +115,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private bool _showWaits = true;
 
-    partial void OnShowLocksChanged(bool value) => EventOptions.IncludeLock = value;
+    partial void OnShowLocksChanged(bool value)
+    {
+        EventOptions.IncludeLock = value;
+
+        RefreshLockBorders();
+    }
 
     partial void OnShowLatchesChanged(bool value) => EventOptions.IncludeLatch = value;
 
@@ -436,8 +444,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 continue;
             }
 
-            if (e.SequenceId < from) from = e.SequenceId;
-            if (e.SequenceId > to) to = e.SequenceId;
+            if (e.SequenceId < from)
+            {
+                from = e.SequenceId;
+            }
+
+            if (e.SequenceId > to)
+            {
+                to = e.SequenceId;
+            }
         }
 
         SequenceFrom = from <= to ? from : 0;
@@ -452,18 +467,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SyncIndexPage(timeUs);
     }
 
-    /// <summary>
-    /// Derives the active operators from the playhead time: every operator whose run-time span contains
-    /// the playhead, and the subset of those that have started emitting rows (past their consume phase).
-    /// This reflects the operators running concurrently at the position - a parallel query has several -
-    /// and which are producing rows, so the plan can show the data flow.
-    /// </summary>
     private void UpdateActiveOperators(long timeUs)
     {
         var source = FilteredEvents.Count > 0 ? FilteredEvents : Events;
 
-        // At the very start of the timeline nothing has run yet - leave the plan in its default (grey)
-        // state rather than lighting up operators that merely start at time zero.
         if (timeUs <= AxisStartUs(source))
         {
             if (ActivePlanNodes.Count > 0)
@@ -636,18 +643,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     // Caches each page's owning index root page, so the per-playhead range scan doesn't repeatedly
     // resolve the same pages' allocation units.
-    private readonly Dictionary<PageAddress, PageAddress?> _pageRootCache = new();
 
-    private PageAddress? RootPageOf(PageAddress page)
-    {
-        if (!_pageRootCache.TryGetValue(page, out var root))
-        {
-            root = Database.FindPageAllocationUnit(page)?.RootPage;
-            _pageRootCache[page] = root;
-        }
 
-        return root;
-    }
+
 
     // Per-index-root spans, built once whenever the event set (re)builds - see RefreshIndexPageSpans -
     // rather than rescanned per playhead tick. Same shape and colouring as the allocation map's own
@@ -667,56 +665,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// </summary>
     private void RefreshIndexPageSpans(List<EngineEvent> engineEvents, EventColourProvider colours)
     {
+        var (allSpans, readSpans) = new PageSpanBuilder().GetIndexPageSpans(engineEvents, colours, Database);
+
         _indexPageSpansByRoot.Clear();
         _indexReadSpansByRoot.Clear();
-
-        var queryEndUs = ComputeQueryEndUs(engineEvents);
-
-        var allSpans = new Dictionary<PageAddress, List<PageSpan>>();
-        var readSpans = new Dictionary<PageAddress, List<PageSpan>>();
-
-        void Add(PageSpan span, bool isRead)
-        {
-            if (RootPageOf(span.Address) is not { } root)
-            {
-                return;
-            }
-
-            AddSpan(allSpans, root, span);
-
-            if (isRead)
-            {
-                AddSpan(readSpans, root, span);
-            }
-        }
-
-        foreach (var e in engineEvents)
-        {
-            switch (e)
-            {
-                case LatchEvent { PageAddress: { } pg } latch:
-                    var endUs = latch.TimeUs + Math.Max(latch.DurationUs, MinFlashDurationUs);
-                    var latchColour = colours.GetLatchMapColour(e.ObjectName) ?? colours.GetColour(e);
-                    Add(new PageSpan(pg, latch.TimeUs, endUs, latchColour), isRead: false);
-                    break;
-
-                case IoEvent { IsRead: true, PageAddress: { } pg } io:
-                    var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
-                    Add(new PageSpan(pg, io.TimeUs, queryEndUs, readColour), isRead: true);
-                    break;
-
-                case ReadEventGroup group:
-                    // A read spans many pages now, so add a read span for each page it touched, timed at the read's END
-                    // (the pages hit the buffer on completion, matching the timeline read band's end-bunched rails).
-                    var groupColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
-                    var groupReadAtUs = e.TimeUs + e.DurationUs;
-                    foreach (var page in group.Pages)
-                    {
-                        Add(new PageSpan(page, groupReadAtUs, queryEndUs, groupColour), isRead: true);
-                    }
-                    break;
-            }
-        }
 
         foreach (var (root, spans) in allSpans)
         {
@@ -734,19 +686,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         SyncIndexPage(PlayheadTimeUs);
-
-        return;
-
-        static void AddSpan(Dictionary<PageAddress, List<PageSpan>> spansByRoot, PageAddress root, PageSpan span)
-        {
-            if (!spansByRoot.TryGetValue(root, out var list))
-            {
-                list = [];
-                spansByRoot[root] = list;
-            }
-
-            list.Add(span);
-        }
     }
 
     private void ApplyIndexPageSpans(IndexTabViewModel viewModel)
@@ -755,9 +694,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             ? spans
             : [];
     }
-
-    private static long ComputeQueryEndUs(List<EngineEvent> engineEvents) =>
-        engineEvents.DefaultIfEmpty().Max(e => e?.TimeUs + e?.DurationUs) ?? MinFlashDurationUs;
 
     /// <summary>
     /// Updates each open index tab's active page (the latest read at or before the playhead) and current
@@ -860,34 +796,36 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                    .ToHashSet();
 
         EventFilter = new EventFilterViewModel(settingsService);
+        
         EventFilter.SetSystemObjectIds(_systemObjectIds);
+
         EventFilter.FilterChanged += RefreshFilteredEvents;
 
         Schema = SchemaHelper.ToSqlSchema(database);
 
-        SqlDocument = DocumentViewModel.Create<SqlDocumentView>("SQL", 
-                                                                this, 
-                                                                keepAlive: true, 
+        SqlDocument = DocumentViewModel.Create<SqlDocumentView>("SQL",
+                                                                this,
+                                                                keepAlive: true,
                                                                 key: "Sql");
 
-        AllocationsDocument = DocumentViewModel.Create<AllocationDocumentView>("Allocations", 
-                                                                               this, 
-                                                                               keepAlive: true, 
+        AllocationsDocument = DocumentViewModel.Create<AllocationDocumentView>("Allocations",
+                                                                               this,
+                                                                               keepAlive: true,
                                                                                key: "Allocations");
 
-        PlanDocument = DocumentViewModel.Create<PlanDocumentView>("Execution Plan", 
-                                                                  this, 
-                                                                  keepAlive: true, 
+        PlanDocument = DocumentViewModel.Create<PlanDocumentView>("Execution Plan",
+                                                                  this,
+                                                                  keepAlive: true,
                                                                   key: "Plan");
 
-        EventsDocument = DocumentViewModel.Create<EventsDocumentView>("Events", 
-                                                                      this, 
-                                                                      keepAlive: true, 
+        EventsDocument = DocumentViewModel.Create<EventsDocumentView>("Events",
+                                                                      this,
+                                                                      keepAlive: true,
                                                                       key: "Events");
 
-        CallstackDocument = DocumentViewModel.Create<CallstackDocumentView>("Call Stack", 
-                                                                            this, 
-                                                                            keepAlive: true, 
+        CallstackDocument = DocumentViewModel.Create<CallstackDocumentView>("Call Stack",
+                                                                            this,
+                                                                            keepAlive: true,
                                                                             key: "Callstack");
 
         DocumentsByKey = new Dictionary<string, DocumentViewModel>
@@ -933,7 +871,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                                                  ? message
                                                                  : Message + Environment.NewLine + message);
 
-        // The QueryRunner does the crop now (trimming events and the call stack to the query's window).
         EventOptions.CropToQuery = CropToQuery;
 
         // Run full trace on background thread
@@ -958,7 +895,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
                 var colourProvider = new EventColourProvider(queryResult.ExecutionPlans, _objectColoursByName);
 
-                // Events are already trimmed to the window; its bounds feed the timeline axis.
                 var allocationLayer = GetEventsAllocationLayer(queryResult.EngineEvents,
                                                                colourProvider,
                                                                queryResult.CropStartUs,
@@ -988,7 +924,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             Events = results.EngineEvents;
 
-            // The distinct frames now live once in the shared tree rather than per event.
             Callstacks = results.CallStack?.Nodes().Select(n => n.Frame!).ToList() ?? [];
 
             CallStack = results.CallStack;
@@ -1003,6 +938,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ApplyEventLayers(layers);
             RefreshIndexPageSpans(Events, colours);
+            RefreshLockBorders();
         }
         catch (Exception ex)
         {
@@ -1042,6 +978,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Events = [];
         FilteredEvents = [];
+        CallStack = null;
         Callstacks = [];
         SelectedEvent = null;
         ExecutionPlans = [];
@@ -1059,6 +996,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         EventFilter.Clear();
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
+        AllocationBorders = [];
     }
 
     private void RefreshLayers(List<EngineEvent> engineEvents)
@@ -1066,6 +1004,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         ApplyEventLayers(GetEventsAllocationLayer(engineEvents, EventColours, StartOffset, EndOffset));
 
         RefreshIndexPageSpans(engineEvents, EventColours);
+
+        RefreshLockBorders();
     }
 
     private void ApplyEventLayers(AllocationLayer layer)
@@ -1080,78 +1020,37 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshLayers(FilteredEvents);
     }
 
-    private const long MinFlashDurationUs = 200;
-
     private AllocationLayer GetEventsAllocationLayer(List<EngineEvent> engineEvents,
                                                      EventColourProvider colours,
                                                      long? startOffset,
                                                      long? endOffset)
     {
-        var maxFileId = DatabaseFiles.Max(d => d.FileId);
-
         var overlayLayer = new AllocationLayer { Name = "Events", IsVisible = true };
 
-        var queryEndUs = ComputeQueryEndUs(engineEvents);
-
-        var pageSpans = new List<PageSpan>();
-
-        foreach (var e in engineEvents)
-        {
-            if (startOffset != null && endOffset != null && (e.TimeUs < startOffset || e.TimeUs > endOffset))
-            {
-                continue;
-            }
-
-            // A read now spans many pages, so flash each page of the group on the allocation map.
-            if (e is ReadEventGroup group)
-            {
-                var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
-
-                // The pages hit the buffer when the read COMPLETES, not when it is issued, so light them at the read's
-                // end — matching the timeline read band, whose return rails bunch at the end (see EventTimelineControl).
-                var readAtUs = e.TimeUs + e.DurationUs;
-
-                foreach (var p in group.Pages)
-                {
-                    if (p.FileId > 0 && p.FileId <= maxFileId)
-                    {
-                        pageSpans.Add(new PageSpan(p, readAtUs, queryEndUs, readColour));
-                    }
-                }
-
-                continue;
-            }
-
-            if (e is PageEngineEvent { PageAddress: { FileId: > 0 } page } && page.FileId <= maxFileId)
-            {
-                if (e is LatchEvent latchEvent)
-                {
-                    var endUs = latchEvent.TimeUs + Math.Max(latchEvent.DurationUs, MinFlashDurationUs);
-
-                    var displayColour = colours.GetLatchMapColour(e.ObjectName)
-                                        ?? colours.GetObjectColour(e.ObjectName)
-                                        ?? colours.GetColour(e);
-
-                    var latchSpan = new PageSpan(page, latchEvent.TimeUs, endUs, displayColour);
-
-                    pageSpans.Add(latchSpan);
-
-                    continue;
-                }
-
-                var pageSpan = new PageSpan(page,
-                                                 e.TimeUs,
-                                                 queryEndUs,
-                                                 colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e));
-
-                pageSpans.Add(pageSpan);
-            }
-        }
+        var pageSpans = PageSpanBuilder.GetEventsPageSpans(engineEvents,
+                                                           colours,
+                                                           startOffset,
+                                                           endOffset,
+                                                           Database);
 
         overlayLayer.SetPageSpans([.. pageSpans.OrderBy(s => s.StartUs)]);
 
         return overlayLayer;
     }
+
+    private void RefreshLockBorders()
+    {
+        AllocationBorders = ShowLocks && Events is { Count: > 0 }
+            ? EventBorderBuilder.GetLockBorders(Events.SelectMany(FlattenLocks).ToList(), Database)
+            : [];
+    }
+
+    private static IEnumerable<LockEvent> FlattenLocks(EngineEvent e) => e switch
+    {
+        LockEvent l => [l],
+        LockGroup g => g.Events.OfType<LockEvent>(),
+        _ => [],
+    };
 
     public PfsChain PfsChain => new();
 }

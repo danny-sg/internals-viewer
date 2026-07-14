@@ -19,6 +19,7 @@
                                               Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
                                               ExtentCount="{x:Bind Parent.ExtentCount, Mode=OneWay}"
                                               Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
+                                              Borders="{x:Bind Parent.AllocationBorders, Mode=OneWay}"
                                               FileId="{x:Bind FileId, Mode=OneWay}"
                                               BorderColor="{ThemeResource CardStrokeColorDefault}"
                                               GridColor="{ThemeResource AllocationBorderColor}"

@@ -19,6 +19,8 @@ public sealed partial class EventTimelineControl
     // A discrete (non-overlapping) lock line is near-opaque.
     private const byte LockLineAlpha = 220;
 
+    private const float MarkerWidth = 1f;
+
     // Draws the Lock band as one EQUAL-height sub-band per lock-mode category present (Read/Update/Write/Schema/Range/…),
     // ordered by category, so a busy category can't crowd out the others. Within a band each lock is a bar spanning its
     // held duration; if the band's max concurrency fits as lines at least MinLockLineHeight tall they are packed into
@@ -55,6 +57,7 @@ public sealed partial class EventTimelineControl
         }
 
         var bandHeight = innerHeight / categories.Count;
+
         var availableLanes = Math.Max(1, (int)(bandHeight / MinLockLineHeight));
 
         var cursorY = innerTop;
@@ -129,7 +132,11 @@ public sealed partial class EventTimelineControl
             }
             else
             {
-                DrawLockDensity(canvas, placed, bandTop, bandHeight, colour, rightEdge);
+                // When an operator is selected, a band whose locks are all on a different object fades (matches the
+                // per-lock dim of the discrete branch).
+                var dimmed = placed.All(p => DimForSelection(p.Lock));
+
+                DrawLockDensity(canvas, placed, bandTop, bandHeight, colour, rightEdge, dimmed);
             }
         }
     }
@@ -142,7 +149,8 @@ public sealed partial class EventTimelineControl
                                  float bandTop,
                                  float bandHeight,
                                  SKColor colour,
-                                 float rightEdge)
+                                 float rightEdge,
+                                 bool dimmed)
     {
         var x0 = (int)MathF.Floor(RowLabelWidth);
         var x1 = (int)MathF.Ceiling(rightEdge);
@@ -210,7 +218,7 @@ public sealed partial class EventTimelineControl
 
         var bandBottom = bandTop + bandHeight;
 
-        _markerPaint.Color = colour.WithAlpha(230);
+        _markerPaint.Color = colour.WithAlpha(dimmed ? FocusedDimAlpha : (byte)230);
 
         for (var i = 0; i < span; i++)
         {
@@ -348,6 +356,27 @@ public sealed partial class EventTimelineControl
         (ColourProvider is { } colours ? colours.GetColour(ev).ToSkColor() : _rows.Active[rowIndex].Color)
             .WithAlpha(dimmed ? FocusedDimAlpha : (byte)255);
 
-    private bool DimForSelection(EngineEvent ev) =>
-        _selectedNodeId is { } selected && ev.PlanNodeIdentifier is { } id && id.NodeId != selected;
+    // An event fades when an operator is selected and the event doesn't belong to it. Plan-matched events (reads, log)
+    // compare on node id; locks carry no plan node, so they highlight with the selection when they are on the same
+    // object (table) as the selected operator, and fade otherwise.
+    private bool DimForSelection(EngineEvent ev)
+    {
+        if (_selectedNodeId is not { } selected)
+        {
+            return false;
+        }
+
+        if (ev.PlanNodeIdentifier is { } id)
+        {
+            return id.NodeId != selected;
+        }
+
+        if (ev is LockEvent && !string.IsNullOrEmpty(_selectedTable))
+        {
+            return !string.Equals(ev.TableName, _selectedTable, StringComparison.OrdinalIgnoreCase)
+                   || !string.Equals(ev.SchemaName, _selectedSchema, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
+    }
 }

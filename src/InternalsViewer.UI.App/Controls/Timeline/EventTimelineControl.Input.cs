@@ -115,10 +115,13 @@ public sealed partial class EventTimelineControl
             return;
         }
 
-        if (hit.Value.Event is ExecutionOperatorEvent { PlanNodeIdentifier: { } node })
+        if (hit.Value.Event is ExecutionOperatorEvent { PlanNodeIdentifier: { } node } op)
         {
-            // Track the selection so its row-flow path (child→parent, lit while emitting) is drawn.
+            // Track the selection so its row-flow path (child→parent, lit while emitting) is drawn, and the object it
+            // accesses so locks on the same table highlight with it.
             _selectedNodeId = node.NodeId;
+            _selectedSchema = op.SchemaName;
+            _selectedTable = op.TableName;
 
             _skCanvas.Invalidate();
 
@@ -141,6 +144,8 @@ public sealed partial class EventTimelineControl
         }
 
         _selectedNodeId = null;
+        _selectedSchema = string.Empty;
+        _selectedTable = string.Empty;
         _skCanvas.Invalidate();
     }
 
