@@ -1,64 +1,81 @@
-# Symbol -> (SymbolCategory, Iterator) mappings for call-stack frame classification.
+# Symbol -> (SymbolCategory, Iterator, PlanOperator) mappings for call-stack frame classification.
 #
-# Pipe-delimited: Module|Class|Function|Category|Iterator. Lines starting with # and blank lines are ignored.
+# Pipe-delimited: Module|Class|Function|Category|Iterator|PlanOperator. Lines starting with # and blank lines are ignored.
 #   - Matching per field: "CQScan" = exact (case-insensitive), "CQScan*" = starts-with, "*Scan" = ends-with,
 #     "*CQScan*" = contains, "*" = any.
 #   - Category must be a SymbolCategory enum name. Iterator is the plan-operator badge text (blank = none).
 #   - The most specific matching rule wins: an exact field beats any glob, a longer glob beats a shorter one, and
-#     function is weighted highest and breaks ties.
-Module|Class|Function|Category|Iterator
+#     function is weighted highest and breaks ties. Only Module/Class/Function take part in this — Iterator and
+#     PlanOperator are carried by whichever rule wins, they do not affect which one does.
+#   - PlanOperator marks the frame where an operator starts executing, cutting the call tree into a segment per plan
+#     node. It is matched (same glob syntax) against the showplan PhysicalOperator, so it must name a REAL plan node:
+#     blank for anything the plan has no node for (Profiling, Row Iterator, SELECT).
+#   - PlanOperator takes a COMMA-SEPARATED LIST, and matches if any entry does. One class routinely serves several plan
+#     operators, and not always under related names: CQScanRange is the Index Seek, the Clustered Index Seek and the Key
+#     Lookup (a lookup seek, which ExecutionPlanParser renames), so it needs "*Index S*,Key Lookup".
+#   - The column is optional: a row that stops at Iterator just marks no boundary.
+#   - A missing mapping costs more than the one operator: an operator with no entry frame contributes no boundary, so
+#     its PARENT cannot trim that input away either, and the parent's segment swallows it.
+Module|Class|Function|Category|Iterator|PlanOperator
 
-# Statements
-sqllang|CXStmtSelect|XretExecute|StatementExecution|SELECT
-sqllang|CXStmtUpdate|XretExecute|StatementExecution|UPDATE
-sqllang|CXStmtDelete|XretExecute|StatementExecution|DELETE
-sqllang|CXStmtInsert|XretExecute|StatementExecution|INSERT
-sqllang|CXStmtMerge|XretExecute|StatementExecution|MERGE
+# Statements. These ARE plan nodes: the parser synthesises one per statement (NodeId -1) whose PhysicalOperator is
+# showplan's StatementType, so the names line up and the statement scopes like any other operator. Worth doing — it puts
+# the connection/batch preamble above XretExecute outside every segment instead of inside all of them.
+sqllang|CXStmtSelect|XretExecute|StatementExecution|SELECT|SELECT
+sqllang|CXStmtUpdate|XretExecute|StatementExecution|UPDATE|UPDATE
+sqllang|CXStmtDelete|XretExecute|StatementExecution|DELETE|DELETE
+sqllang|CXStmtInsert|XretExecute|StatementExecution|INSERT|INSERT
+sqllang|CXStmtMerge|XretExecute|StatementExecution|MERGE|MERGE
 
 # -----------------------------------------------------------------------------------------------------------------------------------------
 # Query operators
 # -----------------------------------------------------------------------------------------------------------------------------------------
-sqlmin|CQueryScan|GetRow|QueryOperator|Iterator
-sqlmin|CQScanProfileNew|GetRow|QueryOperator|Profiling
-sqlmin|CQScanLightProfileNew|GetRow|QueryOperator|Profiling
+sqlmin|CQueryScan|GetRow|QueryOperator|Iterator|
+sqlmin|CQScanProfileNew|GetRow|QueryOperator|Profiling|
+sqlmin|CQScanLightProfileNew|GetRow|QueryOperator|Profiling|
 
 # Physical Operators
 
-sqlmin|CQScanHashAgg*|*|PhysicalOperator|Hash Match (Aggregate)
+sqlmin|CQScanHashAgg*|*|PhysicalOperator|Hash Match (Aggregate)|Hash Match
 
-# Hash match + Build/Probe
-sqlmin|CQScanHash|ConsumeBuild|PhysicalOperator|Hash Match Build
-sqlmin|CQScanHash|ConsumeProbe|PhysicalOperator|Hash Match Probe
-sqlmin|CQScanHash*|*|PhysicalOperator|Hash Match
+# Hash match + Build/Probe. All three are the one Hash Match plan node — the badge names the phase, the boundary does not.
+sqlmin|CQScanHash|ConsumeBuild|PhysicalOperator|Hash Match Build|Hash Match
+sqlmin|CQScanHash|ConsumeProbe|PhysicalOperator|Hash Match Probe|Hash Match
+sqlmin|CQScanHash*|*|PhysicalOperator|Hash Match|Hash Match
 
 # Execution Tree (?)
-sqlmin|CXte*|*|ExecutionTree|
+sqlmin|CXte*|*|ExecutionTree||
 
-sqlmin|CQScanMergeJoin*|*|QueryOperator|Merge Join
-sqlmin|CQScanNLJoin*|*|QueryOperator|Nested Loops
-sqlmin|CQScanStreamAgg*|*|QueryOperator|Stream Aggregate
-sqlmin|CQScanTopSort*|*|QueryOperator|Sort
-sqlmin|CQScanSort*|*|QueryOperator|Sort
-sqlmin|CQScanTop*|*|QueryOperator|Top
-sqlmin|CQScanRange*|*|QueryOperator|Index Seek
-sqlmin|CQScanIndex*|*|QueryOperator|Index Scan
-sqlmin|CQScanTableScanNew|GetRow|QueryOperator|Row Read
-sqlmin|CQScanTable*|*|QueryOperator|Table Scan
-sqlmin|CQScanRowset*|*|QueryOperator|Scan
-sqlmin|CQScanFilter*|*|QueryOperator|Filter
-sqlmin|CQScanComputeScalar*|*|QueryOperator|Compute Scalar
-sqlmin|CQScanConcat*|*|QueryOperator|Concatenation
-sqlmin|CQScanSpool*|*|QueryOperator|Spool
-sqlmin|CQScanExchange*|*|QueryOperator|Parallelism
-sqlmin|CQScanSeq*|*|QueryOperator|Sequence
-sqlmin|CQScanUpdate*|*|QueryOperator|Update
-sqlmin|CQScan*|*|QueryOperator|
-sqlmin|QueryScan*|*|QueryOperator|
-sqlmin|CQueryScan*|*|QueryOperator|
+sqlmin|CQScanMergeJoin*|*|QueryOperator|Merge Join|Merge Join
+sqlmin|CQScanNLJoin*|*|QueryOperator|Nested Loops|Nested Loops
+sqlmin|CQScanStreamAgg*|*|QueryOperator|Stream Aggregate|Stream Aggregate
+sqlmin|CQScanTopSort*|*|QueryOperator|Sort|*Sort
+sqlmin|CQScanSort*|*|QueryOperator|Sort|*Sort
+sqlmin|CQScanTop*|*|QueryOperator|Top|Top
+# Seeks/scans: the glob covers the Clustered variants, which the plan names separately but one class serves. CQScanRange
+# is also the Key Lookup — the same seek, renamed by ExecutionPlanParser when the showplan marks it a lookup — and that
+# name has nothing in common with the others, hence the list.
+sqlmin|CQScanRange*|*|QueryOperator|Index Seek|*Index S*,Key Lookup,RID Lookup
+sqlmin|CQScanIndex*|*|QueryOperator|Index Scan|*Index Scan
+sqlmin|CQScanTableScanNew|GetRow|QueryOperator|Row Read|Table Scan
+sqlmin|CQScanTable*|*|QueryOperator|Table Scan|Table Scan
+# The generic rowset iterator streams rows for whatever the plan named — a seek's range as much as a scan, since both
+# come through FetchNextRow. The badge cannot tell which and neither can this, so it matches both.
+sqlmin|CQScanRowset*|*|QueryOperator|Scan|*Scan,*Seek
+sqlmin|CQScanFilter*|*|QueryOperator|Filter|Filter
+sqlmin|CQScanComputeScalar*|*|QueryOperator|Compute Scalar|Compute Scalar
+sqlmin|CQScanConcat*|*|QueryOperator|Concatenation|Concatenation
+sqlmin|CQScanSpool*|*|QueryOperator|Spool|*Spool
+sqlmin|CQScanExchange*|*|QueryOperator|Parallelism|Parallelism
+sqlmin|CQScanSeq*|*|QueryOperator|Sequence|Sequence
+sqlmin|CQScanUpdate*|*|QueryOperator|Update|*Update
+sqlmin|CQScan*|*|QueryOperator||
+sqlmin|QueryScan*|*|QueryOperator||
+sqlmin|CQueryScan*|*|QueryOperator||
 
 # Rowset (Row iterators)
-sqlmin|Rowset*|*FetchNextRow|RowAccess|Row Iterator
-sqlmin|Rowset*|*|RowAccess|
+sqlmin|Rowset*|*FetchNextRow|RowAccess|Row Iterator|
+sqlmin|Rowset*|*|RowAccess||
 
 # DataSet (Dataset operations)
 
@@ -163,8 +180,8 @@ sqlmin|Rowset*|*|RowAccess|
 *|SqlAutoReadOnlyXact*|*|TransactionManagement|
 *|SqlAutoSimpleXact*|*|TransactionManagement|
 
-*|AllocScan*|*|AllocationAccess|
-*|AllocationOrderPageScanner*|*|AllocationAccess|
+sqlmin|AllocationOrderPageScanner|*|PageAccess|
+sqlmin|AllocScan|*|PageAccess|
 
 *|CMED*|*|Metadata|
 *|CSQLStrings*|*|Metadata|

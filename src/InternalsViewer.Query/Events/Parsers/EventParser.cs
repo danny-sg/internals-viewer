@@ -196,7 +196,7 @@ public sealed class EventParser
 
         var waitEvent = new WaitEvent
         {
-            Name = e.Name,
+            Name = "Wait",
             Timestamp = e.Timestamp,
             DatabaseId = e.GetDatabaseId(),
             WaitType = waitType,

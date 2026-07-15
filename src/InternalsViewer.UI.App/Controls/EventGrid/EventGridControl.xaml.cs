@@ -88,7 +88,7 @@ public sealed partial class EventGridControl : UserControl
         _parentOf.Clear();
         _expanded.Clear();
 
-        foreach (var group in (Events ?? []).OfType<IEventGroup>())
+        foreach (var group in (Events).OfType<IEventGroup>())
         {
             foreach (var child in group.Events)
             {
@@ -143,8 +143,8 @@ public sealed partial class EventGridControl : UserControl
     {
         InitializeComponent();
 
-        DataGrid.LoadingRow      += OnDataGridLoadingRow;
-        DataGrid.UnloadingRow    += OnDataGridUnloadingRow;
+        DataGrid.LoadingRow += OnDataGridLoadingRow;
+        DataGrid.UnloadingRow += OnDataGridUnloadingRow;
         DataGrid.SelectionChanged += OnDataGridSelectionChanged;
 
         // handledEventsToo so the tap still reaches us after the DataGrid has handled the pointer for selection.
@@ -265,14 +265,14 @@ public sealed partial class EventGridControl : UserControl
     private void ApplyHighlight(DataGridRow row, EngineEvent ev)
     {
         var from = SequenceFrom;
-        var to   = SequenceTo;
+        var to = SequenceTo;
 
         var inScope = (from == 0 && to == 0)
                    || (ev.SequenceId >= from && ev.SequenceId <= to);
 
         row.Background = inScope ? InScopeBrush : null;
     }
-    
+
     /// <summary>Selects and scrolls the grid to the given event, clearing the search filter if it hides it.</summary>
     public void NavigateToEvent(EngineEvent ev)
     {
@@ -303,17 +303,12 @@ public sealed partial class EventGridControl : UserControl
         ApplyFilter();
     }
 
-    /// <summary>Sets the grid's source to the events matching the search box (all fields), in the current sort order.</summary>
+    /// <summary>
+    /// Sets the grid's source to the events matching the search box (all fields), in the current sort order.
+    /// </summary>
     private void ApplyFilter()
     {
-        var events = Events;
-
-        if (events is null)
-        {
-            DataGrid.ItemsSource = null;
-            UpdateStatusBar([]);
-            return;
-        }
+        var events = Events.Where(e => e.IsVisible);
 
         IEnumerable<EngineEvent> result = events;
 
@@ -327,6 +322,7 @@ public sealed partial class EventGridControl : UserControl
         var filtered = ApplySort(result.ToList());
 
         _rows = new ObservableCollection<EventRow>(BuildRows(filtered));
+
         DataGrid.ItemsSource = _rows;
 
         UpdateStatusBar(filtered);
@@ -430,15 +426,15 @@ public sealed partial class EventGridControl : UserControl
 
         IOrderedEnumerable<EngineEvent> ordered = _sortTag switch
         {
-            "Event"       => Order(events, e => e.Name),
-            "Type"        => Order(events, e => e.Description),
-            "TimeUs"      => Order(events, e => e.TimeUs),
-            "DurationUs"  => Order(events, e => e.DurationUs),
+            "Event" => Order(events, e => e.Name),
+            "Type" => Order(events, e => e.Description),
+            "TimeUs" => Order(events, e => e.TimeUs),
+            "DurationUs" => Order(events, e => e.DurationUs),
             "PageAddress" => Order(events, PageSortKey),
-            "Object"      => Order(events, e => e.ObjectName),
-            "SequenceId"  => Order(events, e => e.SequenceId),
-            "NodeId"      => Order(events, e => e.PlanNodeIdentifier?.NodeId),
-            _             => Order(events, e => e.SequenceId),
+            "Object" => Order(events, e => e.ObjectName),
+            "SequenceId" => Order(events, e => e.SequenceId),
+            "NodeId" => Order(events, e => e.PlanNodeIdentifier?.NodeId),
+            _ => Order(events, e => e.SequenceId),
         };
 
         return ordered.ToList();

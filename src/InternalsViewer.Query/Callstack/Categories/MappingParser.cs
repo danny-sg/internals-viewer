@@ -24,6 +24,9 @@ public static class MappingParser
     {
         var order = startOrder;
 
+        // minCells stays at 5 though a rule has six fields: it is a minimum and a row below it is dropped silently, so
+        // requiring the sixth would delete every five-cell rule (an override file, a row missing its trailing pipe)
+        // without a word. A row that stops at the Iterator simply names no plan operator, which is the common case.
         foreach (var cells in ReadRows(reader, minCells: 5))
         {
             if (!Enum.TryParse<SymbolCategory>(cells[3], ignoreCase: true, out var category))
@@ -37,11 +40,23 @@ public static class MappingParser
                 Class = GlobPattern.Parse(cells[1]),
                 Function = GlobPattern.Parse(cells[2]),
                 Category = category,
-                Iterator = string.IsNullOrWhiteSpace(cells[4]) ? null : cells[4].Trim(),
+                Iterator = Optional(cells, 4),
+                PlanOperator = PlanOperators(Optional(cells, 5)),
                 DefinitionOrder = order++,
             };
         }
     }
+
+    // Blank is empty, not GlobPattern.Parse("") — an empty pattern is match-anything, which for the plan operator would
+    // make every unmapped frame an operator boundary.
+    private static IReadOnlyList<GlobPattern> PlanOperators(string? cell)
+        => cell is null
+            ? []
+            : [.. cell.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                      .Select(GlobPattern.Parse)];
+
+    private static string? Optional(string[] cells, int index)
+        => index < cells.Length && !string.IsNullOrWhiteSpace(cells[index]) ? cells[index] : null;
 
     private static IEnumerable<string[]> ReadRows(TextReader reader, int minCells)
     {

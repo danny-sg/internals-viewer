@@ -207,6 +207,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 callStack = callStack.CollapseToFunctions(keep is null ? null : keep.Contains);
 
+                // After the collapse: the operators' entry frames must be nodes of the tree the events now point at.
+                OperatorCallStackMatcher.Match(events);
+
                 if (events.Count > 0)
                 {
                     // Per-node activity histogram across the query window (24 buckets, 14px tall).
@@ -334,41 +337,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     /// any group, not just reads: locks are grouped too, and keying this on one group type silently drops every frame
     /// belonging to a grouped event from the tree, but only when cropping is on (uncropped there is no keep set).
     /// </remarks>
-    private static HashSet<EngineEvent> KeepSet(List<EngineEvent> events)
-    {
-        var keep = new HashSet<EngineEvent>(ReferenceEqualityComparer.Instance);
-
-        foreach (var e in events)
-        {
-            KeepWithOwned(keep, e);
-        }
-
-        return keep;
-    }
-
-    // An event and everything it owns, since only the owner reaches the top-level list but the frames live on the owned:
-    // the End folded into it, and (for a consolidated group) the raw events it was built from. Recursive because the two
-    // nest — a read group's members are themselves folded begin/end pairs.
-    private static void KeepWithOwned(HashSet<EngineEvent> keep, EngineEvent e)
-    {
-        if (!keep.Add(e))
-        {
-            return;
-        }
-
-        if (e.FoldedFrom is { } folded)
-        {
-            KeepWithOwned(keep, folded);
-        }
-
-        if (e is IEventGroup group)
-        {
-            foreach (var child in group.Events)
-            {
-                KeepWithOwned(keep, child);
-            }
-        }
-    }
+    private static HashSet<EngineEvent> KeepSet(List<EngineEvent> events) => events.ExpandOwned();
 
     private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets)>
         RunQueryWithEventSession(string sessionName,

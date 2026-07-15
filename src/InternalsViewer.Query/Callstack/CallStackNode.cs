@@ -44,6 +44,31 @@ public sealed class CallStackNode
     public bool HasOperator => Operator is not null;
 
     /// <summary>
+    /// Whether an operator's execution begins here, so the tree can be cut into a segment per operator
+    /// </summary>
+    public bool IsOperatorBoundary => Frame?.Resolved?.PlanOperator.Count > 0 && !IsConstructor;
+
+    /// <summary>
+    /// Whether this frame is where the named showplan physical operator (e.g. Clustered Index Seek) begins executing
+    /// </summary>
+    public bool IsEntryFrameFor(string physicalOperator)
+        => !IsConstructor && (Frame?.Resolved?.PlanOperator.Any(pattern => pattern.Matches(physicalOperator)) ?? false);
+
+    /// <summary>
+    /// Whether this frame is the iterator's constructor rather than the iterator running
+    /// </summary>
+    /// <remarks>
+    /// The plan is built before it runs: CQueryScan::Setup constructs every iterator, so CQScanStreamAggregateNew::
+    /// CQScanStreamAggregateNew sits on the stack of anything that happens during construction — a memory wait, say.
+    /// The mapping matches it, because its rules glob the function, and it would then be taken for the operator's entry
+    /// and the segment rooted in the plan's construction instead of its execution.
+    ///
+    /// Detected by shape rather than a rule per class: a constructor's method name is its class name.
+    /// </remarks>
+    public bool IsConstructor => Frame?.Resolved is { ClassName: { Length: > 0 } className, MethodName: { } methodName }
+                                 && string.Equals(className, methodName, StringComparison.Ordinal);
+
+    /// <summary>
     /// Per-time-bucket event counts for this node's subtree, filled by <see cref="CallStackTree.ComputeActivity"/>
     /// </summary>
     public int[] ActivityCounts { get; set; } = [];
@@ -74,6 +99,16 @@ public sealed class CallStackNode
     /// </summary>
     public List<EngineEvent> Events { get; } = [];
 
+    /// <summary>
+    /// The frames a projection cut away directly below this one — where a segment handed off to a nested operator
+    /// </summary>
+    /// <remarks>
+    /// Only ever filled on a projected tree, and only where <see cref="CallStackTree.Project"/> stopped. The projection
+    /// knows precisely which frame ended each segment and would otherwise discard it, leaving the call tree to just stop
+    /// with nothing to say the work continues in another operator.
+    /// </remarks>
+    public HashSet<CallStackNode> CutBelow { get; } = [];
+
     public bool IsRoot => Frame is null;
 
     public IEnumerable<CallStackNode> ChildNodes => Children.Values;
@@ -98,11 +133,20 @@ public sealed class CallStackNode
     /// <summary>
     /// The frames from this node up to (excluding) the root, innermost first — the call path of an event linked here
     /// </summary>
-    public IEnumerable<CallstackFrame> Path()
+    public IEnumerable<CallstackFrame> Path() => Ancestors().Select(node => node.Frame!);
+
+    /// <summary>
+    /// This node and its ancestors up to (excluding) the root, innermost first
+    /// </summary>
+    /// <remarks>
+    /// The node-level <see cref="Path()"/>, for callers that need to test the nodes themselves rather than their frames
+    /// — cutting the path at an operator boundary, say.
+    /// </remarks>
+    public IEnumerable<CallStackNode> Ancestors()
     {
-        for (var node = this; node is { Frame: { } frame }; node = node.Parent)
+        for (var node = this; node is { Frame: not null }; node = node.Parent)
         {
-            yield return frame;
+            yield return node;
         }
     }
 

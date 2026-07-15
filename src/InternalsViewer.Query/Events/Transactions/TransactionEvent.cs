@@ -19,4 +19,6 @@ public sealed record TransactionEvent : EngineEvent
     public bool IsEnd => State is TransactionState.Commit or TransactionState.Rollback;
 
     public override string Description => $"Transaction {State}";
+
+    public override bool IsVisible => false;
 }

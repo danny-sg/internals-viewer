@@ -556,6 +556,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public void SelectPlanNode(PlanNodeIdentifier identifier)
     {
         SelectedPlanNode = ResolvePlanNode(identifier);
+
+        // An operator IS an event, so selecting the node selects it too. Without this everything keyed on SelectedEvent
+        // — the callstack's scope, the details panel — keeps showing whatever was selected before, and clicking an
+        // operator looks like it did nothing. Only the plan view reads SelectedPlanNode.
+        if (Events.FirstOrDefault(e => e is ExecutionOperatorEvent && e.PlanNodeIdentifier == identifier) is { } op)
+        {
+            SelectedEvent = op;
+        }
     }
 
     private readonly Dictionary<string, IndexTabViewModel> _openIndexes = new();

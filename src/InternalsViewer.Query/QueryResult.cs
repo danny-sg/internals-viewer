@@ -16,9 +16,6 @@ public sealed record QueryResult
 
     public List<ExecutionPlan> ExecutionPlans { get; set; } = [];
 
-    /// <summary>
-    /// Merged query call stack
-    /// </summary>
     public CallStackTree? CallStackTree { get; set; }
 
     public List<QueryResultSet> ResultSets { get; set; } = [];

@@ -57,4 +57,6 @@ public record EngineEvent
     public ulong? TaskAddress { get; set; }
 
     public ulong? WorkerAddress { get; set; }
+
+    public virtual bool IsVisible => true;
 }

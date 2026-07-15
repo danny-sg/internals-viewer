@@ -7,4 +7,6 @@ public sealed record BatchStartEvent : EngineEvent
         get;
         set;
     } = string.Empty;
+
+    public override bool IsVisible => false;
 }

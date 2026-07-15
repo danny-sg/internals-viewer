@@ -21,7 +21,10 @@ public sealed class CategoryMappings
             ? category
             : ModuleCategory.Unknown;
 
-    public (SymbolCategory Category, string? Iterator) Classify(string? module, string? className, string? methodName)
+    public (SymbolCategory Category, string? Iterator, IReadOnlyList<GlobPattern> PlanOperator) Classify(
+        string? module,
+        string? className,
+        string? methodName)
     {
         SymbolCategoryRule? best = null;
 
@@ -37,7 +40,9 @@ public sealed class CategoryMappings
             }
         }
 
-        return best is null ? (SymbolCategory.Unknown, null) : (best.Category, best.Iterator);
+        return best is null
+            ? (SymbolCategory.Unknown, null, [])
+            : (best.Category, best.Iterator, best.PlanOperator);
     }
 
     public static CategoryMappings Load(TextReader modules,

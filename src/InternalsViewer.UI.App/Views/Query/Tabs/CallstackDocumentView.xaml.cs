@@ -1,11 +1,12 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Interfaces.Events;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -21,16 +22,33 @@ public sealed partial class CallstackDocumentView : UserControl
 
     private bool _revealInfrastructure;
 
-    private string? _startSymbol = "CSQLSource::Execute";
+    // "Scope": root the tree at the plan's operator hierarchy, each operator holding the call tree of its OWN events
+    // (matched by PlanNodeIdentifier) above its child operators, cut at the frame where the operator starts executing.
+    // Off is the whole query's stacks merged into one tree.
+    private bool _scope;
 
-    private bool _operatorsOnly;
+    // Set while the tree itself is driving the selection, so the resulting change does not rebuild the tree.
+    private bool _selectingFromTree;
 
-    // "Plan Operators" mode: root the tree at the plan's operator hierarchy, each operator holding the call tree of
-    // its OWN events (matched by PlanNodeIdentifier) above its child operators, instead of one merged call tree.
-    private bool _planMode;
+    // Where the selection has been, so following the operator links is reversible. Every selection lands here, not only
+    // the ones made in this view: arriving from the timeline and stepping back to where you were is the same movement.
+    private readonly List<EngineEvent> _history = [];
 
-    // The operator rows built in plan mode, so only they are auto-expanded (their call frames stay collapsed).
+    private int _historyIndex = -1;
+
+    // Set while a Back/Forward is driving the selection, so replaying the past does not rewrite it.
+    private bool _navigatingHistory;
+
+    private string _search = string.Empty;
+
+    // The operator rows built when scoped, so only they are auto-expanded (their call frames stay collapsed).
     private readonly List<TreeViewNode> _operatorNodes = new();
+
+    // The operator each of the current segment's exit frames hands off to, rebuilt per operator as it is projected.
+    private Dictionary<CallStackNode, ExecutionOperatorEvent> _nextOperator = new();
+
+    // The plan's operators as a tree, rebuilt with the scoped tree.
+    private OperatorHierarchy _hierarchy = OperatorHierarchy.Build([]);
 
     private CallStackNode? _histogramNode;
 
@@ -48,33 +66,84 @@ public sealed partial class CallstackDocumentView : UserControl
         InitializeComponent();
 
         DataContextChanged += (_, _) => OnViewModelChanged();
-
-        StartCombo.SelectedIndex = 0;
     }
 
-    private void OnStartChanged(object sender, SelectionChangedEventArgs e)
+    private void OnScopeChanged(object sender, RoutedEventArgs e)
     {
-        _startSymbol = (StartCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+        _scope = ScopeToggle.IsChecked == true;
 
         ApplyScope(_viewModel?.SelectedEvent);
     }
 
-    private void OnFilterChanged(object sender, RoutedEventArgs e)
-    {
-        _operatorsOnly = QueryOperatorsToggle.IsChecked == true;
+    private void OnBackClick(object sender, RoutedEventArgs e) => GoTo(_historyIndex - 1);
 
-        ApplyScope(_viewModel?.SelectedEvent);
+    private void OnForwardClick(object sender, RoutedEventArgs e) => GoTo(_historyIndex + 1);
+
+    private void GoTo(int index)
+    {
+        if (_viewModel is null || index < 0 || index >= _history.Count)
+        {
+            return;
+        }
+
+        _historyIndex = index;
+
+        _navigatingHistory = true;
+
+        try
+        {
+            _viewModel.SelectedEvent = _history[index];
+        }
+        finally
+        {
+            _navigatingHistory = false;
+        }
+
+        UpdateHistoryButtons();
     }
 
-    private void OnModeChanged(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Records a selection as a place that can be returned to
+    /// </summary>
+    /// <remarks>
+    /// Moving after stepping back drops whatever was ahead — the forward entries were a path from where you were, not
+    /// from where you have just gone, and keeping them would offer a route that no longer connects.
+    /// </remarks>
+    private void RecordHistory(EngineEvent? selected)
     {
-        _planMode = PlanModeToggle.IsChecked == true;
+        if (selected is null || _navigatingHistory)
+        {
+            return;
+        }
 
-        // The Start root and Query Operators filter only shape the merged tree.
-        StartCombo.IsEnabled = !_planMode;
-        QueryOperatorsToggle.IsEnabled = !_planMode;
+        if (_historyIndex >= 0 && ReferenceEquals(_history[_historyIndex], selected))
+        {
+            return;
+        }
 
-        ApplyScope(_viewModel?.SelectedEvent);
+        _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
+
+        _history.Add(selected);
+
+        _historyIndex = _history.Count - 1;
+
+        UpdateHistoryButtons();
+    }
+
+    private void ClearHistory()
+    {
+        _history.Clear();
+
+        _historyIndex = -1;
+
+        UpdateHistoryButtons();
+    }
+
+    private void UpdateHistoryButtons()
+    {
+        BackButton.IsEnabled = _historyIndex > 0;
+
+        ForwardButton.IsEnabled = _historyIndex >= 0 && _historyIndex < _history.Count - 1;
     }
 
     private void OnNodeRightTapped(object sender, RightTappedRoutedEventArgs e) =>
@@ -133,20 +202,26 @@ public sealed partial class CallstackDocumentView : UserControl
 
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // A new query (CallStack) always rebuilds. A selection change rescopes the merged tree, but in plan mode it
-        // must not — the plan tree is selection-independent, so rebuilding would only reset the user's expansion.
-        if (e.PropertyName == nameof(QueryViewModel.CallStack)
-            || (e.PropertyName == nameof(QueryViewModel.SelectedEvent) && !_planMode))
+        // A new query's events are new objects, so nowhere the history points at exists any more.
+        if (e.PropertyName == nameof(QueryViewModel.CallStack))
         {
+            ClearHistory();
+
+            ApplyScope(_viewModel?.SelectedEvent);
+        }
+        else if (e.PropertyName == nameof(QueryViewModel.SelectedEvent) && !_selectingFromTree)
+        {
+            RecordHistory(_viewModel?.SelectedEvent);
+
             ApplyScope(_viewModel?.SelectedEvent);
         }
     }
 
     private void ApplyScope(EngineEvent? selected)
     {
-        if (_planMode)
+        if (_scope)
         {
-            BuildPlanTree();
+            BuildPlanTree(SelectedNodeId(selected));
 
             return;
         }
@@ -161,7 +236,7 @@ public sealed partial class CallstackDocumentView : UserControl
 
         BuildTree();
 
-        if (_visible is not null && _nodes.Count == 0 && !_operatorsOnly)
+        if (_visible is not null && _nodes.Count == 0)
         {
             _revealInfrastructure = true;
 
@@ -256,6 +331,75 @@ public sealed partial class CallstackDocumentView : UserControl
         return depth;
     }
 
+    // Clicking a frame selects the event it came from, so the grid, details and timeline all answer "what is this frame
+    // doing here?" — the question the tree cannot answer on its own, and the one every diagnosis of the scoping has
+    // needed. A frame with no events of its own reports the earliest beneath it: that is still the work it led to.
+    private void OnFrameInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
+    {
+        if (_viewModel is null || args.InvokedItem is not TreeViewNode invoked)
+        {
+            return;
+        }
+
+        var selected = invoked.Content switch
+        {
+            OperatorLink link => link.Operator,
+            OperatorRow row => row.Operator,
+            CallStackNode frame => EarliestEvent(frame),
+            _ => null,
+        };
+
+        if (selected is null)
+        {
+            return;
+        }
+
+        // A hand-off link is a request to GO somewhere, so it must rebuild — that is the whole of what it does. Every
+        // other row is just reporting what it already shows, and rebuilding under the click would throw away the
+        // expansion the user opened to get there.
+        var navigating = invoked.Content is OperatorLink;
+
+        _selectingFromTree = !navigating;
+
+        try
+        {
+            _viewModel.SelectedEvent = selected;
+        }
+        finally
+        {
+            _selectingFromTree = false;
+        }
+    }
+
+    private static EngineEvent? EarliestEvent(CallStackNode node)
+    {
+        EngineEvent? earliest = null;
+
+        var pending = new Stack<CallStackNode>();
+
+        pending.Push(node);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+
+            foreach (var engineEvent in current.Events)
+            {
+                if (earliest is null || engineEvent.SequenceId < earliest.SequenceId)
+                {
+                    earliest = engineEvent;
+                }
+            }
+
+            foreach (var child in current.ChildNodes)
+            {
+                pending.Push(child);
+            }
+        }
+
+        return earliest;
+    }
+
     private CallStackNode? SelectNode(CallStackNode? target)
     {
         for (var node = target; node is { IsRoot: false }; node = node.Parent)
@@ -303,12 +447,29 @@ public sealed partial class CallstackDocumentView : UserControl
     {
         ClearTree();
 
-        foreach (var root in StartRoots())
+        foreach (var root in _viewModel?.CallStackRoots ?? [])
         {
             foreach (var treeNode in BuildVisible(root))
             {
                 Tree.RootNodes.Add(treeNode);
             }
+        }
+
+        ExpandForSearch();
+    }
+
+    // A filtered tree left collapsed hides the very rows the search kept, so a search opens what it found. Attached
+    // first: WinUI can drop a subtree expanded while detached.
+    private void ExpandForSearch()
+    {
+        if (_search.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var root in Tree.RootNodes)
+        {
+            SetExpanded(root, expanded: true);
         }
     }
 
@@ -324,40 +485,6 @@ public sealed partial class CallstackDocumentView : UserControl
         Tree.RootNodes.Clear();
     }
 
-    private IEnumerable<CallStackNode> StartRoots()
-    {
-        var roots = _viewModel?.CallStackRoots ?? [];
-
-        if (_visible is not null || string.IsNullOrEmpty(_startSymbol))
-        {
-            return roots;
-        }
-
-        var found = new List<CallStackNode>();
-
-        foreach (var root in roots)
-        {
-            FindStart(root, found);
-        }
-
-        // Fall back to the top if the start symbol isn't in this query's stacks.
-        return found.Count > 0 ? found : roots;
-    }
-
-    private void FindStart(CallStackNode node, List<CallStackNode> found)
-    {
-        if (node.Symbol == _startSymbol)
-        {
-            found.Add(node);
-
-            return;
-        }
-
-        foreach (var child in node.ChildNodes)
-        {
-            FindStart(child, found);
-        }
-    }
 
     private IEnumerable<TreeViewNode> BuildVisible(CallStackNode node)
     {
@@ -370,15 +497,20 @@ public sealed partial class CallstackDocumentView : UserControl
 
         var infrastructureHidden = node.IsInfrastructure && !_revealInfrastructure;
 
-        var nonOperatorHidden = _operatorsOnly && !node.HasOperator;
-
-        if (outOfScope || infrastructureHidden || nonOperatorHidden)
+        if (outOfScope || infrastructureHidden)
         {
             foreach (var child in children)
             {
                 yield return child;
             }
 
+            yield break;
+        }
+
+        // Dropped outright rather than promoting its children, unlike the filters above: those hide a row that is in the
+        // way, this one has already established there is nothing under it worth showing.
+        if (Filtered(node, children.Count))
+        {
             yield break;
         }
 
@@ -394,9 +526,16 @@ public sealed partial class CallstackDocumentView : UserControl
         yield return treeNode;
     }
 
-    // Plan Operators mode: root the tree at the plan's operators. Each operator row carries the call tree of its own
-    // events, then its child operators; an operator whose whole subtree captured no call stacks is dropped.
-    private void BuildPlanTree()
+    // The plan node a selection scopes the tree to: an operator names itself, and any other event names the operator it
+    // was matched to — so selecting a read in the grid or timeline isolates the operator that issued it.
+    private static PlanNodeIdentifier? SelectedNodeId(EngineEvent? selected) => selected?.PlanNodeIdentifier;
+
+    // Scoped: root the tree at the plan's operators. Each operator row carries the call tree of its own events, then its
+    // child operators; an operator whose whole subtree captured no call stacks is dropped.
+    //
+    // With a selection, only that operator is shown — the point of scoping is to see one node's stack in isolation, so
+    // the rest of the plan is not built. With nothing selected there is nothing to isolate, so the whole plan is.
+    private void BuildPlanTree(PlanNodeIdentifier? selectedNode)
     {
         ClearTree();
 
@@ -408,31 +547,24 @@ public sealed partial class CallstackDocumentView : UserControl
             _histogramNode = null;
         }
 
-        var operators = (_viewModel?.Events ?? [])
-            .OfType<ExecutionOperatorEvent>()
-            .Where(o => o.PlanNodeIdentifier is not null)
-            .ToList();
+        _hierarchy = OperatorHierarchy.Build(_viewModel?.Events ?? []);
 
-        if (operators.Count == 0)
+        if (_hierarchy.Operators.Count == 0)
         {
             return;
         }
 
-        var childrenByParent = operators
-            .Where(o => o.ParentNodeId is not null)
-            .ToLookup(o => (o.PlanNodeIdentifier!.PlanHandleId, o.ParentNodeId!.Value));
-
-        var nodeIds = operators.Select(o => o.PlanNodeIdentifier!.NodeId).ToHashSet();
-
-        // Roots are operators with no parent in the captured set — the statement node, or the top operators when the
-        // statement node itself was not built.
-        var roots = operators
-            .Where(o => o.ParentNodeId is null || !nodeIds.Contains(o.ParentNodeId.Value))
-            .OrderBy(o => o.PlanNodeIdentifier!.NodeId);
-
-        foreach (var root in roots)
+        if (selectedNode is not null
+            && _hierarchy.Operators.FirstOrDefault(o => o.PlanNodeIdentifier == selectedNode) is { } selectedOperator)
         {
-            if (BuildOperatorNode(root, childrenByParent) is { } node)
+            BuildIsolatedOperator(selectedOperator);
+
+            return;
+        }
+
+        foreach (var root in _hierarchy.Roots)
+        {
+            if (BuildOperatorNode(root) is { } node)
             {
                 Tree.RootNodes.Add(node);
             }
@@ -444,30 +576,55 @@ public sealed partial class CallstackDocumentView : UserControl
         {
             operatorNode.IsExpanded = true;
         }
+
+        ExpandForSearch();
+    }
+
+    // One operator on its own, with its call tree expanded: the isolated stack for the selected node. No child operators
+    // — their frames are a different node's work, which is exactly what isolating it means to exclude.
+    private void BuildIsolatedOperator(ExecutionOperatorEvent op)
+    {
+        // The way back out. Isolation is exactly where the plan around the operator is gone, so without this the only
+        // route to its caller is the history, and there is none at all when the operator was reached from the timeline.
+        if (_hierarchy.Parent(op) is { } parent)
+        {
+            Tree.RootNodes.Add(new TreeViewNode { Content = new OperatorLink(parent, Back: true) });
+        }
+
+        var operatorNode = new TreeViewNode { Content = new OperatorRow(op, Unsegmented: !Segmented(op)) };
+
+        foreach (var callNode in BuildOperatorCallTree(op))
+        {
+            operatorNode.Children.Add(callNode);
+        }
+
+        Tree.RootNodes.Add(operatorNode);
+
+        // Attached first: WinUI can drop a subtree expanded while detached.
+        SetExpanded(operatorNode, expanded: true);
     }
 
     // A tree node for an operator: its own call tree followed by its child operators, or null when neither it nor any
     // descendant captured a call stack (so empty operators do not clutter the plan).
-    private TreeViewNode? BuildOperatorNode(
-        ExecutionOperatorEvent op,
-        ILookup<(short PlanHandleId, int NodeId), ExecutionOperatorEvent> childrenByParent)
+    private TreeViewNode? BuildOperatorNode(ExecutionOperatorEvent op)
     {
         var callNodes = BuildOperatorCallTree(op);
 
-        var key = (op.PlanNodeIdentifier!.PlanHandleId, op.PlanNodeIdentifier.NodeId);
-
-        var childOperatorNodes = childrenByParent[key]
+        var childOperatorNodes = _hierarchy.Children(op)
             .OrderBy(child => child.PlanNodeIdentifier!.NodeId)
-            .Select(child => BuildOperatorNode(child, childrenByParent))
+            .Select(BuildOperatorNode)
             .OfType<TreeViewNode>()
             .ToList();
 
-        if (callNodes.Count == 0 && childOperatorNodes.Count == 0)
+        // An operator the search names survives even with nothing under it: the row is itself the answer.
+        var searched = _search.Length > 0 && Matches(op);
+
+        if (callNodes.Count == 0 && childOperatorNodes.Count == 0 && !searched)
         {
             return null;
         }
 
-        var operatorNode = new TreeViewNode { Content = op };
+        var operatorNode = new TreeViewNode { Content = new OperatorRow(op, Unsegmented: !Segmented(op)) };
 
         foreach (var callNode in callNodes)
         {
@@ -484,87 +641,104 @@ public sealed partial class CallstackDocumentView : UserControl
         return operatorNode;
     }
 
-    // The scoped call tree for an operator's OWN events (infrastructure hidden), or an empty list when it captured no
-    // stacks. Falls back to revealing infrastructure if hiding it would leave the operator's paths empty.
+    // An operator's call tree (infrastructure hidden), or an empty list when it has no frames of its own. Falls back to
+    // revealing infrastructure if hiding it would leave the operator's paths empty.
     private List<TreeViewNode> BuildOperatorCallTree(ExecutionOperatorEvent op)
     {
-        var leaves = OperatorLeaves(op);
-
-        if (leaves.Count == 0)
+        if (_viewModel?.CallStack is not { } tree)
         {
             return [];
         }
 
-        var visible = VisibleFrom(leaves);
+        // No entry frame means no segment. Borrowing the enclosing operator's bounds instead would render ITS segment a
+        // second time under this name — SELECT and the Compute Scalar beneath it showing the same frames — which reads
+        // as the operator having done that work. Empty is what was actually found, and the row still holds its place in
+        // the plan, so SELECT -> Compute Scalar -> Stream Aggregate stays intact with the middle link simply carrying
+        // nothing.
+        if (!Segmented(op))
+        {
+            return [];
+        }
 
-        var nodes = ScopedCallNodes(visible, revealInfrastructure: false);
+        var scope = _hierarchy.ScopeOf(op, _viewModel?.Events ?? []);
 
-        return nodes.Count > 0 ? nodes : ScopedCallNodes(visible, revealInfrastructure: true);
+        if (scope.Count == 0)
+        {
+            return [];
+        }
+
+        // A projection rather than a scope set over the shared tree: a shared node holds every event that reached that
+        // function, so its event count and category would be the whole query's, not this operator's. The projected
+        // nodes carry only the events in scope, which is the point of scoping to it.
+        //
+        // Cut top and bottom: ExitFrames drops the operators nested inside this one, leaving this operator's own work.
+        // Which operator each exit frame hands off to, so the segment can name what it stopped for rather than just
+        // ending. Keyed on the frame because that is what Project records having cut.
+        _nextOperator = _hierarchy.Descendants(op)
+            .SelectMany(descendant => descendant.EntryFrames.Select(frame => (Frame: frame, Operator: descendant)))
+            .GroupBy(link => link.Frame)
+            .ToDictionary(link => link.Key, link => link.First().Operator);
+
+        var projected = tree.Project(include: scope.Contains,
+                                     cutAt: op.EntryFrames.Contains,
+                                     stopBelow: op.ExitFrames.Count > 0 ? op.ExitFrames.Contains : null);
+
+        var nodes = ProjectedCallNodes(projected, revealInfrastructure: false);
+
+        return nodes.Count > 0 ? nodes : ProjectedCallNodes(projected, revealInfrastructure: true);
     }
 
-    private List<TreeViewNode> ScopedCallNodes(HashSet<CallStackNode> visible, bool revealInfrastructure)
+    // Whether this operator has frames of its own. When it does not, OperatorRow.Unsegmented says so and the row renders
+    // empty rather than claiming somebody else's.
+    private static bool Segmented(ExecutionOperatorEvent op) => op.EntryFrames.Count > 0;
+
+    private List<TreeViewNode> ProjectedCallNodes(CallStackTree projected, bool revealInfrastructure)
     {
         var nodes = new List<TreeViewNode>();
 
-        foreach (var root in _viewModel?.CallStackRoots ?? [])
+        foreach (var root in projected.Root.ChildNodes.OrderBy(child => child.Order))
         {
-            nodes.AddRange(BuildScopedCall(root, visible, revealInfrastructure));
+            nodes.AddRange(BuildProjectedCall(root, revealInfrastructure));
         }
 
         return nodes;
     }
 
-    // The leaf call-stack nodes of an operator's own events (read groups expanded to their children), deduplicated.
-    private List<CallStackNode> OperatorLeaves(ExecutionOperatorEvent op)
-    {
-        var id = op.PlanNodeIdentifier;
 
-        var leaves = new List<CallStackNode>();
-
-        foreach (var e in _viewModel?.Events ?? [])
-        {
-            if (e is ExecutionOperatorEvent || e.PlanNodeIdentifier != id)
-            {
-                continue;
-            }
-
-            // A group's stacks live on the raw events it owns, not on the group itself — so expand any of them.
-            if (e is IEventGroup group)
-            {
-                leaves.AddRange(group.Events.Where(c => c.CallStack is not null).Select(c => c.CallStack!));
-            }
-            else if (e.CallStack is not null)
-            {
-                leaves.Add(e.CallStack);
-            }
-        }
-
-        return leaves.Distinct().ToList();
-    }
-
-    // Renders a call-stack node's subtree scoped to visible, hiding infrastructure (promoting its visible children) and
-    // out-of-scope frames — the same projection BuildVisible does, but for a supplied scope set.
-    private IEnumerable<TreeViewNode> BuildScopedCall(
-        CallStackNode node,
-        HashSet<CallStackNode> visible,
-        bool revealInfrastructure)
+    // Renders a projected node's subtree, hiding infrastructure and promoting its visible children. No scope set: the
+    // projection already contains only the operator's frames.
+    private IEnumerable<TreeViewNode> BuildProjectedCall(CallStackNode node, bool revealInfrastructure)
     {
         var children = node.ChildNodes
                            .OrderBy(child => child.Order)
-                           .SelectMany(child => BuildScopedCall(child, visible, revealInfrastructure))
+                           .SelectMany(child => BuildProjectedCall(child, revealInfrastructure))
                            .ToList();
 
-        var outOfScope = !visible.Contains(node);
+        // Where the segment stopped, name what it stopped for: a link per operator the work continues in, so the plan
+        // is still walkable from inside the stack instead of the call trailing off into nothing. Searched like any other
+        // row — and counted as one below, so a frame whose only answer to the search is where it led still shows.
+        foreach (var next in node.CutBelow
+                                 .Select(frame => _nextOperator.GetValueOrDefault(frame))
+                                 .OfType<ExecutionOperatorEvent>()
+                                 .Where(Matches)
+                                 .DistinctBy(next => next.PlanNodeIdentifier)
+                                 .OrderBy(next => next.PlanNodeIdentifier!.NodeId))
+        {
+            children.Add(new TreeViewNode { Content = new OperatorLink(next) });
+        }
 
-        var infrastructureHidden = node.IsInfrastructure && !revealInfrastructure;
-
-        if (outOfScope || infrastructureHidden)
+        if (node.IsInfrastructure && !revealInfrastructure)
         {
             foreach (var child in children)
             {
                 yield return child;
             }
 
+            yield break;
+        }
+
+        if (Filtered(node, children.Count))
+        {
             yield break;
         }
 
@@ -577,4 +751,36 @@ public sealed partial class CallstackDocumentView : UserControl
 
         yield return treeNode;
     }
+
+    private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        _search = sender.Text?.Trim() ?? string.Empty;
+
+        ApplyScope(_viewModel?.SelectedEvent);
+    }
+
+    /// <summary>
+    /// Whether a frame answers the search, across everything it shows
+    /// </summary>
+    /// <remarks>
+    /// Every field the row displays, because there is no telling which one the reader has in mind — a class, a category,
+    /// an operator badge and a module all look like plausible things to type.
+    /// </remarks>
+    private bool Matches(CallStackNode node)
+        => _search.Length == 0
+           || Contains(node.Symbol)
+           || Contains(node.Category)
+           || Contains(node.Operator)
+           || Contains(node.Frame?.Module);
+
+    private bool Matches(ExecutionOperatorEvent op)
+        => _search.Length == 0 || Contains(op.OperatorDescription) || Contains(op.TargetLabel) || Contains(op.Name);
+
+    private bool Contains(string? value)
+        => value is not null && value.Contains(_search, StringComparison.OrdinalIgnoreCase);
+
+    // A row survives a search by matching it, or by being on the way to something that does — a hit is unreadable
+    // without the calls that led to it, so the ancestors come too.
+    private bool Filtered(CallStackNode node, int survivingChildren)
+        => _search.Length > 0 && survivingChildren == 0 && !Matches(node);
 }

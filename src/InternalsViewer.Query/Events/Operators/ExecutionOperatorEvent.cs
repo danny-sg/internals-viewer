@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.Parsing.Plans;
+﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.Query.Events.Operators;
 
@@ -81,4 +82,33 @@ public sealed record ExecutionOperatorEvent : EngineEvent
     /// the workers, so the worker count (degree of parallelism) is the number of non-zero ids.
     /// </summary>
     public IReadOnlyList<OperatorThread> Threads { get; set; } = [];
+
+    /// <summary>
+    /// The call-stack frames where this operator starts executing, filled by <see cref="OperatorCallStackMatcher"/>
+    /// </summary>
+    /// <remarks>
+    /// The top of the operator's segment: cutting the call tree here gives its own work rather than the whole path from
+    /// the thread start. More than one is normal — under parallelism the operator runs on several workers, so it is
+    /// entered from several stacks.
+    ///
+    /// Empty when no frame could be found, which is expected rather than exceptional: an operator may be inlined
+    /// (Compute Scalar often is), and the mapping file's coverage of iterator classes will always be partial. Callers
+    /// must fall back to the full path, and should say that they have — a segment silently rooted somewhere arbitrary
+    /// is worse than an unsegmented one.
+    /// </remarks>
+    public IReadOnlyList<CallStackNode> EntryFrames { get; set; } = [];
+
+    /// <summary>
+    /// The entry frames of the operators below this one, where its segment ends
+    /// </summary>
+    /// <remarks>
+    /// The bottom of the segment, and it has to be stated rather than inferred. The obvious derivation — "the segment
+    /// ends where the next operator's events begin" — assumes every operator has events, and the relational operators
+    /// have none: only the data-access leaves emit anything. A Stream Aggregate is found on its Index Scan's stacks and
+    /// nowhere else, so without knowing where the child begins its segment would swallow the child's whole subtree.
+    ///
+    /// Excludes this operator's own <see cref="EntryFrames"/>, so a recursive operator (or one merged with a descendant
+    /// onto the same node) does not end its segment at its own start.
+    /// </remarks>
+    public IReadOnlyList<CallStackNode> ExitFrames { get; set; } = [];
 }
