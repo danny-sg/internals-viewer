@@ -86,11 +86,52 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         _audioButton.Checked += OnAudioToggled;
         _audioButton.Unchecked += OnAudioToggled;
 
+        _audioProgress = new ProgressRing
+        {
+            Width = 14,
+            Height = 14,
+            IsActive = false,
+            Visibility = Visibility.Collapsed,
+            IsHitTestVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+
+            // Matches the button's own margin so the ring centres on the button face rather than on the
+            // slot, which includes the 8px gutter to the left of it.
+            Margin = new Thickness(8, 2, 0, 2),
+        };
+
+        // The ring sits over the audio button rather than beside it, so the transport doesn't reflow
+        // (and shift the buttons under the pointer) when a build starts.
+        var audioSlot = new Grid();
+        audioSlot.Children.Add(_audioButton);
+        audioSlot.Children.Add(_audioProgress);
+
         Children.Add(_stepBackButton);
         Children.Add(_playButton);
         Children.Add(_stepForwardButton);
         Children.Add(_threadsButton);
-        Children.Add(_audioButton);
+        Children.Add(audioSlot);
+    }
+
+    /// <summary>
+    /// Shows a spinner over the audio toggle while the audio player builds its voices
+    /// </summary>
+    /// <remarks>
+    /// The toggle is disabled for the duration; the build isn't cancellable, so letting it be switched back off would
+    /// only desync the glyph from what the player is actually doing.
+    /// </remarks>
+    public void SetAudioLoading(bool isLoading)
+    {
+        _audioProgress.IsActive = isLoading;
+        _audioProgress.Visibility = isLoading ? Visibility.Visible : Visibility.Collapsed;
+
+        _audioButton.IsEnabled = !isLoading;
+
+        if (_audioButton.Content is FontIcon icon)
+        {
+            icon.Opacity = isLoading ? 0 : 1;
+        }
     }
 
     /// <summary>Swaps the play/pause glyph to reflect the current playback state.</summary>

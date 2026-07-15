@@ -44,24 +44,7 @@ public sealed partial class EventTimelineControl
         _skCanvas.Invalidate();
     }
 
-#pragma warning disable VSTHRD100 // Avoid async void methods - Required for event and using try/catch for safety
-    private async void OnAudioToggled(bool enabled)
-    {
-        try
-        {
-            IsAudioEnabled = enabled;
-
-            if (enabled)
-            {
-                await _audioPlayer.EnsureInitializedAsync();
-            }
-        }
-        catch
-        {
-            // No-op - Audio is non-critical
-        }
-    }
-#pragma warning restore VSTHRD100
+    private void OnAudioToggled(bool enabled) => IsAudioEnabled = enabled;
 
     private void StepToAdjacentEvent(bool forward)
     {

@@ -72,10 +72,29 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
                                                 OPTION (MAXDOP 1)
                                                 """;
 
+    /// <summary>
+    /// Which entry frames more than one operator claims — the "parts aren't connecting" report, as a number
+    /// </summary>
+    /// <remarks>
+    /// The per-operator counts the other dumps print say nothing about this on their own: an operator having several
+    /// entry frames is normal (a hash join builds under Open and probes under GetRow), and a deep plan reaches each of
+    /// them by many distinct paths, so a healthy join here has closer to ten than to one. What is NOT normal is one
+    /// frame claimed by six different hash joins, and that is invisible in a count.
+    ///
+    /// Read the caller: leaves of one class collapsing onto a node under CQScanNew::GetRowOrReQualifyHelper are the
+    /// merged siblings nothing can separate, and are expected. Nested joins sharing a frame are the bug.
+    /// </remarks>
     [Fact]
-    public async Task Temp_Dump_Entry_Paths()
+    public async Task Dump_Entry_Frames_Claimed_By_Several_Operators()
     {
         var result = await RunQuery(IndividualCustomerView, await LoadDatabase(AdventureWorks));
+
+        if (result.CallStackTree is null)
+        {
+            Output.WriteLine("No call stack captured (is C:\\Symbols available?)");
+
+            return;
+        }
 
         var hierarchy = OperatorHierarchy.Build(result.EngineEvents);
 
@@ -85,21 +104,32 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
         {
             foreach (var entry in op.EntryFrames)
             {
-                (owners.TryGetValue(entry, out var list) ? list : owners[entry] = []).Add(op.PlanNodeIdentifier!.NodeId);
+                if (!owners.TryGetValue(entry, out var nodes))
+                {
+                    nodes = [];
+
+                    owners[entry] = nodes;
+                }
+
+                nodes.Add(op.PlanNodeIdentifier!.NodeId);
             }
         }
 
-        Output.WriteLine("--- entry frames claimed by MORE THAN ONE operator ---");
+        var shared = owners.Where(o => o.Value.Count > 1).ToList();
 
-        foreach (var (frame, nodes) in owners.Where(o => o.Value.Count > 3).Take(3))
+        Output.WriteLine($"--- distinct entry frames={owners.Count} claimed by more than one operator={shared.Count} ---");
+
+        foreach (var (frame, nodes) in shared)
         {
-            Output.WriteLine($"  '{frame.Symbol}' claimed by nodes [{string.Join(",", nodes.Order())}]");
-            Output.WriteLine($"      depth={frame.Ancestors().Count()} events={frame.Events.Count}");
-            Output.WriteLine($"      path: {string.Join(" < ", frame.Ancestors().Select(f => f.Symbol))}");
+            Output.WriteLine($"  '{frame.Symbol}' claimed by [{string.Join(",", nodes.Order())}] "
+                             + $"caller='{frame.Parent?.Symbol}'");
         }
 
-        Output.WriteLine("");
-        Output.WriteLine($"--- distinct entry frames={owners.Count} shared={owners.Count(o => o.Value.Count > 1)} ---");
+        // Nothing that resolves may lose its entry: an operator with none falls back to the full path in the UI.
+        foreach (var op in hierarchy.Operators.Where(o => o.EntryFrames.Count == 0))
+        {
+            Output.WriteLine($"  node {op.PlanNodeIdentifier!.NodeId} '{op.Name}' resolved NO entry frame");
+        }
     }
 
     [Fact]

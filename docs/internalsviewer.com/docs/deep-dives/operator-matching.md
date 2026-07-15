@@ -51,24 +51,53 @@ exit. So exits are read off the plan, not inferred from the stack.
 The pair is what makes a segment. Cut at the entry and you drop the preamble above; cut at the exits and you drop the
 operators nested below. What is left is what this operator did.
 
-## Two signals, because neither covers the other's ground
+## Three signals, because none covers the others' ground
 
-Deciding an entry frame uses two independent signals.
+Deciding an entry frame uses three independent signals.
 
 **The mapping file names the frame's operator.** `Operators.txt` maps iterator classes to plan operators -
 `CQScanHash*` is a Hash Match, `CQScanRange*` is an Index Seek *or* a Key Lookup. This is the only thing that separates a
 **chain**. When a Stream Aggregate's only events are its Index Scan's, the two own exactly the same set of events; no
 amount of event data can tell them apart. Only a name can.
 
+**The plan's shape orders those names.** A name belongs to the **class**, so it cannot tell instances of it apart: asked
+independently which frames match "Hash Match", each of six nested hash joins claims all six runs. But the plan already
+says which order the operators appear in on any given stack, so walking up from a leaf and **aligning** the runs against
+that leaf's chain of plan ancestors fixes each run by its **position**. The names never needed to be unique, only
+correctly ordered.
+
 **Ownership needs no names.** A frame beneath which only one operator's subtree ran, whose caller's subtree is wider, is
 where that operator's work branched away from its siblings'. This separates a **branch**, and it is exactly what names
 are worst at - one iterator class serves operators the plan names unrelatedly, and a missing name costs the parent its
 trim as well as the child its segment.
 
-The mapping is tried first and ownership fills the gaps. The reverse is tempting and was tried: it loses. "Where this
+Alignment is tried first and ownership fills the gaps. The reverse is tempting and was tried: it loses. "Where this
 node's work branches off" is not "where it was entered" - a Nested Loops re-enters its inner side once per outer row, so
 a lookup's work branches away at every row-release the loop drives, and ownership honestly reports all dozen of them. One
-is the entry; ownership cannot say which. Naming has no such trouble, and where it is wrong it is wrong in a bounded way.
+is the entry; ownership cannot say which.
+
+## Alignment does not start in step
+
+The chain fixes a run by its position, which holds only while the walk is in step - and it does not always start that
+way.
+
+An event is attributed to a plan node whose operator may never appear on its own stack. The **Open cascade** is the case
+that matters: a hash join's `Open` builds, which opens its child, which opens *its* child, so opening the top of the plan
+opens every iterator in it before any of them returns a row. A memory grant taken there is attributed to some deep node
+while its stack shows only the outermost join's `Open`.
+
+That leaf has to **skip** its own node - nothing else would let an inlined Compute Scalar be passed over either. But
+skipping on names alone, it hands node 1's `Open` to node 17, the first entry on its chain whose name fits, and the
+outermost join's segment lands inside the innermost's. That is the six-hash-joins bug arrived at by a second route, and
+alignment alone does not fix it.
+
+So ownership arbitrates the skip. Node 1's `Open` has the whole plan beneath it and node 17's subtree is three nodes, so
+the events say it cannot be node 17's however well the name fits. The search passes over it and finds node 1, which is on
+the same chain and fits exactly.
+
+The name-only match behind that is not a hedge - it is the merged-sibling case below, where no operator on the chain fits
+exactly and the honest answer is the one ownership cannot give. It is only ever reached when nothing fits, so it cannot
+overrule a frame that has a proper owner.
 
 ## The details that turned out to matter
 
@@ -119,12 +148,6 @@ entry frame, and the row says **"no stack"** rather than borrowing its parent's 
 enclosing operator's segment a second time under a different name would read as that operator having done the work.
 Empty is what was actually found, and the operator keeps its place in the plan, so the chain around it stays intact with
 the middle link simply carrying nothing.
-
-**Nested operators of the same kind.** The current known limitation. A view over several tables can produce six Hash
-Matches nested inside each other; they all run `CQScanHash`, and the mapping cannot say which is which, so each claims
-the others' frames. The fix is a third signal - the plan already says what order the operators appear in on any given
-stack, so walking up from a leaf and *aligning* the frame runs against that leaf's chain of plan ancestors fixes each run
-by its position rather than its name.
 
 ## Measured, not assumed
 

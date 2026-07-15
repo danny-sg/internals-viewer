@@ -428,18 +428,32 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
             new PropertyMetadata(false, OnIsAudioEnabledChanged));
 
 #pragma warning disable VSTHRD100 // Avoid async void methods - Required for event and using try/catch for safety
+    /// <remarks>
+    /// The single place audio is built, whether it was switched on from the transport or set programmatically - the
+    /// transport toggle routes through the property rather than initialising alongside it.
+    /// </remarks>
     private static async void OnIsAudioEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if ((bool)e.NewValue)
+        if (!(bool)e.NewValue)
         {
-            try
-            {
-                await ((EventTimelineControl)d)._audioPlayer.EnsureInitializedAsync();
-            }
-            catch
-            {
-                // No-op
-            }
+            return;
+        }
+
+        var control = (EventTimelineControl)d;
+
+        control._transport.SetAudioLoading(true);
+
+        try
+        {
+            await control._audioPlayer.EnsureInitializedAsync();
+        }
+        catch
+        {
+            // No-op - Audio is non-critical
+        }
+        finally
+        {
+            control._transport.SetAudioLoading(false);
         }
     }
 #pragma warning restore VSTHRD100

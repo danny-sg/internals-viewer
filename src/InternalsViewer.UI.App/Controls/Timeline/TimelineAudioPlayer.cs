@@ -14,9 +14,9 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 /// are audibly distinguishable. Reads and latches are additionally hard-panned to opposite stereo
 /// channels (reads left, latches right) - they're independent <see cref="MediaPlayer"/> instances, so
 /// when both land on the same tick they'd otherwise mask each other in a mono mix; on separate
-/// channels both remain audible. A file read is a single centre-panned sub-bass rumble: it's the
-/// physical disk hit underneath a read, so it wants to be felt under the pitched plinks rather than
-/// compete with them for a note. All <see cref="MediaPlayer"/> instances are pre-built at init time so
+/// channels both remain audible. A file read is a single centre-panned rumble, pitched well below the
+/// scale: it's the physical disk hit underneath a read, so it wants to sit under the pitched plinks
+/// rather than compete with them for a note. All <see cref="MediaPlayer"/> instances are pre-built at init time so
 /// <see cref="PlayPlink"/> is a synchronous seek-and-play with zero allocation.
 /// </remarks>
 internal sealed class TimelineAudioPlayer : IDisposable
@@ -41,10 +41,12 @@ internal sealed class TimelineAudioPlayer : IDisposable
     private const double AttackSeconds = 0.001;
     private const double DecaySeconds  = 0.025;
 
-    // Sub-bass "brrr" for a physical file read. The long attack matters: a 1ms attack on a ~50Hz tone
-    // starts mid-cycle and cracks, which reads as a click rather than a rumble.
-    private const double RumbleFrequency = 45.0;
-    private const double RumbleAttackSeconds = 0.012;
+    // Low "brrr" for a physical file read. Pitched at the bottom of what a laptop or monitor speaker can
+    // actually reproduce rather than lower: those roll off hard below ~100Hz, so a true sub-bass fundamental
+    // is simply absent on them and the rumble is heard only through its harmonics. The long attack matters
+    // too - a 1ms attack at this pitch starts mid-cycle and cracks, which reads as a click.
+    private const double RumbleFrequency = 110.0;
+    private const double RumbleAttackSeconds = 0.010;
     private const double RumbleDecaySeconds = 0.220;
 
     // What turns the low tone into a "brrr" rather than a hum: chopping the amplitude at a rate low enough
@@ -141,18 +143,33 @@ internal sealed class TimelineAudioPlayer : IDisposable
 
     private async Task BuildVoicesAsync()
     {
-        foreach (var freq in PentatonicNotes)
+        foreach (var frequencyHz in PentatonicNotes)
         {
-            _playersByFrequency[freq] = await BuildPlayerPool(BuildWav(freq, Waveform.Sine, AttackSeconds, DecaySeconds, ReadPan, Amplitude),
-                                                             PerFrequencyPoolSize);
-            _poolIndexByFrequency[freq] = 0;
+            _playersByFrequency[frequencyHz] = await BuildPlayerPool(BuildWav(frequencyHz, 
+                                                                              Waveform.Sine, 
+                                                                              AttackSeconds, 
+                                                                              DecaySeconds, 
+                                                                              ReadPan, 
+                                                                              Amplitude),
+                                                                     PerFrequencyPoolSize);
+            _poolIndexByFrequency[frequencyHz] = 0;
 
-            _latchPlayersByFrequency[freq] = await BuildPlayerPool(BuildWav(freq, Waveform.Square, AttackSeconds, LatchDecaySeconds, LatchPan, Amplitude),
-                                                                   PerFrequencyPoolSize);
-            _latchPoolIndexByFrequency[freq] = 0;
+            _latchPlayersByFrequency[frequencyHz] = await BuildPlayerPool(BuildWav(frequencyHz, 
+                                                                                   Waveform.Square, 
+                                                                                   AttackSeconds, 
+                                                                                   LatchDecaySeconds, 
+                                                                                   LatchPan, 
+                                                                                   Amplitude),
+                                                                          PerFrequencyPoolSize);
+            _latchPoolIndexByFrequency[frequencyHz] = 0;
         }
 
-        _rumblePlayers = await BuildPlayerPool(BuildWav(RumbleFrequency, Waveform.Rumble, RumbleAttackSeconds, RumbleDecaySeconds, RumblePan, RumbleAmplitude),
+        _rumblePlayers = await BuildPlayerPool(BuildWav(RumbleFrequency, 
+                                                        Waveform.Rumble, 
+                                                        RumbleAttackSeconds, 
+                                                        RumbleDecaySeconds, 
+                                                        RumblePan, 
+                                                        RumbleAmplitude),
                                                RumblePoolSize);
         _rumblePoolIndex = 0;
     }
@@ -168,6 +185,7 @@ internal sealed class TimelineAudioPlayer : IDisposable
             using (var dataWriter = new DataWriter(stream.GetOutputStreamAt(0)))
             {
                 dataWriter.WriteBytes(wavBytes);
+
                 await dataWriter.StoreAsync();
             }
 
@@ -222,7 +240,9 @@ internal sealed class TimelineAudioPlayer : IDisposable
         player.Play();
     }
 
-    /// <summary>Plays the sub-bass rumble for a physical file read</summary>
+    /// <summary>
+    /// Plays the low rumble for a physical file read
+    /// </summary>
     public void PlayFileRumble()
     {
         if (!_initialized || _disposed || _rumblePlayers.Length == 0)
@@ -242,14 +262,14 @@ internal sealed class TimelineAudioPlayer : IDisposable
     /// A motor-like "brrr" - a harmonic stack chopped by a low-frequency tremolo
     /// </summary>
     /// <remarks>
-    /// The harmonics are what carry it on small speakers, which roll off hard below ~80Hz and would otherwise leave the
-    /// fundamental inaudible rather than merely quiet.
+    /// The upper harmonics are kept low in the mix: the third sits near E4, which is one of the pentatonic notes the
+    /// plinks use, so any weight on it makes the rumble read as pitched and muddies whatever read it lands under.
     /// </remarks>
     private static double RumbleSample(double phase, int sampleIndex)
     {
-        var tone = 0.55 * Math.Sin(phase)
-                   + 0.30 * Math.Sin(2.0 * phase)
-                   + 0.15 * Math.Sin(3.0 * phase);
+        var tone = 0.75 * Math.Sin(phase)
+                   + 0.20 * Math.Sin(2.0 * phase)
+                   + 0.05 * Math.Sin(3.0 * phase);
 
         var modulationPhase = 2.0 * Math.PI * RumbleModulationHz * sampleIndex / SampleRate;
 
@@ -258,7 +278,12 @@ internal sealed class TimelineAudioPlayer : IDisposable
         return tone * (1.0 - RumbleModulationDepth * gate);
     }
 
-    private static byte[] BuildWav(double frequencyHz, Waveform waveform, double attackSeconds, double decaySeconds, float pan, float amplitude)
+    private static byte[] BuildWav(double frequencyHz, 
+                                   Waveform waveform, 
+                                   double attackSeconds, 
+                                   double decaySeconds, 
+                                   float pan, 
+                                   float amplitude)
     {
         var attackSamples = (int)(SampleRate * attackSeconds);
         var decaySamples  = (int)(SampleRate * decaySeconds);
