@@ -2,14 +2,14 @@ using InternalsViewer.Query.Parsing;
 
 namespace InternalsViewer.Query.Tests;
 
-public class PayloadParserTests
+public class QueryParserTests
 {
     [Fact]
     public void SplitCommands_Splits_On_GO_Batch_Separator()
     {
         var sql = "SELECT 1\nGO\nSELECT 2\nGO\nSELECT 3";
 
-        var result = PayloadParser.SplitCommands(sql);
+        var result = QueryParser.SplitCommands(sql);
 
         Assert.Equal(["SELECT 1\n", "\nSELECT 2\n", "\nSELECT 3"], result);
     }
@@ -19,7 +19,7 @@ public class PayloadParserTests
     {
         var sql = "SELECT 1\n  go  \nSELECT 2";
 
-        var result = PayloadParser.SplitCommands(sql);
+        var result = QueryParser.SplitCommands(sql);
 
         Assert.Equal(["SELECT 1\n", "\nSELECT 2"], result);
     }
@@ -29,7 +29,7 @@ public class PayloadParserTests
     {
         var sql = "SELECT 1; SELECT 2;";
 
-        var result = PayloadParser.SplitCommands(sql);
+        var result = QueryParser.SplitCommands(sql);
 
         Assert.Equal([sql], result);
     }
@@ -39,7 +39,7 @@ public class PayloadParserTests
     {
         var sql = "GO\nGO\nSELECT 1";
 
-        var result = PayloadParser.SplitCommands(sql);
+        var result = QueryParser.SplitCommands(sql);
 
         Assert.Equal(["\nSELECT 1"], result);
     }
@@ -52,7 +52,7 @@ public class PayloadParserTests
                                             StatementType.MultiStatementSelect,
                                             null);
 
-        var (preCommands, commands, postCommands) = PayloadParser.Parse(payload);
+        var (preCommands, commands, postCommands) = QueryParser.Parse(payload);
 
         Assert.Empty(preCommands);
         Assert.Empty(postCommands);
@@ -72,7 +72,7 @@ public class PayloadParserTests
                                             StatementType.Select,
                                             new TrackedSelectionRange(start, end));
 
-        var (preCommands, commands, postCommands) = PayloadParser.Parse(payload);
+        var (preCommands, commands, postCommands) = QueryParser.Parse(payload);
 
         Assert.Single(preCommands);
         Assert.Contains("pre", preCommands[0]);
@@ -92,7 +92,7 @@ public class PayloadParserTests
                                             StatementType.Select,
                                             new TrackedSelectionRange(-5, 8));
 
-        var (preCommands, commands, postCommands) = PayloadParser.Parse(payload);
+        var (preCommands, commands, postCommands) = QueryParser.Parse(payload);
 
         Assert.Empty(preCommands);
         Assert.Empty(postCommands);
@@ -108,7 +108,7 @@ public class PayloadParserTests
                                             StatementType.Select,
                                             new TrackedSelectionRange(0, 1000));
 
-        var (_, commands, postCommands) = PayloadParser.Parse(payload);
+        var (_, commands, postCommands) = QueryParser.Parse(payload);
 
         Assert.Empty(postCommands);
         Assert.Single(commands);
@@ -123,7 +123,7 @@ public class PayloadParserTests
                                             StatementType.Select,
                                             new TrackedSelectionRange(5, 1));
 
-        var (preCommands, commands, postCommands) = PayloadParser.Parse(payload);
+        var (preCommands, commands, postCommands) = QueryParser.Parse(payload);
 
         Assert.Single(preCommands);
         Assert.Equal("SELEC", preCommands[0]);

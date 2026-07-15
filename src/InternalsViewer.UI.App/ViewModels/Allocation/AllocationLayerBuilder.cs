@@ -105,7 +105,7 @@ internal static class AllocationLayerBuilder
         {
             Name = "Buffer Pool",
             LayerName = "Buffer Pool",
-            Colour = Color.FromArgb(200, 190, 100, 100),
+            Colour = Color.FromArgb(255, 100, 100, 100),
             IsAllocationLayer = true,
             IsVisible = true,
             Opacity = 0,
@@ -190,9 +190,6 @@ internal static class AllocationLayerBuilder
             return Color.FromArgb(255, 190, 190, 205);
         }
 
-        // Object i sits at i/N of the wheel (i = 0..N-1), so every neighbour — the last→first wrap included — is the
-        // same 360/N apart: the arrangement that maximises the MINIMUM distance between any two objects. It never
-        // reaches HueWheel, so no object lands on the 0°/360° seam and collides with the first.
         var hue = colourIndex * HueWheel / Math.Max(colourSlotCount, 1) % HueWheel;
 
         colourIndex++;

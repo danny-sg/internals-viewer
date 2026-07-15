@@ -70,7 +70,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var isReplayMode = false;
 
-        var (preCommands, commands, postCommands) = PayloadParser.Parse(payload);
+        var (preCommands, commands, postCommands) = QueryParser.Parse(payload);
 
         if (!payload.QueryOptions.Trace)
         {
@@ -589,7 +589,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         await connection.OpenAsync(cancellationToken);
 
-        var commands = PayloadParser.SplitCommands(commandSql);
+        var commands = QueryParser.SplitCommands(commandSql);
 
         foreach (var sql in commands)
         {

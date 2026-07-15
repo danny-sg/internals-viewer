@@ -140,6 +140,10 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         HeldLockCloser.Close(collapsedEvents);
 
+        // Fold each object lock's per-partition sweep (one lock per CPU on a 16+ CPU server) into one logical lock, now
+        // that every partition has been paired and timed.
+        collapsedEvents = LockPartitionCollapser.Collapse(collapsedEvents);
+
         collapsedEvents = BufferLatchCoalescing.Coalesce(collapsedEvents);
 
         await GetEventKeyAddresses(collapsedEvents, connectionString, progress, cancellationToken);

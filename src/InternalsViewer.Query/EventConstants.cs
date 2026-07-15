@@ -55,7 +55,6 @@ internal static class EventConstants
     [
         "sqlserver.session_id",
         "sqlserver.request_id",
-        "sqlserver.sql_text",
         "sqlserver.database_id",
         "sqlserver.plan_handle",
         "sqlserver.transaction_id",

@@ -2,7 +2,10 @@
 
 namespace InternalsViewer.Query;
 
-internal static partial class PayloadParser
+/// <summary>
+/// Parses a payload into a set of SQL commands
+/// </summary>
+internal static partial class QueryParser
 {
     public static (string[] PreCommands, string[] Commands, string[] PostCommands) Parse(ExecuteSqlPayload payload)
     {
@@ -18,17 +21,22 @@ internal static partial class PayloadParser
         var end = Math.Clamp(payload.TrackedSelection.End, start, length);
 
         var preCommands = payload.SqlText[..start];
+
         var commands = payload.SqlText[start..end];
+        
         var postCommands = payload.SqlText[end..];
 
         return (SplitCommands(preCommands), SplitCommands(commands), SplitCommands(postCommands));
     }
 
+    /// <summary>
+    /// Split commands by GO
+    /// </summary>
     public static string[] SplitCommands(string sql)
     {
         var result = GoRegEx().Split(sql)
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .ToArray();
+                              .Where(value => !string.IsNullOrWhiteSpace(value))
+                              .ToArray();
 
         return result;
     }

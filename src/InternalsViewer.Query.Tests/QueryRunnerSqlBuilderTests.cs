@@ -120,7 +120,7 @@ public class EventSqlTests
     {
         var events = new List<EngineEvent>();
 
-        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
+        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", null, CancellationToken.None);
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public class EventSqlTests
 
         var events = new List<EngineEvent> { lockEvent };
 
-        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
+        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", null, CancellationToken.None);
 
         Assert.Null(lockEvent.Resource.RowIdentifier);
     }
@@ -142,7 +142,7 @@ public class EventSqlTests
 
         var events = new List<EngineEvent> { lockEvent };
 
-        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", CancellationToken.None);
+        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", null, CancellationToken.None);
 
         Assert.Null(lockEvent.Resource.RowIdentifier);
     }

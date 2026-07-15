@@ -64,14 +64,6 @@ internal sealed class XmlEventParser
             return null;
         }
 
-        if (_actions.TryGetValue("sql_text", out var sqlText)
-            && sqlText.Length > 0
-            && buffer.AsSpan(sqlText.Offset, sqlText.Length)
-                     .StartsWith("ALTER EVENT SESSION".AsSpan(), StringComparison.Ordinal))
-        {
-            return null;
-        }
-
         return _eventParser.ToEngineEvent(_result, _database, _planHandles, CallStack);
     }
 

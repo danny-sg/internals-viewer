@@ -518,6 +518,8 @@ public sealed partial class AllocationControl : IDisposable
         // After the grid — the borders sit on cell boundaries, so they must paint over the grid lines, not under them.
         DrawBorders(canvas, renderLayout);
 
+        DrawPageMarkers(canvas, renderer, renderLayout);
+
         if (SelectedLayers is { Count: > 0 })
         {
             foreach (var selectedLayer in SelectedLayers)
@@ -579,8 +581,6 @@ public sealed partial class AllocationControl : IDisposable
 
     private void DrawExtents(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
     {
-        var hasSelected = SelectedLayers is { Count: > 0 };
-
         foreach (var layer in Layers)
         {
             if (!layer.IsVisible || layer.Opacity == 0)
@@ -636,9 +636,25 @@ public sealed partial class AllocationControl : IDisposable
         }
     }
 
-    // Outlines each lock's cell group (pages or extents) as a Tetris-piece perimeter in the lock's colour — an edge is
-    // drawn only where a group cell borders a non-group cell, so contiguous cells merge and gaps show, with no per-cell
-    // borders. Time-gated by the playhead like the page spans.
+    private void DrawPageMarkers(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
+    {
+        foreach (var layer in Layers)
+        {
+            if (!layer.IsVisible || layer.Opacity == 0)
+            {
+                continue;
+            }
+
+            foreach (var page in layer.SinglePages)
+            {
+                if (page.FileId == FileId)
+                {
+                    renderer.DrawPageMarker(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout), layer.LayerType);
+                }
+            }
+        }
+    }
+
     private void DrawBorders(SKCanvas canvas, ExtentLayout layout)
     {
         if (Borders is not { Count: > 0 } borders || layout.HorizontalCount <= 0)
@@ -648,8 +664,6 @@ public sealed partial class AllocationControl : IDisposable
 
         var playhead = PlayheadTimeUs;
 
-        // Draw earliest-starting first so a lock that begins later paints over one already held — the newer scope wins
-        // the overlap.
         foreach (var border in borders.OrderBy(BorderStartUs))
         {
             if (border.FileId != FileId)
@@ -661,13 +675,9 @@ public sealed partial class AllocationControl : IDisposable
 
             var gridWidth = extentScope ? layout.HorizontalCount : layout.HorizontalCount * 8;
 
-            // Visible cell window, so we only outline what's on screen (a cell adjacent to an off-screen group cell
-            // still correctly omits that shared edge).
             var firstCell = extentScope ? ScrollPosition : ScrollPosition * 8;
             var lastCell = firstCell + (extentScope ? layout.VisibleCount : layout.VisibleCount * 8);
 
-            // Expand only the ranges live at the playhead, so the outline tracks each lock's hold as it comes and goes
-            // and we never materialise the (potentially huge) full page set — just what is held right now.
             var cells = new HashSet<int>();
 
             foreach (var range in border.Cells)
@@ -696,13 +706,11 @@ public sealed partial class AllocationControl : IDisposable
                 }
 
                 var rect = extentScope
-                    ? GetExtentPosition(cell - firstCell, layout)
-                    : GetPagePosition(cell - firstCell, layout);
+                           ? GetExtentPosition(cell - firstCell, layout)
+                           : GetPagePosition(cell - firstCell, layout);
 
                 var column = cell % gridWidth;
 
-                // Bring the outermost columns in by 1px so a 2px stroke on the control's left/right edge is not clipped
-                // half-off; interior boundaries sit on the true cell edge.
                 var leftX = column == 0 ? rect.Left + 1 : rect.Left;
                 var rightX = column == gridWidth - 1 ? rect.Right - 1 : rect.Right;
 

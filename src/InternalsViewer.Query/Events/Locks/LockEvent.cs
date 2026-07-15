@@ -13,6 +13,15 @@ public sealed record LockEvent : PageEngineEvent
 
     public LockOwnerContext? LockOwnerContext { get; set; }
 
+    /// <summary>
+    /// Number of lock partitions this lock represents — 1 unless a partition sweep was folded into it
+    /// </summary>
+    /// <remarks>
+    /// Set by <see cref="Consolidation.LockPartitionCollapser"/>: an object lock in a non-intent mode is acquired on
+    /// every partition, and those are collapsed into this one logical lock.
+    /// </remarks>
+    public int PartitionCount { get; set; } = 1;
+
     public LockIdentity Identity => new(ResourceKey: Resource.Key,
                                         LockMode: LockMode,
                                         OwnerType: LockOwnerContext?.OwnerType ?? LockOwnerType.Unknown,
@@ -29,7 +38,16 @@ public sealed record LockEvent : PageEngineEvent
     public override string ObjectName =>
         AllocationUnit?.DisplayName ?? (Resource.ObjectId > 0 ? $"(Object Id {Resource.ObjectId})" : base.ObjectName);
 
-    public override string Description => $"Lock: {Resource.ResourceType} {LockMode} ({EventItemName.Get(LockMode)})";
+    public override string Description
+    {
+        get
+        {
+            var description = $"Lock: {Resource.ResourceType} {LockMode} ({EventItemName.Get(LockMode)})";
+
+            // A swept object lock stands for one lock per scheduler; say so rather than looking like a lone partition.
+            return PartitionCount > 1 ? $"{description} across {PartitionCount} lock partitions" : description;
+        }
+    }
 }
 
 public readonly record struct LockIdentity

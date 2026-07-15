@@ -120,6 +120,13 @@ internal class LockEventParser: IEventParser<LockEvent>
 
         return resourceType switch
         {
+            // resource_1 is the lock partition for OBJECT only — it stays in the resource Key above so that each
+            // partition's acquire/release pairs with itself (see LockPartitionCollapser).
+            LockResourceType.Object =>
+                lockResource with
+                {
+                    LockPartition = (int)resource1
+                },
             LockResourceType.Page =>
                 lockResource with
                 {
