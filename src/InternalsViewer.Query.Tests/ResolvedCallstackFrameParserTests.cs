@@ -1,5 +1,5 @@
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Callstack.Categories;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 
 namespace InternalsViewer.Query.Tests;
 

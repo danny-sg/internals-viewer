@@ -1,6 +1,7 @@
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Consolidation;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Transactions;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -91,6 +92,106 @@ public class HeldLockCloserTests
 
         Assert.Equal(19_000, key.DurationUs); // held to statement end (no escalation in txn 1)
     }
+
+    [Fact]
+    public void A_Fine_Lock_Taken_In_The_Same_Instant_As_The_Escalation_Is_Still_Dropped_By_It()
+    {
+        // Timestamps resolve to the millisecond, so the last locks taken before an escalation routinely share its
+        // bucket. Requiring the escalation to be strictly after would send exactly those to the statement end, leaving
+        // the last page's locks held for the whole trace.
+        var key = Lock(LockResourceType.Key, LockMode.RS_U, txn: 1, timeUs: 5_000);
+
+        var escalated = Escalation(txn: 1, timeUs: 5_000);
+
+        HeldLockCloser.Close([key, escalated, Other(timeUs: 20_000)]);
+
+        Assert.Equal(0, key.DurationUs); // dropped at the escalation, not held to 20_000
+        Assert.Equal("Lock", key.Name);
+    }
+
+    [Fact]
+    public void A_Fine_Lock_Taken_After_The_Escalation_Falls_Back_To_The_Statement_End()
+    {
+        // Genuinely later than the escalation (a different bucket), so it cannot have been dropped by it.
+        var key = Lock(LockResourceType.Key, LockMode.RS_U, txn: 1, timeUs: 7_000);
+
+        var escalated = Escalation(txn: 1, timeUs: 5_000);
+
+        HeldLockCloser.Close([key, escalated, Other(timeUs: 20_000)]);
+
+        Assert.Equal(13_000, key.DurationUs);
+    }
+
+    [Fact]
+    public void A_Measured_Escalation_Event_Beats_The_Inferred_Escalation_Point()
+    {
+        var key = Lock(LockResourceType.Key, LockMode.RS_U, txn: 1, timeUs: 1_000);
+
+        // The lock_escalation event says escalation fired at 3_000; the object X lock's acquire (the fallback
+        // inference) only shows at 5_000. The measured moment wins.
+        var escalated = Escalation(txn: 1, timeUs: 3_000);
+
+        var objectLock = Paired(LockResourceType.Object, LockMode.X, txn: 1, timeUs: 5_000, durationUs: 2_000);
+
+        HeldLockCloser.Close([key, escalated, objectLock, Other(timeUs: 20_000)]);
+
+        Assert.Equal(2_000, key.DurationUs); // 1_000 -> 3_000
+    }
+
+    [Fact]
+    public void A_Held_Lock_Is_Closed_At_Its_Transactions_Commit_Rather_Than_The_Statement_End()
+    {
+        var key = Lock(LockResourceType.Key, LockMode.RS_S, txn: 1, timeUs: 1_000);
+
+        var commit = Transaction(txn: 1, TransactionState.Commit, timeUs: 8_000);
+
+        HeldLockCloser.Close([key, commit, Other(timeUs: 20_000)]);
+
+        Assert.Equal(7_000, key.DurationUs); // 1_000 -> 8_000 (the commit), not to 20_000
+    }
+
+    [Fact]
+    public void A_Commit_Before_The_Lock_Is_Ignored()
+    {
+        // Guards a mis-mapped transaction_state: an "end" that precedes the lock cannot be its release, so the
+        // statement-end fallback stands rather than producing a zero-length hold.
+        var key = Lock(LockResourceType.Key, LockMode.RS_S, txn: 1, timeUs: 5_000);
+
+        var bogus = Transaction(txn: 1, TransactionState.Commit, timeUs: 2_000);
+
+        HeldLockCloser.Close([key, bogus, Other(timeUs: 20_000)]);
+
+        Assert.Equal(15_000, key.DurationUs);
+    }
+
+    [Fact]
+    public void Another_Transactions_Commit_Does_Not_Close_The_Lock()
+    {
+        var key = Lock(LockResourceType.Key, LockMode.RS_S, txn: 1, timeUs: 1_000);
+
+        var otherCommit = Transaction(txn: 2, TransactionState.Commit, timeUs: 8_000);
+
+        HeldLockCloser.Close([key, otherCommit, Other(timeUs: 20_000)]);
+
+        Assert.Equal(19_000, key.DurationUs); // statement end
+    }
+
+    private static LockEscalationEvent Escalation(long txn, long timeUs) => new()
+    {
+        Name = "lock_escalation",
+        LockMode = LockMode.X,
+        ResourceType = LockResourceType.Object,
+        TransactionId = txn,
+        TimeUs = timeUs,
+    };
+
+    private static TransactionEvent Transaction(long txn, TransactionState state, long timeUs) => new()
+    {
+        Name = "sql_transaction",
+        TransactionId = txn,
+        State = state,
+        TimeUs = timeUs,
+    };
 
     private static LockEvent Lock(LockResourceType type, LockMode mode, long txn, long timeUs) => new()
     {

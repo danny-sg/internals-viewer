@@ -1,5 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Reads;
 

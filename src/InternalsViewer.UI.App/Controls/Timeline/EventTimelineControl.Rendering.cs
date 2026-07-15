@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
@@ -354,8 +353,10 @@ public sealed partial class EventTimelineControl
     private void DrawPlayheadTimeBadge(SKCanvas canvas, float px)
     {
         Span<char> buf = stackalloc char[12];
-        var len = TimelineFormat.FormatTimeIntoSpan(EffectiveToMs(_playheadTime), buf);
-        var text = buf[..len];
+
+        var textLength = TimelineFormat.FormatTimeIntoSpan(EffectiveToMs(_playheadTime), buf);
+        
+        var text = buf[..textLength];
 
         const float padding = 4f;
 

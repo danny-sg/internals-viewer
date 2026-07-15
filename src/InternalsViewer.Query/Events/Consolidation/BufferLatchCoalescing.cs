@@ -1,4 +1,3 @@
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 
 namespace InternalsViewer.Query.Events.Consolidation;
@@ -8,13 +7,13 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// </summary>
 /// <remarks>
 /// A scan touching every row on a page re-latches the page's buffer (BUF) structure many times in the same instant, so
-/// the ms-quantised capture shows a run of identical <c>latch_acquired</c> on the same page at the same timestamp. They
-/// are one page visit, not many reads — left separate, <see cref="EventReader.SpreadEvents"/> lays the run end-to-end
-/// and smears these identical same-page events forward across the axis. A run of acquires sharing (page, class, mode)
-/// within <see cref="CoalesceGapUs"/> is folded into its earliest, whose hold is extended to span the whole visit.
+/// the quantised capture shows a run of identical <c>latch_acquired</c> on the same page at the same timestamp. They are one page visit,
+/// not many reads — left separate, <see cref="EventReader.SpreadEvents"/> lays the run end-to-end and smears these identical same-page 
+/// events forward across the axis. A run of acquires sharing (page, class, mode) within <see cref="CoalesceGapUs"/> is folded into its
+/// earliest, whose hold is extended to span the whole visit.
 ///
-/// Runs on the collapsed stream (after <see cref="IntervalCollapser"/> folds acquire/release) and before
-/// <see cref="ReadGrouping"/>, so the read grouping then forms one buffer-pool read per page visit.
+/// Runs on the collapsed stream (after <see cref="IntervalCollapser"/> folds acquire/release) and before <see cref="ReaderGrouper"/>, so
+/// the read grouping then forms one buffer-pool read per page visit.
 /// </remarks>
 public static class BufferLatchCoalescing
 {

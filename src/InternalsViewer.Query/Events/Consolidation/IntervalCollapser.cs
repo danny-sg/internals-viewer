@@ -1,4 +1,3 @@
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Reads;
@@ -140,6 +139,11 @@ public static class IntervalCollapser
             for (var i = 0; i < pairs; i++)
             {
                 onPair(orderedBegins[i], orderedEnds[i]);
+
+                // The Begin owns the End it consumed. The End leaves the stream but its call stack is still this
+                // event's work, so anything scoping by the surviving events (the crop's call-stack keep set) can find
+                // it — otherwise the End's frames are pruned and the tree loses every release/completion path.
+                orderedBegins[i].FoldedFrom = orderedEnds[i];
 
                 dropped.Add(orderedEnds[i]);
             }

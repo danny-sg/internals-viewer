@@ -4,23 +4,34 @@ internal static class EventConstants
 {
     public static readonly string[] Events =
     [
+        // Marking start/end for the batch
         "sqlserver.sql_batch_starting",
         "sqlserver.sql_batch_completed",
+        
+        // Data modification
         "sqlserver.file_write_completed",
         "sqlserver.log_flush_complete",
         "sqlserver.page_split",
-        "sqlserver.query_thread_profile",
+        "sqlserver.physical_page_write",
+
+        // Page reads
         "sqlserver.file_read",
         "sqlserver.file_read_completed",
         "sqlserver.physical_page_read",
-        "sqlserver.physical_page_write",
-        "sqlserver.query_post_execution_showplan"
+     
+        // Query execution/plan node matching
+        "sqlserver.query_thread_profile",
+        "sqlserver.query_post_execution_showplan",
+
+        // Transaction lifecycle (also used for lock closing)
+        "sqlserver.sql_transaction"
     ];
 
     public static readonly string[] LockEvents =
     [
         "sqlserver.lock_acquired",
         "sqlserver.lock_released",
+        "sqlserver.lock_escalation",
     ];
 
     public static readonly string[] WaitEvents =
@@ -68,8 +79,12 @@ internal static class EventConstants
         "package0.callstack"
     ];
 
+    /// <summary>
+    /// Events to exclude from callstack tracing
+    /// </summary>
     public static readonly string[] CallstackExcludeEvents =
     [
+        "sqlserver.sql_transaction",
         "sqlserver.sql_batch_starting",
         "sqlserver.sql_batch_completed",
         "sqlserver.query_post_execution_showplan",

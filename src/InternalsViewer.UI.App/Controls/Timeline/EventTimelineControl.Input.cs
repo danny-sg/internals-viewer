@@ -1,7 +1,7 @@
 using System;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;

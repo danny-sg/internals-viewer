@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Windows.UI;
-using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
@@ -14,6 +12,8 @@ using SkiaSharp.Views.Windows;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
@@ -56,6 +56,12 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     // Lock escalation granularity levels for the staircase: row (rid/key) at the bottom, page in the middle, object
     // (object/hobt) at the top — escalation climbs these over time.
     private const int LockLevels = 3;
+
+    // The escalation instant marker takes the colour of the mode it escalates to, over a dark surround that keeps it
+    // from smearing into a lock band of that same colour (see DrawLockEscalations).
+    private const float EscalationCaretSize = 4f;
+    private const float EscalationOutlineWidth = 1.5f;
+    private static readonly SKColor EscalationOutlineColour = new(10, 10, 10, 235);
 
     private const byte DurationOverlayAlpha = 96;
 
@@ -257,7 +263,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private double _minTime;
 
     private double _maxTime;
-
+    
     private double _timeRange;
 
     // True once the user has dragged a handle. While false the start/end handles track the playhead.

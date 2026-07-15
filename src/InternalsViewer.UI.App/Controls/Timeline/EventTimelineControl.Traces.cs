@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Events.Transactions;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
 
@@ -45,10 +46,14 @@ public sealed partial class EventTimelineControl
                                  .SelectMany(g => g.Events.OfType<LockEvent>())
                                  .Concat(_sortedEvents.OfType<LockEvent>());
 
-        // One band per non-empty category, most exclusive at the top so an escalation to a coarser lock steps UP.
-        var categories = locks.GroupBy(l => LockModeClassifier.Categorise(l.LockMode))
-                              .Where(g => g.Key != LockModeCategory.None)
-                              .OrderByDescending(g => TimelineColours.LockCategoryLevel(g.Key))
+        // One band per non-empty category, most exclusive at the top so an escalation to a coarser lock steps UP. Intent
+        // modes band apart, below every real lock: they only flag finer locks below the resource rather than holding it,
+        // so an IU does not outrank an RS_U despite both being of the update family.
+        var categories = locks.GroupBy(l => (Category: LockModeClassifier.Categorise(l.LockMode),
+                                             Intent: LockModeClassifier.IsIntent(l.LockMode)))
+                              .Where(g => g.Key.Category != LockModeCategory.None)
+                              .OrderBy(g => g.Key.Intent)
+                              .ThenByDescending(g => TimelineColours.LockCategoryLevel(g.Key.Category))
                               .ToList();
 
         if (categories.Count == 0)
@@ -139,6 +144,83 @@ public sealed partial class EventTimelineControl
                 DrawLockDensity(canvas, placed, bandTop, bandHeight, colour, rightEdge, dimmed);
             }
         }
+
+        // Over the bands: escalation is the moment the fine locks below it were dropped for the coarse one above.
+        DrawLockEscalations(canvas, innerTop, innerHeight);
+    }
+
+    // The measured escalation moment (sqlserver.lock_escalation) as a marker across the whole lock band — it is an
+    // instant, not a hold, and it is where every finer lock in that transaction ends.
+    private void DrawLockEscalations(SKCanvas canvas, float top, float height)
+    {
+        for (var i = 0; i < _sortedEvents.Count; i++)
+        {
+            if (_sortedEvents[i] is not LockEscalationEvent escalation)
+            {
+                continue;
+            }
+
+            var x = TimeToX(_times[i]);
+
+            if (x < RowLabelWidth || x > CanvasWidth)
+            {
+                continue;
+            }
+
+            // The caret head and the stem are unioned into one silhouette, so the dark surround wraps the marker as a
+            // whole — stroking them separately leaves a seam where they meet and the head reads as detached.
+            using var marker = MarkerPath(x, top, height);
+
+            var wasAntialias = _markerPaint.IsAntialias;
+            var wasStyle = _markerPaint.Style;
+            var wasStrokeWidth = _markerPaint.StrokeWidth;
+            var wasJoin = _markerPaint.StrokeJoin;
+
+            _markerPaint.IsAntialias = true;
+
+            // Stroke the outline first: it straddles the edge, and the fill then covers its inner half, leaving the
+            // surround outside the shape. Keeps the marker off a lock band of its own colour.
+            _markerPaint.Style = SKPaintStyle.Stroke;
+            _markerPaint.StrokeWidth = EscalationOutlineWidth * 2f;
+            _markerPaint.StrokeJoin = SKStrokeJoin.Round;
+            _markerPaint.Color = EscalationOutlineColour;
+
+            canvas.DrawPath(marker, _markerPaint);
+
+            // Coloured by the mode being escalated TO, so the marker reads as belonging to the band it steps up into.
+            _markerPaint.Style = SKPaintStyle.Fill;
+            _markerPaint.Color = TimelineColours.LockModeColour(escalation.LockMode);
+
+            canvas.DrawPath(marker, _markerPaint);
+
+            _markerPaint.StrokeJoin = wasJoin;
+            _markerPaint.StrokeWidth = wasStrokeWidth;
+            _markerPaint.Style = wasStyle;
+            _markerPaint.IsAntialias = wasAntialias;
+
+            _hitRegions.Add((new SKRect(x - EscalationCaretSize, top, x + EscalationCaretSize, top + height),
+                             escalation,
+                             "Lock escalation"));
+        }
+    }
+
+    // The escalation marker as one shape: a downward caret head on the band's top edge over a stem down the band,
+    // unioned so it has a single outline rather than two that meet at a seam.
+    private static SKPath MarkerPath(float x, float top, float height)
+    {
+        using var caret = new SKPath();
+
+        caret.MoveTo(x - EscalationCaretSize, top);
+        caret.LineTo(x + EscalationCaretSize, top);
+        caret.LineTo(x, top + EscalationCaretSize);
+        caret.Close();
+
+        using var stem = new SKPath();
+
+        stem.AddRect(new SKRect(x - 1f, top, x + 1f, top + height));
+
+        // Op returns null if the union fails; the stem alone still marks the instant.
+        return caret.Op(stem, SKPathOp.Union) ?? new SKPath(stem);
     }
 
     // Draws a band's locks as a per-pixel concurrency profile: each column's height is how many locks are held at that

@@ -1,7 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Helpers;
 
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events;
 
 /// <summary>
 /// Names for special pages that belong to no object (allocation maps, the file header, …)

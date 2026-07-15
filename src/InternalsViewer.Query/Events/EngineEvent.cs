@@ -1,8 +1,8 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Parsing.Plans;
 
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events;
 
 public record EngineEvent
 {
@@ -43,6 +43,16 @@ public record EngineEvent
     public PlanNodeIdentifier? PlanNodeIdentifier { get; set; }
 
     public CallStackNode? CallStack { get; set; }
+
+    /// <summary>
+    /// The End event folded into this one, whose call stack is part of this event's work
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Consolidation.IntervalCollapser"/> keeps the Begin and drops the End, but the End carries its own
+    /// frames (the release/completion path). Holding it here keeps those reachable from the event that survived, the
+    /// same way an <see cref="Interfaces.Events.IEventGroup"/> owns the raw events it was built from.
+    /// </remarks>
+    public EngineEvent? FoldedFrom { get; set; }
 
     public ulong? TaskAddress { get; set; }
 

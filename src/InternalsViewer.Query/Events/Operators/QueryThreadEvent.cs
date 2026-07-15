@@ -1,6 +1,4 @@
-﻿using InternalsViewer.Query.Events.EventTypes;
-
-namespace InternalsViewer.Query.Events.Operators;
+﻿namespace InternalsViewer.Query.Events.Operators;
 
 public sealed record QueryThreadEvent : EngineEvent
 {

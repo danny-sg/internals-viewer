@@ -1,4 +1,3 @@
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
 
 namespace InternalsViewer.Query.Events.Consolidation;
@@ -14,7 +13,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// escalation chain (one "Object Schema Locks" group, one "Object Locks" group). Locks with no resolved object
 /// (metadata/database) or no transaction are left as individual events, as are lone locks.
 /// </remarks>
-public static class LockGrouping
+public static class LockGrouper
 {
     public static List<EngineEvent> Group(IReadOnlyList<EngineEvent> events)
     {

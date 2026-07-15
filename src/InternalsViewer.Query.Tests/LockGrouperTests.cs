@@ -1,11 +1,10 @@
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events.Consolidation;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
 
 namespace InternalsViewer.Query.Tests;
 
-public class LockGroupingTests
+public class LockGrouperTests
 {
     [Fact]
     public void Locks_On_Same_Object_And_Transaction_Are_Grouped()
@@ -13,7 +12,7 @@ public class LockGroupingTests
         var a = Lock(objectId: 42, transactionId: 100, sequenceId: 1, timeUs: 1_000);
         var b = Lock(objectId: 42, transactionId: 100, sequenceId: 2, timeUs: 2_000);
 
-        var result = LockGrouping.Group([a, b]);
+        var result = LockGrouper.Group([a, b]);
 
         var group = Assert.IsType<LockGroup>(Assert.Single(result));
 
@@ -28,7 +27,7 @@ public class LockGroupingTests
         var a = Lock(objectId: 42, transactionId: 100, sequenceId: 1, timeUs: 1_000);
         var b = Lock(objectId: 99, transactionId: 100, sequenceId: 2, timeUs: 2_000);
 
-        var result = LockGrouping.Group([a, b]);
+        var result = LockGrouper.Group([a, b]);
 
         // One lock each on its object — neither reaches a group of two.
         Assert.Equal(2, result.Count);
@@ -41,7 +40,7 @@ public class LockGroupingTests
         var a = Lock(objectId: 42, transactionId: 100, sequenceId: 1, timeUs: 1_000);
         var b = Lock(objectId: 42, transactionId: 200, sequenceId: 2, timeUs: 2_000);
 
-        var result = LockGrouping.Group([a, b]);
+        var result = LockGrouper.Group([a, b]);
 
         Assert.DoesNotContain(result, e => e is LockGroup);
     }
@@ -61,7 +60,7 @@ public class LockGroupingTests
             SequenceId = 3
         };
 
-        var result = LockGrouping.Group([a, b, unresolved]);
+        var result = LockGrouper.Group([a, b, unresolved]);
 
         Assert.Contains(result, e => e is LockGroup);
         Assert.Contains(unresolved, result);
@@ -78,7 +77,7 @@ public class LockGroupingTests
         var schema1 = Lock(objectId: 42, transactionId: 100, sequenceId: 3, timeUs: 3_000, mode: LockMode.SCH_S);
         var schema2 = Lock(objectId: 42, transactionId: 100, sequenceId: 4, timeUs: 4_000, mode: LockMode.SCH_S);
 
-        var groups = LockGrouping.Group([data1, data2, schema1, schema2]).OfType<LockGroup>().ToList();
+        var groups = LockGrouper.Group([data1, data2, schema1, schema2]).OfType<LockGroup>().ToList();
 
         Assert.Equal(2, groups.Count);
         Assert.Contains(groups, g => g.Name == "Object Locks" && g.Events.Contains(data1) && g.Events.Contains(data2));

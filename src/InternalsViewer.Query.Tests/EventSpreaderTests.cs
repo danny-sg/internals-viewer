@@ -1,11 +1,10 @@
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.Tests;
 
-public class SpreadEventsTests
+public class EventSpreaderTests
 {
     [Fact]
     public void Reads_Sharing_A_Bucket_Are_Spread_Without_Overlapping_Or_Touching()
@@ -19,7 +18,7 @@ public class SpreadEventsTests
             Read(timeUs: 252_000, durationUs: 200),
         };
 
-        EventReader.SpreadEvents([.. reads]);
+        EventSpreader.SpreadEvents([.. reads]);
 
         var ordered = reads.OrderBy(r => r.TimeUs).ToList();
 
@@ -44,7 +43,7 @@ public class SpreadEventsTests
 
         var read2 = Read(timeUs: 252_000, durationUs: 115);
 
-        EventReader.SpreadEvents([read1, read2]);
+        EventSpreader.SpreadEvents([read1, read2]);
 
         Assert.Equal(251_000, read1.TimeUs);
         Assert.InRange(read2.TimeUs, 252_000, 253_000);
@@ -59,7 +58,7 @@ public class SpreadEventsTests
 
         var latch = new LatchEvent { Name = "latch_acquired", TimeUs = 252_000, DurationUs = 100 };
 
-        EventReader.SpreadEvents([read, latch]);
+        EventSpreader.SpreadEvents([read, latch]);
 
         Assert.InRange(read.TimeUs, 252_000, 253_000);
         Assert.InRange(latch.TimeUs, 252_000, 253_000);
@@ -84,7 +83,7 @@ public class SpreadEventsTests
             TaskAddress = 1,
         };
 
-        EventReader.SpreadEvents([group]);
+        EventSpreader.SpreadEvents([group]);
 
         // The group is centred in its own bucket, and the members kept their relative offsets but moved by the group's
         // delta, so none start before the group.
@@ -94,12 +93,72 @@ public class SpreadEventsTests
         Assert.All(group.Events, m => Assert.True(m.TimeUs >= group.TimeUs, "no member should precede its group"));
     }
 
-    private static ReadEventGroup Read(long timeUs, long durationUs) => new()
+    [Fact]
+    public void Events_On_Different_Steps_Of_A_Row_Do_Not_Take_Slices_From_Each_Other()
+    {
+        // A row stacks its events vertically by category, so latches of different categories never collide and must not
+        // compete for the bucket's slices — each has the whole window to itself.
+        var io = Latch(timeUs: 252_000, category: EventCategory.Io);
+        var concurrency = Latch(timeUs: 252_000, category: EventCategory.Concurrency);
+
+        EventSpreader.SpreadEvents([io, concurrency]);
+
+        // Neither was pushed aside for the other, so both land where a lone event in that bucket would.
+        var alone = Latch(timeUs: 252_000, category: EventCategory.Io);
+
+        EventSpreader.SpreadEvents([alone]);
+
+        Assert.Equal(alone.TimeUs, io.TimeUs);
+        Assert.Equal(alone.TimeUs, concurrency.TimeUs);
+    }
+
+    [Fact]
+    public void Events_On_The_Same_Step_Of_A_Row_Still_Share_The_Bucket()
+    {
+        // Same row, same category — these do collide, so they are still spread apart.
+        var first = Latch(timeUs: 252_000, category: EventCategory.Io);
+        var second = Latch(timeUs: 252_000, category: EventCategory.Io);
+
+        EventSpreader.SpreadEvents([first, second]);
+
+        Assert.NotEqual(first.TimeUs, second.TimeUs);
+        Assert.All([first, second], l => Assert.InRange(l.TimeUs, 252_000, 253_000));
+    }
+
+    [Fact]
+    public void Cached_And_Non_Cached_Reads_Are_Spread_In_Separate_Lanes()
+    {
+        // The read band splits into cached / non-cached half-lanes rather than stacking by category, so a cached read
+        // and a physical one at the same instant do not collide and neither gives up part of the bucket.
+        var cached = Read(timeUs: 252_000, durationUs: 200, readType: ReadType.Cached);
+        var physical = Read(timeUs: 252_000, durationUs: 200, readType: ReadType.NonCached);
+
+        EventSpreader.SpreadEvents([cached, physical]);
+
+        var alone = Read(timeUs: 252_000, durationUs: 200, readType: ReadType.Cached);
+
+        EventSpreader.SpreadEvents([alone]);
+
+        Assert.Equal(alone.TimeUs, cached.TimeUs);
+        Assert.Equal(alone.TimeUs, physical.TimeUs);
+    }
+
+    private static LatchEvent Latch(long timeUs, EventCategory category) => new()
+    {
+        Name = "latch_acquired",
+        TimeUs = timeUs,
+        DurationUs = 100,
+        Category = category,
+        TaskAddress = 1,
+    };
+
+    private static ReadEventGroup Read(long timeUs, long durationUs, ReadType readType = ReadType.NonCached) => new()
     {
         Name = "Page Read",
         Events = [],
         TimeUs = timeUs,
         DurationUs = durationUs,
+        ReadType = readType,
         TaskAddress = 1,
     };
 }

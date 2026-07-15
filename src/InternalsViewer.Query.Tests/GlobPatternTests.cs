@@ -1,4 +1,4 @@
-using InternalsViewer.Query.Callstack.Categories;
+using InternalsViewer.Query.CallStack.Categories;
 
 namespace InternalsViewer.Query.Tests;
 

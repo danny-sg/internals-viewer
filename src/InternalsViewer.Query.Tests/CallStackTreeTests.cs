@@ -1,5 +1,5 @@
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events;
 using Xunit.Abstractions;
 
 namespace InternalsViewer.Query.Tests;

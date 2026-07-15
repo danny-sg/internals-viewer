@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Callstack.Categories;
+﻿namespace InternalsViewer.Query.CallStack.Categories;
 
 public enum ModuleCategory : byte
 {

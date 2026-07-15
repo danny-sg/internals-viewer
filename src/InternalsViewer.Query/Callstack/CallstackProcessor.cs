@@ -1,7 +1,7 @@
-﻿using InternalsViewer.Query.Callstack.Categories;
+﻿using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.Symbols;
 
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack;
 
 /// <summary>
 /// Process the callstack by using the debugging symbols to resolve function names

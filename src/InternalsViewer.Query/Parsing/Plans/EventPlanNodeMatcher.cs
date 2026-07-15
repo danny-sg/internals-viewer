@@ -1,10 +1,11 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Transactions;
 
-namespace InternalsViewer.Query.Plans;
+namespace InternalsViewer.Query.Parsing.Plans;
 
 /// <summary>
 /// Associates captured storage-engine events with the physical plan operator (<see cref="PlanNode"/>)
@@ -123,8 +124,8 @@ public static class EventPlanNodeMatcher
             {
                 if (!isLog)
                 {
-                    // Reads (and other storage events) resolve to the operator that owns the page and
-                    // are pushed down to the actual read leaf.
+                    // Reads (and other storage events) resolve to the operator that owns the page and are pushed down to the actual read
+                    // leaf.
                     node = FindReadTarget(node) ?? node;
                 }
 

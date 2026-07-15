@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Events.EventTypes;
+﻿namespace InternalsViewer.Query.Events.Memory;
 
 public sealed record MemoryEvent : EngineEvent
 {

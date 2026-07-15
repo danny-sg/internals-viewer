@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Helpers;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;

@@ -6,18 +6,14 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
 using InternalsViewer.Query.TransactionLog;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using Microsoft.Extensions.Logging;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Xunit.Abstractions;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Latches;
 
 namespace InternalsViewer.Query.Tests.IntegrationTests;
 
-public class ReadGroupingTests(ITestOutputHelper testOutputHelper)
+public class ReaderGrouperTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;
 

@@ -1,7 +1,7 @@
 using System.Text;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events;
 
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack;
 
 /// <summary>
 /// The query run's whole call stack as a single tree, with events linked at the leaf of their path

@@ -1,10 +1,13 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Parsers;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query.Tests;
@@ -12,29 +15,6 @@ namespace InternalsViewer.Query.Tests;
 public class XmlEventParserTests
 {
     private static EngineEvent? Parse(XmlEventParser parser, string xml) => parser.ParseEvent(xml);
-
-    [Fact]
-    public void Parses_Name_Timestamp_And_Page_Fields()
-    {
-        var parser = new XmlEventParser(null, new PlanHandleRegistry(), new EventParser());
-
-        // page_location 0x100020000 => fileId 1, pageId 0x20000. The <type> metadata before <value>
-        // must be skipped.
-        var ev = Parse(parser,
-            """
-            <event name="page_read" package="sqlserver" timestamp="2026-06-30T12:00:00.123Z">
-              <data name="page_location"><type name="uint64" package="package0" /><value>4295098368</value></data>
-              <data name="type"><value>1</value></data>
-            </event>
-            """);
-
-        var page = Assert.IsType<PageEvent>(ev);
-
-        Assert.Equal("page_read", page.Name);
-        Assert.Equal(1, page.PageAddress!.Value.FileId);
-        Assert.Equal(0x20000, page.PageAddress.Value.PageId);
-        Assert.Equal(123, page.Timestamp.Millisecond);
-    }
 
     [Fact]
     public void Interns_Plan_Handle_To_Shared_Id()

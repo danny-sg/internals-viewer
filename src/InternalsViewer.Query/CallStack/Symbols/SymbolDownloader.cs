@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Query.Callstack;
-using System.Net;
+﻿using System.Net;
 
 namespace InternalsViewer.Query.CallStack.Symbols;
 

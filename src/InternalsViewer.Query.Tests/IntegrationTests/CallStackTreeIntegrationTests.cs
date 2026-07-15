@@ -4,10 +4,11 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
+using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
@@ -16,7 +17,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Xunit.Abstractions;
 
 namespace InternalsViewer.Query.Tests.IntegrationTests;
@@ -76,7 +76,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
     {
         var result = await RunQuery("SELECT TOP 10 * FROM dbo.ClusteredTable");
 
-        if (result.CallStack is not { } tree)
+        if (result.CallStackTree is not { } tree)
         {
             TestOutputHelper.WriteLine("No call stack captured (is C:\\Symbols available?)");
 
@@ -126,7 +126,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
         }
     }
 
-    private static IEnumerable<Callstack.CallStackNode> AncestorsOf(Callstack.CallStackNode leaf)
+    private static IEnumerable<CallStackNode> AncestorsOf(CallStackNode leaf)
     {
         for (var node = leaf; node is { IsRoot: false }; node = node.Parent)
         {
@@ -136,8 +136,8 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 
     private void DiagnoseSelection(string label,
                                    IEnumerable<EngineEvent> selected,
-                                   Callstack.CallStackTree tree,
-                                   HashSet<Callstack.CallStackNode> roots)
+                                   CallStackTree tree,
+                                   HashSet<CallStackNode> roots)
     {
         TestOutputHelper.WriteLine("");
         TestOutputHelper.WriteLine($"=== {label} ===");
@@ -146,13 +146,13 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 
         TestOutputHelper.WriteLine($"leaves with call stack: {leaves.Count}");
 
-        var visible = new HashSet<Callstack.CallStackNode>();
+        var visible = new HashSet<CallStackNode>();
 
         foreach (var leaf in leaves)
         {
             var pathLen = 0;
             var nonInfra = 0;
-            Callstack.CallStackNode? top = null;
+            CallStackNode? top = null;
 
             for (var node = leaf; node is { IsRoot: false }; node = node.Parent)
             {
@@ -178,7 +178,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 
         // Now simulate the UI's TOP-DOWN BuildVisible from the tree roots and count what it actually yields.
         var topDown = 0;
-        var reachable = new HashSet<Callstack.CallStackNode>();
+        var reachable = new HashSet<CallStackNode>();
 
         foreach (var root in tree.Root.ChildNodes)
         {
@@ -207,7 +207,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
     }
 
     // Mirrors the UI's BuildVisible: hide infrastructure and out-of-scope nodes, promoting their visible children up.
-    private void RenderScoped(Callstack.CallStackNode node, HashSet<Callstack.CallStackNode> visible, int depth)
+    private void RenderScoped(CallStackNode node, HashSet<CallStackNode> visible, int depth)
     {
         var hidden = node.IsInfrastructure || !visible.Contains(node);
 
@@ -222,9 +222,9 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
         }
     }
 
-    private static int CountVisibleTopDown(Callstack.CallStackNode node,
-                                           HashSet<Callstack.CallStackNode> visible,
-                                           HashSet<Callstack.CallStackNode> reachable)
+    private static int CountVisibleTopDown(CallStackNode node,
+                                           HashSet<CallStackNode> visible,
+                                           HashSet<CallStackNode> reachable)
     {
         var count = 0;
 
@@ -249,7 +249,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 
         // The CQScan* iterators live in sqlmin.pdb, the compile classes in sqllang.pdb, etc. — so enumerate every
         // distinct module PDB the stacks touched, using the exact guid/age the engine loaded.
-        var pdbs = result.CallStack?
+        var pdbs = result.CallStackTree?
             .Nodes()
             .Select(n => n.Frame)
             .Where(f => f is { Pdb.Length: > 0 })
@@ -330,7 +330,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
     {
         var result = await RunQuery(sql);
 
-        if (result.CallStack is not { } tree)
+        if (result.CallStackTree is not { } tree)
         {
             TestOutputHelper.WriteLine("No call stack captured (is C:\\Symbols available?)");
 
@@ -352,8 +352,8 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
         var withStack = result.EngineEvents.Count(e => e.CallStack is not null)
                         + result.EngineEvents.OfType<ReadEventGroup>().Sum(g => g.Events.Count(c => c.CallStack is not null));
 
-        var roots = result.CallStack?.Root.ChildNodes.Count() ?? 0;
-        var nodes = result.CallStack?.Nodes().Count() ?? 0;
+        var roots = result.CallStackTree?.Root.ChildNodes.Count() ?? 0;
+        var nodes = result.CallStackTree?.Nodes().Count() ?? 0;
 
         TestOutputHelper.WriteLine($"crop window={result.CropStartUs}..{result.CropEndUs}  events={result.EngineEvents.Count}"
             + $"  readGroups={readGroups}  eventsWithStack={withStack}  treeRoots={roots}  treeNodes={nodes}");

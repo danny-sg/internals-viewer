@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Events.EventTypes;
+﻿namespace InternalsViewer.Query.Events.Batches;
 
 public sealed record BatchStartEvent : EngineEvent
 {

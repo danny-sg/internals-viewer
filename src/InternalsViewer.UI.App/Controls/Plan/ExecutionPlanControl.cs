@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Windows.Foundation;
 using Windows.UI;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
@@ -17,6 +15,8 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Shapes;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 

@@ -1,6 +1,6 @@
 using System;
 using System.ComponentModel;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;

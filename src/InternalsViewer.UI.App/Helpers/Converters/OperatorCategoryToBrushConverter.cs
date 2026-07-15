@@ -1,9 +1,9 @@
 using System;
-using InternalsViewer.Query.Plans;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
+using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;
 

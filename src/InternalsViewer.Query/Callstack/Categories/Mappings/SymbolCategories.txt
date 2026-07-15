@@ -8,15 +8,31 @@
 #     function is weighted highest and breaks ties.
 Module|Class|Function|Category|Iterator
 
-# --- Query operators (CQScan* iterators, sqlmin) - most specific first --------------------------------------------
+# Statements
+sqllang|CXStmtSelect|XretExecute|StatementExecution|SELECT
+sqllang|CXStmtUpdate|XretExecute|StatementExecution|UPDATE
+sqllang|CXStmtDelete|XretExecute|StatementExecution|DELETE
+sqllang|CXStmtInsert|XretExecute|StatementExecution|INSERT
+sqllang|CXStmtMerge|XretExecute|StatementExecution|MERGE
+
+# -----------------------------------------------------------------------------------------------------------------------------------------
+# Query operators
+# -----------------------------------------------------------------------------------------------------------------------------------------
 sqlmin|CQueryScan|GetRow|QueryOperator|Iterator
 sqlmin|CQScanProfileNew|GetRow|QueryOperator|Profiling
-sqlmin|CQScanHashAgg*|*|QueryOperator|Hash Match (Aggregate)
+sqlmin|CQScanLightProfileNew|GetRow|QueryOperator|Profiling
+
+# Physical Operators
+
+sqlmin|CQScanHashAgg*|*|PhysicalOperator|Hash Match (Aggregate)
 
 # Hash match + Build/Probe
-sqlmin|CQScanHash|ConsumeBuild|QueryOperator|Hash Match Build
-sqlmin|CQScanHash|ConsumeProbe|QueryOperator|Hash Match Probe
-sqlmin|CQScanHash*|*|QueryOperator|Hash Match
+sqlmin|CQScanHash|ConsumeBuild|PhysicalOperator|Hash Match Build
+sqlmin|CQScanHash|ConsumeProbe|PhysicalOperator|Hash Match Probe
+sqlmin|CQScanHash*|*|PhysicalOperator|Hash Match
+
+# Execution Tree (?)
+sqlmin|CXte*|*|ExecutionTree|
 
 sqlmin|CQScanMergeJoin*|*|QueryOperator|Merge Join
 sqlmin|CQScanNLJoin*|*|QueryOperator|Nested Loops
@@ -26,6 +42,7 @@ sqlmin|CQScanSort*|*|QueryOperator|Sort
 sqlmin|CQScanTop*|*|QueryOperator|Top
 sqlmin|CQScanRange*|*|QueryOperator|Index Seek
 sqlmin|CQScanIndex*|*|QueryOperator|Index Scan
+sqlmin|CQScanTableScanNew|GetRow|QueryOperator|Row Read
 sqlmin|CQScanTable*|*|QueryOperator|Table Scan
 sqlmin|CQScanRowset*|*|QueryOperator|Scan
 sqlmin|CQScanFilter*|*|QueryOperator|Filter
@@ -36,8 +53,14 @@ sqlmin|CQScanExchange*|*|QueryOperator|Parallelism
 sqlmin|CQScanSeq*|*|QueryOperator|Sequence
 sqlmin|CQScanUpdate*|*|QueryOperator|Update
 sqlmin|CQScan*|*|QueryOperator|
-*|QueryScan*|*|QueryOperator|
-*|CQueryScan*|*|QueryOperator|
+sqlmin|QueryScan*|*|QueryOperator|
+sqlmin|CQueryScan*|*|QueryOperator|
+
+# Rowset (Row iterators)
+sqlmin|Rowset*|*FetchNextRow|RowAccess|Row Iterator
+sqlmin|Rowset*|*|RowAccess|
+
+# DataSet (Dataset operations)
 
 # --- Class rules -----------------------------------------------------------------------------------------------------
 *|GenericEvent*|*|XEventInfrastructure|
@@ -76,7 +99,6 @@ sqlmin|CQScan*|*|QueryOperator|
 *|BPool*|*|BufferPool|
 *|FCB*|*|FileControlBlock|
 
-*|Rowset*|*|RowAccess|
 *|IndexRowScanner*|*|RowAccess|
 *|CValFetchByKey*|*|RowAccess|
 *|OpenRowset*|*|RowAccess|
@@ -85,8 +107,8 @@ sqlmin|CQScan*|*|QueryOperator|
 *|GetRowForKeyValue*|*|RowAccess|
 
 *|DataSet*|*|Dataset|
-*|IndexDataSetSession*|*|Dataset|
-*|HeapDataSetSession*|*|Dataset|
+*|IndexDataSetSession*|*|Dataset|Index
+*|HeapDataSetSession*|*|Dataset|Heap
 
 *|FixPage*|*|PageAccess|
 *|Page*|*|PageAccess|

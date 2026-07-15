@@ -1,16 +1,12 @@
-using System.Linq;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Locks;
 
 /// <summary>
-/// The locks one owner (transaction) took on a single object, capturing the escalation as its granularity moves up
-/// (rid → page → object)
+/// The locks an owner (transaction) took on an object
 /// </summary>
 /// <remarks>
-/// Owns its constituent <see cref="LockEvent"/>s rather than duplicating them; a flatten/SelectMany over
-/// <see cref="Events"/> expands the group back into the raw stream. The object it groups on is the resolved
-/// <see cref="EngineEvent.AllocationUnit"/>'s object — the one identity shared across every granularity.
+/// Captures the escalation as its granularity moves up (e.g. rid → page → object) and includes the constituent locks
 /// </remarks>
 public sealed record LockGroup : EngineEvent, IEventGroup
 {

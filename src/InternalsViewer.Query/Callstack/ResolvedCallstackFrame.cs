@@ -1,6 +1,6 @@
-﻿using InternalsViewer.Query.Callstack.Categories;
+﻿using InternalsViewer.Query.CallStack.Categories;
 
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack;
 
 public sealed record ResolvedCallstackFrame
 {

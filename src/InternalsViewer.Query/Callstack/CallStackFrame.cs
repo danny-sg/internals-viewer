@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack;
 
 /// <summary>
 /// Raw call stack frame

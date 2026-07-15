@@ -1,4 +1,4 @@
-using InternalsViewer.Query.Callstack;
+using InternalsViewer.Query.CallStack;
 
 namespace InternalsViewer.Query.Tests;
 

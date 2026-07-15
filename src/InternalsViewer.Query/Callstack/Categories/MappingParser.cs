@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Callstack.Categories;
+namespace InternalsViewer.Query.CallStack.Categories;
 
 /// <summary>
 /// Parses the pipe-delimited mapping files into module entries and symbol rules

@@ -1,8 +1,7 @@
 ﻿using System.Globalization;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.Query.Events.Parsers;
 

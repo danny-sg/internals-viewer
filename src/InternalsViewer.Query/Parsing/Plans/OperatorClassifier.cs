@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Plans;
+namespace InternalsViewer.Query.Parsing.Plans;
 
 /// <summary>
 /// Classifies physical plan operators: what kind they are, how they consume their inputs (streaming vs

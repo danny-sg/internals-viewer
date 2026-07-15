@@ -1,6 +1,8 @@
-﻿using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Plans;
+﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.Results;
+using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query;
 
@@ -17,7 +19,7 @@ public sealed record QueryResult
     /// <summary>
     /// Merged query call stack
     /// </summary>
-    public Callstack.CallStackTree? CallStack { get; set; }
+    public CallStackTree? CallStackTree { get; set; }
 
     public List<QueryResultSet> ResultSets { get; set; } = [];
 
@@ -25,10 +27,9 @@ public sealed record QueryResult
 
     public long RowCount { get; set; }
 
-    /// <summary>
-    /// The query's time window (microseconds) when cropped to the executed query, otherwise null — for the timeline axis
-    /// </summary>
     public long? CropStartUs { get; set; }
 
     public long? CropEndUs { get; set; }
+
+    public List<LogRecord> LogRecords { get; set; } = [];
 }

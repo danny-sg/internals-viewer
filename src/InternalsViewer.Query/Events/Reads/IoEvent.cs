@@ -1,6 +1,4 @@
-﻿using InternalsViewer.Query.Events.EventTypes;
-
-namespace InternalsViewer.Query.Events.Reads;
+﻿namespace InternalsViewer.Query.Events.Reads;
 
 public sealed record IoEvent : PageEngineEvent
 {

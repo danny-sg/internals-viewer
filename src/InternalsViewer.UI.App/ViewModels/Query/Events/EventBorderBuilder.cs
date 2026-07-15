@@ -92,7 +92,7 @@ internal static class EventBorderBuilder
 
     private const long MinLockBorderDurationUs = 1000;
 
-    private static bool IsIntentLock(LockMode mode) => mode is LockMode.IS or LockMode.IU or LockMode.IX;
+    private static bool IsIntentLock(LockMode mode) => LockModeClassifier.IsIntent(mode);
 
     // How far an intent lock's colour is blended towards white — enough to read as the same hue, a shade lighter.
     private const double IntentLightenAmount = 0.5;

@@ -145,6 +145,33 @@ public class IntervalCollapserTests
         TimeUs = timeUs,
     };
 
+    [Fact]
+    public void The_Folded_End_Is_Owned_By_The_Begin_That_Consumed_It()
+    {
+        // The End leaves the stream, but it carries its own call stack (the release path) and that work belongs to the
+        // Begin that survived. Anything scoping by the surviving events — the crop's call-stack keep set — reaches it
+        // through here; without it the End's frames are pruned and the tree loses every release/completion path.
+        var acquire = Latch("latch_acquired", latchAddress: 500, timeUs: 1_000, durationUs: 0);
+
+        var release = Latch("latch_released", latchAddress: 500, timeUs: 1_100, durationUs: 75);
+
+        var result = IntervalCollapser.Collapse([acquire, release]);
+
+        var kept = Assert.IsType<LatchEvent>(Assert.Single(result));
+
+        Assert.Same(release, kept.FoldedFrom);
+    }
+
+    [Fact]
+    public void An_Unpaired_Begin_Owns_Nothing()
+    {
+        var acquire = Latch("latch_acquired", latchAddress: 500, timeUs: 1_000, durationUs: 0);
+
+        var result = IntervalCollapser.Collapse([acquire]);
+
+        Assert.Null(Assert.IsType<LatchEvent>(Assert.Single(result)).FoldedFrom);
+    }
+
     private static LatchEvent Latch(string name, ulong latchAddress, long timeUs, long durationUs) => new()
     {
         Name = name,

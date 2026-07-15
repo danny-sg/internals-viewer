@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Callstack.Categories;
+namespace InternalsViewer.Query.CallStack.Categories;
 
 /// <summary>
 /// One symbol-category rule: matches a frame by module/class/function glob and assigns a category and optional iterator

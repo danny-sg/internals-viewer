@@ -1,5 +1,4 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Waits;
@@ -57,7 +56,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 ///
 /// 
 /// </remarks>
-public static class ReadGrouping
+public static class ReaderGrouper
 {
     public static List<EngineEvent> Group(IReadOnlyList<EngineEvent> events)
     {

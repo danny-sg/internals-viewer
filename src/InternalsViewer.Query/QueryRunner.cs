@@ -1,15 +1,16 @@
 ﻿using System.Diagnostics;
-using System.IO;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Callstack;
+using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Extensions;
+using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Parsing;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.Results;
 using InternalsViewer.Query.TransactionLog;
 using Microsoft.Data.SqlClient;
@@ -62,6 +63,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         List<ExecutionPlan>? executionPlans;
         CallStackTree callStack;
         List<QueryResultSet> resultSets;
+        List<LogRecord> logRecords;
 
         long? cropStart = null;
         long? cropEnd = null;
@@ -139,7 +141,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         try
         {
-            (var filePath, rowCount, var logRecords, resultSets)
+            (var filePath, rowCount, logRecords, resultSets)
                 = await RunQueryWithEventSession(sessionId,
                                                  preCommands,
                                                  commands[0],
@@ -177,16 +179,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                && planHandle != PlanHandleRegistry.None
                                                && e.PlanHandleId == planHandle))
                                .ToList();
-    
+
                 static long EndUs(EngineEvent e) => e is QueryThreadEvent or MemoryEvent ? e.TimeUs : e.TimeUs + e.DurationUs;
 
                 var windowEvents = events.Where(Overlaps).ToList();
 
                 cropStart = (windowEvents.Count > 0 ? Math.Min(start, windowEvents.Min(e => e.TimeUs)) : start)
-                            - AxisPaddingUs;
+                            - AdditionalPaddingUs;
 
                 cropEnd = (windowEvents.Count > 0 ? Math.Max(end, windowEvents.Max(EndUs)) : end)
-                          + AxisPaddingUs;
+                          + AdditionalPaddingUs;
 
                 if (events.FirstOrDefault(e => e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 }) is { } query)
                 {
@@ -265,8 +267,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             IsSuccess = true,
             EngineEvents = events,
             ExecutionPlans = executionPlans,
-            CallStack = callStack,
+            CallStackTree = callStack,
             ResultSets = resultSets,
+            LogRecords = logRecords,
             SessionId = sessionId,
             RowCount = rowCount,
             CropStartUs = cropStart,
@@ -277,12 +280,12 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     // Padding kept either side of the query window so an event landing just on its boundary is not clipped.
     private const long CropPaddingUs = 100;
 
-    // Extra room left either side of the events on the timeline axis, so the playhead can sit before the first event
-    // and after the last.
-    private const long AxisPaddingUs = 500;
+    private const long AdditionalPaddingUs = 500;
 
     private void DeleteTraceFiles(string filePath, IProgress<string>? progress)
     {
+        long size = 0;
+
         try
         {
             var directory = Path.GetDirectoryName(filePath);
@@ -296,10 +299,12 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             foreach (var file in Directory.EnumerateFiles(directory, $"{sessionName}*.xel"))
             {
+                size += new FileInfo(file).Length;
+
                 File.Delete(file);
             }
 
-            progress?.Report("Trace file deleted");
+            progress?.Report($"Trace file deleted ({size / (1024.0 * 1024.0):N2} MB");
         }
         catch (Exception ex)
         {
@@ -313,33 +318,57 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         return queryNode?.PlanNodeIdentifier is not { } id
             ? null
-            : (Math.Max(0, queryNode.TimeUs - CropPaddingUs), queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs,
-               id.PlanHandleId);
+            : (
+                Math.Max(0, queryNode.TimeUs - CropPaddingUs), 
+                queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs,
+                id.PlanHandleId
+              );
     }
 
-    // The events whose call-stack frames survive the crop: the kept events, plus the child events inside each read
-    // group (they carry the read's frames but are not themselves in the top-level list).
+    /// <summary>
+    /// The events whose call-stack frames survive the crop: if an event survives, so must its call stack
+    /// </summary>
+    /// <remarks>
+    /// A consolidated group is what reaches the top-level list; the raw events it owns do not, yet THEY are the ones
+    /// carrying the call-stack frames (a group has none of its own). So every <see cref="IEventGroup"/> is expanded —
+    /// any group, not just reads: locks are grouped too, and keying this on one group type silently drops every frame
+    /// belonging to a grouped event from the tree, but only when cropping is on (uncropped there is no keep set).
+    /// </remarks>
     private static HashSet<EngineEvent> KeepSet(List<EngineEvent> events)
     {
         var keep = new HashSet<EngineEvent>(ReferenceEqualityComparer.Instance);
 
         foreach (var e in events)
         {
-            keep.Add(e);
-
-            if (e is ReadEventGroup group)
-            {
-                foreach (var child in group.Events)
-                {
-                    keep.Add(child);
-                }
-            }
+            KeepWithOwned(keep, e);
         }
 
         return keep;
     }
 
-  
+    // An event and everything it owns, since only the owner reaches the top-level list but the frames live on the owned:
+    // the End folded into it, and (for a consolidated group) the raw events it was built from. Recursive because the two
+    // nest — a read group's members are themselves folded begin/end pairs.
+    private static void KeepWithOwned(HashSet<EngineEvent> keep, EngineEvent e)
+    {
+        if (!keep.Add(e))
+        {
+            return;
+        }
+
+        if (e.FoldedFrom is { } folded)
+        {
+            KeepWithOwned(keep, folded);
+        }
+
+        if (e is IEventGroup group)
+        {
+            foreach (var child in group.Events)
+            {
+                KeepWithOwned(keep, child);
+            }
+        }
+    }
 
     private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets)>
         RunQueryWithEventSession(string sessionName,
@@ -387,6 +416,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             progress?.Report("Pre-Trace: ");
 
+            var preStart = Stopwatch.GetTimestamp();
+
             foreach (var preCommand in preCommandSql)
             {
                 var itemRowCount = await connection.ExecuteSql(preCommand, cancellationToken, Logger);
@@ -398,6 +429,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             }
 
             connection.InfoMessage -= onInfoMessage;
+
+            Logger.LogDebug("Pre-Commands executed in {Duration}", Stopwatch.GetElapsedTime(preStart));
         }
 
         var spid = await connection.ExecuteScalar<short>("SELECT @@SPID", cancellationToken, Logger);
@@ -464,7 +497,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             {
                 if (queryOptions.IncludeResults)
                 {
-                    var columns = ReadSchema(reader);
+                    var columns = reader.GetResultColumns();
 
                     var stringPools = BuildStringPools(columns);
 
@@ -516,8 +549,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 progress?.Report($"{logRecords.Count} log record(s) retrieved");
 
-                await connection.ExecuteSql($"ROLLBACK TRANSACTION iv_{sessionName[..28]};", 
-                                            cancellationToken, 
+                await connection.ExecuteSql($"ROLLBACK TRANSACTION iv_{sessionName[..28]};",
+                                            cancellationToken,
                                             Logger);
 
                 progress?.Report($"Transaction rolled back");
@@ -525,8 +558,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         }
         finally
         {
-            // Cleanup must run even when the query was cancelled, so it must not observe the (now cancelled)
-            // token - otherwise the Extended Events session is left running on the server.
+            // Cleanup must run even when the query was cancelled, so it must not observe the (now cancelled) token - otherwise the
+            // Extended Events session is left running on the server.
             try
             {
                 await connection.ExecuteSql(EventSql.GetStopSessionSql(sessionName), CancellationToken.None, Logger);
@@ -601,8 +634,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             {
                 if (queryOptions.IncludeResults)
                 {
-                    var columns = ReadSchema(reader);
+                    var columns = reader.GetResultColumns();
+
                     var stringPools = BuildStringPools(columns);
+                    
                     var rows = new List<ResultRow>();
 
                     while (await reader.ReadAsync(cancellationToken))
@@ -642,25 +677,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         }
 
         return (rowCount, resultSets);
-    }
-
-    private static List<ResultColumn> ReadSchema(SqlDataReader reader)
-    {
-        var schemaTable = reader.GetSchemaTable();
-
-        var columns = new List<ResultColumn>(reader.FieldCount);
-
-        for (var i = 0; i < reader.FieldCount; i++)
-        {
-            var name = reader.GetName(i);
-            var typeName = reader.GetDataTypeName(i);
-            var clrType = reader.GetFieldType(i) ?? typeof(object);
-            var nullable = schemaTable?.Rows[i]["AllowDBNull"] is true;
-
-            columns.Add(new ResultColumn(i, name, typeName, clrType, nullable));
-        }
-
-        return columns;
     }
 
     private static Dictionary<int, Dictionary<string, string>> BuildStringPools(List<ResultColumn> columns)

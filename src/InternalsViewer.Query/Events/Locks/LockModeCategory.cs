@@ -1,13 +1,8 @@
 namespace InternalsViewer.Query.Events.Locks;
 
 /// <summary>
-/// Broad intent a <see cref="LockMode"/> falls under, collapsing the ~20 modes into the handful that matter at a glance
+/// Categorisation of lock modes by grouped intent
 /// </summary>
-/// <remarks>
-/// Groups the shared/intent-shared family as <see cref="Read"/>, the update family as <see cref="Update"/>, the
-/// exclusive/intent-exclusive family as <see cref="Write"/>, schema modification as <see cref="Schema"/>, the
-/// serializable key-range modes as <see cref="Range"/> and bulk update as <see cref="Bulk"/>.
-/// </remarks>
 public enum LockModeCategory
 {
     None,
@@ -43,9 +38,30 @@ public static class LockModeClassifier
     };
 
     /// <summary>
-    /// Whether a mode is a full lock that SUPERSEDES finer locks (the target of a lock escalation), as opposed to a
-    /// pure intent mode (IS/IU/IX) that is held alongside them
+    /// Whether a mode is a pure intent mode
     /// </summary>
+    /// <remarks>
+    /// An intent lock is a declaration rather than a hold, so it ranks below every real lock however exclusive its category (an IU is
+    /// weaker than an RS_U, despite both being of the update family).
+    /// </remarks>
+    public static bool IsIntent(LockMode mode) => mode is LockMode.IS or LockMode.IU or LockMode.IX;
+
+    /// <summary>
+    /// Whether a mode is a full lock that supersedes finer locks
+    /// </summary>
+    /// <remarks>
+    /// Lock Mode hierarchy is:
+    /// 
+    ///     X           Exclusive
+    ///     ├─ UIX      Update with Intent Exclusive
+    ///     │  └─ U     Update
+    ///     └─ SIX      Shared with Intent Exclusive
+    ///     ├─ SIU      Shared with Intent Update
+    ///     └─ S        Shared
+    ///     ├─ IX       Intent Exclusive
+    ///     │  └─ IU    Intent Update
+    ///     │     └─ IS Intent Shared
+    /// </remarks>
     public static bool IsSuperseding(LockMode mode) =>
         mode is LockMode.X or LockMode.U or LockMode.S or LockMode.SIX or LockMode.UIX;
 }

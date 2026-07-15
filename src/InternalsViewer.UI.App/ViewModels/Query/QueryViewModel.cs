@@ -7,12 +7,8 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Providers.Server;
 using InternalsViewer.Query;
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Callstack.Categories;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
 using InternalsViewer.UI.App.Messages;
@@ -34,7 +30,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -220,8 +220,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public QueryResultSet? ActiveResultSet => ResultSets.Count > 0 ? ResultSets[0] : null;
 
-    [ObservableProperty]
-    private List<CallstackFrame> _callstacks = [];
+    //[ObservableProperty]
+    //private List<CallstackFrame> _callstacks = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CallStackRoots))]
@@ -965,9 +965,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             Events = results.EngineEvents;
 
-            Callstacks = results.CallStack?.Nodes().Select(n => n.Frame!).ToList() ?? [];
+            //Callstacks = results.CallStackTree?.Nodes().Select(n => n.Frame!).ToList() ?? [];
 
-            CallStack = results.CallStack;
+            CallStack = results.CallStackTree;
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
 
@@ -1024,7 +1024,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Events = [];
         FilteredEvents = [];
         CallStack = null;
-        Callstacks = [];
+        //Callstacks = [];
         SelectedEvent = null;
         ExecutionPlans = [];
         ResultSets = [];

@@ -2,13 +2,14 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using Windows.ApplicationModel.DataTransfer;
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
@@ -288,7 +289,9 @@ public sealed partial class CallstackDocumentView : UserControl
             return (_viewModel?.Events ?? []).Where(e => e.PlanNodeIdentifier == id);
         }
 
-        if (selected is ReadEventGroup group)
+        // Any consolidated group (a read, a lock group) scopes to the raw events it owns, merging their stacks into one
+        // tree — the group itself carries no call stack, its members do.
+        if (selected is IEventGroup group)
         {
             return group.Events;
         }
@@ -298,9 +301,7 @@ public sealed partial class CallstackDocumentView : UserControl
 
     private void BuildTree()
     {
-        _nodes.Clear();
-
-        Tree.RootNodes.Clear();
+        ClearTree();
 
         foreach (var root in StartRoots())
         {
@@ -309,6 +310,18 @@ public sealed partial class CallstackDocumentView : UserControl
                 Tree.RootNodes.Add(treeNode);
             }
         }
+    }
+
+    // Drop the selection BEFORE the nodes it points into: TreeView holds SelectedNode itself, so clearing RootNodes
+    // while it still references a node from the previous tree leaves the control unable to show the new one — which is
+    // why the first query renders (nothing selected yet) and every one after it does not.
+    private void ClearTree()
+    {
+        Tree.SelectedNode = null;
+
+        _nodes.Clear();
+
+        Tree.RootNodes.Clear();
     }
 
     private IEnumerable<CallStackNode> StartRoots()
@@ -385,9 +398,9 @@ public sealed partial class CallstackDocumentView : UserControl
     // events, then its child operators; an operator whose whole subtree captured no call stacks is dropped.
     private void BuildPlanTree()
     {
-        _nodes.Clear();
+        ClearTree();
+
         _operatorNodes.Clear();
-        Tree.RootNodes.Clear();
 
         if (_histogramNode is not null)
         {
@@ -515,7 +528,8 @@ public sealed partial class CallstackDocumentView : UserControl
                 continue;
             }
 
-            if (e is ReadEventGroup group)
+            // A group's stacks live on the raw events it owns, not on the group itself — so expand any of them.
+            if (e is IEventGroup group)
             {
                 leaves.AddRange(group.Events.Where(c => c.CallStack is not null).Select(c => c.CallStack!));
             }

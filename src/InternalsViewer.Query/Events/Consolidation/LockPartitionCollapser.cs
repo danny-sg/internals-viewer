@@ -1,4 +1,3 @@
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
 
 namespace InternalsViewer.Query.Events.Consolidation;

@@ -1,5 +1,5 @@
 using System;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;

@@ -1,6 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.EventTypes;
 
 namespace InternalsViewer.Query.Interfaces.Events;
 

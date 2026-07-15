@@ -1,6 +1,6 @@
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events;
 
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack;
 
 /// <summary>
 /// A single frame in the query's shared call stack tree, linking the events whose path ends here

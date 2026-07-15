@@ -1,8 +1,14 @@
-﻿namespace InternalsViewer.Query.Callstack.Categories;
+﻿namespace InternalsViewer.Query.CallStack.Categories;
 
 public enum SymbolCategory : byte
 {
-    [Category("", Description = "Not yet classified")]
+    // Named (rather than blank) so an unclassified frame still shows a category — CallStackNode.Category falls back to
+    // the module only when the symbol is UNRESOLVED, and an empty name is not null, so a blank here renders an empty tag
+    // rather than falling through to anything.
+    [Category(
+        "Unknown",
+        Description = "Not yet classified",
+        ForegroundColor = "#808080")]
     Unknown = 0,
 
     [Category(
@@ -54,9 +60,15 @@ public enum SymbolCategory : byte
 
     [Category(
         "Query Operator",
-        Description = "Query plan operators such as scans, joins and sorts",
+        Description = "Query plan operators such as compute scalar, joins and sorts",
         ForegroundColor = "#00B050")]
     QueryOperator,
+
+    [Category(
+        "Physical Operator",
+        Description = "Query plan physical operators such as scans and seeks",
+        ForegroundColor = "#01873e")]
+    PhysicalOperator,
 
     [Category(
         "Row Access",
@@ -70,6 +82,11 @@ public enum SymbolCategory : byte
         ForegroundColor = "#9966CC")]
     ExpressionEvaluation,
 
+    [Category(
+        "Execution Tree",
+        Description = "Context execution tree",
+        ForegroundColor = "#9966CC")]
+    ExecutionTree,
 
     [Category(
         "Dataset",
@@ -139,10 +156,10 @@ public enum SymbolCategory : byte
     Networking,
 
     [Category(
-        "Allocation Access",
+        "Allocations",
         Description = "Allocation-order scanning and extent/page traversal",
         ForegroundColor = "#5B9BD5")]
-    AllocationAccess,
+    Allocations,
 
     [Category(
         "Transaction Management",

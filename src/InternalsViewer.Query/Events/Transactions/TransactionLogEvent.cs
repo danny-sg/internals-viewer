@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Query.TransactionLog;
 
-namespace InternalsViewer.Query.Events.EventTypes;
+namespace InternalsViewer.Query.Events.Transactions;
 
 public sealed record TransactionLogEvent : EngineEvent
 {

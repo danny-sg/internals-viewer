@@ -1,14 +1,16 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query.Events.Parsers;
@@ -26,6 +28,8 @@ public sealed class EventParser
                 => MapFileEvent(e),
             var n when n.Contains("physical_page")
                 => MapIoEvent(e),
+            "lock_escalation"
+                => LockEventParser.MapEscalation(database!, e),
             var n when n.Contains("lock_")
                 => LockEventParser.Map(database!, e),
             var n when n.Contains("wait")
@@ -44,6 +48,8 @@ public sealed class EventParser
                 => MapMemory(e),
             "transaction_log"
                 => MapTransactionLogEvent(e),
+            "sql_transaction"
+                => MapTransaction(e),
             "sql_batch_starting"
                 => MapBatchStart(e),
             _ => new EngineEvent
@@ -121,6 +127,18 @@ public sealed class EventParser
         }
 
         return engineEvent;
+    }
+
+    private static TransactionEvent MapTransaction(EventResult e)
+    {
+        return new TransactionEvent
+        {
+            Name = e.Name,
+            Timestamp = e.Timestamp,
+            DatabaseId = e.GetDatabaseId(),
+            TransactionId = e.GetLong("transaction_id") ?? 0,
+            State = (TransactionState)(e.GetInt("transaction_state") ?? 0),
+        };
     }
 
     private static BatchStartEvent MapBatchStart(EventResult e)

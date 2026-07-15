@@ -1,13 +1,11 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Consolidation;
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Events.Locks;
 
 namespace InternalsViewer.Query.Tests;
 
-public class ReadGroupingTests
+public class ReaderGrouperTests
 {
     [Fact]
     public void Suspend_With_Physical_Read_Becomes_A_Non_Cached_Group_Timed_From_The_Spine()
@@ -22,7 +20,7 @@ public class ReadGroupingTests
             TimeUs = 2_000,
         };
 
-        var result = ReadGrouping.Group([suspend, read]);
+        var result = ReaderGrouper.Group([suspend, read]);
 
         var group = Assert.IsType<ReadEventGroup>(Assert.Single(result));
 
@@ -39,7 +37,7 @@ public class ReadGroupingTests
         // hold time.
         var acquire = BufferLatch("latch_acquired", page: new PageAddress(1, 472), timeUs: 1_000, durationUs: 50);
 
-        var result = ReadGrouping.Group([acquire]);
+        var result = ReaderGrouper.Group([acquire]);
 
         var group = Assert.IsType<ReadEventGroup>(Assert.Single(result));
 
@@ -55,7 +53,7 @@ public class ReadGroupingTests
 
         var second = BufferLatch("latch_acquired", page: new PageAddress(1, 200), timeUs: 2_000, durationUs: 60);
 
-        var result = ReadGrouping.Group([first, second]);
+        var result = ReaderGrouper.Group([first, second]);
 
         Assert.Equal(2, result.OfType<ReadEventGroup>().Count());
         Assert.All(result.OfType<ReadEventGroup>(), g => Assert.Equal(ReadType.Cached, g.ReadType));
@@ -86,7 +84,7 @@ public class ReadGroupingTests
 
         var outsideRange = new IoEvent { Name = "physical_page_read", IsRead = true, PageAddress = new PageAddress(1, 2_000), TimeUs = 5_000 };
 
-        var result = ReadGrouping.Group([gather, readA, readB, load, outsideRange]);
+        var result = ReaderGrouper.Group([gather, readA, readB, load, outsideRange]);
 
         var group = result.OfType<ReadEventGroup>().Single();
 
@@ -119,7 +117,7 @@ public class ReadGroupingTests
 
         var read = new IoEvent { Name = "physical_page_read", IsRead = true, PageAddress = new PageAddress(1, 500), TimeUs = 3_000 };
 
-        var result = ReadGrouping.Group([file, read]);
+        var result = ReaderGrouper.Group([file, read]);
 
         var group = result.OfType<ReadEventGroup>().Single();
 
@@ -144,7 +142,7 @@ public class ReadGroupingTests
             TimeUs = 3_000,
         };
 
-        var result = ReadGrouping.Group([orphan]);
+        var result = ReaderGrouper.Group([orphan]);
 
         Assert.Empty(result);
     }
@@ -166,7 +164,7 @@ public class ReadGroupingTests
 
         var trailingRead = BufferLatch("latch_acquired", latchAddress: 200, page: new PageAddress(1, 1_784), timeUs: 12_000, durationUs: 0);
 
-        var result = ReadGrouping.Group([suspend, read, trailingRead]);
+        var result = ReaderGrouper.Group([suspend, read, trailingRead]);
 
         var group = Assert.IsType<ReadEventGroup>(Assert.Single(result));
 
@@ -184,7 +182,7 @@ public class ReadGroupingTests
 
         var later = BufferLatch("latch_acquired", latchAddress: 200, page: new PageAddress(1, 1_784), timeUs: 30_000, durationUs: 40);
 
-        var result = ReadGrouping.Group([suspend, read, later]);
+        var result = ReaderGrouper.Group([suspend, read, later]);
 
         Assert.Equal(2, result.OfType<ReadEventGroup>().Count());
 
@@ -204,7 +202,7 @@ public class ReadGroupingTests
 
         var recycled = BufferLatch("latch_acquired", latchAddress: 200, page: new PageAddress(1, 9_999), timeUs: 4_000, durationUs: 40);
 
-        var result = ReadGrouping.Group([suspend, read, recycled]);
+        var result = ReaderGrouper.Group([suspend, read, recycled]);
 
         var cached = result.OfType<ReadEventGroup>().Single(g => g.ReadType == ReadType.Cached);
 

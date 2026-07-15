@@ -43,10 +43,35 @@ internal class LockEventParser: IEventParser<LockEvent>
     }
 
     /// <summary>
+    /// Parses a lock escalation event
+    /// </summary>
+    /// <remarks>
+    /// Resolved from object_id - escalations will always be to the object level
+    /// </remarks>
+    public static LockEscalationEvent MapEscalation(DatabaseSource databaseSource, EventResult e)
+    {
+        var objectId = (int)(e.GetLong("object_id") ?? 0);
+
+        return new LockEscalationEvent
+        {
+            Name = e.Name,
+            Timestamp = e.Timestamp,
+            DatabaseId = e.GetDatabaseId(),
+            LockMode = (LockMode)(e.GetInt("mode") ?? 0),
+            ResourceType = (LockResourceType)(e.GetInt("resource_type") ?? 0),
+            EscalatedObjectId = objectId,
+            TransactionId = e.GetLong("transaction_id"),
+            EscalatedLockCount = e.GetLong("escalated_lock_count") ?? 0,
+            HobtLockCount = e.GetLong("hobt_lock_count") ?? 0,
+            AllocationUnit = objectId > 0 ? databaseSource.FindObjectIdAllocationUnit(objectId) : null,
+        };
+    }
+
+    /// <summary>
     /// Parses the lock owner context from the event
     /// </summary>
     /// <remarks>
-    /// The lock owner context is the context that owns a lock, identifying the source of the lock request.
+    /// The lock owner context is the context that owns a lock, identifying the source of the lock request
     /// </remarks>
     private static LockOwnerContext? ParseLockOwnerContext(EventResult e)
     {
@@ -78,7 +103,7 @@ internal class LockEventParser: IEventParser<LockEvent>
     /// +-----------------+-----------------------------+-----------------------------+----------------------+---------------------+
     /// | DATABASE        | Database ID                 | 0                           | 0                    | 0                   |
     /// | FILE            | File ID                     | File subresource            | 0                    | 0                   |
-    /// | OBJECT          | Object ID                   | Lock partition              | 0                    | Object ID           |
+    /// | OBJECT          | Object ID                   | Lock partition - see note   | 0                    | Object ID           |
     /// | HOBT            | HoBT ID(encoded part)       | HoBT ID (encoded part)      | 0                    | HoBT ID             |
     /// | PAGE            | Page ID                     | File ID                     | 0                    | HoBT ID             |
     /// | EXTENT          | Extent ID                   | File ID                     | 0                    | HoBT ID             |
@@ -93,6 +118,9 @@ internal class LockEventParser: IEventParser<LockEvent>
     /// +-----------------+-----------------------------+-----------------------------+----------------------+---------------------+
     ///
     /// OIB = Online Index Build (out of scope)
+    ///
+    /// Lock Partition - Lock partitions is an internal Lock Manager mechanism that can split lock resources to allow the lock resources
+    /// to be distributed across multiple lock manager partitions, reducing spinlock/memory contention.
     /// </remarks>
     private static LockResource ParseResource(EventResult e)
     {
@@ -120,8 +148,6 @@ internal class LockEventParser: IEventParser<LockEvent>
 
         return resourceType switch
         {
-            // resource_1 is the lock partition for OBJECT only — it stays in the resource Key above so that each
-            // partition's acquire/release pairs with itself (see LockPartitionCollapser).
             LockResourceType.Object =>
                 lockResource with
                 {

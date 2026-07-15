@@ -6,9 +6,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-    xmlns:callstack="using:InternalsViewer.Query.Callstack"
     xmlns:operators="using:InternalsViewer.Query.Events.Operators"
-    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Tabs"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Tabs" 
+    xmlns:callstack="using:InternalsViewer.Query.CallStack"
     mc:Ignorable="d">
 
     <UserControl.Resources>

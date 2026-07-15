@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Helpers;
+﻿using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Events.Latches;
 
@@ -19,6 +18,7 @@ public sealed record LatchEvent : PageEngineEvent
             var name = EventItemName.Get(GetType());
 
             var latchClassName = EventItemName.Get(LatchClass);
+
             var latchModeName = EventItemName.Get(LatchMode);
 
             if (!string.IsNullOrEmpty(latchModeName))

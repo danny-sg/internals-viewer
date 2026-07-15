@@ -130,7 +130,20 @@ public sealed partial class AllocationControl : IDisposable
         = DependencyProperty.Register(nameof(Borders),
                                       typeof(IReadOnlyList<AllocationBorder>),
                                       typeof(AllocationControl),
-                                      new PropertyMetadata(null, OnPropertyChanged));
+                                      new PropertyMetadata(null, OnBordersChanged));
+
+    // Paint order (earliest hold first, so a later lock draws over one already held) resolved once here rather than per
+    // paint — neither the order nor a border's start changes between frames, but DrawBorders runs on every playhead tick.
+    private static void OnBordersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AllocationControl)d;
+
+        control._orderedBorders = e.NewValue is IReadOnlyList<AllocationBorder> borders
+            ? [.. borders.OrderBy(BorderStartUs)]
+            : [];
+
+        control.Refresh();
+    }
 
     public PfsChain PfsChain
     {
@@ -242,6 +255,12 @@ public sealed partial class AllocationControl : IDisposable
     private Size _lastExtentSize;
 
     private readonly SKPaint _spanPaint = new();
+
+    // Borders in paint order, rebuilt only when the Borders property changes (see OnBordersChanged).
+    private AllocationBorder[] _orderedBorders = [];
+
+    // Reused across borders and frames: DrawBorders repopulates it per border on every playhead tick.
+    private readonly HashSet<int> _liveCells = [];
 
     // Stroke for lock-border outlines (the colour is set per border). Crisp, square edges: no antialiasing so the 2px
     // lines land on whole pixels, and square caps so the separately-drawn edges meet cleanly at corners.
@@ -657,14 +676,14 @@ public sealed partial class AllocationControl : IDisposable
 
     private void DrawBorders(SKCanvas canvas, ExtentLayout layout)
     {
-        if (Borders is not { Count: > 0 } borders || layout.HorizontalCount <= 0)
+        if (_orderedBorders.Length == 0 || layout.HorizontalCount <= 0)
         {
             return;
         }
 
         var playhead = PlayheadTimeUs;
 
-        foreach (var border in borders.OrderBy(BorderStartUs))
+        foreach (var border in _orderedBorders)
         {
             if (border.FileId != FileId)
             {
@@ -678,7 +697,9 @@ public sealed partial class AllocationControl : IDisposable
             var firstCell = extentScope ? ScrollPosition : ScrollPosition * 8;
             var lastCell = firstCell + (extentScope ? layout.VisibleCount : layout.VisibleCount * 8);
 
-            var cells = new HashSet<int>();
+            var cells = _liveCells;
+
+            cells.Clear();
 
             foreach (var range in border.Cells)
             {

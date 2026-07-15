@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 

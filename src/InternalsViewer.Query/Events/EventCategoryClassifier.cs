@@ -1,12 +1,10 @@
-using InternalsViewer.Query.Events.EventTypes;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Waits;
 
 namespace InternalsViewer.Query.Events;
 
 /// <summary>
-/// Buckets lock and wait events into one of four families (IO, CPU, Concurrency, Parallelism),
-/// classifying waits by wait-type name in the same spirit as the SQL Server wait categories.
+/// Buckets lock and wait events into one of four families (IO, CPU, Concurrency, Parallelism)
 /// </summary>
 public static class EventCategoryClassifier
 {
@@ -14,9 +12,11 @@ public static class EventCategoryClassifier
 
     internal static EventCategory? GetCategory(EngineEvent engineEvent) => engineEvent switch
     {
-        // A lock is always a concurrency/blocking concern.
-        LockEvent => EventCategory.Concurrency,
-        WaitEvent wait => Categorise(wait.WaitType),
+        // A lock is always a concurrency/blocking concern
+        LockEvent 
+            => EventCategory.Concurrency,
+        WaitEvent wait 
+            => Categorise(wait.WaitType),
         _ => null,
     };
 
@@ -44,13 +44,18 @@ public static class EventCategoryClassifier
             return EventCategory.Concurrency;
         }
 
-        // Memory grants, compilation, preemptive, etc. fold into CPU as the catch-all.
+        // Memory grants, compilation, preemptive, etc. fold into CPU as the catch-all
         return EventCategory.Cpu;
     }
 
+    // ReSharper disable CommentTypo
+    // ReSharper disable StringLiteralTypo
     private static bool IsParallelism(string name) =>
-        name.StartsWith("CX") ||              // CXPACKET, CXCONSUMER, CXSYNC_*
+      
+        // CXPACKET, CXCONSUMER, CXSYNC_*
+        name.StartsWith("CX") ||              
         name == "EXCHANGE" ||
+    
         name == "EXECSYNC" ||
         name.StartsWith("HASH_TABLE") ||
         name.StartsWith("BITMAP");
@@ -81,9 +86,12 @@ public static class EventCategoryClassifier
         name == "CMEMPARTITIONED";
 
     private static bool IsConcurrency(string name) =>
-        name.StartsWith("LCK_") ||            // locks
-        name.StartsWith("LATCH") ||           // non-buffer latches
-        name.StartsWith("PAGELATCH") ||       // buffer (non-IO) latches
+        // locks
+        name.StartsWith("LCK_") ||
+        // non-buffer latches
+        name.StartsWith("LATCH") ||
+        // buffer (non-IO) latches
+        name.StartsWith("PAGELATCH") ||       
         name.StartsWith("TRANMARKLATCH") ||
         name.Contains("TRANSACTION");
 }

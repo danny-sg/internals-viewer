@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace InternalsViewer.Query.Callstack.Categories;
+namespace InternalsViewer.Query.CallStack.Categories;
 
 public sealed class CategoryMappings
 {

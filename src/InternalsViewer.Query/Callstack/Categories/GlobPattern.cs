@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Callstack.Categories;
+namespace InternalsViewer.Query.CallStack.Categories;
 
 /// <summary>
 /// One mapping-field pattern — exact, a <c>*</c> glob, or the pure wildcard — parsed once for cheap match + scoring

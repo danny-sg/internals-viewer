@@ -1,6 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using InternalsViewer.Query.Events.EventTypes;
-using Microsoft.UI.Xaml;
+using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.UI.App.Controls.EventGrid;
 
