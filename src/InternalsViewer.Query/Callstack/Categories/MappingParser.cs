@@ -24,10 +24,7 @@ public static class MappingParser
     {
         var order = startOrder;
 
-        // minCells stays at 5 though a rule has six fields: it is a minimum and a row below it is dropped silently, so
-        // requiring the sixth would delete every five-cell rule (an override file, a row missing its trailing pipe)
-        // without a word. A row that stops at the Iterator simply names no plan operator, which is the common case.
-        foreach (var cells in ReadRows(reader, minCells: 5))
+        foreach (var cells in ReadRows(reader, minCells: 4))
         {
             if (!Enum.TryParse<SymbolCategory>(cells[3], ignoreCase: true, out var category))
             {
@@ -40,8 +37,41 @@ public static class MappingParser
                 Class = GlobPattern.Parse(cells[1]),
                 Function = GlobPattern.Parse(cells[2]),
                 Category = category,
-                Iterator = Optional(cells, 4),
-                PlanOperator = PlanOperators(Optional(cells, 5)),
+                DefinitionOrder = order++,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Parses the operator file: which plan operator a frame belongs to, and what to badge it
+    /// </summary>
+    /// <remarks>
+    /// minCells is 4, not 5: it is a minimum and a row below it is dropped in silence, so requiring the fifth would
+    /// delete every rule that stated only a badge and lost its trailing pipe. Both cells are optional anyway — a rule
+    /// states one, the other, or both.
+    ///
+    /// The header row has no cell that fails to parse (unlike the other two files, where the category catches it), so it
+    /// is dropped by name.
+    /// </remarks>
+    public static IEnumerable<OperatorRule> ParseOperators(TextReader reader, int startOrder = 0)
+    {
+        var order = startOrder;
+
+        foreach (var cells in ReadRows(reader, minCells: 4))
+        {
+            if (string.Equals(cells[0], "Module", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(cells[3], "Iterator", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            yield return new OperatorRule
+            {
+                Module = GlobPattern.Parse(cells[0]),
+                Class = GlobPattern.Parse(cells[1]),
+                Function = GlobPattern.Parse(cells[2]),
+                Iterator = Optional(cells, 3),
+                PlanOperator = PlanOperators(Optional(cells, 4)),
                 DefinitionOrder = order++,
             };
         }
@@ -57,6 +87,32 @@ public static class MappingParser
 
     private static string? Optional(string[] cells, int index)
         => index < cells.Length && !string.IsNullOrWhiteSpace(cells[index]) ? cells[index] : null;
+
+    /// <summary>
+    /// Parses the barrier file: the frames a unit of storage work begins at
+    /// </summary>
+    /// <remarks>
+    /// The header row survives <see cref="ReadRows"/> like any other and cannot be told from a rule by parsing alone —
+    /// there is no category cell here to fail on, as there is for the other two files — so it is dropped by name.
+    /// </remarks>
+    public static IEnumerable<FramePattern> ParseBarriers(TextReader reader)
+    {
+        foreach (var cells in ReadRows(reader, minCells: 3))
+        {
+            if (string.Equals(cells[0], "Module", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(cells[1], "Class", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            yield return new FramePattern
+            {
+                Module = GlobPattern.Parse(cells[0]),
+                Class = GlobPattern.Parse(cells[1]),
+                Function = GlobPattern.Parse(cells[2]),
+            };
+        }
+    }
 
     private static IEnumerable<string[]> ReadRows(TextReader reader, int minCells)
     {

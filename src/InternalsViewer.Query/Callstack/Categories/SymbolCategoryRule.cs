@@ -14,28 +14,6 @@ public sealed record SymbolCategoryRule
     public required SymbolCategory Category { get; init; }
 
     /// <summary>
-    /// The plan operator this frame implements (e.g. Top, Hash Match), for the operator badge — null when not applicable
-    /// </summary>
-    public string? Iterator { get; init; }
-
-    /// <summary>
-    /// Matches the showplan <c>PhysicalOperator</c>s this frame is the entry point of; empty when the frame is not one
-    /// </summary>
-    /// <remarks>
-    /// Kept apart from <see cref="Iterator"/> because the two answer different questions. Iterator is free display text
-    /// and names things the plan has no node for at all (Profiling, Row Iterator, SELECT) or names a phase rather than a
-    /// node (Hash Match Build/Probe, both of which are the one Hash Match operator). This names a real plan node,
-    /// because it is what cuts the call tree into per-operator segments.
-    ///
-    /// A list of patterns, not a literal, because one class routinely serves several operators the plan names
-    /// separately — and not always by related names, so a single glob will not do. CQScanRange is the Index Seek, the
-    /// Clustered Index Seek AND the Key Lookup, which is the same seek that <c>ExecutionPlanParser</c> renames when the
-    /// showplan marks it a lookup. Two rules identical but for this cell could not express it either: the later would
-    /// simply win.
-    /// </remarks>
-    public IReadOnlyList<GlobPattern> PlanOperator { get; init; } = [];
-
-    /// <summary>
     /// Order the rule was loaded in; a later rule (e.g. an override) wins an otherwise-exact tie
     /// </summary>
     public int DefinitionOrder { get; init; }

@@ -1,303 +1,323 @@
-# Symbol -> (SymbolCategory, Iterator, PlanOperator) mappings for call-stack frame classification.
+# Symbol -> SymbolCategory mappings: what a call-stack frame IS, for colouring and for hiding infrastructure.
 #
-# Pipe-delimited: Module|Class|Function|Category|Iterator|PlanOperator. Lines starting with # and blank lines are ignored.
+# Pipe-delimited: Module|Class|Function|Category. Lines starting with # and blank lines are ignored.
 #   - Matching per field: "CQScan" = exact (case-insensitive), "CQScan*" = starts-with, "*Scan" = ends-with,
 #     "*CQScan*" = contains, "*" = any.
-#   - Category must be a SymbolCategory enum name. Iterator is the plan-operator badge text (blank = none).
+#   - Category must be a SymbolCategory enum name. A row whose category is not one is skipped, which is also how the
+#     header below is discarded.
 #   - The most specific matching rule wins: an exact field beats any glob, a longer glob beats a shorter one, and
-#     function is weighted highest and breaks ties. Only Module/Class/Function take part in this — Iterator and
-#     PlanOperator are carried by whichever rule wins, they do not affect which one does.
-#   - PlanOperator marks the frame where an operator starts executing, cutting the call tree into a segment per plan
-#     node. It is matched (same glob syntax) against the showplan PhysicalOperator, so it must name a REAL plan node:
-#     blank for anything the plan has no node for (Profiling, Row Iterator, SELECT).
-#   - PlanOperator takes a COMMA-SEPARATED LIST, and matches if any entry does. One class routinely serves several plan
-#     operators, and not always under related names: CQScanRange is the Index Seek, the Clustered Index Seek and the Key
-#     Lookup (a lookup seek, which ExecutionPlanParser renames), so it needs "*Index S*,Key Lookup".
-#   - The column is optional: a row that stops at Iterator just marks no boundary.
-#   - A missing mapping costs more than the one operator: an operator with no entry frame contributes no boundary, so
-#     its PARENT cannot trim that input away either, and the parent's segment swallows it.
-Module|Class|Function|Category|Iterator|PlanOperator
+#     function is weighted highest and breaks ties.
+#
+# Which plan operator a frame belongs to lives in Operators.txt, and where a unit of storage work begins in Barriers.txt
+# — both were columns here and neither survived contact. One rule wins here, on category specificity, and carried
+# whatever else it happened to hold: adding a rule to colour a frame could silently delete an operator boundary, and the
+# only defence was repeating the boundary on every rule that might win.
+Module|Class|Function|Category
 
-# Statements. These ARE plan nodes: the parser synthesises one per statement (NodeId -1) whose PhysicalOperator is
-# showplan's StatementType, so the names line up and the statement scopes like any other operator. Worth doing — it puts
-# the connection/batch preamble above XretExecute outside every segment instead of inside all of them.
-sqllang|CXStmtSelect|XretExecute|StatementExecution|SELECT|SELECT
-sqllang|CXStmtUpdate|XretExecute|StatementExecution|UPDATE|UPDATE
-sqllang|CXStmtDelete|XretExecute|StatementExecution|DELETE|DELETE
-sqllang|CXStmtInsert|XretExecute|StatementExecution|INSERT|INSERT
-sqllang|CXStmtMerge|XretExecute|StatementExecution|MERGE|MERGE
+# Statements
+sqllang|CXStmtSelect|XretExecute|StatementExecution
+sqllang|CXStmtUpdate|XretExecute|StatementExecution
+sqllang|CXStmtDelete|XretExecute|StatementExecution
+sqllang|CXStmtInsert|XretExecute|StatementExecution
+sqllang|CXStmtMerge|XretExecute|StatementExecution
 
 # -----------------------------------------------------------------------------------------------------------------------------------------
 # Query operators
 # -----------------------------------------------------------------------------------------------------------------------------------------
-sqlmin|CQueryScan|GetRow|QueryOperator|Iterator|
-sqlmin|CQScanProfileNew|GetRow|QueryOperator|Profiling|
-sqlmin|CQScanLightProfileNew|GetRow|QueryOperator|Profiling|
+sqlmin|CQueryScan|GetRow|QueryOperator
+sqlmin|CQScanProfileNew|GetRow|QueryOperator
+sqlmin|CQScanLightProfileNew|GetRow|QueryOperator
 
-# Physical Operators
+sqlmin|CQScanHashAgg*|*|PhysicalOperator
 
-sqlmin|CQScanHashAgg*|*|PhysicalOperator|Hash Match (Aggregate)|Hash Match
+sqlmin|CQScanHash|ConsumeBuild|PhysicalOperator
+sqlmin|CQScanHash|ConsumeProbe|PhysicalOperator
+sqlmin|CQScanHash*|*|PhysicalOperator
 
-# Hash match + Build/Probe. All three are the one Hash Match plan node — the badge names the phase, the boundary does not.
-sqlmin|CQScanHash|ConsumeBuild|PhysicalOperator|Hash Match Build|Hash Match
-sqlmin|CQScanHash|ConsumeProbe|PhysicalOperator|Hash Match Probe|Hash Match
-sqlmin|CQScanHash*|*|PhysicalOperator|Hash Match|Hash Match
+# The hash's own workfile partitions, built during Open.
+sqlmin|CHashWorkfilePartitionGroup*|*|PhysicalOperator
 
 # Execution Tree (?)
-sqlmin|CXte*|*|ExecutionTree||
+sqlmin|CXte*|*|ExecutionTree
 
-sqlmin|CQScanMergeJoin*|*|QueryOperator|Merge Join|Merge Join
-sqlmin|CQScanNLJoin*|*|QueryOperator|Nested Loops|Nested Loops
-sqlmin|CQScanStreamAgg*|*|QueryOperator|Stream Aggregate|Stream Aggregate
-sqlmin|CQScanTopSort*|*|QueryOperator|Sort|*Sort
-sqlmin|CQScanSort*|*|QueryOperator|Sort|*Sort
-sqlmin|CQScanTop*|*|QueryOperator|Top|Top
-# Seeks/scans: the glob covers the Clustered variants, which the plan names separately but one class serves. CQScanRange
-# is also the Key Lookup — the same seek, renamed by ExecutionPlanParser when the showplan marks it a lookup — and that
-# name has nothing in common with the others, hence the list.
-sqlmin|CQScanRange*|*|QueryOperator|Index Seek|*Index S*,Key Lookup,RID Lookup
-sqlmin|CQScanIndex*|*|QueryOperator|Index Scan|*Index Scan
-sqlmin|CQScanTableScanNew|GetRow|QueryOperator|Row Read|Table Scan
-sqlmin|CQScanTable*|*|QueryOperator|Table Scan|Table Scan
-# The generic rowset iterator streams rows for whatever the plan named — a seek's range as much as a scan, since both
-# come through FetchNextRow. The badge cannot tell which and neither can this, so it matches both.
-sqlmin|CQScanRowset*|*|QueryOperator|Scan|*Scan,*Seek
-sqlmin|CQScanFilter*|*|QueryOperator|Filter|Filter
-sqlmin|CQScanComputeScalar*|*|QueryOperator|Compute Scalar|Compute Scalar
-sqlmin|CQScanConcat*|*|QueryOperator|Concatenation|Concatenation
-sqlmin|CQScanSpool*|*|QueryOperator|Spool|*Spool
-sqlmin|CQScanExchange*|*|QueryOperator|Parallelism|Parallelism
-sqlmin|CQScanSeq*|*|QueryOperator|Sequence|Sequence
-sqlmin|CQScanUpdate*|*|QueryOperator|Update|*Update
-sqlmin|CQScan*|*|QueryOperator||
-sqlmin|QueryScan*|*|QueryOperator||
-sqlmin|CQueryScan*|*|QueryOperator||
+sqlmin|CQScanMergeJoin*|*|QueryOperator
+sqlmin|CQScanNLJoin*|*|QueryOperator
+sqlmin|CQScanStreamAgg*|*|QueryOperator
+sqlmin|CQScanTopSort*|*|QueryOperator
+sqlmin|CQScanSort*|*|QueryOperator
+# The sort engine underneath CQScanSort — free functions, no class, hence the function-only rules.
+sqlmin|*|lmsort*|QueryOperator
+sqlmin|*|lmlink*|QueryOperator
+sqlmin|*|lmAddCurToList*|QueryOperator
+sqlmin|*|sort_*|QueryOperator
+sqlmin|*|soAllocRecBuf*|QueryOperator
+sqlmin|CQScanTop*|*|QueryOperator
+sqlmin|CQScanRange*|*|QueryOperator
+sqlmin|CQScanIndex*|*|QueryOperator
+sqlmin|CQScanTableScanNew|GetRow|QueryOperator
+sqlmin|CQScanTable*|*|QueryOperator
+sqlmin|CQScanRowset*|*|QueryOperator
+sqlmin|CQScanFilter*|*|QueryOperator
+sqlmin|CQScanComputeScalar*|*|QueryOperator
+sqlmin|CQScanConcat*|*|QueryOperator
+sqlmin|CQScanSpool*|*|QueryOperator
+sqlmin|CQScanExchange*|*|QueryOperator
+sqlmin|CQScanSeq*|*|QueryOperator
+sqlmin|CQScanUpdate*|*|QueryOperator
+sqlmin|CQScan*|*|QueryOperator
+sqlmin|QueryScan*|*|QueryOperator
+sqlmin|CQueryScan*|*|QueryOperator
 
 # Rowset (Row iterators)
-sqlmin|Rowset*|*FetchNextRow|RowAccess|Row Iterator|
-sqlmin|Rowset*|*|RowAccess||
+sqlmin|Rowset*|*FetchNextRow|RowAccess
+sqlmin|Rowset*|*|RowAccess
 
 # DataSet (Dataset operations)
 
 # --- Class rules -----------------------------------------------------------------------------------------------------
-*|GenericEvent*|*|XEventInfrastructure|
-*|XeSqlPkg*|*|XEventInfrastructure|
-*|XEvent*|*|XEventInfrastructure|
-*|CTraceData*|*|XEventInfrastructure|
-*|lck_ProduceExtendedEvent*|*|XEventInfrastructure|
-*|CProfileInfo*|*|XEventInfrastructure|
-*|XE_*|*|XEventInfrastructure|
-*|XeSosPkg*|*|XEventInfrastructure|
-*|PublishWaitStatsXEvents*|*|XEventInfrastructure|
+*|GenericEvent*|*|XEventInfrastructure
+*|XeSqlPkg*|*|XEventInfrastructure
+*|XEvent*|*|XEventInfrastructure
+*|CTraceData*|*|XEventInfrastructure
+*|lck_ProduceExtendedEvent*|*|XEventInfrastructure
+*|CProfileInfo*|*|XEventInfrastructure
+*|XE_*|*|XEventInfrastructure
+*|XeSosPkg*|*|XEventInfrastructure
+*|PublishWaitStatsXEvents*|*|XEventInfrastructure
 
-*|SOS_Task*|*|SqlOs|
-*|SOS_Scheduler*|*|SqlOs|
-*|Worker*|*|SqlOs|
-*|ThreadScheduler*|*|SqlOs|
-*|SchedulerManager*|*|SqlOs|
+*|SOS_Task*|*|SqlOs
+*|SOS_Scheduler*|*|SqlOs
+*|Worker*|*|SqlOs
+*|ThreadScheduler*|*|SqlOs
+*|SchedulerManager*|*|SqlOs
 
-*|IOQueue*|*|IoInfrastructure|
-*|DiskReadAsync*|*|IoInfrastructure|
-*|JoinedIoCompletion*|*|IoInfrastructure|
-*|WaitOnWriteAsyncToFinish*|*|IoInfrastructure|
-*|write_data*|*|IoInfrastructure|
-*|flush_buffer*|*|IoInfrastructure|
+*|IOQueue*|*|IoInfrastructure
+*|DiskReadAsync*|*|IoInfrastructure
+*|JoinedIoCompletion*|*|IoInfrastructure
+*|WaitOnWriteAsyncToFinish*|*|IoInfrastructure
+*|write_data*|*|IoInfrastructure
+*|flush_buffer*|*|IoInfrastructure
 
-*|CMsqlExecContext*|*|QueryExecution|
-*|CSQLSource*|*|QueryExecution|
-*|CXStmt*|*|QueryExecution|
-*|CLanguageExecEnv*|*|QueryExecution|
-*|CExecuteStatement*|*|QueryExecution|
+*|CMsqlExecContext*|*|QueryExecution
+*|CSQLSource*|*|QueryExecution
+*|CXStmt*|*|QueryExecution
+*|CLanguageExecEnv*|*|QueryExecution
+*|CExecuteStatement*|*|QueryExecution
 
-*|BTree*|*|IndexAccess|
-*|IndexPageManager*|*|IndexAccess|
+*|BTree*|*|IndexAccess
+*|IndexPageManager*|*|IndexAccess
 
-*|BUF*|*|BufferManager|
-*|BPool*|*|BufferPool|
-*|FCB*|*|FileControlBlock|
+*|BUF*|*|BufferManager
+*|BPool*|*|BufferPool
+*|FCB*|*|FileControlBlock
 
-*|IndexRowScanner*|*|RowAccess|
-*|CValFetchByKey*|*|RowAccess|
-*|OpenRowset*|*|RowAccess|
-*|OpenSystemTableRowset*|*|RowAccess|
-*|FsInternalTableAccess*|*|RowAccess|
-*|GetRowForKeyValue*|*|RowAccess|
+*|IndexRowScanner*|*|RowAccess
+*|CValFetchByKey*|*|RowAccess
+*|OpenRowset*|*|RowAccess
+*|OpenSystemTableRowset*|*|RowAccess
+*|FsInternalTableAccess*|*|RowAccess
+*|GetRowForKeyValue*|*|RowAccess
 
-*|DataSet*|*|Dataset|
-*|IndexDataSetSession*|*|Dataset|Index
-*|HeapDataSetSession*|*|Dataset|Heap
+*|DataSet*|*|Dataset
+*|IndexDataSetSession*|*|Dataset
+*|HeapDataSetSession*|*|Dataset
 
-*|FixPage*|*|PageAccess|
-*|Page*|*|PageAccess|
-*|HeapPageManager*|*|PageAccess|
+*|FixPage*|*|PageAccess
+*|Page*|*|PageAccess
+*|HeapPageManager*|*|PageAccess
 
-*|Latch*|*|Latching|
+*|Latch*|*|Latching
 
-*|Lock*|*|Locking|
-*|lck_*|*|Locking|
-*|MDL*|*|Locking|
-*|CSQLLock*|*|Locking|
-*|GetDataLock*|*|Locking|
-*|GetHoBtLock*|*|Locking|
-*|LockAndCheckState*|*|Locking|
-*|AutoLockedHoBt*|*|Locking|
-*|AcquireLock*|*|Locking|
-*|SMD*|*|Locking|
+*|Lock*|*|Locking
+*|lck_*|*|Locking
+*|MDL*|*|Locking
+*|CSQLLock*|*|Locking
+*|GetDataLock*|*|Locking
+*|GetHoBtLock*|*|Locking
+*|LockAndCheckState*|*|Locking
+*|AutoLockedHoBt*|*|Locking
+*|AcquireLock*|*|Locking
+*|SMD*|*|Locking
 
-*|WaitableBase*|*|Scheduling|
-*|SOSHost_EventAuto*|*|Scheduling|
+*|WaitableBase*|*|Scheduling
+*|SOSHost_EventAuto*|*|Scheduling
 
-*|CStmtPrepQuery*|*|StatementExecution|
-*|CExecStmtLoopVars*|*|StatementExecution|
+# Yield points and the callbacks SQLOS runs as a task suspends. Not the storage engine doing work — the scheduler
+# taking the thread away from it, which is why a wait shows up under an unrelated-looking frame.
+*|*|YieldAndCheckForAbort*|Scheduling
+*|*|switch_call_back*|Scheduling
+*|*|SETaskSuspendingNotification*|Scheduling
 
-*|CBatchTraceHelper*|*|Tracing|
-*|EvGet*|*|Tracing|
-*|PostEventSessionEvent*|*|Tracing|
-*|CMIterTriggers*|*|Tracing|
+*|CStmtPrepQuery*|*|StatementExecution
+*|CExecStmtLoopVars*|*|StatementExecution
 
-*|SystemThreadDispatcher*|*|WorkerManagement|
-*|CEsExec*|*|ExpressionEvaluation|
+*|CBatchTraceHelper*|*|Tracing
+*|EvGet*|*|Tracing
+*|PostEventSessionEvent*|*|Tracing
+*|CMIterTriggers*|*|Tracing
 
-*|Blob*|*|LargeObjectStorage|
-*|BlobBase*|*|LargeObjectStorage|
-*|BlobManager*|*|LargeObjectStorage|
-*|LockBytesSS*|*|LargeObjectStorage|
-*|OpenLockBytes*|*|LargeObjectStorage|
-*|GetDataAsILockBytes*|*|LargeObjectStorage|
-*|InitStatsBlobHeaderAttributes*|*|LargeObjectStorage|
+*|SystemThreadDispatcher*|*|WorkerManagement
+*|CEsExec*|*|ExpressionEvaluation
 
-*|CTds*|*|Networking|
-*|Tds*|*|Networking|
-*|SNI*|*|Networking|
-*|Net*|*|Networking|
+*|Blob*|*|LargeObjectStorage
+*|BlobBase*|*|LargeObjectStorage
+*|BlobManager*|*|LargeObjectStorage
+*|LockBytesSS*|*|LargeObjectStorage
+*|OpenLockBytes*|*|LargeObjectStorage
+*|GetDataAsILockBytes*|*|LargeObjectStorage
+*|InitStatsBlobHeaderAttributes*|*|LargeObjectStorage
 
-*|ExecuteCommandsInAutoTransaction*|*|TransactionManagement|
-*|Xact*|*|TransactionManagement|
-*|Xdes*|*|TransactionManagement|
-*|FullXact*|*|TransactionManagement|
-*|CMsqlXact*|*|TransactionManagement|
-*|ReadOnlyXact*|*|TransactionManagement|
-*|SqlAutoReadOnlyXact*|*|TransactionManagement|
-*|SqlAutoSimpleXact*|*|TransactionManagement|
+*|CTds*|*|Networking
+*|Tds*|*|Networking
+*|SNI*|*|Networking
+*|Net*|*|Networking
 
-sqlmin|AllocationOrderPageScanner|*|PageAccess|
-sqlmin|AllocScan|*|PageAccess|
+*|ExecuteCommandsInAutoTransaction*|*|TransactionManagement
+*|Xact*|*|TransactionManagement
+*|Xdes*|*|TransactionManagement
+*|FullXact*|*|TransactionManagement
+*|CMsqlXact*|*|TransactionManagement
+*|ReadOnlyXact*|*|TransactionManagement
+*|SqlAutoReadOnlyXact*|*|TransactionManagement
+*|SqlAutoSimpleXact*|*|TransactionManagement
 
-*|CMED*|*|Metadata|
-*|CSQLStrings*|*|Metadata|
-*|IMetadataAccess*|*|Metadata|
-*|ECatBits*|*|Metadata|
-*|QOMetadataLoader*|*|Metadata|
-*|CMIterExtProp*|*|Metadata|
-*|FLookupExtProperty*|*|Metadata|
-*|ObtainExternalStreamingMetadata*|*|Metadata|
+sqlmin|AllocationOrderPageScanner|*|PageAccess
+sqlmin|AllocScan|*|PageAccess
 
-*|COpt*|*|Optimization|
-*|CRelOp*|*|Optimization|
-*|CAlg*|*|Optimization|
-*|CRangeTable*|*|Optimization|
-*|CEnvCollection*|*|Optimization|
-*|COptExpr*|*|Optimization|
-*|Pqo*|*|Optimization|
-*|CQOS*|*|Optimization|
-*|CLogOp*|*|Optimization|
-*|CQuery*|*|Optimization|
-*|CXteBuilder*|*|Optimization|
+*|CMED*|*|Metadata
+*|CSQLStrings*|*|Metadata
+*|IMetadataAccess*|*|Metadata
+*|ECatBits*|*|Metadata
+*|QOMetadataLoader*|*|Metadata
+*|CMIterExtProp*|*|Metadata
+*|FLookupExtProperty*|*|Metadata
+*|ObtainExternalStreamingMetadata*|*|Metadata
 
-*|CCompPlan*|*|Compilation|
-*|CStmt*|*|Compilation|
-*|IUPController*|*|Compilation|
-*|CProcHdr*|*|Compilation|
+# Cardinality estimation and the statistics it reads: the optimizer asking how many rows it should expect. Loading a
+# histogram genuinely reads pages, so these appear above real storage work — at compile time, before the plan exists.
+*|CCardFramework*|*|Optimization
+*|CCardUtil*|*|Optimization
+*|CSelCalc*|*|Optimization
+*|CStatMan*|*|Optimization
+*|CStColl*|*|Optimization
+*|CScalarStatsInfo*|*|Optimization
+*|CGlobalHistogramCache*|*|Optimization
+*|CTabRefIDUtil*|*|Optimization
+*|CTableGroupProperties*|*|Optimization
+*|CConstraintProp*|*|Optimization
+*|OptimizerUtil*|*|Optimization
 
-*|CAlgTableMetadata*|*|QueryBinding|
+*|COpt*|*|Optimization
+*|CRelOp*|*|Optimization
+*|CAlg*|*|Optimization
+*|CRangeTable*|*|Optimization
+*|CEnvCollection*|*|Optimization
+*|COptExpr*|*|Optimization
+*|Pqo*|*|Optimization
+*|CQOS*|*|Optimization
+*|CLogOp*|*|Optimization
+*|CQuery*|*|Optimization
+*|CXteBuilder*|*|Optimization
 
-*|CRcsSecurityInfo*|*|Security|
+*|CCompPlan*|*|Compilation
+*|CStmt*|*|Compilation
+*|IUPController*|*|Compilation
+*|CProcHdr*|*|Compilation
 
-*|CQDS*|*|QueryStore|
-*|CDBQDS*|*|QueryStore|
-*|CLAQFeedbackManager*|*|QueryStore|
-*|CQDSHintsApplier*|*|QueryStore|
-*|GetFeedback*|*|QueryStore|
-*|StoreStatementPlan*|*|QueryStore|
-*|GetOriginalQueryHash*|*|QueryStore|
-*|GetPlanOrOptReplayScriptToForce*|*|QueryStore|
-*|*QDS*|*|QueryStore|
+*|CAlgTableMetadata*|*|QueryBinding
 
-*|SQLServerLogMgr*|*|Logging|
-*|RecoveryUnit*|*|Storage|
-*|WaitLogWritten*|*|Logging|
-*|LogFlush*|*|Logging|
-*|HardenLog*|*|Logging|
+*|CRcsSecurityInfo*|*|Security
 
-*|BaseThreadInitThunk*|*|System|
-*|RtlUserThreadStart*|*|System|
+*|CQDS*|*|QueryStore
+*|CDBQDS*|*|QueryStore
+*|CLAQFeedbackManager*|*|QueryStore
+*|CQDSHintsApplier*|*|QueryStore
+*|GetFeedback*|*|QueryStore
+*|StoreStatementPlan*|*|QueryStore
+*|GetOriginalQueryHash*|*|QueryStore
+*|GetPlanOrOptReplayScriptToForce*|*|QueryStore
+*|*QDS*|*|QueryStore
+
+*|SQLServerLogMgr*|*|Logging
+*|RecoveryUnit*|*|Storage
+*|WaitLogWritten*|*|Logging
+*|LogFlush*|*|Logging
+*|HardenLog*|*|Logging
+
+*|BaseThreadInitThunk*|*|System
+*|RtlUserThreadStart*|*|System
 
 # --- Function rules (any class) --------------------------------------------------------------------------------------
-*|*|GetRow*|RowAccess|
-*|*|GetRowForKeyValue*|RowAccess|
-*|*|ReleaseRow*|RowAccess|
-*|*|OpenSystemTableRowset*|RowAccess|
-*|*|ReleaseSystemTableRowset*|RowAccess|
+*|*|GetRow*|RowAccess
+*|*|GetRowForKeyValue*|RowAccess
+*|*|ReleaseRow*|RowAccess
+*|*|OpenSystemTableRowset*|RowAccess
+*|*|ReleaseSystemTableRowset*|RowAccess
 
-*|*|DiskRead*|IoInfrastructure|
-*|*|write_data*|IoInfrastructure|
-*|*|flush_buffer*|IoInfrastructure|
-*|*|JoinedIoCompletion*|IoInfrastructure|
+# The I/O path's own publish points: these exist to fire the event, so they are the same noise as the Publish frames
+# below them rather than part of the read.
+*|*|FireReadEvent*|XEventInfrastructure
+*|*|FireIoCompletionEvent*|XEventInfrastructure
 
-*|*|AcquireLock*|Locking|
-*|*|ReleaseLock*|Locking|
-*|*|GetDataLock*|Locking|
-*|*|GetHoBtLock*|Locking|
-*|*|lck_*|Locking|
-*|*|LockAndCheckState*|Locking|
-*|*|CSQLLock*|Locking|
+*|*|DiskRead*|IoInfrastructure
+*|*|write_data*|IoInfrastructure
+*|*|flush_buffer*|IoInfrastructure
+*|*|JoinedIoCompletion*|IoInfrastructure
 
-*|*|LogFlush*|Logging|
-*|*|WaitLogWritten*|Logging|
-*|*|HardenLog*|Logging|
-*|*|WaitOnWriteAsyncToFinish*|Logging|
+*|*|AcquireLock*|Locking
+*|*|ReleaseLock*|Locking
+*|*|GetDataLock*|Locking
+*|*|GetHoBtLock*|Locking
+*|*|lck_*|Locking
+*|*|LockAndCheckState*|Locking
+*|*|CSQLLock*|Locking
 
-*|*|PqoBuild*|Optimization|
-*|*|PrepareQuery*|Optimization|
+*|*|LogFlush*|Logging
+*|*|WaitLogWritten*|Logging
+*|*|HardenLog*|Logging
+*|*|WaitOnWriteAsyncToFinish*|Logging
 
-*|*|BindTree*|QueryBinding|
+*|*|PqoBuild*|Optimization
+*|*|PrepareQuery*|Optimization
 
-*|*|FNormalize*|Compilation|
+*|*|BindTree*|QueryBinding
 
-*|*|Publish*|XEventInfrastructure|
-*|*|PublishWaitStatsXEvents*|XEventInfrastructure|
+*|*|FNormalize*|Compilation
 
-*|*|process_request*|QueryExecution|
-*|*|process_commands*|QueryExecution|
-*|*|process_messages*|QueryExecution|
-*|*|ExecuteCommandsInAutoTransaction*|QueryExecution|
+*|*|Publish*|XEventInfrastructure
+*|*|PublishWaitStatsXEvents*|XEventInfrastructure
 
-*|*|BaseThreadInitThunk*|System|
-*|*|RtlUserThreadStart*|System|
+*|*|process_request*|QueryExecution
+*|*|process_commands*|QueryExecution
+*|*|process_messages*|QueryExecution
+*|*|ExecuteCommandsInAutoTransaction*|QueryExecution
 
-*|*|OpenLockBytes*|LargeObjectStorage|
-*|*|GetDataAsILockBytes*|LargeObjectStorage|
-*|*|InitStatsBlobHeaderAttributes*|LargeObjectStorage|
+*|*|BaseThreadInitThunk*|System
+*|*|RtlUserThreadStart*|System
 
-*|*|AcquireGenericQdsDbAndProcess*|QueryStore|
-*|*|FGetStatementContextIdAndEpoch*|QueryStore|
-*|*|FindContextId*|QueryStore|
-*|*|LlGetContextId*|QueryStore|
-*|*|GetHintsToApply*|QueryStore|
-*|*|GetOriginalQueryHash*|QueryStore|
-*|*|GetPlanOrOptReplayScriptToForce*|QueryStore|
-*|*|GetFeedback*|QueryStore|
-*|*|StoreStatementPlan*|QueryStore|
-*|*|FIsQDSStoredLocally*|QueryStore|
+*|*|OpenLockBytes*|LargeObjectStorage
+*|*|GetDataAsILockBytes*|LargeObjectStorage
+*|*|InitStatsBlobHeaderAttributes*|LargeObjectStorage
 
-*|*|FLookupExtProperty*|Metadata|
-*|*|ObtainExternalStreamingMetadata*|Metadata|
+*|*|AcquireGenericQdsDbAndProcess*|QueryStore
+*|*|FGetStatementContextIdAndEpoch*|QueryStore
+*|*|FindContextId*|QueryStore
+*|*|LlGetContextId*|QueryStore
+*|*|GetHintsToApply*|QueryStore
+*|*|GetOriginalQueryHash*|QueryStore
+*|*|GetPlanOrOptReplayScriptToForce*|QueryStore
+*|*|GetFeedback*|QueryStore
+*|*|StoreStatementPlan*|QueryStore
+*|*|FIsQDSStoredLocally*|QueryStore
 
-*|*|EvGetEventNotifications*|Tracing|
-*|*|EvGetEventNotificationsToFire*|Tracing|
-*|*|EvGetEvents*|Tracing|
-*|*|EvGetTriggers*|Tracing|
-*|*|EvGetTriggersToFire*|Tracing|
-*|*|PostEventSessionEvent*|Tracing|
+*|*|FLookupExtProperty*|Metadata
+*|*|ObtainExternalStreamingMetadata*|Metadata
 
-*|*|XEvent*|XEventInfrastructure|
+*|*|EvGetEventNotifications*|Tracing
+*|*|EvGetEventNotificationsToFire*|Tracing
+*|*|EvGetEvents*|Tracing
+*|*|EvGetTriggers*|Tracing
+*|*|EvGetTriggersToFire*|Tracing
+*|*|PostEventSessionEvent*|Tracing
+
+*|*|XEvent*|XEventInfrastructure

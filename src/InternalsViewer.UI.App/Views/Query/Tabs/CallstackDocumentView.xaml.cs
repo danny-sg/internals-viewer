@@ -221,7 +221,16 @@ public sealed partial class CallstackDocumentView : UserControl
     {
         if (_scope)
         {
-            BuildPlanTree(SelectedNodeId(selected));
+            // An operator selects its segment; anything else selects its own work. Scoping a read to the operator that
+            // issued it answers a question that was not asked — the read was clicked, not the seek.
+            if (selected is not null and not ExecutionOperatorEvent)
+            {
+                BuildEventTree(selected);
+            }
+            else
+            {
+                BuildPlanTree(SelectedNodeId(selected));
+            }
 
             return;
         }
@@ -578,6 +587,68 @@ public sealed partial class CallstackDocumentView : UserControl
         }
 
         ExpandForSearch();
+    }
+
+    /// <summary>
+    /// One event's own work: its stack cut at the nearest barrier above it, with the operator's frames subtracted
+    /// </summary>
+    /// <remarks>
+    /// The event, not its kind — two reads through the same GetPageWithKey stay apart, because the scope is this
+    /// instance and the barrier only says where to stop climbing. A group merges: scoping it to what it owns puts every
+    /// member's stack in one tree, which for a read group is its latches and waits together.
+    /// </remarks>
+    private void BuildEventTree(EngineEvent selected)
+    {
+        ClearTree();
+
+        _operatorNodes.Clear();
+
+        SetHistogram(null, []);
+
+        if (_viewModel?.CallStack is not { } tree)
+        {
+            return;
+        }
+
+        _hierarchy = OperatorHierarchy.Build(_viewModel.Events ?? []);
+
+        // An event hands off to nothing: it is the bottom of the plan.
+        _nextOperator = new Dictionary<CallStackNode, ExecutionOperatorEvent>();
+
+        // The way back up. Without it an event reached from the timeline is a dead end — there is no history to step
+        // back through and the plan around it is gone.
+        var op = selected.PlanNodeIdentifier is { } id
+            ? _hierarchy.Operators.FirstOrDefault(o => o.PlanNodeIdentifier == id)
+            : null;
+
+        if (op is not null)
+        {
+            Tree.RootNodes.Add(new TreeViewNode { Content = new OperatorLink(op, Back: true) });
+        }
+
+        var scope = selected.SelfAndOwned().ToHashSet(ReferenceEqualityComparer.Instance);
+
+        // Cut at the barrier; failing that at the operator's own entry, so the stack is still bounded by something
+        // rather than running back to the thread start. A barrier list will never cover every path.
+        var projected = tree.Project(include: scope.Contains, cutAt: frame => frame.IsAccessBarrier);
+
+        if (!projected.Root.ChildNodes.Any() && op is { EntryFrames.Count: > 0 })
+        {
+            projected = tree.Project(include: scope.Contains, cutAt: op.EntryFrames.Contains);
+        }
+
+        var nodes = ProjectedCallNodes(projected, revealInfrastructure: false);
+
+        foreach (var node in nodes.Count > 0 ? nodes : ProjectedCallNodes(projected, revealInfrastructure: true))
+        {
+            Tree.RootNodes.Add(node);
+        }
+
+        // Attached first: WinUI can drop a subtree expanded while detached.
+        foreach (var node in Tree.RootNodes)
+        {
+            SetExpanded(node, expanded: true);
+        }
     }
 
     // One operator on its own, with its call tree expanded: the isolated stack for the selected node. No child operators

@@ -1,0 +1,20 @@
+# Frames where a unit of storage work begins — the point an individual event's own stack starts.
+#
+# Pipe-delimited: Module|Class|Function. Lines starting with # and blank lines are ignored. Same glob syntax as
+# SymbolCategories.txt: "BPool" = exact (case-insensitive), "BPool*" = starts-with, "*Pool" = ends-with, "*" = any.
+#
+# Selecting one event scopes the tree to that event alone, cut at the NEAREST barrier above it — so what you see is the
+# work that event did, with the operator's iteration machinery above it subtracted. It is the event that is scoped, not
+# the kind of event: two reads through the same GetPageWithKey stay separate, because the event picks the stack, and the
+# barrier only says where to stop climbing.
+#
+# Nearest-above means a barrier marked DEEPER wins over one marked higher, so marking a frame here shortens every stack
+# that passes through it. Mark where a unit of work starts, not every frame in the storage engine.
+Module|Class|Function
+
+# A page fetch. Every access method funnels here — heaps through HeapFragment, indexes through IndexPageManager and
+# BTreeMgr — so the read's stack looks the same whichever operator asked for it. Deliberately not an access-method frame
+# like IndexPageManager::GetPageWithKey: that one only exists on the index path, so a heap read would find no barrier.
+#
+# Exact "Get", so BPool::GetFromDisk below it is inside the read rather than the start of another one.
+*|BPool|Get|

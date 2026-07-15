@@ -307,7 +307,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 File.Delete(file);
             }
 
-            progress?.Report($"Trace file deleted ({size / (1024.0 * 1024.0):N2} MB");
+            progress?.Report($"Trace file deleted ({size / (1024.0 * 1024.0):N2} MB)");
         }
         catch (Exception ex)
         {

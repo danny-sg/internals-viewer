@@ -27,6 +27,15 @@ public sealed record ResolvedCallstackFrame
     /// </remarks>
     public IReadOnlyList<GlobPattern> PlanOperator { get; init; } = [];
 
+    /// <summary>
+    /// Whether a unit of storage work begins here, so an individual event's own stack starts at this frame
+    /// </summary>
+    /// <remarks>
+    /// Where <see cref="PlanOperator"/> bounds an operator's segment, this bounds one event's: selecting a read shows
+    /// the work that read did, with the operator's iteration machinery above it cut away.
+    /// </remarks>
+    public bool IsAccessBarrier { get; init; }
+
     public string? ClassName { get; init; }
 
     public string MethodName { get; init; } = string.Empty;

@@ -8,11 +8,26 @@ public sealed class CategoryMappings
 
     private readonly IReadOnlyList<SymbolCategoryRule> _rules;
 
-    private CategoryMappings(IReadOnlyDictionary<string, ModuleCategory> modules, IReadOnlyList<SymbolCategoryRule> rules)
+    private readonly IReadOnlyList<OperatorRule> _operators;
+
+    private readonly IReadOnlyList<FramePattern> _barriers;
+
+    private CategoryMappings(IReadOnlyDictionary<string, ModuleCategory> modules,
+                             IReadOnlyList<SymbolCategoryRule> rules,
+                             IReadOnlyList<OperatorRule> operators,
+                             IReadOnlyList<FramePattern> barriers)
     {
         _modules = modules;
         _rules = rules;
+        _operators = operators;
+        _barriers = barriers;
     }
+
+    /// <summary>
+    /// Whether a unit of storage work begins at this frame, so an event's own stack starts here
+    /// </summary>
+    public bool IsAccessBarrier(string? module, string? className, string? methodName)
+        => _barriers.Any(barrier => barrier.Matches(module, className, methodName));
 
     public IReadOnlyList<SymbolCategoryRule> Rules => _rules;
 
@@ -21,10 +36,7 @@ public sealed class CategoryMappings
             ? category
             : ModuleCategory.Unknown;
 
-    public (SymbolCategory Category, string? Iterator, IReadOnlyList<GlobPattern> PlanOperator) Classify(
-        string? module,
-        string? className,
-        string? methodName)
+    public SymbolCategory Classify(string? module, string? className, string? methodName)
     {
         SymbolCategoryRule? best = null;
 
@@ -40,13 +52,60 @@ public sealed class CategoryMappings
             }
         }
 
-        return best is null
-            ? (SymbolCategory.Unknown, null, [])
-            : (best.Category, best.Iterator, best.PlanOperator);
+        return best?.Category ?? SymbolCategory.Unknown;
+    }
+
+    /// <summary>
+    /// The plan operator a frame belongs to: its badge, and the operators it is the entry point of
+    /// </summary>
+    /// <remarks>
+    /// Each is taken from the most specific rule that actually STATES it, independently of the other. A blank cell means
+    /// "not stated here", so a specific rule can rename the badge and still inherit the boundary from a general one:
+    /// CQScanHash::ConsumeProbe is badged "Hash Match Probe" by its own rule while CQScanHash* supplies the Hash Match
+    /// boundary, rather than every rule having to repeat it.
+    ///
+    /// One contest per field is the point of this being its own file. Sharing SymbolCategories.txt' contest meant the
+    /// rule that won on CATEGORY specificity carried the boundary, so adding a rule to colour a frame could delete one.
+    /// </remarks>
+    public (string? Iterator, IReadOnlyList<GlobPattern> PlanOperator) ClassifyOperator(string? module,
+                                                                                        string? className,
+                                                                                        string? methodName)
+    {
+        OperatorRule? badge = null;
+        OperatorRule? boundary = null;
+
+        var badgeScore = default(RuleScore);
+        var boundaryScore = default(RuleScore);
+
+        foreach (var rule in _operators)
+        {
+            if (!rule.TryScore(module, className, methodName, out var score))
+            {
+                continue;
+            }
+
+            if (rule.Iterator is not null && (badge is null || score.IsBetterThan(badgeScore)))
+            {
+                badge = rule;
+
+                badgeScore = score;
+            }
+
+            if (rule.PlanOperator.Count > 0 && (boundary is null || score.IsBetterThan(boundaryScore)))
+            {
+                boundary = rule;
+
+                boundaryScore = score;
+            }
+        }
+
+        return (badge?.Iterator, boundary?.PlanOperator ?? []);
     }
 
     public static CategoryMappings Load(TextReader modules,
                                         TextReader symbols,
+                                        TextReader? operators = null,
+                                        TextReader? barriers = null,
                                         TextReader? overrideModules = null,
                                         TextReader? overrideSymbols = null)
     {
@@ -74,7 +133,10 @@ public sealed class CategoryMappings
             rules.AddRange(MappingParser.ParseSymbols(overrideSymbols, startOrder: rules.Count));
         }
 
-        return new CategoryMappings(moduleMap, rules);
+        return new CategoryMappings(moduleMap,
+                                    rules,
+                                    operators is null ? [] : [.. MappingParser.ParseOperators(operators)],
+                                    barriers is null ? [] : [.. MappingParser.ParseBarriers(barriers)]);
     }
 
     private static readonly Lazy<CategoryMappings> DefaultLazy = new(LoadDefault);
@@ -88,6 +150,10 @@ public sealed class CategoryMappings
 
     private const string SymbolsFile = "SymbolCategories.txt";
 
+    private const string OperatorsFile = "Operators.txt";
+
+    private const string BarriersFile = "Barriers.txt";
+
     private static CategoryMappings LoadDefault()
     {
         var assembly = typeof(CategoryMappings).Assembly;
@@ -96,7 +162,11 @@ public sealed class CategoryMappings
 
         using var symbols = OpenResource(assembly, SymbolsFile);
 
-        return Load(modules, symbols);
+        using var operators = OpenResource(assembly, OperatorsFile);
+
+        using var barriers = OpenResource(assembly, BarriersFile);
+
+        return Load(modules, symbols, operators, barriers);
     }
 
     private static StreamReader OpenResource(Assembly assembly, string fileName)

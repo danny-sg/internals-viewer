@@ -5,6 +5,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Parsing;
@@ -46,13 +47,76 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
                                              ON c.Id = h.NumberField
                                     """;
 
+    // INDEX(0) forces the clustered scan, and ordering by an unindexed column forces the sort over it. A Sort is
+    // blocking, so it pulls every row during Open — the scan's work lands under BuildSortTable, not under a GetRow.
+    // MAXDOP 1 too: parallel, the scan comes through CQScanRowsetNew::ParallelGetRowset instead, which is a different
+    // class and hides the serial one's mapping entirely.
+    private const string SortOverClusteredScan = """
+                                                 SELECT   Id, TextField
+                                                 FROM     dbo.ClusteredTable WITH (INDEX(0))
+                                                 ORDER BY TextField
+                                                 OPTION   (MAXDOP 1)
+                                                 """;
+
+    [Fact]
+    public async Task Dump_Sort_Over_Scan_Frames() => await DumpOperators(SortOverClusteredScan);
+
+    /// <summary>
+    /// What is actually unclassified, split by why — an unmapped module and an unmapped symbol both report "unknown"
+    /// </summary>
+    /// <remarks>
+    /// CallstackProcessor reports a frame if EITHER its module or its symbol is uncategorised, so the log conflates a
+    /// missing module (one line to fix, hundreds of symbols) with a missing symbol rule. Splitting them says which.
+    /// </remarks>
+    [Theory]
+    [InlineData(HashJoin)]
+    [InlineData(SortOverClusteredScan)]
+    [InlineData(ClusteredSeek)]
+    public async Task Dump_Unclassified_Frames(string sql)
+    {
+        var result = await RunQuery(sql, await LoadDatabase());
+
+        if (result.CallStackTree is not { } tree)
+        {
+            Output.WriteLine("No call stack captured (is C:\\Symbols available?)");
+
+            return;
+        }
+
+        var frames = tree.Nodes().Select(n => n.Frame?.Resolved).OfType<ResolvedCallstackFrame>().ToList();
+
+        Output.WriteLine($"=== {sql.ReplaceLineEndings(" ")}");
+
+        Output.WriteLine("-- modules --");
+
+        foreach (var module in frames.GroupBy(f => (f.Module, f.ModuleCategory)).OrderBy(m => m.Key.Module))
+        {
+            Output.WriteLine($"   {module.Key.Module,-14} {module.Key.ModuleCategory,-16} frames={module.Count()}");
+        }
+
+        var unclassified = frames.Where(f => f.SymbolCategory == SymbolCategory.Unknown)
+                                 .Select(f => f.ClassName is { Length: > 0 } c ? c : f.MethodName)
+                                 .Distinct()
+                                 .Order()
+                                 .ToList();
+
+        Output.WriteLine($"-- classes with no symbol rule: {unclassified.Count} --");
+
+        foreach (var name in unclassified)
+        {
+            Output.WriteLine($"   {name}");
+        }
+    }
+
     /// <summary>
     /// A hash join's build and probe run under Open/Iterate, not GetRow — so its frames sit somewhere else entirely
     /// </summary>
     [Fact]
-    public async Task Dump_Hash_Join_Frames()
+    public async Task Dump_Hash_Join_Frames() => await DumpOperators(HashJoin);
+
+    private async Task DumpOperators(string sql)
     {
-        var result = await RunQuery(HashJoin, await LoadDatabase());
+        var result = await RunQuery(sql, await LoadDatabase());
 
         if (result.CallStackTree is not { } tree)
         {
@@ -215,7 +279,18 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
                               .ToList();
 
             Output.WriteLine($"node {op.PlanNodeIdentifier!.NodeId,3} '{op.Name,-22}' subtreeLeaves={leaves.Count,-4} "
-                             + $"mappingNames=[{string.Join(", ", named)}]  resolved=[{Describe(op.EntryFrames)}]");
+                             + $"mappingNames=[{string.Join(", ", named)}]");
+
+            // Each entry frame's identity and what actually ran beneath it. Two operators listing the same symbol may be
+            // sharing one node or naming two — and if a frame's events are all another node's, it is not this one's
+            // entry at all.
+            foreach (var entry in op.EntryFrames)
+            {
+                var beneath = Beneath(result.EngineEvents, entry);
+
+                Output.WriteLine($"      entry #{entry.GetHashCode() & 0xFFF:X3} '{entry.Symbol}' "
+                                 + $"nodesBeneath=[{string.Join(",", beneath)}]");
+            }
         }
     }
 
@@ -354,6 +429,18 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
 
         return string.Join('\n', kept);
     }
+
+    // The plan nodes of every event beneath a frame — read from the top-level events down, since a group carries the
+    // node id while its members carry the frames.
+    private static IEnumerable<int> Beneath(IReadOnlyList<EngineEvent> events, CallStackNode frame)
+        => events.Where(e => e is not ExecutionOperatorEvent && e.PlanNodeIdentifier is not null)
+                 .Where(e => e.SelfAndOwned()
+                              .Select(owned => owned.CallStack)
+                              .OfType<CallStackNode>()
+                              .Any(leaf => leaf.Ancestors().Contains(frame)))
+                 .Select(e => e.PlanNodeIdentifier!.NodeId)
+                 .Distinct()
+                 .Order();
 
     private static string Describe(IReadOnlyList<CallStackNode> frames)
         => frames.Count == 0 ? "(none)" : string.Join(", ", frames.Select(f => f.Symbol));

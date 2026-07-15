@@ -45,4 +45,9 @@ public enum ModuleCategory : byte
     ForegroundColor = "#8E44AD")]
     ExpressionServices,
 
+    [Category(
+        "Query Store",
+        Description = "Query Store persistence, plan forcing, hints and feedback",
+        ForegroundColor = "#6C5CE7")]
+    QueryStore,
 }

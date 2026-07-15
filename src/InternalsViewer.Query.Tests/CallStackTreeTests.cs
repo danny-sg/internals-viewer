@@ -270,6 +270,62 @@ public class CallStackTreeTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Two_Events_Through_One_Barrier_Frame_Scope_Separately()
+    {
+        // The barrier says where to stop climbing; the EVENT says whose stack it is. Two reads share the barrier node —
+        // the collapse merges them, since it is the same function — so if the scope came from the frame they would show
+        // each other's work. It comes from the event, so they do not.
+        var tree = new CallStackTree();
+
+        var first = Event();
+
+        var second = Event();
+
+        tree.Add([Frame("Latch", 10), Frame("BPool", 20), Frame("GetPageWithKey", 30), Frame("Seek", 40)], first);
+        tree.Add([Frame("Latch", 10), Frame("BPool", 20), Frame("GetPageWithKey", 30), Frame("Seek", 40)], second);
+
+        var collapsed = tree.CollapseToFunctions();
+
+        var barrier = collapsed.Nodes().Single(n => n.Symbol == "GetPageWithKey::m");
+
+        var projected = collapsed.Project(include: e => ReferenceEquals(e, first),
+                                          cutAt: node => ReferenceEquals(node, barrier));
+
+        Assert.Equal(
+            """
+            GetPageWithKey::m
+              BPool::m
+                Latch::m [1]
+
+            """.ReplaceLineEndings("\n"),
+            projected.Render().ReplaceLineEndings("\n"));
+    }
+
+    [Fact]
+    public void An_Events_Stack_Cuts_At_The_Nearest_Barrier_Above_It()
+    {
+        // Nearest-above: a barrier marked deeper wins over one marked higher, so the stack is the smallest unit of work
+        // that contains the event rather than everything back to the outermost marked frame.
+        var tree = new CallStackTree();
+
+        tree.Add([Frame("Latch", 10), Frame("BPool", 20), Frame("Seek", 30), Frame("GetPageWithKey", 40)], Event());
+
+        var collapsed = tree.CollapseToFunctions();
+
+        var barriers = collapsed.Nodes().Where(n => n.Symbol is "GetPageWithKey::m" or "BPool::m").ToList();
+
+        var projected = collapsed.Project(cutAt: barriers.Contains);
+
+        Assert.Equal(
+            """
+            BPool::m
+              Latch::m [1]
+
+            """.ReplaceLineEndings("\n"),
+            projected.Render().ReplaceLineEndings("\n"));
+    }
+
+    [Fact]
     public void A_Projection_Leaves_The_Events_Pointing_At_The_Shared_Tree()
     {
         // EngineEvent.CallStack has to keep naming the one shared tree — every per-scope projection is a throwaway view

@@ -49,6 +49,11 @@ public sealed class CallStackNode
     public bool IsOperatorBoundary => Frame?.Resolved?.PlanOperator.Count > 0 && !IsConstructor;
 
     /// <summary>
+    /// Whether a unit of storage work begins here, so an individual event's own stack can be cut from this frame
+    /// </summary>
+    public bool IsAccessBarrier => Frame?.Resolved?.IsAccessBarrier ?? false;
+
+    /// <summary>
     /// Whether this frame is where the named showplan physical operator (e.g. Clustered Index Seek) begins executing
     /// </summary>
     public bool IsEntryFrameFor(string physicalOperator)
