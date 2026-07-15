@@ -2,6 +2,7 @@
 #include "DiaBridge.h"
 
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <windows.h>
 
@@ -14,10 +15,11 @@
 
 using Microsoft::WRL::ComPtr;
 
-// Source/Session are COM objects whose code lives inside msdia140.dll (DiaModule).
-// They must be released (Reset()) before FreeLibrary(DiaModule) runs, otherwise
-// Release() ends up calling into memory that's already been unloaded. The same
-// rule applies to any local ComPtr<> obtained from this module in OpenPdb below.
+// Source/Session are COM objects whose code lives inside msdia140.dll (DiaModule). They must be released before
+// FreeLibrary(DiaModule) runs, otherwise Release() ends up calling into memory that's already been unloaded. Members
+// are destroyed after the destructor body, so the body has to release them explicitly rather than leaving it to
+// ComPtr. The same rule applies to any local ComPtr<> obtained from this module, which is why OpenPdb declares its
+// locals after the handle they belong to - scope exit then destroys them in that order.
 struct DiaHandle
 {
     HMODULE DiaModule = nullptr;
@@ -25,9 +27,67 @@ struct DiaHandle
 
     ComPtr<IDiaDataSource> Source;
     ComPtr<IDiaSession> Session;
+
+    ~DiaHandle()
+    {
+        Session.Reset();
+        Source.Reset();
+
+        if (DiaModule)
+        {
+            FreeLibrary(DiaModule);
+        }
+
+        if (ComInitialized)
+        {
+            CoUninitialize();
+        }
+    }
 };
 
-typedef HRESULT(__stdcall *DllGetClassObjectFn)(REFCLSID, REFIID, LPVOID *);
+// Holds a live symbol enumeration and the prefix to filter on. The enumerator is bound to its session, so it must be
+// released (EndEnumSymbols) before the session is closed.
+struct EnumHandle
+{
+    ComPtr<IDiaEnumSymbols> Symbols;
+    std::wstring Prefix;
+};
+
+// Owns a BSTR returned from DIA - get_name and friends hand ownership to the caller.
+class Bstr
+{
+  public:
+    Bstr() = default;
+
+    Bstr(const Bstr &) = delete;
+
+    Bstr &operator=(const Bstr &) = delete;
+
+    ~Bstr()
+    {
+        SysFreeString(Value);
+    }
+
+    BSTR *GetAddressOf()
+    {
+        return &Value;
+    }
+
+    const wchar_t *Get() const
+    {
+        return Value;
+    }
+
+    explicit operator bool() const
+    {
+        return Value != nullptr;
+    }
+
+  private:
+    BSTR Value = nullptr;
+};
+
+using DllGetClassObjectFn = HRESULT(__stdcall *)(REFCLSID, REFIID, LPVOID *);
 
 static std::wstring GetCurrentModuleFolder()
 {
@@ -64,114 +124,66 @@ static std::wstring DemangleName(const wchar_t *name)
 
 void *OpenPdb(const wchar_t *pdbPath)
 {
-    // CoInitializeEx can return RPC_E_CHANGED_MODE if this thread already has a
-    // different COM apartment (e.g. an STA UI thread). In that case we must NOT
-    // call CoUninitialize, since we never actually acquired a reference to release.
-    HRESULT comHr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-    bool comInitialized = SUCCEEDED(comHr);
+    // Every failure below returns through the handle's destructor, which unwinds whatever was acquired so far.
+    auto handle = std::make_unique<DiaHandle>();
 
-    auto folder = GetCurrentModuleFolder();
+    // CoInitializeEx can return RPC_E_CHANGED_MODE if this thread already has a different COM apartment (e.g. an STA UI
+    // thread). In that case we must NOT call CoUninitialize, since we never actually acquired a reference to release.
+    handle->ComInitialized = SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
 
-    // Load msdia140.dll directly from beside this DLL rather than going through normal
-    // COM activation, so it doesn't need to be regsvr32'd/registered on the target machine.
-    auto diaPath = folder + L"\\msdia140.dll";
+    // Load msdia140.dll directly from beside this DLL rather than going through normal COM activation, so it doesn't
+    // need to be regsvr32'd/registered on the target machine.
+    auto diaPath = GetCurrentModuleFolder() + L"\\msdia140.dll";
 
-    HMODULE hDia = LoadLibraryW(diaPath.c_str());
+    handle->DiaModule = LoadLibraryW(diaPath.c_str());
 
-    if (!hDia)
+    if (!handle->DiaModule)
     {
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
         return nullptr;
     }
 
-    auto dllGetClassObject = reinterpret_cast<DllGetClassObjectFn>(GetProcAddress(hDia, "DllGetClassObject"));
+    auto dllGetClassObject =
+        reinterpret_cast<DllGetClassObjectFn>(GetProcAddress(handle->DiaModule, "DllGetClassObject"));
 
     if (!dllGetClassObject)
     {
-        FreeLibrary(hDia);
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
         return nullptr;
     }
 
+    // Declared after the handle so scope exit releases it before the module unloads - see the DiaHandle comment.
     ComPtr<IClassFactory> factory;
 
-    HRESULT hr =
+    auto hr =
         dllGetClassObject(__uuidof(DiaSource), IID_IClassFactory, reinterpret_cast<void **>(factory.GetAddressOf()));
 
     if (FAILED(hr))
     {
-        factory.Reset();
-        FreeLibrary(hDia);
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
         return nullptr;
     }
 
-    ComPtr<IDiaDataSource> source;
-
-    hr = factory->CreateInstance(nullptr, __uuidof(IDiaDataSource), reinterpret_cast<void **>(source.GetAddressOf()));
+    hr = factory->CreateInstance(nullptr, __uuidof(IDiaDataSource),
+                                 reinterpret_cast<void **>(handle->Source.GetAddressOf()));
 
     if (FAILED(hr))
     {
-        source.Reset();
-        factory.Reset();
-        FreeLibrary(hDia);
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
         return nullptr;
     }
 
-    hr = source->loadDataFromPdb(pdbPath);
+    hr = handle->Source->loadDataFromPdb(pdbPath);
 
     if (FAILED(hr))
     {
-        source.Reset();
-        factory.Reset();
-        FreeLibrary(hDia);
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
         return nullptr;
     }
 
-    ComPtr<IDiaSession> session;
-
-    hr = source->openSession(session.GetAddressOf());
+    hr = handle->Source->openSession(handle->Session.GetAddressOf());
 
     if (FAILED(hr))
     {
-        session.Reset();
-        source.Reset();
-        factory.Reset();
-        FreeLibrary(hDia);
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
         return nullptr;
     }
 
-    factory.Reset();
-
-    auto handle = new DiaHandle();
-
-    handle->DiaModule = hDia;
-    handle->ComInitialized = comInitialized;
-    handle->Source = source;
-    handle->Session = session;
-
-    return handle;
+    return handle.release();
 }
 
 bool ResolveRva(void *sessionHandle, unsigned int rva, wchar_t *buffer, int bufferLength)
@@ -205,9 +217,9 @@ bool ResolveRva(void *sessionHandle, unsigned int rva, wchar_t *buffer, int buff
         return false;
     }
 
-    BSTR name = nullptr;
+    Bstr name;
 
-    hr = symbol->get_name(&name);
+    hr = symbol->get_name(name.GetAddressOf());
 
     if (FAILED(hr) || !name)
     {
@@ -220,27 +232,12 @@ bool ResolveRva(void *sessionHandle, unsigned int rva, wchar_t *buffer, int buff
         return false;
     }
 
-    DWORD symTag = 0;
-
-    symbol->get_symTag(&symTag);
-
-    // Demangle to friendlier name
-    auto friendly = DemangleName(name);
+    auto friendly = DemangleName(name.Get());
 
     swprintf_s(buffer, bufferLength, L"%s+0x%lX", friendly.c_str(), displacement);
 
-    SysFreeString(name);
-
     return true;
 }
-
-// Holds a live symbol enumeration and the prefix to filter on. The enumerator is bound to its session, so it must be
-// released (End) before the session is closed.
-struct EnumHandle
-{
-    ComPtr<IDiaEnumSymbols> Symbols;
-    std::wstring Prefix;
-};
 
 void *BeginEnumSymbols(void *sessionHandle, const wchar_t *prefix)
 {
@@ -258,20 +255,18 @@ void *BeginEnumSymbols(void *sessionHandle, const wchar_t *prefix)
         return nullptr;
     }
 
-    ComPtr<IDiaEnumSymbols> symbols;
+    auto enumerator = std::make_unique<EnumHandle>();
 
     // Public symbols cover the exported/public functions found in the symbol-server PDBs (which are public PDBs).
-    if (FAILED(global->findChildren(SymTagPublicSymbol, nullptr, nsNone, symbols.GetAddressOf())) || !symbols)
+    if (FAILED(global->findChildren(SymTagPublicSymbol, nullptr, nsNone, enumerator->Symbols.GetAddressOf())) ||
+        !enumerator->Symbols)
     {
         return nullptr;
     }
 
-    auto enumerator = new EnumHandle();
-
-    enumerator->Symbols = symbols;
     enumerator->Prefix = prefix ? prefix : L"";
 
-    return enumerator;
+    return enumerator.release();
 }
 
 bool NextSymbol(void *enumeratorHandle, wchar_t *buffer, int bufferLength)
@@ -294,15 +289,13 @@ bool NextSymbol(void *enumeratorHandle, wchar_t *buffer, int bufferLength)
             return false;
         }
 
-        BSTR name = nullptr;
+        Bstr name;
 
         std::wstring friendly;
 
-        if (SUCCEEDED(symbol->get_name(&name)) && name)
+        if (SUCCEEDED(symbol->get_name(name.GetAddressOf())) && name)
         {
-            friendly = DemangleName(name);
-
-            SysFreeString(name);
+            friendly = DemangleName(name.Get());
         }
 
         // rfind(prefix, 0) == 0 is a StartsWith test.
@@ -317,42 +310,10 @@ bool NextSymbol(void *enumeratorHandle, wchar_t *buffer, int bufferLength)
 
 void EndEnumSymbols(void *enumeratorHandle)
 {
-    if (!enumeratorHandle)
-    {
-        return;
-    }
-
-    auto enumerator = static_cast<EnumHandle *>(enumeratorHandle);
-
-    enumerator->Symbols.Reset();
-
-    delete enumerator;
+    delete static_cast<EnumHandle *>(enumeratorHandle);
 }
 
 void ClosePdb(void *sessionHandle)
 {
-    if (!sessionHandle)
-    {
-        return;
-    }
-
-    auto handle = static_cast<DiaHandle *>(sessionHandle);
-
-    // Must release before FreeLibrary below - see the DiaHandle comment above.
-    handle->Session.Reset();
-    handle->Source.Reset();
-
-    if (handle->DiaModule)
-    {
-        FreeLibrary(handle->DiaModule);
-    }
-
-    bool comInitialized = handle->ComInitialized;
-
-    delete handle;
-
-    if (comInitialized)
-    {
-        CoUninitialize();
-    }
+    delete static_cast<DiaHandle *>(sessionHandle);
 }
