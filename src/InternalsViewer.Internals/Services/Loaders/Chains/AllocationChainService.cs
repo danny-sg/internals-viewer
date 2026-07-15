@@ -82,9 +82,16 @@ public sealed class AllocationChainService(ILogger<AllocationChainService> logge
 
             Logger.LogDebug("Page {Index}: {PageAddress}", i, address);
 
-            var page = await pageService.GetPage<AllocationPage>(database, address, cancellationToken);
+            try
+            {
+                var page = await pageService.GetPage<AllocationPage>(database, address, cancellationToken);
 
-            allocation.Pages.Add(page);
+                allocation.Pages.Add(page);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading allocation page - {PageAddress}", address);
+            }
         }
 
         return allocation;

@@ -72,6 +72,40 @@ public class OperatorCallStackMatcherTests
     }
 
     [Fact]
+    public void Nested_Operators_Of_One_Kind_Each_Take_Their_Own_Frame()
+    {
+        // Six nested Hash Matches all run CQScanHash at the same RVAs, so "which frames match my name?" has no single
+        // answer — asked independently, the outer join is handed the inner join's run by the leaf beneath it and every
+        // segment dissolves into every other. The plan's shape is the only thing left that separates them: walking up
+        // from the leaf its operators appear in chain order, so each run is fixed by its POSITION.
+        var tree = new CallStackTree();
+
+        var read = Event(node: 3);
+
+        tree.Add([Frame("BufRead", 10), Operator("Seek", "Index Seek", 20), Operator("Hash", "Hash Match", 30),
+                  Frame("Profile", 40), Operator("Hash", "Hash Match", 50), Frame("Thread", 60)], read);
+
+        var outerHash = Operator(node: 1, physicalOperator: "Hash Match");
+
+        var innerHash = Operator(node: 2, physicalOperator: "Hash Match", parent: 1);
+
+        var seek = Operator(node: 3, physicalOperator: "Index Seek", parent: 2);
+
+        Match(tree, [outerHash, innerHash, seek, read]);
+
+        var inner = Assert.Single(innerHash.EntryFrames);
+
+        var outer = Assert.Single(outerHash.EntryFrames);
+
+        // Same symbol, different frames: the inner join is the one the seek came out of, the outer the one Thread called.
+        Assert.Equal("Hash::m", inner.Symbol);
+        Assert.Equal("Profile::m", inner.Parent?.Symbol);
+
+        Assert.Equal("Hash::m", outer.Symbol);
+        Assert.Equal("Thread::m", outer.Parent?.Symbol);
+    }
+
+    [Fact]
     public void Two_Operators_Of_One_Kind_Sharing_A_Merged_Frame_Both_Resolve_To_It()
     {
         // Two Index Seeks under a join run identical code at identical addresses — they differ only by `this`, so the

@@ -22,10 +22,13 @@ public sealed partial class CallstackDocumentView : UserControl
 
     private bool _revealInfrastructure;
 
-    // "Scope": root the tree at the plan's operator hierarchy, each operator holding the call tree of its OWN events
-    // (matched by PlanNodeIdentifier) above its child operators, cut at the frame where the operator starts executing.
-    // Off is the whole query's stacks merged into one tree.
-    private bool _scope;
+    // "Focus": show the selection's own call tree on its own — an operator cut at the frame where it starts executing
+    // and again where it hands off, an event cut at the barrier its work begins at. Nothing selected shows the plan's
+    // operator hierarchy. Off is the whole query's stacks merged into one tree.
+    //
+    // Default on, matching FocusToggle.IsChecked in the XAML: the merged tree is every stack the query captured at once,
+    // which is the view you narrow down FROM once you know what you are after, not the one to open on.
+    private bool _focus = true;
 
     // Set while the tree itself is driving the selection, so the resulting change does not rebuild the tree.
     private bool _selectingFromTree;
@@ -68,11 +71,11 @@ public sealed partial class CallstackDocumentView : UserControl
         DataContextChanged += (_, _) => OnViewModelChanged();
     }
 
-    private void OnScopeChanged(object sender, RoutedEventArgs e)
+    private void OnFocusChanged(object sender, RoutedEventArgs e)
     {
-        _scope = ScopeToggle.IsChecked == true;
+        _focus = FocusToggle.IsChecked == true;
 
-        ApplyScope(_viewModel?.SelectedEvent);
+        ApplyFocus(_viewModel?.SelectedEvent);
     }
 
     private void OnBackClick(object sender, RoutedEventArgs e) => GoTo(_historyIndex - 1);
@@ -146,6 +149,47 @@ public sealed partial class CallstackDocumentView : UserControl
         ForwardButton.IsEnabled = _historyIndex >= 0 && _historyIndex < _history.Count - 1;
     }
 
+    /// <summary>
+    /// Shows what the tree below is a segment of, and the way back up to the operator that drove it
+    /// </summary>
+    /// <remarks>
+    /// Both rows are wrapped in a TreeViewNode because the header borrows the tree's templates, which bind to one.
+    /// </remarks>
+    private void ShowFocusHeader(ExecutionOperatorEvent? parent, object current)
+    {
+        // A plan root has nowhere above it, so the link goes rather than showing an arrow that leads nowhere.
+        var hasParent = parent is not null;
+
+        HeaderParent.Content = hasParent ? new TreeViewNode { Content = new OperatorLink(parent!, Back: true) } : null;
+
+        HeaderParent.Visibility = hasParent ? Visibility.Visible : Visibility.Collapsed;
+
+        HeaderCurrent.Content = new TreeViewNode { Content = current };
+
+        FocusHeader.Visibility = Visibility.Visible;
+    }
+
+    private void HideFocusHeader()
+    {
+        HeaderParent.Content = null;
+
+        HeaderCurrent.Content = null;
+
+        FocusHeader.Visibility = Visibility.Collapsed;
+    }
+
+    // Following the header's parent link, like following one in the tree: a request to go there, so it rebuilds around
+    // the parent rather than leaving the current segment on screen with the selection moved out from under it.
+    private void OnHeaderParentTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (_viewModel is null || HeaderParent.Content is not TreeViewNode { Content: OperatorLink link })
+        {
+            return;
+        }
+
+        _viewModel.SelectedEvent = link.Operator;
+    }
+
     private void OnNodeRightTapped(object sender, RightTappedRoutedEventArgs e) =>
         _contextNode = (sender as FrameworkElement)?.DataContext as TreeViewNode;
 
@@ -197,7 +241,7 @@ public sealed partial class CallstackDocumentView : UserControl
             _viewModel.PropertyChanged += OnPropertyChanged;
         }
 
-        ApplyScope(_viewModel?.SelectedEvent);
+        ApplyFocus(_viewModel?.SelectedEvent);
     }
 
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -207,19 +251,19 @@ public sealed partial class CallstackDocumentView : UserControl
         {
             ClearHistory();
 
-            ApplyScope(_viewModel?.SelectedEvent);
+            ApplyFocus(_viewModel?.SelectedEvent);
         }
         else if (e.PropertyName == nameof(QueryViewModel.SelectedEvent) && !_selectingFromTree)
         {
             RecordHistory(_viewModel?.SelectedEvent);
 
-            ApplyScope(_viewModel?.SelectedEvent);
+            ApplyFocus(_viewModel?.SelectedEvent);
         }
     }
 
-    private void ApplyScope(EngineEvent? selected)
+    private void ApplyFocus(EngineEvent? selected)
     {
-        if (_scope)
+        if (_focus)
         {
             // An operator selects its segment; anything else selects its own work. Scoping a read to the operator that
             // issued it answers a question that was not asked — the read was clicked, not the seek.
@@ -456,6 +500,9 @@ public sealed partial class CallstackDocumentView : UserControl
     {
         ClearTree();
 
+        // Merged: the tree is the whole query, which is not a segment of anything and so heads nothing.
+        HideFocusHeader();
+
         foreach (var root in _viewModel?.CallStackRoots ?? [])
         {
             foreach (var treeNode in BuildVisible(root))
@@ -548,6 +595,9 @@ public sealed partial class CallstackDocumentView : UserControl
     {
         ClearTree();
 
+        // The whole plan is on screen, so nothing is isolated for the header to name; an isolated operator puts it back.
+        HideFocusHeader();
+
         _operatorNodes.Clear();
 
         if (_histogramNode is not null)
@@ -621,10 +671,7 @@ public sealed partial class CallstackDocumentView : UserControl
             ? _hierarchy.Operators.FirstOrDefault(o => o.PlanNodeIdentifier == id)
             : null;
 
-        if (op is not null)
-        {
-            Tree.RootNodes.Add(new TreeViewNode { Content = new OperatorLink(op, Back: true) });
-        }
+        ShowFocusHeader(op, new EventRow(selected));
 
         var scope = selected.SelfAndOwned().ToHashSet(ReferenceEqualityComparer.Instance);
 
@@ -653,26 +700,24 @@ public sealed partial class CallstackDocumentView : UserControl
 
     // One operator on its own, with its call tree expanded: the isolated stack for the selected node. No child operators
     // — their frames are a different node's work, which is exactly what isolating it means to exclude.
+    //
+    // The operator heads the view from the header rather than as a row the frames hang off, so the tree is only the
+    // frames. The way back out lives there too: isolation is exactly where the plan around the operator is gone, so
+    // without it the only route to the caller is the history, and there is none when the operator came from the timeline.
     private void BuildIsolatedOperator(ExecutionOperatorEvent op)
     {
-        // The way back out. Isolation is exactly where the plan around the operator is gone, so without this the only
-        // route to its caller is the history, and there is none at all when the operator was reached from the timeline.
-        if (_hierarchy.Parent(op) is { } parent)
-        {
-            Tree.RootNodes.Add(new TreeViewNode { Content = new OperatorLink(parent, Back: true) });
-        }
-
-        var operatorNode = new TreeViewNode { Content = new OperatorRow(op, Unsegmented: !Segmented(op)) };
+        ShowFocusHeader(_hierarchy.Parent(op), new OperatorRow(op, Unsegmented: !Segmented(op)));
 
         foreach (var callNode in BuildOperatorCallTree(op))
         {
-            operatorNode.Children.Add(callNode);
+            Tree.RootNodes.Add(callNode);
         }
 
-        Tree.RootNodes.Add(operatorNode);
-
         // Attached first: WinUI can drop a subtree expanded while detached.
-        SetExpanded(operatorNode, expanded: true);
+        foreach (var node in Tree.RootNodes)
+        {
+            SetExpanded(node, expanded: true);
+        }
     }
 
     // A tree node for an operator: its own call tree followed by its child operators, or null when neither it nor any
@@ -742,9 +787,13 @@ public sealed partial class CallstackDocumentView : UserControl
         // function, so its event count and category would be the whole query's, not this operator's. The projected
         // nodes carry only the events in scope, which is the point of scoping to it.
         //
-        // Cut top and bottom: ExitFrames drops the operators nested inside this one, leaving this operator's own work.
+        // Cut top and bottom: ExitFrames drops the operators nested inside this one, and a barrier drops the storage
+        // work below it — a read's descent is that read's own detail, reachable by selecting it, and inlining it here
+        // buries the operator under the same hundred frames repeated for every page it touched.
+        //
         // Which operator each exit frame hands off to, so the segment can name what it stopped for rather than just
-        // ending. Keyed on the frame because that is what Project records having cut.
+        // ending. Keyed on the frame because that is what Project records having cut. A barrier hands off to no
+        // operator, so it is absent here and simply ends the branch.
         _nextOperator = _hierarchy.Descendants(op)
             .SelectMany(descendant => descendant.EntryFrames.Select(frame => (Frame: frame, Operator: descendant)))
             .GroupBy(link => link.Frame)
@@ -752,7 +801,7 @@ public sealed partial class CallstackDocumentView : UserControl
 
         var projected = tree.Project(include: scope.Contains,
                                      cutAt: op.EntryFrames.Contains,
-                                     stopBelow: op.ExitFrames.Count > 0 ? op.ExitFrames.Contains : null);
+                                     stopBelow: frame => op.ExitFrames.Contains(frame) || frame.IsAccessBarrier);
 
         var nodes = ProjectedCallNodes(projected, revealInfrastructure: false);
 
@@ -827,7 +876,7 @@ public sealed partial class CallstackDocumentView : UserControl
     {
         _search = sender.Text?.Trim() ?? string.Empty;
 
-        ApplyScope(_viewModel?.SelectedEvent);
+        ApplyFocus(_viewModel?.SelectedEvent);
     }
 
     /// <summary>

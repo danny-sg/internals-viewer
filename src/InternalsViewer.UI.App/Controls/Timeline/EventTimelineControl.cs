@@ -242,6 +242,8 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     private LatchEvent[] _latchEventsByTime = [];
 
+    private FileEvent[] _fileReadEventsByTime = [];
+
     // The markers/operators/traces/ruler don't change as the playhead sweeps, so they're recorded once
     // into a picture and replayed each frame; only the playhead, handles and selection dim are redrawn
     // live. The picture (and the _hitRegions built alongside it) is re-recorded only when an input that
@@ -401,6 +403,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         control._sortedEvents = [.. ExpandGroupedEvents(events).OrderBy(ev => ev.SequenceId)];
         control._readEventsByTime = [.. events.OfType<ReadEventGroup>().OrderBy(read => read.TimeUs)];
         control._latchEventsByTime = [.. events.OfType<LatchEvent>().OrderBy(latch => latch.TimeUs)];
+        control._fileReadEventsByTime = [.. EnumerateFileReads(events).OrderBy(read => read.TimeUs)];
 
         control._eventsVersion++;
 

@@ -58,8 +58,223 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
                                                  OPTION   (MAXDOP 1)
                                                  """;
 
+    private const string AdventureWorks = "AdventureWorks2025";
+
+    // A real view over several tables, returning XML columns. Nothing in the tutorial database reaches the worktable,
+    // LOB and XML-serialisation code this drags in, which is why so much of its stack is unmapped.
+    private const string IndividualCustomerView = "SELECT TOP 1000 * FROM Sales.vIndividualCustomer";
+
+    // The plan behind the icicle complaint: a scan whose rows a Top cuts short, under the statement. Three operators,
+    // only the scan of which emits anything, so it is the shortest plan where "the operators above have no chart" shows.
+    private const string TopOverClusteredScan = """
+                                                SELECT TOP (100) Id, TextField
+                                                FROM   dbo.ClusteredTable
+                                                OPTION (MAXDOP 1)
+                                                """;
+
+    [Fact]
+    public async Task Temp_Dump_Entry_Paths()
+    {
+        var result = await RunQuery(IndividualCustomerView, await LoadDatabase(AdventureWorks));
+
+        var hierarchy = OperatorHierarchy.Build(result.EngineEvents);
+
+        var owners = new Dictionary<CallStackNode, List<int>>();
+
+        foreach (var op in hierarchy.Operators)
+        {
+            foreach (var entry in op.EntryFrames)
+            {
+                (owners.TryGetValue(entry, out var list) ? list : owners[entry] = []).Add(op.PlanNodeIdentifier!.NodeId);
+            }
+        }
+
+        Output.WriteLine("--- entry frames claimed by MORE THAN ONE operator ---");
+
+        foreach (var (frame, nodes) in owners.Where(o => o.Value.Count > 3).Take(3))
+        {
+            Output.WriteLine($"  '{frame.Symbol}' claimed by nodes [{string.Join(",", nodes.Order())}]");
+            Output.WriteLine($"      depth={frame.Ancestors().Count()} events={frame.Events.Count}");
+            Output.WriteLine($"      path: {string.Join(" < ", frame.Ancestors().Select(f => f.Symbol))}");
+        }
+
+        Output.WriteLine("");
+        Output.WriteLine($"--- distinct entry frames={owners.Count} shared={owners.Count(o => o.Value.Count > 1)} ---");
+    }
+
     [Fact]
     public async Task Dump_Sort_Over_Scan_Frames() => await DumpOperators(SortOverClusteredScan);
+
+    /// <summary>
+    /// A real plan: which of its operators the mapping can find an entry frame for, and which show nothing
+    /// </summary>
+    [Fact]
+    public async Task Dump_Individual_Customer_View_Frames() => await DumpOperators(IndividualCustomerView, AdventureWorks);
+
+    /// <summary>
+    /// What the icicle would draw for each operator, and which step drops it when it draws nothing
+    /// </summary>
+    /// <remarks>
+    /// Mirrors OperatorIcicle.Build, which lives in the UI project and cannot be referenced here. The point is to say
+    /// WHICH of the four gates an empty chart failed — no operator event, no entry frame, no scoped events, or no
+    /// weighted root — since all four look identical on screen.
+    /// </remarks>
+    [Theory]
+    [InlineData(TopOverClusteredScan)]
+    [InlineData(HashJoin)]
+    public async Task Dump_Icicle_Weights(string sql)
+    {
+        var result = await RunQuery(sql, await LoadDatabase());
+
+        if (result.CallStackTree is not { } tree)
+        {
+            Output.WriteLine("No call stack captured (is C:\\Symbols available?)");
+
+            return;
+        }
+
+        var hierarchy = OperatorHierarchy.Build(result.EngineEvents);
+
+        Output.WriteLine($"=== {sql.ReplaceLineEndings(" ")}");
+        Output.WriteLine($"operators={hierarchy.Operators.Count} treeNodes={tree.Nodes().Count()}");
+
+        foreach (var op in hierarchy.Operators.OrderBy(o => o.PlanNodeIdentifier!.NodeId))
+        {
+            var scope = hierarchy.ScopeOf(op, result.EngineEvents);
+
+            var entries = op.EntryFrames.ToHashSet();
+
+            var exits = op.ExitFrames.ToHashSet();
+
+            var weights = new Dictionary<CallStackNode, int>();
+
+            var reached = 0;
+
+            foreach (var scoped in scope)
+            {
+                if (scoped.CallStack is { } leaf && Accumulate(leaf, entries, exits, weights))
+                {
+                    reached++;
+                }
+            }
+
+            var roots = op.EntryFrames.Where(weights.ContainsKey).ToList();
+
+            Output.WriteLine("");
+            Output.WriteLine($"node {op.PlanNodeIdentifier!.NodeId,3} '{op.Name}' entryFrames={op.EntryFrames.Count} "
+                             + $"exitFrames={op.ExitFrames.Count} scope={scope.Count} leavesReachingEntry={reached} "
+                             + $"weightedNodes={weights.Count} roots={roots.Count}");
+
+            foreach (var root in roots)
+            {
+                var tail = Tail(root, weights);
+
+                var symbol = ReferenceEquals(tail, root) ? root.Symbol : $"{root.Symbol} -> {tail.Symbol}";
+
+                Output.WriteLine($"    root '{symbol}' weight={weights[root]} rows={Depth(root, weights, 0) + 1}");
+
+                Dump(root, weights, "      ");
+            }
+        }
+    }
+
+    // Mirrors OperatorIcicle.Accumulate; returns whether the leaf's stack reached this operator's entry at all.
+    private static bool Accumulate(CallStackNode leaf,
+                                   HashSet<CallStackNode> entries,
+                                   HashSet<CallStackNode> exits,
+                                   Dictionary<CallStackNode, int> weights)
+    {
+        var path = new List<CallStackNode>();
+
+        var seen = new HashSet<CallStackNode>();
+
+        CallStackNode? entry = null;
+
+        for (var node = leaf; node is { IsRoot: false } && seen.Add(node); node = node.Parent)
+        {
+            path.Add(node);
+
+            if (entries.Contains(node))
+            {
+                entry = node;
+
+                break;
+            }
+        }
+
+        if (entry is null)
+        {
+            return false;
+        }
+
+        var bottom = 0;
+
+        for (var i = path.Count - 2; i >= 0; i--)
+        {
+            if (exits.Contains(path[i]) || path[i].IsAccessBarrier)
+            {
+                bottom = i;
+
+                break;
+            }
+        }
+
+        for (var i = bottom; i < path.Count; i++)
+        {
+            weights[path[i]] = weights.GetValueOrDefault(path[i]) + 1;
+        }
+
+        return true;
+    }
+
+    // Mirrors OperatorIcicle.Tail: the run every one of the events walks straight through, drawn as one row.
+    private static CallStackNode Tail(CallStackNode node, Dictionary<CallStackNode, int> weights)
+    {
+        var seen = new HashSet<CallStackNode> { node };
+
+        var tail = node;
+
+        while (true)
+        {
+            var children = tail.ChildNodes.Where(weights.ContainsKey).ToList();
+
+            if (children is not [var only] || weights[only] != weights[tail] || !seen.Add(only))
+            {
+                return tail;
+            }
+
+            tail = only;
+        }
+    }
+
+    private static int Depth(CallStackNode node, Dictionary<CallStackNode, int> weights, int depth)
+    {
+        var deepest = depth;
+
+        foreach (var child in Tail(node, weights).ChildNodes.Where(weights.ContainsKey))
+        {
+            deepest = Math.Max(deepest, Depth(child, weights, depth + 1));
+        }
+
+        return deepest;
+    }
+
+    // One line per row the icicle would draw, so the shape is readable without running the UI.
+    private void Dump(CallStackNode node, Dictionary<CallStackNode, int> weights, string indent)
+    {
+        var tail = Tail(node, weights);
+
+        foreach (var child in tail.ChildNodes.Where(weights.ContainsKey))
+        {
+            var childTail = Tail(child, weights);
+
+            var symbol = ReferenceEquals(childTail, child) ? child.Symbol : $"{child.Symbol} -> {childTail.Symbol}";
+
+            Output.WriteLine($"{indent}{symbol} w={weights[child]}");
+
+            Dump(child, weights, indent + "  ");
+        }
+    }
 
     /// <summary>
     /// What is actually unclassified, split by why — an unmapped module and an unmapped symbol both report "unknown"
@@ -69,12 +284,13 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
     /// missing module (one line to fix, hundreds of symbols) with a missing symbol rule. Splitting them says which.
     /// </remarks>
     [Theory]
-    [InlineData(HashJoin)]
-    [InlineData(SortOverClusteredScan)]
-    [InlineData(ClusteredSeek)]
-    public async Task Dump_Unclassified_Frames(string sql)
+    [InlineData(HashJoin, null)]
+    [InlineData(SortOverClusteredScan, null)]
+    [InlineData(ClusteredSeek, null)]
+    [InlineData(IndividualCustomerView, AdventureWorks)]
+    public async Task Dump_Unclassified_Frames(string sql, string? database)
     {
-        var result = await RunQuery(sql, await LoadDatabase());
+        var result = await RunQuery(sql, await LoadDatabase(database));
 
         if (result.CallStackTree is not { } tree)
         {
@@ -114,9 +330,9 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public async Task Dump_Hash_Join_Frames() => await DumpOperators(HashJoin);
 
-    private async Task DumpOperators(string sql)
+    private async Task DumpOperators(string sql, string? database = null)
     {
-        var result = await RunQuery(sql, await LoadDatabase());
+        var result = await RunQuery(sql, await LoadDatabase(database));
 
         if (result.CallStackTree is not { } tree)
         {
@@ -507,9 +723,24 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
                                          @"C:\Symbols", null, CancellationToken.None);
     }
 
-    private async Task<DatabaseSource> LoadDatabase()
+    /// <summary>
+    /// Loads a database over the "Local" connection, overriding its catalog when a different one is named
+    /// </summary>
+    /// <remarks>
+    /// The tutorial database is a handful of tables built to isolate one access path each. A real schema is the only
+    /// place the untidy stacks live — a view over several tables, XML columns, worktables — so some dumps point
+    /// elsewhere rather than the connection string being repointed for all of them.
+    /// </remarks>
+    private async Task<DatabaseSource> LoadDatabase(string? database = null)
     {
-        var connectionString = ConnectionStringHelper.GetConnectionString("Local");
+        var builder = new SqlConnectionStringBuilder(ConnectionStringHelper.GetConnectionString("Local"));
+
+        if (!string.IsNullOrWhiteSpace(database))
+        {
+            builder.InitialCatalog = database;
+        }
+
+        var connectionString = builder.ConnectionString;
 
         using var host = Host.CreateDefaultBuilder()
                              .ConfigureServices((_, services) => services.RegisterServices())

@@ -37,6 +37,10 @@ public sealed class ExecutionPlanControl : Canvas
     // Node height grows to make room for the icicle when the plan has linked call stacks, else stays compact.
     private double _nodeHeight = BaseNodeHeight;
 
+    // The plan's operators as a tree, so each node's icicle can be weighted by the events its whole subtree drove.
+    // Rebuilt with the diagram rather than per node, which would invert the parent links once for every operator.
+    private OperatorHierarchy _hierarchy = OperatorHierarchy.Build([]);
+
     private const double ColumnPitch = NodeWidth + HorizontalGap;
     private double RowPitch => _nodeHeight + VerticalGap;
 
@@ -199,6 +203,8 @@ public sealed class ExecutionPlanControl : Canvas
             return;
         }
 
+        _hierarchy = OperatorHierarchy.Build(Events ?? []);
+
         // Reserve the icicle strip only when this plan actually has linked call stacks to draw.
         _nodeHeight = HasLinkedCallstacks() ? BaseNodeHeight + IcicleStripHeight : BaseNodeHeight;
 
@@ -320,7 +326,13 @@ public sealed class ExecutionPlanControl : Canvas
         {
             var id = new PlanNodeIdentifier(plan.PlanHandleId, node.NodeId);
 
-            control.IcicleSegments = OperatorIcicle.Build(id, events, IcicleWidth, IcicleHeight, MaxIcicleLevels);
+            // The operator carries the frames its segment is bounded by; the plan node on its own knows only the shape.
+            // Nothing matched it if it is absent, which is the same as having no segment to draw.
+            if (_hierarchy.Operators.FirstOrDefault(o => o.PlanNodeIdentifier == id) is { } operatorEvent)
+            {
+                control.IcicleSegments =
+                    OperatorIcicle.Build(operatorEvent, _hierarchy, events, IcicleWidth, IcicleHeight, MaxIcicleLevels);
+            }
         }
 
         SetLeft(control, point.X);

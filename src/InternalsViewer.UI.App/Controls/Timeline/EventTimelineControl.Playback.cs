@@ -250,6 +250,8 @@ public sealed partial class EventTimelineControl
 
         SweepEvents(_latchEventsByTime, lo, hi,
                     latch => _audioPlayer.PlayLatchTick(TimelineAudioPlayer.FrequencyForObject(latch.ObjectId)));
+
+        SweepEvents(_fileReadEventsByTime, lo, hi, _ => _audioPlayer.PlayFileRumble());
     }
 
     private static void SweepEvents<T>(T[] eventsByTime, long lo, long hi, Action<T> play) where T : EngineEvent

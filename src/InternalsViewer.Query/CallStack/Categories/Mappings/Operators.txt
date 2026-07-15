@@ -56,7 +56,7 @@ sqlmin|CQScanTop*|*|Top|Top
 # Seeks and scans. The globs cover the Clustered variants, which the plan names separately but one class serves.
 # CQScanRange is also the Key Lookup — the same seek, renamed by ExecutionPlanParser when the showplan marks it a
 # lookup — and that name has nothing in common with the others, hence the list.
-sqlmin|CQScanRange*|*|Index Seek|*Index S*,Key Lookup,RID Lookup
+sqlmin|CQScanRange*|*|Index Seek|*Index Seek,Key Lookup,RID Lookup
 sqlmin|CQScanIndex*|*|Index Scan|*Index Scan
 # "TableScan" is the access method, not the plan's name for it: an unordered scan of a clustered index comes through
 # here too, and showplan calls that a Clustered Index Scan. Serial only — parallel goes via CQScanRowsetNew.

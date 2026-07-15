@@ -8,10 +8,6 @@
 #   - The most specific matching rule wins: an exact field beats any glob, a longer glob beats a shorter one, and
 #     function is weighted highest and breaks ties.
 #
-# Which plan operator a frame belongs to lives in Operators.txt, and where a unit of storage work begins in Barriers.txt
-# — both were columns here and neither survived contact. One rule wins here, on category specificity, and carried
-# whatever else it happened to hold: adding a rule to colour a frame could silently delete an operator boundary, and the
-# only defence was repeating the boundary on every rule that might win.
 Module|Class|Function|Category
 
 # Statements
@@ -45,7 +41,8 @@ sqlmin|CQScanNLJoin*|*|QueryOperator
 sqlmin|CQScanStreamAgg*|*|QueryOperator
 sqlmin|CQScanTopSort*|*|QueryOperator
 sqlmin|CQScanSort*|*|QueryOperator
-# The sort engine underneath CQScanSort — free functions, no class, hence the function-only rules.
+
+# The sort engine underneath CQScanSort
 sqlmin|*|lmsort*|QueryOperator
 sqlmin|*|lmlink*|QueryOperator
 sqlmin|*|lmAddCurToList*|QueryOperator
@@ -145,6 +142,7 @@ sqlmin|Rowset*|*|RowAccess
 # Yield points and the callbacks SQLOS runs as a task suspends. Not the storage engine doing work — the scheduler
 # taking the thread away from it, which is why a wait shows up under an unrelated-looking frame.
 *|*|YieldAndCheckForAbort*|Scheduling
+*|*|CheckForAbortAndYield*|Scheduling
 *|*|switch_call_back*|Scheduling
 *|*|SETaskSuspendingNotification*|Scheduling
 
@@ -247,6 +245,95 @@ sqlmin|AllocScan|*|PageAccess
 *|BaseThreadInitThunk*|*|System
 *|RtlUserThreadStart*|*|System
 
+# --- The optimizer proper: the search itself, not the cardinality estimation above --------------------------------------
+# A view over several tables spends far longer being compiled than run, so on a first execution these outnumber
+# everything the query actually did.
+*|CTask_*|*|Optimization
+*|CImpRule*|*|Optimization
+*|CSubRule*|*|Optimization
+*|CExpRule*|*|Optimization
+*|CPhyOp*|*|Optimization
+*|COpArg*|*|Optimization
+*|CCostUtils*|*|Optimization
+*|CGenIndexStrategy*|*|Optimization
+*|CAnalyzePredicate*|*|Optimization
+*|CRemapContext*|*|Optimization
+
+# Statistics the optimizer reads, alongside the CStatMan/CCardFramework rules above.
+*|CStatsUtil*|*|Optimization
+*|CStatBlob*|*|Optimization
+
+# Whether an existing plan still fits the data it was built for — a compile-time decision, taken before execution.
+*|CRecompile*|*|Compilation
+*|CRangeObject*|*|Compilation
+*|CBinding*|*|QueryBinding
+*|CMetadataUtil*|*|Metadata
+*|*IMetadataAccess*|*|Metadata
+*|DBMgr*|*|Metadata
+*|AutoReadOnlyIMA*|*|Metadata
+*|CExecutionCollection*|*|Metadata
+
+# Building the showplan XML we asked for. Infrastructure: it is the cost of observing the query, not the query.
+*|CShowplan*|*|Tracing
+
+# --- XML ---------------------------------------------------------------------------------------------------------------
+# The XML data type: converting a column to text for the wire, and the node-table access an XML index goes through.
+*|CXmlConvert*|*|Xml
+*|CSsXmlWriter*|*|Xml
+*|XmlContextInfo*|*|Xml
+*|CRangeXMLSchema*|*|Xml
+
+# --- Large objects and the stream that carries them to the client -------------------------------------------------------
+# Contains-globs: the chunking class is nested in an anonymous namespace, so its name arrives prefixed.
+*|*CBufferedStream*|*|LargeObjectStorage
+*|LongRecord*|*|LargeObjectStorage
+*|CBlobHandleFactory*|*|LargeObjectStorage
+*|LobStorageProvider*|*|LargeObjectStorage
+*|CDefaultBHFDispenser*|*|LargeObjectStorage
+
+*|*TSendRow*|*|Networking
+
+# --- Worktables ---------------------------------------------------------------------------------------------------------
+# The engine building itself a temporary rowset in tempdb. A HoBt is the heap-or-b-tree behind one (and behind every real
+# table), so this covers the object-access layer rather than the worktable alone.
+*|HoBt*|*|Storage
+*|CQPWorkTable*|*|Storage
+*|WorkFileGroup*|*|Storage
+*|WFResourceMgr*|*|Storage
+*|CacheOnlyHoBt*|*|Storage
+*|BaseSharedHoBt*|*|Storage
+
+# The hash join's own partitions, alongside the CHashWorkfilePartitionGroup rule above. Contains-globs: the group is
+# reached through a CAutoShutdown<> wrapper, which arrives as part of the class name.
+*|*CHashWorkfile*|*|PhysicalOperator
+*|*CHashWorktable*|*|PhysicalOperator
+*|CHashBitmap*|*|PhysicalOperator
+
+*|AllocationCache*|*|Allocations
+*|AutoAllocationCaches*|*|Allocations
+
+# --- Expression service -------------------------------------------------------------------------------------------------
+# SqlTsEs' value classes. Contains-glob because the in-row filters arrive as TCValSSInRowExprFilter<56,1,1>. The
+# CValFetchByKey rule above is longer and still wins for the row fetch.
+*|*CVal*|*|ExpressionEvaluation
+*|CEsRuntime*|*|ExpressionEvaluation
+*|CEsCompValSeg*|*|ExpressionEvaluation
+*|udf*|*|ExpressionEvaluation
+
+*|*Accessor*|*|RowAccess
+*|CPrefetchMgr*|*|RowAccess
+
+*|CAutoLatch*|*|Latching
+*|CIncPageMgr*|*|PageAccess
+
+# Versioning: the snapshot a statement takes so it reads a consistent view.
+*|XVB*|*|TransactionManagement
+*|UpdateSequenceMarker*|*|TransactionManagement
+*|*Xact*|*|TransactionManagement
+
+*|CAutoSetupCXCtxtS*|*|QueryExecution
+*|CExecLvlIntCtxt*|*|QueryExecution
+
 # --- Function rules (any class) --------------------------------------------------------------------------------------
 *|*|GetRow*|RowAccess
 *|*|GetRowForKeyValue*|RowAccess
@@ -321,3 +408,47 @@ sqlmin|AllocScan|*|PageAccess
 *|*|PostEventSessionEvent*|Tracing
 
 *|*|XEvent*|XEventInfrastructure
+
+# --- Free functions -----------------------------------------------------------------------------------------------------
+# No class at all, so the class rules above cannot reach them however specific they are.
+*|*|ConvertXML*|Xml
+*|*|PxdtcCreateXmlDtSelectTree*|Xml
+*|*|GetNodeTableById*|Xml
+*|*|GetNodetableFromXmlIndex*|Xml
+*|*|PimobjGetNodeTableObjectByValRefT*|Xml
+
+# On CValRef, so the CVal rule would otherwise call building the showplan an expression evaluation.
+*|*|PseShowplanXML*|Tracing
+
+*|*|ImplementLogicalSubstitute*|Optimization
+
+*|*|FStatsBasedRecompile*|Compilation
+*|*|GetColumnModCountsForQp*|Compilation
+
+*|*|GetNameFromMetadata*|Metadata
+*|*|GetSchemaNameFromId*|Metadata
+*|*|AddQualifiedObjNameWithAliasAttributes*|Metadata
+*|*|getname|Metadata
+
+# Creating, truncating and dropping the temporary rowsets a plan needs — SE* is the storage engine's own entry points.
+*|*|SECreateRowset*|Storage
+*|*|SEDropRowset*|Storage
+*|*|SEDropWorktableRowset*|Storage
+*|*|SETruncateWorktableRowset*|Storage
+*|*|CreateWorkRowset*|Storage
+*|*|CreateFakeWorkRowset*|Storage
+*|*|DropWorkTableRobustInternal*|Storage
+*|*|IncrWorktableUseCount*|Storage
+*|*|DecrWorktableUseCountAndDropIfZero*|Storage
+
+*|*|ComputeRowsetTypeAndLogMode*|RowAccess
+*|*|GetTableCursor*|RowAccess
+*|*|GetQETableCursor*|RowAccess
+*|*|CreateAccessorCommon*|RowAccess
+*|*|StartupRanges*|RowAccess
+*|*|PvalGetFastInRow*|ExpressionEvaluation
+
+*|*|intnl_flush*|LargeObjectStorage
+*|*|SendBlob*|LargeObjectStorage
+
+*|*|PqsWrapQScan*|QueryExecution

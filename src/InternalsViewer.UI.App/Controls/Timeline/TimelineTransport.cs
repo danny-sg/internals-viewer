@@ -24,6 +24,7 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
     private readonly Button _stepForwardButton;
     private readonly ToggleButton _threadsButton;
     private readonly ToggleButton _audioButton;
+    private readonly ProgressRing _audioProgress;
 
     public event Action? PlayPauseRequested;
 

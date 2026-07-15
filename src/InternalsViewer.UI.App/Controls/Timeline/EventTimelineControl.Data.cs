@@ -29,6 +29,39 @@ public sealed partial class EventTimelineControl
         }
     }
 
+    /// <summary>
+    /// Enumerates the physical file reads, including those folded into a read group
+    /// </summary>
+    /// <remarks>
+    /// Unlike the other audio sweeps this can't read the top-level list alone: a file read is normally a member of the
+    /// <see cref="ReadEventGroup"/> built around it, so it only surfaces at the top level when consolidation left it
+    /// unpaired.
+    /// </remarks>
+    private static IEnumerable<FileEvent> EnumerateFileReads(List<EngineEvent> events)
+    {
+        foreach (var engineEvent in events)
+        {
+            switch (engineEvent)
+            {
+                case FileEvent { IsRead: true } fileEvent:
+                    yield return fileEvent;
+
+                    break;
+
+                case ReadEventGroup readGroup:
+                    foreach (var member in readGroup.Events)
+                    {
+                        if (member is FileEvent { IsRead: true } fileMember)
+                        {
+                            yield return fileMember;
+                        }
+                    }
+
+                    break;
+            }
+        }
+    }
+
     private void BuildTimes()
     {
         _times = new List<double>(_sortedEvents.Count);

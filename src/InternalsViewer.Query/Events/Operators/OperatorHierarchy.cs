@@ -60,6 +60,11 @@ public sealed class OperatorHierarchy
         => _childrenByParent[(operatorEvent.PlanNodeIdentifier!.PlanHandleId, operatorEvent.PlanNodeIdentifier.NodeId)];
 
     /// <summary>
+    /// The operator at a plan node, or null when nothing here was matched to it
+    /// </summary>
+    public ExecutionOperatorEvent? At(PlanNodeIdentifier node) => _byNode.GetValueOrDefault(node);
+
+    /// <summary>
     /// The operator that drives this one, or null for a root or when the parent was not captured
     /// </summary>
     public ExecutionOperatorEvent? Parent(ExecutionOperatorEvent operatorEvent)

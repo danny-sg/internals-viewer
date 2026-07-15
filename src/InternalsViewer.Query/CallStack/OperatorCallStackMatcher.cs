@@ -14,26 +14,25 @@ namespace InternalsViewer.Query.CallStack;
 /// its own events, and most operators have none at all. They are found from the leaves of its plan SUBTREE instead: a
 /// Stream Aggregate appears on the stacks of the reads its Index Scan issued, and walking up from those reaches it.
 ///
-/// Two signals, because neither covers the other's ground:
+/// Three signals, because none of them covers the others' ground:
 ///
 /// <list type="bullet">
 /// <item>The mapping file names the frame's operator. It is the only thing that separates a CHAIN — a Stream Aggregate
 /// over an Index Scan owns exactly the scan's events and nothing else, so no amount of event data tells the two
 /// apart.</item>
-/// <item>Ownership needs no names. It separates a BRANCH — where an operator has siblings, its events are its own, and
-/// the frame below which only its subtree's events appear is where it began. This is what the names are worst at: one
-/// iterator class serves operators the plan names unrelatedly (CQScanRange is the seek AND the Key Lookup), and a
-/// missing name costs the parent its trim as well as the child its segment.</item>
+/// <item>The plan's SHAPE orders those names. A name belongs to the CLASS and cannot tell instances of it apart: asked
+/// independently which frames match "Hash Match", each of six nested hash joins claims all six runs. The plan already
+/// says which order they appear in on any stack, so a run is fixed by its POSITION in the leaf's chain of ancestors
+/// instead. The names never needed to be unique, only correctly ordered.</item>
+/// <item>Ownership needs no names at all. It separates a BRANCH — where an operator has siblings, its events are its
+/// own, and the frame below which only its subtree's events appear is where it began. This is what the names are worst
+/// at: a class the file does not cover costs the parent its trim as well as the child its segment.</item>
 /// </list>
 ///
-/// The mapping is tried first and ownership fills its gaps, though the reverse is tempting: a name belongs to the CLASS
-/// and cannot tell instances of it apart, so "Index Seek" on CQScanRangeNew hands the seek the Key Lookup's copy of that
-/// frame as well as its own, where ownership separates the two exactly.
-///
-/// It was tried, and it loses on the general case. "Where this node's work branches off" is not "where this node was
-/// entered" — a nested loop re-enters its inner side once per outer row, so the lookup's work branches away at every
-/// row-release and lock the loop drives, and ownership honestly reports all dozen of them. One of them is the entry; the
-/// rule cannot say which. Naming has no such trouble, and where it is wrong it is wrong in a bounded way.
+/// Alignment is tried first and ownership fills its gaps, though the reverse is tempting. It was tried, and it loses on
+/// the general case: "where this node's work branches off" is not "where this node was entered" — a nested loop
+/// re-enters its inner side once per outer row, so the lookup's work branches away at every row-release and lock the
+/// loop drives, and ownership honestly reports all dozen of them. One of them is the entry; the rule cannot say which.
 ///
 /// Measured, not assumed: OperatorScopeIntegrationTests dumps both answers per operator against real queries.
 ///
@@ -60,13 +59,14 @@ public static class OperatorCallStackMatcher
             }
         }
 
+        var alignedByNode = AlignedEntryFrames(hierarchy, leavesByNode);
+
         foreach (var operatorEvent in hierarchy.Operators)
         {
-            var subtree = hierarchy.Subtree(operatorEvent);
-
-            operatorEvent.EntryFrames = MappedEntryFrames(operatorEvent, subtree, leavesByNode) is { Count: > 0 } mapped
-                ? mapped
-                : OwnedEntryFrames(nodesByFrame, allNodes, subtree);
+            operatorEvent.EntryFrames = alignedByNode.GetValueOrDefault(operatorEvent.PlanNodeIdentifier!) is
+                                        { Count: > 0 } aligned
+                ? aligned
+                : OwnedEntryFrames(nodesByFrame, allNodes, hierarchy.Subtree(operatorEvent));
         }
 
         // Exits second: an operator's segment ends where its descendants' segments start, so every entry must be known.
@@ -77,35 +77,130 @@ public static class OperatorCallStackMatcher
     }
 
     /// <summary>
-    /// The frames the mapping file names as this operator's, found by walking up from its subtree's events
+    /// Every operator's entry frames, found by walking each leaf's stack once against the plan chain above it
     /// </summary>
-    private static List<CallStackNode> MappedEntryFrames(ExecutionOperatorEvent operatorEvent,
-                                                         HashSet<PlanNodeIdentifier> subtree,
-                                                         Dictionary<PlanNodeIdentifier, 
-                                                         List<CallStackNode>> leavesByNode)
+    /// <remarks>
+    /// Inverted from the obvious loop: a leaf is walked once and hands each run it meets to the next operator on its
+    /// chain, rather than each operator being asked which frames carry its name. Asking per operator cannot work — the
+    /// name is the class's, so an ancestor is handed the nearest same-named DESCENDANT's run and six nested hash joins
+    /// dissolve into each other.
+    /// </remarks>
+    private static Dictionary<PlanNodeIdentifier, List<CallStackNode>> AlignedEntryFrames(
+        OperatorHierarchy hierarchy,
+        Dictionary<PlanNodeIdentifier, List<CallStackNode>> leavesByNode)
     {
-        // Name is the physical operator - OperatorEventBuilder sets it from PlanNode.PhysicalOperator.
-        var physicalOperator = operatorEvent.Name;
+        var entryFrames = new Dictionary<PlanNodeIdentifier, List<CallStackNode>>();
 
-        var entryFrames = new List<CallStackNode>();
-
-        foreach (var node in subtree)
+        foreach (var (node, leaves) in leavesByNode)
         {
-            if (!leavesByNode.TryGetValue(node, out var leaves))
+            var chain = Chain(hierarchy, node);
+
+            if (chain.Count == 0)
             {
                 continue;
             }
 
             foreach (var leaf in leaves)
             {
-                if (EntryFrame(leaf, physicalOperator) is { } entry && !entryFrames.Contains(entry))
-                {
-                    entryFrames.Add(entry);
-                }
+                Align(leaf, chain, entryFrames);
             }
         }
 
         return entryFrames;
+    }
+
+    /// <summary>
+    /// Consumes one leaf's stack against its plan chain, assigning each run of frames to the operator it belongs to
+    /// </summary>
+    /// <remarks>
+    /// The chain is the order the operators must appear in walking outward, so the position in it — not the name —
+    /// decides whose a run is. Each run is kept at its OUTERMOST frame: an operator is rarely one frame (a hash join
+    /// spans Open, Iterate, ConsumeBuild, ReadRow, all its own) and stopping at the innermost would enter it at ReadRow
+    /// and leave the build it was called from outside the segment. The run must be CONTIGUOUS, which is what stops a
+    /// nested loop's outer repeat — its frame reappears above its inner side's — from swallowing the whole recursion.
+    /// </remarks>
+    private static void Align(CallStackNode leaf,
+                              List<ExecutionOperatorEvent> chain,
+                              Dictionary<PlanNodeIdentifier, List<CallStackNode>> entryFrames)
+    {
+        var chainIndex = 0;
+
+        CallStackNode? run = null;
+
+        foreach (var frame in leaf.Ancestors())
+        {
+            if (run is not null && frame.IsEntryFrameFor(chain[chainIndex].Name))
+            {
+                run = frame;
+
+                continue;
+            }
+
+            if (run is not null)
+            {
+                Assign(entryFrames, chain[chainIndex], run);
+
+                run = null;
+
+                chainIndex++;
+            }
+
+            // Operators the stack has no frame for — an inlined Compute Scalar — have to be skippable, or the chain
+            // desynchronises at the first of them and every operator above it is lost. A frame naming no operator left
+            // on the chain runs the probe off the end and is ignored, which is what the outer repeat of a recursive
+            // Nested Loops needs.
+            var probe = chainIndex;
+
+            while (probe < chain.Count && !frame.IsEntryFrameFor(chain[probe].Name))
+            {
+                probe++;
+            }
+
+            if (probe < chain.Count)
+            {
+                chainIndex = probe;
+
+                run = frame;
+            }
+        }
+
+        if (run is not null)
+        {
+            Assign(entryFrames, chain[chainIndex], run);
+        }
+    }
+
+    /// <summary>
+    /// The operators from a plan node out to the root, in the order their frames appear walking up a stack
+    /// </summary>
+    private static List<ExecutionOperatorEvent> Chain(OperatorHierarchy hierarchy, PlanNodeIdentifier node)
+    {
+        var chain = new List<ExecutionOperatorEvent>();
+
+        // Visited-guarded rather than trusting the plan to be a tree, as OperatorHierarchy.Collect is: a cycle here
+        // would hang the whole run.
+        var visited = new HashSet<PlanNodeIdentifier>();
+
+        for (var operatorEvent = hierarchy.At(node);
+             operatorEvent is not null && visited.Add(operatorEvent.PlanNodeIdentifier!);
+             operatorEvent = hierarchy.Parent(operatorEvent))
+        {
+            chain.Add(operatorEvent);
+        }
+
+        return chain;
+    }
+
+    private static void Assign(Dictionary<PlanNodeIdentifier, List<CallStackNode>> entryFrames,
+                               ExecutionOperatorEvent operatorEvent,
+                               CallStackNode entry)
+    {
+        var frames = Bucket(entryFrames, operatorEvent.PlanNodeIdentifier!);
+
+        if (!frames.Contains(entry))
+        {
+            frames.Add(entry);
+        }
     }
 
     /// <summary>
@@ -190,7 +285,7 @@ public static class OperatorCallStackMatcher
                 leaves.Add(leaf);
             }
 
-            // Only the ownership index is filtered. The mapped walk needs no protection from the preamble — a leaf out
+            // Only the ownership index is filtered. The aligned walk needs no protection from the preamble — a leaf out
             // there reaches no named frame and contributes nothing — whereas ownership reads these frames as the node's
             // own and offers them as entries.
             if (!RanInsideAnOperator(leaf))
@@ -215,38 +310,6 @@ public static class OperatorCallStackMatcher
                 nodes.Add(id);
             }
         }
-    }
-
-    /// <summary>
-    /// Where an operator was entered on the way to a leaf: the outermost frame of the first run of its own frames
-    /// </summary>
-    /// <remarks>
-    /// An operator is rarely one frame. A hash join spans CQScanHash::Open, Iterate, ConsumeBuild, ReadRow — all of them
-    /// its own, all matched by the same rule — so stopping at the first one found walking up from a leaf enters it at
-    /// ReadRow and leaves the build it was called from outside the segment.
-    ///
-    /// The run has to be contiguous, and that is what separates this from simply taking the outermost match. When a
-    /// Nested Loops drives its inner side, its frame appears again further up with the inner operator's frames in
-    /// between; the run breaks there, so the operator is entered at the copy the leaf actually came out of rather than
-    /// at the outer repeat, which would swallow the whole recursion.
-    /// </remarks>
-    private static CallStackNode? EntryFrame(CallStackNode leaf, string physicalOperator)
-    {
-        CallStackNode? entry = null;
-
-        foreach (var frame in leaf.Ancestors())
-        {
-            if (frame.IsEntryFrameFor(physicalOperator))
-            {
-                entry = frame;
-            }
-            else if (entry is not null)
-            {
-                break;
-            }
-        }
-
-        return entry;
     }
 
     /// <summary>

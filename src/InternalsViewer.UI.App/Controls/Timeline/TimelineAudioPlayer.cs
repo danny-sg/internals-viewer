@@ -14,7 +14,9 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 /// are audibly distinguishable. Reads and latches are additionally hard-panned to opposite stereo
 /// channels (reads left, latches right) - they're independent <see cref="MediaPlayer"/> instances, so
 /// when both land on the same tick they'd otherwise mask each other in a mono mix; on separate
-/// channels both remain audible. All <see cref="MediaPlayer"/> instances are pre-built at init time so
+/// channels both remain audible. A file read is a single centre-panned sub-bass rumble: it's the
+/// physical disk hit underneath a read, so it wants to be felt under the pitched plinks rather than
+/// compete with them for a note. All <see cref="MediaPlayer"/> instances are pre-built at init time so
 /// <see cref="PlayPlink"/> is a synchronous seek-and-play with zero allocation.
 /// </remarks>
 internal sealed class TimelineAudioPlayer : IDisposable
@@ -39,6 +41,25 @@ internal sealed class TimelineAudioPlayer : IDisposable
     private const double AttackSeconds = 0.001;
     private const double DecaySeconds  = 0.025;
 
+    // Sub-bass "brrr" for a physical file read. The long attack matters: a 1ms attack on a ~50Hz tone
+    // starts mid-cycle and cracks, which reads as a click rather than a rumble.
+    private const double RumbleFrequency = 45.0;
+    private const double RumbleAttackSeconds = 0.012;
+    private const double RumbleDecaySeconds = 0.220;
+
+    // What turns the low tone into a "brrr" rather than a hum: chopping the amplitude at a rate low enough
+    // to be heard as individual pulses (~30Hz over a 220ms tail is ~6 of them) but too fast to be heard as
+    // separate hits. Broadband noise was the obvious way to add texture here and it's the wrong one - it
+    // reads as hiss, because at this pitch everything audible in it is an octave-plus above the tone.
+    private const double RumbleModulationHz = 30.0;
+    private const double RumbleModulationDepth = 0.65;
+
+    // Low frequencies are perceived as quieter at the same amplitude, so the rumble is mixed hotter than
+    // the plinks to sit level with them by ear.
+    private const float RumbleAmplitude = 0.55f;
+
+    private const float RumblePan = 0f;
+
     // Latches reuse the same pentatonic pitch-per-object mapping as reads, but as a shorter, buzzier
     // square-wave "tick" rather than a soft sine "plink" - same note, audibly different instrument, so
     // the two event kinds can be told apart by ear even when they land close together.
@@ -54,13 +75,22 @@ internal sealed class TimelineAudioPlayer : IDisposable
     // Three slots per pitch so rapid same-object bursts don't have to wait.
     private const int PerFrequencyPoolSize = 3;
 
-    private enum Waveform { Sine, Square }
+    // The rumble is an order of magnitude longer than a plink and has only the one voice, so it needs more
+    // slots to ride out a burst of reads without cutting itself off.
+    private const int RumblePoolSize = 8;
+
+    private enum Waveform { Sine, Square, Rumble }
 
     private readonly Dictionary<double, MediaPlayer[]> _playersByFrequency = new();
     private readonly Dictionary<double, int> _poolIndexByFrequency = new();
 
     private readonly Dictionary<double, MediaPlayer[]> _latchPlayersByFrequency = new();
     private readonly Dictionary<double, int> _latchPoolIndexByFrequency = new();
+
+    private MediaPlayer[] _rumblePlayers = [];
+    private int _rumblePoolIndex;
+
+    private Task? _initializeTask;
 
     private bool _initialized;
     private bool _disposed;
@@ -76,30 +106,62 @@ internal sealed class TimelineAudioPlayer : IDisposable
     /// <summary>
     /// Pre-builds all <see cref="MediaPlayer"/> / <see cref="MediaSource"/> pairs for every pentatonic frequency
     /// </summary>
-    public async Task EnsureInitializedAsync()
+    /// <remarks>
+    /// The build is cached as a task rather than guarded by the <see cref="_initialized"/> flag alone: the flag is only
+    /// set once the build finishes, so concurrent callers arriving mid-build would each start their own. Callers await
+    /// the one build and can show progress against it.
+    /// </remarks>
+    public Task EnsureInitializedAsync()
     {
         if (_disposed || _initialized)
         {
-            return;
+            return Task.CompletedTask;
         }
 
-        foreach (var freq in PentatonicNotes)
-        {
-            _playersByFrequency[freq] = await BuildPlayerPool(BuildWav(freq, Waveform.Sine, DecaySeconds, ReadPan));
-            _poolIndexByFrequency[freq] = 0;
+        return _initializeTask ??= InitializeAsync();
+    }
 
-            _latchPlayersByFrequency[freq] = await BuildPlayerPool(BuildWav(freq, Waveform.Square, LatchDecaySeconds, LatchPan));
-            _latchPoolIndexByFrequency[freq] = 0;
+    private async Task InitializeAsync()
+    {
+        // Synthesising ~70 WAV buffers and their MediaPlayer/stream pairs takes long enough to drop frames if it runs
+        // inline. MediaPlayer is agile, so the whole build moves off the UI thread; the continuation returns there to
+        // publish _initialized.
+        await Task.Run(BuildVoicesAsync);
+
+        if (_disposed)
+        {
+            // Disposed mid-build - Dispose() couldn't see the voices finished after it ran, so clean them up here.
+            DisposePlayers();
+
+            return;
         }
 
         _initialized = true;
     }
 
-    private static async Task<MediaPlayer[]> BuildPlayerPool(byte[] wavBytes)
+    private async Task BuildVoicesAsync()
     {
-        var players = new MediaPlayer[PerFrequencyPoolSize];
+        foreach (var freq in PentatonicNotes)
+        {
+            _playersByFrequency[freq] = await BuildPlayerPool(BuildWav(freq, Waveform.Sine, AttackSeconds, DecaySeconds, ReadPan, Amplitude),
+                                                             PerFrequencyPoolSize);
+            _poolIndexByFrequency[freq] = 0;
 
-        for (var i = 0; i < PerFrequencyPoolSize; i++)
+            _latchPlayersByFrequency[freq] = await BuildPlayerPool(BuildWav(freq, Waveform.Square, AttackSeconds, LatchDecaySeconds, LatchPan, Amplitude),
+                                                                   PerFrequencyPoolSize);
+            _latchPoolIndexByFrequency[freq] = 0;
+        }
+
+        _rumblePlayers = await BuildPlayerPool(BuildWav(RumbleFrequency, Waveform.Rumble, RumbleAttackSeconds, RumbleDecaySeconds, RumblePan, RumbleAmplitude),
+                                               RumblePoolSize);
+        _rumblePoolIndex = 0;
+    }
+
+    private static async Task<MediaPlayer[]> BuildPlayerPool(byte[] wavBytes, int poolSize)
+    {
+        var players = new MediaPlayer[poolSize];
+
+        for (var i = 0; i < poolSize; i++)
         {
             var stream = new InMemoryRandomAccessStream();
 
@@ -160,9 +222,45 @@ internal sealed class TimelineAudioPlayer : IDisposable
         player.Play();
     }
 
-    private static byte[] BuildWav(double frequencyHz, Waveform waveform, double decaySeconds, float pan)
+    /// <summary>Plays the sub-bass rumble for a physical file read</summary>
+    public void PlayFileRumble()
     {
-        var attackSamples = (int)(SampleRate * AttackSeconds);
+        if (!_initialized || _disposed || _rumblePlayers.Length == 0)
+        {
+            return;
+        }
+
+        var index = _rumblePoolIndex;
+        _rumblePoolIndex = (index + 1) % _rumblePlayers.Length;
+
+        var player = _rumblePlayers[index];
+        player.PlaybackSession.Position = TimeSpan.Zero;
+        player.Play();
+    }
+
+    /// <summary>
+    /// A motor-like "brrr" - a harmonic stack chopped by a low-frequency tremolo
+    /// </summary>
+    /// <remarks>
+    /// The harmonics are what carry it on small speakers, which roll off hard below ~80Hz and would otherwise leave the
+    /// fundamental inaudible rather than merely quiet.
+    /// </remarks>
+    private static double RumbleSample(double phase, int sampleIndex)
+    {
+        var tone = 0.55 * Math.Sin(phase)
+                   + 0.30 * Math.Sin(2.0 * phase)
+                   + 0.15 * Math.Sin(3.0 * phase);
+
+        var modulationPhase = 2.0 * Math.PI * RumbleModulationHz * sampleIndex / SampleRate;
+
+        var gate = 0.5 * (1.0 - Math.Cos(modulationPhase));
+
+        return tone * (1.0 - RumbleModulationDepth * gate);
+    }
+
+    private static byte[] BuildWav(double frequencyHz, Waveform waveform, double attackSeconds, double decaySeconds, float pan, float amplitude)
+    {
+        var attackSamples = (int)(SampleRate * attackSeconds);
         var decaySamples  = (int)(SampleRate * decaySeconds);
         var totalSamples  = attackSamples + decaySamples;
 
@@ -207,16 +305,22 @@ internal sealed class TimelineAudioPlayer : IDisposable
             else
             {
                 var decay = (float)(i - attackSamples) / decaySamples;
-                envelope = 1f - decay;
+
+                // The rumble tails off on a curve rather than a ramp; a linear fade over 220ms is heard as a
+                // tone being turned down, not as something being struck.
+                envelope = waveform == Waveform.Rumble ? (1f - decay) * (1f - decay) : 1f - decay;
             }
 
             var phase = 2.0 * Math.PI * frequencyHz * i / SampleRate;
 
-            var wave = waveform == Waveform.Square
-                ? Math.Sign(Math.Sin(phase))
-                : Math.Sin(phase);
+            var wave = waveform switch
+            {
+                Waveform.Square => Math.Sign(Math.Sin(phase)),
+                Waveform.Rumble => RumbleSample(phase, i),
+                _ => Math.Sin(phase),
+            };
 
-            var sample = Amplitude * envelope * (float)wave;
+            var sample = amplitude * envelope * (float)wave;
 
             writer.Write((short)(sample * leftGain * short.MaxValue));
             writer.Write((short)(sample * rightGain * short.MaxValue));
@@ -234,6 +338,11 @@ internal sealed class TimelineAudioPlayer : IDisposable
 
         _disposed = true;
 
+        DisposePlayers();
+    }
+
+    private void DisposePlayers()
+    {
         foreach (var players in _playersByFrequency.Values)
         {
             foreach (var player in players)
@@ -248,6 +357,11 @@ internal sealed class TimelineAudioPlayer : IDisposable
             {
                 player.Dispose();
             }
+        }
+
+        foreach (var player in _rumblePlayers)
+        {
+            player.Dispose();
         }
     }
 }

@@ -97,11 +97,8 @@
                 </Border>
                 <TextBlock Text="{x:Bind ((local:OperatorRow)Content).Operator.TargetLabel}"
                            FontSize="11"
-                           VerticalAlignment="Center"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                           VerticalAlignment="Center"/>
 
-                <!-- No entry frame was found for this operator, so it carries no frames. Said out loud: an operator that
-                     genuinely did nothing and one whose frames could not be located look identical otherwise. -->
                 <Border CornerRadius="3"
                         Padding="5,2,5,3"
                         Background="#4A4A55"
@@ -115,18 +112,13 @@
             </StackPanel>
         </DataTemplate>
 
-        <!-- A link out of the segment: back to the operator that drove it, or on to one the work continues in. Dimmed
-             and arrowed so it reads as a way out rather than as a frame this operator executed. -->
         <DataTemplate x:Key="OperatorLinkTemplate" x:DataType="muxc:TreeViewNode">
-            <!-- Dotted underline marks it as somewhere to go rather than something that ran. A stroked Rectangle
-                 because Border cannot dash its own edge; zero height, so the stroke IS the line. -->
             <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Left" Opacity="0.75">
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <TextBlock Text="{x:Bind ((local:OperatorLink)Content).Glyph}"
                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                FontSize="11"
-                               VerticalAlignment="Center"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                               VerticalAlignment="Center"/>
                     <Border Background="{x:Bind ((local:OperatorLink)Content).Operator.Category, Converter={StaticResource OperatorCategoryToBrushConverter}}"
                             CornerRadius="3"
                             Padding="6,2,6,3">
@@ -137,8 +129,7 @@
                     </Border>
                     <TextBlock Text="{x:Bind ((local:OperatorLink)Content).Operator.TargetLabel}"
                                FontSize="11"
-                               VerticalAlignment="Center"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                               VerticalAlignment="Center"/>
                 </StackPanel>
                 <Rectangle Height="0"
                            Stroke="{ThemeResource TextFillColorSecondaryBrush}"
@@ -148,21 +139,33 @@
             </StackPanel>
         </DataTemplate>
 
+        <DataTemplate x:Key="EventRowTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Border Background="#4A4A55"
+                        CornerRadius="3"
+                        Padding="6,2,6,3">
+                    <TextBlock Text="{x:Bind ((local:EventRow)Content).Event.Name}"
+                               Foreground="White"
+                               FontSize="10"
+                               FontWeight="SemiBold"/>
+                </Border>
+                <TextBlock Text="{x:Bind ((local:EventRow)Content).Event.Description}"
+                           FontSize="11"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </DataTemplate>
+
         <local:CallstackNodeTemplateSelector x:Key="NodeTemplateSelector"
                                              FrameTemplate="{StaticResource CallFrameTemplate}"
                                              LinkTemplate="{StaticResource OperatorLinkTemplate}"
+                                             EventTemplate="{StaticResource EventRowTemplate}"
                                              OperatorTemplate="{StaticResource OperatorNodeTemplate}"/>
     </UserControl.Resources>
 
-    <!-- The whole query's call stacks merged into one tree: each node is a function, its children the functions it
-         called. Infrastructure frames are hidden, which is what drops the thread and scheduler preamble. Populated
-         node-first in code-behind so the path to a selected event can be expanded and selected; starts collapsed.
-         With "Scope" on the roots are the plan's operators instead, each holding the call tree of its own events —
-         cut at the frame where the operator starts executing — above its child operators, and ending in links to
-         whatever it handed off to. Back/Forward retrace those links. -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="44"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
@@ -210,7 +213,6 @@
                 </AppBarElementContainer>
             </CommandBar>
 
-            <!-- Filter toggles (right): each narrows or regroups the tree. -->
             <CommandBar IsOpen="False"
                         Padding="0"
                         VerticalAlignment="Center"
@@ -225,11 +227,12 @@
                         Background="Transparent">
                 <AppBarElementContainer VerticalContentAlignment="Center" Margin="0,0,8,0">
                     <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                        <ToggleButton x:Name="ScopeToggle"
+                        <ToggleButton x:Name="FocusToggle"
+                                      IsChecked="True"
                                       BorderThickness="0"
-                                      ToolTipService.ToolTip="Root the tree at the plan's operators, each showing its own call tree cut at the frame where it starts executing. Off shows the whole query's stacks merged into one tree."
-                                      Click="OnScopeChanged">
-                            <TextBlock Text="Scope" VerticalAlignment="Center"/>
+                                      ToolTipService.ToolTip="Show the selection's own call tree on its own: an operator from the frame where it starts executing down to the ones it hands off to, an event from where its work begins. With nothing selected, the plan's operators. Off shows every stack the query captured merged into one tree."
+                                      Click="OnFocusChanged">
+                            <TextBlock Text="Focus" VerticalAlignment="Center"/>
                         </ToggleButton>
                     </StackPanel>
                 </AppBarElementContainer>
@@ -244,8 +247,37 @@
                         FontSize="12"
                         Height="28"
                         TextChanged="OnSearchTextChanged"/>
+
+        <Grid x:Name="FocusHeader"
+              Grid.Row="2"
+              Visibility="Collapsed"
+              Padding="8,4,8,6"
+              BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+              BorderThickness="0,0,0,1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ContentControl x:Name="HeaderParent"
+                            Grid.Column="2"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Right"
+                            IsTabStop="False"
+                            Tapped="OnHeaderParentTapped"
+                            ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
+
+            <ContentControl x:Name="HeaderCurrent"
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Left"
+                            IsTabStop="False"
+                            ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
+        </Grid>
+
         <muxc:TreeView x:Name="Tree"
-                       Grid.Row="2"
+                       Grid.Row="3"
                        SelectionMode="Single"
                        ItemInvoked="OnFrameInvoked"
                        CanDragItems="False"
@@ -254,8 +286,6 @@
                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
                        ScrollViewer.HorizontalScrollMode="Enabled"
                        ItemTemplateSelector="{StaticResource NodeTemplateSelector}">
-            <!-- Let rows size to their content so a long symbol overflows (and the tree scrolls horizontally) rather
-                 than being trimmed; the histogram sits inline after the symbol. -->
             <muxc:TreeView.ItemContainerStyle>
                 <Style TargetType="muxc:TreeViewItem">
                     <Setter Property="HorizontalContentAlignment" Value="Left"/>

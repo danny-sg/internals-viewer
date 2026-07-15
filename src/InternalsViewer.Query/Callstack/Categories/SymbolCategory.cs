@@ -228,7 +228,13 @@ public enum SymbolCategory : byte
         "Storage",
         Description = "Storage/Recovery context",
         ForegroundColor = "#76923C")]
-    Storage
+    Storage,
+
+    [Category(
+        "XML",
+        Description = "XML data type conversion, serialisation and XML index access",
+        ForegroundColor = "#8E44AD")]
+    Xml
 }
 
 public static class CategoryEnumExtensions
