@@ -39,9 +39,32 @@ public sealed record LockEvent : PageEngineEvent
     {
         get
         {
-            var description = $"Lock: {Resource.ResourceType} {LockMode} ({EventItemName.Get(LockMode)})";
+            var description = $"Lock: {Resource.ResourceType} {LockMode} ({EventItemName.Get(LockMode)}) - {GetResourceDescription()}";
 
-            return PartitionCount > 1 ? $"{description} across {PartitionCount} lock partitions" : description;
+            if (PartitionCount > 1)
+            {
+                return $"{description} across {PartitionCount} lock partitions";
+            }
+
+            return description;
+        }
+    }
+
+    private string? GetResourceDescription()
+    {
+        switch (Resource.ResourceType)
+        {
+            case LockResourceType.Page:
+                return PageAddress?.ToString();
+            case LockResourceType.Rid:
+                return Resource.RowIdentifier?.ToString();
+            case LockResourceType.Extent:
+            case LockResourceType.Hobt:
+                return $"{AllocationUnit?.PartitionId} - {AllocationUnit?.DisplayName}";
+            case LockResourceType.Key:
+                return $"{Resource.Key}";
+            default:
+                return AllocationUnit?.DisplayName;
         }
     }
 }
