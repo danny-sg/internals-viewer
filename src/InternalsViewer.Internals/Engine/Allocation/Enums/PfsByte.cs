@@ -6,23 +6,22 @@ namespace InternalsViewer.Internals.Engine.Allocation.Enums;
 /// Page Free Space Byte
 /// </summary>
 /// <remarks>
-/// See <see cref="Parsers.PfsByteParser"/> for details of the PFS byte structure
 /// </remarks>
-public sealed record PfsByte
+public readonly struct PfsByte(byte value)
 {
-    public static readonly PfsByte Unknown = new() { Value = 0 };
+    public static readonly PfsByte Unknown = new(0);
 
-    public byte Value { get; init; }
+    public byte Value { get; } = value;
 
-    public SpaceFree PageSpaceFree { get; init; }
+    public SpaceFree PageSpaceFree => (SpaceFree)(Value & 0x07);
 
-    public bool GhostRecords { get; init; }
+    public bool GhostRecords => (Value & 0x08) != 0;
 
-    public bool IsIam { get; init; }
+    public bool IsIam => (Value & 0x10) != 0;
 
-    public bool IsMixed { get; init; }
+    public bool IsMixed => (Value & 0x20) != 0;
 
-    public bool IsAllocated { get; init; }
+    public bool IsAllocated => (Value & 0x40) != 0;
 
     public override string ToString()
     {

@@ -31,7 +31,7 @@
             </Grid.ColumnDefinitions>
 
             <CommandBar IsOpen="False"
-                        Padding="0"            
+                        Padding="8,0,0,0"            
                         VerticalAlignment="Center"
                         DefaultLabelPosition="Right"
                         Grid.Column="0"
@@ -55,10 +55,16 @@
                                           Height="16"
                                           IsActive="{x:Bind IsExecuting, Mode=OneWay}"
                                           Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-                            <FontIcon Glyph="&#xE768;"
-                                      FontSize="14"
-                                      Width="16"
-                                      Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                            <!--Sized to match the ProgressRing that replaces it, so the label doesn't shift on execute-->
+                            <Grid Width="16"
+                                  Height="16"
+                                  Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                <Path Data="M 0,0 L 10,5.5 L 0,11 Z"
+                                      Stretch="None"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Fill="{ThemeResource SystemFillColorSuccessBrush}" />
+                            </Grid>
                             <TextBlock Text="{x:Bind ExecuteLabel, Mode=OneWay}"
                                        VerticalAlignment="Center" />
                         </StackPanel>

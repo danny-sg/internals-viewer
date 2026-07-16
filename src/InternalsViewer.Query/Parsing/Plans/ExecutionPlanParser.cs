@@ -1,6 +1,6 @@
 using System.Xml.Linq;
 
-namespace InternalsViewer.Query.Plans;
+namespace InternalsViewer.Query.Parsing.Plans;
 
 public static class ExecutionPlanParser
 {

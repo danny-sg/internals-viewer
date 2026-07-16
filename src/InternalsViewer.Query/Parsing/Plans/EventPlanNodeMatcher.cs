@@ -1,6 +1,11 @@
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Transactions;
 
-namespace InternalsViewer.Query.Plans;
+namespace InternalsViewer.Query.Parsing.Plans;
 
 /// <summary>
 /// Associates captured storage-engine events with the physical plan operator (<see cref="PlanNode"/>)
@@ -119,8 +124,8 @@ public static class EventPlanNodeMatcher
             {
                 if (!isLog)
                 {
-                    // Reads (and other storage events) resolve to the operator that owns the page and
-                    // are pushed down to the actual read leaf.
+                    // Reads (and other storage events) resolve to the operator that owns the page and are pushed down to the actual read
+                    // leaf.
                     node = FindReadTarget(node) ?? node;
                 }
 
@@ -131,7 +136,58 @@ public static class EventPlanNodeMatcher
                 };
             }
         }
+
+        MatchPageEvents(plan, events, windows);
     }
+
+    private static void MatchPageEvents(ExecutionPlan plan,
+                                        List<EngineEvent> events,
+                                        Dictionary<int, NodeWindow> windows)
+    {
+        var nodeIdsByPage = events.Where(e => e.PlanNodeIdentifier is not null)
+                                  .SelectMany(e => PagesOf(e).Select(page => (Page: page, Node: e.PlanNodeIdentifier!.NodeId)))
+                                  .GroupBy(x => x.Page)
+                                  .ToDictionary(g => g.Key,
+                                                g => g.Select(x => x.Node)
+                                                      .Distinct()
+                                                      .ToList());
+
+        foreach (var engineEvent in events)
+        {
+            if (engineEvent.PlanNodeIdentifier is not null
+                || engineEvent is not LatchEvent { PageAddress: { } pageAddress }
+                || !nodeIdsByPage.TryGetValue(pageAddress, out var nodeIds)
+                || nodeIds.Count == 0)
+            {
+                continue;
+            }
+
+            var candidates = nodeIds.Where(plan.NodesById.ContainsKey)
+                                    .Select(id => plan.NodesById[id])
+                                    .ToList();
+
+            var node = Choose(candidates, engineEvent, windows);
+
+            if (node is null)
+            {
+                continue;
+            }
+
+            engineEvent.PlanNodeIdentifier = new PlanNodeIdentifier
+            {
+                PlanHandleId = plan.PlanHandleId,
+                NodeId = node.NodeId
+            };
+        }
+    }
+
+    // The pages an event anchors: a read group links to all of them, a single-page event to its one.
+    private static IEnumerable<PageAddress> PagesOf(EngineEvent engineEvent) => engineEvent switch
+    {
+        ReadEventGroup group => group.Pages,
+        PageEngineEvent { PageAddress: { } page } => [page],
+        _ => [],
+    };
 
     private static PlanNode? ResolveNode(EngineEvent engineEvent,
                                          List<PlanNode> dataNodes,
@@ -290,9 +346,8 @@ public static class EventPlanNodeMatcher
 
             if (windows.TryGetValue(threadEvent.NodeId, out var existing))
             {
-                windows[threadEvent.NodeId] = new NodeWindow(
-                    start < existing.Start ? start : existing.Start,
-                    end > existing.End ? end : existing.End);
+                windows[threadEvent.NodeId] = new NodeWindow(start < existing.Start ? start : existing.Start,
+                                                             end > existing.End ? end : existing.End);
             }
             else
             {

@@ -1,11 +1,15 @@
+using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using Windows.UI;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
+using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Shapes;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 
@@ -38,6 +42,69 @@ public sealed partial class PlanNodeControl : UserControl
 
     private static void OnNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).Bindings.Update();
+
+    /// <summary>The call-stack icicle for this operator (see <see cref="OperatorIcicle"/>); empty when it has none.</summary>
+    public IReadOnlyList<IcicleSegment>? IcicleSegments
+    {
+        get => (IReadOnlyList<IcicleSegment>?)GetValue(IcicleSegmentsProperty);
+        set => SetValue(IcicleSegmentsProperty, value);
+    }
+
+    public static readonly DependencyProperty IcicleSegmentsProperty =
+        DependencyProperty.Register(nameof(IcicleSegments), typeof(IReadOnlyList<IcicleSegment>), typeof(PlanNodeControl),
+            new PropertyMetadata(null, OnIcicleSegmentsChanged));
+
+    private static void OnIcicleSegmentsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((PlanNodeControl)d).RenderIcicle();
+
+    // A faint divider so adjacent frames read apart even at 3-4px row heights.
+    private static readonly SolidColorBrush IcicleDivider = new(Color.FromArgb(70, 0, 0, 0));
+
+    private void RenderIcicle()
+    {
+        IcicleCanvas.Children.Clear();
+
+        var segments = IcicleSegments;
+
+        if (segments is null || segments.Count == 0)
+        {
+            IcicleCanvas.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        IcicleCanvas.Visibility = Visibility.Visible;
+
+        foreach (var segment in segments)
+        {
+            var rectangle = new Rectangle
+            {
+                Width = segment.Width,
+                Height = segment.Height,
+                Fill = ParseBrush(segment.Colour),
+                Stroke = IcicleDivider,
+                StrokeThickness = 0.3
+            };
+
+            Canvas.SetLeft(rectangle, segment.X);
+            Canvas.SetTop(rectangle, segment.Y);
+
+            ToolTipService.SetToolTip(rectangle, segment.Symbol);
+
+            IcicleCanvas.Children.Add(rectangle);
+        }
+    }
+
+    private static SolidColorBrush ParseBrush(string hex)
+    {
+        hex = hex.TrimStart('#');
+
+        if (hex.Length == 6 && uint.TryParse(hex, NumberStyles.HexNumber, null, out var rgb))
+        {
+            return new SolidColorBrush(Color.FromArgb(255, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
+        }
+
+        return new SolidColorBrush(Colors.Gray);
+    }
 
     public bool IsSelected
     {

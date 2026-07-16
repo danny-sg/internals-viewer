@@ -86,6 +86,74 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
     }
 
     /// <summary>
+    /// Enumerate a list of page ranges (From-To) for the allocations
+    /// </summary>
+    public IEnumerable<(int From, int To)> GetAllocatedPageRanges(short fileId)
+    {
+        for (var i = 0; i < _pages.Length; i++)
+        {
+            var page = _pages[i];
+
+            if (page.PageAddress.FileId == fileId)
+            {
+                yield return (page.PageAddress.PageId, page.PageAddress.PageId);
+            }
+
+            foreach (var slot in page.SinglePageSlots)
+            {
+                if (slot.FileId == fileId)
+                {
+                    yield return (slot.PageId, slot.PageId);
+                }
+            }
+
+            if (page.StartPage.FileId != fileId)
+            {
+                continue;
+            }
+
+            var firstExtentPage = _startExtents[i] * 8;
+
+            var map = page.AllocationMap;
+
+            var runStart = -1;
+
+            var runEndExclusive = -1;
+
+            for (var relative = 0; relative < AllocationPage.AllocationExtentInterval; relative++)
+            {
+                if (((map[relative >> 3] >> (relative & 7)) & 1) == 0)
+                {
+                    continue;
+                }
+
+                var extentPage = firstExtentPage + (relative * 8);
+
+                if (extentPage == runEndExclusive)
+                {
+                    runEndExclusive += 8;
+                }
+                else
+                {
+                    if (runStart >= 0)
+                    {
+                        yield return (runStart, runEndExclusive - 1);
+                    }
+
+                    runStart = extentPage;
+
+                    runEndExclusive = extentPage + 8;
+                }
+            }
+
+            if (runStart >= 0)
+            {
+                yield return (runStart, runEndExclusive - 1);
+            }
+        }
+    }
+
+    /// <summary>
     /// Check if a specific extent is allocated
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

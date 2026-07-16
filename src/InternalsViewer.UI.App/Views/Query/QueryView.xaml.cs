@@ -1,18 +1,17 @@
+using System;
 using System.ComponentModel;
-using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 
-namespace InternalsViewer.UI.App.Views;
+namespace InternalsViewer.UI.App.Views.Query;
 
-public sealed partial class QueryView : Page
+public sealed partial class QueryView : Page, IDisposable
 {
     public QueryViewModel ViewModel => (QueryViewModel)DataContext;
 
-    // The height to restore the timeline row to when it is shown again. The grid splitter rewrites both
-    // adjacent rows to fixed pixels when dragged, so this is captured (rather than a fixed "1*") to keep
-    // the user's resized height across hide/show.
     private GridLength _savedTimelineHeight = new(1, GridUnitType.Star);
 
     private QueryViewModel? _subscribedViewModel;
@@ -33,11 +32,31 @@ public sealed partial class QueryView : Page
         Unloaded += OnUnloaded;
     }
 
+    public void Dispose()
+    {
+        EventTimeline.ScopeChanged -= OnScopeChanged;
+        EventTimeline.PlayheadTimeChanged -= OnPlayheadTimeChanged;
+        EventTimeline.PlanNodeSelected -= OnTimelinePlanNodeSelected;
+        EventTimeline.EventSelected -= OnTimelineEventSelected;
+        EventTimeline.IndexOpenRequested -= OnTimelineIndexOpenRequested;
+        EventTimeline.PlayStateChanged -= OnPlayStateChanged;
+
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.Layout.PropertyChanged -= OnLayoutPropertyChanged;
+            _subscribedViewModel = null;
+        }
+
+        (DataContext as QueryViewModel)?.Dispose();
+
+        EventTimeline.Dispose();
+    }
+
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         if (_subscribedViewModel is not null)
         {
-            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedViewModel.Layout.PropertyChanged -= OnLayoutPropertyChanged;
             _subscribedViewModel = null;
         }
 
@@ -57,34 +76,45 @@ public sealed partial class QueryView : Page
 
         if (_subscribedViewModel is not null)
         {
-            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedViewModel.Layout.PropertyChanged -= OnLayoutPropertyChanged;
         }
 
         _subscribedViewModel = args.NewValue as QueryViewModel;
 
         if (_subscribedViewModel is not null)
         {
-            _subscribedViewModel.PropertyChanged += OnViewModelPropertyChanged;
-            ApplyTimelineVisibility();
+            _subscribedViewModel.Layout.PropertyChanged += OnLayoutPropertyChanged;
+            ApplyRowVisibility();
         }
     }
 
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnLayoutPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(QueryViewModel.IsTimelineVisible))
+        if (e.PropertyName is nameof(QueryLayoutViewModel.IsTimelineVisible)
+                           or nameof(QueryLayoutViewModel.IsDetailsVisible))
         {
-            ApplyTimelineVisibility();
+            ApplyRowVisibility();
         }
     }
 
-    private void ApplyTimelineVisibility()
+    private void ApplyRowVisibility()
     {
-        if (ViewModel.IsTimelineVisible)
+        if (ViewModel.Layout is { IsTimelineVisible: true, IsDetailsVisible: true })
         {
             DockRow.Height = new GridLength(1, GridUnitType.Star);
             TimelineRow.Height = _savedTimelineHeight.Value > 0
                                  ? _savedTimelineHeight
                                  : new GridLength(1, GridUnitType.Star);
+        }
+        else if (ViewModel.Layout is { IsTimelineVisible: true, IsDetailsVisible: false })
+        {
+            if (TimelineRow.Height.Value > 0)
+            {
+                _savedTimelineHeight = TimelineRow.Height;
+            }
+
+            DockRow.Height = new GridLength(0);
+            TimelineRow.Height = new GridLength(1, GridUnitType.Star);
         }
         else
         {

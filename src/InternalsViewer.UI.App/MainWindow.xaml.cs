@@ -30,6 +30,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using WinUIEx;
+using QueryView = InternalsViewer.UI.App.Views.Query.QueryView;
 
 namespace InternalsViewer.UI.App;
 

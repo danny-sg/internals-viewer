@@ -34,18 +34,24 @@ public static class PageHeaderParser
     private const byte TornBitsOffset = 60;
     private const byte UnusedOffset = 62;
 
-    public static PageHeader Parse(byte[] data)
+    public static PageHeader Parse(byte[] data, bool isMarkEnabled = true)
     {
-        return Parse(data.AsSpan());
+        return Parse(data.AsSpan(), isMarkEnabled);
     }
 
-    public static PageHeader Parse(ReadOnlySpan<byte> data)
+    public static PageHeader Parse(ReadOnlySpan<byte> data, bool isMarkEnabled = true)
     {
-        var header = new PageHeader();
+        var header = new PageHeader
+        {
+            IsMarkEnabled = isMarkEnabled
+        };
 
         ReadValues(data, header);
 
-        SetHeaderMarkers(header);
+        if (isMarkEnabled)
+        {
+            SetHeaderMarkers(header);
+        }
 
         return header;
     }

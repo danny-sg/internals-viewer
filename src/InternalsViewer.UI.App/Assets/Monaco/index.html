@@ -30,6 +30,7 @@
                     language: 'sql',
                     theme: 'vs-light',
                     fontSize: 13,
+                    mouseWheelZoom: true,
                     fontFamily: "'Cascadia Code', 'Consolas', monospace",
                     fontLigatures: true,
                     glyphMargin: true,
@@ -47,6 +48,12 @@
                 });
 
             let trackedRegion = null;
+
+            function publishTrackedRange(rangeOrNull) {
+                window.chrome.webview.postMessage(
+                    JSON.stringify({ type: "trackedSelectionChanged", value: rangeOrNull })
+                );
+            }
 
             const decorations = editor.createDecorationsCollection();
 
@@ -89,13 +96,14 @@
                         });
 
                     trackedRegion = {
-                        range: selection,
-                        text: editor.getModel().getValueInRange(selection)
+                        text: model.getValueInRange(selection),
+                        lastStart: startChar,
+                        lastEnd: endChar
                     };
 
                     isTracking.set(true);
 
-                    renderTrackedRegion();
+                    renderTrackedRegion(selection);
 
                     window.chrome.webview.postMessage(
                         JSON.stringify({ type: 'trackedSelectionChanged', value: { start: startChar, end: endChar } })
@@ -116,7 +124,7 @@
 
                     decorations.clear();
 
-                    renderTrackedRegion();
+                    renderTrackedRegion(null);
 
                     window.chrome.webview.postMessage(
                         JSON.stringify({ type: 'trackedSelectionChanged', value: null })
@@ -124,31 +132,57 @@
                 }
             });
 
-            editor.onDidChangeModelContent(() => {
+            editor.onDidChangeModelContent((e) => {
                 window.chrome.webview.postMessage(
-                    JSON.stringify({ type: 'contentChanged', value: editor.getValue() })
+                    JSON.stringify({ type: "contentChanged", value: editor.getValue() })
                 );
 
-                if (trackedRegion) {
-                    const trackedRange = trackedRegion.range;
+                if (!trackedRegion) {
+                    return;
+                }
 
-                    let touched = false;
+                const model = editor.getModel();
+                const ranges = decorations.getRanges();
+                const currentRange = ranges.length > 0 ? ranges[0] : null;
 
-                    for (const change of e.changes) {
-                        const changeRange = change.range;
+                if (!currentRange) {
+                    trackedRegion = null;
+                    isTracking.set(false);
+                    decorations.clear();
+                    publishTrackedRange(null);
+                    return;
+                }
 
-                        if (trackedRange.intersectRanges(changeRange)) {
-                            touched = true;
-                            break;
-                        }
-                    }
+                const currentText = model.getValueInRange(currentRange);
 
-                    if (touched) {
-                        trackedRegion = null;
-                        isTracking.set(false);
+                if (currentText !== trackedRegion.text) {
+                    trackedRegion = null;
 
-                        decorations.clear();
-                    }
+                    isTracking.set(false);
+
+                    decorations.clear();
+
+                    publishTrackedRange(null);
+
+                    return;
+                }
+
+                const start = model.getOffsetAt({
+                    lineNumber: currentRange.startLineNumber,
+                    column: currentRange.startColumn
+                });
+
+                const end = model.getOffsetAt({
+                    lineNumber: currentRange.endLineNumber,
+                    column: currentRange.endColumn
+                });
+
+                if (start !== trackedRegion.lastStart || end !== trackedRegion.lastEnd) {
+                    trackedRegion.lastStart = start;
+
+                    trackedRegion.lastEnd = end;
+
+                    publishTrackedRange({ start, end });
                 }
             });
 
@@ -305,15 +339,15 @@
                 });
             };
 
-            function renderTrackedRegion() {
-                if (!trackedRegion) {
+            function renderTrackedRegion(range) {
+                if (!trackedRegion || !range) {
                     decorations.clear();
                     return;
                 }
 
                 decorations.set([
                     {
-                        range: trackedRegion.range,
+                        range: range,
                         options: {
                             className: "tracked-region",
                             hoverMessage: {

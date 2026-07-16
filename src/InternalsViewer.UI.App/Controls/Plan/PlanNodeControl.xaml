@@ -38,6 +38,15 @@
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        Visibility="{x:Bind CostVisibility, Mode=OneWay}"
                        HorizontalAlignment="Center" />
+
+            <!-- Mini icicle of the call stacks linked to this operator; populated in code-behind, collapsed
+                 when the operator has no captured stacks. -->
+            <Canvas x:Name="IcicleCanvas"
+                    Width="134"
+                    Height="24"
+                    Margin="0,2,0,0"
+                    HorizontalAlignment="Center"
+                    Visibility="Collapsed" />
         </StackPanel>
     </Border>
 </UserControl>

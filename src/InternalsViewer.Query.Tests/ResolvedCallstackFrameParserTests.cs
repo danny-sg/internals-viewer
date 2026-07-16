@@ -1,5 +1,5 @@
-using InternalsViewer.Query.Callstack;
-using InternalsViewer.Query.Callstack.Categories;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -17,6 +17,15 @@ public class ResolvedCallstackFrameParserTests
         Assert.Equal("CQScan::GetRow+0x1a", result.RawSymbol);
         Assert.Equal(ModuleCategory.StorageEngine, result.ModuleCategory);
         Assert.Equal(SymbolCategory.QueryOperator, result.SymbolCategory);
+    }
+
+    [Fact]
+    public void Operator_Frame_Populates_Iterator()
+    {
+        var result = ResolvedCallstackFrameParser.Parse("sqlmin", "CQScanTopNew::GetRow+0x1a");
+
+        Assert.Equal(SymbolCategory.QueryOperator, result.SymbolCategory);
+        Assert.Equal("Top", result.Iterator);
     }
 
     [Fact]

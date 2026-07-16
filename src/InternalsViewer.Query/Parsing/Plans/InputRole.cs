@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Plans;
+namespace InternalsViewer.Query.Parsing.Plans;
 
 /// <summary>How an operator consumes one of its inputs.</summary>
 public enum InputRole

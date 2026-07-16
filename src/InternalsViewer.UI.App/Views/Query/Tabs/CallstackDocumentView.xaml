@@ -5,84 +5,292 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
-    xmlns:eventTypes="using:InternalsViewer.Query.Events.EventTypes"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:operators="using:InternalsViewer.Query.Events.Operators"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Tabs" 
+    xmlns:callstack="using:InternalsViewer.Query.CallStack"
     mc:Ignorable="d">
-    <controls:DataGrid x:Name="CallstackGrid"
-                       ItemsSource="{x:Bind ViewModel.SelectedCallstack, Mode=OneWay}"
-                       AutoGenerateColumns="False"
-                       IsReadOnly="True"
-                       GridLinesVisibility="Horizontal"
+
+    <UserControl.Resources>
+        <!-- A call frame row: the Category | Operator badge, the resolved symbol, and (on the selected node) the
+             activity histogram. Used for every node in the merged tree, and for the call frames under each operator
+             when scoped. -->
+        <DataTemplate x:Key="CallFrameTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" RightTapped="OnNodeRightTapped">
+                <StackPanel.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
+                        <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
+                        <MenuFlyoutSeparator/>
+                        <MenuFlyoutItem Text="Copy to clipboard" Click="OnCopyClick"/>
+                    </MenuFlyout>
+                </StackPanel.ContextFlyout>
+
+                <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
+                     tone (the operator name) is appended, otherwise the category badge stands alone. -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
+                            CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                            Padding="5,2,5,3">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
+                                   Foreground="White"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="0,3,3,0"
+                            Padding="5,2,5,3"
+                            Background="#4A4A55"
+                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Operator}"
+                                   Foreground="White"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+
+                <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Symbol}"
+                           FontFamily="Consolas"
+                           FontSize="11"
+                           VerticalAlignment="Center"/>
+
+                <!-- Activity histogram: shown only on the selected node — its subtree activity over the query
+                     window (taller = hotter), with the selected event's time bucket highlighted, the rest grey.
+                     The white background spans the full window so the chart's range is visible even where empty. -->
+                <Border Background="White"
+                        CornerRadius="2"
+                        Padding="1"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        Visibility="{x:Bind ((callstack:CallStackNode)Content).HasHistogram, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ItemsControl ItemsSource="{x:Bind ((callstack:CallStackNode)Content).DisplayBars}"
+                                  Height="14">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="callstack:ActivityBar">
+                                <Rectangle Width="3"
+                                           Height="{x:Bind Height}"
+                                           Margin="0,0,1,0"
+                                           VerticalAlignment="Bottom"
+                                           Fill="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- An operator row (when scoped): a category-coloured pill with the operator, then its table/index.
+             Its children are the operator's own call tree followed by its child operators. -->
+        <DataTemplate x:Key="OperatorNodeTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Border Background="{x:Bind ((local:OperatorRow)Content).Operator.Category, Converter={StaticResource OperatorCategoryToBrushConverter}}"
+                        CornerRadius="3"
+                        Padding="6,2,6,3">
+                    <TextBlock Text="{x:Bind ((local:OperatorRow)Content).Operator.OperatorDescription}"
+                               Foreground="White"
+                               FontSize="10"
+                               FontWeight="SemiBold"/>
+                </Border>
+                <TextBlock Text="{x:Bind ((local:OperatorRow)Content).Operator.TargetLabel}"
+                           FontSize="11"
+                           VerticalAlignment="Center"/>
+
+                <Border CornerRadius="3"
+                        Padding="5,2,5,3"
+                        Background="#4A4A55"
+                        ToolTipService.ToolTip="No call-stack frames could be located for this operator — it is inlined, captured no events of its own, or its iterator class is not in the mappings. It keeps its place in the plan but shows nothing."
+                        Visibility="{x:Bind ((local:OperatorRow)Content).Unsegmented, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="no stack"
+                               Foreground="#B0B0B8"
+                               FontSize="9"
+                               FontWeight="SemiBold"/>
+                </Border>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="OperatorLinkTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Left" Opacity="0.75">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind ((local:OperatorLink)Content).Glyph}"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="11"
+                               VerticalAlignment="Center"/>
+                    <Border Background="{x:Bind ((local:OperatorLink)Content).Operator.Category, Converter={StaticResource OperatorCategoryToBrushConverter}}"
+                            CornerRadius="3"
+                            Padding="6,2,6,3">
+                        <TextBlock Text="{x:Bind ((local:OperatorLink)Content).Operator.OperatorDescription}"
+                                   Foreground="White"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"/>
+                    </Border>
+                    <TextBlock Text="{x:Bind ((local:OperatorLink)Content).Operator.TargetLabel}"
+                               FontSize="11"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <Rectangle Height="0"
+                           Stroke="{ThemeResource TextFillColorSecondaryBrush}"
+                           StrokeThickness="1"
+                           StrokeDashArray="1,2"
+                           StrokeDashCap="Round"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="EventRowTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Border Background="#4A4A55"
+                        CornerRadius="3"
+                        Padding="6,2,6,3">
+                    <TextBlock Text="{x:Bind ((local:EventRow)Content).Event.Name}"
+                               Foreground="White"
+                               FontSize="10"
+                               FontWeight="SemiBold"/>
+                </Border>
+                <TextBlock Text="{x:Bind ((local:EventRow)Content).Event.Description}"
+                           FontSize="11"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </DataTemplate>
+
+        <local:CallstackNodeTemplateSelector x:Key="NodeTemplateSelector"
+                                             FrameTemplate="{StaticResource CallFrameTemplate}"
+                                             LinkTemplate="{StaticResource OperatorLinkTemplate}"
+                                             EventTemplate="{StaticResource EventRowTemplate}"
+                                             OperatorTemplate="{StaticResource OperatorNodeTemplate}"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Padding="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Navigation (left): where the operator links have taken you. -->
+            <CommandBar IsOpen="False"
+                        Padding="0"
+                        VerticalAlignment="Center"
+                        DefaultLabelPosition="Right"
+                        Grid.Column="0"
+                        HorizontalAlignment="Left"
+                        VerticalContentAlignment="Top"
+                        MinHeight="0"
+                        OverflowButtonVisibility="Collapsed"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
+                        Background="Transparent">
+                <AppBarElementContainer VerticalContentAlignment="Center" Margin="8,0,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                        <Button x:Name="BackButton"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="8,4"
+                                IsEnabled="False"
+                                ToolTipService.ToolTip="Back"
+                                Click="OnBackClick">
+                            <FontIcon Glyph="&#xE72B;" FontSize="12"/>
+                        </Button>
+                        <Button x:Name="ForwardButton"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="8,4"
+                                IsEnabled="False"
+                                ToolTipService.ToolTip="Forward"
+                                Click="OnForwardClick">
+                            <FontIcon Glyph="&#xE72A;" FontSize="12"/>
+                        </Button>
+                    </StackPanel>
+                </AppBarElementContainer>
+            </CommandBar>
+
+            <CommandBar IsOpen="False"
+                        Padding="0"
+                        VerticalAlignment="Center"
+                        DefaultLabelPosition="Right"
+                        Grid.Column="0"
+                        HorizontalAlignment="Right"
+                        VerticalContentAlignment="Top"
+                        MinHeight="0"
+                        OverflowButtonVisibility="Collapsed"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
+                        Background="Transparent">
+                <AppBarElementContainer VerticalContentAlignment="Center" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <ToggleButton x:Name="FocusToggle"
+                                      IsChecked="True"
+                                      BorderThickness="0"
+                                      ToolTipService.ToolTip="Show the selection's own call tree on its own: an operator from the frame where it starts executing down to the ones it hands off to, an event from where its work begins. With nothing selected, the plan's operators. Off shows every stack the query captured merged into one tree."
+                                      Click="OnFocusChanged">
+                            <TextBlock Text="Focus" VerticalAlignment="Center"/>
+                        </ToggleButton>
+                    </StackPanel>
+                </AppBarElementContainer>
+            </CommandBar>
+        </Grid>
+        <AutoSuggestBox x:Name="SearchBox"
+                        Grid.Row="1"
+                        Margin="0,0,0,4"
+                        PlaceholderText="Search"
+                        QueryIcon="Find"
+                        BorderThickness="0"
+                        FontSize="12"
+                        Height="28"
+                        TextChanged="OnSearchTextChanged"/>
+
+        <Grid x:Name="FocusHeader"
+              Grid.Row="2"
+              Visibility="Collapsed"
+              Padding="8,4,8,6"
+              BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+              BorderThickness="0,0,0,1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ContentControl x:Name="HeaderParent"
+                            Grid.Column="2"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Right"
+                            IsTabStop="False"
+                            Tapped="OnHeaderParentTapped"
+                            ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
+
+            <ContentControl x:Name="HeaderCurrent"
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Left"
+                            IsTabStop="False"
+                            ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
+        </Grid>
+
+        <muxc:TreeView x:Name="Tree"
+                       Grid.Row="3"
+                       SelectionMode="Single"
+                       ItemInvoked="OnFrameInvoked"
+                       CanDragItems="False"
+                       CanReorderItems="False"
                        Background="{ThemeResource LayerFillColorDefaultBrush}"
-                       HorizontalScrollBarVisibility="Auto"
-                       VerticalScrollBarVisibility="Auto">
-        <controls:DataGrid.Columns>
-            <controls:DataGridTemplateColumn Header="Module" Width="120">
-                <controls:DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate x:DataType="eventTypes:CallstackFrame">
-                        <Border Background="{Binding Resolved.ModuleMetadata.ForegroundColor,
-                                                     Converter={StaticResource HexColorToBrushConverter}}"
-                                CornerRadius="3"
-                                Padding="5,1"
-                                Margin="4,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Resolved.ModuleMetadata.Name}"
-                                       Foreground="White"
-                                       FontSize="10"
-                                       FontWeight="SemiBold"/>
-                        </Border>
-                    </DataTemplate>
-                </controls:DataGridTemplateColumn.CellTemplate>
-            </controls:DataGridTemplateColumn>
-            <controls:DataGridTemplateColumn Header="Category" Width="140">
-                <controls:DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate x:DataType="eventTypes:CallstackFrame">
-                        <Border Background="{Binding Resolved.SymbolMetadata.ForegroundColor,
-                                                     Converter={StaticResource HexColorToBrushConverter}}"
-                                CornerRadius="3"
-                                Padding="5,1"
-                                Margin="4,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Resolved.SymbolMetadata.Name}"
-                                       Foreground="White"
-                                       FontSize="10"
-                                       FontWeight="SemiBold"/>
-                        </Border>
-                    </DataTemplate>
-                </controls:DataGridTemplateColumn.CellTemplate>
-            </controls:DataGridTemplateColumn>
-            <controls:DataGridTemplateColumn Header="Symbol" Width="*">
-                <controls:DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate x:DataType="eventTypes:CallstackFrame">
-                        <StackPanel Orientation="Horizontal"
-                                    Spacing="0"
-                                    VerticalAlignment="Center"
-                                    Margin="4,2">
-                            <TextBlock Text="{x:Bind Module, Mode=OneWay}"
-                                       Foreground="DarkGreen"
-                                       FontFamily="Consolas"/>
-                            <TextBlock Text="!"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                       FontFamily="Consolas"/>
-                            <TextBlock Text="{x:Bind Resolved.ClassName, Mode=OneWay}"
-                                       Foreground="Navy"
-                                       FontWeight="Bold"
-                                       FontFamily="Consolas"/>
-                            <TextBlock Text="::"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                       FontFamily="Consolas"/>
-                            <TextBlock Text="{x:Bind Resolved.MethodName, Mode=OneWay}"
-                                       Foreground="Gray"
-                                       FontFamily="Consolas"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </controls:DataGridTemplateColumn.CellTemplate>
-            </controls:DataGridTemplateColumn>
-            <controls:DataGridTextColumn Header="Offset"
-                                         Binding="{Binding Resolved.Offset, Mode=OneWay}"
-                                         Width="80"/>
-        </controls:DataGrid.Columns>
-    </controls:DataGrid>
+                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                       ScrollViewer.HorizontalScrollMode="Enabled"
+                       ItemTemplateSelector="{StaticResource NodeTemplateSelector}">
+            <muxc:TreeView.ItemContainerStyle>
+                <Style TargetType="muxc:TreeViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                </Style>
+            </muxc:TreeView.ItemContainerStyle>
+        </muxc:TreeView>
+    </Grid>
 </UserControl>

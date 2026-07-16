@@ -1,6 +1,8 @@
-using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -40,8 +42,7 @@ public class EventPlanNodeMatcherTests
         {
             Name = "physical_page_read",
             PlanHandleId = PlanHandleId,
-            TableName = "Orders",
-            IndexName = "IX_Orders_CustomerId"
+            AllocationUnit = new() { TableName = "Orders", IndexName = "IX_Orders_CustomerId" }
         };
 
         EventPlanNodeMatcher.Match([seekRead], [plan]);
@@ -84,8 +85,7 @@ public class EventPlanNodeMatcherTests
         {
             Name = "physical_page_read",
             PlanHandleId = PlanHandleId,
-            TableName = "Orders",
-            IndexName = "IX_Orders_CustomerId",
+            AllocationUnit = new() { TableName = "Orders", IndexName = "IX_Orders_CustomerId" },
             Timestamp = start.AddMilliseconds(25)
         };
 
@@ -105,13 +105,39 @@ public class EventPlanNodeMatcherTests
         {
             Name = "physical_page_read",
             PlanHandleId = PlanHandleId,
-            TableName = "Customers",
-            IndexName = "PK_Customers"
+            AllocationUnit = new() { TableName = "Customers", IndexName = "PK_Customers" }
         };
 
         EventPlanNodeMatcher.Match([read], [plan]);
 
         Assert.Null(read.PlanNodeIdentifier);
+    }
+
+    [Fact]
+    public void Latch_With_PageAddress_Matches_Node_From_Page_Mapped_Event()
+    {
+        var plan = PlanWith(
+            Node(0, "Index Seek", table: "Orders", index: "IX_Orders_CustomerId"));
+
+        var read = new IoEvent
+        {
+            Name = "physical_page_read",
+            PlanHandleId = PlanHandleId,
+            AllocationUnit = new() { TableName = "Orders", IndexName = "IX_Orders_CustomerId" },
+            PageAddress = new PageAddress(1, 123)
+        };
+
+        var latch = new LatchEvent
+        {
+            Name = "latch_acquired",
+            PlanHandleId = PlanHandleId,
+            PageAddress = new PageAddress(1, 123)
+        };
+
+        EventPlanNodeMatcher.Match([latch, read], [plan]);
+
+        Assert.NotNull(latch.PlanNodeIdentifier);
+        Assert.Equal(0, latch.PlanNodeIdentifier!.NodeId);
     }
 
     private static ExecutionPlan PlanWith(params PlanNode[] nodes)

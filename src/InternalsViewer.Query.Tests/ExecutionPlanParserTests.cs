@@ -1,4 +1,4 @@
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.Query.Tests;
 

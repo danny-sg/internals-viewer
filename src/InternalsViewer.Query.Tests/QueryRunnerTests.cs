@@ -1,5 +1,4 @@
-﻿using System.Threading;
-using InternalsViewer.Internals.Connections.Server;
+﻿using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;

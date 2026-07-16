@@ -21,10 +21,22 @@
 
 
     <ItemGroup>
+        <!-- Callstack category mappings: the core file ships embedded with the app (a downloadable update file may
+             override it from the user's app-data folder later). -->
+        <EmbeddedResource Include="CallStack\Categories\Mappings\*.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Content Include="..\runtimes\win-x64\native\*.*">
             <Link>runtimes\win-x64\native\%(Filename)%(Extension)</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Locks\**" />
+      <EmbeddedResource Remove="Locks\**" />
+      <None Remove="Locks\**" />
     </ItemGroup>
 
 </Project>

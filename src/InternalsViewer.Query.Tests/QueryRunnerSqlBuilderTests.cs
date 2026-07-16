@@ -1,14 +1,15 @@
-using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Locks;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace InternalsViewer.Query.Tests;
 
-public class QueryRunnerSqlBuilderTests
+public class EventSqlTests
 {
     [Fact]
     public void GetStartSessionSql_References_Session_By_Name()
     {
-        var sql = QueryRunner.GetStartSessionSql("MySession");
+        var sql = EventSql.GetStartSessionSql("MySession");
 
         Assert.Equal("ALTER EVENT SESSION [MySession] ON SERVER STATE = START;", sql);
     }
@@ -16,7 +17,7 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetStopSessionSql_References_Session_By_Name()
     {
-        var sql = QueryRunner.GetStopSessionSql("MySession");
+        var sql = EventSql.GetStopSessionSql("MySession");
 
         Assert.Equal("ALTER EVENT SESSION [MySession] ON SERVER STATE = STOP;", sql);
     }
@@ -24,7 +25,7 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetDropSessionSql_References_Session_By_Name()
     {
-        var sql = QueryRunner.GetDropSessionSql("MySession");
+        var sql = EventSql.GetDropSessionSql("MySession");
 
         Assert.Equal("DROP EVENT SESSION [MySession] ON SERVER;", sql);
     }
@@ -32,7 +33,7 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetFileLocationSql_Queries_ErrorLogFileName_ServerProperty()
     {
-        var sql = QueryRunner.GetFileLocationSql();
+        var sql = EventSql.GetFileLocationSql();
 
         Assert.Contains("SERVERPROPERTY('ErrorLogFileName')", sql);
     }
@@ -40,7 +41,7 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetCreateSessionSql_Includes_Filename_And_Spid_Filter()
     {
-        var sql = QueryRunner.GetCreateSessionSql("MySession", @"C:\Trace\MySession.xel", 52, false, new EventOptions());
+        var sql = EventSql.GetCreateSessionSql("MySession", @"C:\Trace\MySession.xel", 52, false, new EventOptions());
 
         Assert.Contains("CREATE EVENT SESSION [MySession] ON SERVER", sql);
         Assert.Contains(@"filename = 'C:\Trace\MySession.xel'", sql);
@@ -51,9 +52,9 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetCreateSessionSql_Has_One_AddEvent_Per_Base_Event_When_Not_Replay_And_No_Extras()
     {
-        var options = new EventOptions { IncludeLock = false, IncludeWait = false, IncludeMemory = false };
+        var options = new EventOptions { IncludeLockModeCategories = [], IncludeWait = false, IncludeMemory = false };
 
-        var sql = QueryRunner.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
+        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
 
         var addEventCount = CountOccurrences(sql, "ADD EVENT ");
 
@@ -63,9 +64,9 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetCreateSessionSql_Adds_LogEvents_When_ReplayMode()
     {
-        var options = new EventOptions { IncludeLock = false, IncludeWait = false, IncludeMemory = false };
+        var options = new EventOptions { IncludeLockModeCategories = [], IncludeWait = false, IncludeMemory = false };
 
-        var sql = QueryRunner.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, true, options);
+        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, true, options);
 
         var addEventCount = CountOccurrences(sql, "ADD EVENT ");
 
@@ -83,12 +84,12 @@ public class QueryRunnerSqlBuilderTests
     {
         var options = new EventOptions
         {
-            IncludeLock = includeLock,
+            IncludeLockModeCategories = includeLock ? [LockModeCategory.Read] : [],
             IncludeWait = includeWait,
             IncludeMemory = includeMemory
         };
 
-        var sql = QueryRunner.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
+        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
 
         var extraCount = (includeLock ? EventConstants.LockEvents.Length : 0)
                           + (includeWait ? EventConstants.WaitEvents.Length : 0)
@@ -102,10 +103,10 @@ public class QueryRunnerSqlBuilderTests
     [Fact]
     public void GetCreateSessionSql_Includes_Callstack_Action_Only_When_Requested()
     {
-        var withCallstack = QueryRunner.GetCreateSessionSql(
+        var withCallstack = EventSql.GetCreateSessionSql(
             "Sess", @"C:\Trace\Sess.xel", 1, false, new EventOptions { IncludeCallStack = true });
 
-        var withoutCallstack = QueryRunner.GetCreateSessionSql(
+        var withoutCallstack = EventSql.GetCreateSessionSql(
             "Sess", @"C:\Trace\Sess.xel", 1, false, new EventOptions { IncludeCallStack = false });
 
         Assert.Contains("package0.callstack", withCallstack);
@@ -117,35 +118,31 @@ public class QueryRunnerSqlBuilderTests
     {
         var events = new List<EngineEvent>();
 
-        await QueryRunner.GetEventKeyAddresses(events, new Dictionary<long, AllocationUnit>(), "irrelevant",
-                                               CancellationToken.None);
+        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", null, CancellationToken.None);
     }
 
     [Fact]
     public async Task GetEventKeyAddresses_Skips_Lookup_When_No_AllocationUnit_Matches_ObjectId()
     {
-        var lockEvent = new LockEvent { ObjectId = 42, KeyHash = "somehash" };
+        var lockEvent = new LockEvent { Resource = new LockResource { ObjectId = 42, KeyHash = "somehash" } };
 
         var events = new List<EngineEvent> { lockEvent };
 
-        await QueryRunner.GetEventKeyAddresses(events, new Dictionary<long, AllocationUnit>(), "irrelevant",
-                                               CancellationToken.None);
+        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", null, CancellationToken.None);
 
-        Assert.Null(lockEvent.RowIdentifier);
+        Assert.Null(lockEvent.Resource.RowIdentifier);
     }
 
     [Fact]
     public async Task GetEventKeyAddresses_Ignores_LockEvents_Without_KeyHash()
     {
-        var lockEvent = new LockEvent { ObjectId = 42, KeyHash = null };
+        var lockEvent = new LockEvent { Resource = new LockResource { ObjectId = 42, KeyHash = null } };
 
         var events = new List<EngineEvent> { lockEvent };
 
-        var allocationUnits = new Dictionary<long, AllocationUnit> { [1] = new() { ObjectId = 42 } };
+        await new EventReader(NullLogger<EventReader>.Instance).GetEventKeyAddresses(events, "irrelevant", null, CancellationToken.None);
 
-        await QueryRunner.GetEventKeyAddresses(events, allocationUnits, "irrelevant", CancellationToken.None);
-
-        Assert.Null(lockEvent.RowIdentifier);
+        Assert.Null(lockEvent.Resource.RowIdentifier);
     }
 
     private static int CountOccurrences(string source, string value)

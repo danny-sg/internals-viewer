@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Plans;
+namespace InternalsViewer.Query.Parsing.Plans;
 
 /// <summary>
 /// Classifies physical plan operators: what kind they are, how they consume their inputs (streaming vs
@@ -198,61 +198,6 @@ public static class OperatorClassifier
 
         // Fallback: Top, Concatenation, Segment, Window, and other row-shaping operators.
         return OperatorCategory.Transformation;
-    }
-
-    public static OperatorKind GetKind(PlanNode n)
-    {
-        if (IsHash(n))
-        {
-            return OperatorKind.HashJoin;
-        }
-
-        if (IsNestedLoop(n))
-        {
-            return OperatorKind.NestedLoop;
-        }
-
-        if (IsMergeJoin(n))
-        {
-            return OperatorKind.MergeJoin;
-        }
-
-        if (IsSort(n))
-        {
-            return OperatorKind.Sort;
-        }
-
-        if (IsFilter(n))
-        {
-            return OperatorKind.Filter;
-        }
-
-        if (IsComputeScalar(n))
-        {
-            return OperatorKind.Compute;
-        }
-
-        if (IsLookup(n))
-        {
-            return OperatorKind.Lookup;
-        }
-
-        if (IsScan(n) || IsSeek(n))
-        {
-            return OperatorKind.DataAccess;
-        }
-
-        if (IsSpool(n))
-        {
-            return OperatorKind.Spool;
-        }
-
-        if (IsExchange(n))
-        {
-            return OperatorKind.Exchange;
-        }
-
-        return OperatorKind.Unknown;
     }
 
     public static PlanNode? GetHashBuildChild(PlanNode hash)

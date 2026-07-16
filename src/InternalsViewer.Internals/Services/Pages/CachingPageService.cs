@@ -74,18 +74,7 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
 
         var page = await inner.GetPage(database, pageAddress, buffer, cancellationToken);
 
-        // If this turns out to be a cacheable type the page's Data points at the caller's reusable
-        // buffer, which would be overwritten on the next traversal step. Re-read with an owned
-        // allocation so the cached copy is stable.
-        if (CacheablePageTypes.Contains(page.PageHeader.PageType))
-        {
-            var ownedPage = await inner.GetPage(database, pageAddress, cancellationToken);
-
-            dbCache[pageAddress] = ownedPage;
-
-            return ownedPage;
-        }
-
+        // Don't cache the page as it came from a buffered load that is a lightweight load
         return page;
     }
 

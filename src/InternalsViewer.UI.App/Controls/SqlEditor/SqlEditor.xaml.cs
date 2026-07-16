@@ -325,7 +325,7 @@ public sealed partial class SqlEditorControl : UserControl
             return;
         }
 
-        var escaped = JsonSerializer.Serialize(SqlText ?? string.Empty);
+        var escaped = JsonSerializer.Serialize(SqlText);
 
         _ = WebView.ExecuteScriptAsync($"window.setEditorValue({escaped})");
     }
@@ -389,8 +389,12 @@ public sealed partial class SqlEditorControl : UserControl
                                 rangeElement.GetProperty("end").GetInt32());
                         }
 
-                        TrackedSelection = range;
-                        TrackedSelectionChanged?.Invoke(this, range);
+                        if (range != TrackedSelection)
+                        {
+                            TrackedSelection = range;
+                            TrackedSelectionChanged?.Invoke(this, range);
+                        }
+
                         break;
                 }
             }

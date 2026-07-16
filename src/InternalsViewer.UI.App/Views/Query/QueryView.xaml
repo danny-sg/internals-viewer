@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Page
-    x:Class="InternalsViewer.UI.App.Views.QueryView"
+    x:Class="InternalsViewer.UI.App.Views.Query.QueryView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:InternalsViewer.UI.App.Views"
@@ -8,138 +8,139 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:timeline="using:InternalsViewer.UI.App.Controls.Timeline"
-    xmlns:queryReplay="using:InternalsViewer.UI.App.Controls.QueryReplay"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     mc:Ignorable="d">
 
-    <SplitView x:Name="EventSelectionPanel"
-               DisplayMode="Overlay"
-               PanePlacement="Right"
-               OpenPaneLength="320"
-               IsPaneOpen="{x:Bind ViewModel.IsEventSelectionPanelOpen, Mode=TwoWay}">
-        <SplitView.Pane>
-            <Grid Padding="12,8">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0"
-                           Text="Query Settings"
-                           Style="{StaticResource SubtitleTextBlockStyle}"
-                           Margin="0,0,0,8"/>
-                <CheckBox Grid.Row="1" IsChecked="{x:Bind ViewModel.CropToQuery, Mode=TwoWay}">Crop</CheckBox>
-                <queryReplay:EventFilterControl Grid.Row="2"
-                                               ViewModel="{x:Bind ViewModel.EventFilter, Mode=OneWay}"/>
-            </Grid>
-        </SplitView.Pane>
-        <SplitView.Content>
-            <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition x:Name="DockRow" Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition x:Name="TimelineRow" Height="*"/>
-                </Grid.RowDefinitions>
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition x:Name="DockRow" Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition x:Name="TimelineRow" Height="*"/>
+        </Grid.RowDefinitions>
 
-                <!-- Menu/Command Bar -->
-                <Border        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                               BorderThickness="0,0,0,1">
-                <CommandBar DefaultLabelPosition="Right">
-                    <CommandBar.Content>
-                        <MenuBar Grid.Row="0"
-                                 Height="48"
-                                 Padding="0">
-                            <MenuBar.Resources>
-                                <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
-                        
-                            </MenuBar.Resources>
-                            <MenuBarItem Title="View">
-                                <ToggleMenuFlyoutItem Text="SQL Editor"
-                                                      IsChecked="{x:Bind ViewModel.IsSqlEditorVisible, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Allocations"
-                                                      IsChecked="{x:Bind ViewModel.IsAllocationsVisible, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Execution Plan"
-                                                      IsChecked="{x:Bind ViewModel.IsExecutionPlanVisible, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Events"
-                                                      IsChecked="{x:Bind ViewModel.IsEventsVisible, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Call Stack"
-                                                      IsChecked="{x:Bind ViewModel.IsCallstackVisible, Mode=TwoWay}"/>
+        <!-- Menu/Command Bar -->
+        <Border BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1">
+            <CommandBar DefaultLabelPosition="Right">
+                <CommandBar.Content>
+                    <MenuBar Grid.Row="0"
+                             Height="48"
+                             Padding="0">
+                        <MenuBar.Resources>
+                            <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
+
+                        </MenuBar.Resources>
+                        <MenuBarItem Title="View">
+                            <ToggleMenuFlyoutItem Text="SQL Editor"
+                                                  IsChecked="{x:Bind ViewModel.Layout.IsSqlEditorVisible, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Allocations"
+                                                  IsChecked="{x:Bind ViewModel.Layout.IsAllocationsVisible, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Execution Plan"
+                                                  IsChecked="{x:Bind ViewModel.Layout.IsExecutionPlanVisible, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Events"
+                                                  IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"/>
+
+                            <ToggleMenuFlyoutItem Text="Call Stack"
+                                                  IsChecked="{x:Bind ViewModel.Layout.IsCallstackVisible, Mode=TwoWay}"/>
+                            <MenuFlyoutSeparator/>
+                            <ToggleMenuFlyoutItem Text="Timeline"
+                                                  IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Reset Layout"
+                                            Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
+                            <MenuFlyoutSeparator/>
+                            <ToggleMenuFlyoutItem Text="Instructions"
+                                                  IsChecked="{x:Bind ViewModel.Layout.IsInstructionsVisible, Mode=TwoWay}"/>
+                        </MenuBarItem>
+
+                        <MenuBarItem Title="Query">
+                            <ToggleMenuFlyoutItem Text="Crop to query"
+                                                  IsChecked="{x:Bind ViewModel.QueryOptions.CropToQuery, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Include System Objects"
+                                                  IsChecked="{x:Bind ViewModel.QueryOptions.IncludeSystemObjects, Mode=TwoWay}"/>
+                        </MenuBarItem>
+
+                        <MenuBarItem Title="Events">
+                            <MenuFlyoutSubItem Text="Locks">
+                                <MenuFlyoutItem Text="None"
+                                                Command="{x:Bind ViewModel.QueryOptions.NoLockModeCategoriesCommand}"/>
                                 <MenuFlyoutSeparator/>
-                                <ToggleMenuFlyoutItem Text="Timeline"
-                                                      IsChecked="{x:Bind ViewModel.IsTimelineVisible, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Settings"
-                                                      IsChecked="{x:Bind ViewModel.IsEventSelectionPanelOpen, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Read"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowReadLocks, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Update"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowUpdateLocks, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Write"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowWriteLocks, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Schema"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowSchemaLocks, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Range"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowRangeLocks, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Bulk"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowBulkLocks, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem Text="Reset Layout"
-                                                Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
-                            </MenuBarItem>
+                                <MenuFlyoutItem Text="Default"
+                                                Command="{x:Bind ViewModel.QueryOptions.DefaultLockModeCategoriesCommand}"/>
+                            </MenuFlyoutSubItem>
 
-                            <MenuBarItem Title="Events">
-                                <ToggleMenuFlyoutItem Text="Locks"
-                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeLock, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Waits"
-                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeWait, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Latches"
-                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeLatch, Mode=TwoWay}"/>
-                                    <ToggleMenuFlyoutItem Text="Memory"
-                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeMemory, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Call Stack"
-                                                      IsChecked="{x:Bind ViewModel.EventOptions.IncludeCallStack, Mode=TwoWay}"/>
-                            </MenuBarItem>
+                            <ToggleMenuFlyoutItem Text="Waits"
+                                                  IsChecked="{x:Bind ViewModel.QueryOptions.ShowWaits, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Latches"
+                                                  IsChecked="{x:Bind ViewModel.QueryOptions.ShowLatches, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Memory"
+                                                  IsChecked="{x:Bind ViewModel.QueryOptions.IncludeMemory, Mode=TwoWay}"/>
+                            <ToggleMenuFlyoutItem Text="Call Stack"
+                                                  IsChecked="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=TwoWay}"/>
+                        </MenuBarItem>
 
-                            <!--<MenuBarItem Title="Help">
-                                <MenuFlyoutItem Text="About"/>
-                            </MenuBarItem>-->
-                        </MenuBar>
-                    </CommandBar.Content>
+                    </MenuBar>
+                </CommandBar.Content>
 
-                    <CommandBar.PrimaryCommands>
-                        <AppBarToggleButton Label="SQL Editor"
-                                            IsChecked="{x:Bind ViewModel.IsSqlEditorVisible, Mode=TwoWay}">
-                            <AppBarToggleButton.Icon>
-                                <FontIcon Glyph="&#xE943;"/>
-                            </AppBarToggleButton.Icon>
-                        </AppBarToggleButton>
-                        <AppBarToggleButton Label="Timeline"
-                                            IsChecked="{x:Bind ViewModel.IsTimelineVisible, Mode=TwoWay}">
-                            <AppBarToggleButton.Icon>
-                                <FontIcon Glyph="&#xEC92;"/>
-                            </AppBarToggleButton.Icon>
-                        </AppBarToggleButton>
-                    </CommandBar.PrimaryCommands>
+                <CommandBar.PrimaryCommands>
+                    <AppBarToggleButton Label="Details"
+                                        IsChecked="{x:Bind ViewModel.Layout.IsDetailsVisible, Mode=TwoWay}">
+                        <AppBarToggleButton.Icon>
+                            <FontIcon Glyph="&#xE943;"/>
+                        </AppBarToggleButton.Icon>
+                    </AppBarToggleButton>
+                    <AppBarToggleButton Label="Timeline"
+                                        IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}">
+                        <AppBarToggleButton.Icon>
+                            <FontIcon Glyph="&#xEC92;"/>
+                        </AppBarToggleButton.Icon>
+                    </AppBarToggleButton>
+                </CommandBar.PrimaryCommands>
 
-                </CommandBar>
-                </Border>
-                <!--Tabs (dockable / splittable document region)-->
-                <docking:DockHost x:Name="DockHostControl"
-                                  Grid.Row="1"
-                           
-                                  Layout="{x:Bind ViewModel.Dock, Mode=OneWay}"/>
+            </CommandBar>
+        </Border>
 
-                <!--Timeline splitter-->
-                <controls:GridSplitter Grid.Row="2"
-                               Height="2"
-                               Visibility="{x:Bind ViewModel.TimelineSplitterVisibility, Mode=OneWay}"
-                               Background="{ThemeResource ControlStrokeColorDefaultBrush}"
-                               VerticalAlignment="Stretch">
-                    <controls:GridSplitter.Template>
-                        <ControlTemplate TargetType="controls:GridSplitter">
-                            <Grid Background="{TemplateBinding Background}" />
-                        </ControlTemplate>
-                    </controls:GridSplitter.Template>
-                </controls:GridSplitter>
+        <!--Tabs (dockable / splittable document region)-->
+        <docking:DockHost x:Name="DockHostControl"
+                          Grid.Row="1"
+                          Layout="{x:Bind ViewModel.Layout.Dock, Mode=OneWay}"/>
 
-                <!--Timeline-->
-                <timeline:EventTimelineControl Grid.Row="3"
-                                               x:Name="EventTimeline"
-                                               VerticalAlignment="Stretch"
-                                               HorizontalAlignment="Stretch"
-                                               StartOffset="{x:Bind ViewModel.StartOffset, Mode=OneWay}"
-                                               EndOffset="{x:Bind ViewModel.EndOffset, Mode=OneWay}"
-                                               ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
-                                               Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}" />
-            </Grid>
-        </SplitView.Content>
-    </SplitView>
+        <!--Timeline splitter-->
+        <controls:GridSplitter Grid.Row="2"
+                       Height="2"
+                       Visibility="{x:Bind ViewModel.Layout.SplitterVisibility, Mode=OneWay}"
+                       Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+                       VerticalAlignment="Stretch">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
+        </controls:GridSplitter>
+
+        <!--Timeline-->
+        <timeline:EventTimelineControl Grid.Row="3"
+                                       x:Name="EventTimeline"
+                                       VerticalAlignment="Stretch"
+                                       HorizontalAlignment="Stretch"
+                                       ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
+                                       ShowLocks="{x:Bind ViewModel.QueryOptions.ShowLocks, Mode=OneWay}"
+                                       ShowLatches="{x:Bind ViewModel.QueryOptions.ShowLatches, Mode=OneWay}"
+                                       ShowWaits="{x:Bind ViewModel.QueryOptions.ShowWaits, Mode=OneWay}"
+                                       Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}" />
+    </Grid>
 </Page>

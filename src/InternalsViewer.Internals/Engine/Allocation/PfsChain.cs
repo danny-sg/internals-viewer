@@ -31,8 +31,8 @@ public sealed class PfsChain
         var pfsByteIndex = page % PfsPage.PfsInterval;
 
         // Check the PFS byte exists
-        var result = PfsPages.Count > pfsPageIndex && PfsPages[pfsPageIndex].PfsBytes.Count > pfsByteIndex
-                     ? PfsPages[pfsPageIndex].PfsBytes[pfsByteIndex]
+        var result = PfsPages.Count > pfsPageIndex && PfsPages[pfsPageIndex].PfsBytes.Length > pfsByteIndex
+                     ? new PfsByte(PfsPages[pfsPageIndex].PfsBytes[pfsByteIndex])
                      : PfsByte.Unknown;
 
         return result;

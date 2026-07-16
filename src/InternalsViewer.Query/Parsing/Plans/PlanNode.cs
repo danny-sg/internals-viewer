@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Plans;
+﻿namespace InternalsViewer.Query.Parsing.Plans;
 
 public sealed class PlanNode
 {

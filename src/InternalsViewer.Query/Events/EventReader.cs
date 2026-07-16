@@ -1,7 +1,11 @@
 ﻿using System.Data;
+using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.Consolidation;
+using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Parsing.Plans;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
@@ -11,11 +15,19 @@ public sealed class EventReader(ILogger<EventReader> logger)
 {
     public ILogger<EventReader> Logger { get; } = logger;
 
-    public async Task<(List<EngineEvent>, List<ExecutionPlan>)> GetEvents(string filePath,
-                                                                          string connectionString,
-                                                                          DatabaseSource? database,
-                                                                          CancellationToken cancellationToken,
-                                                                          Func<EngineEvent, bool>? endMarker = null)
+    /// <summary>
+    /// Gets events/execution plan/call stack from an extended events (.xel) file
+    /// </summary>
+    /// <remarks>
+    /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations
+    /// </remarks>
+    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree)> GetEvents(string filePath,
+                                                                                         string connectionString,
+                                                                                         DatabaseSource? database,
+                                                                                         bool includeSystemObjects,
+                                                                                         IProgress<string>? progress,
+                                                                                         CancellationToken cancellationToken,
+                                                                                         Func<EngineEvent, bool>? endMarker = null)
     {
         await using var connection = new SqlConnection(connectionString);
 
@@ -32,17 +44,18 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         DateTime? startTimeStamp = null;
 
-        var eventParser = new EventParser(database, planHandles);
+        var eventParser = new XmlEventParser(database, planHandles, new EventParser());
 
         // Use buffer for XML/Name to prevent repeated string allocations for each row
         var xmlBuffer = new char[4096];
 
         var nameBuffer = new char[64];
 
+        var start = Stopwatch.GetTimestamp();
+
         // SequentialAccess required to read GetChars directly into buffer
-        await using (var reader =
-                     await new SqlCommand(resultsSql, connection)
-                            .ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken))
+        await using (var reader = await new SqlCommand(resultsSql, connection)
+                                                .ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken))
         {
             Logger.LogDebug("SQL: {Sql}", resultsSql);
 
@@ -54,6 +67,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
                 if (nameBuffer.AsSpan(0, nameLength) is "query_post_execution_showplan")
                 {
+                    progress?.Report("Parsing query plan");
+
                     var plan = ExecutionPlanParser.Parse(reader.GetString(1), planHandles);
 
                     executionPlans.Add(plan);
@@ -63,10 +78,24 @@ public sealed class EventReader(ILogger<EventReader> logger)
                     // Stream the event_data column into buffer
                     var length = ReadColumn(reader, 1, ref xmlBuffer);
 
+                    if (Logger.IsEnabled(LogLevel.Trace))
+                    {
+                        var xml = new string(xmlBuffer, 0, length);
+                        var eventName = new string(nameBuffer, 0, nameLength);
+
+                        Logger.LogTrace("XE Event:{Event}",
+                                        new XEventPayload(eventName, xml));
+                    }
+
                     var engineEvent = eventParser.ParseEvent(xmlBuffer, length);
 
                     if (engineEvent is not null)
                     {
+                        if (!includeSystemObjects && IsSystemObjectEvent(engineEvent))
+                        {
+                            continue;
+                        }
+
                         startTimeStamp ??= engineEvent.Timestamp;
 
                         // Gaps in sequence ids to allow the plan nodes to be slotted in
@@ -87,23 +116,113 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         connection.Close();
 
-        var orderedEvents = events.OrderBy(e => e.Timestamp).ThenBy(e => e.SequenceId).ToList();
+        Logger.LogDebug("Read {Count} events in {Duration}", events.Count, Stopwatch.GetElapsedTime(start));
 
-        // Spread events for ms to us resolution
-        SpreadCoincidentEvents(orderedEvents);
+        progress?.Report("Processing events");
+
+        var consolidatedEvents = await PostProcessEvents(events, connectionString, progress, cancellationToken);
+
+        progress?.Report("Matching events to execution plan");
+
+        start = Stopwatch.GetTimestamp();
 
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
-        EventPlanNodeMatcher.Match(orderedEvents, executionPlans);
+        EventPlanNodeMatcher.Match(consolidatedEvents, executionPlans);
 
-        // Build the operator events (timeline bars) bottom-up from each plan and its matched events.
-        var operatorEvents = executionPlans.SelectMany(plan => new OperatorEventBuilder(plan, orderedEvents).Build())
+        // Build the operator events bottom-up from each plan and its matched events
+        var operatorEvents = executionPlans.SelectMany(plan => new OperatorEventBuilder(plan, consolidatedEvents).Build())
                                            .ToList();
 
-        orderedEvents.AddRange(operatorEvents);
+        Logger.LogDebug("Matched events to execution plan in {Duration}", Stopwatch.GetElapsedTime(start));
 
-        return (orderedEvents, executionPlans);
+        consolidatedEvents.AddRange(operatorEvents);
+
+        return (consolidatedEvents, executionPlans, eventParser.CallStack);
     }
 
+    /// <summary>
+    /// Processes the events through several steps to link and structure events
+    /// </summary>
+    /// <remarks>
+    /// Extended events from SQL Server have several problems that that post-processing tries to solve. The raw events are coming from
+    /// different parts of the database engine, at different points of the query lifecycle with different levels of detail. This processing
+    /// translates the raw data into something that is (hopefully) consistent.
+    ///
+    /// This includes:
+    ///     - Event matching for begin/end events and inference where a sequence is not explicit
+    /// 
+    ///     - Time/Duration corrections and inference. Extended events only capture to the nearest 100us and duration is often missing or
+    ///       needs to be pieced together from several events
+    ///
+    ///     - Grouping where multiple events are pieced together from their operation or target and patterns are identified to translate
+    ///       multiple raw events into a single operation.
+    /// </remarks>
+    private async Task<List<EngineEvent>> PostProcessEvents(List<EngineEvent> events, 
+                                                            string connectionString,
+                                                            IProgress<string>? progress, 
+                                                            CancellationToken cancellationToken)
+    {
+   
+
+        var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
+
+        var start = Stopwatch.GetTimestamp();
+
+        var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
+
+        Logger.LogDebug("Collapsed intervals in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
+
+        HeldLockCloser.Close(collapsedEvents);
+
+        Logger.LogDebug("Held locks closed in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
+
+        collapsedEvents = LockPartitionCollapser.Collapse(collapsedEvents);
+
+        Logger.LogDebug("Collapsed lock partitions in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
+
+        collapsedEvents = BufferLatchCoalescing.Coalesce(collapsedEvents);
+
+        Logger.LogDebug("Coalesced buffer latches in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        await GetEventKeyAddresses(collapsedEvents, connectionString, progress, cancellationToken);
+
+        start = Stopwatch.GetTimestamp();
+
+        var consolidatedEvents = ReaderGrouper.Group(collapsedEvents);
+
+        Logger.LogDebug("Grouped reads in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
+
+        consolidatedEvents = LockGrouper.Group(consolidatedEvents);
+
+        Logger.LogDebug("Grouped locks in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
+
+        EventSpreader.SpreadEvents(consolidatedEvents);
+
+        Logger.LogDebug("Spread events in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        return consolidatedEvents;
+    }
+
+    private static bool IsSystemObjectEvent(EngineEvent engineEvent) =>
+        engineEvent.AllocationUnit?.IsSystem == true
+        || engineEvent is LockEvent { Resource.ResourceType: LockResourceType.Metadata or LockResourceType.Database };
+
+    /// <summary>
+    /// Read a column into the referenced buffer
+    /// </summary>
+    /// <remarks>
+    /// Includes resizing of the buffer if necessary
+    /// </remarks>
     private static int ReadColumn(SqlDataReader reader, int ordinal, ref char[] buffer)
     {
         var total = 0;
@@ -127,67 +246,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         return total;
     }
-
-    private const long ResolutionWindowUs = 1000;
-
-    /// <summary>
-    /// Spreads events over 1ms timestamp window
-    /// </summary>
-    /// <remarks>
-    /// Spreads each bucket of events that share a coarse (millisecond-resolution) timestamp evenly across its
-    /// resolution window, in the existing (timestamp, sequence-id) order, so each event gets a distinct, individually
-    /// addressable time. The k-th of n coincident events is offset by ResolutionWindowUs * k / n, so they stay within
-    /// the window and keep their capture order.
-    /// </remarks>
-    private static void SpreadCoincidentEvents(List<EngineEvent> events)
-    {
-        var i = 0;
-
-        while (i < events.Count)
-        {
-            var bucketTime = events[i].TimeUs;
-
-            var j = i;
-
-            while (j < events.Count && events[j].TimeUs == bucketTime)
-            {
-                j++;
-            }
-
-            var count = j - i;
-
-            if (count > 1)
-            {
-                var insertAt = i;
-
-                for (var k = i; k < j; k++)
-                {
-                    // Special bodge to ensure if an index root page is included in the bucket it appears first.
-                    // Needed because the database will scan an extent at a time and the root page won't necessarily
-                    // be read first.
-                    if (events[k] is IoEvent { IsRoot: true })
-                    {
-                        if (k != insertAt)
-                        {
-                            var temp = events[k];
-                            events.RemoveAt(k);
-                            events.Insert(insertAt, temp);
-                        }
-
-                        insertAt++;
-                    }
-                }
-
-                for (var k = 0; k < count; k++)
-                {
-                    events[i + k].TimeUs = bucketTime + ResolutionWindowUs * k / count;
-                }
-            }
-
-            i = j;
-        }
-    }
-
+    
     private static string GetResultsSql(string filename)
     {
         return $@"
@@ -197,4 +256,57 @@ public sealed class EventReader(ILogger<EventReader> logger)
         NULL, NULL, NULL
     );";
     }
+
+    internal async Task GetEventKeyAddresses(List<EngineEvent> events,
+                                            string connectionString,
+                                            IProgress<string>? progress,
+                                            CancellationToken cancellationToken)
+    {
+        var keyLockEvents = events.Where(e => e is LockEvent { Resource.KeyHash: not null }).Cast<LockEvent>();
+
+        var byAllocationUnitId = keyLockEvents.GroupBy(g => g.AllocationUnit);
+
+        foreach (var grouping in byAllocationUnitId)
+        {
+            var allocationUnit = grouping.Key;
+
+            if (allocationUnit is null || allocationUnit.IsSystem)
+            {
+                continue;
+            }
+
+            progress?.Report($"Getting lock key hash values for {allocationUnit.DisplayName}");
+
+            var hashes = grouping.Select(s => s.Resource.KeyHash ?? string.Empty)
+                                 .Where(h => !string.IsNullOrEmpty(h))
+                                 .Distinct()
+                                 .ToList();
+
+            Logger.LogDebug("- {Count} keys", hashes.Count);
+
+            var keyHashRowIdentifiers = await KeyHashLookup.GetKeyHashRowIdentifiers(allocationUnit.SchemaName,
+                                                                                     allocationUnit.TableName,
+                                                                                     hashes,
+                                                                                     connectionString,
+                                                                                     cancellationToken);
+
+            Logger.LogDebug("- found {Count} key hash -> RID mappings", keyHashRowIdentifiers.Count);
+
+            foreach (var lockEvent in grouping)
+            {
+                if (lockEvent.Resource.KeyHash is not null
+                    && keyHashRowIdentifiers.TryGetValue(lockEvent.Resource.KeyHash,
+                        out var rowIdentifier))
+                {
+                    lockEvent.Resource.RowIdentifier = rowIdentifier;
+                }
+            }
+
+        }
+    }
+}
+
+public readonly record struct XEventPayload(string Name, string Value)
+{
+    public override string ToString() => Value;
 }

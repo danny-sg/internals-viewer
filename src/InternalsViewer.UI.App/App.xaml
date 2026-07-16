@@ -18,8 +18,15 @@
             <Thickness x:Key="NavigationViewContentMargin">0,48,0,0</Thickness>
             <converters1:BoolNegationConverter x:Key="BoolNegationConverter" />
             <converters1:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <!-- Custom converter (IsInverse): true collapses, false shows -->
+            <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" IsInverse="True"/>
             <converters:ColorToSolidColorBrushValueConverter x:Key="ColorToSolidColorBrushValueConverter"/>
             <converters:HexColorToBrushConverter x:Key="HexColorToBrushConverter"/>
+            <converters:OperatorCategoryToBrushConverter x:Key="OperatorCategoryToBrushConverter"/>
+            <!-- Squares the category badge's trailing corners only when an operator segment follows it. -->
+            <converters:BoolToCornerRadiusConverter x:Key="CategoryBadgeCornerConverter"
+                                                    TrueRadius="3,0,0,3"
+                                                    FalseRadius="3"/>
             <converters:PageAddressToStringConverter x:Key="StringToPageAddressConverter"/>
             <models:MarkStyle Name="Data" x:Key="MarkerStyleValue" ForeColour="Gray" BackColour="LemonChiffon" />
 

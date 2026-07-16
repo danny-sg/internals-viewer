@@ -72,8 +72,16 @@ public sealed partial class AllocationLayer : ObservableObject
     [ObservableProperty]
     private bool _isVisible;
 
-    [ObservableProperty] 
+    [ObservableProperty]
     private byte _opacity = 100;
 
     public string LayerName { get; set; } = string.Empty;
+
+    public LayerType LayerType { get; set; } = LayerType.Fill;
+}
+
+public enum LayerType
+{
+    Fill,
+    TopLeft
 }

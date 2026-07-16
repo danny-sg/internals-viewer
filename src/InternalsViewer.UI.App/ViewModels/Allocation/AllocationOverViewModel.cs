@@ -7,20 +7,17 @@ namespace InternalsViewer.UI.App.ViewModels.Allocation;
 public partial class AllocationOverViewModel : ObservableObject
 {
     [ObservableProperty]
-    private bool isOpen;
+    private int _pageId;
 
     [ObservableProperty]
-    private int pageId;
+    private int _extentId;
 
     [ObservableProperty]
-    private int extentId;
+    private Color _layerColour = Color.Transparent;
 
     [ObservableProperty]
-    private Color layerColour = Color.Transparent;
+    private string _layerName = string.Empty;
 
     [ObservableProperty]
-    private string layerName = string.Empty;
-
-    [ObservableProperty]
-    private PfsByte pfsValue = PfsByte.Unknown;
+    private PfsByte _pfsValue = PfsByte.Unknown;
 }

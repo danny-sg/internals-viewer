@@ -1,6 +1,10 @@
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Transactions;
 
-namespace InternalsViewer.Query.Plans;
+namespace InternalsViewer.Query.Parsing.Plans;
 
 /// <summary>
 /// Builds the operator events shown on the timeline from an execution plan and its matched engine events.
@@ -203,10 +207,10 @@ internal sealed class OperatorEventBuilder
             ParentNodeId = _parentByNode.TryGetValue(node.NodeId, out var parent) ? parent : null,
             Cost = OwnCost(node),
             RowsProcessed = node.RowsProcessed,
-            ObjectName = ObjectName(node),
-            SchemaName = node.Schema ?? string.Empty,
-            TableName = node.Table ?? string.Empty,
-            IndexName = node.Index ?? string.Empty,
+            OperatorObjectName = ObjectName(node),
+            OperatorSchemaName = node.Schema ?? string.Empty,
+            OperatorTableName = node.Table ?? string.Empty,
+            OperatorIndexName = node.Index ?? string.Empty,
             PlanNodeIdentifier = new PlanNodeIdentifier { NodeId = node.NodeId, PlanHandleId = _plan.PlanHandleId },
             TimeUs = start,
             EmitStartUs = emitStart,
@@ -214,10 +218,10 @@ internal sealed class OperatorEventBuilder
             Threads = BuildThreads(node, start),
             SequenceId = NearestSequenceId(start) - sequenceOffset,
             OperatorDescription = description,
-            Callstack = EventsFor(node)
+            CallStack = EventsFor(node)
                             .OfType<QueryThreadEvent>()
-                            .Select(e => e.Callstack)
-                            .FirstOrDefault(c => c is { Count: > 0 }) ?? []
+                            .Select(e => e.CallStack)
+                            .FirstOrDefault(c => c is not null)
         };
 
         ApplyPhases(operatorEvent, node, emitStart, end);
@@ -293,7 +297,7 @@ internal sealed class OperatorEventBuilder
         _eventsByNode.TryGetValue(node.NodeId, out var list) ? list : [];
 
     private static long? FirstDataAccess(List<EngineEvent> events) =>
-        events.Where(e => e is IoEvent or LatchEvent).Select(e => (long?)e.TimeUs).Min();
+        events.Where(e => e is IoEvent or LatchEvent or ReadEventGroup).Select(e => (long?)e.TimeUs).Min();
 
     // The earliest page access (I/O or latch) anywhere in a node's subtree (the node and all its descendants).
     private long? EarliestSubtreeDataAccess(PlanNode node)
@@ -312,7 +316,7 @@ internal sealed class OperatorEventBuilder
     }
 
     private static long? LastDataAccess(List<EngineEvent> events) =>
-        events.Where(e => e is IoEvent or LatchEvent).Select(e => (long?)e.TimeUs + e.DurationUs).Max();
+        events.Where(e => e is IoEvent or LatchEvent or ReadEventGroup).Select(e => (long?)e.TimeUs + e.DurationUs).Max();
 
     private static long? LastLog(List<EngineEvent> events) =>
         events.Where(e => e is TransactionLogEvent).Select(e => (long?)e.TimeUs + e.DurationUs).Max();

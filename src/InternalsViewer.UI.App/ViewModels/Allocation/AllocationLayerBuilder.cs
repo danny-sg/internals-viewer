@@ -16,9 +16,11 @@ namespace InternalsViewer.UI.App.ViewModels.Allocation;
 
 internal static class AllocationLayerBuilder
 {
-    private const int ColourCount = 360;
     private const int UserSaturation = 150;
     private const int UserValue = 220;
+
+    // HsvToColor treats 256 hue steps as one revolution; we place objects across the wheel, so this is the wheel size.
+    private const int HueWheel = 256;
 
     public static List<AllocationLayer> GenerateLayers(DatabaseSource database,
                                                        bool separateIndexes,
@@ -30,7 +32,14 @@ internal static class AllocationLayerBuilder
 
         var allocationUnits = database.AllocationUnits;
 
-        var userObjectCount = allocationUnits.Values.Where(u => !u.IsSystem).DistinctBy(t => t.TableName).Count();
+        // One colour slot per layer, keyed by the SAME name the layers are grouped on below — so the spacing divisor
+        // matches the number of colours actually assigned (DisplayName can differ from the layer key under
+        // separateIndexes, which is what left neighbouring objects sharing near-identical hues).
+        var colourSlotCount = allocationUnits.Values
+                                             .Where(u => !u.IsSystem)
+                                             .Select(u => GetCurrentObjectName(u, separateIndexes))
+                                             .Distinct()
+                                             .Count();
 
         foreach (var allocationUnit in allocationUnits.Values
                                                       .OrderBy(o => o.TableName)
@@ -45,7 +54,7 @@ internal static class AllocationLayerBuilder
             {
                 var layer = CreateNewLayer(allocationUnit,
                                            currentObjectName,
-                                           userObjectCount,
+                                           colourSlotCount,
                                            opacity,
                                            ref colourIndex);
 
@@ -96,10 +105,11 @@ internal static class AllocationLayerBuilder
         {
             Name = "Buffer Pool",
             LayerName = "Buffer Pool",
-            Colour = Color.FromArgb(200, 190, 190, 205),
+            Colour = Color.FromArgb(255, 100, 100, 100),
             IsAllocationLayer = true,
             IsVisible = true,
-            Opacity = 0
+            Opacity = 0,
+            LayerType = LayerType.TopLeft
         };
 
         layers.Add(bufferPoolLayer);
@@ -135,7 +145,7 @@ internal static class AllocationLayerBuilder
 
     private static AllocationLayer CreateNewLayer(AllocationUnit allocationUnit,
                                                   string currentObjectName,
-                                                  int userObjectCount,
+                                                  int colourSlotCount,
                                                   byte opacity,
                                                   ref int colourIndex)
     {
@@ -152,7 +162,7 @@ internal static class AllocationLayerBuilder
             IndexType = allocationUnit.IndexType,
             IsSystemObject = allocationUnit.IsSystem,
             IsAllocationLayer = false,
-            Colour = GetLayerColour(allocationUnit, userObjectCount, ref colourIndex),
+            Colour = GetLayerColour(allocationUnit, colourSlotCount, ref colourIndex),
             IsVisible = true,
             Opacity = opacity
         };
@@ -172,7 +182,7 @@ internal static class AllocationLayerBuilder
     }
 
     private static Color GetLayerColour(AllocationUnit allocationUnit,
-                                        int userObjectCount,
+                                        int colourSlotCount,
                                         ref int colourIndex)
     {
         if (allocationUnit.IsSystem)
@@ -180,8 +190,10 @@ internal static class AllocationLayerBuilder
             return Color.FromArgb(255, 190, 190, 205);
         }
 
-        colourIndex += userObjectCount > ColourCount ? 1 : (int)Math.Floor(ColourCount / (double)userObjectCount);
+        var hue = colourIndex * HueWheel / Math.Max(colourSlotCount, 1) % HueWheel;
 
-        return ColourHelpers.HsvToColor(colourIndex, UserSaturation, UserValue);
+        colourIndex++;
+
+        return ColourHelpers.HsvToColor(hue, UserSaturation, UserValue);
     }
 }

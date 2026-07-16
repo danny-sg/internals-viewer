@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using InternalsViewer.Query.Events.EventTypes;
+using InternalsViewer.Query.CallStack.Dia;
 
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack;
 
 public sealed class CallstackResolver(string symbolsPath) : IDisposable
 {

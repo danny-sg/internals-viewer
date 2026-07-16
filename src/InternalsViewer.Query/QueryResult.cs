@@ -1,6 +1,8 @@
-﻿using InternalsViewer.Query.Events.EventTypes;
-using InternalsViewer.Query.Plans;
+﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.Results;
+using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query;
 
@@ -14,9 +16,17 @@ public sealed record QueryResult
 
     public List<ExecutionPlan> ExecutionPlans { get; set; } = [];
 
+    public CallStackTree? CallStackTree { get; set; }
+
     public List<QueryResultSet> ResultSets { get; set; } = [];
 
     public string Message { get; set; } = string.Empty;
 
     public long RowCount { get; set; }
+
+    public long? CropStartUs { get; set; }
+
+    public long? CropEndUs { get; set; }
+
+    public List<LogRecord> LogRecords { get; set; } = [];
 }

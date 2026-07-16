@@ -18,7 +18,7 @@ public sealed partial class SqlDocumentView : UserControl
     {
         if (ViewModel is { } viewModel)
         {
-            viewModel.IsAllocationsVisible = true;
+            viewModel.Layout.IsAllocationsVisible = true;
         }
     }
 
@@ -26,7 +26,7 @@ public sealed partial class SqlDocumentView : UserControl
     {
         if (ViewModel is { } viewModel)
         {
-            viewModel.IsExecutionPlanVisible = true;
+            viewModel.Layout.IsExecutionPlanVisible = true;
         }
     }
 
@@ -34,7 +34,7 @@ public sealed partial class SqlDocumentView : UserControl
     {
         if (ViewModel is { } viewModel)
         {
-            viewModel.IsEventsVisible = true;
+            viewModel.Layout.IsEventsVisible = true;
         }
     }
 }

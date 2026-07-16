@@ -12,12 +12,92 @@
 
         <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">Settings</TextBlock>
 
-        <controls:SettingsCard Header="Symbols Path"
-                               Description="Local directory used to cache downloaded PDB symbol files">
-            <TextBox x:Name="SymbolsPathTextBox"
-                     Width="300"
-                     HorizontalAlignment="Right"
-                     Text="{x:Bind ViewModel.SymbolsPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+        <controls:SettingsExpander Header="Query"
+                                   IsExpanded="True"
+                                   Description="Settings for query tracing">
+            <controls:SettingsExpander.ItemsHeader>
+                <StackPanel>
+                    <InfoBar IsOpen="True"
+                         Severity="Warning"
+                         IsClosable="False"
+                         BorderThickness="0"
+                         CornerRadius="0"
+                         Visibility="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                         Message="Trace files will be saved to the SQL Server log directory. Running traces will generate trace files that cannot be deleted post-trace by Internals Viewer. These files should be periodically removed. Alternatively use a custom directory that will be cleared as part of the trace process." />
+                </StackPanel>
+
+            </controls:SettingsExpander.ItemsHeader>
+
+            <controls:SettingsExpander.Items>
+                <controls:SettingsCard Header="Trace Path"
+                                       Description="Local directory used for SQL Server .xel trace files">
+
+                    <StackPanel Orientation="Vertical">
+
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=TwoWay}"
+                                      HorizontalAlignment="Right"
+                                      OffContent="Use Custom Directory"
+                                      OnContent="Use Custom Directory" 
+                                      Margin="0,0,0,12"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                            <TextBox Text="{x:Bind ViewModel.TraceDirectory, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                     HorizontalContentAlignment="Stretch"
+                                     MinWidth="800"
+                                     IsEnabled="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay}"/>
+                            <Button Content="Browse…"
+                                    Click="BrowseTraceDirectory_Click"
+                                    VerticalAlignment="Center"
+                                    IsEnabled="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay}"/>
+                        </StackPanel>
+                        <Button Content="Grant Permissions"
+                                Command="{x:Bind ViewModel.GrantPermissionsCommand}"
+                                HorizontalAlignment="Right"
+                                Margin="0,4,0,0"
+                                IsEnabled="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay}"/>
+                    </StackPanel>
+                </controls:SettingsCard>
+                <controls:SettingsCard Header="Auto-Delete Trace"
+                                       Description="Automatically delete trace files after a trace has run">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.AutoDeleteTrace, Mode=TwoWay}"
+                                  HorizontalAlignment="Right"
+                               OnContent=""
+                                  OffContent=""
+                                  IsEnabled="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay}"/>
+                </controls:SettingsCard>
+                <controls:SettingsCard Header="Maximum Trace Size"
+                                       Description="Maximum size (MB) of the .xel trace">
+                    <NumberBox Value="{x:Bind ViewModel.MaxTraceSizeMb, Mode=TwoWay}"
+                               Minimum="1"
+                               Maximum="102400"
+                               SmallChange="64"
+                               LargeChange="256"
+                               SpinButtonPlacementMode="Compact"
+                               HorizontalAlignment="Right"
+                               MinWidth="150"/>
+                </controls:SettingsCard>
+
+                <controls:SettingsCard Header="Symbols Path"
+                                       Description="Local directory used to cache downloaded PDB symbol files"
+                              >
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox x:Name="SymbolsPathTextBox"
+                                 MinWidth="800"
+                                 Text="{x:Bind ViewModel.SymbolsPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        <Button Content="Browse…"
+                                Click="BrowseSymbolsPath_Click"
+                                VerticalAlignment="Center"/>
+                    </StackPanel>
+                </controls:SettingsCard>
+            </controls:SettingsExpander.Items>
+        </controls:SettingsExpander>
+
+        <controls:SettingsCard Header="Diagnostic Log"
+                               Description="Activity log from the internals loading pipeline">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button x:Name="ClearLogButton" Content="Clear Log" Click="ClearLogButton_Click"/>
+                <Button x:Name="OpenLogButton" Content="Open Log" Click="OpenLogButton_Click"
+                        Style="{StaticResource AccentButtonStyle}"/>
+            </StackPanel>
         </controls:SettingsCard>
 
         <controls:SettingsCard x:Name="AboutSettingsCard"
@@ -31,15 +111,5 @@
                 </HyperlinkButton>
             </StackPanel>
         </controls:SettingsCard>
-
-        <controls:SettingsCard Header="Diagnostic Log"
-                               Description="Activity log from the internals loading pipeline">
-            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                <Button x:Name="ClearLogButton" Content="Clear Log" Click="ClearLogButton_Click"/>
-                <Button x:Name="OpenLogButton" Content="Open Log" Click="OpenLogButton_Click"
-                        Style="{StaticResource AccentButtonStyle}"/>
-            </StackPanel>
-        </controls:SettingsCard>
-
     </StackPanel>
 </Page>

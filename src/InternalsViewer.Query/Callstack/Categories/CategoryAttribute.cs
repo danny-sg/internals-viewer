@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Callstack.Categories;
+﻿namespace InternalsViewer.Query.CallStack.Categories;
 
 [AttributeUsage(AttributeTargets.Field)]
 public sealed class CategoryAttribute(string name) : Attribute

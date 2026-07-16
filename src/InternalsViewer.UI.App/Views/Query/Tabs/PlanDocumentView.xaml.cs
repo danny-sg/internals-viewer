@@ -1,6 +1,6 @@
 using System;
 using System.ComponentModel;
-using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
@@ -42,6 +42,7 @@ public sealed partial class PlanDocumentView : UserControl
             p.SelectedNode = ViewModel?.SelectedPlanNode;
             p.ActiveNodes = ViewModel?.ActivePlanNodes;
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
+            p.Events = ViewModel?.Events;
         });
     }
 
@@ -89,6 +90,9 @@ public sealed partial class PlanDocumentView : UserControl
             case nameof(QueryViewModel.EmittingPlanNodes):
                 ApplyToPlans(p => p.EmittingNodes = _subscribed.EmittingPlanNodes);
                 break;
+            case nameof(QueryViewModel.Events):
+                ApplyToPlans(p => p.Events = _subscribed.Events);
+                break;
         }
     }
 
@@ -99,14 +103,39 @@ public sealed partial class PlanDocumentView : UserControl
             planControl.SelectedNode = viewModel.SelectedPlanNode;
             planControl.ActiveNodes = viewModel.ActivePlanNodes;
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
+            planControl.Events = viewModel.Events;
 
             // ItemsRepeater recycles elements, so guard against subscribing the same control twice.
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;
             planControl.IndexOpenRequested += OnPlanIndexOpenRequested;
+
+            planControl.NodeSelected -= OnPlanNodeSelected;
+            planControl.NodeSelected += OnPlanNodeSelected;
         }
     }
 
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);
+
+    /// <summary>
+    /// Routes a click on a plan node through the same selection every other view goes through
+    /// </summary>
+    /// <remarks>
+    /// The control already tracked the click in its own highlight; what it could not do is tell anything else, since
+    /// only the view model knows the node is also an event. SelectPlanNode sets both, so the callstack focuses the
+    /// operator and the details panel follows — the plan becoming a way IN to the stack rather than a picture beside it.
+    ///
+    /// The identifier rather than the node: a PlanNode knows its own id but not which plan it belongs to, and the view
+    /// model keys everything on both.
+    /// </remarks>
+    private void OnPlanNodeSelected(object? sender, PlanNode? node)
+    {
+        if (node is null || sender is not ExecutionPlanControl { Plan: { } plan })
+        {
+            return;
+        }
+
+        ViewModel?.SelectPlanNode(new PlanNodeIdentifier(plan.PlanHandleId, node.NodeId));
+    }
 
     private void ApplyToPlans(Action<ExecutionPlanControl> apply)
     {

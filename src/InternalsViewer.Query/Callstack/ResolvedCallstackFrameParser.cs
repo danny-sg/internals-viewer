@@ -1,20 +1,24 @@
-﻿using InternalsViewer.Query.Callstack.Categories;
+﻿using InternalsViewer.Query.CallStack.Categories;
 
-namespace InternalsViewer.Query.Callstack;
+namespace InternalsViewer.Query.CallStack;
 
 public class ResolvedCallstackFrameParser
 {
+    /// <summary>
+    /// Parses a callstack frame string into a ResolvedCallstackFrame including the module, class name, method name, offset, and category
+    /// information
+    /// </summary>
     public static ResolvedCallstackFrame Parse(string module, string value)
     {
         var plusIndex = value.LastIndexOf('+');
 
         var symbolPart = plusIndex >= 0
-            ? value[..plusIndex]
-            : value;
+                         ? value[..plusIndex]
+                         : value;
 
         var offsetPart = plusIndex >= 0
-            ? value[(plusIndex + 1)..]
-            : null;
+                         ? value[(plusIndex + 1)..]
+                         : null;
 
         var separator = FindClassMethodSeparator(symbolPart);
 
@@ -36,13 +40,17 @@ public class ResolvedCallstackFrameParser
             }
 
             if (uint.TryParse(offsetPart,
-                    System.Globalization.NumberStyles.HexNumber,
-                    null,
-                    out var offsetValue))
+                              System.Globalization.NumberStyles.HexNumber,
+                              null,
+                              out var offsetValue))
             {
                 offset = offsetValue;
             }
         }
+
+        var mappings = CategoryMappings.Default;
+
+        var (iterator, planOperator) = mappings.ClassifyOperator(module, className, methodName);
 
         return new ResolvedCallstackFrame
         {
@@ -51,15 +59,16 @@ public class ResolvedCallstackFrameParser
             Module = module,
             Offset = offset,
             RawSymbol = value,
-            ModuleCategory = ModuleCategoryDictionary.GetCategory(module),
-            SymbolCategory = SymbolCategoryDictionary.GetCategory(className, methodName)
+            ModuleCategory = mappings.GetModuleCategory(module),
+            SymbolCategory = mappings.Classify(module, className, methodName),
+            Iterator = iterator,
+            PlanOperator = planOperator,
+            IsAccessBarrier = mappings.IsAccessBarrier(module, className, methodName)
         };
     }
 
     /// <summary>
-    /// Finds the last "::" that separates the class from the method, ignoring any "::"
-    /// nested inside template/lambda angle brackets (e.g. lambda names like
-    /// CQDSManager::Method&lt;`Outer::Inner'::`2'::&lt;lambda_1&gt; &gt;).
+    /// Finds the last "::" that separates the class from the method, ignoring any "::" nested inside template/lambda angle brackets
     /// </summary>
     private static int FindClassMethodSeparator(string symbolPart)
     {

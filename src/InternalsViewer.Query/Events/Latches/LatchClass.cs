@@ -3,6 +3,7 @@ using InternalsViewer.Query.Helpers;
 namespace InternalsViewer.Query.Events.Latches;
 
 // ReSharper disable InconsistentNaming
+// ReSharper disable IdentifierTypo
 public enum LatchClass
 {
     UNKNOWN = 0,

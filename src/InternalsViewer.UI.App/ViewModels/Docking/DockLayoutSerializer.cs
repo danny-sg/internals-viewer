@@ -1,53 +1,31 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.ViewModels.Docking;
 
-/// <summary>Serialisable snapshot of a dock layout node (group or split), referencing documents by key.</summary>
-public sealed class DockNodeDto
-{
-    public bool IsSplit { get; set; }
-
-    // Group
-    public List<string> Documents { get; set; } = [];
-
-    public string? Selected { get; set; }
-
-    // Split
-    public int Orientation { get; set; }
-
-    public double FirstStar { get; set; } = 1;
-
-    public double SecondStar { get; set; } = 1;
-
-    public DockNodeDto? First { get; set; }
-
-    public DockNodeDto? Second { get; set; }
-}
-
-/// <summary>Converts a dock layout tree to/from its serialisable form, mapping documents by key.</summary>
+/// <summary>
+/// Converts a dock layout tree to/from its serializable form
+/// </summary>
 public static class DockLayoutSerializer
 {
-    public static DockNodeDto Serialize(LayoutNode node)
+    public static DockNode Serialize(LayoutNode node)
     {
         if (node is TabGroupNode group)
         {
-            // Transient documents (e.g. opened index tabs) are excluded from the saved layout.
             var persisted = group.Documents.Where(d => d.Persist).Select(d => d.Key).ToList();
 
-            return new DockNodeDto
+            return new DockNode
             {
                 IsSplit = false,
                 Documents = persisted,
-                Selected = group.SelectedDocument is { Persist: true } sel ? sel.Key : persisted.FirstOrDefault()
+                Selected = group.SelectedDocument is { Persist: true } selected ? selected.Key : persisted.FirstOrDefault()
             };
         }
 
         var split = (SplitNode)node;
 
-        return new DockNodeDto
+        return new DockNode
         {
             IsSplit = true,
             Orientation = (int)split.Orientation,
@@ -59,21 +37,20 @@ public static class DockLayoutSerializer
     }
 
     /// <summary>
-    /// Rebuilds a layout tree from <paramref name="dto"/>, resolving documents via <paramref name="resolve"/>.
-    /// Unknown documents are dropped and groups/splits that end up empty collapse away (returning null).
+    /// Rebuilds a layout tree from <paramref name="node"/>, resolving documents via <paramref name="resolve"/>
     /// </summary>
-    public static LayoutNode? Deserialize(DockNodeDto? dto, Func<string, DocumentViewModel?> resolve)
+    public static LayoutNode? Deserialize(DockNode? node, Func<string, DocumentViewModel?> resolve)
     {
-        if (dto is null)
+        if (node is null)
         {
             return null;
         }
 
-        if (!dto.IsSplit)
+        if (!node.IsSplit)
         {
             var group = new TabGroupNode();
 
-            foreach (var key in dto.Documents)
+            foreach (var key in node.Documents)
             {
                 if (resolve(key) is { } document && !group.Documents.Contains(document))
                 {
@@ -86,14 +63,14 @@ public static class DockLayoutSerializer
                 return null;
             }
 
-            group.SelectedDocument = (dto.Selected is not null ? resolve(dto.Selected) : null)
+            group.SelectedDocument = (node.Selected is not null ? resolve(node.Selected) : null)
                                      ?? group.Documents.FirstOrDefault();
 
             return group;
         }
 
-        var first = Deserialize(dto.First, resolve);
-        var second = Deserialize(dto.Second, resolve);
+        var first = Deserialize(node.First, resolve);
+        var second = Deserialize(node.Second, resolve);
 
         if (first is null)
         {
@@ -105,10 +82,10 @@ public static class DockLayoutSerializer
             return first;
         }
 
-        return new SplitNode((Orientation)dto.Orientation, first, second)
+        return new SplitNode((Orientation)node.Orientation, first, second)
         {
-            FirstStar = dto.FirstStar,
-            SecondStar = dto.SecondStar
+            FirstStar = node.FirstStar,
+            SecondStar = node.SecondStar
         };
     }
 }
