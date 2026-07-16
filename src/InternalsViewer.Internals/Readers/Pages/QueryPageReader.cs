@@ -32,8 +32,6 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
     /// </summary>
     private const int HexLineLength = 44;
 
-    private const string DbccPageCommand = @"DBCC PAGE({0}, {1}, {2}, {3}) WITH TABLERESULTS";
-
     private string ConnectionString { get; } = connectionString;
 
     private ILogger<QueryPageReader> Logger { get; } = logger;
@@ -55,11 +53,8 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
                                byte[] buffer, 
                                CancellationToken cancellationToken)
     {
-        var pageCommand = string.Format(DbccPageCommand,
-                                        name,
-                                        pageAddress.FileId,
-                                        pageAddress.PageId,
-                                        DbccPageHexDumpOption);
+        var pageCommand =
+            $"DBCC PAGE({name}, {pageAddress.FileId}, {pageAddress.PageId}, {DbccPageHexDumpOption}) WITH TABLERESULTS";
 
         Logger.LogDebug("Reading page {PageAddress}: {CommandSql}", pageAddress, pageCommand);
 

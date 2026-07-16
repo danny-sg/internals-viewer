@@ -206,8 +206,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _layoutRestored;
     private bool _saveScheduled;
 
-    // The layout view model owns the dock/visibility sync; here we react to a persisted layout change by dropping any
-    // index tabs the user closed and scheduling a save.
     private void OnLayoutChanged()
     {
         PruneClosedIndexes();
@@ -273,7 +271,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            // Bail without touching anything if the saved dock tree can't be rebuilt.
+            // Return without touching anything if the saved dock tree can't be rebuilt
             if (!Layout.RestoreRoot(dto.Root))
             {
                 return;
@@ -511,6 +509,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         // Reflect the already-built spans and current playhead position immediately.
         ApplyIndexPageSpans(indexViewModel);
+
         SyncIndexPage(PlayheadTimeUs);
     }
 
@@ -769,8 +768,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         eventOptions.AutoDeleteTrace = _settingsViewModel.AutoDeleteTrace;
 
-        // Run full trace on background thread. The event layers/borders are rebuilt from the filtered set on the UI
-        // thread (see RefreshFilteredEvents), so only the colours and crop window are carried back from here.
+        // Run full trace on background thread
         var (results, colours, startOffset, endOffset) =
             await Task.Run(async () =>
             {
@@ -819,8 +817,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             EventColours = colours;
 
             Events = results.EngineEvents;
-
-            //Callstacks = results.CallStackTree?.Nodes().Select(n => n.Frame!).ToList() ?? [];
 
             CallStack = results.CallStackTree;
 
@@ -913,9 +909,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshLayers(FilteredEvents);
     }
 
-    // The event filter tree is gone: what shows is driven straight from the menu selections. Locks are filtered to the
-    // chosen mode categories; everything else passes through (its capture is the Events-menu flag's job), subject only
-    // to the system-object filter.
     private bool IsEventVisible(EngineEvent engineEvent)
     {
         if (!QueryOptions.IncludeSystemObjects && !IsUserObject(engineEvent))
@@ -936,8 +929,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         };
     }
 
-    // Whether an event belongs to a user object (kept when system objects are hidden). Metadata and database locks are
-    // engine bookkeeping with no user object (ObjectId 0), so the id set alone can't catch them — exclude them by type.
     private bool IsUserObject(EngineEvent engineEvent)
     {
         if (engineEvent is LockEvent { Resource.ResourceType: LockResourceType.Metadata or LockResourceType.Database })
@@ -945,7 +936,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return false;
         }
 
-        return engineEvent.ObjectId == 0 || !_systemObjectIds.Contains(engineEvent.ObjectId);
+        return engineEvent.ObjectId == 0 || !SystemObjectIds.Contains(engineEvent.ObjectId);
     }
 
     private AllocationLayer GetEventsAllocationLayer(List<EngineEvent> engineEvents,
@@ -1011,4 +1002,29 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     };
 
     public PfsChain PfsChain => new();
+
+    /// <summary>
+    /// Releases the query event data and disposes the dock layout's views when the tab closes
+    /// </summary>
+    public override void Dispose()
+    {
+        QueryOptions.FilterChanged -= RefreshFilteredEvents;
+        QueryOptions.Changed -= ScheduleSaveLayout;
+        Layout.Changed -= OnLayoutChanged;
+
+        Events = [];
+        FilteredEvents = [];
+        CallStack = null;
+        SelectedEvent = null;
+
+        _openIndexes.Clear();
+
+        _indexPageSpansByRoot.Clear();
+        
+        _indexReadSpansByRoot.Clear();
+
+        Layout.Dispose();
+
+        base.Dispose();
+    }
 }

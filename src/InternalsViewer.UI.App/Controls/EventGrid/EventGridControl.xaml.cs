@@ -15,12 +15,15 @@ using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.EventGrid;
 
-public sealed partial class EventGridControl : UserControl
+public sealed partial class EventGridControl : UserControl, IDisposable
 {
     private static readonly SolidColorBrush InScopeBrush =
         new(Windows.UI.Color.FromArgb(20, 121, 251, 155));
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
+
+    // Kept so the same delegate instance can be removed in Dispose - AddHandler/RemoveHandler match by reference.
+    private readonly TappedEventHandler _tappedHandler;
 
     public EngineEvent? SelectedItem
     {
@@ -146,8 +149,29 @@ public sealed partial class EventGridControl : UserControl
         DataGrid.UnloadingRow += OnDataGridUnloadingRow;
         DataGrid.SelectionChanged += OnDataGridSelectionChanged;
 
+        _tappedHandler = OnDataGridTapped;
+
         // handledEventsToo so the tap still reaches us after the DataGrid has handled the pointer for selection.
-        DataGrid.AddHandler(UIElement.TappedEvent, new TappedEventHandler(OnDataGridTapped), handledEventsToo: true);
+        DataGrid.AddHandler(UIElement.TappedEvent, _tappedHandler, handledEventsToo: true);
+    }
+
+    /// <summary>
+    /// Releases the grid's row/event references and detaches the DataGrid handlers, so a closed query tab's events
+    /// aren't held through this control
+    /// </summary>
+    public void Dispose()
+    {
+        DataGrid.LoadingRow -= OnDataGridLoadingRow;
+        DataGrid.UnloadingRow -= OnDataGridUnloadingRow;
+        DataGrid.SelectionChanged -= OnDataGridSelectionChanged;
+        DataGrid.RemoveHandler(UIElement.TappedEvent, _tappedHandler);
+
+        DataGrid.ItemsSource = null;
+
+        _rows.Clear();
+        _visibleRows.Clear();
+        _expanded.Clear();
+        _parentOf.Clear();
     }
 
     private void OnDataGridSelectionChanged(object sender, SelectionChangedEventArgs e)

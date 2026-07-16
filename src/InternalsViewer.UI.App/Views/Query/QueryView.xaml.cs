@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
@@ -5,15 +6,12 @@ using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 
-namespace InternalsViewer.UI.App.Views;
+namespace InternalsViewer.UI.App.Views.Query;
 
-public sealed partial class QueryView : Page
+public sealed partial class QueryView : Page, IDisposable
 {
     public QueryViewModel ViewModel => (QueryViewModel)DataContext;
 
-    // The height to restore the timeline row to when it is shown again. The grid splitter rewrites both
-    // adjacent rows to fixed pixels when dragged, so this is captured (rather than a fixed "1*") to keep
-    // the user's resized height across hide/show.
     private GridLength _savedTimelineHeight = new(1, GridUnitType.Star);
 
     private QueryViewModel? _subscribedViewModel;
@@ -32,6 +30,26 @@ public sealed partial class QueryView : Page
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
         Unloaded += OnUnloaded;
+    }
+
+    public void Dispose()
+    {
+        EventTimeline.ScopeChanged -= OnScopeChanged;
+        EventTimeline.PlayheadTimeChanged -= OnPlayheadTimeChanged;
+        EventTimeline.PlanNodeSelected -= OnTimelinePlanNodeSelected;
+        EventTimeline.EventSelected -= OnTimelineEventSelected;
+        EventTimeline.IndexOpenRequested -= OnTimelineIndexOpenRequested;
+        EventTimeline.PlayStateChanged -= OnPlayStateChanged;
+
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.Layout.PropertyChanged -= OnLayoutPropertyChanged;
+            _subscribedViewModel = null;
+        }
+
+        (DataContext as QueryViewModel)?.Dispose();
+
+        EventTimeline.Dispose();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)

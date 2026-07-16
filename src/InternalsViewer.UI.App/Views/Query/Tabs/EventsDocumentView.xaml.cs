@@ -1,3 +1,4 @@
+using System;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
@@ -9,7 +10,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
 /// <summary>Dock document hosting the engine-events grid for the active query.</summary>
-public sealed partial class EventsDocumentView : UserControl
+public sealed partial class EventsDocumentView : UserControl, IDisposable
 {
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
@@ -59,6 +60,14 @@ public sealed partial class EventsDocumentView : UserControl
     }
 
     private void OnEventNavigationRequested(EngineEvent engineEvent) => EventGrid.NavigateToEvent(engineEvent);
+
+    /// <summary>Disposed by <see cref="DocumentViewModel.DisposeView"/> when the query tab closes.</summary>
+    public void Dispose()
+    {
+        Unsubscribe();
+
+        EventGrid.Dispose();
+    }
 
     private void OnPageSelected(object? sender, PageAddressEventArgs e)
     {

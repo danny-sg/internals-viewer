@@ -46,7 +46,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
             // I/O for the whole level, in parallel.
             var loaded = await LoadLevel(database, currentLevel, cancellationToken);
 
-            // Node construction for the next level, single-threaded and in order.
+            // Node construction for the next level, single-threaded and in order
             var nextLevel = new List<IndexNode>();
 
             for (var i = 0; i < currentLevel.Count; i++)
@@ -61,8 +61,6 @@ public sealed class IndexService(IPageService pageService, IRecordService record
 
                 foreach (var childAddress in page.DownPointers)
                 {
-                    node.Children.Add(childAddress);
-
                     if (!nodesByAddress.TryGetValue(childAddress, out var childNode))
                     {
                         childNode = new IndexNode(childAddress)

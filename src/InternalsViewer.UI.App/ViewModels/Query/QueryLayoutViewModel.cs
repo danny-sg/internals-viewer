@@ -14,7 +14,7 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 /// closes the document, and rearranging the dock re-syncs the flags. <see cref="Changed"/> is raised after any change
 /// that should be persisted; the owner handles pruning transient tabs and scheduling the save.
 /// </remarks>
-public sealed partial class QueryLayoutViewModel : ObservableObject
+public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 {
     private const string SqlKey = "Sql";
     private const string AllocationsKey = "Allocations";
@@ -65,9 +65,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
                                                                              keepAlive: true,
                                                                              key: CallstackKey),
 
-            [InstructionsKey] = DocumentViewModel.Create<InstructionsDocumentView>("Instructions", 
-                                                                                   content, 
-                                                                                   keepAlive: true, 
+            [InstructionsKey] = DocumentViewModel.Create<InstructionsDocumentView>("Instructions",
+                                                                                   content,
+                                                                                   keepAlive: true,
                                                                                    key: InstructionsKey)
         };
 
@@ -113,26 +113,32 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
     public Visibility SplitterVisibility
         => (IsTimelineVisible && IsDetailsVisible) ? Visibility.Visible : Visibility.Collapsed;
 
-    partial void OnIsSqlEditorVisibleChanged(bool value) => SetDocumentVisible(_documentsByKey[SqlKey], value);
+    partial void OnIsSqlEditorVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[SqlKey], value);
 
-    partial void OnIsAllocationsVisibleChanged(bool value) => SetDocumentVisible(_documentsByKey[AllocationsKey], value);
+    partial void OnIsAllocationsVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[AllocationsKey], value);
 
-    partial void OnIsExecutionPlanVisibleChanged(bool value) => SetDocumentVisible(_documentsByKey[PlanKey], value);
+    partial void OnIsExecutionPlanVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[PlanKey], value);
 
-    partial void OnIsEventsVisibleChanged(bool value) => SetDocumentVisible(_documentsByKey[EventsKey], value);
+    partial void OnIsEventsVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[EventsKey], value);
 
-    partial void OnIsCallstackVisibleChanged(bool value) => SetDocumentVisible(_documentsByKey[CallstackKey], value);
+    partial void OnIsCallstackVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[CallstackKey], value);
 
-    partial void OnIsInstructionsVisibleChanged(bool value) => SetDocumentVisible(_documentsByKey[InstructionsKey], value);
+    partial void OnIsInstructionsVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[InstructionsKey], value);
 
-    partial void OnIsTimelineVisibleChanged(bool value) => Changed?.Invoke();
+    partial void OnIsTimelineVisibleChanged(bool value)
+        => Changed?.Invoke();
 
     /// <summary>
     /// Serialises the current dock tree for persistence
     /// </summary>
     public DockNode SerializeRoot() => DockLayoutSerializer.Serialize(Dock.Root);
 
-    /// <summary>Restores a persisted dock tree; returns false (leaving the layout untouched) if it can't be rebuilt</summary>
     public bool RestoreRoot(DockNode? dto)
     {
         var root = DockLayoutSerializer.Deserialize(dto, key => _documentsByKey.GetValueOrDefault(key));
@@ -147,7 +153,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
         return true;
     }
 
-    /// <summary>Resets to the default single-tab (SQL) layout with the timeline shown</summary>
+    /// <summary>
+    /// Resets to the default single-tab (SQL) layout with the timeline visible
+    /// </summary>
     public void Reset()
     {
         IsTimelineVisible = true;
@@ -155,21 +163,33 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
         Dock.SetRoot(new TabGroupNode(_documentsByKey[SqlKey]));
     }
 
-    /// <summary>Looks up an already-open document (base tab or index tab) by key</summary>
+    /// <summary>
+    /// Look up an already-open document (base tab or index tab) by key
+    /// </summary>
     public bool TryGetDocument(string key, out DocumentViewModel document)
         => _documentsByKey.TryGetValue(key, out document!);
 
-    /// <summary>Registers a transient document (an index tab) so the dock and pruning can track it by key</summary>
+    /// <summary>
+    /// Registers a transient document by key
+    /// </summary>
     public void RegisterDocument(string key, DocumentViewModel document) => _documentsByKey[key] = document;
 
-    /// <summary>Shows a document in the dock, creating or focusing its tab</summary>
+    /// <summary>
+    /// Show a document in the dock, creating or focusing its tab
+    /// </summary>
     public void Show(DocumentViewModel document) => Dock.Show(document);
 
-    /// <summary>Whether the keyed document is currently present in the dock</summary>
-    public bool IsShown(string key) => _documentsByKey.TryGetValue(key, out var document) && Dock.Contains(document);
+    /// <summary>
+    /// Whether the keyed document is currently present in the dock
+    /// </summary>
+    public bool IsShown(string key) 
+        => _documentsByKey.TryGetValue(key, out var document) && Dock.Contains(document);
 
-    /// <summary>Drops a transient document from tracking, returning it so the caller can dispose its view</summary>
-    public bool RemoveDocument(string key, out DocumentViewModel document) => _documentsByKey.Remove(key, out document!);
+    /// <summary>
+    /// Drops a transient document from tracking, returning it so the caller can dispose its view
+    /// </summary>
+    public bool RemoveDocument(string key, out DocumentViewModel document) 
+        => _documentsByKey.Remove(key, out document!);
 
     private void SetDocumentVisible(DocumentViewModel document, bool show)
     {
@@ -207,5 +227,15 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
         SyncTabVisibility();
 
         Changed?.Invoke();
+    }
+
+    public void Dispose()
+    {
+        Dock.LayoutChanged -= OnDockLayoutChanged;
+
+        foreach (var document in _documentsByKey.Values)
+        {
+            document.DisposeView();
+        }
     }
 }

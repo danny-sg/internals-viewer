@@ -235,10 +235,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         var control = (EventTimelineControl)d;
         var events = (List<EngineEvent>)e.NewValue;
 
-        // A read is shown as its consolidated group, but its underlying NON-IO members (the latches, waits and locks
-        // folded into it) are also surfaced onto their own bands, so e.g. a PAGEIOLATCH wait or a BUF latch is visible
-        // in the context of the read it belongs to. The IO members (physical / file reads) stay inside the group. Only
-        // the render list gains the members; the audio arrays stay the top-level events so playback isn't flooded.
         control._sortedEvents = [.. ExpandGroupedEvents(events).OrderBy(ev => ev.SequenceId)];
         control._readEventsByTime = [.. events.OfType<ReadEventGroup>().OrderBy(read => read.TimeUs)];
         control._latchEventsByTime = [.. events.OfType<LatchEvent>().OrderBy(latch => latch.TimeUs)];
@@ -430,5 +426,19 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         _staticLayer?.Dispose();
 
         _audioPlayer.Dispose();
+
+        // Drop the retained event data so a lingering reference to the control (e.g. a pending dispatcher callback)
+        // doesn't hold the query's whole event set and its hit regions alive. _hitRegions is shared by the renderers,
+        // so it's emptied in place rather than reassigned.
+        _hitRegions.Clear();
+        _hoverEvent = null;
+        _selection.Clear();
+
+        _sortedEvents = [];
+        _readEventsByTime = [];
+        _latchEventsByTime = [];
+        _fileReadEventsByTime = [];
+        _times = [];
+        _orderedOperators = [];
     }
 }

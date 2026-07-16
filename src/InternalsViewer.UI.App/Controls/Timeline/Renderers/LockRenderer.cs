@@ -19,8 +19,6 @@ namespace InternalsViewer.UI.App.Controls.Timeline.Renderers;
 internal sealed class LockRenderer(RenderResource resources, CurrentSelection selection, List<HitRegion> hitRegions)
     : IDisposable
 {
-    // Baseline height for a stretch where a single lock is held, so a lone lock still reads clearly before any overlap
-    // adds height above it.
     private const float MinLockBarHeight = 2f;
 
     private const byte LockBarAlpha = 230;
@@ -52,14 +50,11 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
         var innerHeight = frame.RowHeights[lockRow] - frame.RowPadding * 2;
         var rightEdge = frame.CanvasWidth;
 
-        // Every lock on the band: the members of each group plus any ungrouped locks.
         var locks = frame.Events.OfType<LockGroup>()
                                 .SelectMany(g => g.Events.OfType<LockEvent>())
                                 .Concat(frame.Events.OfType<LockEvent>());
 
-        // One band per non-empty category, most exclusive at the top so an escalation to a coarser lock steps UP. Intent
-        // modes band apart, below every real lock: they only flag finer locks below the resource rather than holding it,
-        // so an IU does not outrank an RS_U despite both being of the update family.
+        // Locks grouped into category and intent, ordered by category and intent, replicating lock hierarchy
         var categories = locks.GroupBy(l => (Category: LockModeClassifier.Categorise(l.LockMode),
                                              Intent: LockModeClassifier.IsIntent(l.LockMode)))
                               .Where(g => g.Key.Category != LockModeCategory.None)
@@ -86,29 +81,23 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
 
             var colour = TimelineColours.LockModeColour(bandLocks[0].LockMode);
 
-            // When an operator is selected, a band fades only when every one of its locks is on a different object;
-            // any on-object lock keeps the band lit.
-            var dimmed = bandLocks.All(selection.ShouldDim);
+            var isDimmed = bandLocks.All(selection.ShouldDim);
 
-            DrawConcurrency(canvas, frame, bandLocks, bandTop, bandHeight, colour, rightEdge, dimmed, category.Key.Intent);
+            DrawCategory(canvas, frame, bandLocks, bandTop, bandHeight, colour, rightEdge, isDimmed, category.Key.Intent);
         }
 
-        DrawEscalations(canvas, frame, innerTop, innerHeight);
+        DrawEscalationPoints(canvas, frame, innerTop, innerHeight);
     }
 
-    // Draws a band's locks as a per-pixel concurrency bar chart: each column's height is how many locks are held at that
-    // moment, normalised so the band's peak concurrency fills it. A band with no overlap is a row of full-height bars; a
-    // couple of overlaps step up from a compressed baseline to the full band; a dense band tapers with its concurrency
-    // — one scaling law across the whole range, so overlaps read as added height rather than as a separate lane.
-    private void DrawConcurrency(SKCanvas canvas,
-                                 TimelineFrame frame,
-                                 IReadOnlyList<LockEvent> locks,
-                                 float bandTop,
-                                 float bandHeight,
-                                 SKColor colour,
-                                 float rightEdge,
-                                 bool dimmed,
-                                 bool intent)
+    private void DrawCategory(SKCanvas canvas,
+                              TimelineFrame frame,
+                              IReadOnlyList<LockEvent> locks,
+                              float bandTop,
+                              float bandHeight,
+                              SKColor colour,
+                              float rightEdge,
+                              bool isDimmed,
+                              bool intent)
     {
         var x0 = (int)MathF.Floor(frame.RowLabelWidth);
         var x1 = (int)MathF.Ceiling(rightEdge);
@@ -142,6 +131,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
             }
 
             var start = (int)MathF.Round(Math.Clamp(startX, x0, x1)) - x0;
+
             var end = (int)MathF.Round(Math.Clamp(endX, x0, x1)) - x0;
 
             if (end <= start)
@@ -178,7 +168,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
 
         var bandBottom = bandTop + bandHeight;
 
-        resources.Fill.Color = colour.WithAlpha(dimmed ? DimAlpha : intent ? IntentLockBarAlpha : LockBarAlpha);
+        resources.Fill.Color = colour.WithAlpha(isDimmed ? DimAlpha : intent ? IntentLockBarAlpha : LockBarAlpha);
 
         for (var i = 0; i < span; i++)
         {
@@ -195,7 +185,10 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
         }
     }
 
-    private void DrawEscalations(SKCanvas canvas, TimelineFrame frame, float top, float height)
+    /// <summary>
+    /// Draw lock escalation points as markers on the band
+    /// </summary>
+    private void DrawEscalationPoints(SKCanvas canvas, TimelineFrame frame, float top, float height)
     {
         var events = frame.Events;
 

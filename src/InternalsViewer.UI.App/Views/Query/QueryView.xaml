@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Page
-    x:Class="InternalsViewer.UI.App.Views.QueryView"
+    x:Class="InternalsViewer.UI.App.Views.Query.QueryView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:InternalsViewer.UI.App.Views"
@@ -113,6 +113,7 @@
 
             </CommandBar>
         </Border>
+
         <!--Tabs (dockable / splittable document region)-->
         <docking:DockHost x:Name="DockHostControl"
                           Grid.Row="1"

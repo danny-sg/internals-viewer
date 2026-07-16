@@ -11,7 +11,7 @@ namespace InternalsViewer.Query.Events.Parsers;
 /// its attribute quotes left literal. Parsing that span in place avoids decoding the whole (often multi-KB) callstack to
 /// a string per event, which is the dominant string allocation when loading hundreds of thousands of events.
 /// </remarks>
-public static class XmlCallStackParser
+internal static class XmlCallStackParser
 {
     private const string FrameStart = "&lt;frame";
 

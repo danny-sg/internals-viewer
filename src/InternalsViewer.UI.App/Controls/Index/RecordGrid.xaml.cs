@@ -1,7 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
@@ -145,45 +144,5 @@ public sealed partial class RecordGrid: IDisposable
         RemoveEventHandlers();
 
         DataGrid.SelectionChanged -= DataGrid_SelectionChanged;
-    }
-}
-
-public class PageAddressLinkButtonColumn<T> : DataGridBoundColumn
-{
-    public event EventHandler<PageAddressEventArgs>? PageClicked;
-
-    protected override FrameworkElement GenerateElement(DataGridCell cell, object dataItem)
-    {
-        var pageAddress = PageAddress.Empty;
-
-        if (Binding != null)
-        {
-            var value = Binding.Path.Path;
-            var propertyValue = dataItem.GetType().GetProperty(value)?.GetValue(dataItem);
-
-            pageAddress = (PageAddress)(propertyValue ?? pageAddress);
-        }
-
-        var button = new HyperlinkButton
-        {
-            Content = pageAddress.ToString(),
-            Style = (Style)Application.Current.Resources["PageAddressHyperlinkButtonStyle"],
-            Command = new RelayCommand(() =>
-            {
-                PageClicked?.Invoke(this, new PageAddressEventArgs(pageAddress));
-            }),
-        };
-
-        return button;
-    }
-
-    protected override object PrepareCellForEdit(FrameworkElement editingElement, RoutedEventArgs editingEventArgs)
-    {
-        return null!;
-    }
-
-    protected override FrameworkElement GenerateEditingElement(DataGridCell cell, object dataItem)
-    {
-        return null!;
     }
 }
