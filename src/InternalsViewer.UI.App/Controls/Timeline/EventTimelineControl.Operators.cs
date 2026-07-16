@@ -200,7 +200,7 @@ public sealed partial class EventTimelineControl
 
             if (b.LineWidth >= MinLabelBarHeight && b.EndX - b.StartX >= MinLabelBarWidth)
             {
-                DrawOperatorLabel(canvas, b.Op, b.StartX, b.EndX, b.BarCentreY, b.LineWidth);
+                DrawOperatorLabel(canvas, b.Op, b.StartX + 4, b.EndX - 4, b.BarCentreY, b.LineWidth);
             }
 
             DrawObjectColourMarker(canvas, b);
@@ -234,12 +234,11 @@ public sealed partial class EventTimelineControl
         }
     }
 
-    /// <summary>
-    /// Overlays a parallel operator's worker threads on its bar. The coordinator (thread 0) is the bar
-    /// itself (its span is the whole block), so only the workers (non-zero ids) get sub-lanes: each
-    /// spans its own start→end (time skew) and is as tall as its share of the rows processed (data
-    /// skew). When the lanes would be too thin to read, falls back to a concurrency-density fill.
-    /// </summary>
+    /// <remarks>
+    /// Overlays a parallel operator's worker threads on its bar. The coordinator (thread 0) is the bar itself (its span is the whole
+    /// block), so only the workers (non-zero ids) get sub-lanes: each spans its own start→end (time skew) and is as tall as its share of
+    /// the rows processed (data skew). When the lanes would be too thin to read, falls back to a concurrency-density fill.
+    /// </remarks>
     private void DrawOperatorThreads(SKCanvas canvas, OperatorBar b)
     {
         var workers = b.Op.Threads.Where(t => t.ThreadId != 0).ToList();
@@ -256,8 +255,8 @@ public sealed partial class EventTimelineControl
             return;
         }
 
-        // Stack the workers, each lane as tall as its share of the rows (so an over-loaded thread reads
-        // as a thick lane and an idle one as a sliver). Fall back to equal shares with no row counts.
+        // Stack the workers, each lane as tall as its share of the rows (so an over-loaded thread reads as a thick lane and an idle one
+        // as a sliver). Fall back to equal shares with no row counts.
         var totalRows = workers.Sum(t => t.RowsProcessed);
 
         var y = b.BarTop;
@@ -288,9 +287,12 @@ public sealed partial class EventTimelineControl
     }
 
     /// <summary>
-    /// High degree-of-parallelism fallback: shades the envelope bar by the number of worker threads
-    /// running concurrently over time (darker = more overlap), by sweeping their start/end points.
+    /// High degree-of-parallelism fallback
     /// </summary>
+    /// <remarks>
+    /// Shades the envelope bar by the number of worker threads running concurrently over time (darker = more overlap), by sweeping their
+    /// start/end points.
+    /// </remarks>
     private void DrawThreadDensity(SKCanvas canvas, OperatorBar b, List<OperatorThread> workers)
     {
         var points = new List<(double Ms, int Delta)>(workers.Count * 2);
@@ -325,16 +327,16 @@ public sealed partial class EventTimelineControl
             }
 
             active += delta;
+
             previousMs = ms;
         }
     }
 
-    /// <summary>
-    /// Dims the consume (build) phase of a blocking operator on its bar: the span where it is reading
-    /// its input but has not yet started emitting rows to its parent (a hash build, a sort's run
-    /// formation). The undimmed remainder of the bar is the emit phase. Streaming operators have no
-    /// consume phase and so are left fully solid.
-    /// </summary>
+    /// <remarks>
+    /// Dims the consume (build) phase of a blocking operator on its bar: the span where it is reading its input but has not yet started
+    /// emitting rows to its parent (a hash build, a sort's run formation). The undimmed remainder of the bar is the emit phase. Streaming
+    /// operators have no consume phase and so are left fully solid.
+    /// </remarks>
     private void DrawConsumeShade(SKCanvas canvas, OperatorBar b)
     {
         if (b.Op.BuildPhaseDurationUs <= 0)
@@ -372,9 +374,9 @@ public sealed partial class EventTimelineControl
             return;
         }
 
-        // When the bar is too short for the corner dot to sit inside it (the 3px inset plus the dot's 8px height would
-        // overflow the bottom), draw a full-height colour band down the bar's left edge instead. Clipping to the bar's
-        // rounded rect gives the band the bar's own rounded left corners and keeps its right edge flush inside the bar.
+        // When the bar is too short for the corner dot to sit inside it (the 3px inset plus the dot's 8px height would overflow the
+        // bottom), draw a full-height colour band down the bar's left edge instead. Clipping to the bar's rounded rect gives the band the
+        // bar's own rounded left corners and keeps its right edge flush inside the bar.
         if (b.BarBottom - b.BarTop < ObjectMarkerMargin + 2 * ObjectMarkerRadius)
         {
             var bandWidth = Math.Min(ObjectMarkerBandWidth, b.EndX - b.StartX);
@@ -414,9 +416,9 @@ public sealed partial class EventTimelineControl
     }
 
     /// <summary>
-    /// Traces the clicked operator's rows up to the root: a connector for each child→parent hop, lit
-    /// only over the window the source is emitting (its non-dimmed span). Because emit time only moves
-    /// later up the tree, the lit segments form a rising staircase showing where the flow is held up.
+    /// Traces the clicked operator's rows up to the root: a connector for each child→parent hop, lit only over the window the source is
+    /// emitting (its non-dimmed span). Because emit time only moves later up the tree, the lit segments form a rising staircase showing
+    /// where the flow is held up.
     /// </summary>
     private void DrawRowFlowPath(SKCanvas canvas, List<OperatorBar> bars, int selectedNodeId)
     {
@@ -434,9 +436,11 @@ public sealed partial class EventTimelineControl
             return;
         }
 
-        // The chain selected → … → root.
+        // The chain selected → … → root
         var chain = new List<OperatorBar> { start };
+        
         var current = start;
+
         while (current.Op.ParentNodeId is { } parentId && barByNode.TryGetValue(parentId, out var parent))
         {
             chain.Add(parent);
@@ -510,8 +514,8 @@ public sealed partial class EventTimelineControl
     {
         var opName = planOperator.Name;
 
-        // Operators with no object of their own (joins, sorts, ...) show their logical operator
-        // (e.g. "Inner Join") on the second line instead of leaving it blank.
+        // Operators with no object of their own (joins, sorts, ...) show their logical operator (e.g. "Inner Join") on the second line
+        // instead of leaving it blank.
         var target = planOperator.ObjectName.Length > 0
                      ? planOperator.ObjectName
                      : planOperator.LogicalOperator != planOperator.Name ? planOperator.LogicalOperator : string.Empty;

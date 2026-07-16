@@ -85,6 +85,20 @@ public class LockGrouperTests
                                      && g.Events.Contains(schema1) && g.Events.Contains(schema2));
     }
 
+    [Fact]
+    public void A_Lock_Group_Takes_Its_Anchor_Locks_Sequence_Id()
+    {
+        // Scope selection and grid highlighting range-test SequenceId, so a group left at the default 0 drags any
+        // selected window's minimum down to the start of the trace.
+        var first = Lock(objectId: 42, transactionId: 100, sequenceId: 300, timeUs: 1_000);
+
+        var second = Lock(objectId: 42, transactionId: 100, sequenceId: 400, timeUs: 2_000);
+
+        var group = Assert.IsType<LockGroup>(Assert.Single(LockGrouper.Group([first, second])));
+
+        Assert.Equal(300, group.SequenceId);
+    }
+
     private static LockEvent Lock(int objectId,
                                   long transactionId,
                                   int sequenceId,

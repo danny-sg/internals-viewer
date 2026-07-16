@@ -380,6 +380,7 @@ public static class ReaderGrouper
             Events = members,
             ReadType = kind,
             Pages = pages,
+            SequenceId = spine.SequenceId,
             TimeUs = spine.TimeUs,
             DurationUs = spine.DurationUs,
             DatabaseId = spine.DatabaseId,
@@ -400,8 +401,6 @@ public static class ReaderGrouper
     };
 
     private static bool IsSuspend(LatchEvent e) => e.Name == "latch_suspend_begin";
-
-    private static int PageCountOf(FileEvent f) => Math.Max(1, f.ToPageAddress.PageId - f.FromPageAddress.PageId);
 
     private static bool IsGatherMember(EngineEvent e) => e switch
     {

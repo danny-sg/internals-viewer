@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Consolidation;
@@ -49,6 +50,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
         var xmlBuffer = new char[4096];
 
         var nameBuffer = new char[64];
+
+        var start = Stopwatch.GetTimestamp();
 
         // SequentialAccess required to read GetChars directly into buffer
         await using (var reader = await new SqlCommand(resultsSql, connection)
@@ -113,11 +116,15 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         connection.Close();
 
+        Logger.LogDebug("Read {Count} events in {Duration}", events.Count, Stopwatch.GetElapsedTime(start));
+
         progress?.Report("Processing events");
 
         var consolidatedEvents = await PostProcessEvents(events, connectionString, progress, cancellationToken);
 
         progress?.Report("Matching events to execution plan");
+
+        start = Stopwatch.GetTimestamp();
 
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
         EventPlanNodeMatcher.Match(consolidatedEvents, executionPlans);
@@ -125,6 +132,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
         // Build the operator events bottom-up from each plan and its matched events
         var operatorEvents = executionPlans.SelectMany(plan => new OperatorEventBuilder(plan, consolidatedEvents).Build())
                                            .ToList();
+
+        Logger.LogDebug("Matched events to execution plan in {Duration}", Stopwatch.GetElapsedTime(start));
 
         consolidatedEvents.AddRange(operatorEvents);
 
@@ -153,37 +162,53 @@ public sealed class EventReader(ILogger<EventReader> logger)
                                                             IProgress<string>? progress, 
                                                             CancellationToken cancellationToken)
     {
+   
+
         var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
 
-        Logger.LogDebug("Collapsing intervals");
+        var start = Stopwatch.GetTimestamp();
 
         var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
 
-        Logger.LogDebug("Closing held locks");
+        Logger.LogDebug("Collapsed intervals in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
 
         HeldLockCloser.Close(collapsedEvents);
 
-        Logger.LogDebug("Collapsing lock partitions");
+        Logger.LogDebug("Held locks closed in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
 
         collapsedEvents = LockPartitionCollapser.Collapse(collapsedEvents);
 
-        Logger.LogDebug("Coalescing buffer latches");
+        Logger.LogDebug("Collapsed lock partitions in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
 
         collapsedEvents = BufferLatchCoalescing.Coalesce(collapsedEvents);
 
+        Logger.LogDebug("Coalesced buffer latches in {Duration}", Stopwatch.GetElapsedTime(start));
+
         await GetEventKeyAddresses(collapsedEvents, connectionString, progress, cancellationToken);
 
-        Logger.LogDebug("Grouping reads");
+        start = Stopwatch.GetTimestamp();
 
         var consolidatedEvents = ReaderGrouper.Group(collapsedEvents);
 
-        Logger.LogDebug("Grouping locks");
+        Logger.LogDebug("Grouped reads in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
 
         consolidatedEvents = LockGrouper.Group(consolidatedEvents);
 
-        Logger.LogDebug("Spreading events");
+        Logger.LogDebug("Grouped locks in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
 
         EventSpreader.SpreadEvents(consolidatedEvents);
+
+        Logger.LogDebug("Spread events in {Duration}", Stopwatch.GetElapsedTime(start));
 
         return consolidatedEvents;
     }
@@ -252,8 +277,6 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
             progress?.Report($"Getting lock key hash values for {allocationUnit.DisplayName}");
 
-            var objectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
-
             var hashes = grouping.Select(s => s.Resource.KeyHash ?? string.Empty)
                                  .Where(h => !string.IsNullOrEmpty(h))
                                  .Distinct()
@@ -261,7 +284,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
             Logger.LogDebug("- {Count} keys", hashes.Count);
 
-            var keyHashRowIdentifiers = await KeyHashLookup.GetKeyHashRowIdentifiers(objectName,
+            var keyHashRowIdentifiers = await KeyHashLookup.GetKeyHashRowIdentifiers(allocationUnit.SchemaName,
+                                                                                     allocationUnit.TableName,
                                                                                      hashes,
                                                                                      connectionString,
                                                                                      cancellationToken);

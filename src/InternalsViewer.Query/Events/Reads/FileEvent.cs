@@ -14,9 +14,9 @@ public sealed record FileEvent : PageEngineEvent
 
     public long Size { get; set; }
 
-    public PageAddress FromPageAddress => new PageAddress(FileId, (int)Offset / 8192);
+    public PageAddress FromPageAddress => new PageAddress(FileId, (int)(Offset / 8192));
 
-    public PageAddress ToPageAddress => new PageAddress(FileId, (int)(Offset + Size) / 8192);
+    public PageAddress ToPageAddress => new PageAddress(FileId, (int)((Offset + Size) / 8192));
 
     public override string Description => $"File {(IsRead ? "Read" : "Write")} {PageAddress}";
 

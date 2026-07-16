@@ -219,10 +219,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<QueryResultSet> _resultSets = [];
 
     public QueryResultSet? ActiveResultSet => ResultSets.Count > 0 ? ResultSets[0] : null;
-
-    //[ObservableProperty]
-    //private List<CallstackFrame> _callstacks = [];
-
+    
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CallStackRoots))]
     private CallStackTree? _callStack;
@@ -1032,7 +1029,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Events = [];
         FilteredEvents = [];
         CallStack = null;
-        //Callstacks = [];
         SelectedEvent = null;
         ExecutionPlans = [];
         ResultSets = [];

@@ -28,11 +28,15 @@ public static class HeldLockCloser
     {
         var statementEnd = 0L;
 
+        // The statement ends when the last interval ends — the collapsed stream carries durations, so the tail event (a long read or a
+        // folded hold) reaches past its own start, and a lock acquired at that start is held across it.
         foreach (var e in events)
         {
-            if (e.TimeUs > statementEnd)
+            var end = e.TimeUs + e.DurationUs;
+
+            if (end > statementEnd)
             {
-                statementEnd = e.TimeUs;
+                statementEnd = end;
             }
         }
 

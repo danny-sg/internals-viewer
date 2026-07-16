@@ -33,6 +33,8 @@ public static class BufferLatchCoalescing
         {
             LatchEvent? head = null;
 
+            var tail = default(EngineEvent);
+
             var end = 0L;
 
             foreach (var latch in run.OrderBy(l => l.TimeUs))
@@ -40,6 +42,8 @@ public static class BufferLatchCoalescing
                 if (head is null || latch.TimeUs > end + CoalesceGapUs)
                 {
                     head = latch;
+
+                    tail = TailOf(latch);
 
                     end = latch.TimeUs + latch.DurationUs;
 
@@ -50,6 +54,10 @@ public static class BufferLatchCoalescing
                 end = Math.Max(end, latch.TimeUs + latch.DurationUs);
 
                 head.DurationUs = end - head.TimeUs;
+
+                tail!.FoldedFrom = latch;
+
+                tail = TailOf(latch);
 
                 dropped.Add(latch);
             }
@@ -75,4 +83,16 @@ public static class BufferLatchCoalescing
 
     private static bool IsBufferAcquire(LatchEvent l) =>
         l is { LatchClass: LatchClass.BUF, Name: "latch_acquired", PageAddress: not null };
+
+    // The last link of an event's fold chain — each folded acquire already owns its release through FoldedFrom, so appending
+    // at the tail nests the chain (head -> release -> duplicate -> its release ...) instead of overwriting a link
+    private static EngineEvent TailOf(EngineEvent e)
+    {
+        while (e.FoldedFrom is { } folded)
+        {
+            e = folded;
+        }
+
+        return e;
+    }
 }

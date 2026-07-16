@@ -10,12 +10,17 @@ public sealed class KeyHashLookup(ILogger<KeyHashLookup> logger)
 
     public ILogger<KeyHashLookup> Logger { get; } = logger;
 
-    public static async Task<Dictionary<string, RowIdentifier>> 
-        GetKeyHashRowIdentifiers(string objectName,
+    public static async Task<Dictionary<string, RowIdentifier>>
+        GetKeyHashRowIdentifiers(string schemaName,
+                                 string tableName,
                                  List<string> hashes,
-                                 string connectionString, 
+                                 string connectionString,
                                  CancellationToken cancellationToken)
     {
+        // The names come from the traced database's catalog, so they can legally need quoting (spaces, reserved words,
+        // brackets) — unquoted, [Order Details] parses as [Order] AS [Details] and the whole trace fails.
+        var objectName = $"{QuoteName(schemaName)}.{QuoteName(tableName)}";
+
         await using var connection = new SqlConnection(connectionString);
 
         await connection.OpenAsync(cancellationToken);
@@ -61,4 +66,9 @@ WHERE  %%lockres%% IN ({string.Join(", ", paramNames)})";
 
         return result;
     }
+
+    /// <summary>
+    /// Brackets an identifier with QUOTENAME semantics (embedded closing brackets doubled)
+    /// </summary>
+    private static string QuoteName(string name) => $"[{name.Replace("]", "]]")}]";
 }

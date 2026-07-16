@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Latches;
 
@@ -74,6 +75,31 @@ public class BufferLatchCoalescingTests
         var result = BufferLatchCoalescing.Coalesce([hobt1, hobt2]);
 
         Assert.Equal(2, result.Count);
+    }
+
+    [Fact]
+    public void Coalesced_Acquires_Stay_Reachable_Through_The_Heads_Fold_Chain()
+    {
+        // The dropped duplicates leave the stream, but their call stacks (and their own folded releases) are still this
+        // page visit's work — the crop's keep set expands through SelfAndOwned, so the head must own them.
+        var head = Latch(page: 100, timeUs: 1_000, durationUs: 5);
+
+        var duplicate = Latch(page: 100, timeUs: 1_200, durationUs: 8);
+
+        var release = Latch(page: 100, timeUs: 1_208, durationUs: 8);
+
+        release.Name = "latch_released";
+
+        duplicate.FoldedFrom = release; // as IntervalCollapser leaves a folded hold
+
+        var result = BufferLatchCoalescing.Coalesce([head, duplicate]);
+
+        Assert.Same(head, Assert.Single(result));
+
+        var owned = head.SelfAndOwned().ToList();
+
+        Assert.Contains(duplicate, owned);
+        Assert.Contains(release, owned);
     }
 
     private static LatchEvent Latch(int page,

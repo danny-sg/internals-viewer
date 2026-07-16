@@ -154,19 +154,4 @@ public sealed class CallStackNode
             yield return node;
         }
     }
-
-    /// <summary>
-    /// Total events at this node and everything beneath it (for icicle-style weighting)
-    /// </summary>
-    public int SubtreeEventCount()
-    {
-        var count = Events.Count;
-
-        foreach (var child in Children.Values)
-        {
-            count += child.SubtreeEventCount();
-        }
-
-        return count;
-    }
 }

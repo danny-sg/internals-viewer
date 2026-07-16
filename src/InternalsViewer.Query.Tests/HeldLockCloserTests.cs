@@ -176,6 +176,23 @@ public class HeldLockCloserTests
         Assert.Equal(19_000, key.DurationUs); // statement end
     }
 
+    [Fact]
+    public void The_Statement_End_Extends_To_The_Last_Events_Interval_End()
+    {
+        // The collapsed stream carries durations, so the statement runs until the tail event's interval ENDS. A lock
+        // acquired at the tail's start would otherwise close as the invisible zero-length hold this class exists to fix.
+        var key = Lock(LockResourceType.Key, LockMode.RS_U, txn: 1, timeUs: 20_000);
+
+        var tail = Other(timeUs: 20_000);
+
+        tail.DurationUs = 5_000;
+
+        HeldLockCloser.Close([key, tail]);
+
+        Assert.Equal(5_000, key.DurationUs);
+        Assert.Equal("Lock", key.Name);
+    }
+
     private static LockEscalationEvent Escalation(long txn, long timeUs) => new()
     {
         Name = "lock_escalation",

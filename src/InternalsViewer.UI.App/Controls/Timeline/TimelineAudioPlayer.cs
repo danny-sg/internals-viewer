@@ -97,6 +97,10 @@ internal sealed class TimelineAudioPlayer : IDisposable
     private bool _initialized;
     private bool _disposed;
 
+    // Guards the voice dictionaries against Dispose() racing the background build: the build publishes under it and
+    // Dispose sweeps under it, so neither ever enumerates a dictionary the other is mutating.
+    private readonly object _sync = new();
+
     /// <summary>Returns the pentatonic frequency (Hz) for the given object id.</summary>
     public static double FrequencyForObject(int objectId)
     {
@@ -130,48 +134,76 @@ internal sealed class TimelineAudioPlayer : IDisposable
         // publish _initialized.
         await Task.Run(BuildVoicesAsync);
 
-        if (_disposed)
+        if (!_disposed)
         {
-            // Disposed mid-build - Dispose() couldn't see the voices finished after it ran, so clean them up here.
-            DisposePlayers();
-
-            return;
+            _initialized = true;
         }
-
-        _initialized = true;
     }
 
     private async Task BuildVoicesAsync()
     {
+        var readPools = new Dictionary<double, MediaPlayer[]>();
+
+        var latchPools = new Dictionary<double, MediaPlayer[]>();
+
         foreach (var frequencyHz in PentatonicNotes)
         {
-            _playersByFrequency[frequencyHz] = await BuildPlayerPool(BuildWav(frequencyHz, 
-                                                                              Waveform.Sine, 
-                                                                              AttackSeconds, 
-                                                                              DecaySeconds, 
-                                                                              ReadPan, 
-                                                                              Amplitude),
-                                                                     PerFrequencyPoolSize);
-            _poolIndexByFrequency[frequencyHz] = 0;
+            readPools[frequencyHz] = await BuildPlayerPool(BuildWav(frequencyHz,
+                                                                    Waveform.Sine,
+                                                                    AttackSeconds,
+                                                                    DecaySeconds,
+                                                                    ReadPan,
+                                                                    Amplitude),
+                                                           PerFrequencyPoolSize);
 
-            _latchPlayersByFrequency[frequencyHz] = await BuildPlayerPool(BuildWav(frequencyHz, 
-                                                                                   Waveform.Square, 
-                                                                                   AttackSeconds, 
-                                                                                   LatchDecaySeconds, 
-                                                                                   LatchPan, 
-                                                                                   Amplitude),
-                                                                          PerFrequencyPoolSize);
-            _latchPoolIndexByFrequency[frequencyHz] = 0;
+            latchPools[frequencyHz] = await BuildPlayerPool(BuildWav(frequencyHz,
+                                                                     Waveform.Square,
+                                                                     AttackSeconds,
+                                                                     LatchDecaySeconds,
+                                                                     LatchPan,
+                                                                     Amplitude),
+                                                            PerFrequencyPoolSize);
         }
 
-        _rumblePlayers = await BuildPlayerPool(BuildWav(RumbleFrequency, 
-                                                        Waveform.Rumble, 
-                                                        RumbleAttackSeconds, 
-                                                        RumbleDecaySeconds, 
-                                                        RumblePan, 
+        var rumblePool = await BuildPlayerPool(BuildWav(RumbleFrequency,
+                                                        Waveform.Rumble,
+                                                        RumbleAttackSeconds,
+                                                        RumbleDecaySeconds,
+                                                        RumblePan,
                                                         RumbleAmplitude),
                                                RumblePoolSize);
-        _rumblePoolIndex = 0;
+
+        // The voices are built into locals and published in one step: a Dispose() that ran mid-build finds the shared
+        // dictionaries still empty (this branch cleans up the finished build), and one that runs later sweeps the
+        // complete set.
+        lock (_sync)
+        {
+            if (_disposed)
+            {
+                DisposePools(readPools.Values);
+
+                DisposePools(latchPools.Values);
+
+                DisposePools([rumblePool]);
+
+                return;
+            }
+
+            foreach (var (frequencyHz, pool) in readPools)
+            {
+                _playersByFrequency[frequencyHz] = pool;
+                _poolIndexByFrequency[frequencyHz] = 0;
+            }
+
+            foreach (var (frequencyHz, pool) in latchPools)
+            {
+                _latchPlayersByFrequency[frequencyHz] = pool;
+                _latchPoolIndexByFrequency[frequencyHz] = 0;
+            }
+
+            _rumblePlayers = rumblePool;
+            _rumblePoolIndex = 0;
+        }
     }
 
     private static async Task<MediaPlayer[]> BuildPlayerPool(byte[] wavBytes, int poolSize)
@@ -356,37 +388,36 @@ internal sealed class TimelineAudioPlayer : IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
+        lock (_sync)
         {
-            return;
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+
+            DisposePlayers();
         }
-
-        _disposed = true;
-
-        DisposePlayers();
     }
 
     private void DisposePlayers()
     {
-        foreach (var players in _playersByFrequency.Values)
+        DisposePools(_playersByFrequency.Values);
+
+        DisposePools(_latchPlayersByFrequency.Values);
+
+        DisposePools([_rumblePlayers]);
+    }
+
+    private static void DisposePools(IEnumerable<MediaPlayer[]> pools)
+    {
+        foreach (var pool in pools)
         {
-            foreach (var player in players)
+            foreach (var player in pool)
             {
                 player.Dispose();
             }
-        }
-
-        foreach (var players in _latchPlayersByFrequency.Values)
-        {
-            foreach (var player in players)
-            {
-                player.Dispose();
-            }
-        }
-
-        foreach (var player in _rumblePlayers)
-        {
-            player.Dispose();
         }
     }
 }

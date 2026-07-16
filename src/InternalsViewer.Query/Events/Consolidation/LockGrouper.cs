@@ -97,6 +97,7 @@ public static class LockGrouper
         {
             Name = isSchema ? "Object Schema Locks" : "Object Locks",
             Events = locks,
+            SequenceId = representative.SequenceId,
             TimeUs = start,
             DurationUs = Math.Max(0, end - start),
             Timestamp = representative.Timestamp,

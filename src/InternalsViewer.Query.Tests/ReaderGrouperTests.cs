@@ -209,6 +209,20 @@ public class ReaderGrouperTests
         Assert.Contains(recycled, cached.Events);
     }
 
+    [Fact]
+    public void A_Read_Group_Takes_Its_Spines_Sequence_Id()
+    {
+        // Scope selection and grid highlighting range-test SequenceId, so a group left at the default 0 drags any
+        // selected window's minimum down to the start of the trace.
+        var acquire = BufferLatch("latch_acquired", page: new PageAddress(1, 472), timeUs: 1_000, durationUs: 50);
+
+        acquire.SequenceId = 700;
+
+        var group = Assert.IsType<ReadEventGroup>(Assert.Single(ReaderGrouper.Group([acquire])));
+
+        Assert.Equal(700, group.SequenceId);
+    }
+
     private static LatchEvent Suspend(ulong latchAddress, PageAddress page, long timeUs, long durationUs) => new()
     {
         Name = "latch_suspend_begin",

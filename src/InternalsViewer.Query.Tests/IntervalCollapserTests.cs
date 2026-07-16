@@ -3,6 +3,7 @@ using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Waits;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -170,6 +171,97 @@ public class IntervalCollapserTests
         var result = IntervalCollapser.Collapse([acquire]);
 
         Assert.Null(Assert.IsType<LatchEvent>(Assert.Single(result)).FoldedFrom);
+    }
+
+    [Fact]
+    public void Concurrent_Waits_On_One_Resource_Pair_Per_Task()
+    {
+        // Two parallel workers wait on the same resource with overlapping intervals. Pairing per resource alone would
+        // zip the first begin with the first end regardless of owner, swapping the measured durations between them.
+        var beginA = Wait(task: 1, resource: 900, isEnd: false, timeUs: 1_000, durationUs: 0);
+
+        var beginB = Wait(task: 2, resource: 900, isEnd: false, timeUs: 1_100, durationUs: 0);
+
+        var endB = Wait(task: 2, resource: 900, isEnd: true, timeUs: 1_200, durationUs: 100);
+
+        var endA = Wait(task: 1, resource: 900, isEnd: true, timeUs: 1_400, durationUs: 400);
+
+        var result = IntervalCollapser.Collapse([beginA, beginB, endB, endA]);
+
+        Assert.Equal(400, Assert.Single(result.OfType<WaitEvent>(), w => w.TaskAddress == 1).DurationUs);
+        Assert.Equal(100, Assert.Single(result.OfType<WaitEvent>(), w => w.TaskAddress == 2).DurationUs);
+    }
+
+    [Fact]
+    public void Concurrent_Shared_Holds_On_One_Latch_Pair_Per_Task()
+    {
+        // Shared-mode latches are held by several tasks at once on one address, so acquire/release pair per owning
+        // task — per address alone the overlapping holds cross-pair.
+        var acquireA = TaskLatch("latch_acquired", task: 1, latchAddress: 500, timeUs: 1_000, durationUs: 0);
+
+        var acquireB = TaskLatch("latch_acquired", task: 2, latchAddress: 500, timeUs: 1_100, durationUs: 0);
+
+        var releaseB = TaskLatch("latch_released", task: 2, latchAddress: 500, timeUs: 1_200, durationUs: 100);
+
+        var releaseA = TaskLatch("latch_released", task: 1, latchAddress: 500, timeUs: 1_400, durationUs: 400);
+
+        var result = IntervalCollapser.Collapse([acquireA, acquireB, releaseB, releaseA]);
+
+        Assert.Equal(400, Assert.Single(result.OfType<LatchEvent>(), l => l.TaskAddress == 1).DurationUs);
+        Assert.Equal(100, Assert.Single(result.OfType<LatchEvent>(), l => l.TaskAddress == 2).DurationUs);
+    }
+
+    [Fact]
+    public void File_Reads_On_Different_Files_At_The_Same_Offset_Pair_Per_File()
+    {
+        // The same offset exists in every database file, so a multi-file scan has concurrent reads at one offset. Each
+        // begin must take its own file's completed size, not whichever completion sorts first.
+        var beginFile1 = new FileEvent { Name = "file_read", IsRead = true, FileId = 1, Offset = 81_920, TimeUs = 1_000 };
+
+        var beginFile3 = new FileEvent { Name = "file_read", IsRead = true, FileId = 3, Offset = 81_920, TimeUs = 1_100 };
+
+        var completedFile3 = new FileEvent { Name = "file_read_completed", IsRead = true, FileId = 3, Offset = 81_920, Size = 8_192, TimeUs = 1_200 };
+
+        var completedFile1 = new FileEvent { Name = "file_read_completed", IsRead = true, FileId = 1, Offset = 81_920, Size = 4 * 8_192, TimeUs = 1_400 };
+
+        var result = IntervalCollapser.Collapse([beginFile1, beginFile3, completedFile3, completedFile1]);
+
+        Assert.Equal(4 * 8_192, Assert.Single(result.OfType<FileEvent>(), f => f.FileId == 1).Size);
+        Assert.Equal(8_192, Assert.Single(result.OfType<FileEvent>(), f => f.FileId == 3).Size);
+    }
+
+    [Fact]
+    public void A_Write_Completion_Does_Not_Close_A_Read_At_The_Same_Offset()
+    {
+        // Only file_write_completed is captured (no write begin), so every write completion is an orphan end — it must
+        // not steal a read begin's slot at the same offset.
+        var readBegin = new FileEvent { Name = "file_read", IsRead = true, FileId = 1, Offset = 81_920, TimeUs = 1_000 };
+
+        var writeCompleted = new FileEvent { Name = "file_write_completed", IsRead = false, FileId = 1, Offset = 81_920, Size = 8_192, TimeUs = 1_100 };
+
+        var result = IntervalCollapser.Collapse([readBegin, writeCompleted]);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(0, Assert.Single(result.OfType<FileEvent>(), f => f.IsRead).Size);
+    }
+
+    private static WaitEvent Wait(ulong task, ulong resource, bool isEnd, long timeUs, long durationUs) => new()
+    {
+        Name = "Wait",
+        TaskAddress = task,
+        WaitResource = resource,
+        IsEnd = isEnd,
+        TimeUs = timeUs,
+        DurationUs = durationUs,
+    };
+
+    private static LatchEvent TaskLatch(string name, ulong task, ulong latchAddress, long timeUs, long durationUs)
+    {
+        var latch = Latch(name, latchAddress, timeUs, durationUs);
+
+        latch.TaskAddress = task;
+
+        return latch;
     }
 
     private static LatchEvent Latch(string name, ulong latchAddress, long timeUs, long durationUs) => new()
