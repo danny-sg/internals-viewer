@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Windows.UI;
+using InternalsViewer.UI.App.Controls.Timeline.Renderers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
-using SkiaSharp;
 using SkiaSharp.Views.Windows;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Latches;
@@ -22,49 +22,12 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 /// </summary>
 public sealed partial class EventTimelineControl : Grid, IDisposable
 {
-
-
-
-    private const double HitArea = 7;
-    private const long DoubleClickMs = 300;
-
-    private const float VerticalLabelPad = 1f;
-
     // Wider marker for sparse rows (see TimelineRowSet.IsSparse) so their few ticks stay easy to see.
     private const float SparseMarkerWidth = 4f;
 
-    // Pixel separation between a read's per-page return rails, which bunch at its end (the pages hit the buffer together
-    // on I/O completion) — purely for legibility, not real timing.
-    private const float PageRailGapPx = 3f;
-
-    // Minimum start-to-end pixel gap for the dotted call rail to be worth drawing: on a short read the call rail (at the
-    // start) and the solid return rail (at the end) would sit on top of each other, so below this the return rail alone
-    // stands for the read.
-    private const float MinCallRailGapPx = 4f;
-
-    // Opacity of the I/O trace extensions (Trace I/O mode) — faint so they read as a background hint.
-    private const byte TraceAlpha = 90;
-
-    // When an operator is selected, markers and trace extensions belonging to other operators fade to
-    // this alpha so the selected block's I/O and trace lines stand out.
-    private const byte FocusedDimAlpha = 70;
-
-    // Locks are drawn semi-transparent so concurrent, overlapping holds all show through instead of the longest one
-    // opaquely hiding the shorter ones beneath it.
-    private const byte LockOverlayAlpha = 150;
-
-    // Lock escalation granularity levels for the staircase: row (rid/key) at the bottom, page in the middle, object
-    // (object/hobt) at the top — escalation climbs these over time.
-    private const int LockLevels = 3;
-
-    // The escalation instant marker takes the colour of the mode it escalates to, over a dark surround that keeps it
-    // from smearing into a lock band of that same colour (see DrawLockEscalations).
-    private const float EscalationCaretSize = 4f;
-    private const float EscalationOutlineWidth = 1.5f;
-    private static readonly SKColor EscalationOutlineColour = new(10, 10, 10, 235);
-
-    private const byte DurationOverlayAlpha = 96;
-
+    // Default (dense-row) width of a point-event tick.
+    private const float MarkerWidth = 1f;
+    
     private const double MinZoom = 1.0;
     private const double MaxZoom = 400.0;
     private const double ZoomStep = 1.15;
@@ -80,56 +43,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(PlayTickMs);
 
-    private static readonly SKColor PlayheadColour = new(230, 60, 60);
-    private static readonly SKColor HandleColour = new(95, 95, 95);
-    private static readonly SKColor StatementColour = new(130, 130, 130);
-
-    private static readonly SKColor OperatorLabelColour = new(235, 235, 235);
-
-    private const float OperatorLineMargin = 3f;
-
-    // Extra per-block padding added in Trace mode so stacked bars leave a gap for the trace lines.
-    private const float TraceStackGap = 12f;
-
-    // Buffer-category operators (spool/sort/exchange) are drawn as a thin collapsed bar.
-    private const float BufferHeightScale = 0.3f;
-
-    // Data-access (scan/seek) bars are sized within their slot by rows processed; this is the smallest
-    // fill fraction so even a tiny scan stays visible.
-    private const float DataAccessMinFill = 0.15f;
-
-    // Parallel operators draw one sub-lane per thread inside the bar; below this lane height the
-    // threads are shown as a concurrency-density fill instead. A thin gap separates adjacent lanes.
-    private const float MinThreadLaneHeight = 2.5f;
-    private const float ThreadLaneGap = 1f;
-
-    private const float MinLabelBarHeight = 11f;
-    private const float MinLabelBarWidth = 26f;
-
-    private const float OperatorMaxFont = 12f;
-    private const float OperatorMinFont = 7f;
-
-    private const float ObjectMarkerMargin = 3f;
-    private const float ObjectMarkerRadius = 6f;
-    private const float ObjectMarkerBandWidth = 12f;
-
-    private const float StatementBandWeight = 0.5f;
-
-    private const float MinCostWeight = 0.35f;
-    private const float MaxCostWeight = 1.5f;
-
-    private const float GradientLift = 0.04f;
-
-    private static readonly SKColor ConsumeShadeColour = new(0, 0, 0, 115);
-
-    private const float OperatorLabelGapFraction = 0.5f;
-
-    private const float TwoLineGap = 2f;
-
-    private static readonly SKColor FlowConnectorColour = new(120, 200, 255, 70);
-    private static readonly SKColor FlowPathColour = new(200, 200, 200, 200);
-    private static readonly SKColor FlowSelectedColour = new(255, 255, 255, 230);
-
     private readonly TimelineRowSet _rows = new();
 
     private bool _showThreads;
@@ -142,96 +55,22 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private readonly Popup _toolTip;
     private readonly TextBlock _toolTipText;
 
-    private readonly List<(SKRect Bounds, EngineEvent Event, string? Label)> _hitRegions = [];
+    private readonly List<HitRegion> _hitRegions = [];
     private EngineEvent? _hoverEvent;
     private string? _hoverLabel;
 
-    private int? _selectedNodeId;
+    // The selected operator and the object it accesses; mutated in place so the renderers handed a reference to it at
+    // construction always read the current selection.
+    private readonly CurrentSelection _selection = new();
 
-    private string _selectedSchema = string.Empty;
-    private string _selectedTable = string.Empty;
-
-    private readonly SKFont _labelFont = new(SKTypeface.Default, 10f);
-
-    private readonly SKFont _operatorFont = new(SKTypeface.Default, 12f);
-    private readonly SKFont _operatorBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold),
-                                                    10f);
-
-    private readonly SKPaint _labelPaint = new()
-    {
-        Color = SKColors.LightGray,
-        IsAntialias = true,
-    };
-
-    private readonly SKPaint _rowBackgroundPaint = new() { Style = SKPaintStyle.Fill };
-    
-    private readonly SKPaint _markerPaint = new() { Style = SKPaintStyle.Fill };
-    
-    private readonly SKPaint _operatorPaint = new()
-    {
-        Color = SKColors.LimeGreen,
-        Style = SKPaintStyle.Fill,
-        IsAntialias = true,
-    };
-
-    private readonly SKPaint _operatorTextPaint = new() { IsAntialias = true };
-
-    private readonly SKPaint _playheadPaint = new()
-    {
-        Color = PlayheadColour,
-        StrokeWidth = 2,
-        Style = SKPaintStyle.Stroke,
-        IsAntialias = false,
-    };
-
-    private readonly SKPaint _playheadFill = new()
-    {
-        Color = PlayheadColour,
-        Style = SKPaintStyle.Fill,
-        IsAntialias = true,
-    };
-
-    private readonly SKPaint _handlePaint = new()
-    {
-        Color = HandleColour,
-        Style = SKPaintStyle.Fill,
-        IsAntialias = true,
-    };
-
-    private readonly SKPaint _clipDimPaint = new()
-    {
-        Color = new SKColor(0, 0, 0, 120),
-        Style = SKPaintStyle.Fill,
-    };
-
-    private readonly SKPaint _tickPaint = new()
-    {
-        Color = new SKColor(110, 110, 110),
-        StrokeWidth = 1,
-        Style = SKPaintStyle.Stroke,
-        IsAntialias = false,
-    };
-
-    private readonly SKPaint _traceLayerPaint = new() { Color = SKColors.White.WithAlpha(TraceAlpha) };
-
-    private readonly SKPaint _flowConnectorPaint = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
-    
-    private readonly SKPaint _outlinePaint = new() { Style = SKPaintStyle.Stroke, IsAntialias = true };
-
-    private readonly SKPaint _readBoundaryPaint = new()
-    {
-        StrokeWidth = 1,
-        Style = SKPaintStyle.Stroke,
-        IsAntialias = false,
-        PathEffect = SKPathEffect.CreateDash([2f, 2f], 0f),
-    };
-
-    private readonly SKPaint _readReturnPaint = new()
-    {
-        StrokeWidth = 1.5f,
-        Style = SKPaintStyle.Stroke,
-        IsAntialias = false,
-    };
+    // Shared paint palette and the carved-out lane renderers that draw from it; disposed with the control.
+    private readonly RenderResource _renderResource = new();
+    private readonly LockRenderer _lockRenderer;
+    private readonly MarkerRenderer _markerRenderer;
+    private readonly TraceRenderer _traceRenderer;
+    private readonly OperatorRenderer _operatorRenderer;
+    private readonly TimelineRenderer _timelineRenderer;
+    private readonly OverlayRenderer _overlayRenderer;
 
     private List<EngineEvent> _sortedEvents = [];
 
@@ -460,6 +299,13 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     public EventTimelineControl()
     {
+        _lockRenderer = new LockRenderer(_renderResource, _selection, _hitRegions);
+        _markerRenderer = new MarkerRenderer(_renderResource, _selection, _hitRegions);
+        _traceRenderer = new TraceRenderer(_renderResource, _selection);
+        _operatorRenderer = new OperatorRenderer(_renderResource, _selection, _hitRegions);
+        _timelineRenderer = new TimelineRenderer(_renderResource);
+        _overlayRenderer = new OverlayRenderer(_renderResource);
+
         Background = new SolidColorBrush(Colors.Transparent);
 
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -467,6 +313,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         _transport = new TimelineTransport();
+
         _transport.PlayPauseRequested += OnPlayPauseRequested;
         _transport.StepRequested += OnStepRequested;
         _transport.ThreadsToggled += OnThreadsToggled;
@@ -503,6 +350,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
             FontSize = 11,
             Margin = new Thickness(6, 3, 6, 3),
         };
+
         _toolTip = new Popup
         {
             IsHitTestVisible = false,
@@ -533,9 +381,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     {
         _zoom = MinZoom;
         _scrollX = 0;
-        _selectedNodeId = null;
-        _selectedSchema = string.Empty;
-        _selectedTable = string.Empty;
+        _selection.Clear();
 
         _selectionActivated = false;
         _playheadTime = _minTime;
@@ -573,30 +419,13 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         _overlay.SizeChanged -= OnOverlaySizeChanged;
         _overlay.ContextRequested -= OnContextRequested;
 
-        _labelFont.Dispose();
-        _operatorFont.Dispose();
-        _operatorBoldFont.Dispose();
-
         _rows.Dispose();
 
-        _labelPaint.Dispose();
-        _rowBackgroundPaint.Dispose();
-        _markerPaint.Dispose();
-        _operatorPaint.Dispose();
-        _operatorTextPaint.Dispose();
-        _playheadPaint.Dispose();
-        _playheadFill.Dispose();
-        _handlePaint.Dispose();
-        _clipDimPaint.Dispose();
-        _tickPaint.Dispose();
-        _separatorPaint.Dispose();
-        _traceLayerPaint.Dispose();
-        _flowConnectorPaint.Dispose();
-        _outlinePaint.Dispose();
-        _readBoundaryPaint.Dispose();
-        _readReturnPaint.Dispose();
-
-        _pathBuilder.Dispose();
+        _lockRenderer.Dispose();
+        _operatorRenderer.Dispose();
+        _timelineRenderer.Dispose();
+        _overlayRenderer.Dispose();
+        _renderResource.Dispose();
 
         _staticLayer?.Dispose();
 

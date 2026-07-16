@@ -132,5 +132,5 @@ public sealed partial class EventTimelineControl
             : 0;
     }
 
-    private void RebuildRows() => _rows.Rebuild(_sortedEvents, ShowLocks, ShowLatches, ShowWaits, _labelFont);
+    private void RebuildRows() => _rows.Rebuild(_sortedEvents, ShowLocks, ShowLatches, ShowWaits, _renderResource.LabelFont);
 }

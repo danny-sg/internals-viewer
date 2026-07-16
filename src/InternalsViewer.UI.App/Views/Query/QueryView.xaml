@@ -49,6 +49,9 @@
                             <MenuFlyoutSeparator/>
                             <MenuFlyoutItem Text="Reset Layout"
                                             Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
+                            <MenuFlyoutSeparator/>
+                            <ToggleMenuFlyoutItem Text="Instructions"
+                                                  IsChecked="{x:Bind ViewModel.Layout.IsInstructionsVisible, Mode=TwoWay}"/>
                         </MenuBarItem>
 
                         <MenuBarItem Title="Query">

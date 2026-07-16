@@ -33,7 +33,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
 
     public DockLayoutViewModel Dock { get; }
 
-    /// <param name="content">The data context the tab document views bind to (the owning query view model).</param>
+    /// <param name="content">
+    /// The data context the tab document views bind to (the owning query view model).
+    /// </param>
     public QueryLayoutViewModel(object content)
     {
         _documentsByKey = new Dictionary<string, DocumentViewModel>
@@ -125,7 +127,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
 
     partial void OnIsTimelineVisibleChanged(bool value) => Changed?.Invoke();
 
-    /// <summary>Serialises the current dock tree for persistence</summary>
+    /// <summary>
+    /// Serialises the current dock tree for persistence
+    /// </summary>
     public DockNode SerializeRoot() => DockLayoutSerializer.Serialize(Dock.Root);
 
     /// <summary>Restores a persisted dock tree; returns false (leaving the layout untouched) if it can't be rebuilt</summary>

@@ -1,10 +1,6 @@
 using System;
 using System.Linq;
-using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.Locks;
-using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Controls.Timeline.Renderers;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
@@ -15,26 +11,19 @@ public sealed partial class EventTimelineControl
     private const float RulerBandHeight = 18f;
     private const float HandleBandHeight = 16f;
     private const float MarkerStripHeight = RulerBandHeight + HandleBandHeight;
-    private const float HandleWidth = 7f;
     private const float HandleHeight = 8f;
     private const float HandleGap = 13f;
     private const float TriangleHalfWidth = 9f;
     private const float RowLabelWidth = 36f;
     private const float RowPadding = 2f;
 
-    private const float MinLabelGap = 1f;
-
     private SKPicture? _staticLayer;
 
     private StaticLayerKey _staticLayerKey;
 
-    private readonly SKPathBuilder _pathBuilder = new();
-
     private readonly SKColor _laneColour = new(30, 30, 30, 220);
 
     private readonly SKColor _alternateLaneColour = new(44, 44, 44, 220);
-
-    private readonly SKPaint _separatorPaint = new() { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
@@ -99,31 +88,9 @@ public sealed partial class EventTimelineControl
             totalTop += rowHeights[r];
         }
 
-        for (var r = 0; r < rowCount; r++)
-        {
-            var y = rowTops[r];
-            var rowHeight = rowHeights[r];
+        var frame = BuildFrame(rowTops, rowHeights);
 
-            _rowBackgroundPaint.Color = r % 2 == 0
-                                        ? _laneColour
-                                        : _alternateLaneColour;
-
-            canvas.DrawRect(0, y, w, rowHeight, _rowBackgroundPaint);
-
-            // The split Read band labels its two lanes (Buffer / Disk) when tall enough; every other row (and a Read
-            // row too short for three labels) keeps its single centred, left-aligned label.
-            if (rows[r].EventType != typeof(ReadEventGroup) || !TryDrawReadRowLabels(canvas, y, rowHeight))
-            {
-                var blob = _rows.LabelBlob(r);
-
-                if (blob is not null)
-                {
-                    canvas.DrawText(blob, 2, y + rowHeight / 2 + _labelFont.Size / 2, _labelPaint);
-                }
-            }
-
-            canvas.DrawLine(0, y + rowHeight, w, y + rowHeight, _separatorPaint);
-        }
+        _timelineRenderer.DrawRows(canvas, frame);
 
         _hitRegions.Clear();
 
@@ -136,107 +103,46 @@ public sealed partial class EventTimelineControl
 
         canvas.ClipRect(new SKRect(RowLabelWidth, 0, w, h));
 
-        for (var i = 0; i < _sortedEvents.Count; i++)
-        {
-            var sourceEvent = _sortedEvents[i];
+        _markerRenderer.Draw(canvas, frame);
 
-            // Locks (grouped and ungrouped) are drawn by DrawLockGroups as the category-banded Lock lane, not here.
-            if (sourceEvent is ExecutionOperatorEvent or LockEvent)
-            {
-                continue;
-            }
+        _lockRenderer.Draw(canvas, frame);
 
-            var rowIndex = _rows.IndexOf(sourceEvent);
+        var operatorBars = BuildOperatorBars(rowTops, rowHeights);
 
-            if (rowIndex < 0)
-            {
-                continue;
-            }
+        // Traces first so the operator bars paint over them (the rails drop from a bar's edge).
+        _traceRenderer.Draw(canvas, frame, operatorBars);
 
-            var rowTop = rowTops[rowIndex];
-            var innerTop = rowTop + RowPadding;
-            var innerHeight = rowHeights[rowIndex] - RowPadding * 2;
+        _operatorRenderer.Draw(canvas, frame, operatorBars);
 
-            float markerTop;
-            float markerHeight;
-
-            // The Read lane holds only ReadEventGroup; nulling the category routes it through the per-node colour
-            // provider (Kind-based) instead of the flat category tint used by the mixed Wait/Latch lanes.
-            var category = sourceEvent is ReadEventGroup ? null : sourceEvent.Category;
-
-            if (sourceEvent is ReadEventGroup readGroup)
-            {
-                // The read band is split into two lanes: cached (buffer-pool) reads on the top half, non-cached
-                // (physical) reads on the bottom half.
-                var laneHeight = innerHeight / 2f;
-
-                markerTop = innerTop + (readGroup.ReadType == ReadType.Cached ? 0f : laneHeight);
-                markerHeight = Math.Max(2f, laneHeight - 1f);
-            }
-            else if (category.HasValue)
-            {
-                var stepHeight = innerHeight / EventCategoryClassifier.CategoryCount;
-                var step = (int)category.Value;
-
-                markerTop = innerTop + step * stepHeight;
-                markerHeight = Math.Max(2f, stepHeight - 1f);
-            }
-            else
-            {
-                markerTop = innerTop;
-                markerHeight = innerHeight;
-            }
-
-            var markerColor = GetMarkerColor(sourceEvent, rowIndex, category);
-
-            var markerWidth = RowMarkerWidth(rowIndex);
-
-            var startX = TimeToX(_times[i]);
-
-            var hasDuration = sourceEvent.DurationUs > 0;
-
-            var endX = hasDuration
-                ? TimeToX(_times[i] + DurationMs(sourceEvent))
-                : startX + markerWidth;
-
-            if (hasDuration && endX < startX + markerWidth)
-            {
-                endX = startX + markerWidth;
-            }
-
-            if (endX < RowLabelWidth - SparseMarkerWidth || startX > w)
-            {
-                continue;
-            }
-
-            if (hasDuration)
-            {
-                _markerPaint.Color = markerColor.WithAlpha(Math.Min(markerColor.Alpha, DurationOverlayAlpha));
-
-                canvas.DrawRect(startX, markerTop, endX - startX, markerHeight, _markerPaint);
-            }
-
-            _markerPaint.Color = markerColor;
-
-            // A read is considered actioned at its end (the row is returned there), so its solid tick sits at the end
-            // edge to line up with the solid return rail; other lanes keep the tick at the event's start.
-            var tickX = sourceEvent is ReadEventGroup && hasDuration ? endX - markerWidth : startX;
-
-            canvas.DrawRect(tickX, markerTop, markerWidth, markerHeight, _markerPaint);
-
-            _hitRegions.Add((new SKRect(startX - 3, markerTop, endX + 3, markerTop + markerHeight), sourceEvent, null));
-        }
-
-        DrawLockGroups(canvas, rowTops, rowHeights);
-
-        DrawOperatorLines(canvas, rowTops, rowHeights);
-
-        DrawRuler(canvas);
+        _timelineRenderer.DrawRuler(canvas, frame);
 
         canvas.Restore();
 
         return recorder.EndRecording();
     }
+
+    // Snapshots the per-paint data and geometry the lane renderers draw from: the event data, this frame's row layout,
+    // and the current zoom/scroll captured in TimeToX.
+    private TimelineFrame BuildFrame(float[] rowTops, float[] rowHeights) => new()
+    {
+        Events = _sortedEvents,
+        Times = _times,
+        Rows = _rows,
+        RowTops = rowTops,
+        RowHeights = rowHeights,
+        CanvasWidth = CanvasWidth,
+        RowLabelWidth = RowLabelWidth,
+        RowPadding = RowPadding,
+        AxisUnitsPerMs = AxisUnitsPerMs,
+        TimeToX = TimeToX,
+        RowMarkerWidth = RowMarkerWidth,
+        ColourProvider = ColourProvider,
+        ShowThreads = _showThreads,
+        LaneColour = _laneColour,
+        AlternateLaneColour = _alternateLaneColour,
+        MinTime = _minTime,
+        XToTime = XToTime,
+    };
 
     /// <summary>
     /// Draws the parts that move independently of the cached static layer
@@ -251,48 +157,22 @@ public sealed partial class EventTimelineControl
             return;
         }
 
-        var rowsTop = MarkerStripHeight;
-        var rowsHeight = h - rowsTop;
+        var overlay = new TimelineOverlay(SelectionActive,
+                                          Math.Min(TimeToX(_startTime), TimeToX(_endTime)),
+                                          Math.Max(TimeToX(_startTime), TimeToX(_endTime)),
+                                          StartDrawX,
+                                          EndDrawX,
+                                          PlayheadX,
+                                          EffectiveToMs(_playheadTime));
 
-        canvas.Save();
-
-        canvas.ClipRect(new SKRect(RowLabelWidth, 0, w, h));
-
-        if (SelectionActive)
-        {
-            var lo = Math.Min(TimeToX(_startTime), TimeToX(_endTime));
-            var hi = Math.Max(TimeToX(_startTime), TimeToX(_endTime));
-
-            if (lo > RowLabelWidth)
-            {
-                canvas.DrawRect(RowLabelWidth, rowsTop, lo - RowLabelWidth, rowsHeight, _clipDimPaint);
-            }
-
-            if (hi < w)
-            {
-                canvas.DrawRect(hi, rowsTop, w - hi, rowsHeight, _clipDimPaint);
-            }
-        }
-
-        DrawHandle(canvas, StartDrawX, isStart: true);
-        DrawHandle(canvas, EndDrawX, isStart: false);
-
-        var px = PlayheadX;
-
-        canvas.DrawLine(px, MarkerStripHeight, px, h, _playheadPaint);
-
-        DrawPlayheadTriangle(canvas, px);
-
-        DrawPlayheadTimeBadge(canvas, px);
-
-        canvas.Restore();
+        _overlayRenderer.Draw(canvas, w, h, overlay);
     }
 
     private StaticLayerKey BuildStaticLayerKey(int w, int h) => new(_zoom,
                                                                     _scrollX,
                                                                     w,
                                                                     h,
-                                                                    _selectedNodeId ?? int.MinValue,
+                                                                    _selection.NodeId ?? int.MinValue,
                                                                     _showThreads,
                                                                     _minTime,
                                                                     _timeRange,
@@ -308,150 +188,5 @@ public sealed partial class EventTimelineControl
                                                   double TimeRange,
                                                   int EventsVersion);
 
-    private void DrawRuler(SKCanvas canvas)
-    {
-        var leftMs = EffectiveToMs(XToTime(RowLabelWidth));
-        var rightMs = EffectiveToMs(XToTime(CanvasWidth));
-
-        var rangeMs = rightMs - leftMs;
-
-        if (rangeMs <= 0)
-        {
-            return;
-        }
-
-        var targetTicks = Math.Max(2, DrawWidth / 80f);
-
-        var interval = TimelineFormat.NiceInterval(rangeMs / targetTicks);
-
-        if (interval <= 0)
-        {
-            return;
-        }
-
-        Span<char> textBuffer = stackalloc char[12];
-
-        for (var tickMs = Math.Ceiling(leftMs / interval) * interval; tickMs <= rightMs; tickMs += interval)
-        {
-            var x = TimeToX(_minTime + tickMs);
-
-            canvas.DrawLine(x, RulerBandHeight - 4, x, RulerBandHeight, _tickPaint);
-
-            textBuffer.Clear();
-
-            var length = TimelineFormat.FormatTimeIntoSpan(tickMs, textBuffer);
-
-            using var blob = SKTextBlob.Create(textBuffer[..length], _labelFont, SKPoint.Empty);
-
-            if (blob is not null)
-            {
-                canvas.DrawText(blob, x + 2, RulerBandHeight - 6, _labelPaint);
-            }
-        }
-    }
-
-    private void DrawPlayheadTimeBadge(SKCanvas canvas, float px)
-    {
-        Span<char> buf = stackalloc char[12];
-
-        var textLength = TimelineFormat.FormatTimeIntoSpan(EffectiveToMs(_playheadTime), buf);
-        
-        var text = buf[..textLength];
-
-        const float padding = 4f;
-
-        var badgeWidth = _labelFont.MeasureText(text) + padding * 2;
-
-        const float badgeHeight = RulerBandHeight - 2;
-
-        var bx = Math.Clamp(px - badgeWidth / 2f, RowLabelWidth, Math.Max(RowLabelWidth, CanvasWidth - badgeWidth));
-
-        canvas.DrawRoundRect(new SKRect(bx, 0, bx + badgeWidth, badgeHeight), 2, 2, _playheadFill);
-
-        _operatorTextPaint.Color = SKColors.White;
-
-        var baseline = badgeHeight / 2f + _labelFont.Size * 0.35f;
-
-        using var blob = SKTextBlob.Create(text, _labelFont, SKPoint.Empty);
-
-        if (blob is not null)
-        {
-            canvas.DrawText(blob, bx + padding, baseline, _operatorTextPaint);
-        }
-    }
-
-    private void DrawHandle(SKCanvas canvas, float x, bool isStart)
-    {
-        var top = MarkerStripHeight - HandleHeight;
-        var half = HandleWidth / 2f;
-
-        _pathBuilder.MoveTo(x - half, top);
-        _pathBuilder.LineTo(x + half, top);
-        _pathBuilder.LineTo(isStart ? x - half : x + half, MarkerStripHeight);
-        _pathBuilder.Close();
-
-        using var path = _pathBuilder.Detach();
-
-        canvas.DrawPath(path, _handlePaint);
-    }
-
-    private void DrawPlayheadTriangle(SKCanvas canvas, float x)
-    {
-        _pathBuilder.MoveTo(x, MarkerStripHeight);
-        _pathBuilder.LineTo(x - TriangleHalfWidth, RulerBandHeight);
-        _pathBuilder.LineTo(x + TriangleHalfWidth, RulerBandHeight);
-        _pathBuilder.Close();
-
-        using var path = _pathBuilder.Detach();
-
-        canvas.DrawPath(path, _playheadFill);
-    }
-
-    // Draws the split Read row's three labels — "Buffer" top-aligned (the cached lane), "Disk" bottom-aligned (the
-    // physical lane), "Read" centred — all left-aligned (x=2/4) like the single-label rows. Returns false (drawing
-    // nothing) when the row is too short to fit all three with at least a 1px gap between them, so the caller falls
-    // back to plain "Read".
-    private bool TryDrawReadRowLabels(SKCanvas canvas, float rowTop, float rowHeight)
-    {
-        var metrics = _labelFont.Metrics;
-
-        var textHeight = metrics.Descent - metrics.Ascent;
-
-        if (rowHeight < textHeight * 3 + MinLabelGap * 2 + VerticalLabelPad * 2)
-        {
-            return false;
-        }
-
-        canvas.DrawText("Buffer", 4, rowTop + VerticalLabelPad - metrics.Ascent, SKTextAlign.Left, _labelFont, _labelPaint);
-
-        canvas.DrawText("Read", 2, rowTop + rowHeight / 2 - (metrics.Ascent + metrics.Descent) / 2,
-                        SKTextAlign.Left, _labelFont, _labelPaint);
-
-        canvas.DrawText("Disk", 4, rowTop + rowHeight - VerticalLabelPad - metrics.Descent, SKTextAlign.Left, _labelFont, _labelPaint);
-
-        return true;
-    }
-
     private float RowMarkerWidth(int rowIndex) => _rows.IsSparse(rowIndex) ? SparseMarkerWidth : MarkerWidth;
-
-    private SKColor GetMarkerColor(EngineEvent sourceEvent, int rowIndex, EventCategory? category)
-    {
-        var colour = sourceEvent is LockEvent { LockMode: var lockMode }
-                     ? TimelineColours.LockModeColour(lockMode)
-                     : category.HasValue
-                         ? TimelineColours.TintByCategory(_rows.Active[rowIndex].Color, (int)category.Value)
-                         : ColourProvider is { } colours
-                             ? colours.GetColour(sourceEvent).ToSkColor()
-                             : _rows.Active[rowIndex].Color;
-
-        var alpha = sourceEvent is LockEvent ? LockOverlayAlpha : (byte)255;
-
-        // Dimming an out-of-focus event only lowers the alpha, never raises it above a lock's overlay alpha.
-        if (DimForSelection(sourceEvent) && FocusedDimAlpha < alpha)
-        {
-            alpha = FocusedDimAlpha;
-        }
-
-        return colour.WithAlpha(alpha);
-    }
 }

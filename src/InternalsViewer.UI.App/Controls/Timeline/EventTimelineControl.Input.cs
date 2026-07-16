@@ -10,6 +10,12 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
+    // Pointer tolerance (px) around the playhead triangle and range handles for hit-testing.
+    private const double HitArea = 7;
+
+    // Two presses within this window count as a double-click.
+    private const long DoubleClickMs = 300;
+
     private enum DragTarget { None, Start, End, Playhead }
 
     private bool IsOnTriangle(double x, double y)
@@ -119,9 +125,7 @@ public sealed partial class EventTimelineControl
         {
             // Track the selection so its row-flow path (child→parent, lit while emitting) is drawn, and the object it
             // accesses so locks on the same table highlight with it.
-            _selectedNodeId = node.NodeId;
-            _selectedSchema = op.SchemaName;
-            _selectedTable = op.TableName;
+            _selection.Select(node.NodeId, op.SchemaName, op.TableName);
 
             _skCanvas.Invalidate();
 
@@ -138,14 +142,12 @@ public sealed partial class EventTimelineControl
 
     private void ClearOperatorSelection()
     {
-        if (_selectedNodeId is null)
+        if (_selection.NodeId is null)
         {
             return;
         }
 
-        _selectedNodeId = null;
-        _selectedSchema = string.Empty;
-        _selectedTable = string.Empty;
+        _selection.Clear();
         _skCanvas.Invalidate();
     }
 
