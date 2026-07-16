@@ -8,7 +8,6 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.UI.App.Controls.Allocation;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;

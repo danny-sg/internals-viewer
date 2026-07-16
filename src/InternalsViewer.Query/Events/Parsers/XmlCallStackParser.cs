@@ -1,18 +1,33 @@
-﻿using InternalsViewer.Query.CallStack;
+using System.Globalization;
+using InternalsViewer.Query.CallStack;
 
 namespace InternalsViewer.Query.Events.Parsers;
 
+/// <summary>
+/// Parses call stack frames from the XML-escaped callstack action value
+/// </summary>
+/// <remarks>
+/// The callstack arrives as escaped XML held in the event buffer - each frame is <c>&amp;lt;frame .../&amp;gt;</c> with
+/// its attribute quotes left literal. Parsing that span in place avoids decoding the whole (often multi-KB) callstack to
+/// a string per event, which is the dominant string allocation when loading hundreds of thousands of events.
+/// </remarks>
 public static class XmlCallStackParser
 {
-    public static List<CallstackFrame> ParseCallstack(string decoded)
+    private const string FrameStart = "&lt;frame";
+
+    private const string TagEnd = "&gt;";
+
+    public static List<CallstackFrame> ParseCallstack(ReadOnlySpan<char> encoded, StringInternPool strings)
     {
         var frames = new List<CallstackFrame>();
-        var xml = decoded.AsSpan();
         var i = 0;
 
-        while (i < xml.Length)
+        ReadOnlySpan<char> frameStart = FrameStart;
+        ReadOnlySpan<char> tagEnd = TagEnd;
+
+        while (i < encoded.Length)
         {
-            var offset = xml[i..].IndexOf("<frame".AsSpan(), StringComparison.Ordinal);
+            var offset = encoded[i..].IndexOf(frameStart, StringComparison.Ordinal);
 
             if (offset < 0)
             {
@@ -21,57 +36,62 @@ public static class XmlCallStackParser
 
             i += offset;
 
-            var tagEnd = XmlEventTagParser.FindTagEnd(xml, i);
+            // Frame attributes never contain a literal '>', so the first escaped close terminates the tag.
+            var relativeEnd = encoded[i..].IndexOf(tagEnd, StringComparison.Ordinal);
 
-            if (tagEnd < 0)
+            if (relativeEnd < 0)
             {
                 break;
             }
 
-            var tag = xml[i..(tagEnd + 1)];
-            
+            var tag = encoded.Slice(i, relativeEnd);
+
             var module = XmlEventAttributeParser.GetAttribute(tag, "module");
-
-            var addressSpan = XmlEventAttributeParser.GetAttribute(tag, "address");
-
-            var pdb = XmlEventAttributeParser.GetAttribute(tag, "pdb");
-            
-            var guid = XmlEventAttributeParser.GetAttribute(tag, "guid");
-            
-            var ageSpan = XmlEventAttributeParser.GetAttribute(tag, "age");
-
-            var rvaSpan = XmlEventAttributeParser.GetAttribute(tag, "rva");
 
             if (!module.IsEmpty)
             {
+                var addressSpan = XmlEventAttributeParser.GetAttribute(tag, "address");
+
+                var pdb = XmlEventAttributeParser.GetAttribute(tag, "pdb");
+
+                var guid = XmlEventAttributeParser.GetAttribute(tag, "guid");
+
+                var ageSpan = XmlEventAttributeParser.GetAttribute(tag, "age");
+
+                var rvaSpan = XmlEventAttributeParser.GetAttribute(tag, "rva");
+
                 int.TryParse(ageSpan, out var age);
-
-                var rvaValue = !rvaSpan.IsEmpty && rvaSpan.Length > 2 && rvaSpan[1] is 'x' or 'X'
-                    ? uint.TryParse(rvaSpan[2..], System.Globalization.NumberStyles.HexNumber, null, out var hex) 
-                        ? hex 
-                        : 0U
-                    : uint.TryParse(rvaSpan, out var dec) ? dec : 0U;
-
-                var address = !addressSpan.IsEmpty && addressSpan.Length > 2 && addressSpan[1] is 'x' or 'X'
-                    ? ulong.TryParse(addressSpan[2..], System.Globalization.NumberStyles.HexNumber, null, out var addr)
-                        ? addr
-                        : 0UL
-                    : 0UL;
 
                 frames.Add(new CallstackFrame
                 {
-                    Module = module.ToString(),
-                    Address = address,
-                    Pdb = pdb.ToString(),
-                    Guid = guid.ToString(),
+                    Module = strings.Intern(module),
+                    Address = ParseAddress(addressSpan),
+                    Pdb = strings.Intern(pdb),
+                    Guid = strings.Intern(guid),
                     Age = age,
-                    Rva = rvaValue
+                    Rva = ParseRva(rvaSpan)
                 });
             }
 
-            i = tagEnd + 1;
+            i += relativeEnd + TagEnd.Length;
         }
 
         return frames;
+    }
+
+    private static ulong ParseAddress(ReadOnlySpan<char> span)
+        => span.Length > 2 && span[1] is 'x' or 'X'
+           && ulong.TryParse(span[2..], NumberStyles.HexNumber, null, out var value)
+            ? value
+            : 0UL;
+
+    private static uint ParseRva(ReadOnlySpan<char> span)
+    {
+        if (span.Length > 2 && span[1] is 'x' or 'X')
+        {
+            return uint.TryParse(span[2..], NumberStyles.HexNumber, null, out var hex) ? hex : 0U;
+        }
+
+        return uint.TryParse(span, out var dec) ? dec : 0U;
     }
 }

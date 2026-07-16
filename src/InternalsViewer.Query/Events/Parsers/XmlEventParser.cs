@@ -36,7 +36,7 @@ internal sealed class XmlEventParser
     // Event and field names come from a small fixed vocabulary, so they're interned: each distinct name is
     // turned into a string once and that instance is reused for every later occurrence (and shared by the
     // EngineEvents that carry it), rather than allocating a new string per event.
-    private readonly Dictionary<string, string> _namePool = new(StringComparer.Ordinal);
+    private readonly StringInternPool _names = new();
 
     public XmlEventParser(DatabaseSource? database, PlanHandleRegistry planHandles, EventParser eventParser)
     {
@@ -95,7 +95,7 @@ internal sealed class XmlEventParser
             return false;
         }
 
-        _result.Name = Intern(name);
+        _result.Name = _names.Intern(name);
         _result.Timestamp = DateTime.Parse(
             timestamp,
             CultureInfo.InvariantCulture,
@@ -184,7 +184,7 @@ internal sealed class XmlEventParser
                 next = fullEndPosition + endTag.Length;
             }
 
-            (isData ? _data : _actions)[Intern(fieldName)] = range;
+            (isData ? _data : _actions)[_names.Intern(fieldName)] = range;
 
             i = next;
         }
@@ -243,21 +243,5 @@ internal sealed class XmlEventParser
         var after = xml[nameStart + element.Length];
 
         return after is ' ' or '\t' or '\r' or '\n' or '>' or '/';
-    }
-
-    private string Intern(ReadOnlySpan<char> name)
-    {
-        var lookup = _namePool.GetAlternateLookup<ReadOnlySpan<char>>();
-
-        if (lookup.TryGetValue(name, out var existing))
-        {
-            return existing;
-        }
-
-        var interned = name.ToString();
-
-        _namePool[interned] = interned;
-
-        return interned;
     }
 }
