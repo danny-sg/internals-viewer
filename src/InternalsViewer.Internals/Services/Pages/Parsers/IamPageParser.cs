@@ -13,6 +13,18 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// </summary>
 public sealed class IamPageParser : PageParser, IPageParser<IamPage>
 {
+    private static readonly string[] SinglePageSlotNames =
+    [
+        "SinglePageSlot0", 
+        "SinglePageSlot1", 
+        "SinglePageSlot2", 
+        "SinglePageSlot3",
+        "SinglePageSlot4", 
+        "SinglePageSlot5", 
+        "SinglePageSlot6", 
+        "SinglePageSlot7"
+    ];
+
     public PageType[] SupportedPageTypes => [PageType.Iam];
 
     Page IPageParser.Parse(PageData page)
@@ -64,14 +76,14 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
     {
         return PageAddressParser.Parse(page.Data, IamPage.StartPageOffset);
     }
-
+    
     private static void SetIamMarkers(DataStructure page)
     {
         page.MarkProperty("StartPage", IamPage.StartPageOffset, PageAddress.Size);
 
-        for (var i = 0; i < 8; i++)
+        for (var i = 0; i < SinglePageSlotNames.Length; i++)
         {
-            page.MarkProperty($"SinglePageSlot{i}",
+            page.MarkProperty(SinglePageSlotNames[i],
                               AllocationPage.SinglePageSlotOffset + (i * PageAddress.Size),
                               PageAddress.Size);
         }

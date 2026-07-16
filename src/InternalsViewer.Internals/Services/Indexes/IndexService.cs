@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Diagnostics;
 using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -13,9 +14,13 @@ namespace InternalsViewer.Internals.Services.Indexes;
 /// <summary>
 /// Service to provide index structure information
 /// </summary>
-public sealed class IndexService(IPageService pageService, IRecordService recordService)
+public sealed class IndexService(ILogger<IndexService> logger,
+                                 IPageService pageService, 
+                                 IRecordService recordService)
 {
     private const int MaxParallelPageLoads = 16;
+
+    private ILogger<IndexService> Logger { get; } = logger;
 
     private IPageService PageService { get; } = pageService;
 
@@ -28,6 +33,8 @@ public sealed class IndexService(IPageService pageService, IRecordService record
                                                 PageAddress rootPage,
                                                 CancellationToken cancellationToken)
     {
+        var start = Stopwatch.GetTimestamp();
+
         var nodes = new List<IndexNode>();
 
         var nodesByAddress = new Dictionary<PageAddress, IndexNode>();
@@ -43,7 +50,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
 
         while (currentLevel.Count > 0)
         {
-            // I/O for the whole level, in parallel.
+            // I/O for the whole level, in parallel
             var loaded = await LoadLevel(database, currentLevel, cancellationToken);
 
             // Node construction for the next level, single-threaded and in order
@@ -87,11 +94,13 @@ public sealed class IndexService(IPageService pageService, IRecordService record
             level++;
         }
 
+        Logger.LogInformation("Index loaded in {Duration}", Stopwatch.GetElapsedTime(start));
+
         return nodes;
     }
 
     /// <summary>
-    /// Reads every page on a level in parallel, returning results in the same order as the input.
+    /// Reads every page on a level in parallel, returning results in the same order as the input
     /// </summary>
     private async Task<LoadedPage[]> LoadLevel(DatabaseSource database, 
                                                List<IndexNode> levelNodes, 
@@ -116,7 +125,9 @@ public sealed class IndexService(IPageService pageService, IRecordService record
     /// <summary>
     /// Reads a single page and extracts the header fields and child pointers needed to build the tree
     /// </summary>
-    private async Task<LoadedPage> LoadPage(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken)
+    private async Task<LoadedPage> LoadPage(DatabaseSource database, 
+                                            PageAddress pageAddress, 
+                                            CancellationToken cancellationToken)
     {
         var buffer = ArrayPool<byte>.Shared.Rent(PageData.Size);
 
@@ -126,7 +137,7 @@ public sealed class IndexService(IPageService pageService, IRecordService record
 
             var downPointers = new List<PageAddress>();
 
-            // Only index pages above the leaf (Level >= 1) point down to child pages.
+            // Only index pages above the leaf (Level >= 1) point down to child pages
             if (page is IndexPage indexPage && page.PageHeader.Level >= 1)
             {
                 downPointers = RecordService.GetIndexRecords(indexPage)

@@ -37,5 +37,5 @@ public class PageData : DataStructure
     /// <summary>
     /// Table/Array containing the data offset of each row in the page
     /// </summary>
-    public List<ushort> OffsetTable { get; init; } = new();
+    public ushort[] OffsetTable { get; init; } = [];
 }

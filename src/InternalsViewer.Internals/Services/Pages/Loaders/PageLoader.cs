@@ -1,9 +1,10 @@
-﻿using System.Threading;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Services.Pages.Parsers;
+using System.Buffers.Binary;
+using System.Threading;
 
 namespace InternalsViewer.Internals.Services.Pages.Loaders;
 
@@ -16,28 +17,37 @@ namespace InternalsViewer.Internals.Services.Pages.Loaders;
 /// </remarks>
 public sealed class PageLoader : IPageLoader
 {
-    public async Task<PageData> Load(DatabaseSource database, 
-                                     PageAddress pageAddress, 
+    public async Task<PageData> Load(DatabaseSource database,
+                                     PageAddress pageAddress,
                                      CancellationToken cancellationToken)
     {
         var data = await database.Connection.PageReader.Read(database.Name, pageAddress, cancellationToken);
 
-        return BuildPageData(database, pageAddress, data);
+        return BuildPageData(database, pageAddress, data, true);
     }
 
-    public async Task<PageData> LoadInto(DatabaseSource database, 
-                                         PageAddress pageAddress, 
-                                         byte[] buffer, 
+    /// <summary>
+    /// Loads a page into a provided buffer
+    /// </summary>
+    /// <remarks>
+    /// Buffer scenarios are when pages are loaded on a transitory basis for index traversal etc. so markers are switched off
+    /// </remarks>
+    public async Task<PageData> LoadInto(DatabaseSource database,
+                                         PageAddress pageAddress,
+                                         byte[] buffer,
                                          CancellationToken cancellationToken)
     {
         await database.Connection.PageReader.ReadInto(database.Name, pageAddress, buffer, cancellationToken);
 
-        return BuildPageData(database, pageAddress, buffer);
+        return BuildPageData(database, pageAddress, buffer, false);
     }
 
-    private static PageData BuildPageData(DatabaseSource database, PageAddress pageAddress, byte[] data)
+    private static PageData BuildPageData(DatabaseSource database,
+                                          PageAddress pageAddress,
+                                          byte[] data,
+                                          bool isMarkEnabled)
     {
-        var header = PageHeaderParser.Parse(data);
+        var header = PageHeaderParser.Parse(data, isMarkEnabled);
 
         return new PageData
         {
@@ -52,13 +62,19 @@ public sealed class PageLoader : IPageLoader
     /// <summary>
     /// Load the offset table with a given slot count from the page data
     /// </summary>
-    private static List<ushort> LoadOffsetTable(byte[] data, int slotCount)
+    private static ushort[] LoadOffsetTable(byte[] data, int slotCount)
     {
-        var offsetTable = new List<ushort>();
+        var offsetTable = new ushort[slotCount];
 
-        for (var i = 2; i <= slotCount * 2; i += 2)
+        ReadOnlySpan<byte> span = data;
+
+        var offset = data.Length - 2;
+
+        for (var slotIndex = 0; slotIndex < slotCount; slotIndex++)
         {
-            offsetTable.Add(BitConverter.ToUInt16(data, data.Length - i));
+            offsetTable[slotIndex] = BinaryPrimitives.ReadUInt16LittleEndian(span.Slice(offset, 2));
+
+            offset -= 2;
         }
 
         return offsetTable;

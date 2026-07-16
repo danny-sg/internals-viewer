@@ -1,4 +1,5 @@
 using System.Data;
+using System.Diagnostics;
 using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
@@ -7,10 +8,12 @@ using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Readers.Pages;
 
+#pragma warning disable VSTHRD103 // Sync Read avoids the per-row Task allocations of ReadAsync
+
 /// <summary>
 /// Page Reader for reading a page using an online database with DBCC PAGE
 /// </summary>
-public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string connectionString) 
+public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string connectionString)
     : PageReader, IPageReader
 {
     private const int ValueIndex = 3;
@@ -48,17 +51,29 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
         return data;
     }
 
-    public async Task ReadInto(string name, 
-                               PageAddress pageAddress, 
-                               byte[] buffer, 
+    public async Task ReadInto(string name,
+                               PageAddress pageAddress,
+                               byte[] buffer,
                                CancellationToken cancellationToken)
     {
-        var pageCommand =
-            $"DBCC PAGE({name}, {pageAddress.FileId}, {pageAddress.PageId}, {DbccPageHexDumpOption}) WITH TABLERESULTS";
+        var pageCommand = $@"
+    EXEC ('DBCC PAGE({name}, {pageAddress.FileId}, {pageAddress.PageId}, {DbccPageHexDumpOption}) WITH TABLERESULTS')
+    WITH RESULT SETS
+    (
+        (
+            Unused0 NVARCHAR(4000)
+           ,Unused1 NVARCHAR(4000)
+           ,Unused2 NVARCHAR(4000)
+           ,Value   NVARCHAR(MAX)
+        )
+    );
+";
 
         Logger.LogDebug("Reading page {PageAddress}: {CommandSql}", pageAddress, pageCommand);
 
         var offset = 0;
+
+        var start = Stopwatch.GetTimestamp();
 
         try
         {
@@ -70,20 +85,17 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
 
             command.CommandType = CommandType.Text;
 
-            await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, 
+            await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess,
                                                                       cancellationToken);
 
             if (reader.HasRows)
             {
-                // Reused across every row: prefix (skipped) plus the hex characters we consume.
+                // Reused across every row: prefix (skipped) plus the hex characters we consume
                 var valueBuffer = new char[HexLinePrefixLength + HexLineLength];
 
-#pragma warning disable VSTHRD103 // Sync Read avoids the per-row Task allocations of ReadAsync
                 while (reader.Read())
                 {
-                    using var valueReader = reader.GetTextReader(ValueIndex);
-
-                    var charsRead = valueReader.ReadBlock(valueBuffer, 0, valueBuffer.Length);
+                    var charsRead = (int)reader.GetChars(ValueIndex, 0, valueBuffer, 0, valueBuffer.Length);
 
                     var line = valueBuffer.AsSpan(0, charsRead);
 
@@ -95,7 +107,7 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
                     offset = ReadData(line[HexLinePrefixLength..], offset, buffer);
                 }
 
-                reader.Close();  
+                reader.Close();
 #pragma warning restore VSTHRD103
             }
         }
@@ -105,6 +117,8 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
 
             throw new Exception($"Error reading page {pageAddress.FileId}:{pageAddress.PageId}", ex);
         }
+
+        Logger.LogDebug("Page loaded in {Duration}", Stopwatch.GetElapsedTime(start));
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
