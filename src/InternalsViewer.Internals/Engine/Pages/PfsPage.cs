@@ -18,17 +18,18 @@ public sealed class PfsPage : Page
     public const int PfsInterval = 8088;
 
     /// <summary>
-    /// PFS bytes collection
+    /// PFS bytes collection (as raw byte value)
     /// </summary>
-    public List<PfsByte> PfsBytes { get; set; } = [];
+    public byte[] PfsBytes { get; set; } = [];
 
     public override string ToString()
     {
         var sb = new StringBuilder();
 
-        for (var i = 0; i <= PfsBytes.Count - 1; i++)
+        for (var i = 0; i <= PfsBytes.Length - 1; i++)
         {
             sb.AppendFormat("{0,-14}{1}", new PageAddress(1, i), PfsBytes[i]);
+
             sb.Append(Environment.NewLine);
         }
 

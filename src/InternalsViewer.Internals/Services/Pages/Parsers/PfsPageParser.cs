@@ -35,12 +35,12 @@ public sealed class PfsPageParser : PageParser, IPageParser<PfsPage>
     /// <summary>
     /// Loads the PFS bytes collection from the page data
     /// </summary>
-    private static List<PfsByte> GetPfsBytes(PageData page)
+    private static byte[] GetPfsBytes(PageData page)
     {
         var pfsData = new byte[PfsSize];
 
         Array.Copy(page.Data, PfsOffset, pfsData, 0, PfsSize);
 
-        return pfsData.Select(PfsByteParser.Parse).ToList();
+        return pfsData;
     }
 }
