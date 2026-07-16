@@ -1,8 +1,22 @@
-﻿namespace InternalsViewer.Query;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using InternalsViewer.Query.Events.Locks;
+
+namespace InternalsViewer.Query;
 
 public sealed record EventOptions
 {
-    public bool IncludeLock { get; set; } = true;
+    /// <summary>
+    /// The lock mode categories to surface — locks are captured for every mode (event grouping needs them) then narrowed
+    /// to these before the query is cropped, so a deselected mode can't widen the crop window
+    /// </summary>
+    public HashSet<LockModeCategory> IncludeLockModeCategories { get; set; } = DefaultLockModeCategories();
+
+    /// <summary>
+    /// Whether any locks are shown, derived from <see cref="IncludeLockModeCategories"/>
+    /// </summary>
+    public bool IncludeLock => IncludeLockModeCategories.Count > 0;
 
     public bool IncludeWait { get; set; } = true;
 
@@ -39,4 +53,10 @@ public sealed record EventOptions
     /// log directory is not writable by the client)
     /// </summary>
     public bool AutoDeleteTrace { get; set; } = true;
+
+    /// <summary>
+    /// The default lock categories: every category except Schema (noisy) and None (not a real category)
+    /// </summary>
+    public static HashSet<LockModeCategory> DefaultLockModeCategories() =>
+        [.. Enum.GetValues<LockModeCategory>().Where(c => c is not LockModeCategory.None and not LockModeCategory.Schema)];
 }

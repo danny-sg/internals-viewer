@@ -35,6 +35,7 @@ using InternalsViewer.Query.CallStack.Categories;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.UI.App.ViewModels.Query.Settings;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -65,8 +66,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
     public DatabaseSource Database { get; }
-
-    public EventFilterViewModel EventFilter { get; }
 
     [ObservableProperty]
     private bool _isError;
@@ -109,36 +108,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isTimelinePlaying;
 
     [ObservableProperty]
-    private EventOptions _eventOptions = new();
-
-    [ObservableProperty]
-    private bool _showLocks = true;
-
-    [ObservableProperty]
-    private bool _showLatches = true;
-
-    [ObservableProperty]
-    private bool _showWaits = true;
-
-    [ObservableProperty]
     private bool _showBufferPool;
 
-    partial void OnShowLocksChanged(bool value)
-    {
-        EventOptions.IncludeLock = value;
+    /// <summary>
+    /// The query capture and display options (crop, system objects, lock categories, waits/latches/memory/call stack)
+    /// </summary>
+    public QueryOptionsViewModel QueryOptions { get; } = new();
 
-        RefreshLockBorders();
-    }
-
-    partial void OnShowLatchesChanged(bool value) => EventOptions.IncludeLatch = value;
-
-    partial void OnShowWaitsChanged(bool value) => EventOptions.IncludeWait = value;
+    /// <summary>
+    /// The dock layout — tab documents, their menu-driven visibility, and the timeline/details rows
+    /// </summary>
+    public QueryLayoutViewModel Layout { get; }
 
     [ObservableProperty]
     private int _extentCount;
-
-    [ObservableProperty]
-    private bool _cropToQuery = true;
 
     [ObservableProperty]
     private double _allocationMapHeight = 200;
@@ -178,43 +161,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private DatabaseSchema? _schema;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TimelineRowHeight))]
-    [NotifyPropertyChangedFor(nameof(SplitterVisibility))]
-    private bool _isTimelineVisible = true;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DetailsRowHeight))]
-    [NotifyPropertyChangedFor(nameof(SplitterVisibility))]
-    private bool _isDetailsVisible = true;
-
-    public GridLength TimelineRowHeight
-        => IsTimelineVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-
-    public GridLength DetailsRowHeight
-        => IsDetailsVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-
-    public Visibility SplitterVisibility
-        => (IsTimelineVisible && IsDetailsVisible) ? Visibility.Visible : Visibility.Collapsed;
-
-    [ObservableProperty]
-    private bool _isSqlEditorVisible = true;
-
-    [ObservableProperty]
-    private bool _isAllocationsVisible;
-
-    [ObservableProperty]
-    private bool _isExecutionPlanVisible;
-
-    [ObservableProperty]
-    private bool _isEventsVisible;
-
-    [ObservableProperty]
-    private bool _isCallstackVisible;
-
-    [ObservableProperty]
-    private bool _isEventSelectionPanelOpen;
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveResultSet))]
     private List<QueryResultSet> _resultSets = [];
 
@@ -241,71 +187,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                   && f.Resolved.SymbolCategory.GetCategoryMetadata()?.IsInfrastructure != true))
                         .ToList() ?? [];
 
-    partial void OnIsSqlEditorVisibleChanged(bool value) => SetDocumentVisible(SqlDocument, value);
-
-    partial void OnIsAllocationsVisibleChanged(bool value) => SetDocumentVisible(AllocationsDocument, value);
-
-    partial void OnIsExecutionPlanVisibleChanged(bool value) => SetDocumentVisible(PlanDocument, value);
-
-    partial void OnIsEventsVisibleChanged(bool value) => SetDocumentVisible(EventsDocument, value);
-
-    partial void OnIsCallstackVisibleChanged(bool value) => SetDocumentVisible(CallstackDocument, value);
-
-    partial void OnIsTimelineVisibleChanged(bool value) => ScheduleSaveLayout();
-
-    partial void OnIsEventSelectionPanelOpenChanged(bool value) => ScheduleSaveLayout();
-
-    private void SetDocumentVisible(DocumentViewModel document, bool show)
-    {
-        if (_suppressVisibilitySync)
-        {
-            return;
-        }
-
-        if (show)
-        {
-            Dock.Show(document);
-        }
-        else
-        {
-            Dock.Close(document);
-        }
-    }
-
-    private void SyncTabVisibility()
-    {
-        _suppressVisibilitySync = true;
-
-        IsSqlEditorVisible = Dock.Contains(SqlDocument);
-        IsAllocationsVisible = Dock.Contains(AllocationsDocument);
-        IsExecutionPlanVisible = Dock.Contains(PlanDocument);
-        IsEventsVisible = Dock.Contains(EventsDocument);
-        IsCallstackVisible = Dock.Contains(CallstackDocument);
-
-        _suppressVisibilitySync = false;
-    }
-
-    public DockLayoutViewModel Dock { get; }
-
-    private DocumentViewModel SqlDocument { get; }
-
-    private DocumentViewModel AllocationsDocument { get; }
-
-    private DocumentViewModel PlanDocument { get; }
-
-    private DocumentViewModel EventsDocument { get; }
-
-    private DocumentViewModel CallstackDocument { get; }
-
-    private Dictionary<string, DocumentViewModel> DocumentsByKey { get; }
-
     public event Action<EngineEvent>? EventNavigationRequested;
 
     public void NavigateToEvent(EngineEvent engineEvent)
     {
         SelectedEvent = engineEvent;
 
-        IsEventsVisible = true;
+        Layout.IsEventsVisible = true;
 
         DispatcherQueue.TryEnqueue(() =>
         {
@@ -315,21 +203,22 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private const string LayoutSettingKey = "QueryDockLayout";
 
-    private bool _suppressVisibilitySync;
     private bool _isRestoringLayout;
     private bool _layoutRestored;
     private bool _saveScheduled;
 
-    private void OnDockLayoutChanged(object? sender, EventArgs e)
+    // The layout view model owns the dock/visibility sync; here we react to a persisted layout change by dropping any
+    // index tabs the user closed and scheduling a save.
+    private void OnLayoutChanged()
     {
         PruneClosedIndexes();
-        SyncTabVisibility();
+
         ScheduleSaveLayout();
     }
 
     private void ScheduleSaveLayout()
     {
-        if (_isRestoringLayout || _suppressVisibilitySync || _saveScheduled)
+        if (_isRestoringLayout || _saveScheduled)
         {
             return;
         }
@@ -357,14 +246,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         var dto = new QueryLayoutState
         {
-            Root = DockLayoutSerializer.Serialize(Dock.Root),
-            TimelineVisible = IsTimelineVisible,
-            SettingsOpen = IsEventSelectionPanelOpen,
-            IncludeLock = EventOptions.IncludeLock,
-            IncludeWait = EventOptions.IncludeWait,
-            IncludeLatch = EventOptions.IncludeLatch,
-            IncludeMemory = EventOptions.IncludeMemory,
-            IncludeCallstack = EventOptions.IncludeCallStack
+            Root = Layout.SerializeRoot(),
+            TimelineVisible = Layout.IsTimelineVisible,
+            CropToQuery = QueryOptions.CropToQuery,
+            IncludeSystemObjects = QueryOptions.IncludeSystemObjects,
+            IncludeLock = QueryOptions.Options.IncludeLock,
+            IncludeWait = QueryOptions.Options.IncludeWait,
+            IncludeLatch = QueryOptions.Options.IncludeLatch,
+            IncludeMemory = QueryOptions.Options.IncludeMemory,
+            IncludeCallstack = QueryOptions.Options.IncludeCallStack,
+            LockModeCategories = [.. QueryOptions.Options.IncludeLockModeCategories]
         };
 
         await _settingsService.SaveSettingAsync(LayoutSettingKey, dto);
@@ -374,36 +265,41 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         var dto = await _settingsService.ReadSettingAsync<QueryLayoutState>(LayoutSettingKey);
 
-        var root = DockLayoutSerializer.Deserialize(dto?.Root, key => DocumentsByKey.GetValueOrDefault(key));
-
-        if (dto is null || root is null)
+        if (dto is null)
         {
             return;
         }
 
         _isRestoringLayout = true;
 
-        IsTimelineVisible = dto.TimelineVisible;
-        IsEventSelectionPanelOpen = dto.SettingsOpen;
-        EventOptions = new EventOptions
+        try
         {
-            IncludeLock = dto.IncludeLock,
-            IncludeWait = dto.IncludeWait,
-            IncludeLatch = dto.IncludeLatch,
-            IncludeMemory = dto.IncludeMemory,
-            IncludeCallStack = dto.IncludeCallstack
-        };
+            // Bail without touching anything if the saved dock tree can't be rebuilt.
+            if (!Layout.RestoreRoot(dto.Root))
+            {
+                return;
+            }
 
-        ShowLocks = dto.IncludeLock;
-        ShowLatches = dto.IncludeLatch;
-        ShowWaits = dto.IncludeWait;
+            Layout.IsTimelineVisible = dto.TimelineVisible;
 
-        Dock.SetRoot(root);
+            var lockCategories = dto.LockModeCategories is { } categories
+                ? [.. categories.Where(c => c != LockModeCategory.None)]
+                : dto.IncludeLock ? EventOptions.DefaultLockModeCategories() : [];
 
-        _layoutRestored = true;
-        _isRestoringLayout = false;
+            QueryOptions.Restore(dto.CropToQuery,
+                                 dto.IncludeSystemObjects,
+                                 dto.IncludeWait,
+                                 dto.IncludeLatch,
+                                 dto.IncludeMemory,
+                                 dto.IncludeCallstack,
+                                 lockCategories);
 
-        SyncTabVisibility();
+            _layoutRestored = true;
+        }
+        finally
+        {
+            _isRestoringLayout = false;
+        }
     }
 
     [RelayCommand]
@@ -412,10 +308,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _layoutRestored = false;
         _resultTabsOpened = false;
 
-        IsTimelineVisible = true;
-        IsEventSelectionPanelOpen = false;
-
-        Dock.SetRoot(new TabGroupNode(SqlDocument));
+        Layout.Reset();
     }
 
     [ObservableProperty]
@@ -554,9 +447,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         SelectedPlanNode = ResolvePlanNode(identifier);
 
-        // An operator IS an event, so selecting the node selects it too. Without this everything keyed on SelectedEvent
-        // — the callstack's scope, the details panel — keeps showing whatever was selected before, and clicking an
-        // operator looks like it did nothing. Only the plan view reads SelectedPlanNode.
         if (Events.FirstOrDefault(e => e is ExecutionOperatorEvent && e.PlanNodeIdentifier == identifier) is { } op)
         {
             SelectedEvent = op;
@@ -583,9 +473,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var key = $"Index:{schema}.{table}.{index}";
 
-        if (DocumentsByKey.TryGetValue(key, out var existing))
+        if (Layout.TryGetDocument(key, out var existing))
         {
-            Dock.Show(existing);
+            Layout.Show(existing);
             return;
         }
 
@@ -615,10 +505,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              key: key,
                                              persist: false);
 
-        DocumentsByKey[key] = document;
+        Layout.RegisterDocument(key, document);
         _openIndexes[key] = indexViewModel;
 
-        Dock.Show(document);
+        Layout.Show(document);
 
         // Reflect the already-built spans and current playhead position immediately.
         ApplyIndexPageSpans(indexViewModel);
@@ -636,14 +526,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         var closed = _openIndexes.Keys
-            .Where(k => !(DocumentsByKey.TryGetValue(k, out var d) && Dock.Contains(d)))
+            .Where(k => !Layout.IsShown(k))
             .ToList();
 
         foreach (var key in closed)
         {
             _openIndexes.Remove(key);
 
-            if (DocumentsByKey.Remove(key, out var document))
+            if (Layout.RemoveDocument(key, out var document))
             {
                 document.DisposeView();
             }
@@ -801,51 +691,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                    .Select(u => u.ObjectId)
                                    .ToHashSet();
 
-        EventFilter = new EventFilterViewModel(settingsService);
+        QueryOptions.FilterChanged += RefreshFilteredEvents;
 
-        EventFilter.SetSystemObjectIds(_systemObjectIds);
-
-        EventFilter.FilterChanged += RefreshFilteredEvents;
+        QueryOptions.Changed += ScheduleSaveLayout;
 
         Schema = SchemaHelper.ToSqlSchema(database);
 
-        SqlDocument = DocumentViewModel.Create<SqlDocumentView>("SQL",
-                                                                this,
-                                                                keepAlive: true,
-                                                                key: "Sql");
+        Layout = new QueryLayoutViewModel(this);
 
-        AllocationsDocument = DocumentViewModel.Create<AllocationDocumentView>("Allocations",
-                                                                               this,
-                                                                               keepAlive: true,
-                                                                               key: "Allocations");
-
-        PlanDocument = DocumentViewModel.Create<PlanDocumentView>("Execution Plan",
-                                                                  this,
-                                                                  keepAlive: true,
-                                                                  key: "Plan");
-
-        EventsDocument = DocumentViewModel.Create<EventsDocumentView>("Events",
-                                                                      this,
-                                                                      keepAlive: true,
-                                                                      key: "Events");
-
-        CallstackDocument = DocumentViewModel.Create<CallstackDocumentView>("Call Stack",
-                                                                            this,
-                                                                            keepAlive: true,
-                                                                            key: "Callstack");
-
-        DocumentsByKey = new Dictionary<string, DocumentViewModel>
-        {
-            [SqlDocument.Key] = SqlDocument,
-            [AllocationsDocument.Key] = AllocationsDocument,
-            [PlanDocument.Key] = PlanDocument,
-            [EventsDocument.Key] = EventsDocument,
-            [CallstackDocument.Key] = CallstackDocument,
-        };
-
-        Dock = new DockLayoutViewModel(new TabGroupNode(SqlDocument));
-
-        Dock.LayoutChanged += OnDockLayoutChanged;
+        Layout.Changed += OnLayoutChanged;
 
         DispatcherQueue.TryEnqueue(async () =>
         {
@@ -902,20 +756,23 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                                                  ? message
                                                                  : Message + Environment.NewLine + message);
 
-        EventOptions.CropToQuery = CropToQuery;
+        // The menu-driven options (crop, system objects, lock categories, waits/latches/memory/callstack) already live
+        // on this instance; only the run-time trace settings are layered on here.
+        var eventOptions = QueryOptions.Options;
 
         // When a custom trace directory is configured, SQL Server writes the .xel there — ensure its service account can
         // (grant on use). Null falls back to the SQL Server log directory.
         var traceDirectory = _settingsViewModel.ActiveTraceDirectory;
 
-        EventOptions.TraceDirectory = traceDirectory;
+        eventOptions.TraceDirectory = traceDirectory;
 
-        EventOptions.MaxTraceSizeMb = (int)_settingsViewModel.MaxTraceSizeMb;
+        eventOptions.MaxTraceSizeMb = (int)_settingsViewModel.MaxTraceSizeMb;
 
-        EventOptions.AutoDeleteTrace = _settingsViewModel.AutoDeleteTrace;
+        eventOptions.AutoDeleteTrace = _settingsViewModel.AutoDeleteTrace;
 
-        // Run full trace on background thread
-        var (results, layers, colours, startOffset, endOffset) =
+        // Run full trace on background thread. The event layers/borders are rebuilt from the filtered set on the UI
+        // thread (see RefreshFilteredEvents), so only the colours and crop window are carried back from here.
+        var (results, colours, startOffset, endOffset) =
             await Task.Run(async () =>
             {
                 if (traceDirectory is not null)
@@ -925,7 +782,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
                 var queryResult = await QueryRunner.TraceQuery(payload,
                                                                Database,
-                                                               EventOptions,
+                                                               eventOptions,
                                                                _settingsViewModel.SymbolsPath,
                                                                progress,
                                                                cancellationToken);
@@ -933,7 +790,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 if (!queryResult.IsSuccess)
                 {
                     return (queryResult,
-                            new AllocationLayer(),
                             new EventColourProvider([], _objectColoursByName),
                             (long?)null,
                             (long?)null);
@@ -941,12 +797,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
                 var colourProvider = new EventColourProvider(queryResult.ExecutionPlans, _objectColoursByName);
 
-                var allocationLayer = GetEventsAllocationLayer(queryResult.EngineEvents,
-                                                               colourProvider,
-                                                               queryResult.CropStartUs,
-                                                               queryResult.CropEndUs);
-
-                return (queryResult, allocationLayer, colourProvider, queryResult.CropStartUs, queryResult.CropEndUs);
+                return (queryResult, colourProvider, queryResult.CropStartUs, queryResult.CropEndUs);
             },
             cancellationToken);
 
@@ -978,13 +829,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ResultSets = results.ResultSets;
 
-            await EventFilter.BuildAsync(Events);
-
             ShowResultTabsForFirstRun();
 
-            ApplyEventLayers(layers);
-            RefreshIndexPageSpans(Events, colours);
-            RefreshLockBorders();
+            RefreshFilteredEvents();
 
             if (ShowBufferPool)
             {
@@ -1008,9 +855,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _resultTabsOpened = true;
 
-        IsAllocationsVisible = true;
-        IsExecutionPlanVisible = true;
-        IsEventsVisible = true;
+        Layout.IsAllocationsVisible = true;
+        Layout.IsExecutionPlanVisible = true;
+        Layout.IsEventsVisible = true;
     }
 
     private void ClearResults()
@@ -1042,8 +889,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _indexPageSpansByRoot.Clear();
         _indexReadSpansByRoot.Clear();
 
-        EventFilter.Clear();
-
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
         AllocationBorders = [];
     }
@@ -1064,9 +909,44 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void RefreshFilteredEvents()
     {
-        FilteredEvents = [.. EventFilter.Apply(Events)];
+        FilteredEvents = [.. Events.Where(IsEventVisible)];
 
         RefreshLayers(FilteredEvents);
+    }
+
+    // The event filter tree is gone: what shows is driven straight from the menu selections. Locks are filtered to the
+    // chosen mode categories; everything else passes through (its capture is the Events-menu flag's job), subject only
+    // to the system-object filter.
+    private bool IsEventVisible(EngineEvent engineEvent)
+    {
+        if (!QueryOptions.IncludeSystemObjects && !IsUserObject(engineEvent))
+        {
+            return false;
+        }
+
+        return engineEvent switch
+        {
+            LockEvent l => QueryOptions.Includes(LockModeClassifier.Categorise(l.LockMode)),
+
+            LockGroup g => g.Events.OfType<LockEvent>()
+                            .Any(l => QueryOptions.Includes(LockModeClassifier.Categorise(l.LockMode))),
+
+            LockEscalationEvent esc => QueryOptions.Includes(LockModeClassifier.Categorise(esc.LockMode)),
+
+            _ => true,
+        };
+    }
+
+    // Whether an event belongs to a user object (kept when system objects are hidden). Metadata and database locks are
+    // engine bookkeeping with no user object (ObjectId 0), so the id set alone can't catch them — exclude them by type.
+    private bool IsUserObject(EngineEvent engineEvent)
+    {
+        if (engineEvent is LockEvent { Resource.ResourceType: LockResourceType.Metadata or LockResourceType.Database })
+        {
+            return false;
+        }
+
+        return engineEvent.ObjectId == 0 || !_systemObjectIds.Contains(engineEvent.ObjectId);
     }
 
     private AllocationLayer GetEventsAllocationLayer(List<EngineEvent> engineEvents,
@@ -1119,8 +999,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void RefreshLockBorders()
     {
-        AllocationBorders = ShowLocks && Events is { Count: > 0 }
-            ? EventBorderBuilder.GetLockBorders(Events.SelectMany(FlattenLocks).ToList(), Database)
+        AllocationBorders = QueryOptions.ShowLocks && FilteredEvents is { Count: > 0 }
+            ? EventBorderBuilder.GetLockBorders(FilteredEvents.SelectMany(FlattenLocks).ToList(), Database)
             : [];
     }
 

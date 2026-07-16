@@ -3,10 +3,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Batches;
-using InternalsViewer.Query.Events.Locks;
-using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Parsing;
@@ -170,30 +167,18 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 DeleteTraceFiles(filePath, progress);
             }
 
-            if (eventOptions.CropToQuery && CropWindow(events) is var (start, end, planHandle))
+            events = EventFilter.Filter(events, eventOptions);
+
+            if (eventOptions.CropToQuery)
             {
-                bool Overlaps(EngineEvent e) => e.TimeUs <= end && e.TimeUs + e.DurationUs >= start;
+                var (start, end) = QueryCropper.GetCropTiming(events);
 
-                events = events.Where(e => Overlaps(e)
-                                           || (e is not LockEvent
-                                               && planHandle != PlanHandleRegistry.None
-                                               && e.PlanHandleId == planHandle))
-                               .ToList();
-
-                static long EndUs(EngineEvent e) => e is QueryThreadEvent or MemoryEvent ? e.TimeUs : e.TimeUs + e.DurationUs;
-
-                var windowEvents = events.Where(Overlaps).ToList();
-
-                cropStart = (windowEvents.Count > 0 ? Math.Min(start, windowEvents.Min(e => e.TimeUs)) : start)
-                            - AdditionalPaddingUs;
-
-                cropEnd = (windowEvents.Count > 0 ? Math.Max(end, windowEvents.Max(EndUs)) : end)
-                          + AdditionalPaddingUs;
-
-                if (events.FirstOrDefault(e => e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 }) is { } query)
+                if (events.FirstOrDefault(e => e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 }) is { } query
+                    && start.HasValue 
+                    && end.HasValue)
                 {
-                    query.TimeUs = cropStart.Value;
-                    query.DurationUs = cropEnd.Value - cropStart.Value;
+                    query.TimeUs = start.Value;
+                    query.DurationUs = end.Value - start.Value;
                 }
             }
 
@@ -207,7 +192,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 callStack = callStack.CollapseToFunctions(keep is null ? null : keep.Contains);
 
-                // After the collapse: the operators' entry frames must be nodes of the tree the events now point at.
                 OperatorCallStackMatcher.Match(events);
 
                 if (events.Count > 0)
@@ -280,11 +264,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         };
     }
 
-    // Padding kept either side of the query window so an event landing just on its boundary is not clipped.
-    private const long CropPaddingUs = 100;
-
-    private const long AdditionalPaddingUs = 500;
-
     private void DeleteTraceFiles(string filePath, IProgress<string>? progress)
     {
         long size = 0;
@@ -313,19 +292,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             Logger.LogWarning(ex, "Failed to delete trace file(s) for {FilePath}", filePath);
         }
-    }
-
-    private static (long Start, long End, short PlanHandle)? CropWindow(List<EngineEvent> events)
-    {
-        var queryNode = events.FirstOrDefault(e => e is ExecutionOperatorEvent { PlanNodeIdentifier.NodeId: -1 });
-
-        return queryNode?.PlanNodeIdentifier is not { } id
-            ? null
-            : (
-                Math.Max(0, queryNode.TimeUs - CropPaddingUs), 
-                queryNode.TimeUs + queryNode.DurationUs + CropPaddingUs,
-                id.PlanHandleId
-              );
     }
 
     /// <summary>
@@ -566,12 +532,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         return (filePath, rowCount, logRecords, resultSets);
     }
 
-    private async Task<(long RowCount, List<QueryResultSet> ResultSets)>
-        RunQueryDirect(string commandSql,
-                       string connectionString,
-                       QueryOptions queryOptions,
-                       IProgress<string>? progress,
-                       CancellationToken cancellationToken)
+    private async Task<(long RowCount, List<QueryResultSet> ResultSets)> RunQueryDirect(string commandSql,
+                                                                                        string connectionString,
+                                                                                        QueryOptions queryOptions,
+                                                                                        IProgress<string>? progress,
+                                                                                        CancellationToken cancellationToken)
     {
         long rowCount = 0;
 

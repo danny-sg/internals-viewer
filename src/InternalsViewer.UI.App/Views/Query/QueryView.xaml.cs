@@ -38,7 +38,7 @@ public sealed partial class QueryView : Page
     {
         if (_subscribedViewModel is not null)
         {
-            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedViewModel.Layout.PropertyChanged -= OnLayoutPropertyChanged;
             _subscribedViewModel = null;
         }
 
@@ -58,21 +58,22 @@ public sealed partial class QueryView : Page
 
         if (_subscribedViewModel is not null)
         {
-            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedViewModel.Layout.PropertyChanged -= OnLayoutPropertyChanged;
         }
 
         _subscribedViewModel = args.NewValue as QueryViewModel;
 
         if (_subscribedViewModel is not null)
         {
-            _subscribedViewModel.PropertyChanged += OnViewModelPropertyChanged;
+            _subscribedViewModel.Layout.PropertyChanged += OnLayoutPropertyChanged;
             ApplyRowVisibility();
         }
     }
 
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnLayoutPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(QueryViewModel.IsTimelineVisible) or nameof(QueryViewModel.IsDetailsVisible))
+        if (e.PropertyName is nameof(QueryLayoutViewModel.IsTimelineVisible)
+                           or nameof(QueryLayoutViewModel.IsDetailsVisible))
         {
             ApplyRowVisibility();
         }
@@ -80,14 +81,14 @@ public sealed partial class QueryView : Page
 
     private void ApplyRowVisibility()
     {
-        if (ViewModel is { IsTimelineVisible: true, IsDetailsVisible: true })
+        if (ViewModel.Layout is { IsTimelineVisible: true, IsDetailsVisible: true })
         {
             DockRow.Height = new GridLength(1, GridUnitType.Star);
             TimelineRow.Height = _savedTimelineHeight.Value > 0
                                  ? _savedTimelineHeight
                                  : new GridLength(1, GridUnitType.Star);
         }
-        else if (ViewModel is { IsTimelineVisible: true, IsDetailsVisible: false })
+        else if (ViewModel.Layout is { IsTimelineVisible: true, IsDetailsVisible: false })
         {
             if (TimelineRow.Height.Value > 0)
             {

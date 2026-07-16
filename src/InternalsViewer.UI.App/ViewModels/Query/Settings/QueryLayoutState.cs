@@ -1,15 +1,18 @@
+using System.Collections.Generic;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.UI.App.ViewModels.Docking;
 
-namespace InternalsViewer.UI.App.ViewModels.Query;
+namespace InternalsViewer.UI.App.ViewModels.Query.Settings;
 
-/// <summary>Persisted snapshot of the query view's dock layout and panel visibility.</summary>
 public sealed class QueryLayoutState
 {
-    public DockNodeDto? Root { get; set; }
+    public DockNode? Root { get; set; }
 
     public bool TimelineVisible { get; set; } = true;
 
-    public bool SettingsOpen { get; set; }
+    public bool CropToQuery { get; set; } = true;
+
+    public bool IncludeSystemObjects { get; set; }
 
     public bool IncludeLock { get; set; } = true;
 
@@ -20,4 +23,6 @@ public sealed class QueryLayoutState
     public bool IncludeMemory { get; set; }
 
     public bool IncludeCallstack { get; set; }
+
+    public List<LockModeCategory>? LockModeCategories { get; set; }
 }

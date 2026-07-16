@@ -197,7 +197,8 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.DataTable" Version="0.1.251217-build.2433" />
-        <PackageReference Include="GitVersion.MsBuild" Version="6.8.1">
+        <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.MarkdownTextBlock" Version="0.1.251217-build.2433" />
+        <PackageReference Include="GitVersion.MsBuild" Version="6.8.2">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -207,7 +208,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.10" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
@@ -216,13 +217,13 @@
         <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
 
-        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
 
-        <PackageReference Include="SkiaSharp" Version="4.148.0" />
-        <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.148.0" />
-        <PackageReference Include="WinUIEx" Version="2.9.1" />
+        <PackageReference Include="SkiaSharp" Version="4.150.1" />
+        <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.150.1" />
+        <PackageReference Include="WinUIEx" Version="2.9.2" />
         <Manifest Include="$(ApplicationManifest)" />
     </ItemGroup>
 
@@ -316,9 +317,6 @@
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\LogMessageControl.xaml">
-        <Generator>MSBuild:Compile</Generator>
-      </Page>
-      <Page Update="Controls\EventGrid\EventFilterControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\QueryReplay\EventGridControl.xaml">
@@ -460,6 +458,9 @@
       <Page Update="Controls\Query\PlanDocumentView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
+        <Page Update="Controls\Query\InstructionsDocumentView.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </Page>
       <Page Update="Controls\Query\SqlDocumentView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>

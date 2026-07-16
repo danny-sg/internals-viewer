@@ -52,7 +52,7 @@ public class EventSqlTests
     [Fact]
     public void GetCreateSessionSql_Has_One_AddEvent_Per_Base_Event_When_Not_Replay_And_No_Extras()
     {
-        var options = new EventOptions { IncludeLock = false, IncludeWait = false, IncludeMemory = false };
+        var options = new EventOptions { IncludeLockModeCategories = [], IncludeWait = false, IncludeMemory = false };
 
         var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
 
@@ -64,7 +64,7 @@ public class EventSqlTests
     [Fact]
     public void GetCreateSessionSql_Adds_LogEvents_When_ReplayMode()
     {
-        var options = new EventOptions { IncludeLock = false, IncludeWait = false, IncludeMemory = false };
+        var options = new EventOptions { IncludeLockModeCategories = [], IncludeWait = false, IncludeMemory = false };
 
         var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, true, options);
 
@@ -84,7 +84,7 @@ public class EventSqlTests
     {
         var options = new EventOptions
         {
-            IncludeLock = includeLock,
+            IncludeLockModeCategories = includeLock ? [LockModeCategory.Read] : [],
             IncludeWait = includeWait,
             IncludeMemory = includeMemory
         };

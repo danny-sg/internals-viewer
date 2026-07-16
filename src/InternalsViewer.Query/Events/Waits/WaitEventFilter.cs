@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Query.Events.Waits;
 
-internal class EventFilter
+internal class WaitEventFilter
 {
     public static bool CanIgnore(string waitType)
     {

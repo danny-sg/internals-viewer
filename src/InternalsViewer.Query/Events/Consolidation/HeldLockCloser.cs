@@ -61,11 +61,11 @@ public static class HeldLockCloser
             // Prefer the measured escalation moment; otherwise infer it as the earliest object-level lock the transaction took in a mode
             // that supersedes the finer locks (a full X/U/S table lock — intent locks coexist with the fine locks, so they don't count).
             var escalation = escalations.TryGetValue(transaction.Key, out var escalated)
-                ? escalated
-                : transaction.Where(l => GranularityLevel(l.Resource.ResourceType) == ObjectLevel
-                                         && LockModeClassifier.IsSuperseding(l.LockMode))
-                             .Select(l => (long?)l.TimeUs)
-                             .Min();
+                             ? escalated
+                             : transaction.Where(l => GranularityLevel(l.Resource.ResourceType) == ObjectLevel
+                                                      && LockModeClassifier.IsSuperseding(l.LockMode))
+                                          .Select(l => (long?)l.TimeUs)
+                                          .Min();
 
             // Prefer the transaction's own commit/rollback; otherwise the end of the captured statement
             var transactionEnd = transactionEnds.TryGetValue(transaction.Key, out var committed)

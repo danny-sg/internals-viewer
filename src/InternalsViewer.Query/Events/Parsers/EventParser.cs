@@ -183,7 +183,7 @@ public sealed class EventParser
     {
         var waitType = (WaitType)(e.GetInt("wait_type") ?? 0);
 
-        if (EventFilter.CanIgnore(waitType.ToString()))
+        if (WaitEventFilter.CanIgnore(waitType.ToString()))
         {
             return null;
         }
