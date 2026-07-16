@@ -13,9 +13,9 @@ namespace InternalsViewer.Query.Events.Parsers;
 /// </remarks>
 internal static class XmlCallStackParser
 {
-    private const string FrameStart = "&lt;frame";
+    private const string FrameStart = "<frame";
 
-    private const string TagEnd = "&gt;";
+    private const string TagEnd = ">";
 
     public static List<CallstackFrame> ParseCallstack(ReadOnlySpan<char> encoded, StringInternPool strings)
     {

@@ -87,6 +87,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private bool _isTooltipEnabled = true;
 
+    [ObservableProperty]
+    private PfsChain _pfsChain = new();
+
     private bool _autoScroll = true;
 
     public bool AutoScroll
@@ -683,6 +686,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
 
+        PfsChain = Database.Pfs[1];
+
         _systemObjectIds = database.AllocationUnits
                                    .Values
                                    .Where(u => u.IsSystem)
@@ -1000,8 +1005,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         LockGroup g => g.Events.OfType<LockEvent>(),
         _ => [],
     };
-
-    public PfsChain PfsChain => new();
 
     /// <summary>
     /// Releases the query event data and disposes the dock layout's views when the tab closes

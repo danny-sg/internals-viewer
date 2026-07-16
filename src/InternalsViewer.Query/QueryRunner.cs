@@ -196,7 +196,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 if (events.Count > 0)
                 {
-                    // Per-node activity histogram across the query window (24 buckets, 14px tall).
+                    // Per-node activity histogram across the query window
                     callStack.ComputeActivity(events.Min(e => e.TimeUs), events.Max(e => e.TimeUs), buckets: 24, height: 14);
                 }
 
