@@ -13,21 +13,23 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
-    // A discrete lock line is at least this tall; a band that can't fit its concurrency as lines this tall falls back to
-    // a density shade instead of sub-pixel lines.
+    // Baseline height for a stretch where a single lock is held, so a lone lock still reads clearly before any overlap
+    // adds height above it.
     private const float MinLockLineHeight = 2f;
 
-    // A discrete (non-overlapping) lock line is near-opaque.
-    private const byte LockLineAlpha = 220;
+    // Full opacity for a real lock's bar; an intent lock only flags finer locks below the resource rather than holding
+    // it, so its band is drawn translucent to recede behind the real locks it sits under.
+    private const byte LockBarAlpha = 230;
+    private const byte IntentLockBarAlpha = 128;
 
     private const float MarkerWidth = 1f;
 
     // Draws the Lock band as one EQUAL-height sub-band per lock-mode category present (Read/Update/Write/Schema/Range/…),
-    // ordered by category, so a busy category can't crowd out the others. Within a band each lock is a bar spanning its
-    // held duration; if the band's max concurrency fits as lines at least MinLockLineHeight tall they are packed into
-    // sub-lanes (a lone lock fills the band as a bar), otherwise it switches to a density shade — translucent full-height
-    // bars that blend darker where more locks are held at once. Shows lock type (band + colour), level (band order),
-    // concurrency (lines / shade) and duration (bar width) together.
+    // ordered by category, so a busy category can't crowd out the others. Within a band the locks are drawn as a single
+    // concurrency bar chart: column height grows with the number of locks held at that instant, so overlaps rise above
+    // the baseline as a taller bar rather than splitting into separate lanes. Shows lock type (band + colour), level
+    // (band order), concurrency (bar height) and duration (bar width) together, and reads the same for two overlaps as
+    // for thousands.
     private void DrawLockGroups(SKCanvas canvas, float[] rowTops, float[] rowHeights)
     {
         var lockRow = _rows.IndexOf(typeof(LockEvent));
@@ -61,9 +63,11 @@ public sealed partial class EventTimelineControl
             return;
         }
 
-        var bandHeight = innerHeight / categories.Count;
+        // A 1px gutter between adjacent category bands so escalations between lock types read as distinct rows rather
+        // than one continuous block; the bands share the remaining height equally.
+        const float bandGap = 1f;
 
-        var availableLanes = Math.Max(1, (int)(bandHeight / MinLockLineHeight));
+        var bandHeight = (innerHeight - bandGap * (categories.Count - 1)) / categories.Count;
 
         var cursorY = innerTop;
 
@@ -71,78 +75,17 @@ public sealed partial class EventTimelineControl
         {
             var bandTop = cursorY;
 
-            cursorY += bandHeight;
+            cursorY += bandHeight + bandGap;
 
-            // Pack into sub-lanes (greedy by start time) so concurrent holds don't overlap; the lane count is the max
-            // concurrency in this band.
-            var laneEnds = new List<long>();
+            var bandLocks = category.OrderBy(l => l.TimeUs).ToList();
 
-            var placed = new List<(LockEvent Lock, int Lane)>();
+            var colour = TimelineColours.LockModeColour(bandLocks[0].LockMode);
 
-            foreach (var lockEvent in category.OrderBy(l => l.TimeUs))
-            {
-                var end = lockEvent.TimeUs + Math.Max(0, lockEvent.DurationUs);
+            // When an operator is selected, a band fades only when every one of its locks is on a different object;
+            // any on-object lock keeps the band lit.
+            var dimmed = bandLocks.All(DimForSelection);
 
-                var lane = laneEnds.FindIndex(laneEnd => laneEnd <= lockEvent.TimeUs);
-
-                if (lane < 0)
-                {
-                    lane = laneEnds.Count;
-
-                    laneEnds.Add(end);
-                }
-                else
-                {
-                    laneEnds[lane] = end;
-                }
-
-                placed.Add((lockEvent, lane));
-            }
-
-            var colour = TimelineColours.LockModeColour(placed[0].Lock.LockMode);
-
-            // Discrete lines while the concurrency fits at a legible height; otherwise a jagged density profile.
-            if (laneEnds.Count <= availableLanes)
-            {
-                var laneHeight = bandHeight / laneEnds.Count;
-
-                foreach (var (lockEvent, lane) in placed)
-                {
-                    var startX = TimeToX(lockEvent.TimeUs / AxisUnitsPerMs);
-
-                    var endX = lockEvent.DurationUs > 0
-                        ? TimeToX((lockEvent.TimeUs + lockEvent.DurationUs) / AxisUnitsPerMs)
-                        : startX + MarkerWidth;
-
-                    if (endX < startX + MarkerWidth)
-                    {
-                        endX = startX + MarkerWidth;
-                    }
-
-                    if (endX < RowLabelWidth || startX > rightEdge)
-                    {
-                        continue;
-                    }
-
-                    var top = bandTop + lane * laneHeight + 0.5f;
-                    var height = Math.Max(1f, laneHeight - 1f);
-
-                    var alpha = (byte)(DimForSelection(lockEvent) ? FocusedDimAlpha : LockLineAlpha);
-
-                    _markerPaint.Color = colour.WithAlpha(alpha);
-                    canvas.DrawRect(startX, top, endX - startX, height, _markerPaint);
-
-                    _hitRegions.Add((new SKRect(startX - 1, top, endX + 1, top + height), lockEvent, null));
-                }
-            }
-            else
-            {
-                // When an operator is selected, a band whose locks are all on a different object fades (matches the
-                // per-lock dim of the discrete branch).
-                var dimmed = placed.All(p => DimForSelection(p.Lock));
-
-                DrawLockDensity(canvas, placed, bandTop, bandHeight, colour, rightEdge, dimmed);
-            }
+            DrawLockConcurrency(canvas, bandLocks, bandTop, bandHeight, colour, rightEdge, dimmed, category.Key.Intent);
         }
 
         // Over the bands: escalation is the moment the fine locks below it were dropped for the coarse one above.
@@ -223,16 +166,18 @@ public sealed partial class EventTimelineControl
         return caret.Op(stem, SKPathOp.Union) ?? new SKPath(stem);
     }
 
-    // Draws a band's locks as a per-pixel concurrency profile: each column's height is how many locks are held at that
-    // moment, so the outline is jagged at each acquire/release the pixel resolution can show and merges (a taller
-    // column) only where several boundaries fall in one pixel. Preserves start/end structure a flat shade would hide.
-    private void DrawLockDensity(SKCanvas canvas,
-                                 List<(LockEvent Lock, int Lane)> locks,
-                                 float bandTop,
-                                 float bandHeight,
-                                 SKColor colour,
-                                 float rightEdge,
-                                 bool dimmed)
+    // Draws a band's locks as a per-pixel concurrency bar chart: each column's height is how many locks are held at that
+    // moment, normalised so the band's peak concurrency fills it. A band with no overlap is a row of full-height bars; a
+    // couple of overlaps step up from a compressed baseline to the full band; a dense band tapers with its concurrency
+    // — one scaling law across the whole range, so overlaps read as added height rather than as a separate lane.
+    private void DrawLockConcurrency(SKCanvas canvas,
+                                     IReadOnlyList<LockEvent> locks,
+                                     float bandTop,
+                                     float bandHeight,
+                                     SKColor colour,
+                                     float rightEdge,
+                                     bool dimmed,
+                                     bool intent)
     {
         var x0 = (int)MathF.Floor(RowLabelWidth);
         var x1 = (int)MathF.Ceiling(rightEdge);
@@ -246,7 +191,7 @@ public sealed partial class EventTimelineControl
         // Difference array over pixel columns: +1 at each lock's start, -1 at its end.
         var concurrency = new int[span + 1];
 
-        foreach (var (lockEvent, _) in locks)
+        foreach (var lockEvent in locks)
         {
             var startX = TimeToX(lockEvent.TimeUs / AxisUnitsPerMs);
 
@@ -300,7 +245,7 @@ public sealed partial class EventTimelineControl
 
         var bandBottom = bandTop + bandHeight;
 
-        _markerPaint.Color = colour.WithAlpha(dimmed ? FocusedDimAlpha : (byte)230);
+        _markerPaint.Color = colour.WithAlpha(dimmed ? FocusedDimAlpha : intent ? IntentLockBarAlpha : LockBarAlpha);
 
         for (var i = 0; i < span; i++)
         {
@@ -311,8 +256,11 @@ public sealed partial class EventTimelineControl
                 continue;
             }
 
-            // At least MinLockLineHeight so an isolated lock still shows, scaling to the full band at the peak.
-            var height = MinLockLineHeight + (bandHeight - MinLockLineHeight) * count / peak;
+            // Square-root of the peak-normalised concurrency, not the raw ratio, so a near-sequential hold (a scan
+            // that always keeps one lock and only briefly holds two at each page handoff) reads as a mostly-solid bar
+            // with small ripples rather than a compressed baseline under full-height teeth. A genuinely busy band still
+            // tapers with its concurrency, just less steeply. Floored at MinLockLineHeight so an isolated lock still shows.
+            var height = MinLockLineHeight + (bandHeight - MinLockLineHeight) * MathF.Sqrt((float)count / peak);
 
             canvas.DrawRect(x0 + i, bandBottom - height, 1f, height, _markerPaint);
         }

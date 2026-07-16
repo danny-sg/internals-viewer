@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Tabs;
-using Microsoft.UI.Xaml;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -22,6 +21,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
     private const string PlanKey = "Plan";
     private const string EventsKey = "Events";
     private const string CallstackKey = "Callstack";
+    private const string InstructionsKey = "Instructions";
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
@@ -62,6 +62,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
                                                                              content,
                                                                              keepAlive: true,
                                                                              key: CallstackKey),
+
+            [InstructionsKey] = DocumentViewModel.Create<InstructionsDocumentView>("Instructions", 
+                                                                                   content, 
+                                                                                   keepAlive: true, 
+                                                                                   key: InstructionsKey)
         };
 
         Dock = new DockLayoutViewModel(new TabGroupNode(_documentsByKey[SqlKey]));
@@ -83,6 +88,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isCallstackVisible;
+
+    [ObservableProperty]
+    private bool _isInstructionsVisible;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TimelineRowHeight))]
@@ -112,6 +120,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
     partial void OnIsEventsVisibleChanged(bool value) => SetDocumentVisible(_documentsByKey[EventsKey], value);
 
     partial void OnIsCallstackVisibleChanged(bool value) => SetDocumentVisible(_documentsByKey[CallstackKey], value);
+
+    partial void OnIsInstructionsVisibleChanged(bool value) => SetDocumentVisible(_documentsByKey[InstructionsKey], value);
 
     partial void OnIsTimelineVisibleChanged(bool value) => Changed?.Invoke();
 
@@ -183,6 +193,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject
         IsExecutionPlanVisible = Dock.Contains(_documentsByKey[PlanKey]);
         IsEventsVisible = Dock.Contains(_documentsByKey[EventsKey]);
         IsCallstackVisible = Dock.Contains(_documentsByKey[CallstackKey]);
+        IsInstructionsVisible = Dock.Contains(_documentsByKey[InstructionsKey]);
 
         _suppressVisibilitySync = false;
     }
