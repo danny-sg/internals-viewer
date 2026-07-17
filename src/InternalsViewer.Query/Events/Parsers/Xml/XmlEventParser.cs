@@ -1,7 +1,4 @@
 ﻿using System.Globalization;
-using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.Parsing.Plans;
 
 namespace InternalsViewer.Query.Events.Parsers.Xml;
 
@@ -16,20 +13,11 @@ namespace InternalsViewer.Query.Events.Parsers.Xml;
 ///
 /// This parser works directly on string buffers and assumes a limited dictionary of known element and attribute names which are
 /// string-interned.
+///
+/// This reads the XML and nothing else — turning the result into an <see cref="EngineEvent"/> is <see cref="EventParser"/>'s job.
 /// </remarks>
 internal sealed class XmlEventParser
 {
-    private readonly DatabaseSource? _database;
-
-    private readonly PlanHandleRegistry _planHandles;
-
-    private readonly EventParser _eventParser;
-
-    /// <summary>
-    /// The shared call stack tree built from every parsed event's frames
-    /// </summary>
-    public CallStackTree CallStack { get; } = new();
-
     private readonly Dictionary<string, ValueRange> _data = new();
 
     private readonly Dictionary<string, ValueRange> _actions = new();
@@ -38,32 +26,31 @@ internal sealed class XmlEventParser
 
     private readonly StringInternPool _names = new();
 
-    public XmlEventParser(DatabaseSource? database, PlanHandleRegistry planHandles, EventParser eventParser)
+    public XmlEventParser()
     {
-        _database = database;
-        _planHandles = planHandles;
-        _eventParser = eventParser;
-
         _result = new EventResult { Name = string.Empty, Data = _data, Actions = _actions };
     }
 
-    public EngineEvent? ParseEvent(string xml)
+    public EventResult? ParseEvent(string xml)
     {
         var buffer = xml.ToCharArray();
 
         return ParseEvent(buffer, buffer.Length);
     }
 
-    public EngineEvent? ParseEvent(char[] buffer, int length)
+    /// <summary>
+    /// Reads one event's fields, or null if the XML holds no event
+    /// </summary>
+    /// <remarks>
+    /// The result is only valid until the next call. To stay allocation free nothing here is copied: a single
+    /// <see cref="EventResult"/> is reused, and its fields are offsets into <paramref name="buffer"/> rather than strings, so both the
+    /// result and the caller's buffer are live only for as long as it takes to map the event.
+    /// </remarks>
+    public EventResult? ParseEvent(char[] buffer, int length)
     {
         _result.Buffer = buffer;
 
-        if (!PopulateResult(buffer.AsSpan(0, length)))
-        {
-            return null;
-        }
-
-        return _eventParser.ToEngineEvent(_result, _database, _planHandles, CallStack);
+        return PopulateResult(buffer.AsSpan(0, length)) ? _result : null;
     }
 
     private bool PopulateResult(ReadOnlySpan<char> xml)

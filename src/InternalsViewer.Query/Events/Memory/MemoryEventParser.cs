@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.Events.Memory;
 
 internal class MemoryEventParser : IEventParser<MemoryEvent>
 {
-    public static MemoryEvent Map(DatabaseSource databaseSource, EventResult e)
+    public static MemoryEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         switch (e.Name)
         {

@@ -90,8 +90,8 @@ public class CategoryMappingsTests
     [Fact]
     public void Module_Pinned_Operator_Rule_Beats_Generic_Function_Rule()
     {
-        // sqlmin|CQScanHash*|... outranks the generic *|*|GetRow* rule for a CQScan GetRow frame.
-        Assert.Equal(SymbolCategory.QueryOperator,
+        // sqlmin|CQScanHash*|* outranks the generic *|*|GetRow* rule, which would otherwise make this RowAccess.
+        Assert.Equal(SymbolCategory.PhysicalOperator,
                      CategoryMappings.Default.Classify("sqlmin", "CQScanHashNew", "GetRow"));
     }
 

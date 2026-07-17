@@ -7,7 +7,7 @@ namespace InternalsViewer.Query.Events.Files;
 
 internal class FileEventParser : IEventParser<FileEvent>
 {
-    public static FileEvent Map(DatabaseSource databaseSource, EventResult e)
+    public static FileEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         var offset = e.GetLong("offset") ?? 0;
         var size = e.GetLong("size") ?? 0;

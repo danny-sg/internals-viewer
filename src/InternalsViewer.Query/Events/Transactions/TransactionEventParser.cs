@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.Events.Transactions;
 
 internal class TransactionEventParser : IEventParser<TransactionEvent>
 {
-    public static TransactionEvent Map(DatabaseSource databaseSource, EventResult e)
+    public static TransactionEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         return new TransactionEvent
         {

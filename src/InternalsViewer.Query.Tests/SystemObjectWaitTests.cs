@@ -24,7 +24,7 @@ public class SystemObjectWaitTests
         Assert.True(parser.IsExcluded(SystemLatch(latchAddress: 200)));
 
         // The wait knows only the address it suspended on, so the excluded latch's address is what identifies it.
-        Assert.True(parser.IsExcludedSystemWait(PageIoWait(waitResource: 200)));
+        Assert.True(parser.IsSystemObjectWait(PageIoWait(waitResource: 200)));
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public class SystemObjectWaitTests
 
         parser.IsExcluded(SystemLatch(latchAddress: 200));
 
-        Assert.False(parser.IsExcludedSystemWait(PageIoWait(waitResource: 999)));
+        Assert.False(parser.IsSystemObjectWait(PageIoWait(waitResource: 999)));
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class SystemObjectWaitTests
         };
 
         Assert.False(parser.IsExcluded(userLatch));
-        Assert.False(parser.IsExcludedSystemWait(PageIoWait(waitResource: 200)));
+        Assert.False(parser.IsSystemObjectWait(PageIoWait(waitResource: 200)));
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public class SystemObjectWaitTests
         var parser = new EventParser { IncludeSystemObjects = true };
 
         Assert.False(parser.IsExcluded(SystemLatch(latchAddress: 200)));
-        Assert.False(parser.IsExcludedSystemWait(PageIoWait(waitResource: 200)));
+        Assert.False(parser.IsSystemObjectWait(PageIoWait(waitResource: 200)));
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class SystemObjectWaitTests
 
         var yield = new WaitEvent { Name = "Wait", WaitType = WaitType.SOS_SCHEDULER_YIELD };
 
-        Assert.False(parser.IsExcludedSystemWait(yield));
+        Assert.False(parser.IsSystemObjectWait(yield));
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class SystemObjectWaitTests
 
         parser.IsExcluded(SystemLatch(latchAddress: 200));
 
-        Assert.False(parser.IsExcludedSystemWait(new EngineEvent { Name = "physical_page_read" }));
+        Assert.False(parser.IsSystemObjectWait(new EngineEvent { Name = "physical_page_read" }));
     }
 
     private static EventParser Parser() => new();

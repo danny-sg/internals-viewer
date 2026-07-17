@@ -16,7 +16,7 @@ internal class LockEventParser: IEventParser<LockEvent>
     /// 
     ///     Lock owner --> [Lock Mode] --> Lock Resource
     /// </remarks>
-    public static LockEvent Map(DatabaseSource databaseSource, EventResult e)
+    public static LockEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         var lockMode = (LockMode)(e.GetInt("mode") ?? 0);
 
@@ -33,38 +33,15 @@ internal class LockEventParser: IEventParser<LockEvent>
             LockOwnerContext = ParseLockOwnerContext(e),
         };
 
-        lockEvent.AllocationUnit = lockEvent.Resource.ObjectId > 0
-            ? databaseSource.FindObjectIdAllocationUnit(lockEvent.Resource.ObjectId)
-            : lockEvent.Resource.HobtId is { } hobtId and > 0
-                ? databaseSource.FindHobtIdAllocationUnit(hobtId)
-                : null;
+        lockEvent.AllocationUnit = databaseSource is null
+            ? null
+            : lockEvent.Resource.ObjectId > 0
+                ? databaseSource.FindObjectIdAllocationUnit(lockEvent.Resource.ObjectId)
+                : lockEvent.Resource.HobtId is { } hobtId and > 0
+                    ? databaseSource.FindHobtIdAllocationUnit(hobtId)
+                    : null;
 
         return lockEvent;
-    }
-
-    /// <summary>
-    /// Parses a lock escalation event
-    /// </summary>
-    /// <remarks>
-    /// Resolved from object_id - escalations will always be to the object level
-    /// </remarks>
-    public static LockEscalationEvent MapEscalation(DatabaseSource databaseSource, EventResult e)
-    {
-        var objectId = (int)(e.GetLong("object_id") ?? 0);
-
-        return new LockEscalationEvent
-        {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            LockMode = (LockMode)(e.GetInt("mode") ?? 0),
-            ResourceType = (LockResourceType)(e.GetInt("resource_type") ?? 0),
-            EscalatedObjectId = objectId,
-            TransactionId = e.GetLong("transaction_id"),
-            EscalatedLockCount = e.GetLong("escalated_lock_count") ?? 0,
-            HobtLockCount = e.GetLong("hobt_lock_count") ?? 0,
-            AllocationUnit = objectId > 0 ? databaseSource.FindObjectIdAllocationUnit(objectId) : null,
-        };
     }
 
     /// <summary>
@@ -73,7 +50,7 @@ internal class LockEventParser: IEventParser<LockEvent>
     /// <remarks>
     /// The lock owner context is the context that owns a lock, identifying the source of the lock request
     /// </remarks>
-    private static LockOwnerContext? ParseLockOwnerContext(EventResult e)
+    private static LockOwnerContext ParseLockOwnerContext(EventResult e)
     {
         var ownerType = (LockOwnerType) (e.GetInt("owner_type") ?? 0);
 
@@ -180,7 +157,7 @@ internal class LockEventParser: IEventParser<LockEvent>
     /// Decode is:
     /// 
     ///     High 2 bytes = resource_1 (big-endian/byte-swapped)
-    ///     Low 4 bytes = resource_2 (big-endian/byte-swapped)
+    ///     Low 4 bytes  = resource_2 (big-endian/byte-swapped)
     /// 
     /// </remarks>
     internal static string BuildKeyHash(ulong resource1, ulong resource2)

@@ -5,6 +5,7 @@ using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Files;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Parsers.Xml;
 using InternalsViewer.Query.Events.Reads;
@@ -24,13 +25,8 @@ public sealed class EventParser
     public bool IncludeSystemObjects { get; init; }
 
     /// <summary>
-    /// The BUF latch addresses of the system-object events excluded so far
+    /// Latch addresses linked to system objects
     /// </summary>
-    /// <remarks>
-    /// Kept for the length of the batch: a wait can only be recognised as system work once the latch it measures has been
-    /// seen, and capture order is unreliable — a wait is frequently buffered ahead of its latch, so the reader sweeps for
-    /// them once the batch is read rather than as it goes. See <see cref="IsExcludedSystemWait"/>.
-    /// </remarks>
     private readonly HashSet<ulong> _systemLatchAddresses = [];
 
     public EngineEvent? ToEngineEvent(EventResult e,
@@ -41,31 +37,32 @@ public sealed class EventParser
         var engineEvent = e.Name switch
         {
             var n when n.Contains("file_")
-                => FileEventParser.Map(database!, e),
+                => FileEventParser.Map(database, e),
             var n when n.Contains("physical_page")
-                => IoEventParser.Map(database!, e),
+                => IoEventParser.Map(database, e),
             "lock_escalation"
-                => LockEventParser.MapEscalation(database!, e),
+                => LockEscalationEventParser.Map(database, e),
             var n when n.Contains("lock_")
-                => LockEventParser.Map(database!, e),
+                => LockEventParser.Map(database, e),
             var n when n.Contains("wait")
-                => WaitEventParser.Map(database!, e),
+                => WaitEventParser.Map(database, e),
             var n when n.Contains("latch")
-                => LatchEventParser.Map(database!, e),
+                => LatchEventParser.Map(database, e),
             "query_thread_profile"
-                or "query_memory_grant_usage"
+                =>QueryThreadParser.Map(database, e),
+            "query_memory_grant_usage"
                 or "hash_spill_details"
                 or "memory_grant_updated_by_feedback"
                 or "sort_warning"
-                => QueryThreadParser.Map(database!, e),
+                => MemoryEventParser.Map(database, e),
             "transaction_log"
-                => TransactionEventParser.Map(database!, e),
+                => TransactionLogEventParser.Map(database, e),
             "sql_transaction"
-                => TransactionEventParser.Map(database!, e),
+                => TransactionEventParser.Map(database, e),
             "sql_batch_starting"
-                => BatchStartEventParser.Map(database!, e),
+                => BatchStartEventParser.Map(database, e),
             "sql_batch_completed"
-                => BatchEndEventParser.Map(database!, e),
+                => BatchEndEventParser.Map(database, e),
             _ => new EngineEvent
             {
                 Name = e.Name,
@@ -144,13 +141,11 @@ public sealed class EventParser
     }
 
     /// <summary>
-    /// Whether the event is system-object work being excluded, remembering the latch address if so
+    /// If an event should be excluded based on the system object option
     /// </summary>
     /// <remarks>
-    /// An event is system work by the allocation unit its page belongs to, which is why the latch address is worth
-    /// keeping: a wait carries no page, so it never resolves to an allocation unit and can never be recognised here.
-    /// Excluding the preamble's latches without its waits strands them, leaving no suspend for
-    /// <see cref="Consolidation.WaitAligner"/> or <see cref="Consolidation.ReaderGrouper"/> to find by address.
+    /// Wait events don't include information to link back to a system object, but the latch address can be so latches excluded have their
+    /// address registered so waits on those latches can be subsequently excluded.
     /// </remarks>
     internal bool IsExcluded(EngineEvent engineEvent)
     {
@@ -168,13 +163,14 @@ public sealed class EventParser
     }
 
     /// <summary>
-    /// Whether the event is a wait on a latch that was excluded as system work
+    /// Check if the wait is a system object wait based on the registered system object latches
     /// </summary>
     /// <remarks>
-    /// A page IO wait's wait_resource IS the address of the BUF latch it suspended on, so the addresses collected while
-    /// excluding those latches identify the stranded waits exactly.
+    /// A PAGEIOLATCH will have a corresponding latch event that contains details of the page and object the latch/wait is on. Latch
+    /// addresses on system object are collected during parse and this predicate can be used to reference that information to determine if
+    /// the supplied wait is on a system object.
     /// </remarks>
-    public bool IsExcludedSystemWait(EngineEvent engineEvent) =>
+    public bool IsSystemObjectWait(EngineEvent engineEvent) =>
         engineEvent is WaitEvent { WaitResource: { } resource } && _systemLatchAddresses.Contains(resource);
 
     internal static bool IsSystemObjectEvent(EngineEvent engineEvent) =>

@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.Events.Operators;
 
 internal class QueryThreadParser : IEventParser<QueryThreadEvent>
 {
-    public static QueryThreadEvent Map(DatabaseSource databaseSource, EventResult e)
+    public static QueryThreadEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         var threadId = (e.GetInt("thread_id") ?? 0);
         var nodeId = (e.GetInt("node_id") ?? 0);

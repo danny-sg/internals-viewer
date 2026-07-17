@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.Events.Waits;
 
 internal class WaitEventParser : IEventParser<WaitEvent>
 {
-    public static WaitEvent? Map(DatabaseSource databaseSource, EventResult e)
+    public static WaitEvent? Map(DatabaseSource? databaseSource, EventResult e)
     {
         var waitType = (WaitType)(e.GetInt("wait_type") ?? 0);
 

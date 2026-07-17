@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.Events.Latches;
 
 internal class LatchEventParser : IEventParser<LatchEvent>
 {
-    public static LatchEvent Map(DatabaseSource databaseSource, EventResult e)
+    public static LatchEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         var address = e.GetUlong("address");
 

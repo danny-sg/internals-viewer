@@ -9,9 +9,9 @@ public class XmlCallStackParserTests
     // attribute quotes stay literal. The parser reads that form in place rather than decoding it to a string first.
     private const string ThreeFrames =
         """
-        &lt;frame id="00" address="0x7FFD81BD602C" pdb="sqlmin.pdb" age="2" guid="80B1767D-3B81-4D3F-BA30-30216965DE41" module="sqlmin" rva="0x1234"/&gt;
-        &lt;frame id="01" address="0x00007FFD0000ABCD" pdb="sqllang.pdb" age="1" guid="AABBCCDD-0000-0000-0000-000000000000" module="sqllang" rva="4660"/&gt;
-        &lt;frame id="02" address="0x00007FFD00001111" pdb="sqlmin.pdb" age="2" guid="80B1767D-3B81-4D3F-BA30-30216965DE41" module="sqlmin" rva="0x5678"/&gt;
+        <frame id="00" address="0x7FFD81BD602C" pdb="sqlmin.pdb" age="2" guid="80B1767D-3B81-4D3F-BA30-30216965DE41" module="sqlmin" rva="0x1234"/>
+        <frame id="01" address="0x00007FFD0000ABCD" pdb="sqllang.pdb" age="1" guid="AABBCCDD-0000-0000-0000-000000000000" module="sqllang" rva="4660"/>
+        <frame id="02" address="0x00007FFD00001111" pdb="sqlmin.pdb" age="2" guid="80B1767D-3B81-4D3F-BA30-30216965DE41" module="sqlmin" rva="0x5678"/>
         """;
 
     [Fact]

@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.Events.Batches;
 
 internal class BatchEndEventParser : IEventParser<BatchEndEvent>
 {
-    public static BatchEndEvent Map(DatabaseSource databaseSource, EventResult e)
+    public static BatchEndEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         return new BatchEndEvent
         {

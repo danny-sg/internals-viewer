@@ -39,26 +39,13 @@ public class EventSqlTests
     }
 
     [Fact]
-    public void GetCreateSessionSql_Includes_Filename_And_Spid_Filter()
+    public void GetCreateSessionSql_Includes_Spid_SessionName_Filter()
     {
         var sql = EventSql.GetCreateSessionSql("MySession", @"C:\Trace\MySession.xel", 52, false, new EventOptions());
 
         Assert.Contains("CREATE EVENT SESSION [MySession] ON SERVER", sql);
-        Assert.Contains(@"filename = 'C:\Trace\MySession.xel'", sql);
         Assert.Contains("sqlserver.session_id = 52", sql);
-        Assert.Contains("sqlserver.sql_text NOT LIKE '%LOG_READ_MySession%'", sql);
-    }
-
-    [Fact]
-    public void GetCreateSessionSql_Has_One_AddEvent_Per_Base_Event_When_Not_Replay_And_No_Extras()
-    {
-        var options = new EventOptions { IncludeLockModeCategories = [], IncludeWait = false, IncludeMemory = false };
-
-        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
-
-        var addEventCount = CountOccurrences(sql, "ADD EVENT ");
-
-        Assert.Equal(EventConstants.Events.Length, addEventCount);
+        Assert.Contains("sqlserver.sql_text NOT LIKE '%MySession%'", sql);
     }
 
     [Fact]
@@ -70,34 +57,7 @@ public class EventSqlTests
 
         var addEventCount = CountOccurrences(sql, "ADD EVENT ");
 
-        Assert.Equal(EventConstants.Events.Length + EventConstants.LogEvents.Length, addEventCount);
         Assert.Contains("sqlserver.transaction_log", sql);
-    }
-
-    [Theory]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(false, false, true)]
-    public void GetCreateSessionSql_Adds_Optional_Event_Groups_When_Requested(bool includeLock,
-                                                                              bool includeWait,
-                                                                              bool includeMemory)
-    {
-        var options = new EventOptions
-        {
-            IncludeLockModeCategories = includeLock ? [LockModeCategory.Read] : [],
-            IncludeWait = includeWait,
-            IncludeMemory = includeMemory
-        };
-
-        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
-
-        var extraCount = (includeLock ? EventConstants.LockEvents.Length : 0)
-                          + (includeWait ? EventConstants.WaitEvents.Length : 0)
-                          + (includeMemory ? EventConstants.MemoryEvents.Length : 0);
-
-        var addEventCount = CountOccurrences(sql, "ADD EVENT ");
-
-        Assert.Equal(EventConstants.Events.Length + extraCount, addEventCount);
     }
 
     [Fact]

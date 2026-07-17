@@ -1,5 +1,8 @@
 namespace InternalsViewer.Query.Events;
 
+/// <summary>
+/// 
+/// </summary>
 public sealed record EventResult
 {
     public int SequenceId { get; set; }

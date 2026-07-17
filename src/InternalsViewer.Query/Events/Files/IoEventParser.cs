@@ -7,7 +7,7 @@ namespace InternalsViewer.Query.Events.Files;
 
 public class IoEventParser : IEventParser<IoEvent>
 {
-    public static IoEvent Map(DatabaseSource databaseSource, EventResult e)
+    public static IoEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         var fileId = e.GetShort("file_id") ?? 0;
         var pageId = e.GetInt("page_id") ?? 0;

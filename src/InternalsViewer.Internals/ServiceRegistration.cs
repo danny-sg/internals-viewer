@@ -35,8 +35,6 @@ public static class ServiceRegistration
     {
         RegisterConnectionFactories(services);
 
-        services.AddTransient<IPageReader, QueryPageReader>();
-
         services.AddTransient<IBufferPoolInfoProvider, BufferPoolInfoProvider>();
 
         services.AddTransient<IMetadataLoader, MetadataLoader>();

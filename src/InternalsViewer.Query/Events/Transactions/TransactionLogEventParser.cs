@@ -9,7 +9,7 @@ namespace InternalsViewer.Query.Events.Transactions;
 /// </summary>
 internal class TransactionLogEventParser : IEventParser<TransactionLogEvent>
 {
-    public static TransactionLogEvent Map(DatabaseSource databaseSource, EventResult e)
+    public static TransactionLogEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         return new TransactionLogEvent
         {
