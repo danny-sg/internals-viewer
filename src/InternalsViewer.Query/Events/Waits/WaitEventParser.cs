@@ -14,7 +14,7 @@ internal class WaitEventParser : IEventParser<WaitEvent>
             return null;
         }
 
-        var isEnd = e.GetString("opcode") == "End";
+        var isEnd = e.GetInt("opcode") == 1;
 
         var waitResource = e.GetUlong("wait_resource");
 

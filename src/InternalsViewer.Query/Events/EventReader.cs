@@ -3,8 +3,10 @@ using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Consolidation;
+using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Events.Waits;
 using InternalsViewer.Query.Events.Parsers.Xml;
 using InternalsViewer.Query.Parsing.Plans;
 using Microsoft.Data.SqlClient;
@@ -46,7 +48,9 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         DateTime? startTimeStamp = null;
 
-        var eventParser = new XmlEventParser(database, planHandles, new EventParser());
+        var eventParser = new EventParser { IncludeSystemObjects = includeSystemObjects };
+
+        var xmlEventParser = new XmlEventParser(database, planHandles, eventParser);
 
         // Use buffer for XML/Name to prevent repeated string allocations for each row
         var xmlBuffer = new char[4096];
@@ -89,15 +93,10 @@ public sealed class EventReader(ILogger<EventReader> logger)
                                         new XEventPayload(eventName, xml));
                     }
 
-                    var engineEvent = eventParser.ParseEvent(xmlBuffer, length);
+                    var engineEvent = xmlEventParser.ParseEvent(xmlBuffer, length);
 
                     if (engineEvent is not null)
                     {
-                        if (!includeSystemObjects && IsSystemObjectEvent(engineEvent))
-                        {
-                            continue;
-                        }
-
                         startTimeStamp ??= engineEvent.Timestamp;
 
                         // Gaps in sequence ids to allow the plan nodes to be slotted in
@@ -120,6 +119,10 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         Logger.LogDebug("Read {Count} events in {Duration}", events.Count, Stopwatch.GetElapsedTime(start));
 
+        // Excluding a system object took its latches on the way in but could not take the waits measuring them: a wait
+        // carries no page, so it never resolves to an allocation unit. They can only be recognised now, by address.
+        events.RemoveAll(eventParser.IsExcludedSystemWait);
+
         progress?.Report("Processing events");
 
         var consolidatedEvents = await PostProcessEvents(events, connectionString, progress, cancellationToken);
@@ -139,7 +142,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         consolidatedEvents.AddRange(operatorEvents);
 
-        return (consolidatedEvents, executionPlans, eventParser.CallStack);
+        return (consolidatedEvents, executionPlans, xmlEventParser.CallStack);
     }
 
     /// <summary>
@@ -173,6 +176,12 @@ public sealed class EventReader(ILogger<EventReader> logger)
         var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
 
         Logger.LogDebug("Collapsed intervals in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
+
+        WaitAligner.Align(collapsedEvents);
+
+        Logger.LogDebug("Aligned waits in {Duration}", Stopwatch.GetElapsedTime(start));
 
         start = Stopwatch.GetTimestamp();
 
@@ -214,10 +223,6 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         return consolidatedEvents;
     }
-
-    private static bool IsSystemObjectEvent(EngineEvent engineEvent) =>
-        engineEvent.AllocationUnit?.IsSystem == true
-        || engineEvent is LockEvent { Resource.ResourceType: LockResourceType.Metadata or LockResourceType.Database };
 
     /// <summary>
     /// Read a column into the referenced buffer
