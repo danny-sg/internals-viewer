@@ -4,6 +4,7 @@ using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Events.Parsers.Xml;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;

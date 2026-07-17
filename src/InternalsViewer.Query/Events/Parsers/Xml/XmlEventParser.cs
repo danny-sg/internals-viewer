@@ -3,14 +3,19 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Parsing.Plans;
 
-namespace InternalsViewer.Query.Events.Parsers;
+namespace InternalsViewer.Query.Events.Parsers.Xml;
 
 /// <summary>
 /// Event XML Parser
 /// </summary>
 /// <remarks>
-/// This uses custom XML parsing for efficiency - reading a large number of XML events creates string allocations that
-/// slow the application due to GC pauses.
+/// Custom minimal Span/buffer based XML parser.
+///
+/// Reading thousands of events at a time can cause a huge amount of string allocations. The built-in parsers aren't great in the usage
+/// scenario, you'll see a lot of GC churn which does materially slow the parsing down.
+///
+/// This parser works directly on string buffers and assumes a limited dictionary of known element and attribute names which are
+/// string-interned.
 /// </remarks>
 internal sealed class XmlEventParser
 {
@@ -25,17 +30,12 @@ internal sealed class XmlEventParser
     /// </summary>
     public CallStackTree CallStack { get; } = new();
 
-    // Reused for every event. Values are stored as ranges into the event's character buffer, not strings,
-    // so only the few that are read as strings ever allocate (see EventResultExtensions).
     private readonly Dictionary<string, ValueRange> _data = new();
 
     private readonly Dictionary<string, ValueRange> _actions = new();
 
     private readonly EventResult _result;
 
-    // Event and field names come from a small fixed vocabulary, so they're interned: each distinct name is
-    // turned into a string once and that instance is reused for every later occurrence (and shared by the
-    // EngineEvents that carry it), rather than allocating a new string per event.
     private readonly StringInternPool _names = new();
 
     public XmlEventParser(DatabaseSource? database, PlanHandleRegistry planHandles, EventParser eventParser)
@@ -96,10 +96,10 @@ internal sealed class XmlEventParser
         }
 
         _result.Name = _names.Intern(name);
-        _result.Timestamp = DateTime.Parse(
-            timestamp,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.RoundtripKind);
+
+        _result.Timestamp = DateTime.Parse(timestamp,
+                                           CultureInfo.InvariantCulture,
+                                           DateTimeStyles.RoundtripKind);
 
         // Self-closing <event .../> (no fields).
         if (xml[eventTagEnd - 1] == '/')
@@ -122,7 +122,7 @@ internal sealed class XmlEventParser
 
             if (i + 1 < xml.Length && xml[i + 1] == '/')
             {
-                // End tag: stop at </event>, otherwise skip it.
+                // End tag: stop at </event>, otherwise skip it
                 if (IsElementName(xml, i + 2, "event"))
                 {
                     break;
@@ -140,6 +140,7 @@ internal sealed class XmlEventParser
             }
 
             var isData = IsElementName(xml, i + 1, "data");
+
             var isAction = !isData && IsElementName(xml, i + 1, "action");
 
             var tagEnd = XmlEventTagParser.FindTagEnd(xml, i);
@@ -163,7 +164,7 @@ internal sealed class XmlEventParser
 
             if (xml[tagEnd - 1] == '/')
             {
-                // Self-closing <data .../> - no value.
+                // Self-closing <data .../> - no value
                 next = tagEnd + 1;
             }
             else
@@ -210,7 +211,7 @@ internal sealed class XmlEventParser
 
         tagEndPosition += valueStart;
 
-        // Self-closing <value/>.
+        // Self-closing <value/>
         if (content[tagEndPosition - 1] == '/')
         {
             return default;

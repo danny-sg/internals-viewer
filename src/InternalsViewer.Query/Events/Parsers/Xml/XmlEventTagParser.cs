@@ -1,8 +1,7 @@
-﻿namespace InternalsViewer.Query.Events.Parsers;
+﻿namespace InternalsViewer.Query.Events.Parsers.Xml;
 
 internal sealed class XmlEventTagParser
 {
-
     /// <summary>
     /// Find the index of the XML end tag
     /// </summary>

@@ -4,12 +4,9 @@ using InternalsViewer.Query.Interfaces.Events;
 namespace InternalsViewer.Query.Events.Reads;
 
 /// <summary>
-/// A page-read episode built from the storage events that make up a single read
+/// A page-read set of events built from the storage events that make up a single read
 /// </summary>
 /// <remarks>
-/// Owns its constituent events rather than duplicating them; a flatten/SelectMany over <see cref="Events"/> expands the group back into
-/// the raw stream.
-///
 /// <see cref="EngineEvent.TimeUs"/> and <see cref="EngineEvent.DurationUs"/> are taken from the suspend spine, not a min/max envelope over
 /// the children: child timestamps are quantised to the millisecond, so an envelope stretches to a full 1000us of slop, whereas the folded
 /// suspend carries the microsecond-accurate SQL-measured read duration.

@@ -1,5 +1,8 @@
 ﻿namespace InternalsViewer.Query.Events.Reads;
 
+/// <summary>
+/// IO (page read/write) event
+/// </summary>
 public sealed record IoEvent : PageEngineEvent
 {
     public bool IsRead { get; init; }

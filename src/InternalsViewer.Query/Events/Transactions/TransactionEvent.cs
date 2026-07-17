@@ -1,7 +1,7 @@
 namespace InternalsViewer.Query.Events.Transactions;
 
 /// <summary>
-/// Transaction lifecycle point (begin/commit/rollback), from sqlserver.sql_transaction
+/// Transaction lifecycle point (begin/commit/rollback)
 /// </summary>
 /// <remarks>
 /// Captured for lock timing. A lock held to the end of its transaction has no <c>lock_released</c> inside the traced window, so the

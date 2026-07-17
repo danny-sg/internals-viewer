@@ -1,23 +1,18 @@
 using System.Globalization;
 using InternalsViewer.Query.CallStack;
 
-namespace InternalsViewer.Query.Events.Parsers;
+namespace InternalsViewer.Query.Events.Parsers.Xml;
 
 /// <summary>
-/// Parses call stack frames from the XML-escaped callstack action value
+/// Parses call stack frames specifically for the event XML call stack format
 /// </summary>
-/// <remarks>
-/// The callstack arrives as escaped XML held in the event buffer - each frame is <c>&amp;lt;frame .../&amp;gt;</c> with
-/// its attribute quotes left literal. Parsing that span in place avoids decoding the whole (often multi-KB) callstack to
-/// a string per event, which is the dominant string allocation when loading hundreds of thousands of events.
-/// </remarks>
 internal static class XmlCallStackParser
 {
     private const string FrameStart = "<frame";
 
     private const string TagEnd = ">";
 
-    public static List<CallstackFrame> ParseCallstack(ReadOnlySpan<char> encoded, StringInternPool strings)
+    public static List<CallstackFrame> ParseCallStack(ReadOnlySpan<char> encoded, StringInternPool strings)
     {
         var frames = new List<CallstackFrame>();
         var i = 0;
@@ -36,7 +31,6 @@ internal static class XmlCallStackParser
 
             i += offset;
 
-            // Frame attributes never contain a literal '>', so the first escaped close terminates the tag.
             var relativeEnd = encoded[i..].IndexOf(tagEnd, StringComparison.Ordinal);
 
             if (relativeEnd < 0)

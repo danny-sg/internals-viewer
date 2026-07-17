@@ -1,18 +1,16 @@
-﻿using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Batches;
+using InternalsViewer.Query.Events.Files;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
-using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Parsers.Xml;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
-using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Parsing.Plans;
-using InternalsViewer.Query.TransactionLog;
 
 namespace InternalsViewer.Query.Events.Parsers;
 
@@ -112,7 +110,7 @@ public sealed class EventParser
 
         if (e.TryGetActionSpan("callstack", out var callstack))
         {
-            var frames = XmlCallStackParser.ParseCallstack(callstack, _frameStrings);
+            var frames = XmlCallStackParser.ParseCallStack(callstack, _frameStrings);
 
             if (frames.Count > 0)
             {
@@ -121,208 +119,5 @@ public sealed class EventParser
         }
 
         return engineEvent;
-    }
-}
-
-internal class BatchStartEventParser : IEventParser<BatchStartEvent>
-{
-    public static BatchStartEvent Map(DatabaseSource databaseSource, EventResult e)
-    {
-        return new BatchStartEvent
-        {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            SqlText = e.GetString("batch_text")
-        };
-    }
-}
-
-internal class FileEventParser : IEventParser<FileEvent>
-{
-    public static FileEvent Map(DatabaseSource databaseSource, EventResult e)
-    {
-        var offset = e.GetLong("offset") ?? 0;
-        var size = e.GetLong("size") ?? 0;
-
-        var fileId = e.GetShort("file_id") ?? 0;
-
-        var pageId = e.GetInt("page_id") ?? (int)(offset / 8192);
-
-        var mode = (ReadMode)(e.GetByte("mode") ?? 0);
-
-        return new FileEvent
-        {
-            Name = e.Name,
-            Size = size,
-            Offset = offset,
-            Mode = mode,
-            FileId = fileId,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            PageAddress = new PageAddress(fileId, pageId),
-            IsRead = e.Name?.Contains("read") ?? false
-        };
-    }
-}
-
-internal class LatchEventParser : IEventParser<LatchEvent>
-{
-    public static LatchEvent Map(DatabaseSource databaseSource, EventResult e)
-    {
-        var address = e.GetUlong("address");
-
-        var latchMode = (LatchMode)(e.GetInt("mode") ?? 0);
-
-        var fileId = e.GetShort("file_id") ?? 0;
-
-        var pageId = e.GetInt("page_id") ?? 0;
-
-        var latchClass = (LatchClass)(e.GetInt("class") ?? 0);
-
-        var latchEvent = new LatchEvent
-        {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            LatchMode = latchMode,
-            LatchClass = latchClass,
-            LatchAddress = address,
-            DurationUs = e.GetLong("duration") ?? 0,
-            PageAddress = new PageAddress(fileId, pageId)
-        };
-
-        return latchEvent;
-    }
-}
-
-internal class QueryThreadParser : IEventParser<QueryThreadEvent>
-{
-    public static QueryThreadEvent Map(DatabaseSource databaseSource, EventResult e)
-    {
-        var threadId = (e.GetInt("thread_id") ?? 0);
-        var nodeId = (e.GetInt("node_id") ?? 0);
-
-        return new QueryThreadEvent
-        {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            ThreadId = threadId,
-            NodeId = nodeId,
-            DurationUs = e.GetLong("total_time_us") ?? 0
-        };
-    }
-}
-
-internal class WaitEventParser : IEventParser<WaitEvent>
-{
-    public static WaitEvent? Map(DatabaseSource databaseSource, EventResult e)
-    {
-        var waitType = (WaitType)(e.GetInt("wait_type") ?? 0);
-
-        if (WaitEventFilter.CanIgnore(waitType.ToString()))
-        {
-            return null;
-        }
-
-        var isEnd = e.GetString("opcode") == "End";
-
-        var waitResource = e.GetUlong("wait_resource");
-
-        var duration = e.GetLong("duration") ?? 0;
-
-        var waitEvent = new WaitEvent
-        {
-            Name = "Wait",
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            WaitType = waitType,
-            IsEnd = isEnd,
-            WaitResource = waitResource,
-            DurationUs = duration,
-        };
-
-        return waitEvent;
-    }
-}
-
-public class IoEventParser : IEventParser<IoEvent>
-{
-    public static IoEvent Map(DatabaseSource databaseSource, EventResult e)
-    {
-        var fileId = e.GetShort("file_id") ?? 0;
-        var pageId = e.GetInt("page_id") ?? 0;
-
-        return new IoEvent
-        {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            PageAddress = new PageAddress(fileId, pageId),
-            IsRead = e.Name?.Contains("read") ?? false
-        };
-    }
-}
-
-internal class TransactionLogEventParser : IEventParser<TransactionLogEvent>
-{
-    public static TransactionLogEvent Map(DatabaseSource databaseSource, EventResult e)
-    {
-        return new TransactionLogEvent
-        {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            Operation = (LogOperation)(e.GetInt("operation") ?? 0),
-            Context = (LogContext)(e.GetInt("context") ?? 0),
-            AllocationUnitId = e.GetLong("alloc_unit_id") ?? 0,
-            TransactionId = e.GetInt("transaction_id")
-        };
-    }
-}
-
-internal class MemoryEventParser : IEventParser<MemoryEvent>
-{
-    public static MemoryEvent Map(DatabaseSource databaseSource, EventResult e)
-    {
-        switch (e.Name)
-        {
-            case "memory_grant_updated_by_feedback":
-                return new MemoryEvent
-                {
-                    Name = e.Name,
-                    Timestamp = e.Timestamp,
-                    DatabaseId = e.GetDatabaseId(),
-                    AdditionalMemoryBeforeKb = e.GetLong("ideal_additional_memory_before_kb") ?? 0,
-                    AdditionalMemoryAfterKb = e.GetLong("ideal_additional_memory_after_kb") ?? 0,
-                    DurationUs = e.GetLong("duration") ?? 0
-                };
-            default:
-                return new MemoryEvent
-                {
-                    Name = e.Name,
-                    Timestamp = e.Timestamp,
-                    DatabaseId = e.GetDatabaseId(),
-                    UsedMemoryKb = e.GetLong("used_memory_kb") ?? 0,
-                    GrantedMemoryKb = e.GetLong("granted_memory_kb") ?? 0,
-                    DurationUs = e.GetLong("duration") ?? 0
-                };
-        }
-    }
-}
-
-internal class TransactionEventParser : IEventParser<TransactionEvent>
-{
-    public static TransactionEvent Map(DatabaseSource databaseSource, EventResult e)
-    {
-        return new TransactionEvent
-        {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            DatabaseId = e.GetDatabaseId(),
-            TransactionId = e.GetLong("transaction_id") ?? 0,
-            State = (TransactionState)(e.GetInt("transaction_state") ?? 0),
-        };
     }
 }

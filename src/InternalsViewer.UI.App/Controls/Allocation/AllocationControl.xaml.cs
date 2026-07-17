@@ -777,7 +777,10 @@ public sealed partial class AllocationControl : IDisposable
                            ? GetExtentPosition(cell - firstCell, layout)
                            : GetPagePosition(cell - firstCell, layout);
 
-                var column = cell % gridWidth;
+                // The on-screen column, derived the same way the rect is positioned (cell - firstCell), NOT the absolute
+                // cell. A resize changes gridWidth without re-aligning firstCell to it, so cell % gridWidth would place a
+                // cell's map-edge trim on a different column than its rect and the outline edges land wrong.
+                var column = (cell - firstCell) % gridWidth;
 
                 var leftX = column == 0 ? rect.Left + 1 : rect.Left;
                 var rightX = column == gridWidth - 1 ? rect.Right - 1 : rect.Right;

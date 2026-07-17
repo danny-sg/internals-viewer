@@ -145,7 +145,7 @@ public sealed class CallStackNode
     /// </summary>
     /// <remarks>
     /// The node-level <see cref="Path()"/>, for callers that need to test the nodes themselves rather than their frames
-    /// — cutting the path at an operator boundary, say.
+    /// — cutting the path at an operator boundary
     /// </remarks>
     public IEnumerable<CallStackNode> Ancestors()
     {
