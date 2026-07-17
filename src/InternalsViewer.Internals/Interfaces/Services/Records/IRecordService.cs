@@ -5,9 +5,9 @@ namespace InternalsViewer.Internals.Interfaces.Services.Records;
 
 public interface IRecordService
 {
-    IEnumerable<IRecord> GetRecords(Page page, bool isMarkEnabled = false);
+    IEnumerable<IRecord> GetRecords(Page page);
 
-    IEnumerable<IRecord> GetDataRecords(DataPage page, bool isMarkEnabled = false);
+    IEnumerable<IRecord> GetDataRecords(DataPage page);
 
-    IEnumerable<IIndexRecord> GetIndexRecords(IndexPage page, bool isMarkEnabled = false);
+    IEnumerable<IIndexRecord> GetIndexRecords(IndexPage page);
 }

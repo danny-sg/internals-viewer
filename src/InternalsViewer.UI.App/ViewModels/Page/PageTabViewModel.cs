@@ -414,7 +414,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         try
         {
-            Records.AddRange(RecordService.GetRecords(target, isMarkEnabled: true));
+            Records.AddRange(RecordService.GetRecords(target));
         }
         catch (Exception ex)
         {

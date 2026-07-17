@@ -14,6 +14,7 @@ public abstract class PageParser
             Data = pageData.Data,
             PageAddress = pageData.PageAddress,
             OffsetTable = pageData.OffsetTable,
+            IsMarkEnabled = pageData.IsMarkEnabled
         };
 
         return page;

@@ -14,7 +14,7 @@ public class DictionaryLoaderTests(ITestOutputHelper testOutputHelper)
 
         page.Data = dictionary;
 
-        var result = DictionaryLoader.Load(page.Data, 0);
+        var result = DictionaryLoader.Load(page.Data, 0, true);
 
         TestOutputHelper.WriteLine(result.ToString());
 

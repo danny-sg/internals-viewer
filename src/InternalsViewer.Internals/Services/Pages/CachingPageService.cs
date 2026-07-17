@@ -37,7 +37,8 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
 
     public async Task<Page> GetPage(DatabaseSource database, 
                                     PageAddress pageAddress, 
-                                    CancellationToken cancellationToken)
+                                    CancellationToken cancellationToken,
+                                    bool isMarkEnabled = true)
     {
         var dbCache = _cache.GetOrCreateValue(database);
 
@@ -48,7 +49,7 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
             return cached;
         }
 
-        var page = await inner.GetPage(database, pageAddress, cancellationToken);
+        var page = await inner.GetPage(database, pageAddress, cancellationToken, isMarkEnabled);
 
         if (CacheablePageTypes.Contains(page.PageHeader.PageType))
         {
@@ -80,10 +81,11 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
 
     public async Task<T> GetPage<T>(DatabaseSource database, 
                                     PageAddress pageAddress, 
-                                    CancellationToken cancellationToken)
+                                    CancellationToken cancellationToken,
+                                    bool isMarkEnabled = true)
         where T : Page
     {
-        var page = await GetPage(database, pageAddress, cancellationToken);
+        var page = await GetPage(database, pageAddress, cancellationToken, isMarkEnabled);
 
         if (page is not T typedPage)
         {
@@ -94,8 +96,7 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
     }
 
     /// <summary>
-    /// Removes all cached pages for the given database, forcing fresh reads on the next access.
-    /// Call before any refresh operation that re-reads structural pages.
+    /// Removes all cached pages for the given database, forcing fresh reads on the next access
     /// </summary>
     public void ResetCache(DatabaseSource database)
     {

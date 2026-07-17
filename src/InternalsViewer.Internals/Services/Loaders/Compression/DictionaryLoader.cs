@@ -15,9 +15,9 @@ public static class DictionaryLoader
     ///     Entry Offset Array (2 bytes * Entry Count)
     ///     Dictionary Entries defined by the offset array
     /// </remarks>
-    public static Dictionary Load(byte[] data, ushort offset)
+    public static Dictionary Load(byte[] data, ushort offset, bool isMarkEnabled)
     {
-        var dictionary = new Dictionary(offset);
+        var dictionary = new Dictionary(offset) { IsMarkEnabled = isMarkEnabled };
 
         var entryCount = BitConverter.ToInt16(data, offset);
 
@@ -47,13 +47,16 @@ public static class DictionaryLoader
 
             Array.Copy(data, entryOffset, dictionaryData, 0, length);
 
-            var entry = new DictionaryEntry(i, (ushort)entryOffset, dictionaryData);
+            var entry = new DictionaryEntry(i, (ushort)entryOffset, dictionaryData) { IsMarkEnabled = isMarkEnabled };
 
-            entry.MarkValue(ItemType.DictionaryValue,
-                            $"Dictionary Entry {i}",
-                            dictionaryData,
-                            offset + currentOffset,
-                            length);
+            if (isMarkEnabled)
+            {
+                entry.MarkValue(ItemType.DictionaryValue,
+                                $"Dictionary Entry {i}",
+                                dictionaryData,
+                                offset + currentOffset,
+                                length);
+            }
 
             entries[i] = entry;
 

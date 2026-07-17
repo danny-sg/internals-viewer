@@ -20,14 +20,8 @@ public sealed class AllocationPageParser : PageParser, IPageParser<AllocationPag
     {
         var allocationPage = CopyToPageType<AllocationPage>(page);
 
-        return Parse(allocationPage);
-    }
-
-    private static AllocationPage Parse(AllocationPage page)
-    {
-        var allocationPage = CopyToPageType<AllocationPage>(page);
-
-        page.Data.AsSpan(AllocationPage.AllocationArrayOffset, AllocationPage.AllocationMapBytes)
+        page.Data
+            .AsSpan(AllocationPage.AllocationArrayOffset, AllocationPage.AllocationMapBytes)
             .CopyTo(allocationPage.AllocationMap);
 
         return allocationPage;

@@ -15,11 +15,6 @@ public sealed class PageHeader : DataStructure
     /// </summary>
     public static readonly short Size = 96;
 
-    public PageHeader()
-    {
-        IsMarkEnabled = true;
-    }
-
     /// <summary>
     /// Type of page
     /// </summary>

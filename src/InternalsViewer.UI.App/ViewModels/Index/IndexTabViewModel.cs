@@ -204,14 +204,13 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 {
                     Logger.LogDebug("Decoding Index Page records");
 
-                    decodedRecords = GetIndexRecordModels(RecordService.GetIndexRecords(indexPage,
-                                                                                        isMarkEnabled: true));
+                    decodedRecords = GetIndexRecordModels(RecordService.GetIndexRecords(indexPage));
                 }
                 else if (page is DataPage dataPage)
                 {
                     Logger.LogDebug("Decoding Data Page records");
 
-                    decodedRecords = GetDataRecordModels(RecordService.GetDataRecords(dataPage, isMarkEnabled: true));
+                    decodedRecords = GetDataRecordModels(RecordService.GetDataRecords(dataPage));
                 }
             }, CancellationToken);
 

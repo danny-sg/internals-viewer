@@ -30,7 +30,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
 
     private LobRecordLoader LobRecordLoader { get; } = lobRecordLoader;
 
-    public IEnumerable<IRecord> GetRecords(Page page, bool isMarkEnabled = false)
+    public IEnumerable<IRecord> GetRecords(Page page)
     {
         var isCompressed = page is AllocationUnitPage allocationPage 
                            && allocationPage.AllocationUnit.CompressionType != CompressionType.None;
@@ -38,48 +38,48 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         return page switch
         {
             DataPage dataPage when !isCompressed
-                => GetFixedVarDataRecords(dataPage, isMarkEnabled),
+                => GetFixedVarDataRecords(dataPage),
             DataPage dataPage
-                => GetCdDataRecords(dataPage, isMarkEnabled),
+                => GetCdDataRecords(dataPage),
             IndexPage indexPage when !isCompressed
-                => GetIndexRecords(indexPage, isMarkEnabled),
+                => GetIndexRecords(indexPage),
             IndexPage indexPage
-                => GetCdIndexRecords(indexPage, isMarkEnabled),
+                => GetCdIndexRecords(indexPage),
             LobPage lobPage 
-                => GetLobRecords(lobPage, isMarkEnabled),
+                => GetLobRecords(lobPage),
             _ => throw new InvalidOperationException("Unknown page type")
         };
     }
 
-    public IEnumerable<IRecord> GetDataRecords(DataPage page, bool isMarkEnabled = false)
+    public IEnumerable<IRecord> GetDataRecords(DataPage page)
     {
         var isCompressed = page.AllocationUnit.CompressionType != CompressionType.None;
 
         if (isCompressed)
         {
-            return GetCdDataRecords(page, isMarkEnabled);
+            return GetCdDataRecords(page);
         }
 
-        return GetFixedVarDataRecords(page, isMarkEnabled);
+        return GetFixedVarDataRecords(page);
     }
 
-    public IEnumerable<IIndexRecord> GetIndexRecords(IndexPage page, bool isMarkEnabled = false)
+    public IEnumerable<IIndexRecord> GetIndexRecords(IndexPage page)
     {
         var isCompressed = page.AllocationUnit.CompressionType != CompressionType.None;
 
         if (isCompressed)
         {
-            return GetCdIndexRecords(page, isMarkEnabled);
+            return GetCdIndexRecords(page);
         }
 
-        return GetFixedVarIndexRecords(page, isMarkEnabled);
+        return GetFixedVarIndexRecords(page);
     }
 
-    private IEnumerable<IRecord> GetLobRecords(LobPage page, bool isMarkEnabled)
+    private IEnumerable<IRecord> GetLobRecords(LobPage page)
     {
         return page.OffsetTable.Select((s, index) =>
         {
-            var record = LobRecordLoader.Load(page, s, isMarkEnabled);
+            var record = LobRecordLoader.Load(page, s);
 
             record.Slot = index;
 
@@ -87,14 +87,14 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         }).ToList();
     }
 
-    private IEnumerable<DataRecord> GetFixedVarDataRecords(DataPage page, bool isMarkEnabled = false)
+    private IEnumerable<DataRecord> GetFixedVarDataRecords(DataPage page)
     {
         var structure = TableStructureProvider.GetTableStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable.Select((s, index) =>
         {
-            var record = FixedVarDataRecordLoader.Load(page, s, structure, isMarkEnabled);
+            var record = FixedVarDataRecordLoader.Load(page, s, structure);
 
             record.Slot = index;
 
@@ -102,7 +102,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         }).ToList();
     }
 
-    private IEnumerable<CdRecord> GetCdDataRecords(DataPage page, bool isMarkEnabled = false)
+    private IEnumerable<CdRecord> GetCdDataRecords(DataPage page)
     {
         var structure = TableStructureProvider.GetTableStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
@@ -110,7 +110,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         return page.OffsetTable
                    .Select((s, index) =>
                     {
-                        var record = CdDataRecordLoader.Load(page, s, structure, isMarkEnabled);
+                        var record = CdDataRecordLoader.Load(page, s, structure);
 
                         record.Slot = index;
 
@@ -119,17 +119,17 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
                    .ToList();
     }
 
-    private IEnumerable<FixedVarIndexRecord> GetFixedVarIndexRecords(IndexPage page, bool isMarkEnabled = false)
+    private IEnumerable<FixedVarIndexRecord> GetFixedVarIndexRecords(IndexPage page)
     {
         var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
         return page.OffsetTable
-                   .Select((s, index) => FixedVarIndexRecordLoader.Load(page, s, index, structure, isMarkEnabled))
+                   .Select((s, index) => FixedVarIndexRecordLoader.Load(page, s, index, structure))
                    .ToList();
     }
 
-    private IEnumerable<CdIndexRecord> GetCdIndexRecords(IndexPage page, bool isMarkEnabled = false)
+    private IEnumerable<CdIndexRecord> GetCdIndexRecords(IndexPage page)
     {
         var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
@@ -137,7 +137,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         return page.OffsetTable
                    .Select((s, index) =>
                    {
-                       var record = CdIndexRecordLoader.Load(page, s, structure, isMarkEnabled);
+                       var record = CdIndexRecordLoader.Load(page, s, structure);
                    
                        record.Slot = index;
                    

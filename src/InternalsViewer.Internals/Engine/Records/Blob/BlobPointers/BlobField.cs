@@ -8,11 +8,6 @@ namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 /// </summary>
 public class BlobField : Field
 {
-    public BlobField()
-    {
-        IsMarkEnabled = true;
-    }
-
     /// <summary>
     /// Timestamp used by DBCC CHECKTABLE
     /// </summary>

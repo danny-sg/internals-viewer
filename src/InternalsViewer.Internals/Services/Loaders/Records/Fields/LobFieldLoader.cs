@@ -7,13 +7,13 @@ namespace InternalsViewer.Internals.Services.Loaders.Records.Fields;
 /// </summary>
 public static class LobFieldLoader
 {
-    public static BlobField? Load(byte[] data, int offset)
+    public static BlobField? Load(byte[] data, int offset, bool isMarkEnabled)
     {
         return (BlobFieldType)data[0] switch
         {
-            BlobFieldType.LobPointer => LobPointerFieldLoader.Load(data, offset),
-            BlobFieldType.LobRoot => LobRootFieldLoader.Load(data, offset),
-            BlobFieldType.RowOverflow => LobOverflowFieldLoader.Load(data, offset),
+            BlobFieldType.LobPointer => LobPointerFieldLoader.Load(data, offset, isMarkEnabled),
+            BlobFieldType.LobRoot => LobRootFieldLoader.Load(data, offset, isMarkEnabled),
+            BlobFieldType.RowOverflow => LobOverflowFieldLoader.Load(data, offset, isMarkEnabled),
             _ => null
         };
     }

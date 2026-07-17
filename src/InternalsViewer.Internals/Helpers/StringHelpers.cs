@@ -5,8 +5,12 @@ using System.Text.RegularExpressions;
 
 namespace InternalsViewer.Internals.Helpers;
 
-public static class StringHelpers
+public static partial class StringHelpers
 {
+    private const string DefaultSeparator = " ";
+
+    private const string DefaultSeparatorReplacement = $"{DefaultSeparator}$1";
+
     private static readonly char[] HexDigits =
     [
         '0', '1', '2', '3', '4', '5', '6', '7',
@@ -60,9 +64,14 @@ public static class StringHelpers
         });
     }
 
-    public static string SplitCamelCase(this string value, string separator = " ")
+    [GeneratedRegex("(\\B[A-Z])")]
+    private static partial Regex CamelCaseBoundaryRegex();
+
+    public static string SplitCamelCase(this string value, string separator = DefaultSeparator)
     {
-        return Regex.Replace(value, "(\\B[A-Z])", $"{separator}$1", RegexOptions.Compiled).Trim();
+        var replacement = separator == DefaultSeparator ? DefaultSeparatorReplacement : $"{separator}$1";
+
+        return CamelCaseBoundaryRegex().Replace(value, replacement).Trim();
     }
 
     public static byte[] ToByteArray(this string value)

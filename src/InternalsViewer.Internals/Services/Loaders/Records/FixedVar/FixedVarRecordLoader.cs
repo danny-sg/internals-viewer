@@ -41,6 +41,6 @@ public abstract class FixedVarRecordLoader
     {
         field.MarkProperty(nameof(field.BlobInlineRoot));
 
-        field.BlobInlineRoot = LobFieldLoader.Load(data, offset);
+        field.BlobInlineRoot = LobFieldLoader.Load(data, offset, field.IsMarkEnabled);
     }
 }

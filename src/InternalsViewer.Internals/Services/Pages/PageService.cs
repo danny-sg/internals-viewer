@@ -15,23 +15,24 @@ public sealed class PageService(ILogger<PageService> logger,
 {
     private ILogger<PageService> Logger { get; } = logger;
 
-    public async Task<Page> GetPage(DatabaseSource database, 
-                                    PageAddress pageAddress, 
-                                    CancellationToken cancellationToken)
+    public async Task<Page> GetPage(DatabaseSource database,
+                                    PageAddress pageAddress,
+                                    CancellationToken cancellationToken,
+                                    bool isMarkEnabled = true)
     {
         using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
         {
             Logger.LogDebug("Loading page {PageAddress}", pageAddress);
 
-            var page = await loader.Load(database, pageAddress, cancellationToken);
+            var page = await loader.Load(database, pageAddress, cancellationToken, isMarkEnabled);
 
             return ParsePage(page, pageAddress);
         }
     }
 
-    public async Task<Page> GetPage(DatabaseSource database, 
-                                    PageAddress pageAddress, 
-                                    byte[] buffer, 
+    public async Task<Page> GetPage(DatabaseSource database,
+                                    PageAddress pageAddress,
+                                    byte[] buffer,
                                     CancellationToken cancellationToken)
     {
         using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
@@ -44,12 +45,13 @@ public sealed class PageService(ILogger<PageService> logger,
         }
     }
 
-    public async Task<T> GetPage<T>(DatabaseSource database, 
-                                    PageAddress pageAddress, 
-                                    CancellationToken cancellationToken)
+    public async Task<T> GetPage<T>(DatabaseSource database,
+                                    PageAddress pageAddress,
+                                    CancellationToken cancellationToken,
+                                    bool isMarkEnabled = true)
         where T : Page
     {
-        var page = await GetPage(database, pageAddress, cancellationToken);
+        var page = await GetPage(database, pageAddress, cancellationToken, isMarkEnabled);
 
         if (page is not T typedPage)
         {

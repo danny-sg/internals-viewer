@@ -70,10 +70,9 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
     /// Load an Index record at the specified offset
     /// </summary>
     public FixedVarIndexRecord Load(IndexPage page,
-                                    ushort offset, 
-                                    int slot, 
-                                    IndexStructure structure, 
-                                    bool isMarkEnabled = false)
+                                    ushort offset,
+                                    int slot,
+                                    IndexStructure structure)
     {
         Logger.BeginScope("Index Record Loader: {FileId}:{PageId}:{Offset}",
                           page.PageAddress.FileId,
@@ -98,29 +97,21 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
             Offset = offset,
             Slot = slot,
             NodeType = nodeType,
-            IsMarkEnabled = isMarkEnabled
+            IsMarkEnabled = page.IsMarkEnabled
         };
-
-        Logger.LogDebug("Loading Index Record ({nodeType}) at offset {offset}", nodeType, offset);
 
         // Indexes should always have a Status Bits A
         LoadStatusBitsA(record, page.Data);
 
-        Logger.LogTrace("Status Bits A: {StatusBitsA}", record.StatusBitsA);
-
         // Load the null bitmap if necessary
         if (record.HasNullBitmap)
         {
-            Logger.LogTrace("Has Null Bitmap flag set, loading null bitmap");
-
             LoadNullBitmap(record, page, structure);
         }
 
         // Load the variable length column offset array if necessary
         if (record.HasVariableLengthColumns)
         {
-            Logger.LogTrace("Has Variable Length Columns flag set, loading offset array");
-
             var startIndex = record.HasNullBitmap ? 2 + record.NullBitmapSize : 0;
 
             LoadColumnOffsetArray(record, startIndex, page);
@@ -132,16 +123,9 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
                                                        + (sizeof(short) * record.VariableLengthColumnCount));
         }
 
-        Logger.LogDebug("Node Type: {NodeType}, Index Type: {IndexType}, Underlying Index Type: {ParentIndexType}",
-                        record.NodeType,
-                        page.AllocationUnit.IndexType,
-                        structure.TableStructure?.IndexType ?? structure.IndexType);
-
         switch (nodeType)
         {
             case NodeType.Root:
-                Logger.LogDebug("Loading Root Record");
-
                 LoadDownPagePointer(record, page);
 
                 if (structure.IndexType == IndexType.Clustered)
@@ -156,8 +140,6 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
                 break;
             case NodeType.Node:
                 {
-                    Logger.LogDebug("Loading Node Record");
-
                     // A node will have a down page pointer to the next level in the b-tree
                     LoadDownPagePointer(record, page);
 
@@ -174,8 +156,6 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
                 }
 
             case NodeType.Leaf:
-                Logger.LogDebug("Loading Leaf Record");
-
                 LoadNonClusteredLeaf(record, page, structure);
                 break;
         }
@@ -189,10 +169,10 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
     /// <remarks>
     /// A clustered index node will contain the clustered key columns and a down page pointer
     /// </remarks>
-    private void LoadClusteredNode(FixedVarIndexRecord record,
-                                   PageData page, 
-                                   IndexStructure structure, 
-                                   NodeType nodeType)
+    private static void LoadClusteredNode(FixedVarIndexRecord record,
+                                          PageData page,
+                                          IndexStructure structure,
+                                          NodeType nodeType)
     {
         var columns = structure.Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
 
@@ -272,8 +252,8 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
 
         record.VariableLengthColumnCount = BitConverter.ToUInt16(page.Data, variableColumnCountOffset);
 
-        record.MarkProperty(nameof(FixedVarIndexRecord.VariableLengthColumnCount), 
-                            variableColumnCountOffset, 
+        record.MarkProperty(nameof(FixedVarIndexRecord.VariableLengthColumnCount),
+                            variableColumnCountOffset,
                             sizeof(short));
 
         var offset =
@@ -300,19 +280,19 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         {
             var columnOffset = nodeType == NodeType.Leaf ? column.LeafOffset : column.NodeOffset;
 
-            var field = new FixedVarRecordField(column);
+            var field = new FixedVarRecordField(column) { IsMarkEnabled = page.IsMarkEnabled };
 
             if (record.HasNullBitmap && record.IsNullBitmapSet(column, 0))
             {
                 // Null bitmap is set
-                field = LoadNullField(column);
+                field = LoadNullField(column, page.IsMarkEnabled);
             }
             else if (nodeType != NodeType.Leaf
                      && record.Slot == 0
                      && page.PageHeader.PreviousPage == PageAddress.Empty)
             {
                 // Sentinel - null low-key record at left of b-tree
-                field = LoadNullField(column);
+                field = LoadNullField(column, page.IsMarkEnabled);
             }
             else if (columnOffset >= 0)
             {
@@ -342,9 +322,9 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         record.Fields.AddRange(columnValues);
     }
 
-    private static FixedVarRecordField LoadNullField(IndexColumnStructure column)
+    private static FixedVarRecordField LoadNullField(IndexColumnStructure column, bool isMarkEnabled)
     {
-        var nullField = new FixedVarRecordField(column);
+        var nullField = new FixedVarRecordField(column) { IsMarkEnabled = isMarkEnabled };
 
         nullField.MarkProperty(nameof(FixedVarRecordField.Value));
 
@@ -366,7 +346,7 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
     {
         int length;
 
-        var field = new FixedVarRecordField(column);
+        var field = new FixedVarRecordField(column) { IsMarkEnabled = record.IsMarkEnabled };
 
         var variableIndex = Math.Abs(columnOffset) - 1;
 
@@ -418,7 +398,7 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
                                                       FixedVarIndexRecord record,
                                                       byte[] pageData)
     {
-        var field = new FixedVarRecordField(column);
+        var field = new FixedVarRecordField(column) { IsMarkEnabled = record.IsMarkEnabled };
 
         var uniqueifierIndex = Math.Abs(columnOffset) - 1;
 
@@ -453,7 +433,7 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
                                                             Record record,
                                                             byte[] pageData)
     {
-        var field = new FixedVarRecordField(column);
+        var field = new FixedVarRecordField(column) { IsMarkEnabled = record.IsMarkEnabled };
 
         // Length fixed from data type/data length
         var length = column.DataLength;

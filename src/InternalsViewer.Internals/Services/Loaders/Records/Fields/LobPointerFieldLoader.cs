@@ -7,9 +7,9 @@ public class LobPointerFieldLoader
 {
     public const int RowIdOffset = 8;
 
-    public static PointerField Load(byte[] data, int offset)
+    public static PointerField Load(byte[] data, int offset, bool isMarkEnabled)
     {
-        var field = new PointerField();
+        var field = new PointerField { IsMarkEnabled = isMarkEnabled };
 
         field.MarkProperty("PointerType", offset, sizeof(byte));
 
@@ -35,7 +35,7 @@ public class LobPointerFieldLoader
 
         var rowId = new RowIdentifier(rowIdData);
 
-        var link = new BlobChildLink(rowId, 0, 0);
+        var link = new BlobChildLink(rowId, 0, 0) { IsMarkEnabled = field.IsMarkEnabled };
 
         link.MarkProperty("RowIdentifier", offset + RowIdOffset, 8);
 

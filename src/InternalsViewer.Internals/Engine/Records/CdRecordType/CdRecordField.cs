@@ -102,7 +102,7 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
 
         string value;
 
-        if (AnchorField is { } && !Data.IsEmpty && Data.Length > 1)
+        if (AnchorField is not null && Data is { IsEmpty: false, Length: > 1 })
         {
             var compositeData = ExpandAnchor(dictionaryValue);
 
