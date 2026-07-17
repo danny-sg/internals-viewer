@@ -142,11 +142,23 @@ public static class ReaderGrouper
                                            Dictionary<EngineEvent, List<EngineEvent>> members,
                                            HashSet<EngineEvent> consumed)
     {
+        // A read the contiguous pass already claimed still describes the page range it loaded, so it stays a spine here and
+        // the group that took it is where its pages go. When the scan catches up with read-ahead it suspends on the read's
+        // first page, and that suspend consumes the file read — without this the read keeps only the page that was waited
+        // on and every other page it loaded is left to surface as an unrelated cached read.
+        var owners = new Dictionary<FileEvent, EngineEvent>(ReferenceEqualityComparer.Instance);
+
+        foreach (var (owner, group) in members)
+        {
+            foreach (var member in group.OfType<FileEvent>())
+            {
+                owners[member] = owner;
+            }
+        }
+
         // Find spines for the grouping based on file reads
         var spines = events.OfType<FileEvent>()
-                           .Where(f => f is { Size: > 0, PageAddress: not null } 
-                                            && !consumed.Contains(f) 
-                                            && !members.ContainsKey(f))
+                           .Where(f => f is { Size: > 0, PageAddress: not null })
                            .ToList();
 
         if (spines.Count == 0)
@@ -156,7 +168,10 @@ public static class ReaderGrouper
 
         foreach (var spine in spines)
         {
-            members[spine] = [spine];
+            if (!owners.ContainsKey(spine))
+            {
+                members[spine] = [spine];
+            }
         }
 
         foreach (var e in events)
@@ -173,7 +188,9 @@ public static class ReaderGrouper
                 continue;
             }
 
-            members[spine].Add(e);
+            // An owned spine keeps its group's own spine: that is the suspend, which carries the SQL-measured read
+            // duration, so the pages join it rather than splitting the one read across two groups.
+            members[owners.TryGetValue(spine, out var owner) ? owner : spine].Add(e);
 
             consumed.Add(e);
         }

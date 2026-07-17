@@ -5,6 +5,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Events.Parsers.Xml;
 using InternalsViewer.Query.Parsing.Plans;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
     /// Gets events/execution plan/call stack from an extended events (.xel) file
     /// </summary>
     /// <remarks>
-    /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations
+    /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations via
+    /// a buffer based read.
     /// </remarks>
     public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree)> GetEvents(string filePath,
                                                                                          string connectionString,
