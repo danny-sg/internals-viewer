@@ -10,7 +10,6 @@
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
-    xmlns:logRecords="using:InternalsViewer.Query.TransactionLog.LogRecords"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="TitleStyle" 
@@ -49,33 +48,6 @@
                            Text="{x:Bind Description}"
                            Style="{StaticResource ListTextBlock}"
                            x:Phase="3"/>
-            </Grid>
-        </DataTemplate>
-
-        <DataTemplate x:Key="LogRecordTemplate" x:DataType="logRecords:LogRecord">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="100"/>
-                    <ColumnDefinition Width="180"/>
-                    <ColumnDefinition Width="180"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" 
-                           Text="{x:Bind Lsn}" 
-                           Style="{StaticResource ListTextBlock}" 
-                           x:Phase="1"/>
-                <TextBlock Grid.Column="1" 
-                           Text="{x:Bind Operation}" 
-                           Style="{StaticResource ListTextBlock}" 
-                           x:Phase="1"/>
-                <TextBlock Grid.Column="2" 
-                           Text="{x:Bind Context}" 
-                           Style="{StaticResource ListTextBlock}" 
-                           x:Phase="1"/>
-                <TextBlock Grid.Column="3" 
-                           Text="{x:Bind Description}" 
-                           Style="{StaticResource ListTextBlock}"
-                           x:Phase="2"/>
             </Grid>
         </DataTemplate>
 
@@ -229,7 +201,9 @@
                                  Margin="14,14,0,14"
                                  Data="{x:Bind ViewModel.Page.Data, Mode=OneWay}"
                                  Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
-                                 SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
+                                 SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
+                                 ChangeSpans="{x:Bind ViewModel.ChangeSpans, Mode=OneWay}"
+                                 SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"/>
 
             <!--Page Slots Table-->
             <Grid x:Name="OffsetTableContainerGrid"
@@ -316,25 +290,27 @@
                                                       Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
                     </TabViewItem>
                 </TabView>
-                <StackPanel Grid.Row="1" 
-                            VerticalAlignment="Stretch" 
-                            Visibility="{x:Bind ViewModel.LogRecordsVisibility, Mode=OneWay}">
-                    <TextBlock Margin="14,0,14,0" FontWeight="Bold">Log Operations</TextBlock>
-                    <ListView x:Name="LogEntryListView"
-                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                          BorderThickness="1"
-                          VerticalAlignment="Stretch"
-                          SelectionMode="Single"
-                          Margin="14,10,14,14" 
-                          SelectedItem="{x:Bind ViewModel.SelectedLogRecord, Mode=TwoWay}"
-                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          ItemsSource="{x:Bind ViewModel.LogRecords, Mode=OneWay}"
-                          ItemClick="LogRecordListView_ItemClick"
-                          IsItemClickEnabled="True"
-                          ItemTemplate="{StaticResource LogRecordTemplate}"
-                          HorizontalAlignment="Stretch">
-                    </ListView>
-                </StackPanel>
+                <Grid Grid.Row="1"
+                      VerticalAlignment="Stretch"
+                      Visibility="{x:Bind ViewModel.LogRecordsVisibility, Mode=OneWay}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="14,0,14,0" Spacing="14">
+                        <TextBlock FontWeight="Bold">Log Operations</TextBlock>
+                        <TextBlock Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   Text="{x:Bind ViewModel.ReplayStatus, Mode=OneWay}"/>
+                    </StackPanel>
+                    <page:LogRecordTreeView x:Name="LogRecordTreeView"
+                                            Grid.Row="1"
+                                            Margin="14,10,14,14"
+                                            VerticalAlignment="Stretch"
+                                            HorizontalAlignment="Stretch"
+                                            Records="{x:Bind ViewModel.LogRecords, Mode=OneWay}"
+                                            SelectedRecord="{x:Bind ViewModel.SelectedLogRecord, Mode=TwoWay}"
+                                            SelectedAnnotation="{x:Bind ViewModel.SelectedChangeSpan, Mode=TwoWay}"/>
+                </Grid>
             </Grid>
 
 

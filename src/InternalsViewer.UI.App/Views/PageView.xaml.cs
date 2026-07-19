@@ -69,18 +69,6 @@ public sealed partial class PageView : IDisposable
         }
     }
 
-    private void LogRecordListView_ItemClick(object sender, ItemClickEventArgs e)
-    {
-        var listView = sender as ListView;
-
-        // If the clicked item is already selected, unselect it
-        if (listView?.SelectedItem == e.ClickedItem)
-        {
-            listView.DeselectAll();
-            ViewModel.SelectedLogRecord = null;
-        }
-    }
-
     public void Dispose()
     {
         PageAddressTextBox.AddressChanged -= PageAddressTextBox_Changed;

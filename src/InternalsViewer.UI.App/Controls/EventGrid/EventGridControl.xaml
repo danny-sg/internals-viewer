@@ -6,8 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
-    xmlns:events="using:InternalsViewer.Query.Events"
-    xmlns:eventTypes="using:InternalsViewer.Query.Events.EventTypes"
+
     xmlns:eventGrid="using:InternalsViewer.UI.App.Controls.EventGrid"
     x:Name="Root"
     mc:Ignorable="d">
@@ -96,9 +95,9 @@
                     <toolkit:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventRow">
                             <Grid>
-                                <HyperlinkButton Content="{Binding Event.PageAddress}"
+                                <HyperlinkButton Content="{Binding PageAddress}"
                                                  Style="{StaticResource PageAddressStyle}"
-                                                 Tag="{Binding Event.PageAddress}"
+                                                 Tag="{Binding PageAddress}"
                                                  Click="HyperlinkButton_Click"/>
                             </Grid>
                         </DataTemplate>

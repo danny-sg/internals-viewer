@@ -98,13 +98,21 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private ObservableCollection<PageSlot> _pageSlots = [];
 
     [ObservableProperty]
-    private ObservableCollection<LogRecord> _logRecords = [];
+    [NotifyPropertyChangedFor(nameof(LogRecordsVisibility))]
+    [NotifyPropertyChangedFor(nameof(LogRecordsHeight))]
+    private ObservableCollection<LogRecordItem> _logRecords = [];
 
     [ObservableProperty]
     private PageSlot? _selectedSlot;
 
-    [ObservableProperty] 
-    private LogRecord? _selectedLogRecord;
+    [ObservableProperty]
+    private LogRecordItem? _selectedLogRecord;
+
+    [ObservableProperty]
+    private ObservableCollection<LogRecordAnnotation> _changeSpans = [];
+
+    [ObservableProperty]
+    private LogRecordAnnotation? _selectedChangeSpan;
 
     [ObservableProperty]
     private Marker? _selectedMarker;
@@ -143,7 +151,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     public Visibility LogRecordsVisibility => LogRecords.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-    public GridLength LogRecordsHeight => LogRecords.Count > 0 ? GridLength.Auto : new GridLength(0);
+    public GridLength LogRecordsHeight => LogRecords.Count > 0
+        ? new GridLength(1, GridUnitType.Star)
+        : new GridLength(0);
 
     private List<IRecord> Records { get; } = [];
 
@@ -220,6 +230,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                     }
 
                     ReplayStatus = string.Empty;
+
+                    ChangeSpans = [];
+                    SelectedChangeSpan = null;
 
                     IsLoading = false;
                 });
@@ -299,12 +312,56 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         AddPageHeaderMarkers();
     }
 
-    partial void OnSelectedLogRecordChanged(LogRecord? value)
+    partial void OnSelectedLogRecordChanged(LogRecordItem? value)
     {
         _ = ShowLogRecordState(value);
     }
 
-    private async Task ShowLogRecordState(LogRecord? record)
+    partial void OnSelectedChangeSpanChanged(LogRecordAnnotation? value)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        var slot = FindSlotForOffset(value.Offset);
+
+        if (slot is not null)
+        {
+            SelectedSlot = slot;
+        }
+    }
+
+    /// <summary>
+    /// Finds the slot associated with a page offset
+    /// </summary>
+    /// <remarks>
+    /// Offsets in the 96 byte page header select the header pseudo-slot; offsets in the offset table at the end of
+    /// the page select the slot the entry belongs to; anything else selects the slot whose row starts closest
+    /// before the offset
+    /// </remarks>
+    private PageSlot? FindSlotForOffset(int offset)
+    {
+        if (offset < 96)
+        {
+            return PageSlots.FirstOrDefault(s => s.Index == PageHeaderSlot);
+        }
+
+        var offsetTableStart = PageData.Size - Page.PageHeader.SlotCount * 2;
+
+        if (offset >= offsetTableStart)
+        {
+            var slotId = (PageData.Size - 1 - offset) / 2;
+
+            return PageSlots.FirstOrDefault(s => s.Index == slotId);
+        }
+
+        return PageSlots.Where(s => s.Index >= 0 && s.Offset > 0 && s.Offset <= offset)
+                        .OrderByDescending(s => s.Offset)
+                        .FirstOrDefault();
+    }
+
+    private async Task ShowLogRecordState(LogRecordItem? item)
     {
         if (_baselineData is null || IsLoading)
         {
@@ -313,42 +370,87 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         var baseline = (byte[])_baselineData.Clone();
 
-        var pageRecords = LogRecords.OfType<PageLogRecord>()
-                                    .Where(r => r.PageAddress == PageAddress)
-                                    .OrderBy(r => (r.Lsn.VirtualLogFile, r.Lsn.FileOffset, r.Lsn.RecordSequence))
-                                    .ToList();
+        var pageItems = LogRecords.Where(i => i.Record.PageAddress == PageAddress)
+                                  .OrderBy(i => (i.Record.Lsn.VirtualLogFile,
+                                                 i.Record.Lsn.FileOffset,
+                                                 i.Record.Lsn.RecordSequence))
+                                  .ToList();
 
-        var targetRecord = record as PageLogRecord;
-
-        if (targetRecord is not null && targetRecord.PageAddress != PageAddress)
-        {
-            targetRecord = null;
-        }
+        var target = item is not null && item.Record.PageAddress == PageAddress ? item : null;
 
         try
         {
             await Task.Run(() =>
             {
+                var currentSlot = (ushort?)SelectedSlot?.Index;
+
                 var page = PageService.ParsePage(Database, PageAddress, baseline);
 
                 var status = string.Empty;
 
-                if (targetRecord is not null && pageRecords.Count > 0)
-                {
-                    LogRecordApplier.Rebase(page, pageRecords[0].PreviousPageLsn);
+                var annotations = new Dictionary<LogRecordItem, List<LogRecordAnnotation>>();
 
-                    var result = LogRecordApplier.Replay(page, pageRecords, targetRecord.Lsn);
+                if (target is not null && pageItems.Count > 0)
+                {
+                    LogRecordApplier.Rebase(page, pageItems[0].Record.PreviousPageLsn);
+
+                    var targetLsn = (target.Record.Lsn.VirtualLogFile,
+                                     target.Record.Lsn.FileOffset,
+                                     target.Record.Lsn.RecordSequence);
+
+                    foreach (var pageItem in pageItems)
+                    {
+                        if ((pageItem.Record.Lsn.VirtualLogFile,
+                             pageItem.Record.Lsn.FileOffset,
+                             pageItem.Record.Lsn.RecordSequence).CompareTo(targetLsn) > 0)
+                        {
+                            break;
+                        }
+
+                        var result = LogRecordApplier.Apply(page, pageItem.Record);
+
+                        if (!result.IsApplied)
+                        {
+                            status = $"Replay stopped at {pageItem.Record.Lsn.ToBinaryString()} " +
+                                     $"({result.Status}): {result.Message}";
+                            break;
+                        }
+
+                        annotations[pageItem] = result.Changes
+                                                      .Select(c => new LogRecordAnnotation
+                                                      {
+                                                          Offset = c.Offset,
+                                                          Length = c.Length,
+                                                          Description = c.Description
+                                                      })
+                                                      .ToList();
+                    }
 
                     page = PageService.ParsePage(Database, PageAddress, page.Data);
 
-                    status = result.IsApplied
-                        ? $"Page state as of {targetRecord.Lsn.ToBinaryString()}"
-                        : $"Replay stopped ({result.Status}): {result.Message}";
+                    if (status.Length == 0)
+                    {
+                        status = $"Page state as of {target.Record.Lsn.ToBinaryString()}";
+                    }
                 }
 
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    DisplayPage(page, null);
+                    SelectedChangeSpan = null;
+
+                    foreach (var pageItem in pageItems)
+                    {
+                        pageItem.Annotations = new ObservableCollection<LogRecordAnnotation>(
+                            annotations.GetValueOrDefault(pageItem, []));
+                    }
+
+                    ChangeSpans = new ObservableCollection<LogRecordAnnotation>(
+                        target is not null ? annotations.GetValueOrDefault(target, []) : []);
+
+                    // Reassigned so the log record tree rebuilds with the new annotation children
+                    LogRecords = new ObservableCollection<LogRecordItem>(LogRecords);
+
+                    DisplayPage(page, currentSlot);
 
                     ReplayStatus = status;
                 });

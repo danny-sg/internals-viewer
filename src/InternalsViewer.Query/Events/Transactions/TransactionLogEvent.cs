@@ -4,7 +4,7 @@ using InternalsViewer.Query.TransactionLog.LogRecords;
 
 namespace InternalsViewer.Query.Events.Transactions;
 
-public sealed record TransactionLogEvent : PageEngineEvent
+public sealed record TransactionLogEvent : RowIdentifierEngineEvent
 {
     public LogOperation Operation { get; init; }
 
@@ -21,4 +21,6 @@ public sealed record TransactionLogEvent : PageEngineEvent
     public LogRecord? LogRecord { get; set; }
 
     public override PageAddress? PageAddress => (LogRecord as PageLogRecord)?.PageAddress;
+
+    public override RowIdentifier? RowIdentifier => (LogRecord as PageLogRecord)?.RowIdentifier;
 }

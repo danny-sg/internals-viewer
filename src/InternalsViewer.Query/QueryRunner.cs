@@ -181,6 +181,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 {
                     query.TimeUs = start.Value;
                     query.DurationUs = end.Value - start.Value;
+
+                    cropStart = start;
+                    cropEnd = end;
                 }
             }
 

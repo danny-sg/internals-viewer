@@ -14,7 +14,7 @@ public sealed class OpenPageRequest(DatabaseSource database, PageAddress pageAdd
 
     public ushort? Slot { get; set; }
 
-    public List<LogRecord> LogRecords { get; set; } = [];
+    public List<PageLogRecord> LogRecords { get; set; } = [];
 }
 
 public sealed class OpenIndexRequest(DatabaseSource database, PageAddress rootPage)

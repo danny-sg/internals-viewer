@@ -25,6 +25,8 @@ public abstract record PageLogRecord : LogRecord
     /// </remarks>
     public int SlotId { get; set; }
 
+    public RowIdentifier RowIdentifier => new(PageAddress, (ushort)SlotId);
+
     /// <summary>
     /// LSN the page's header held before this operation was applied
     /// </summary>

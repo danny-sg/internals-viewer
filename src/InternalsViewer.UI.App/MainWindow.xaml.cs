@@ -31,6 +31,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.UI.App.Models;
 using WinUIEx;
 using QueryView = InternalsViewer.UI.App.Views.Query.QueryView;
 
@@ -225,7 +226,8 @@ public sealed partial class MainWindow
 
             await viewModel.LoadPage(request.PageAddress, request.Slot);
 
-            viewModel.LogRecords = new ObservableCollection<LogRecord>(request.LogRecords);
+            viewModel.LogRecords = new ObservableCollection<LogRecordItem>(
+                request.LogRecords.Select(r => new LogRecordItem { Record = r }));
 
             var content = new PageView();
 

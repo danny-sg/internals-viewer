@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.UI.App.Controls.EventGrid;
@@ -31,4 +32,10 @@ public sealed partial class EventRow(EngineEvent engineEvent, int depth, bool ha
 
     // ChevronDown (0xE70D) when open, ChevronRight (0xE76C) when closed (Segoe Fluent Icons).
     public string ExpanderGlyph => ((char)(IsExpanded ? 0xE70D : 0xE76C)).ToString();
+
+    public PageAddress? PageAddress 
+        => Event is PageEngineEvent pageEngineEvent ? pageEngineEvent.PageAddress : null;
+
+    public RowIdentifier? RowIdentifier 
+        => Event is RowIdentifierEngineEvent rowIdentifierEngineEvent ? rowIdentifierEngineEvent.RowIdentifier : null;
 }

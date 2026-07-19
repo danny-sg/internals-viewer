@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
+using InternalsViewer.Query.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -84,7 +85,7 @@ public sealed partial class EventsDocumentView : UserControl, IDisposable
                                   .OfType<TransactionLogEvent>()
                                   .Where(logEvent => logEvent.PageAddress == pageAddress)
                                   .Select(logEvent => logEvent.LogRecord)
-                                  .Where(logRecord => logRecord is not null)
+                                  .OfType<PageLogRecord>()
                                   .ToList();
 
         WeakReferenceMessenger.Default
