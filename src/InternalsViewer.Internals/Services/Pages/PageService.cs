@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Pages.Loaders;
 
 namespace InternalsViewer.Internals.Services.Pages;
 
@@ -59,6 +60,13 @@ public sealed class PageService(ILogger<PageService> logger,
         }
 
         return typedPage;
+    }
+
+    public Page ParsePage(DatabaseSource database, PageAddress pageAddress, byte[] data)
+    {
+        var page = PageLoader.BuildPageData(database, pageAddress, data, true);
+
+        return ParsePage(page, pageAddress);
     }
 
     public void ResetCache(DatabaseSource database)

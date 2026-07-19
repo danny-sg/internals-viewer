@@ -4,12 +4,14 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.Results;
 using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.Query.TransactionLog.LogRecords;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
@@ -247,6 +249,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 Message = message,
                 SessionId = sessionId
             };
+        }
+
+        if (logRecords.Count > 0)
+        {
+            TransactionLogEventMatcher.Match(events, logRecords);
         }
 
         return new QueryResult

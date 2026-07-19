@@ -15,6 +15,8 @@ using InternalsViewer.Internals.Interfaces.Annotations;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
+using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.Query.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Markers;
@@ -96,7 +98,13 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private ObservableCollection<PageSlot> _pageSlots = [];
 
     [ObservableProperty]
+    private ObservableCollection<LogRecord> _logRecords = [];
+
+    [ObservableProperty]
     private PageSlot? _selectedSlot;
+
+    [ObservableProperty] 
+    private LogRecord? _selectedLogRecord;
 
     [ObservableProperty]
     private Marker? _selectedMarker;
@@ -122,6 +130,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [ObservableProperty]
     private short _allocationFileId;
 
+    [ObservableProperty]
+    private string _replayStatus = string.Empty;
+
     private const int HeaderTab = 0;
     private const int RowDataTabIndex = 1;
     private const int AllocationsTabIndex = 2;
@@ -130,9 +141,15 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private const short IamHeaderSlot = -10;
     private const short CompressionInfoSlot = -90;
 
+    public Visibility LogRecordsVisibility => LogRecords.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public GridLength LogRecordsHeight => LogRecords.Count > 0 ? GridLength.Auto : new GridLength(0);
+
     private List<IRecord> Records { get; } = [];
 
     private History<PageAddress> History { get; } = new();
+
+    private byte[]? _baselineData;
 
     partial void OnSelectedSlotChanged(PageSlot? value)
     {
@@ -173,24 +190,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     public async Task LoadPage(PageAddress pageAddress, ushort? slot)
     {
-        var headerSlot = new PageSlot
-        {
-            Index = PageHeaderSlot,
-            Description = "Page Header"
-        };
-
-        var iamHeaderSlot = new PageSlot
-        {
-            Index = IamHeaderSlot,
-            Description = "IAM Header"
-        };
-
-        var compressionInfoSlot = new PageSlot
-        {
-            Index = CompressionInfoSlot,
-            Description = "Compression Info"
-        };
-
         DispatcherQueue.TryEnqueue(() =>
         {
             IsLoading = true;
@@ -204,61 +203,14 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             {
                 var resultPage = await PageService.GetPage(Database, pageAddress, CancellationToken);
 
-                var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
-                {
-                    Index = (short)i,
-                    Offset = s,
-                    Description = $"0x{s:X}"
-                }).ToList();
-
-                slots.Insert(0, headerSlot);
-
-                var selectedSlot = slots.FirstOrDefault(s => s.Index == slot);
+                _baselineData = (byte[])resultPage.Data.Clone();
 
                 DispatcherQueue.TryEnqueue(() =>
                 {
                     Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} " +
                            $"Page {pageAddress}";
 
-                    Logger.LogDebug("Building Offset Table");
-
-                    switch (resultPage)
-                    {
-                        case FileHeaderPage fileHeaderPage:
-                            break;
-                        case AllocationUnitPage allocationUnitPage:
-                            DisplayAllocationUnitPage(allocationUnitPage);
-
-                            if (allocationUnitPage.CompressionInfo != null)
-                            {
-                                slots.Insert(1, compressionInfoSlot);
-                            }
-                            break;
-                        case IamPage iamPage:
-                            DisplayIamPage(iamPage);
-
-                            slots.Insert(1, iamHeaderSlot);
-
-                            break;
-                        case AllocationPage allocationPage:
-                            DisplayAllocationPage(allocationPage);
-
-                            break;
-
-                        default:
-                            IndexName = string.Empty;
-                            ObjectName = string.Empty;
-                            IndexType = string.Empty;
-                            ObjectIndexType = string.Empty;
-                            break;
-                    }
-
-                    PageSlots = new ObservableCollection<PageSlot>(new[] { headerSlot }.Union(slots));
-
-                    SelectedSlot = selectedSlot ?? headerSlot;
-                    SelectedMarker = null;
-
-                    Page = resultPage;
+                    DisplayPage(resultPage, slot);
 
                     NextPage = new PageAddress(PageAddress.FileId, PageAddress.PageId + 1);
 
@@ -267,14 +219,147 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                         PreviousPage = new PageAddress(PageAddress.FileId, PageAddress.PageId - 1);
                     }
 
-                    AddPageMarkers(resultPage);
-                    AddPageHeaderMarkers();
+                    ReplayStatus = string.Empty;
 
                     IsLoading = false;
                 });
             }, CancellationToken);
 
         History.Add(PageAddress);
+    }
+
+    private void DisplayPage(Internals.Engine.Pages.Page resultPage, ushort? slot)
+    {
+        var headerSlot = new PageSlot
+        {
+            Index = PageHeaderSlot,
+            Description = "Page Header"
+        };
+
+        var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
+        {
+            Index = (short)i,
+            Offset = s,
+            Description = $"0x{s:X}"
+        }).ToList();
+
+        slots.Insert(0, headerSlot);
+
+        var selectedSlot = slots.FirstOrDefault(s => s.Index == slot);
+
+        Logger.LogDebug("Building Offset Table");
+
+        switch (resultPage)
+        {
+            case FileHeaderPage:
+                break;
+            case AllocationUnitPage allocationUnitPage:
+                DisplayAllocationUnitPage(allocationUnitPage);
+
+                if (allocationUnitPage.CompressionInfo != null)
+                {
+                    slots.Insert(1, new PageSlot
+                    {
+                        Index = CompressionInfoSlot,
+                        Description = "Compression Info"
+                    });
+                }
+                break;
+            case IamPage iamPage:
+                DisplayIamPage(iamPage);
+
+                slots.Insert(1, new PageSlot
+                {
+                    Index = IamHeaderSlot,
+                    Description = "IAM Header"
+                });
+
+                break;
+            case AllocationPage allocationPage:
+                DisplayAllocationPage(allocationPage);
+
+                break;
+
+            default:
+                IndexName = string.Empty;
+                ObjectName = string.Empty;
+                IndexType = string.Empty;
+                ObjectIndexType = string.Empty;
+                break;
+        }
+
+        PageSlots = new ObservableCollection<PageSlot>(new[] { headerSlot }.Union(slots));
+
+        SelectedSlot = selectedSlot ?? headerSlot;
+        SelectedMarker = null;
+
+        Page = resultPage;
+
+        AddPageMarkers(resultPage);
+        AddPageHeaderMarkers();
+    }
+
+    partial void OnSelectedLogRecordChanged(LogRecord? value)
+    {
+        _ = ShowLogRecordState(value);
+    }
+
+    private async Task ShowLogRecordState(LogRecord? record)
+    {
+        if (_baselineData is null || IsLoading)
+        {
+            return;
+        }
+
+        var baseline = (byte[])_baselineData.Clone();
+
+        var pageRecords = LogRecords.OfType<PageLogRecord>()
+                                    .Where(r => r.PageAddress == PageAddress)
+                                    .OrderBy(r => (r.Lsn.VirtualLogFile, r.Lsn.FileOffset, r.Lsn.RecordSequence))
+                                    .ToList();
+
+        var targetRecord = record as PageLogRecord;
+
+        if (targetRecord is not null && targetRecord.PageAddress != PageAddress)
+        {
+            targetRecord = null;
+        }
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                var page = PageService.ParsePage(Database, PageAddress, baseline);
+
+                var status = string.Empty;
+
+                if (targetRecord is not null && pageRecords.Count > 0)
+                {
+                    LogRecordApplier.Rebase(page, pageRecords[0].PreviousPageLsn);
+
+                    var result = LogRecordApplier.Replay(page, pageRecords, targetRecord.Lsn);
+
+                    page = PageService.ParsePage(Database, PageAddress, page.Data);
+
+                    status = result.IsApplied
+                        ? $"Page state as of {targetRecord.Lsn.ToBinaryString()}"
+                        : $"Replay stopped ({result.Status}): {result.Message}";
+                }
+
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    DisplayPage(page, null);
+
+                    ReplayStatus = status;
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error replaying log records for page {PageAddress}", PageAddress);
+
+            ReplayStatus = $"Replay failed: {ex.Message}";
+        }
     }
 
 

@@ -26,9 +26,11 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using InternalsViewer.Query.TransactionLog.LogRecords;
 using WinUIEx;
 using QueryView = InternalsViewer.UI.App.Views.Query.QueryView;
 
@@ -104,7 +106,7 @@ public sealed partial class MainWindow
             => m.Reply(ConnectFile(m.Filename, m.Recent)));
 
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, (_, m)
-            => m.Reply(OpenPage(m.Request.Database, m.Request.PageAddress, m.Request.Slot)));
+            => m.Reply(OpenPage(m.Request)));
 
         WeakReferenceMessenger.Default.Register<OpenIndexMessage>(this, (_, m)
             => m.Reply(OpenIndex(m.Request.Database, m.Request.RootPageAddress)));
@@ -215,13 +217,15 @@ public sealed partial class MainWindow
         return true;
     }
 
-    private async Task<bool> OpenPage(DatabaseSource database, PageAddress pageAddress, ushort? slot)
+    private async Task<bool> OpenPage(OpenPageRequest request)
     {
         try
         {
-            var viewModel = PageTabViewModelFactory.Create(database);
+            var viewModel = PageTabViewModelFactory.Create(request.Database);
 
-            await viewModel.LoadPage(pageAddress, slot);
+            await viewModel.LoadPage(request.PageAddress, request.Slot);
+
+            viewModel.LogRecords = new ObservableCollection<LogRecord>(request.LogRecords);
 
             var content = new PageView();
 
@@ -229,7 +233,7 @@ public sealed partial class MainWindow
 
             var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
 
-            var title = $"Page {pageAddress.PageId}";
+            var title = $"Page {request.PageAddress.PageId}";
 
             var tab = new TabViewItem
             {

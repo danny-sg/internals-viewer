@@ -10,6 +10,7 @@
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
+    xmlns:logRecords="using:InternalsViewer.Query.TransactionLog.LogRecords"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="TitleStyle" 
@@ -51,14 +52,41 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate x:Key="ItemTemplate" x:DataType="models:PageSlot">
+        <DataTemplate x:Key="LogRecordTemplate" x:DataType="logRecords:LogRecord">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100"/>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" 
+                           Text="{x:Bind Lsn}" 
+                           Style="{StaticResource ListTextBlock}" 
+                           x:Phase="1"/>
+                <TextBlock Grid.Column="1" 
+                           Text="{x:Bind Operation}" 
+                           Style="{StaticResource ListTextBlock}" 
+                           x:Phase="1"/>
+                <TextBlock Grid.Column="2" 
+                           Text="{x:Bind Context}" 
+                           Style="{StaticResource ListTextBlock}" 
+                           x:Phase="1"/>
+                <TextBlock Grid.Column="3" 
+                           Text="{x:Bind Description}" 
+                           Style="{StaticResource ListTextBlock}"
+                           x:Phase="2"/>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SlotItemTemplate" x:DataType="models:PageSlot">
             <Grid>
                 <TextBlock Text="{x:Bind Description}" Style="{StaticResource ListTextBlock}" Padding="0"/>
             </Grid>
         </DataTemplate>
 
         <selectors:SlotTemplateSelector x:Key="SlotTemplateSelector" 
-                                        ItemTemplate="{StaticResource ItemTemplate}"
+                                        ItemTemplate="{StaticResource SlotItemTemplate}"
                                         SlotTemplate="{StaticResource SlotTemplate}" />
     </UserControl.Resources>
 
@@ -231,6 +259,7 @@
                           BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                           ItemsSource="{x:Bind ViewModel.PageSlots, Mode=OneWay}"
                           Width="178"
+                          IsItemClickEnabled="True"
                           ItemClick="OffsetTableListView_ItemClick"
                           ItemContainerStyle="{StaticResource ListViewItemSlotStyle}"
                           ItemTemplateSelector="{StaticResource SlotTemplateSelector}"
@@ -238,49 +267,77 @@
                 </ListView>
             </Grid>
 
-            <!--Tab View-->
-            <TabView Grid.Column="2" 
-                     Grid.Row="1" 
+            <!--Tab View/Log Record view-->
+            <Grid Grid.Column="2" Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="{x:Bind ViewModel.LogRecordsHeight, Mode=OneWay}"/>
+                </Grid.RowDefinitions>
+
+                <TabView  
                      Margin="14,10,14,14" 
                      SelectedIndex="{x:Bind ViewModel.SelectedTabIndex, Mode=TwoWay}"
                      IsAddTabButtonVisible="False"
                      VerticalAlignment="Stretch"
                      HorizontalAlignment="Stretch"
+                     Grid.Row="0"
                      TabWidthMode="SizeToContent">
-                <TabView.Resources>
-                </TabView.Resources>
+                    <TabView.Resources>
+                    </TabView.Resources>
 
-                <TabViewItem IsClosable="False" 
+                    <TabViewItem IsClosable="False" 
                              x:Name="RowDataTabViewItem"
                              Visibility="{x:Bind ViewModel.IsRowDataTabVisible, 
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
-                    <TabViewItem.Header>
-                        <TextBlock Text="{x:Bind ViewModel.MarkerTabName, Mode=OneWay}"/>
-                    </TabViewItem.Header>
+                        <TabViewItem.Header>
+                            <TextBlock Text="{x:Bind ViewModel.MarkerTabName, Mode=OneWay}"/>
+                        </TabViewItem.Header>
 
-                    <page:MarkerTreeView x:Name="MarkerTreeView"
+                        <page:MarkerTreeView x:Name="MarkerTreeView"
                                          Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                          SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
-                </TabViewItem>
+                    </TabViewItem>
 
-                <TabViewItem IsClosable="False" 
+                    <TabViewItem IsClosable="False" 
                              x:Name="AllocationTabViewItem" 
                              Visibility="{x:Bind ViewModel.IsAllocationsTabVisible, 
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
-                    <TabViewItem.Header>
-                        Allocations
-                    </TabViewItem.Header>
-                    <allocation:AllocationControl x:Name="AllocationControl"
-                                                  ExtentCount="63903" 
-                                                  IsTooltipEnabled="True"
-                                                  BorderColor="{ThemeResource CardStrokeColorDefault}"
-                                                  GridColor="{ThemeResource AllocationBorderColor}"
-                                                  FileId="{x:Bind ViewModel.AllocationFileId, Mode=OneWay}"
-                                                  Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
-                </TabViewItem>
-            </TabView>
+                        <TabViewItem.Header>
+                            Allocations
+                        </TabViewItem.Header>
+                        <allocation:AllocationControl x:Name="AllocationControl"
+                                                      ExtentCount="63903" 
+                                                      IsTooltipEnabled="True"
+                                                      BorderColor="{ThemeResource CardStrokeColorDefault}"
+                                                      GridColor="{ThemeResource AllocationBorderColor}"
+                                                      FileId="{x:Bind ViewModel.AllocationFileId, Mode=OneWay}"
+                                                      Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
+                    </TabViewItem>
+                </TabView>
+                <StackPanel Grid.Row="1" 
+                            VerticalAlignment="Stretch" 
+                            Visibility="{x:Bind ViewModel.LogRecordsVisibility, Mode=OneWay}">
+                    <TextBlock Margin="14,0,14,0" FontWeight="Bold">Log Operations</TextBlock>
+                    <ListView x:Name="LogEntryListView"
+                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                          BorderThickness="1"
+                          VerticalAlignment="Stretch"
+                          SelectionMode="Single"
+                          Margin="14,10,14,14" 
+                          SelectedItem="{x:Bind ViewModel.SelectedLogRecord, Mode=TwoWay}"
+                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                          ItemsSource="{x:Bind ViewModel.LogRecords, Mode=OneWay}"
+                          ItemClick="LogRecordListView_ItemClick"
+                          IsItemClickEnabled="True"
+                          ItemTemplate="{StaticResource LogRecordTemplate}"
+                          HorizontalAlignment="Stretch">
+                    </ListView>
+                </StackPanel>
+            </Grid>
+
+
         </Grid>
     </Grid>
 </UserControl>

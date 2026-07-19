@@ -1,7 +1,9 @@
 using System;
+using System.Linq;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -78,7 +80,17 @@ public sealed partial class EventsDocumentView : UserControl, IDisposable
 
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
+        var logRecords = viewModel.Events
+                                  .OfType<TransactionLogEvent>()
+                                  .Where(logEvent => logEvent.PageAddress == pageAddress)
+                                  .Select(logEvent => logEvent.LogRecord)
+                                  .Where(logRecord => logRecord is not null)
+                                  .ToList();
+
         WeakReferenceMessenger.Default
-                              .Send(new OpenPageMessage(new OpenPageRequest(viewModel.Database, pageAddress)));
+                              .Send(new OpenPageMessage(new OpenPageRequest(viewModel.Database, pageAddress)
+                              {
+                                  LogRecords = logRecords
+                              }));
     }
 }

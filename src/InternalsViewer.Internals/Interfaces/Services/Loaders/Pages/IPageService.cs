@@ -14,8 +14,10 @@ public interface IPageService
                        byte[] buffer, 
                        CancellationToken cancellationToken);
 
-    Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken, bool isMarkEnabled = true) 
+    Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken, bool isMarkEnabled = true)
         where T : Page;
+
+    Page ParsePage(DatabaseSource database, PageAddress pageAddress, byte[] data);
 
     void ResetCache(DatabaseSource database);
 }

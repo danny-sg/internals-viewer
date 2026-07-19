@@ -19,7 +19,8 @@ internal class TransactionLogEventParser : IEventParser<TransactionLogEvent>
             Operation = (LogOperation)(e.GetInt("operation") ?? 0),
             Context = (LogContext)(e.GetInt("context") ?? 0),
             AllocationUnitId = e.GetLong("alloc_unit_id") ?? 0,
-            TransactionId = e.GetInt("transaction_id")
+            TransactionId = e.GetInt("transaction_id"),
+            LogRecordSize = e.GetLong("log_record_size") ?? 0
         };
     }
 }

@@ -95,6 +95,11 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
         return typedPage;
     }
 
+    public Page ParsePage(DatabaseSource database, PageAddress pageAddress, byte[] data)
+    {
+        return inner.ParsePage(database, pageAddress, data);
+    }
+
     /// <summary>
     /// Removes all cached pages for the given database, forcing fresh reads on the next access
     /// </summary>

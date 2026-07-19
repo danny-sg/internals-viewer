@@ -43,10 +43,10 @@ public sealed class PageLoader : IPageLoader
         return BuildPageData(database, pageAddress, buffer, false);
     }
 
-    private static PageData BuildPageData(DatabaseSource database,
-                                          PageAddress pageAddress,
-                                          byte[] data,
-                                          bool isMarkEnabled)
+    public static PageData BuildPageData(DatabaseSource database,
+                                         PageAddress pageAddress,
+                                         byte[] data,
+                                         bool isMarkEnabled)
     {
         var header = PageHeaderParser.Parse(data, isMarkEnabled);
 

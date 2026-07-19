@@ -1,0 +1,10 @@
+namespace InternalsViewer.Query.TransactionLog;
+
+public enum ApplyStatus
+{
+    Applied,
+    PageMismatch,
+    LsnMismatch,
+    BeforeImageMismatch,
+    NotSupported
+}

@@ -37,6 +37,13 @@ public static partial class PageAddressParser
 
     public static bool TryParse(string address, out PageAddress pageAddress)
     {
+        if (string.IsNullOrEmpty(address))
+        {
+            pageAddress = PageAddress.Empty;
+
+            return false;
+        }
+
         try
         {
             pageAddress = Parse(address);
