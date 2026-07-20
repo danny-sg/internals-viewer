@@ -18,11 +18,11 @@ public class LobOverflowFieldLoader
     private const int UnusedOffset = 3;
     private const int UpdateSeqOffset = 4;
 
-    public static OverflowField Load(byte[] data, int offset)
+    public static OverflowField Load(byte[] data, int offset, bool isMarkEnabled)
     {
         Debug.Assert(data.Length == 24, "Invalid Overflow Field Length");
 
-        var field = new OverflowField();
+        var field = new OverflowField { IsMarkEnabled = isMarkEnabled };
 
         field.MarkProperty("PointerType", offset, sizeof(byte));
 
@@ -61,7 +61,7 @@ public class LobOverflowFieldLoader
 
         var rowId = new RowIdentifier(data.AsSpan(ChildOffset + 4, 8));
 
-        var link = new BlobChildLink(rowId, field.Length, 0);
+        var link = new BlobChildLink(rowId, field.Length, 0) { IsMarkEnabled = field.IsMarkEnabled };
 
         link.MarkProperty("RowIdentifier", offset + ChildOffset + 4, 8);
 

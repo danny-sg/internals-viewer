@@ -1,6 +1,8 @@
-﻿using CommunityToolkit.Mvvm.Messaging.Messages;
+﻿using System.Collections.Generic;
+using CommunityToolkit.Mvvm.Messaging.Messages;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.UI.App.Messages;
 
@@ -11,6 +13,8 @@ public sealed class OpenPageRequest(DatabaseSource database, PageAddress pageAdd
     public DatabaseSource Database { get; } = database;
 
     public ushort? Slot { get; set; }
+
+    public List<PageLogRecord> LogRecords { get; set; } = [];
 }
 
 public sealed class OpenIndexRequest(DatabaseSource database, PageAddress rootPage)

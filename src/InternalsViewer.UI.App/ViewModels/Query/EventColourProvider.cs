@@ -55,7 +55,7 @@ public sealed class EventColourProvider
             return ColourConstants.LogColour;
         }
 
-        if (engineEvent is not LockEvent and not WaitEvent
+        if (engineEvent is not LockEvent and not WaitEvent and not LatchEvent
             && engineEvent.PlanNodeIdentifier is { } id
             && _ioOperatorNodes.TryGetValue(id, out var colour))
         {

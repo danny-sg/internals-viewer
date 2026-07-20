@@ -7,15 +7,17 @@ namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 
 public interface IPageService
 {
-    Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken);
+    Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken, bool isMarkEnabled = true);
 
     Task<Page> GetPage(DatabaseSource database, 
                        PageAddress pageAddress, 
                        byte[] buffer, 
                        CancellationToken cancellationToken);
 
-    Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken) 
+    Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken, bool isMarkEnabled = true)
         where T : Page;
+
+    Page ParsePage(DatabaseSource database, PageAddress pageAddress, byte[] data);
 
     void ResetCache(DatabaseSource database);
 }

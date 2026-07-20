@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
@@ -19,13 +21,20 @@ namespace InternalsViewer.UI.App.Services.Markers;
 /// </summary>
 public static class MarkerBuilder
 {
+    private static readonly ConcurrentDictionary<(Type Type, string PropertyName), MarkedProperty?> PropertyCache = new();
+
     public static List<Marker> BuildMarkers(IDataStructure markedObject)
     {
-        var styleProvider = new MarkStyleProvider();
+        return BuildMarkers(markedObject, new MarkStyleProvider());
+    }
 
-        var markers = new List<Marker>();
+    private static List<Marker> BuildMarkers(IDataStructure markedObject, MarkStyleProvider styleProvider)
+    {
+        var items = markedObject.MarkItems;
 
-        foreach (var item in markedObject.MarkItems)
+        var markers = new List<Marker>(items.Count);
+
+        foreach (var item in items)
         {
             switch (item)
             {
@@ -39,6 +48,29 @@ public static class MarkerBuilder
         }
 
         return markers.OrderBy(o => o.Ordinal).ThenBy(o => o.StartPosition).ToList();
+    }
+
+    /// <summary>
+    /// Resolves the reflection metadata a <see cref="PropertyItem"/> marker needs
+    /// </summary>
+    /// <remarks>
+    /// The property/attribute pair for a given data structure type never changes for the lifetime of the process, so it
+    /// is resolved once and reused. Markers are rebuilt on every page, slot and theme change, and the same handful of
+    /// types recur each time.
+    /// </remarks>
+    private static MarkedProperty? GetMarkedProperty(Type type, string propertyName)
+    {
+        return PropertyCache.GetOrAdd((type, propertyName), static key =>
+        {
+            var property = key.Type.GetProperty(key.PropertyName);
+
+            if (property is null)
+            {
+                return null;
+            }
+
+            return new MarkedProperty(property, property.GetCustomAttribute<DataStructureItemAttribute>(false));
+        });
     }
 
     private static Marker BuildValueMarker(ValueItem item, MarkStyleProvider styleProvider)
@@ -57,7 +89,7 @@ public static class MarkerBuilder
 
         marker.Tags = item.Tags;
 
-        SetValue(marker, item.Value);
+        SetValue(marker, item.Value, styleProvider);
 
         return marker;
     }
@@ -70,25 +102,23 @@ public static class MarkerBuilder
 
         SetMarkerPosition(item, marker);
 
-        var property = markedObject.GetType().GetProperty(item.PropertyName);
+        var markedProperty = GetMarkedProperty(markedObject.GetType(), item.PropertyName);
 
-        if (property == null)
+        if (markedProperty is null)
         {
             marker.Name = item.PropertyName.SplitCamelCase();
 
             return marker;
         }
 
-        var value = property.GetValue(markedObject, null);
+        var value = markedProperty.Property.GetValue(markedObject, null);
 
-        SetValue(marker, value);
+        SetValue(marker, value, styleProvider);
 
         MarkStyle? style;
 
-        var markAttribute = property?.GetCustomAttributes(typeof(DataStructureItemAttribute), false)?.FirstOrDefault();
-
         // Check if the property has a DataStructureItemAttribute, that will have information about the marker style
-        if (markAttribute is DataStructureItemAttribute attribute)
+        if (markedProperty.Attribute is { } attribute)
         {
             style = styleProvider.GetMarkStyle(attribute.ItemType);
 
@@ -148,21 +178,35 @@ public static class MarkerBuilder
     /// <summary>
     /// Sets the value for a marker, including recursively adding markers on marked properties
     /// </summary>
-    private static void SetValue(Marker marker, object? value)
+    private static void SetValue(Marker marker, object? value, MarkStyleProvider styleProvider)
     {
+        var hasChildren = false;
+
         if (value is DataStructure markedObject)
         {
-            marker.Children = BuildMarkers(markedObject).ToObservableCollection();
-        }
+            var children = BuildMarkers(markedObject, styleProvider);
 
-        if (value is DataStructure[] markedObjectArray)
+            marker.Children = children.ToObservableCollection();
+
+            hasChildren = children.Count > 0;
+        }
+        else if (value is DataStructure[] markedObjectArray)
         {
-            marker.Children = markedObjectArray.SelectMany(BuildMarkers).ToObservableCollection();
+            var children = new List<Marker>();
+
+            foreach (var child in markedObjectArray)
+            {
+                children.AddRange(BuildMarkers(child, styleProvider));
+            }
+
+            marker.Children = children.ToObservableCollection();
+
+            hasChildren = children.Count > 0;
         }
 
         try
         {
-            switch (value, marker.Children.Any())
+            switch (value, hasChildren)
             {
                 case (RecordField field, _):
                     marker.Value = field.Value;
@@ -210,6 +254,11 @@ public static class MarkerBuilder
 
 
     }
+
+    /// <summary>
+    /// A marked property and its style attribute, if it has one
+    /// </summary>
+    private sealed record MarkedProperty(PropertyInfo Property, DataStructureItemAttribute? Attribute);
 }
 
 [Flags]

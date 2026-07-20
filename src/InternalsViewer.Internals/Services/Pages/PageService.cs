@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Services.Pages.Loaders;
 
 namespace InternalsViewer.Internals.Services.Pages;
 
@@ -15,23 +16,24 @@ public sealed class PageService(ILogger<PageService> logger,
 {
     private ILogger<PageService> Logger { get; } = logger;
 
-    public async Task<Page> GetPage(DatabaseSource database, 
-                                    PageAddress pageAddress, 
-                                    CancellationToken cancellationToken)
+    public async Task<Page> GetPage(DatabaseSource database,
+                                    PageAddress pageAddress,
+                                    CancellationToken cancellationToken,
+                                    bool isMarkEnabled = true)
     {
         using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
         {
             Logger.LogDebug("Loading page {PageAddress}", pageAddress);
 
-            var page = await loader.Load(database, pageAddress, cancellationToken);
+            var page = await loader.Load(database, pageAddress, cancellationToken, isMarkEnabled);
 
             return ParsePage(page, pageAddress);
         }
     }
 
-    public async Task<Page> GetPage(DatabaseSource database, 
-                                    PageAddress pageAddress, 
-                                    byte[] buffer, 
+    public async Task<Page> GetPage(DatabaseSource database,
+                                    PageAddress pageAddress,
+                                    byte[] buffer,
                                     CancellationToken cancellationToken)
     {
         using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
@@ -44,12 +46,13 @@ public sealed class PageService(ILogger<PageService> logger,
         }
     }
 
-    public async Task<T> GetPage<T>(DatabaseSource database, 
-                                    PageAddress pageAddress, 
-                                    CancellationToken cancellationToken)
+    public async Task<T> GetPage<T>(DatabaseSource database,
+                                    PageAddress pageAddress,
+                                    CancellationToken cancellationToken,
+                                    bool isMarkEnabled = true)
         where T : Page
     {
-        var page = await GetPage(database, pageAddress, cancellationToken);
+        var page = await GetPage(database, pageAddress, cancellationToken, isMarkEnabled);
 
         if (page is not T typedPage)
         {
@@ -57,6 +60,13 @@ public sealed class PageService(ILogger<PageService> logger,
         }
 
         return typedPage;
+    }
+
+    public Page ParsePage(DatabaseSource database, PageAddress pageAddress, byte[] data)
+    {
+        var page = PageLoader.BuildPageData(database, pageAddress, data, true);
+
+        return ParsePage(page, pageAddress);
     }
 
     public void ResetCache(DatabaseSource database)

@@ -2,11 +2,14 @@
 
 namespace InternalsViewer.Query.Events.Reads;
 
+/// <summary>
+/// File Read/Write event
+/// </summary>
 public sealed record FileEvent : PageEngineEvent
 {
     public bool IsRead { get; init; }
 
-    public ReadMode Mode { get; set; } 
+    public ReadMode Mode { get; set; }
 
     public short FileId { get; set; }
 
@@ -14,9 +17,9 @@ public sealed record FileEvent : PageEngineEvent
 
     public long Size { get; set; }
 
-    public PageAddress FromPageAddress => new PageAddress(FileId, (int)(Offset / 8192));
+    public PageAddress FromPageAddress => new(FileId, (int)(Offset / 8192));
 
-    public PageAddress ToPageAddress => new PageAddress(FileId, (int)((Offset + Size) / 8192));
+    public PageAddress ToPageAddress => new(FileId, (int)((Offset + Size) / 8192));
 
     public override string Description => $"File {(IsRead ? "Read" : "Write")} {PageAddress}";
 

@@ -4,17 +4,14 @@ using InternalsViewer.Query.Interfaces.Events;
 namespace InternalsViewer.Query.Events.Reads;
 
 /// <summary>
-/// A page-read episode built from the storage events that make up a single read
+/// A page-read set of events built from the storage events that make up a single read
 /// </summary>
 /// <remarks>
-/// Owns its constituent events rather than duplicating them; a flatten/SelectMany over <see cref="Events"/> expands the group back into
-/// the raw stream.
-///
 /// <see cref="EngineEvent.TimeUs"/> and <see cref="EngineEvent.DurationUs"/> are taken from the suspend spine, not a min/max envelope over
 /// the children: child timestamps are quantised to the millisecond, so an envelope stretches to a full 1000us of slop, whereas the folded
 /// suspend carries the microsecond-accurate SQL-measured read duration.
 /// </remarks>
-public sealed record ReadEventGroup : EngineEvent, IEventGroup
+public sealed record ReadEventGroup : PageEngineEvent, IEventGroup
 {
     public required IReadOnlyList<EngineEvent> Events { get; init; }
 
@@ -29,7 +26,7 @@ public sealed record ReadEventGroup : EngineEvent, IEventGroup
     /// </remarks>
     public IReadOnlyList<PageAddress> Pages { get; init; } = [];
 
-    public PageAddress? PageAddress => Pages.Count > 0 ? Pages[0] : null;
+    public override PageAddress? PageAddress => Pages.Count > 0 ? Pages[0] : null;
 
     public int PageCount => Pages.Count;
 

@@ -8,16 +8,16 @@ using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records;
 
-public class LobRecordLoader : FixedVarRecordLoader
+public sealed class LobRecordLoader : FixedVarRecordLoader
 {
     /// <summary>
     /// Loads a record at the specified offset
     /// </summary>
-    internal static LobRecord Load(LobPage page, ushort offset, bool isMarkEnabled = false)
+    internal static LobRecord Load(LobPage page, ushort offset)
     {
         var record = new LobRecord
         {
-            IsMarkEnabled = isMarkEnabled
+            IsMarkEnabled = page.IsMarkEnabled
         };
 
         record.Offset = offset;
@@ -90,7 +90,10 @@ public class LobRecordLoader : FixedVarRecordLoader
             {
                 var (link, offset, length) = LoadRootBlobChild(record, i, data);
 
-                record.MarkValue(ItemType.BlobChildOffset, $"Child {i}", link, offset, length);
+                if (record.IsMarkEnabled)
+                {
+                    record.MarkValue(ItemType.BlobChildOffset, $"Child {i}", link, offset, length);
+                }
 
                 record.BlobChildren.Add(link);
             }
@@ -98,7 +101,10 @@ public class LobRecordLoader : FixedVarRecordLoader
             {
                 var (link, offset, length) = LoadInternalBlobChild(record, i, data);
 
-                record.MarkValue(ItemType.BlobChildOffset, $"Child {i}", link, offset, length);
+                if (record.IsMarkEnabled)
+                {
+                    record.MarkValue(ItemType.BlobChildOffset, $"Child {i}", link, offset, length);
+                }
 
                 record.BlobChildren.Add(link);
             }
@@ -137,7 +143,7 @@ public class LobRecordLoader : FixedVarRecordLoader
 
     private static (BlobChildLink Link, int Offset, int Length) LoadInternalBlobChild(LobRecord lobRecord, int index, byte[] data)
     {
-        var blobChildLink = new BlobChildLink();
+        var blobChildLink = new BlobChildLink { IsMarkEnabled = lobRecord.IsMarkEnabled };
 
         var offsetPosition = lobRecord.Offset + LobRecord.InternalChildOffset + (index * 16);
 
@@ -151,14 +157,17 @@ public class LobRecordLoader : FixedVarRecordLoader
 
         blobChildLink.RowIdentifier = rowId;
 
-        blobChildLink.MarkValue(ItemType.Rid, "At", rowId, offsetPosition + 8, 8);
+        if (lobRecord.IsMarkEnabled)
+        {
+            blobChildLink.MarkValue(ItemType.Rid, "At", rowId, offsetPosition + 8, 8);
+        }
 
         return (blobChildLink, offsetPosition, 16);
     }
 
     private static (BlobChildLink Link, int Offset, int Length) LoadRootBlobChild(LobRecord record, int index, byte[] data)
     {
-        var blobChildLink = new BlobChildLink();
+        var blobChildLink = new BlobChildLink() { IsMarkEnabled = record.IsMarkEnabled };
 
         var offsetPosition = record.Offset + LobRecord.RootChildOffset + (index * 12);
 
@@ -170,7 +179,10 @@ public class LobRecordLoader : FixedVarRecordLoader
 
         var rowId = new RowIdentifier(data.AsSpan(rowIdPosition, 8));
 
-        blobChildLink.MarkValue(ItemType.Rid, "At", rowId, rowIdPosition, 8);
+        if (record.IsMarkEnabled)
+        {
+            blobChildLink.MarkValue(ItemType.Rid, "At", rowId, rowIdPosition, 8);
+        }
 
         blobChildLink.RowIdentifier = rowId;
         blobChildLink.Offset = offset;

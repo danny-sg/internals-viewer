@@ -8,13 +8,13 @@ public class Dictionary(int offset) : DataStructure
     public int Offset { get; } = offset;
 
     [DataStructureItem(ItemType.DictionaryEntries)]
-    public DictionaryEntry[] DictionaryEntries { get; set; } = Array.Empty<DictionaryEntry>();
+    public DictionaryEntry[] DictionaryEntries { get; set; } = [];
 
     [DataStructureItem(ItemType.DictionaryEntryCount)]
     public int EntryCount { get; set; }
 
     [DataStructureItem(ItemType.DictionaryColumnOffsets)]
-    public ushort[] EntryOffsets { get; set; } = Array.Empty<ushort>();
+    public ushort[] EntryOffsets { get; set; } = [];
 
     public override string ToString()
     {

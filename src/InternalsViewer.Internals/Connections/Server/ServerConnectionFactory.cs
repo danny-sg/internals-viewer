@@ -4,7 +4,7 @@ using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Connections.Server;
 
-public class ServerConnectionFactory(ILogger<QueryPageReader> logger) 
+public sealed class ServerConnectionFactory(ILogger<QueryPageReader> logger) 
     : IConnectionTypeFactory<ServerConnectionConfig>
 {
     public const string ServerIdentifier = "Server";

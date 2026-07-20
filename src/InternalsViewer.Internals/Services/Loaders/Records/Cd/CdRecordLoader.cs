@@ -77,8 +77,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
     public CdIndexRecord Load(AllocationUnitPage page,
                               ushort slotOffset,
-                              Structure<TStructure> structure,
-                              bool isMarkEnabled = true)
+                              Structure<TStructure> structure)
     {
         int currentPosition = slotOffset;
 
@@ -86,7 +85,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
         {
             Offset = slotOffset,
             RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset),
-            IsMarkEnabled = isMarkEnabled
+            IsMarkEnabled = page.IsMarkEnabled
         };
 
         LoadHeader(record, page.Data, currentPosition);
@@ -290,7 +289,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
     private static void LoadShortFields(CdIndexRecord record,
                                         Structure<TStructure> structure,
-                                        IRecord? anchorRecord,
+                                        CdRecord? anchorRecord,
                                         byte[] data,
                                         ushort offset)
     {
@@ -315,7 +314,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                 continue;
             }
 
-            var field = new CdRecordField(structure.Columns[i], record);
+            var field = new CdRecordField(structure.Columns[i], record) { IsMarkEnabled = record.IsMarkEnabled };
 
             field.Cluster = cluster;
 
@@ -369,7 +368,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
             {
                 var nextOffset = record.LongDataOffsetArray[columnIndex];
 
-                var field = new CdRecordField(structure.Columns[i], record);
+                var field = new CdRecordField(structure.Columns[i], record) { IsMarkEnabled = record.IsMarkEnabled };
 
                 field.Cluster = cluster;
                 field.Length = (ushort)(RecordHelpers.DecodeOffset(nextOffset) - previousOffset);
@@ -388,7 +387,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                 {
                     field.MarkProperty(nameof(field.BlobInlineRoot));
 
-                    field.BlobInlineRoot = LobFieldLoader.Load(field.Data.ToArray(), field.Offset);
+                    field.BlobInlineRoot = LobFieldLoader.Load(field.Data.ToArray(), field.Offset, field.IsMarkEnabled);
                 }
 
                 record.MarkValue(ItemType.LongFieldValue, field.Name, field, field.Offset, field.Length);
@@ -412,6 +411,8 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
         var columnDescriptors = new List<ColumnDescriptor>();
         var bytePosition = offset;
 
+        var isMarkEnabled = record.IsMarkEnabled;
+
         var column = 1;
 
         while (column <= record.ColumnCount)
@@ -421,14 +422,17 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
             // Get the first four bits by masking with 15 (00001111)
             var value1 = (byte)(byteValue & 15);
 
-            var item1 = new ColumnDescriptor(value1);
+            var item1 = new ColumnDescriptor(value1) { IsMarkEnabled = isMarkEnabled };
 
-            item1.MarkValue(ItemType.ColumnDescriptor,
-                            $"Column {column}",
-                            value1,
-                            bytePosition,
-                            sizeof(byte),
-                            [item1.ToString()]);
+            if (isMarkEnabled)
+            {
+                item1.MarkValue(ItemType.ColumnDescriptor,
+                                $"Column {column}",
+                                value1,
+                                bytePosition,
+                                sizeof(byte),
+                                [item1.ToString()]);
+            }
 
             columnDescriptors.Add(item1);
 
@@ -440,14 +444,17 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                 // Get the last four bits by shifting right 4 bits
                 var value2 = (byte)(byteValue >> 4);
 
-                var item2 = new ColumnDescriptor(value2);
+                var item2 = new ColumnDescriptor(value2) { IsMarkEnabled = isMarkEnabled };
 
-                item2.MarkValue(ItemType.ColumnDescriptor,
-                                $"Column {column}",
-                                value2,
-                                bytePosition,
-                                sizeof(byte),
-                                [item2.ToString()]);
+                if (isMarkEnabled)
+                {
+                    item2.MarkValue(ItemType.ColumnDescriptor,
+                                    $"Column {column}",
+                                    value2,
+                                    bytePosition,
+                                    sizeof(byte),
+                                    [item2.ToString()]);
+                }
 
                 columnDescriptors.Add(item2);
 

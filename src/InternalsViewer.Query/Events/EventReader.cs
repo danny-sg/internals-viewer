@@ -5,6 +5,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Events.Parsers.Xml;
 using InternalsViewer.Query.Parsing.Plans;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
     /// Gets events/execution plan/call stack from an extended events (.xel) file
     /// </summary>
     /// <remarks>
-    /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations
+    /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations via
+    /// a buffer based read.
     /// </remarks>
     public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree)> GetEvents(string filePath,
                                                                                          string connectionString,
@@ -44,7 +46,11 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         DateTime? startTimeStamp = null;
 
-        var eventParser = new XmlEventParser(database, planHandles, new EventParser());
+        var callStack = new CallStackTree();
+
+        var xmlEventParser = new XmlEventParser();
+
+        var eventParser = new EventParser { IncludeSystemObjects = includeSystemObjects };
 
         // Use buffer for XML/Name to prevent repeated string allocations for each row
         var xmlBuffer = new char[4096];
@@ -87,15 +93,15 @@ public sealed class EventReader(ILogger<EventReader> logger)
                                         new XEventPayload(eventName, xml));
                     }
 
-                    var engineEvent = eventParser.ParseEvent(xmlBuffer, length);
+                    // The result is a view over xmlBuffer and is reused per row, so it is mapped before the next read
+                    var eventResult = xmlEventParser.ParseEvent(xmlBuffer, length);
+
+                    var engineEvent = eventResult is null
+                                      ? null
+                                      : eventParser.ToEngineEvent(eventResult, database, planHandles, callStack);
 
                     if (engineEvent is not null)
                     {
-                        if (!includeSystemObjects && IsSystemObjectEvent(engineEvent))
-                        {
-                            continue;
-                        }
-
                         startTimeStamp ??= engineEvent.Timestamp;
 
                         // Gaps in sequence ids to allow the plan nodes to be slotted in
@@ -118,6 +124,12 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         Logger.LogDebug("Read {Count} events in {Duration}", events.Count, Stopwatch.GetElapsedTime(start));
 
+        // Post-read wait pruning based on latch information collected during event parsing
+        if (!includeSystemObjects)
+        {
+            events.RemoveAll(eventParser.IsSystemObjectWait);
+        }
+
         progress?.Report("Processing events");
 
         var consolidatedEvents = await PostProcessEvents(events, connectionString, progress, cancellationToken);
@@ -137,7 +149,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         consolidatedEvents.AddRange(operatorEvents);
 
-        return (consolidatedEvents, executionPlans, eventParser.CallStack);
+        return (consolidatedEvents, executionPlans, callStack);
     }
 
     /// <summary>
@@ -157,12 +169,12 @@ public sealed class EventReader(ILogger<EventReader> logger)
     ///     - Grouping where multiple events are pieced together from their operation or target and patterns are identified to translate
     ///       multiple raw events into a single operation.
     /// </remarks>
-    private async Task<List<EngineEvent>> PostProcessEvents(List<EngineEvent> events, 
+    private async Task<List<EngineEvent>> PostProcessEvents(List<EngineEvent> events,
                                                             string connectionString,
-                                                            IProgress<string>? progress, 
+                                                            IProgress<string>? progress,
                                                             CancellationToken cancellationToken)
     {
-   
+
 
         var orderedEvents = events.OrderBy(e => e.SequenceId).ToList();
 
@@ -171,6 +183,12 @@ public sealed class EventReader(ILogger<EventReader> logger)
         var collapsedEvents = IntervalCollapser.Collapse(orderedEvents);
 
         Logger.LogDebug("Collapsed intervals in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        start = Stopwatch.GetTimestamp();
+
+        WaitAligner.Align(collapsedEvents);
+
+        Logger.LogDebug("Aligned waits in {Duration}", Stopwatch.GetElapsedTime(start));
 
         start = Stopwatch.GetTimestamp();
 
@@ -213,10 +231,6 @@ public sealed class EventReader(ILogger<EventReader> logger)
         return consolidatedEvents;
     }
 
-    private static bool IsSystemObjectEvent(EngineEvent engineEvent) =>
-        engineEvent.AllocationUnit?.IsSystem == true
-        || engineEvent is LockEvent { Resource.ResourceType: LockResourceType.Metadata or LockResourceType.Database };
-
     /// <summary>
     /// Read a column into the referenced buffer
     /// </summary>
@@ -246,15 +260,12 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         return total;
     }
-    
+
     private static string GetResultsSql(string filename)
     {
         return $@"
     SELECT object_name AS event_name, event_data
-    FROM sys.fn_xe_file_target_read_file(
-        '{filename.Replace(".xel", "")}*.xel',
-        NULL, NULL, NULL
-    );";
+    FROM   sys.fn_xe_file_target_read_file('{filename.Replace(".xel", "")}*.xel', NULL, NULL, NULL);";
     }
 
     internal async Task GetEventKeyAddresses(List<EngineEvent> events,

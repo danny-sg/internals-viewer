@@ -77,11 +77,6 @@ internal static class EventSql
                 stringBuilder.AppendLine();
                 stringBuilder.Append("(\n");
 
-                if (eventName == "sqlos.wait_completed")
-                {
-                    stringBuilder.Append("    SET collect_wait_resource = 1");
-                }
-
                 stringBuilder.Append("\n    ACTION (");
 
                 if (EventConstants.CallstackExcludeEvents.Contains(eventName))
@@ -104,8 +99,6 @@ internal static class EventSql
 
                 stringBuilder.Append("\n)");
             }
-
-
 
             if (i < sessionEvents.Count - 1)
             {

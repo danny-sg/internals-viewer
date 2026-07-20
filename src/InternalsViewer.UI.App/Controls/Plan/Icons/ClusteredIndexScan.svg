@@ -7,7 +7,7 @@
             <path d="M 16 13 L 24 13 L 24 25" />
         </g>
 
-        <g fill="#424242">
+        <g fill="#4FBC7E">
             <circle cx="16" cy="5" r="2" />
             <circle cx="8" cy="25" r="2" />
             <circle cx="16" cy="25" r="2" />

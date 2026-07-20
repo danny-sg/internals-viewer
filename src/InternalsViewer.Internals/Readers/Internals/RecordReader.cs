@@ -28,7 +28,7 @@ public sealed class RecordReader(ILogger<RecordReader> logger,
     {
         Logger.LogTrace("Reading records from {StartPage} - {@Structure}", startPage, structure);
 
-        var page = await PageService.GetPage<DataPage>(database, startPage, cancellationToken);
+        var page = await PageService.GetPage<DataPage>(database, startPage, cancellationToken, false);
 
         var records = new List<DataRecord>();
 
@@ -55,7 +55,7 @@ public sealed class RecordReader(ILogger<RecordReader> logger,
 
             Logger.LogTrace("Next page: {NextPage}", nextPage);
 
-            page = await PageService.GetPage<DataPage>(database, nextPage, cancellationToken);
+            page = await PageService.GetPage<DataPage>(database, nextPage, cancellationToken, false);
         }
 
         return records;

@@ -23,7 +23,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     /// <summary>
     /// Loads the data record at the given offset
     /// </summary>
-    public DataRecord Load(DataPage page, ushort slotOffset, TableStructure structure, bool isMarkEnabled = false)
+    public DataRecord Load(DataPage page, ushort slotOffset, TableStructure structure)
     {
         var data = page.Data;
 
@@ -38,7 +38,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         {
             Offset = slotOffset,
             RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset),
-            IsMarkEnabled = isMarkEnabled
+            IsMarkEnabled = page.IsMarkEnabled
         };
 
         // Records will always have Status Bits A
@@ -239,7 +239,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
                     }
 
                     // Null bitmap set
-                    field = LoadNullField(column);
+                    field = LoadNullField(column, dataRecord.IsMarkEnabled);
                 }
 
                 columnValues.Add(field);
@@ -249,9 +249,9 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         dataRecord.Fields.AddRange(columnValues);
     }
 
-    private static FixedVarRecordField LoadNullField(ColumnStructure column)
+    private static FixedVarRecordField LoadNullField(ColumnStructure column, bool isMarkEnabled)
     {
-        var nullField = new FixedVarRecordField(column);
+        var nullField = new FixedVarRecordField(column) { IsMarkEnabled = isMarkEnabled };
 
         nullField.MarkProperty(nameof(FixedVarRecordField.Value));
 
@@ -266,7 +266,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     /// </remarks>
     private static FixedVarRecordField LoadFixedLengthField(ColumnStructure column, Record dataRecord, byte[] pageData)
     {
-        var field = new FixedVarRecordField(column);
+        var field = new FixedVarRecordField(column) { IsMarkEnabled = dataRecord.IsMarkEnabled };
 
         // Fixed offset given by the column leaf offset field in sys.columns
         var offset = column.LeafOffset;
@@ -301,31 +301,28 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     /// </remarks>
     private static FixedVarRecordField LoadVariableLengthField(ColumnStructure column, DataRecord dataRecord, byte[] pageData)
     {
-        var field = new FixedVarRecordField(column)
-        {
-            IsMarkEnabled = true
-        };
+        var field = new FixedVarRecordField(column) { IsMarkEnabled = dataRecord.IsMarkEnabled };
 
         short length;
-        ushort offset;
+        ushort offset = 0;
         bool isLob;
 
         // Use the leaf offset to get the variable length column ordinal
         var fieldIndex = Math.Abs(column.LeafOffset) - 1;
 
-        if (fieldIndex == 0)
-        {
-            // If position 0 the start of the data will be at the variable length data offset...
-            offset = dataRecord.VariableLengthDataOffset;
-        }
-        else
-        {
-            // ...else use the end offset of the previous column as the start of this one
-            offset = RecordHelpers.DecodeOffset(dataRecord.VariableLengthColumnOffsetArray[fieldIndex - 1]);
-        }
-
         if (fieldIndex < dataRecord.VariableLengthColumnOffsetArray.Length)
         {
+            if (fieldIndex == 0)
+            {
+                // If position 0 the start of the data will be at the variable length data offset...
+                offset = dataRecord.VariableLengthDataOffset;
+            }
+            else
+            {
+                // ...else use the end offset of the previous column as the start of this one
+                offset = RecordHelpers.DecodeOffset(dataRecord.VariableLengthColumnOffsetArray[fieldIndex - 1]);
+            }
+
             // LOB field is indicated by the first/high bit being set in the offset entry (0x8000 = 32768 = 0b1000000000000000)
             isLob = (dataRecord.VariableLengthColumnOffsetArray[fieldIndex] & 0x8000) == 0x8000;
 

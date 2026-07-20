@@ -60,15 +60,17 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
 
             // The Read lane holds only ReadEventGroup; nulling the category routes it through the per-node colour
             // provider (Kind-based) instead of the flat category tint used by the mixed Wait/Latch lanes.
-            var category = sourceEvent is ReadEventGroup ? null : sourceEvent.Category;
+            var category = sourceEvent is ReadEventGroup or IoEvent ? null : sourceEvent.Category;
 
-            if (sourceEvent is ReadEventGroup readGroup)
+            if (sourceEvent is ReadEventGroup or IoEvent)
             {
                 // The read band is split into two lanes: cached (buffer-pool) reads on the top half, non-cached
                 // (physical) reads on the bottom half.
                 var laneHeight = innerHeight / 2f;
 
-                markerTop = innerTop + (readGroup.ReadType == ReadType.Cached ? 0f : laneHeight);
+                var isCached = sourceEvent is ReadEventGroup { ReadType: ReadType.Cached };
+
+                markerTop = innerTop + (isCached ? 0f : laneHeight);
                 markerHeight = Math.Max(2f, laneHeight - 1f);
             }
             else if (category.HasValue)

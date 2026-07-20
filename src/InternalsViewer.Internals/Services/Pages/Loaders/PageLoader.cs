@@ -1,10 +1,10 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Buffers.Binary;
+using System.Threading;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Services.Pages.Parsers;
-using System.Buffers.Binary;
-using System.Threading;
 
 namespace InternalsViewer.Internals.Services.Pages.Loaders;
 
@@ -19,11 +19,12 @@ public sealed class PageLoader : IPageLoader
 {
     public async Task<PageData> Load(DatabaseSource database,
                                      PageAddress pageAddress,
-                                     CancellationToken cancellationToken)
+                                     CancellationToken cancellationToken,
+                                     bool isMarkEnabled = true)
     {
         var data = await database.Connection.PageReader.Read(database.Name, pageAddress, cancellationToken);
 
-        return BuildPageData(database, pageAddress, data, true);
+        return BuildPageData(database, pageAddress, data, isMarkEnabled);
     }
 
     /// <summary>
@@ -42,10 +43,10 @@ public sealed class PageLoader : IPageLoader
         return BuildPageData(database, pageAddress, buffer, false);
     }
 
-    private static PageData BuildPageData(DatabaseSource database,
-                                          PageAddress pageAddress,
-                                          byte[] data,
-                                          bool isMarkEnabled)
+    public static PageData BuildPageData(DatabaseSource database,
+                                         PageAddress pageAddress,
+                                         byte[] data,
+                                         bool isMarkEnabled)
     {
         var header = PageHeaderParser.Parse(data, isMarkEnabled);
 
@@ -55,7 +56,8 @@ public sealed class PageLoader : IPageLoader
             PageAddress = pageAddress,
             Data = data,
             PageHeader = header,
-            OffsetTable = LoadOffsetTable(data, header.SlotCount)
+            OffsetTable = LoadOffsetTable(data, header.SlotCount),
+            IsMarkEnabled = isMarkEnabled
         };
     }
 
@@ -68,7 +70,7 @@ public sealed class PageLoader : IPageLoader
 
         ReadOnlySpan<byte> span = data;
 
-        var offset = data.Length - 2;
+        var offset = PageData.Size - 2;
 
         for (var slotIndex = 0; slotIndex < slotCount; slotIndex++)
         {

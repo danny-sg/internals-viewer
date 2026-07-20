@@ -12,7 +12,7 @@ using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
-using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.TransactionLog;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

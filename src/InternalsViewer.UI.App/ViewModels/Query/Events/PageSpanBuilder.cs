@@ -104,18 +104,24 @@ internal sealed class PageSpanBuilder
             {
                 case LatchEvent { PageAddress: { } pg } latch:
                     var endUs = latch.TimeUs + Math.Max(latch.DurationUs, MinFlashDurationUs);
+                    
                     var latchColour = colours.GetLatchMapColour(e.ObjectName) ?? colours.GetColour(e);
+
                     Add(new PageSpan(pg, latch.TimeUs, endUs, latchColour), isRead: false);
                     break;
 
                 case IoEvent { IsRead: true, PageAddress: { } pg } io:
                     var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
+
                     Add(new PageSpan(pg, io.TimeUs, queryEndUs, readColour), isRead: true);
+                    
                     break;
 
                 case ReadEventGroup group:
                     var groupColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
+
                     var groupReadAtUs = e.TimeUs + e.DurationUs;
+                    
                     foreach (var page in group.Pages)
                     {
                         Add(new PageSpan(page, groupReadAtUs, queryEndUs, groupColour), isRead: true);

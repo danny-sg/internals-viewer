@@ -4,7 +4,7 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Services.Logging;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.TransactionLog;
 using InternalsViewer.UI.App.Activation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;

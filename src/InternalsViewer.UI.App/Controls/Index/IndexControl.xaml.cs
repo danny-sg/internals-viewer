@@ -327,7 +327,11 @@ public sealed partial class IndexControl : IDisposable
             control.BuildIndexTree();
         }
 
-        if (e.Property == ZoomProperty || e.Property == NodesProperty)
+        if (e.Property == ZoomProperty)
+        {
+            control.UpdateScrollbarsCentredOnZoom((float)e.OldValue, (float)e.NewValue);
+        }
+        else if (e.Property == NodesProperty)
         {
             control.UpdateScrollbars();
         }
@@ -401,6 +405,7 @@ public sealed partial class IndexControl : IDisposable
         _rangeSelectedColour = RangeSelectedColour.ToSkColor();
 
         _activeSpanColours.Clear();
+
         CollectActiveSpanColours(PageSpans, PlayheadTimeUs, _rangeSelectedColour, _activeSpanColours);
 
         // Draw levels from the bottom up
@@ -631,13 +636,15 @@ public sealed partial class IndexControl : IDisposable
                 var isSelected = node.Node.PageAddress == selectedAddress;
                 var hasSpanColour = _activeSpanColours.TryGetValue(node.Node.PageAddress, out var spanColour);
 
+                var isHovered = node.Node == HoverNode;
+
                 if (miniMode)
                 {
                     DrawMiniPage(canvas, renderX, renderY, isSelected, isHighlighted, hasSpanColour, spanColour);
                 }
                 else
                 {
-                    DrawPage(canvas, renderX, renderY, isSelected, isHighlighted, hasSpanColour, spanColour);
+                    DrawPage(canvas, renderX, renderY, isSelected, isHovered, isHighlighted, hasSpanColour, spanColour);
 
                     if (!maxiMode)
                     {
@@ -764,6 +771,7 @@ public sealed partial class IndexControl : IDisposable
                           float x,
                           float y,
                           bool isSelected,
+                          bool isHovered,
                           bool isHighlighted,
                           bool hasSpanColour,
                           SKColor spanColour)
@@ -802,7 +810,7 @@ public sealed partial class IndexControl : IDisposable
         }
 
         _indexPagePaint.Style = SKPaintStyle.Stroke;
-        _indexPagePaint.StrokeWidth = 1f;
+        _indexPagePaint.StrokeWidth = isHighlighted ? 2f : 1f;
 
         canvas.DrawRect(indexPageRect, _indexPagePaint);
     }
@@ -1020,6 +1028,33 @@ public sealed partial class IndexControl : IDisposable
         }
     }
 
+    private void UpdateScrollbarsCentredOnZoom(float oldZoom, float newZoom)
+    {
+        var ratio = oldZoom > 0 ? newZoom / oldZoom : 1f;
+
+        var wasHorizontalScrollable = HorizontalScrollBar.Maximum > 0;
+        var wasVerticalScrollable = VerticalScrollBar.Maximum > 0;
+
+        var horizontalCentre = (HorizontalScrollBar.Value + IndexCanvas.ActualWidth / 2) * ratio;
+        var verticalCentre = (VerticalScrollBar.Value + IndexCanvas.ActualHeight / 2) * ratio;
+
+        UpdateScrollbars();
+
+        if (wasHorizontalScrollable && HorizontalScrollBar.Maximum > 0)
+        {
+            HorizontalScrollBar.Value = Math.Clamp(horizontalCentre - IndexCanvas.ActualWidth / 2,
+                                                   0,
+                                                   HorizontalScrollBar.Maximum);
+        }
+
+        if (wasVerticalScrollable && VerticalScrollBar.Maximum > 0)
+        {
+            VerticalScrollBar.Value = Math.Clamp(verticalCentre - IndexCanvas.ActualHeight / 2,
+                                                 0,
+                                                 VerticalScrollBar.Maximum);
+        }
+    }
+
     private void ScrollBar_OnScroll(object sender, ScrollEventArgs e)
     {
         IndexCanvas.Invalidate();
@@ -1179,20 +1214,8 @@ public sealed partial class IndexControl : IDisposable
             return;
         }
 
-        // Preserve the scroll ratio so the viewport's centre stays roughly stable across the zoom
-        var horizontalRatio = HorizontalScrollBar.Maximum > 0
-            ? HorizontalScrollBar.Value / HorizontalScrollBar.Maximum
-            : 0;
-
-        var verticalRatio = VerticalScrollBar.Maximum > 0
-            ? VerticalScrollBar.Value / VerticalScrollBar.Maximum
-            : 0;
-
         // Setting Zoom rebuilds the tree and refreshes the scrollbar extents.
         Zoom = newZoom;
-
-        HorizontalScrollBar.Value = HorizontalScrollBar.Maximum * horizontalRatio;
-        VerticalScrollBar.Value = VerticalScrollBar.Maximum * verticalRatio;
 
         IndexCanvas.Invalidate();
     }

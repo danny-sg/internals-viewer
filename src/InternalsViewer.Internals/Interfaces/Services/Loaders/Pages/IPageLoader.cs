@@ -9,7 +9,8 @@ public interface IPageLoader
 {
     Task<PageData> Load(DatabaseSource database, 
                         PageAddress pageAddress, 
-                        CancellationToken cancellationToken);
+                        CancellationToken cancellationToken,
+                        bool isMarkEnabled = true);
 
     Task<PageData> LoadInto(DatabaseSource database, 
                             PageAddress pageAddress, 

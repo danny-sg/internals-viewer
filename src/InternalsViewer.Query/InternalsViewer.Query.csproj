@@ -14,6 +14,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
+        <ProjectReference Include="..\InternalsViewer.TransactionLog\InternalsViewer.TransactionLog.csproj" />
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="$(AssemblyName).Tests" />
@@ -22,8 +23,8 @@
 
     <ItemGroup>
         <!-- Callstack category mappings: the core file ships embedded with the app (a downloadable update file may
-             override it from the user's app-data folder later). -->
-        <EmbeddedResource Include="CallStack\Categories\Mappings\*.txt" />
+             override it from the user's app-data folder later). Matched by file name at load, not by resource path. -->
+        <EmbeddedResource Include="Mappings\*.txt" />
     </ItemGroup>
 
     <ItemGroup>

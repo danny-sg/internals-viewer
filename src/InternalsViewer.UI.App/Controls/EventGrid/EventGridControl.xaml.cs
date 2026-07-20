@@ -22,7 +22,6 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
-    // Kept so the same delegate instance can be removed in Dispose - AddHandler/RemoveHandler match by reference.
     private readonly TappedEventHandler _tappedHandler;
 
     public EngineEvent? SelectedItem
@@ -45,7 +44,6 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         }
     }
 
-    // Selects the row for an event, expanding its parent group first if the event is a currently-collapsed child.
     private void SelectRow(EngineEvent? engineEvent)
     {
         if (engineEvent is null)
@@ -84,7 +82,6 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         control.ApplyFilter();
     }
 
-    // Maps each child event back to the read group that owns it, so an external selection of a child can expand it.
     private void RebuildParentMap()
     {
         _parentOf.Clear();
@@ -128,6 +125,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
     // Read groups the user has expanded, and the parent group of each child event (for expanding on selection).
     private readonly HashSet<EngineEvent> _expanded = new(ReferenceEqualityComparer.Instance);
+
     private readonly Dictionary<EngineEvent, EngineEvent> _parentOf = new(ReferenceEqualityComparer.Instance);
 
     // The grid's bound rows. Expand/collapse mutates this in place so the DataGrid keeps its scroll offset; only a
@@ -232,8 +230,6 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         }
     }
 
-    // Expands or collapses a read group's children by mutating the bound rows in place (inserting/removing the child
-    // rows and toggling the header's chevron), so the DataGrid keeps its scroll position instead of snapping to the top.
     private void OnExpanderClick(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not EventRow { HasChildren: true } row)
@@ -296,15 +292,17 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         row.Background = inScope ? InScopeBrush : null;
     }
 
-    /// <summary>Selects and scrolls the grid to the given event, clearing the search filter if it hides it.</summary>
+    /// <summary>
+    /// Selects and scrolls the grid to the given event, clearing the search filter if it hides it
+    /// </summary>
     public void NavigateToEvent(EngineEvent ev)
     {
         if (SearchBox is { Text.Length: > 0 } box && FindRow(ev) is null)
         {
-            box.Text = string.Empty;   // clears the filter (triggers ApplyFilter via OnSearchTextChanged)
+            box.Text = string.Empty;
         }
 
-        // A child event's group must be expanded before its row exists.
+        // A child event's group must be expanded before its row exists
         SelectRow(ev);
 
         var row = FindRow(ev);

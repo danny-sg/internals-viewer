@@ -2,7 +2,8 @@
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.Results;
-using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.TransactionLog;
+using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.Query;
 

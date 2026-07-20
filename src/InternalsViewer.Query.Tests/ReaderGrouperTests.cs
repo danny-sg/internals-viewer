@@ -223,6 +223,45 @@ public class ReaderGrouperTests
         Assert.Equal(700, group.SequenceId);
     }
 
+    [Fact]
+    public void Gather_Read_Suspended_On_Its_First_Page_Still_Claims_Every_Page_It_Loaded()
+    {
+        // The last read of a scan: read-ahead has been overtaken, so the worker suspends on the read's first page. That
+        // suspend claims the file read (a file read's PageAddress is its first page), which used to leave the gather with
+        // no spine at all - the other pages it loaded fell out as bare events and surfaced as unrelated cached reads.
+        var suspend = Suspend(latchAddress: 200, page: new PageAddress(1, 960), timeUs: 2_000, durationUs: 1_784);
+
+        var gather = new FileEvent
+        {
+            Name = "file_read",
+            Mode = ReadMode.ScatterGather,
+            FileId = 1,
+            Offset = 960 * 8_192,
+            Size = 4 * 8_192,
+            PageAddress = new PageAddress(1, 960),
+            IsRead = true,
+            TimeUs = 2_000,
+        };
+
+        var firstPage = new IoEvent { Name = "physical_page_read", IsRead = true, PageAddress = new PageAddress(1, 960), TimeUs = 2_000 };
+
+        var readAhead = new[] { 961, 962, 963 }
+            .Select(p => new IoEvent { Name = "physical_page_read", IsRead = true, PageAddress = new PageAddress(1, p), TimeUs = 2_500 })
+            .ToList();
+
+        var result = ReaderGrouper.Group([suspend, gather, firstPage, .. readAhead]);
+
+        var group = Assert.IsType<ReadEventGroup>(Assert.Single(result));
+
+        // One read, one group: the suspend stays the spine because it carries the measured duration.
+        Assert.Equal(ReadType.NonCached, group.ReadType);
+        Assert.Equal(2_000, group.TimeUs);
+        Assert.Equal(1_784, group.DurationUs);
+
+        Assert.Equal(4, group.PageCount);
+        Assert.All(readAhead, r => Assert.Contains(r, group.Events));
+    }
+
     private static LatchEvent Suspend(ulong latchAddress, PageAddress page, long timeUs, long durationUs) => new()
     {
         Name = "latch_suspend_begin",

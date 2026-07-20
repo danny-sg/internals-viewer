@@ -68,9 +68,11 @@ public static class EventSpreader
 
                 // Centre the event in its slice; never let it precede its own bucket. Confined to the bucket — a busy bucket packs tighter
                 // (and, when truly over-full, overlaps) instead of overflowing into later ones.
-                var centred = bucket + k * slot + (slot - e.DurationUs) / 2;
+                var slotStart = bucket + k * slot;
 
-                ShiftTo(e, Math.Max(bucket, centred));
+                var centred = slotStart + (slot - e.DurationUs) / 2;
+
+                ShiftTo(e, Math.Max(slotStart, centred));
             }
 
             i = j;

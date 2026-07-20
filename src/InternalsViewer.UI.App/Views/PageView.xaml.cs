@@ -23,11 +23,39 @@ public sealed partial class PageView : IDisposable
         PageAddressTextBox.AddressChanged += PageAddressTextBox_Changed;
         MarkerTreeView.PageClicked += Control_PageClicked;
         AllocationControl.PageClicked += Control_PageClicked;
+        LogRecordTreeView.RecordClicked += OnLogRecordClicked;
+    }
+
+    private void OnLogRecordClicked(Models.LogRecordItem item)
+    {
+        ViewModel.SelectSlotForRecord(item);
     }
 
     private void PageAddressTextBox_Changed(object? sender, PageAddressEventArgs args)
     {
         ViewModel.LoadPageCommand.Execute(new PageAddress(args.FileId, args.PageId));
+    }
+
+    private void PfsControl_PageClicked(object? sender, PageAddressEventArgs e)
+    {
+        var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+
+        var isShiftPressed = state.HasFlag(CoreVirtualKeyStates.Down);
+
+        if (isShiftPressed)
+        {
+            var pageAddress = new PageAddress(e.FileId, e.PageId + ViewModel.AllocationStartPage);
+
+            var request = new OpenPageRequest(ViewModel.Database, pageAddress) { Slot = e.Slot };
+
+            WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
+        }
+        else
+        {
+            var pageAddress = new PageAddress(e.FileId, e.PageId);
+
+            ViewModel.SelectPfsPageCommand.Execute(pageAddress);
+        }
     }
 
     private void Control_PageClicked(object? sender, PageAddressEventArgs e)
@@ -74,5 +102,6 @@ public sealed partial class PageView : IDisposable
         PageAddressTextBox.AddressChanged -= PageAddressTextBox_Changed;
         MarkerTreeView.PageClicked -= Control_PageClicked;
         AllocationControl.PageClicked -= Control_PageClicked;
+        LogRecordTreeView.RecordClicked -= OnLogRecordClicked;
     }
 }

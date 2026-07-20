@@ -276,9 +276,9 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         var id = IdHelpers.GetAllocationUnitId(objectId, indexId);
 
         var records = await RecordReader.Read(databaseDetail,
-                                             databaseDetail.BootPage.FirstAllocationUnitsPage,
-                                             InternalAllocationUnitStructure.GetStructure(id),
-                                             cancellationToken);
+                                              databaseDetail.BootPage.FirstAllocationUnitsPage,
+                                              InternalAllocationUnitStructure.GetStructure(id),
+                                              cancellationToken);
 
         Logger.LogTrace("Allocation Units (sys.sysallocunits): {Count} records found.", 
                         records.Count);

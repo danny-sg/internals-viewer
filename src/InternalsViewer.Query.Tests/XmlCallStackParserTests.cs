@@ -1,4 +1,5 @@
 using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Events.Parsers.Xml;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -8,15 +9,15 @@ public class XmlCallStackParserTests
     // attribute quotes stay literal. The parser reads that form in place rather than decoding it to a string first.
     private const string ThreeFrames =
         """
-        &lt;frame id="00" address="0x7FFD81BD602C" pdb="sqlmin.pdb" age="2" guid="80B1767D-3B81-4D3F-BA30-30216965DE41" module="sqlmin" rva="0x1234"/&gt;
-        &lt;frame id="01" address="0x00007FFD0000ABCD" pdb="sqllang.pdb" age="1" guid="AABBCCDD-0000-0000-0000-000000000000" module="sqllang" rva="4660"/&gt;
-        &lt;frame id="02" address="0x00007FFD00001111" pdb="sqlmin.pdb" age="2" guid="80B1767D-3B81-4D3F-BA30-30216965DE41" module="sqlmin" rva="0x5678"/&gt;
+        <frame id="00" address="0x7FFD81BD602C" pdb="sqlmin.pdb" age="2" guid="80B1767D-3B81-4D3F-BA30-30216965DE41" module="sqlmin" rva="0x1234"/>
+        <frame id="01" address="0x00007FFD0000ABCD" pdb="sqllang.pdb" age="1" guid="AABBCCDD-0000-0000-0000-000000000000" module="sqllang" rva="4660"/>
+        <frame id="02" address="0x00007FFD00001111" pdb="sqlmin.pdb" age="2" guid="80B1767D-3B81-4D3F-BA30-30216965DE41" module="sqlmin" rva="0x5678"/>
         """;
 
     [Fact]
     public void Reads_Frames_From_Escaped_Xml()
     {
-        var frames = XmlCallStackParser.ParseCallstack(ThreeFrames, new StringInternPool());
+        var frames = XmlCallStackParser.ParseCallStack(ThreeFrames, new StringInternPool());
 
         Assert.Equal(3, frames.Count);
 
@@ -32,7 +33,7 @@ public class XmlCallStackParserTests
     [Fact]
     public void Parses_Hexadecimal_And_Decimal_Rva()
     {
-        var frames = XmlCallStackParser.ParseCallstack(ThreeFrames, new StringInternPool());
+        var frames = XmlCallStackParser.ParseCallStack(ThreeFrames, new StringInternPool());
 
         Assert.Equal(0x1234U, frames[0].Rva);
         Assert.Equal(4660U, frames[1].Rva);
@@ -41,7 +42,7 @@ public class XmlCallStackParserTests
     [Fact]
     public void Interns_Repeated_Module_Pdb_And_Guid_To_One_Instance()
     {
-        var frames = XmlCallStackParser.ParseCallstack(ThreeFrames, new StringInternPool());
+        var frames = XmlCallStackParser.ParseCallStack(ThreeFrames, new StringInternPool());
 
         // Frames 0 and 2 share a module, pdb and guid, so the pool must hand back the same string instance rather
         // than a fresh allocation per frame.
@@ -56,7 +57,7 @@ public class XmlCallStackParserTests
         const string encoded =
             """&lt;frame id="00" address="0x1" pdb="x.pdb" age="0" guid="00000000-0000-0000-0000-000000000000" rva="0x1"/&gt;""";
 
-        var frames = XmlCallStackParser.ParseCallstack(encoded, new StringInternPool());
+        var frames = XmlCallStackParser.ParseCallStack(encoded, new StringInternPool());
 
         Assert.Empty(frames);
     }
@@ -64,7 +65,7 @@ public class XmlCallStackParserTests
     [Fact]
     public void Returns_Empty_When_No_Frames_Present()
     {
-        Assert.Empty(XmlCallStackParser.ParseCallstack(ReadOnlySpan<char>.Empty, new StringInternPool()));
-        Assert.Empty(XmlCallStackParser.ParseCallstack("no frames here", new StringInternPool()));
+        Assert.Empty(XmlCallStackParser.ParseCallStack(ReadOnlySpan<char>.Empty, new StringInternPool()));
+        Assert.Empty(XmlCallStackParser.ParseCallStack("no frames here", new StringInternPool()));
     }
 }

@@ -1,25 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <g id="table-scan-icon">
-      <g id="table-scan-frame"
-         stroke="#424242"
-         stroke-width="2"
-         fill="none"
-         stroke-linejoin="round"
-         stroke-linecap="square">
-
-          <rect id="compute-scalar-main-rect"
-                x="3"
-                y="5"
-                width="23"
-                height="20" />
-      </g>
-
-    <g id="download-arrow" fill="#0078D4">
-      
-      <path id="arrow-stem" d="M 14 8 L 14 20" fill="none" stroke="#0078D4" stroke-width="2" stroke-linejoin="round" />
-      
-      <polygon id="arrow-head" points="10,18 14,23 18,18" />
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="32"
+   height="32"
+   viewBox="0 0 32 32"
+   version="1.1"
+   id="svg3595"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs3599" />
+  <g
+     id="table-scan-icon">
+    <g
+       id="table-scan-frame"
+       stroke="#424242"
+       stroke-width="2"
+       fill="none"
+       stroke-linejoin="round"
+       stroke-linecap="square">
+      <rect
+         id="compute-scalar-main-rect"
+         x="3"
+         y="5"
+         width="23"
+         height="20" />
     </g>
-
+    <g
+       id="download-arrow"
+       fill="#0078D4">
+      <path
+         id="arrow-stem"
+         d="M 14.280431,7.688413 V 19.68841"
+         fill="none"
+         stroke="#0078d4"
+         stroke-width="2"
+         stroke-linejoin="round" />
+      <polygon
+         id="arrow-head"
+         points="10,18 14,23 18,18 "
+         transform="translate(0.28042839,-0.3115871)" />
+    </g>
   </g>
 </svg>

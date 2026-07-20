@@ -36,8 +36,6 @@ public sealed partial class RecordGrid: IDisposable
     public RecordGrid()
     {
         InitializeComponent();
-
-        DataGrid.SelectionChanged += DataGrid_SelectionChanged;
     }
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -92,6 +90,7 @@ public sealed partial class RecordGrid: IDisposable
             };
 
             column.PageClicked += OnPageClicked;
+            column.PageOver += OnPageOver;
 
             DataGrid.Columns.Add(column);
         }
@@ -118,6 +117,7 @@ public sealed partial class RecordGrid: IDisposable
             if (column is PageAddressLinkButtonColumn<IndexRecordModel> linkButtonColumn)
             {
                 linkButtonColumn.PageClicked -= OnPageClicked;
+                linkButtonColumn.PageOver -= OnPageOver;
             }
         }
     }
@@ -127,22 +127,13 @@ public sealed partial class RecordGrid: IDisposable
         PageClicked?.Invoke(this, e);
     }
 
-    private void DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OnPageOver(object? sender, PageAddressEventArgs e)
     {
-        var grid = sender as DataGrid;
-
-        if (grid?.SelectedItem is IndexRecordModel row)
-        {
-            var address = row.DownPagePointer;
-
-            PageOver?.Invoke(this, new PageAddressEventArgs(address));
-        }
+        PageOver?.Invoke(this, e);
     }
 
     public void Dispose()
     {
         RemoveEventHandlers();
-
-        DataGrid.SelectionChanged -= DataGrid_SelectionChanged;
     }
 }

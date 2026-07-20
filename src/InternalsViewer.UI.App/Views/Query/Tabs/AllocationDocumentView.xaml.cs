@@ -1,8 +1,11 @@
+using Windows.System;
+using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Query;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
@@ -43,7 +46,23 @@ public sealed partial class AllocationDocumentView : UserControl
 
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
-        WeakReferenceMessenger.Default
-                              .Send(new OpenPageMessage(new OpenPageRequest(viewModel.Database, pageAddress)));
+        var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+
+        var isShiftPressed = state.HasFlag(CoreVirtualKeyStates.Down);
+
+        // Shift opens the page as a separate top level tab; a plain click opens it as a document inside the
+        // query view's dock layout
+        if (isShiftPressed)
+        {
+            WeakReferenceMessenger.Default
+                                  .Send(new OpenPageMessage(new OpenPageRequest(viewModel.Database, pageAddress)
+                                  {
+                                      LogRecords = viewModel.GetPageLogRecords(pageAddress)
+                                  }));
+        }
+        else
+        {
+            viewModel.OpenPage(pageAddress);
+        }
     }
 }

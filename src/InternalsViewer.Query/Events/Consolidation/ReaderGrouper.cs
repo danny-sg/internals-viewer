@@ -44,7 +44,6 @@ namespace InternalsViewer.Query.Events.Consolidation;
 ///
 /// A query could read a page more than once, so the first read could be from disk, and subsequent reads from the buffer pool.
 ///
-///
 /// There are two modes for disk reads:
 ///
 /// - Contiguous     - Single page reads. Used when read-ahead is off (non-heap) or seeks
@@ -53,8 +52,6 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// Both modes give out a signal via a BUF SH latch suspend begin/end - this has duration that accurately corresponds to the read duration.
 ///
 /// This suspend is when the page(s) are not in the buffer pool, and it switches to file based read.
-///
-/// 
 /// </remarks>
 public static class ReaderGrouper
 {
@@ -145,9 +142,23 @@ public static class ReaderGrouper
                                            Dictionary<EngineEvent, List<EngineEvent>> members,
                                            HashSet<EngineEvent> consumed)
     {
+        // A read the contiguous pass already claimed still describes the page range it loaded, so it stays a spine here and
+        // the group that took it is where its pages go. When the scan catches up with read-ahead it suspends on the read's
+        // first page, and that suspend consumes the file read — without this the read keeps only the page that was waited
+        // on and every other page it loaded is left to surface as an unrelated cached read.
+        var owners = new Dictionary<FileEvent, EngineEvent>(ReferenceEqualityComparer.Instance);
+
+        foreach (var (owner, group) in members)
+        {
+            foreach (var member in group.OfType<FileEvent>())
+            {
+                owners[member] = owner;
+            }
+        }
+
         // Find spines for the grouping based on file reads
         var spines = events.OfType<FileEvent>()
-                           .Where(f => f is { Size: > 0, PageAddress: not null } && !consumed.Contains(f) && !members.ContainsKey(f))
+                           .Where(f => f is { Size: > 0, PageAddress: not null })
                            .ToList();
 
         if (spines.Count == 0)
@@ -157,7 +168,10 @@ public static class ReaderGrouper
 
         foreach (var spine in spines)
         {
-            members[spine] = [spine];
+            if (!owners.ContainsKey(spine))
+            {
+                members[spine] = [spine];
+            }
         }
 
         foreach (var e in events)
@@ -174,7 +188,9 @@ public static class ReaderGrouper
                 continue;
             }
 
-            members[spine].Add(e);
+            // An owned spine keeps its group's own spine: that is the suspend, which carries the SQL-measured read
+            // duration, so the pages join it rather than splitting the one read across two groups.
+            members[owners.GetValueOrDefault(spine, spine)].Add(e);
 
             consumed.Add(e);
         }
@@ -193,10 +209,12 @@ public static class ReaderGrouper
                 continue;
             }
 
-            // Only a SINGLE-page non-cached read absorbs a trailing SH re-read (the load-then-immediately-reread of that
-            // one page). A multi-page read-ahead (gather) read must NOT swallow the scan's later SH reads of the pages
-            // it prefetched — those are the scan iterator's own page reads and must surface as individual cached reads
-            // spread across the scan, not collapse into the early prefetch. (For a big scan this is thousands of them.)
+            // Only a single-page non-cached read absorbs a trailing SH re-read (the load-then-immediately-reread of that
+            // one page).
+            //
+            // A multi-page read-ahead (gather) read must not swallow the scan's later SH reads of the pages it prefetched — those are the
+            // scan iterator's own page reads and must surface as individual cached reads spread across the scan, not collapse into the
+            // early prefetch. (For a big scan this is thousands of them.)
             if (DistinctPageCount(group) > 1)
             {
                 continue;
@@ -362,11 +380,23 @@ public static class ReaderGrouper
     {
         var kind = spine is FileEvent || members.Any(IsFileReadMarker) ? ReadType.NonCached : ReadType.Cached;
 
-        var identity = members.FirstOrDefault(m => !string.IsNullOrEmpty(m.TableName)) ?? spine;
+        var completion = spine.TimeUs + spine.DurationUs;
 
-        var planHandleId = members.Select(m => m.PlanHandleId).FirstOrDefault(h => h != 0);
+        foreach (var member in members)
+        {
+            if (member is IoEvent { IsRead: true })
+            {
+                member.TimeUs = completion;
+            }
+        }
 
-        var pages = members.OfType<PageEngineEvent>()
+        var ordered = members.OrderBy(m => m.TimeUs).ToList();
+
+        var identity = ordered.FirstOrDefault(m => !string.IsNullOrEmpty(m.TableName)) ?? spine;
+
+        var planHandleId = ordered.Select(m => m.PlanHandleId).FirstOrDefault(h => h != 0);
+
+        var pages = ordered.OfType<PageEngineEvent>()
                            .Where(m => m.PageAddress is not null)
                            .Select(m => m.PageAddress!.Value)
                            .Distinct()
@@ -377,7 +407,7 @@ public static class ReaderGrouper
         return new ReadEventGroup
         {
             Name = "Page Read",
-            Events = members,
+            Events = ordered,
             ReadType = kind,
             Pages = pages,
             SequenceId = spine.SequenceId,
@@ -395,7 +425,8 @@ public static class ReaderGrouper
 
     private static bool IsFileReadMarker(EngineEvent e) => e switch
     {
-        IoEvent { IsRead: true } => true,
+        IoEvent { IsRead: true } 
+            => true,
         WaitEvent w => w.WaitType.IsPageIoLatchWait(),
         _ => false,
     };

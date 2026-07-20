@@ -1,5 +1,4 @@
 using System;
-using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
@@ -11,30 +10,30 @@ public class PageAddressLinkButtonColumn<T> : DataGridBoundColumn
 {
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
+    public event EventHandler<PageAddressEventArgs>? PageOver;
+
     protected override FrameworkElement GenerateElement(DataGridCell cell, object dataItem)
     {
-        var pageAddress = PageAddress.Empty;
+        var button = new HyperlinkButton
+        {
+            Style = (Style)Application.Current.Resources["PageAddressHyperlinkButtonStyle"],
+        };
 
         if (Binding != null)
         {
-            var value = Binding.Path.Path;
-            var propertyValue = dataItem.GetType().GetProperty(value)?.GetValue(dataItem);
-
-            pageAddress = (PageAddress)(propertyValue ?? pageAddress);
+            button.SetBinding(ContentControl.ContentProperty, Binding);
         }
 
-        var button = new HyperlinkButton
-        {
-            Content = pageAddress.ToString(),
-            Style = (Style)Application.Current.Resources["PageAddressHyperlinkButtonStyle"],
-            Command = new RelayCommand(() =>
-            {
-                PageClicked?.Invoke(this, new PageAddressEventArgs(pageAddress));
-            }),
-        };
+        button.Click += (sender, _) => PageClicked?.Invoke(this, new PageAddressEventArgs(GetPageAddress(sender)));
+
+        button.PointerEntered += (sender, _) => PageOver?.Invoke(this, new PageAddressEventArgs(GetPageAddress(sender)));
+        button.PointerExited += (_, _) => PageOver?.Invoke(this, new PageAddressEventArgs(PageAddress.Empty));
 
         return button;
     }
+
+    private static PageAddress GetPageAddress(object sender)
+        => ((HyperlinkButton)sender).Content is PageAddress pageAddress ? pageAddress : PageAddress.Empty;
 
     protected override object PrepareCellForEdit(FrameworkElement editingElement, RoutedEventArgs editingEventArgs)
     {

@@ -150,6 +150,11 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     public event Action<EngineEvent>? EventSelected;
 
     /// <summary>
+    /// Raised when an individual event marker is double clicked (e.g. to open the event's page)
+    /// </summary>
+    public event Action<EngineEvent>? EventDoubleClicked;
+
+    /// <summary>
     /// Raised when "Open Index" is chosen on a scan/seek operator (carries schema/table/index)
     /// </summary>
     public event Action<ExecutionOperatorEvent>? IndexOpenRequested;
@@ -322,10 +327,13 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         _skCanvas.PaintSurface += OnPaintSurface;
 
         SetRow(_skCanvas, 1);
+        
         Children.Add(_skCanvas);
 
         _overlay = new Canvas { Background = new SolidColorBrush(Colors.Transparent) };
+        
         SetRow(_overlay, 1);
+
         Children.Add(_overlay);
 
         _scrollBar = new ScrollBar
@@ -336,8 +344,11 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
             Minimum = 0,
             IndicatorMode = ScrollingIndicatorMode.MouseIndicator,
         };
+
         _scrollBar.Scroll += OnScrollBarScroll;
+
         SetRow(_scrollBar, 2);
+        
         Children.Add(_scrollBar);
 
         _toolTipText = new TextBlock
@@ -427,9 +438,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
         _audioPlayer.Dispose();
 
-        // Drop the retained event data so a lingering reference to the control (e.g. a pending dispatcher callback)
-        // doesn't hold the query's whole event set and its hit regions alive. _hitRegions is shared by the renderers,
-        // so it's emptied in place rather than reassigned.
         _hitRegions.Clear();
         _hoverEvent = null;
         _selection.Clear();

@@ -6,7 +6,7 @@
       <path id="btree-right-branch-path" d="M 16 13 L 24 13 L 24 25" />
     </g>
 
-    <g id="btree-data-nodes" fill="#424242">
+    <g id="btree-data-nodes" fill="#4FBC7E">
       <!-- <circle id="btree-root-node-circle" cx="16" cy="5" r="2" /> -->
       <circle id="btree-leaf-node-left-circle" cx="8" cy="25" r="2" />
       <circle id="btree-leaf-node-center-circle" cx="16" cy="25" r="2" />

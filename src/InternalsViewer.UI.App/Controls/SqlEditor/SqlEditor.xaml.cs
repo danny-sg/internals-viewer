@@ -4,11 +4,13 @@ using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Schema;
+using InternalsViewer.UI.App.Services;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -216,6 +218,8 @@ public sealed partial class SqlEditorControl : UserControl
         ? new SolidColorBrush(Colors.Red)
         : (SolidColorBrush)Application.Current.Resources["TextFillColorPrimaryBrush"];
 
+    private const string FontSizeSettingKey = "SqlEditorFontSize";
+
     private bool _editorReady;
 
     private bool _initialized;
@@ -350,6 +354,16 @@ public sealed partial class SqlEditorControl : UserControl
                         LoadingOverlay.Visibility = Visibility.Collapsed;
                         await PushSchemaToEditorAsync();
                         PushSqlTextToEditor();
+                        await ApplySavedFontSizeAsync();
+                        break;
+
+                    case "fontSizeChanged":
+                        if (msg.Value is { ValueKind: JsonValueKind.Number } fontSize)
+                        {
+                            await App.GetService<SettingsService>()
+                                     .SaveSettingAsync(FontSizeSettingKey, fontSize.GetDouble());
+                        }
+
                         break;
 
                     case "execute":
@@ -408,6 +422,24 @@ public sealed partial class SqlEditorControl : UserControl
         }
     }
 #pragma warning restore VSTHRD100
+
+    // Applies the persisted editor font size (set by Ctrl+wheel zoom) once the editor is ready
+    private async Task ApplySavedFontSizeAsync()
+    {
+        if (!_editorReady)
+        {
+            return;
+        }
+
+        var fontSize = await App.GetService<SettingsService>().ReadSettingAsync<double?>(FontSizeSettingKey);
+
+        if (fontSize is > 0)
+        {
+            var value = fontSize.Value.ToString(CultureInfo.InvariantCulture);
+
+            await WebView.ExecuteScriptAsync($"window.setEditorFontSize({value})");
+        }
+    }
 
     private async Task PushSchemaToEditorAsync()
     {

@@ -90,6 +90,9 @@
                            SelectionChanged="HexRichTextBlock_SelectionChanged"
                            LostFocus="HexRichTextBlock_LostFocus"
                            Style="{StaticResource HexRichTextBlockStyle}"/>
+                    <Canvas x:Name="HexOverlayCanvas"
+                            IsHitTestVisible="False"
+                            Canvas.ZIndex="10" />
                     <Popup x:Name="SelectionInfoPopup" 
                            PlacementTarget="{x:Bind HexRichTextBlock}"
                            IsOpen="{x:Bind ViewModel.IsDataTipOpen, Mode=OneWay}">

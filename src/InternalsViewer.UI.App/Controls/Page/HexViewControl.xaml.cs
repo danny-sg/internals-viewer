@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
+using Windows.Foundation;
 using Windows.UI.Text;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
@@ -14,6 +15,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Shapes;
 
 namespace InternalsViewer.UI.App.Controls.Page;
 
@@ -43,6 +45,9 @@ public sealed partial class HexViewControl
         SetAddress();
 
         MouseOver = new(default, default);
+
+        // Border positions depend on the rendered text layout, so a resize/re-layout invalidates them
+        HexRichTextBlock.SizeChanged += (_, _) => DrawChangeSpans();
     }
 
     private void SetAddress()
@@ -92,6 +97,249 @@ public sealed partial class HexViewControl
             typeof(Marker),
             typeof(HexViewControl),
             new PropertyMetadata(default, OnSelectedMarkerChanged));
+
+    public ObservableCollection<LogRecordAnnotation>? ChangeSpans
+    {
+        get => (ObservableCollection<LogRecordAnnotation>?)GetValue(ChangeSpansProperty);
+        set => SetValue(ChangeSpansProperty, value);
+    }
+
+    public static readonly DependencyProperty ChangeSpansProperty = DependencyProperty
+        .Register(nameof(ChangeSpans),
+            typeof(ObservableCollection<LogRecordAnnotation>),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnChangeSpansChanged));
+
+    private static void OnChangeSpansChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((HexViewControl)d).DrawChangeSpans();
+    }
+
+    public LogRecordAnnotation? SelectedChangeSpan
+    {
+        get => (LogRecordAnnotation?)GetValue(SelectedChangeSpanProperty);
+        set => SetValue(SelectedChangeSpanProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedChangeSpanProperty = DependencyProperty
+        .Register(nameof(SelectedChangeSpan),
+            typeof(LogRecordAnnotation),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnSelectedChangeSpanChanged));
+
+    private static void OnSelectedChangeSpanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (HexViewControl)d;
+
+        if (e.NewValue is LogRecordAnnotation span)
+        {
+            ScrollToPosition(control, span.Offset);
+        }
+
+        control.DrawChangeSpans();
+    }
+
+    public int? ScrollToOffset
+    {
+        get => (int?)GetValue(ScrollToOffsetProperty);
+        set => SetValue(ScrollToOffsetProperty, value);
+    }
+
+    public static readonly DependencyProperty ScrollToOffsetProperty = DependencyProperty
+        .Register(nameof(ScrollToOffset),
+            typeof(int?),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnScrollToOffsetChanged));
+
+    private static void OnScrollToOffsetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is int offset)
+        {
+            ScrollToPosition((HexViewControl)d, offset);
+        }
+    }
+
+    private double[]? _columnPositions;
+
+    private double _byteWidth;
+
+    /// <summary>
+    /// Measures the x position of each hex column and the width of a two character byte
+    /// </summary>
+    /// <remarks>
+    /// Column positions are measured as full prefix strings rather than multiplying a single character width -
+    /// fractional advance widths accumulate, so a multiplied width drifts by several pixels at the high columns.
+    /// Measured with a detached TextBlock so drawing does not depend on the RichTextBlock's layout being complete.
+    /// </remarks>
+    private void EnsureHexMetrics()
+    {
+        if (_columnPositions is not null)
+        {
+            return;
+        }
+
+        double Measure(string text)
+        {
+            var measure = new TextBlock
+            {
+                Text = text,
+                FontFamily = HexRichTextBlock.FontFamily,
+                FontSize = HexRichTextBlock.FontSize
+            };
+
+            measure.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+
+            return measure.DesiredSize.Width;
+        }
+
+        _byteWidth = Measure("00");
+
+        _columnPositions = new double[BytesPerLine];
+
+        for (var column = 1; column < BytesPerLine; column++)
+        {
+            // Trailing spaces are trimmed from the measured size, so the prefix is measured as the same number of
+            // characters without the byte separator spaces - identical width in a monospace font
+            _columnPositions[column] = Measure(new string('0', column * (CharactersPerByte + 1)));
+        }
+    }
+
+    /// <summary>
+    /// Draws a border on the overlay canvas around the hex bytes each change span covers
+    /// </summary>
+    /// <remarks>
+    /// Byte n sits at column n % 16 on line n / 16. A span within one display line is a rectangle; a span crossing
+    /// lines is drawn as a single outline polygon around the covered region, so there are no border lines between
+    /// the rows it spans.
+    /// </remarks>
+    private void DrawChangeSpans()
+    {
+        HexOverlayCanvas.Children.Clear();
+
+        if (HexRichTextBlock.Blocks.Count == 0)
+        {
+            return;
+        }
+
+        var spans = (ChangeSpans ?? Enumerable.Empty<LogRecordAnnotation>()).ToList();
+
+        // The selected span is moved to the end so it draws last, on top of any overlapping spans
+        if (SelectedChangeSpan is not null)
+        {
+            spans.Remove(SelectedChangeSpan);
+            spans.Add(SelectedChangeSpan);
+        }
+
+        if (spans.Count == 0)
+        {
+            return;
+        }
+
+        EnsureHexMetrics();
+
+        // The nominal LineHeight drifts from the rendered line pitch by a fraction of a pixel, which accumulates to
+        // rows of error by the bottom of the page, so the pitch is derived from the actual rendered height. The
+        // hex text ends with a trailing NewLine, so the layout contains one extra empty line beyond the data lines.
+        var totalLines = Math.Max(1, (Data?.Length ?? PageData.Size) / BytesPerLine) + 1;
+
+        var lineHeight = HexRichTextBlock.ActualHeight > 0
+            ? HexRichTextBlock.ActualHeight / totalLines
+            : HexRichTextBlock.LineHeight;
+
+        var selectedBrush = new SolidColorBrush(Colors.OrangeRed);
+
+        var defaultBrush = new SolidColorBrush(Colors.Gray);
+
+        foreach (var changeSpan in spans)
+        {
+            var borderBrush = ReferenceEquals(changeSpan, SelectedChangeSpan) ? selectedBrush : defaultBrush;
+
+            var start = changeSpan.Offset;
+            var end = changeSpan.Offset + changeSpan.Length - 1;
+
+            if (changeSpan.Length <= 0 || start < 0 || end >= PageData.Size)
+            {
+                continue;
+            }
+
+            var firstLine = start / BytesPerLine;
+            var lastLine = end / BytesPerLine;
+
+            // Rounded to whole pixels so the strokes render crisp instead of anti-aliased across two pixels
+            var xStart = Math.Round(_columnPositions![start % BytesPerLine]) - 3;
+            var xEnd = Math.Round(_columnPositions[end % BytesPerLine] + _byteWidth) + 2;
+
+            var xLineStart = Math.Round(_columnPositions[0]) - 3;
+            var xLineEnd = Math.Round(_columnPositions[BytesPerLine - 1] + _byteWidth) + 2;
+
+            var yTop = Math.Round(firstLine * lineHeight) - 1;
+            var yBottom = Math.Round((lastLine + 1) * lineHeight) + 1;
+
+            void Add(Shape shape)
+            {
+                ToolTipService.SetToolTip(shape, changeSpan.Description);
+
+                HexOverlayCanvas.Children.Add(shape);
+            }
+
+            Rectangle CreateBox(double left, double top, double width, double height)
+            {
+                var box = new Rectangle
+                {
+                    Width = width,
+                    Height = height,
+                    Stroke = borderBrush,
+                    StrokeThickness = 2,
+                    RadiusX = 2,
+                    RadiusY = 2,
+                    IsHitTestVisible = false,
+                };
+
+                Canvas.SetLeft(box, left);
+                Canvas.SetTop(box, top);
+
+                return box;
+            }
+
+            if (firstLine == lastLine)
+            {
+                Add(CreateBox(xStart, yTop, xEnd - xStart, yBottom - yTop));
+            }
+            else if (lastLine == firstLine + 1 && xStart > xEnd)
+            {
+                var firstBottom = Math.Round((firstLine + 1) * lineHeight) + 1;
+
+                var lastTop = Math.Round(lastLine * lineHeight) - 1;
+
+                Add(CreateBox(xStart, yTop, xLineEnd - xStart, firstBottom - yTop));
+                Add(CreateBox(xLineStart, lastTop, xEnd - xLineStart, yBottom - lastTop));
+            }
+            else
+            {
+                var yFirstBottom = Math.Round((firstLine + 1) * lineHeight);
+                var yLastTop = Math.Round(lastLine * lineHeight);
+
+                var polygon = new Polygon
+                {
+                    Stroke = borderBrush,
+                    StrokeThickness = 2,
+                    StrokeLineJoin = PenLineJoin.Round,
+                    IsHitTestVisible = false
+                };
+
+                polygon.Points.Add(new Point(xStart, yTop));
+                polygon.Points.Add(new Point(xLineEnd, yTop));
+                polygon.Points.Add(new Point(xLineEnd, yLastTop));
+                polygon.Points.Add(new Point(xEnd, yLastTop));
+                polygon.Points.Add(new Point(xEnd, yBottom));
+                polygon.Points.Add(new Point(xLineStart, yBottom));
+                polygon.Points.Add(new Point(xLineStart, yFirstBottom));
+                polygon.Points.Add(new Point(xStart, yFirstBottom));
+
+                Add(polygon);
+            }
+        }
+    }
 
     public MouseOverInfo MouseOver
     {
@@ -171,6 +419,8 @@ public sealed partial class HexViewControl
         target.HexRichTextBlock.Blocks.Add(paragraph);
 
         HighlightMarkers(target, target.Markers);
+
+        target.DrawChangeSpans();
     }
 
     private static Inline FlushRun(StringBuilder stringBuilder)
@@ -258,8 +508,6 @@ public sealed partial class HexViewControl
             {
                 Highlight(marker);
             }
-
-            target.ScrollViewer.ScrollToVerticalOffset(0);
         }
     }
 

@@ -11,8 +11,8 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// </summary>
 public sealed class PfsPageParser : PageParser, IPageParser<PfsPage>
 {
-    private const int PfsOffset = 100; // PFS byte array starts at offset 100
-    private const int PfsSize = 8088; // PFS byte array is 8088 bytes/pages
+    public const int PfsOffset = 100; // PFS byte array starts at offset 100
+    public const int PfsSize = 8088;  // PFS byte array is 8088 bytes/pages
 
     public PageType[] SupportedPageTypes => [PageType.Pfs];
 

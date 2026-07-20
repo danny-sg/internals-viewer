@@ -93,7 +93,7 @@ public sealed partial class EventTimelineControl
         // selects the plan operator under it rather than moving the playhead.
         if (position.Y > MarkerStripHeight)
         {
-            SelectOperatorAt(position);
+            SelectOperatorAt(position, isDoubleClick);
             return;
         }
 
@@ -110,7 +110,7 @@ public sealed partial class EventTimelineControl
         }
     }
 
-    private void SelectOperatorAt(Windows.Foundation.Point position)
+    private void SelectOperatorAt(Windows.Foundation.Point position, bool isDoubleClick)
     {
         var hit = HitTestRegion(position.X, position.Y);
 
@@ -133,10 +133,18 @@ public sealed partial class EventTimelineControl
         }
         else
         {
-            // A point marker (read/lock/wait/log): reveal that event in the event grid.
+            // A point marker (read/lock/wait/log): reveal that event in the event grid, or open its page on a
+            // double click.
             ClearOperatorSelection();
 
-            EventSelected?.Invoke(hit.Value.Event);
+            if (isDoubleClick)
+            {
+                EventDoubleClicked?.Invoke(hit.Value.Event);
+            }
+            else
+            {
+                EventSelected?.Invoke(hit.Value.Event);
+            }
         }
     }
 
@@ -270,16 +278,37 @@ public sealed partial class EventTimelineControl
 
     private (EngineEvent Event, string? Label)? HitTestRegion(double x, double y)
     {
-        // Operators (and their phase bars) are added after markers, so iterate in reverse to prefer them
+        var pointX = (float)x;
+        var pointY = (float)y;
+
+        HitRegion? best = null;
+
+        var bestWidth = float.MaxValue;
+        var bestDistance = float.MaxValue;
+
         for (var i = _hitRegions.Count - 1; i >= 0; i--)
         {
-            if (_hitRegions[i].Bounds.Contains((float)x, (float)y))
+            var region = _hitRegions[i];
+
+            if (!region.Bounds.Contains(pointX, pointY))
             {
-                return (_hitRegions[i].Event, _hitRegions[i].Label);
+                continue;
+            }
+
+            var width = region.Bounds.Width;
+
+            var distance = Math.Abs(region.Bounds.MidX - pointX);
+
+            if (width < bestWidth || (width == bestWidth && distance < bestDistance))
+            {
+                best = region;
+
+                bestWidth = width;
+                bestDistance = distance;
             }
         }
 
-        return null;
+        return best is { } hit ? (hit.Event, hit.Label) : null;
     }
 
     private void OnOverlaySizeChanged(object sender, SizeChangedEventArgs e)

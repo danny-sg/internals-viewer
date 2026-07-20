@@ -18,9 +18,9 @@ public sealed class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
     public CompressionInfo Load(AllocationUnitPage page, ushort offset)
     {
         var ci = new CompressionInfo(offset);
-        
-        ci.IsMarkEnabled = true;
-        
+
+        ci.IsMarkEnabled = page.IsMarkEnabled;
+
         ParseHeader(ci, page.Data, offset);
 
         var span = page.Data.AsSpan(offset);
@@ -60,17 +60,20 @@ public sealed class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
         ci.HasAnchorRecord = (ci.Header & 0b00000010) != 0;
         ci.HasDictionary = (ci.Header & 0b00000100) != 0;
 
-        var tags = new List<string>();
+        if (ci.IsMarkEnabled)
+        {
+            var tags = new List<string>();
 
-        tags.AddIf("Has Anchor Record", ci.HasAnchorRecord);
-        tags.AddIf("Has Dictionary", ci.HasDictionary);
+            tags.AddIf("Has Anchor Record", ci.HasAnchorRecord);
+            tags.AddIf("Has Dictionary", ci.HasDictionary);
 
-        ci.MarkProperty(nameof(ci.Header), offset, sizeof(byte), tags.ToArray());
+            ci.MarkProperty(nameof(ci.Header), offset, sizeof(byte), tags.ToArray());
+        }
     }
 
     private static void LoadDictionary(CompressionInfo ci, byte[] data, ushort offset)
     {
-        ci.CompressionDictionary = DictionaryLoader.Load(data, offset);
+        ci.CompressionDictionary = DictionaryLoader.Load(data, offset, ci.IsMarkEnabled);
 
         ci.MarkProperty(nameof(ci.CompressionDictionary), offset, ci.Offset + ci.Size - offset);
     }

@@ -12,7 +12,7 @@ public record EngineEvent
 
     public DateTime Timestamp { get; set; }
 
-    public string Name { get; set; } = string.Empty;
+    public virtual string Name { get; set; } = string.Empty;
 
     public virtual long TimeUs { get; set; }
 

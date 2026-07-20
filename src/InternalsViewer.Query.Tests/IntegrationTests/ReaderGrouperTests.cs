@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
-using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.TransactionLog;
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 using InternalsViewer.Query.Events.Reads;
@@ -68,6 +68,90 @@ public class ReaderGrouperTests(ITestOutputHelper testOutputHelper)
         foreach (var latch in bareKp)
         {
             TestOutputHelper.WriteLine($"{latch.TimeUs} bare KP {latch.PageAddress}");
+        }
+    }
+
+    [Fact]
+    public async Task Diagnose_Ungrouped_Physical_Reads()
+    {
+        var results = await RunQuery("SELECT * FROM dbo.ClusteredTable WITH (TABLOCKX)");
+
+        // Top level plus group members — a FileEvent that became a spine is replaced by its group at the top level.
+        var allEvents = results.EngineEvents
+                               .SelectMany(e => e is ReadEventGroup g ? g.Events.Prepend(e) : [e])
+                               .ToList();
+
+        TestOutputHelper.WriteLine("=== event name counts (all, incl. group members) ===");
+
+        foreach (var g in allEvents.GroupBy(e => e.Name).OrderByDescending(g => g.Count()))
+        {
+            TestOutputHelper.WriteLine($"{g.Count(),6}  {g.Key}");
+        }
+
+        var fileEvents = allEvents.OfType<FileEvent>().Where(f => f.IsRead).ToList();
+
+        TestOutputHelper.WriteLine("");
+        TestOutputHelper.WriteLine($"=== file reads: {fileEvents.Count} ===");
+
+        foreach (var f in fileEvents)
+        {
+            TestOutputHelper.WriteLine($"{f.TimeUs}:{f.DurationUs} Size={f.Size} ({f.Size / 8192} pages) "
+                + $"{f.FromPageAddress}-{f.ToPageAddress}");
+        }
+
+        TestOutputHelper.WriteLine("");
+        TestOutputHelper.WriteLine("=== group counts by type ===");
+
+        foreach (var g in results.EngineEvents.OfType<ReadEventGroup>().GroupBy(g => g.ReadType))
+        {
+            TestOutputHelper.WriteLine($"{g.Key,-9} groups={g.Count()} pages={g.Sum(x => x.PageCount)}");
+        }
+
+        var cachedPages = results.EngineEvents.OfType<ReadEventGroup>()
+                                 .Where(g => g.ReadType == ReadType.Cached)
+                                 .SelectMany(g => g.Pages)
+                                 .Where(p => p.PageId is >= 960 and <= 998)
+                                 .Distinct()
+                                 .Count();
+
+        TestOutputHelper.WriteLine($"cached groups covering pages 960-998: {cachedPages}");
+
+        TestOutputHelper.WriteLine("");
+        TestOutputHelper.WriteLine("=== non-cached read groups: composition ===");
+
+        foreach (var g in results.EngineEvents.OfType<ReadEventGroup>().Where(g => g.ReadType == ReadType.NonCached))
+        {
+            TestOutputHelper.WriteLine($"{g.TimeUs}:{g.DurationUs} {g.Description} pages={g.PageCount}");
+
+            foreach (var m in g.Events)
+            {
+                var kind = m is FileEvent fe ? $"FileEvent {fe.FromPageAddress}-{fe.ToPageAddress}" : m.GetType().Name;
+
+                TestOutputHelper.WriteLine($"    {m.TimeUs}:{m.DurationUs} [{kind}] {m.Name} - {m.Description}");
+            }
+        }
+
+        var grouped = results.EngineEvents.OfType<ReadEventGroup>().SelectMany(g => g.Events).ToHashSet();
+
+        var ungrouped = results.EngineEvents.OfType<IoEvent>().Where(io => io.IsRead && !grouped.Contains(io)).ToList();
+
+        TestOutputHelper.WriteLine("");
+        TestOutputHelper.WriteLine($"=== ungrouped physical_page_reads: {ungrouped.Count} ===");
+
+        foreach (var io in ungrouped)
+        {
+            // Which read ranges (if any) cover this page — empty means nothing could ever have grouped it.
+            var covering = fileEvents.Where(f => io.PageAddress is { } p
+                                                 && p.FileId == f.FromPageAddress.FileId
+                                                 && p.PageId >= f.FromPageAddress.PageId
+                                                 && p.PageId < f.ToPageAddress.PageId)
+                                     .ToList();
+
+            var cover = covering.Count == 0
+                ? "NO COVERING FILE READ"
+                : string.Join(", ", covering.Select(f => $"{f.FromPageAddress}-{f.ToPageAddress}@{f.TimeUs}"));
+
+            TestOutputHelper.WriteLine($"{io.TimeUs} {io.PageAddress} -> {cover}");
         }
     }
 

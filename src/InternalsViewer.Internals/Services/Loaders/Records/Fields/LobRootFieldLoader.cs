@@ -11,9 +11,9 @@ public class LobRootFieldLoader
     public const int UnusedOffset = 3;
     public const int UpdateSeqOffset = 4;
 
-    public static RootField Load(byte[] data, int offset)
+    public static RootField Load(byte[] data, int offset, bool isMarkEnabled)
     {
-        var field = new RootField();
+        var field = new RootField { IsMarkEnabled = isMarkEnabled };
 
         field.MarkProperty("PointerType", offset, sizeof(byte));
 
@@ -54,7 +54,7 @@ public class LobRootFieldLoader
 
             var rowId = new RowIdentifier(data.AsSpan(ChildOffset + (i * 12) + 4, 8));
 
-            var link = new BlobChildLink(rowId, 0, length);
+            var link = new BlobChildLink(rowId, 0, length) { IsMarkEnabled = field.IsMarkEnabled };
 
             link.MarkProperty("Length", offset + ChildOffset + (i * 12), sizeof(int));
 

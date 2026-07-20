@@ -12,7 +12,6 @@ public class BufferPoolInfoProviderTests(ITestOutputHelper outputHelper)
 
     private BufferPoolInfoProvider GetProvider()
     {
-      
         var provider = new BufferPoolInfoProvider(new TestLogger<BufferPoolInfoProvider>(OutputHelper));
 
         return provider;

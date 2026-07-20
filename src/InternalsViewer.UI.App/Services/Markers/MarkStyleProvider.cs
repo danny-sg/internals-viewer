@@ -1,12 +1,14 @@
-﻿using System.Diagnostics;
-using CommunityToolkit.WinUI.Helpers;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.Services.Markers;
 
-public class MarkStyleProvider
+public sealed class MarkStyleProvider
 {
+    private readonly Dictionary<ItemType, MarkStyle> _styleCache = [];
+
     private ResourceDictionary? ThemeDictionary { get; set; }
 
     public MarkStyleProvider()
@@ -16,9 +18,7 @@ public class MarkStyleProvider
 
     private void Initialize()
     {
-        var themeListener = new ThemeListener();
-
-        var currentTheme = themeListener.CurrentTheme;
+        var currentTheme = Application.Current.RequestedTheme;
 
         ThemeDictionary = Application.Current.Resources.ThemeDictionaries[currentTheme.ToString()] as ResourceDictionary;
     }
@@ -36,6 +36,11 @@ public class MarkStyleProvider
 
     public MarkStyle GetMarkStyle(ItemType itemType)
     {
+        if (_styleCache.TryGetValue(itemType, out var cached))
+        {
+            return cached;
+        }
+
         object? resource = null;
 
         ThemeDictionary?.TryGetValue($"{itemType}MarkerStyle", out resource);
@@ -51,6 +56,8 @@ public class MarkStyleProvider
         }
 
         var style = resource as MarkStyle ?? new MarkStyle();
+
+        _styleCache[itemType] = style;
 
         return style;
     }
