@@ -218,6 +218,29 @@
                 }
             };
 
+            // Font size persistence. mouseWheelZoom (Ctrl+wheel) changes the effective font size via the editor's
+            // zoom level, so the effective size is read from fontInfo and reported to the host. Each editor loads
+            // in a fresh page with zoom level 0, so applying a saved size as the base font reproduces it exactly.
+            let lastFontSize = 13;
+
+            window.setEditorFontSize = (n) => {
+                lastFontSize = n;
+                editor.updateOptions({ fontSize: n });
+            };
+
+            editor.onDidChangeConfiguration((e) => {
+                if (!e.hasChanged(monaco.editor.EditorOption.fontInfo)) {
+                    return;
+                }
+
+                const fontSize = editor.getOption(monaco.editor.EditorOption.fontInfo).fontSize;
+
+                if (fontSize !== lastFontSize) {
+                    lastFontSize = fontSize;
+                    window.chrome.webview.postMessage(JSON.stringify({ type: 'fontSizeChanged', value: fontSize }));
+                }
+            });
+
             let completionProvider;
 
             window.setSqlSchema = (data) => {

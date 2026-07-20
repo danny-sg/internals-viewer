@@ -1,9 +1,10 @@
 using System.Buffers.Binary;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.TransactionLog.Appliers;
+namespace InternalsViewer.TransactionLog.Appliers;
 
 /// <summary>
 /// Base class providing the page image operations shared by the log record appliers
@@ -15,6 +16,8 @@ public abstract class PageLogRecordApplier
     private const int FreeCountOffset = 28;
 
     private const int FreeDataOffset = 30;
+
+    private const int GhostCountOffset = 58;
 
     private const int HeaderLsnOffset = 40;
 
@@ -30,7 +33,11 @@ public abstract class PageLogRecordApplier
 
         return new ChangeSpan(HeaderLsnOffset,
                               LogSequenceNumber.Size,
-                              $"Page header LSN set to {lsn.ToBinaryString()}");
+                              $"Page header LSN set to {lsn.ToBinaryString()}")
+        {
+            ItemType = ItemType.Lsn,
+            Value = lsn.ToBinaryString()
+        };
     }
 
     protected static void SetSlotCount(PageData page, ushort value, List<ChangeSpan> changes)
@@ -39,7 +46,11 @@ public abstract class PageLogRecordApplier
 
         page.PageHeader.SlotCount = value;
 
-        changes.Add(new ChangeSpan(SlotCountOffset, sizeof(ushort), $"Page header slot count set to {value}"));
+        changes.Add(new ChangeSpan(SlotCountOffset, sizeof(ushort), $"Page header slot count set to {value}")
+        {
+            ItemType = ItemType.SlotCount,
+            Value = value.ToString()
+        });
     }
 
     protected static void SetFreeCount(PageData page, ushort value, List<ChangeSpan> changes)
@@ -48,7 +59,11 @@ public abstract class PageLogRecordApplier
 
         page.PageHeader.FreeCount = value;
 
-        changes.Add(new ChangeSpan(FreeCountOffset, sizeof(ushort), $"Page header free count set to {value}"));
+        changes.Add(new ChangeSpan(FreeCountOffset, sizeof(ushort), $"Page header free count set to {value}")
+        {
+            ItemType = ItemType.FreeCount,
+            Value = value.ToString()
+        });
     }
 
     protected static void SetFreeData(PageData page, ushort value, List<ChangeSpan> changes)
@@ -57,7 +72,24 @@ public abstract class PageLogRecordApplier
 
         page.PageHeader.FreeData = value;
 
-        changes.Add(new ChangeSpan(FreeDataOffset, sizeof(ushort), $"Page header free data offset set to {value}"));
+        changes.Add(new ChangeSpan(FreeDataOffset, sizeof(ushort), $"Page header free data offset set to {value}")
+        {
+            ItemType = ItemType.FreeDataOffset,
+            Value = value.ToString()
+        });
+    }
+
+    protected static void SetGhostCount(PageData page, short value, List<ChangeSpan> changes)
+    {
+        BinaryPrimitives.WriteInt16LittleEndian(page.Data.AsSpan(GhostCountOffset), value);
+
+        page.PageHeader.GhostRecordCount = value;
+
+        changes.Add(new ChangeSpan(GhostCountOffset, sizeof(short), $"Page header ghost record count set to {value}")
+        {
+            ItemType = ItemType.GhostRecordCount,
+            Value = value.ToString()
+        });
     }
 
     protected static int GetOffsetTableEntryPosition(int slotId)

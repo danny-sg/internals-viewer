@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Interfaces.Events;
-using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.TransactionLog;
 
 namespace InternalsViewer.Query.Events.Transactions;
 

@@ -1,7 +1,7 @@
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.TransactionLog.Appliers;
+namespace InternalsViewer.TransactionLog.Appliers;
 
 /// <summary>
 /// Applier for LOP_SET_FREE_SPACE log records

@@ -150,6 +150,11 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     public event Action<EngineEvent>? EventSelected;
 
     /// <summary>
+    /// Raised when an individual event marker is double clicked (e.g. to open the event's page)
+    /// </summary>
+    public event Action<EngineEvent>? EventDoubleClicked;
+
+    /// <summary>
     /// Raised when "Open Index" is chosen on a scan/seek operator (carries schema/table/index)
     /// </summary>
     public event Action<ExecutionOperatorEvent>? IndexOpenRequested;

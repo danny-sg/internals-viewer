@@ -75,6 +75,11 @@ public sealed partial class LogRecordTreeView
         {
             var node = new TreeViewNode { Content = item, IsExpanded = true };
 
+            if (item.Annotations.Count > 0)
+            {
+                node.Children.Add(new TreeViewNode { Content = AnnotationHeader.Instance });
+            }
+
             foreach (var annotation in item.Annotations)
             {
                 var annotationNode = new TreeViewNode { Content = annotation };
@@ -230,6 +235,11 @@ public sealed partial class LogRecordTreeView
         }
     }
 
+    /// <summary>
+    /// Raised when a log record row is clicked, so its page slot can be selected
+    /// </summary>
+    public event System.Action<LogRecordItem>? RecordClicked;
+
     private void TreeView_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
     {
         if (_isSyncingSelection)
@@ -244,5 +254,10 @@ public sealed partial class LogRecordTreeView
         SelectedAnnotation = sender.SelectedNode?.Content as LogRecordAnnotation;
 
         _isSyncingSelection = false;
+
+        if (sender.SelectedNode?.Content is LogRecordItem item)
+        {
+            RecordClicked?.Invoke(item);
+        }
     }
 }

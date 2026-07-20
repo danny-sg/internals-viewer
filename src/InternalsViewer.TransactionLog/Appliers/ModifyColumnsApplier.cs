@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.TransactionLog.Appliers;
+namespace InternalsViewer.TransactionLog.Appliers;
 
 /// <summary>
 /// Applier for LOP_MODIFY_COLUMNS log records
@@ -42,7 +42,7 @@ public sealed class ModifyColumnsApplier : PageLogRecordApplier<ModifyColumnsLog
                                      modification.BeforeLength,
                                      modification.BeforeData,
                                      modification.AfterData,
-                                     $"Slot {record.SlotId} row modified at row offset {modification.AfterOffset}");
+                                     $"Slot {record.SlotId} row modified via data splice at row offset {modification.AfterOffset}");
 
             if (!result.IsApplied)
             {
@@ -128,7 +128,7 @@ public sealed class ModifyColumnsApplier : PageLogRecordApplier<ModifyColumnsLog
                                oldLength,
                                newRow,
                                regions[0].AfterOffset,
-                               $"Slot {record.SlotId} row modified in {regions.Count} region(s) " +
+                               $"Slot {record.SlotId} row modified via row rebuild in {regions.Count} region(s) " +
                                $"({sizeDescription} bytes)",
                                []);
     }

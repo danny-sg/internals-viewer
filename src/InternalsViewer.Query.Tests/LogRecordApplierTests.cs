@@ -1,8 +1,8 @@
 using System.Buffers.Binary;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.TransactionLog;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog;
+using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -191,6 +191,30 @@ public class LogRecordApplierTests
 
         Assert.Equal(ApplyStatus.Applied, result.Status);
         Assert.Equal(0x41, page.Data[100 + 2228]);
+    }
+
+    [Fact]
+    public void Applies_Set_Bits_To_A_Pfs_Ghost_Bit()
+    {
+        var page = CreatePage();
+
+        // Captured ghost-bit record: FirstBit 18275 -> (18275 - 32) = 18243 = byte 2280, bit 3
+        var record = new SetBitsLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.PFS,
+            FirstBit = 18275,
+            BitCount = 1,
+            BitValue = 1
+        };
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+        Assert.Equal(0x08, page.Data[100 + 2280]);
     }
 
     [Fact]
@@ -614,6 +638,67 @@ public class LogRecordApplierTests
         var result = LogRecordApplier.Apply(page, record);
 
         Assert.Equal(ApplyStatus.NotSupported, result.Status);
+    }
+
+    [Fact]
+    public void Applies_Modify_Header_As_A_Header_Splice()
+    {
+        var page = CreatePage();
+
+        page.Data[2] = 0x00;
+
+        var record = new ModifyHeaderLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.PFS,
+            HeaderOffset = 2,
+            BeforeData = [0x00],
+            AfterData = [0x01]
+        };
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+        Assert.Equal(0x01, page.Data[2]);
+    }
+
+    [Fact]
+    public void Ghost_Delete_Marks_The_Row_And_Bumps_The_Header_Ghost_Count_Without_Removing_It()
+    {
+        var page = CreateSlottedPage([96, 120], freeData: 140, freeCount: 1000);
+
+        // A primary FixedVar record (status bits A = 0x30) at slot 1
+        page.Data[120] = 0x30;
+
+        page.PageHeader.GhostRecordCount = 0;
+
+        var record = new DeleteRowsLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.MARK_AS_GHOST,
+            SlotId = 1,
+            RowData = []
+        };
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+
+        // Record type in bits 1-3 changed from primary (0) to GHOST_DATA_RECORD (6): 0x30 -> 0x3C
+        Assert.Equal(0x3C, page.Data[120]);
+
+        // Row kept in place - slot count and offset table unchanged
+        Assert.Equal([96, 120], page.OffsetTable.Select(o => (int)o));
+        Assert.Equal(2, page.PageHeader.SlotCount);
+
+        Assert.Equal(1, page.PageHeader.GhostRecordCount);
+        Assert.Equal(1, BitConverter.ToInt16(page.Data, 58));
     }
 
     [Fact]

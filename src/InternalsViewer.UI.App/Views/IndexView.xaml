@@ -160,7 +160,6 @@
                                   Records="{x:Bind ViewModel.Records, Mode=OneWay}"
                                   BorderThickness="0" />
 
-                <!--Scoped spinner shown while a page's records load - the index tree stays visible-->
                 <StackPanel Grid.Row="1"
                             Orientation="Horizontal"
                             HorizontalAlignment="Center"

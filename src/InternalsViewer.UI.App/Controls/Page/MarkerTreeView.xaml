@@ -149,14 +149,7 @@
 
         <Style x:Key="TagTextBlockStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="10" />
-            <Setter Property="Padding" Value="1"/>
-            <Setter Property="Margin" Value="2,0,2,0"/>
             <Setter Property="Foreground" Value="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
-        </Style>
-
-        <Style x:Key="TagContainerStyle" TargetType="ItemContainer">
-            <Setter Property="Background" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
-            <Setter Property="Margin" Value="0,-12,0,0"/>
         </Style>
 
         <Style x:Key="PointerStyle" TargetType="HyperlinkButton">
@@ -200,29 +193,27 @@
                                       Foreground="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                       Click="CopyButton_Click" />
 
-                <GridView Grid.Column="2"
-                          SelectionMode="None"
-                          ItemsSource="{x:Bind Tags}" 
-                          x:Name="TagsItemView"
-                          VerticalAlignment="Top"
-                          Height="30"
-                          Padding="0"
-                          Margin="10,0"
-                          VerticalContentAlignment="Top"
-                          HorizontalAlignment="Left">
-                    <GridView.ItemsPanel>
+                <ItemsControl Grid.Column="2"
+                              ItemsSource="{x:Bind Tags}"
+                              VerticalAlignment="Center"
+                              Margin="10,0"
+                              HorizontalAlignment="Left">
+                    <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Spacing="0"/>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
                         </ItemsPanelTemplate>
-                    </GridView.ItemsPanel>
-                    <GridView.ItemTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="x:String">
-                            <ItemContainer Style="{StaticResource TagContainerStyle}">
+                            <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    CornerRadius="2"
+                                    Padding="4,1"
+                                    VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind}" Style="{StaticResource TagTextBlockStyle}" />
-                            </ItemContainer>
+                            </Border>
                         </DataTemplate>
-                    </GridView.ItemTemplate>
-                </GridView>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Grid>
         </DataTemplate>
 
@@ -272,9 +263,9 @@
                                    VerticalAlignment="Stretch"
                                    ItemTemplate="{StaticResource TreeViewItemTemplate}">
             <controls:HeaderedTreeView.Header>
-                <controls:DataTable ColumnSpacing="2" MinWidth="320">
+                <controls:DataTable ColumnSpacing="2" MinWidth="480">
                     <controls:DataColumn Content="Name" MinWidth="120" CanResize="True" DesiredWidth="200" />
-                    <controls:DataColumn Content="Value" MinWidth="160" CanResize="True" DesiredWidth="160" />
+                    <controls:DataColumn Content="Value" MinWidth="160" CanResize="True" DesiredWidth="*" />
                 </controls:DataTable>
             </controls:HeaderedTreeView.Header>
         </controls:HeaderedTreeView>

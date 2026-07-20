@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Helpers;
@@ -15,8 +16,9 @@ using InternalsViewer.Internals.Interfaces.Annotations;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
-using InternalsViewer.Query.TransactionLog;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.Internals.Services.Pages.Parsers;
+using InternalsViewer.TransactionLog;
+using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Markers;
@@ -98,9 +100,15 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private ObservableCollection<PageSlot> _pageSlots = [];
 
     [ObservableProperty]
+    private ObservableCollection<LogRecordItem> _logRecords = [];
+
+    // The height/visibility depend on this rather than on LogRecords directly - a replay reassigns LogRecords to
+    // rebuild the tree, and re-pushing the row height would reset the GridSplitter's dragged position. This bool
+    // only notifies when it actually flips, so a same-count reassignment leaves the splitter alone.
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LogRecordsVisibility))]
     [NotifyPropertyChangedFor(nameof(LogRecordsHeight))]
-    private ObservableCollection<LogRecordItem> _logRecords = [];
+    private bool _hasLogRecords;
 
     [ObservableProperty]
     private PageSlot? _selectedSlot;
@@ -124,6 +132,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
     [ObservableProperty]
+    private PfsChain? _pfsChain;
+
+    [ObservableProperty]
     private string _markerTabName = "Page Header";
 
     [ObservableProperty]
@@ -133,13 +144,22 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private bool _isAllocationsTabVisible;
 
     [ObservableProperty]
+    private bool _isPfsTabVisible;
+
+    [ObservableProperty]
     private int _selectedTabIndex;
 
     [ObservableProperty]
     private short _allocationFileId;
 
     [ObservableProperty]
+    private int _allocationStartPage;
+
+    [ObservableProperty]
     private string _replayStatus = string.Empty;
+
+    [ObservableProperty]
+    private int? _scrollToOffset;
 
     private const int HeaderTab = 0;
     private const int RowDataTabIndex = 1;
@@ -147,13 +167,34 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private const short PageHeaderSlot = -100;
     private const short IamHeaderSlot = -10;
+    private const short PfsHeaderSlot = -10;
     private const short CompressionInfoSlot = -90;
 
-    public Visibility LogRecordsVisibility => LogRecords.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility LogRecordsVisibility => HasLogRecords ? Visibility.Visible : Visibility.Collapsed;
 
-    public GridLength LogRecordsHeight => LogRecords.Count > 0
+    public GridLength LogRecordsHeight => HasLogRecords
         ? new GridLength(1, GridUnitType.Star)
         : new GridLength(0);
+
+    partial void OnLogRecordsChanged(ObservableCollection<LogRecordItem> value)
+    {
+        UpdateLogRecordsVisibility();
+    }
+
+    partial void OnPageAddressChanged(PageAddress value)
+    {
+        if (SelectedLogRecord is not null && SelectedLogRecord.Record.PageAddress != value)
+        {
+            SelectedLogRecord = null;
+        }
+
+        UpdateLogRecordsVisibility();
+    }
+
+    private void UpdateLogRecordsVisibility()
+    {
+        HasLogRecords = LogRecords.Any(item => item.Record.PageAddress == PageAddress);
+    }
 
     private List<IRecord> Records { get; } = [];
 
@@ -178,18 +219,39 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 AddCompressionInfoMarkers();
                 break;
             case IamHeaderSlot:
-                AddIamHeaderMarkers();
+                AddHeaderMarkers();
                 break;
             default:
                 AddRecordMarkers(value);
                 break;
         }
+
+        ScrollToOffset = value.Offset;
     }
 
     [RelayCommand]
     public async Task LoadPage(PageAddress pageAddress)
     {
         await LoadPage(pageAddress, null);
+    }
+
+    [RelayCommand]
+    public void SelectPfsPage(PageAddress pageAddress)
+    {
+        var offset = PfsPageParser.PfsOffset + pageAddress.PageId;
+
+        Marker marker = new()
+        {
+            Name = $"{pageAddress} PFS Byte",
+            StartPosition = offset,
+            EndPosition = offset,
+            ForeColour = Colors.Blue,
+            BackColour = Color.FromArgb(1, 245, 245, 250),
+            IsVisible = true
+        };
+
+        Markers = new ObservableCollection<Marker>([marker]);
+        SelectedMarker = marker;
     }
 
     [RelayCommand]
@@ -220,7 +282,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                     Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} " +
                            $"Page {pageAddress}";
 
-                    DisplayPage(resultPage, slot);
+                    DisplayPage(resultPage, (short?)slot);
 
                     NextPage = new PageAddress(PageAddress.FileId, PageAddress.PageId + 1);
 
@@ -241,7 +303,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         History.Add(PageAddress);
     }
 
-    private void DisplayPage(Internals.Engine.Pages.Page resultPage, ushort? slot)
+    private void DisplayPage(Internals.Engine.Pages.Page resultPage, short? slot)
     {
         var headerSlot = new PageSlot
         {
@@ -257,8 +319,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         }).ToList();
 
         slots.Insert(0, headerSlot);
-
-        var selectedSlot = slots.FirstOrDefault(s => s.Index == slot);
 
         Logger.LogDebug("Building Offset Table");
 
@@ -292,7 +352,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 DisplayAllocationPage(allocationPage);
 
                 break;
-
+            case PfsPage pfsPage:
+                DisplayPfsPage(pfsPage);
+                break;
             default:
                 IndexName = string.Empty;
                 ObjectName = string.Empty;
@@ -303,7 +365,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         PageSlots = new ObservableCollection<PageSlot>(new[] { headerSlot }.Union(slots));
 
-        SelectedSlot = selectedSlot ?? headerSlot;
+        // Preserve the selected slot by index across a page rebuild (e.g. replaying/toggling log operations); only
+        // fall back to the header when that slot no longer exists in the rebuilt page.
+        SelectedSlot = PageSlots.FirstOrDefault(s => s.Index == slot) ?? headerSlot;
         SelectedMarker = null;
 
         Page = resultPage;
@@ -312,9 +376,51 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         AddPageHeaderMarkers();
     }
 
+    /// <summary>
+    /// Builds a bindable annotation, categorising the change by which page structure region it lands in
+    /// </summary>
+    private static LogRecordAnnotation CreateAnnotation(ChangeSpan change, int offsetTableStart)
+    {
+        var (category, colour) = change.Offset switch
+        {
+            < 96 => ("Page Header", "#0078D4"),
+            var offset when offset >= offsetTableStart => ("Offset Table", "#107C10"),
+            _ => ("Page Data", "#C19C00")
+        };
+
+        return new LogRecordAnnotation
+        {
+            Offset = change.Offset,
+            Length = change.Length,
+            Description = change.Description,
+            ItemType = change.ItemType,
+            Value = change.Value ?? string.Empty,
+            Category = category,
+            CategoryColour = colour
+        };
+    }
+
     partial void OnSelectedLogRecordChanged(LogRecordItem? value)
     {
         _ = ShowLogRecordState(value);
+    }
+
+    /// <summary>
+    /// Selects the page slot a log record operated on, so it is highlighted and scrolled to in the hex view
+    /// </summary>
+    public void SelectSlotForRecord(LogRecordItem item)
+    {
+        if (item.Record.PageAddress != PageAddress)
+        {
+            return;
+        }
+
+        var slot = PageSlots.FirstOrDefault(s => s.Index == item.Record.SlotId);
+
+        if (slot is not null)
+        {
+            SelectedSlot = slot;
+        }
     }
 
     partial void OnSelectedChangeSpanChanged(LogRecordAnnotation? value)
@@ -382,7 +488,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         {
             await Task.Run(() =>
             {
-                var currentSlot = (ushort?)SelectedSlot?.Index;
+                var currentSlot = SelectedSlot?.Index;
 
                 var page = PageService.ParsePage(Database, PageAddress, baseline);
 
@@ -416,13 +522,10 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                             break;
                         }
 
+                        var offsetTableStart = PageData.Size - page.PageHeader.SlotCount * 2;
+
                         annotations[pageItem] = result.Changes
-                                                      .Select(c => new LogRecordAnnotation
-                                                      {
-                                                          Offset = c.Offset,
-                                                          Length = c.Length,
-                                                          Description = c.Description
-                                                      })
+                                                      .Select(c => CreateAnnotation(c, offsetTableStart))
                                                       .ToList();
                     }
 
@@ -520,6 +623,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         IsRowDataTabVisible = true;
         IsAllocationsTabVisible = true;
+        IsPfsTabVisible = false;
 
         SelectedTabIndex = SelectedTabIndex == RowDataTabIndex ? AllocationsTabIndex : SelectedTabIndex;
     }
@@ -530,6 +634,21 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         IsAllocationsTabVisible = true;
         IsRowDataTabVisible = false;
+        IsPfsTabVisible = false;
+
+        SelectedTabIndex = SelectedTabIndex == RowDataTabIndex ? AllocationsTabIndex : SelectedTabIndex;
+    }
+
+    private void DisplayPfsPage(PfsPage pfsPage)
+    {
+        PfsChain = new PfsChain { PfsPages = { pfsPage } };
+
+        IsAllocationsTabVisible = false;
+        IsRowDataTabVisible = true;
+        IsPfsTabVisible = true;
+
+        AllocationFileId = pfsPage.PageAddress.FileId;
+        AllocationStartPage = PageAddress.PageId == 1 ? 0 : PageAddress.PageId;
 
         SelectedTabIndex = SelectedTabIndex == RowDataTabIndex ? AllocationsTabIndex : SelectedTabIndex;
     }
@@ -542,8 +661,10 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         IsAllocationsTabVisible = false;
         IsRowDataTabVisible = true;
+        IsPfsTabVisible = false;
 
-        SelectedSlot = PageSlots.FirstOrDefault();
+        // Slot selection is set authoritatively by DisplayPage after the slot list is rebuilt, so it is not touched
+        // here (doing so would clobber the preserved selection)
 
         SelectedTabIndex = SelectedTabIndex == AllocationsTabIndex ? RowDataTabIndex : SelectedTabIndex;
     }
@@ -639,9 +760,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         Markers = new ObservableCollection<Marker>(headerMarkers);
     }
 
-    private void AddIamHeaderMarkers()
+    private void AddHeaderMarkers()
     {
-        MarkerTabName = "IAM Header";
+        MarkerTabName = $"{Page.PageHeader.PageTypeName} Header";
 
         var m = MarkerBuilder.BuildMarkers(Page);
 

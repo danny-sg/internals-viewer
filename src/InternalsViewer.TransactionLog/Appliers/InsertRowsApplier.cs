@@ -1,7 +1,7 @@
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.TransactionLog.Appliers;
+namespace InternalsViewer.TransactionLog.Appliers;
 
 /// <summary>
 /// Applier for LOP_INSERT_ROWS log records
@@ -65,7 +65,7 @@ public sealed class InsertRowsApplier : PageLogRecordApplier<InsertRowsLogRecord
 
         record.RowData.CopyTo(page.Data.AsSpan(rowOffset));
 
-        changes.Add(new ChangeSpan(rowOffset, rowLength, $"Row inserted at slot {record.SlotId}"));
+        changes.Add(new ChangeSpan(rowOffset, rowLength, $"Row data inserted at slot {record.SlotId}"));
 
         WriteOffsetTableEntry(page, record.SlotId, rowOffset);
 

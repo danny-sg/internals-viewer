@@ -1,12 +1,12 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.TransactionLog.Appliers;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.Appliers;
+using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.TransactionLog;
+namespace InternalsViewer.TransactionLog;
 
 /// <summary>
-/// Applies page scoped log records to a page image, rolling the page forward from a captured initial state
+/// Applies page scoped log records to a page, rolling the page forward from a captured initial state
 /// </summary>
 /// <remarks>
 /// Redo only - the capture mechanism runs the query in a transaction and rolls back, so the log ends with compensation records and
@@ -27,14 +27,18 @@ public static class LogRecordApplier
 
     private static readonly DeleteRowsApplier DeleteRowsApplier = new();
 
+    private static readonly ModifyHeaderApplier ModifyHeaderApplier = new();
+
     public static ApplyResult Apply(PageData page, PageLogRecord record)
     {
         return record switch
         {
-            ModifyRowLogRecord modifyRow 
+            ModifyRowLogRecord modifyRow
                 => ModifyRowApplier.Apply(page, modifyRow),
-            ModifyColumnsLogRecord modifyColumns 
+            ModifyColumnsLogRecord modifyColumns
                 => ModifyColumnsApplier.Apply(page, modifyColumns),
+            ModifyHeaderLogRecord modifyHeader
+                => ModifyHeaderApplier.Apply(page, modifyHeader),
             SetFreeSpaceLogRecord setFreeSpace 
                 => SetFreeSpaceApplier.Apply(page, setFreeSpace),
             SetBitsLogRecord setBits
@@ -99,11 +103,12 @@ public static class LogRecordApplier
     /// Prepares a baseline page image for replaying the given records, rebasing the LSN and any PFS byte state
     /// </summary>
     /// <remarks>
-    /// PFS changes are non-transactional, so rollback does not restore them - the compensating row operations emit
-    /// fresh forward PFS updates instead, and background activity (ghost cleanup, other sessions in the same PFS
-    /// interval) can move the bytes again before the baseline is loaded. The chain itself records the capture-time
-    /// starting state though: the first captured record for each PFS offset carries the old value, so seeding those
-    /// bytes makes the chain's before-image checks self-consistent. The records must be the page's records in LSN
+    /// PFS changes are non-transactional, so rollback does not restore them - the compensating row operations emit fresh forward PFS
+    /// updates instead, and background activity (ghost cleanup, other sessions in the same PFS interval) can move the bytes again before
+    /// the baseline is loaded.
+    ///
+    /// The chain itself records the capture-time starting state though: the first captured record for each PFS offset carries the old
+    /// value, so seeding those bytes makes the chain's before-image checks self-consistent. The records must be the page's records in LSN
     /// order.
     /// </remarks>
     public static void Rebase(PageData page, IReadOnlyList<PageLogRecord> records)

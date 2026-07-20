@@ -93,7 +93,7 @@ public sealed partial class EventTimelineControl
         // selects the plan operator under it rather than moving the playhead.
         if (position.Y > MarkerStripHeight)
         {
-            SelectOperatorAt(position);
+            SelectOperatorAt(position, isDoubleClick);
             return;
         }
 
@@ -110,7 +110,7 @@ public sealed partial class EventTimelineControl
         }
     }
 
-    private void SelectOperatorAt(Windows.Foundation.Point position)
+    private void SelectOperatorAt(Windows.Foundation.Point position, bool isDoubleClick)
     {
         var hit = HitTestRegion(position.X, position.Y);
 
@@ -133,10 +133,18 @@ public sealed partial class EventTimelineControl
         }
         else
         {
-            // A point marker (read/lock/wait/log): reveal that event in the event grid.
+            // A point marker (read/lock/wait/log): reveal that event in the event grid, or open its page on a
+            // double click.
             ClearOperatorSelection();
 
-            EventSelected?.Invoke(hit.Value.Event);
+            if (isDoubleClick)
+            {
+                EventDoubleClicked?.Invoke(hit.Value.Event);
+            }
+            else
+            {
+                EventSelected?.Invoke(hit.Value.Event);
+            }
         }
     }
 

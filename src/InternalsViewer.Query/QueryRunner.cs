@@ -11,8 +11,8 @@ using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.Results;
-using InternalsViewer.Query.TransactionLog;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog;
+using InternalsViewer.TransactionLog.LogRecords;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 

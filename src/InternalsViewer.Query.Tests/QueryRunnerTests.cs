@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
-using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.TransactionLog;
 using Xunit.Abstractions;
 
 namespace InternalsViewer.Query.Tests;

@@ -11,7 +11,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.Tests.Helpers;
-using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.TransactionLog;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

@@ -35,7 +35,7 @@ using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Parsing.Plans;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Settings;
 
@@ -544,6 +544,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// Page documents are transient like index tabs - keyed by page address so a repeat open focuses and reloads
     /// the existing tab, and pruned when the user closes them
     /// </remarks>
+    /// <summary>
+    /// Opens the page for an event, when the event is tied to a page
+    /// </summary>
+    public void OpenEventPage(EngineEvent engineEvent)
+    {
+        if (engineEvent is PageEngineEvent { PageAddress: { } pageAddress })
+        {
+            OpenPage(pageAddress);
+        }
+    }
+
     public void OpenPage(PageAddress pageAddress)
     {
         var logRecords = GetPageLogRecords(pageAddress);

@@ -1,11 +1,11 @@
-namespace InternalsViewer.Query.TransactionLog.LogRecords;
+namespace InternalsViewer.TransactionLog.LogRecords;
 
 /// <summary>
 /// LOP_FORMAT_PAGE log record
 /// </summary>
 /// <remarks>
 /// Initialises a page's header when the page is newly allocated or reformatted. Index build format records also carry the full formatted
-/// page contents as a variable element, which fn_dblog truncates at the [Log Record] varbinary(8000) cap.
+/// page contents as a variable element
 /// </remarks>
 public sealed record FormatPageLogRecord : PageLogRecord
 {
@@ -21,7 +21,10 @@ public sealed record FormatPageLogRecord : PageLogRecord
     /// B-tree level of the formatted page
     /// </summary>
     /// <remarks>
-    /// Single byte at offset 50. Zero for heap, leaf and IAM pages; 1 and above for index interior levels.
+    /// Single byte at offset 50.
+    ///
+    /// - Zero for heap, leaf and IAM pages
+    /// - 1+ for index interior levels
     /// </remarks>
     public int PageLevel { get; set; }
 
@@ -29,9 +32,9 @@ public sealed record FormatPageLogRecord : PageLogRecord
     /// Format option for the operation
     /// </summary>
     /// <remarks>
-    /// Single byte at offset 51. Observed as 2 when formatting a newly allocated heap page and 0 otherwise.
+    /// Single byte at offset 51
     ///
-    /// The individual values are undocumented.
+    /// TODO: Derive format options
     /// </remarks>
     public int FormatOption { get; set; }
 
@@ -39,9 +42,9 @@ public sealed record FormatPageLogRecord : PageLogRecord
     /// Page status flags recorded at format time
     /// </summary>
     /// <remarks>
-    /// 2 bytes at offset 66. Observed as 4 when a heap page is reformatted by compaction and 0 for fresh formats.
+    /// 2 bytes at offset 66.
     ///
-    /// The individual bits are undocumented.
+    /// TODO: Derive status options
     /// </remarks>
-    public int PageStat { get; set; }
+    public int PageStatusFlags { get; set; }
 }

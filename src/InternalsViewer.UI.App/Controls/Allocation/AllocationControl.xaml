@@ -35,8 +35,6 @@
                    ValueChanged="ScrollBar_ValueChanged"
                    IndicatorMode="MouseIndicator"/>
         
-        <!-- Positioned manually via HorizontalOffset/VerticalOffset in code (follows the cursor). Placement mode
-             (DesiredPlacement + PlacementTarget) conflicts with that and flickers the popup to (0,0), so it is omitted. -->
         <Popup x:Name="TooltipPopup"
                Grid.Column="0"
                ShouldConstrainToRootBounds="False">

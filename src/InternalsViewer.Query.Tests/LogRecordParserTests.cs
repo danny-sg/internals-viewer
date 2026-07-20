@@ -1,7 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.Query.TransactionLog;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog;
+using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -85,7 +85,7 @@ public class LogRecordParserTests
         Assert.Equal(0, record.SlotId);
         Assert.Equal(LogSequenceNumberParser.Parse("00000033:0001FB13:0002"), record.PreviousPageLsn);
         Assert.Equal(72057594047234048, record.PartitionId);
-        Assert.Equal(6, record.NumElements);
+        Assert.Equal(6, record.ElementCount);
         Assert.Equal(23, record.OffsetInRow);
         Assert.Equal(23, record.ModifySize);
     }
@@ -108,7 +108,7 @@ public class LogRecordParserTests
 
         Assert.Empty(record.BeforeData);
         Assert.Equal(Convert.FromHexString("2E00546869732069732074686520666972737420726F77"), record.AfterData);
-        Assert.Equal(6, record.NumElements);
+        Assert.Equal(6, record.ElementCount);
         Assert.Equal(23, record.OffsetInRow);
         Assert.Equal(9, record.ModifySize);
     }
@@ -145,7 +145,7 @@ public class LogRecordParserTests
         Assert.Equal(new PageAddress(1, 0x2848), record.PageAddress);
         Assert.Equal(3, record.SlotId);
         Assert.Equal(72057594048348160, record.PartitionId);
-        Assert.Equal(8, record.NumElements);
+        Assert.Equal(8, record.ElementCount);
 
         Assert.Equal(2, record.Modifications.Count);
 
@@ -213,7 +213,7 @@ public class LogRecordParserTests
         Assert.Equal(1, record.PageType);
         Assert.Equal(0, record.PageLevel);
         Assert.Equal(2, record.FormatOption);
-        Assert.Equal(0, record.PageStat);
+        Assert.Equal(0, record.PageStatusFlags);
     }
 
     [Fact]
@@ -233,8 +233,26 @@ public class LogRecordParserTests
         var record = Assert.IsType<FormatPageLogRecord>(
             LogRecordParser.Parse(default, Convert.FromHexString(CompactedHeapFormatPageRecord)));
 
-        Assert.Equal(4, record.PageStat);
+        Assert.Equal(4, record.PageStatusFlags);
         Assert.Equal(0, record.FormatOption);
+    }
+
+    private const string ModifyHeaderRecord =
+        "00003E00000000000000000000000000000000000000050B981F00000100000063000000340000003648000009000000" +
+        "00000000000000000200000000000200010001000000000001000000";
+
+    [Fact]
+    public void Parses_Modify_Header_Record()
+    {
+        var record = Assert.IsType<ModifyHeaderLogRecord>(
+            LogRecordParser.Parse(default, Convert.FromHexString(ModifyHeaderRecord)));
+
+        Assert.Equal(LogOperation.LOP_MODIFY_HEADER, record.Operation);
+        Assert.Equal(LogContext.PFS, record.Context);
+        Assert.Equal(new PageAddress(1, 0x1F98), record.PageAddress);
+        Assert.Equal(2, record.HeaderOffset);
+        Assert.Equal([0x00], record.BeforeData);
+        Assert.Equal([0x01], record.AfterData);
     }
 
     [Fact]

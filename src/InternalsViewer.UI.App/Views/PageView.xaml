@@ -199,6 +199,7 @@
                     <AppBarElementContainer VerticalAlignment="Center">
                         <Border Background="{ThemeResource TextFillColorTertiaryBrush}" 
                                 Padding="4" 
+                                Visibility="{x:Bind ViewModel.LogRecordsVisibility, Mode=OneWay}"
                                 CornerRadius="2">
                             <TextBlock Foreground="White"
                                    Text="{x:Bind ViewModel.ReplayStatus, Mode=OneWay}"/>
@@ -218,7 +219,8 @@
                                  Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                  SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
                                  ChangeSpans="{x:Bind ViewModel.ChangeSpans, Mode=OneWay}"
-                                 SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"/>
+                                 SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"
+                                 ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"/>
 
             <!--Page Slots Table-->
             <Grid x:Name="OffsetTableContainerGrid"
@@ -305,6 +307,27 @@
                                                       GridColor="{ThemeResource AllocationBorderColor}"
                                                       FileId="{x:Bind ViewModel.AllocationFileId, Mode=OneWay}"
                                                       Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
+                    </TabViewItem>
+                    <TabViewItem IsClosable="False" 
+                                 x:Name="PfsTabViewItem" 
+                                 Visibility="{x:Bind ViewModel.IsPfsTabVisible, 
+                                                 Converter={StaticResource BoolToVisibilityConverter},
+                                                 Mode=OneWay}">
+                        <TabViewItem.Header>
+                            PFS
+                        </TabViewItem.Header>
+                        <allocation:AllocationControl x:Name="PfsControl"
+                                                      ExtentCount="1011" 
+                                                      IsPfsVisible="true"
+                                                      Zoom="2"
+                                                      IsTooltipEnabled="True"
+                                                      PageClicked="PfsControl_PageClicked"
+                                                      StartPage="{x:Bind ViewModel.AllocationStartPage, Mode=OneWay}"
+                                                      BorderColor="{ThemeResource CardStrokeColorDefault}"
+                                                      GridColor="{ThemeResource AllocationBorderColor}"
+                                                      PfsChain="{x:Bind ViewModel.PfsChain, Mode=OneWay}"
+                                                      Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
+                                                      FileId="{x:Bind ViewModel.AllocationFileId, Mode=OneWay}"/>
                     </TabViewItem>
                 </TabView>
                 <controls1:GridSplitter Grid.Row="1"

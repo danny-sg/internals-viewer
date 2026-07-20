@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.TransactionLog.Appliers;
+namespace InternalsViewer.TransactionLog.Appliers;
 
 /// <summary>
 /// Applier for LOP_MODIFY_ROW log records
@@ -87,7 +87,7 @@ public sealed class ModifyRowApplier : PageLogRecordApplier<ModifyRowLogRecord>
                                oldLength,
                                newRow,
                                record.OffsetInRow,
-                               $"Slot {record.SlotId} row modified at row offset {record.OffsetInRow} " +
+                               $"Slot {record.SlotId} row data modified at row offset {record.OffsetInRow} " +
                                $"({sizeDescription} bytes)",
                                []);
     }

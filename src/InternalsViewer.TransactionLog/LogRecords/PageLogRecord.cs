@@ -1,6 +1,6 @@
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Query.TransactionLog.LogRecords;
+namespace InternalsViewer.TransactionLog.LogRecords;
 
 /// <summary>
 /// Page scoped log record

@@ -1,12 +1,11 @@
-namespace InternalsViewer.Query.TransactionLog.LogRecords;
+namespace InternalsViewer.TransactionLog.LogRecords;
 
 /// <summary>
 /// Single contiguous byte region modified by a LOP_MODIFY_COLUMNS log record
 /// </summary>
 /// <remarks>
-/// A region is a byte splice, not a column - it can start at the row's variable length offset array entry and span
-/// unchanged columns that sit between two modified areas, and for fixed length columns it covers only the bytes
-/// that actually changed.
+/// A region is a byte splice, not a column - it can start at the row's variable length offset array entry and span unchanged columns that
+/// sit between two modified areas, and for fixed length columns it covers only the bytes that actually changed.
 /// </remarks>
 public sealed record ColumnModification
 {
@@ -24,8 +23,8 @@ public sealed record ColumnModification
     /// Length of the region before the modification
     /// </summary>
     /// <remarks>
-    /// From the record's element 1 length array, so it is authoritative even when BeforeData is absent
-    /// (COMPENSATION records) or truncated by the fn_dblog varbinary(8000) cap
+    /// From the record's element 1 length array, so it is authoritative even when BeforeData is absent (COMPENSATION records) or truncated
+    /// by the fn_dblog varbinary(8000) cap
     /// </remarks>
     public int BeforeLength { get; set; }
 

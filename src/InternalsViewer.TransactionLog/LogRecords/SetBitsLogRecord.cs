@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.TransactionLog.LogRecords;
+namespace InternalsViewer.TransactionLog.LogRecords;
 
 /// <summary>
 /// LOP_SET_BITS log record
@@ -29,9 +29,11 @@ public sealed record SetBitsLogRecord : PageLogRecord
     /// Value the bits in the run are set to
     /// </summary>
     /// <remarks>
-    /// 2 bytes at offset 52, always 0 or 1 - a single value applied to the whole run, not a bit pattern. GAM allocate writes 0 and
-    /// deallocate writes 1; IAM add writes 1 and remove writes 0; DIFF map first-change writes 1. Surfaced by fn_dblog as the 1 byte
-    /// [Rowbits Bit Value].
+    /// 2 bytes at offset 52, always 0 or 1 - a single value applied to the whole run, not a bit pattern.
+    ///
+    /// - GAM allocate writes 0 and deallocate writes 1
+    /// - IAM add writes 1 and remove writes 0
+    /// - DIFF map first-change writes 1
     /// </remarks>
     public int BitValue { get; set; }
 }

@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Query.TransactionLog;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+﻿using InternalsViewer.TransactionLog;
+using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.Query.Events.Transactions;
 

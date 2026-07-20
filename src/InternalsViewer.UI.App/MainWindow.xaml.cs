@@ -30,7 +30,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.Models;
 using WinUIEx;
 using QueryView = InternalsViewer.UI.App.Views.Query.QueryView;
@@ -267,7 +267,10 @@ public sealed partial class MainWindow
 
         content.DataContext = viewModel;
 
-        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"));
+        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"))
+        {
+            RasterizePixelHeight = 32, RasterizePixelWidth = 32
+        };
 
         var title = $"Query";
 

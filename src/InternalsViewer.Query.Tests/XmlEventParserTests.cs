@@ -10,7 +10,7 @@ using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
 using InternalsViewer.Query.Parsing.Plans;
-using InternalsViewer.Query.TransactionLog;
+using InternalsViewer.TransactionLog;
 
 namespace InternalsViewer.Query.Tests;
 

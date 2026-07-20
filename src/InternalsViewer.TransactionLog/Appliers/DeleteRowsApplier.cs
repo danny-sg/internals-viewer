@@ -1,23 +1,39 @@
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.TransactionLog.Appliers;
+namespace InternalsViewer.TransactionLog.Appliers;
 
 /// <summary>
 /// Applier for LOP_DELETE_ROWS log records
 /// </summary>
 /// <remarks>
-/// The row's bytes are left in place as a hole - only the offset table and header accounting change. A heap delete zeroes the slot's
-/// offset entry, keeping the slot count and later slot ids (RIDs) stable. A b-tree delete shifts the offset table entries above SlotId
-/// down by one.
+/// A physical delete leaves the row's bytes in place as a hole - only the offset table and header accounting change. A heap delete zeroes
+/// the slot's offset entry, keeping the slot count and later slot ids (RIDs) stable. A b-tree delete shifts the offset table entries above
+/// SlotId down by one.
+///
+/// A ghost delete (LCX_MARK_AS_GHOST) is materially different - the row is NOT removed. It stays in its slot with its record type changed
+/// to a ghost type, and the page header's ghost record count (which is not separately logged) is incremented.
 /// </remarks>
 public sealed class DeleteRowsApplier : PageLogRecordApplier<DeleteRowsLogRecord>
 {
+    private const int RecordTypeMask = 0x0E;
+
+    private const int IndexRecordType = 3;
+
+    private const int GhostIndexRecordType = 5;
+
+    private const int GhostDataRecordType = 6;
+
     protected override ApplyResult ApplyRecord(PageData page, DeleteRowsLogRecord record)
     {
         if (!TryGetSlotOffset(page, record.SlotId, out var rowOffset))
         {
             return new ApplyResult(ApplyStatus.NotSupported, $"Slot {record.SlotId} is not in the offset table");
+        }
+
+        if (record.Context == LogContext.MARK_AS_GHOST)
+        {
+            return ApplyGhostMark(page, record, rowOffset);
         }
 
         if (rowOffset == 0)
@@ -72,6 +88,42 @@ public sealed class DeleteRowsApplier : PageLogRecordApplier<DeleteRowsLogRecord
         }
 
         RebuildOffsetTable(page);
+
+        return ApplyResult.Applied(changes);
+    }
+
+    /// <summary>
+    /// Marks the row at the slot as a ghost - the row stays in place, its record type changes to the ghost type and
+    /// the header ghost record count is incremented
+    /// </summary>
+    /// <remarks>
+    /// The record type lives in bits 1-3 of the row's first status byte. A live data record (primary) ghosts to
+    /// GHOST_DATA_RECORD and an index record ghosts to GHOST_INDEX_RECORD. The ghost record count is not carried by
+    /// any log record, so it is maintained here.
+    /// </remarks>
+    private static ApplyResult ApplyGhostMark(PageData page, DeleteRowsLogRecord record, int rowOffset)
+    {
+        var statusA = page.Data[rowOffset];
+
+        var recordType = (statusA >> 1) & 0x7;
+
+        if (recordType is GhostIndexRecordType or GhostDataRecordType)
+        {
+            return ApplyResult.Success;
+        }
+
+        var ghostType = recordType == IndexRecordType ? GhostIndexRecordType : GhostDataRecordType;
+
+        var newStatusA = (byte)((statusA & ~RecordTypeMask) | (ghostType << 1));
+
+        page.Data[rowOffset] = newStatusA;
+
+        var changes = new List<ChangeSpan>
+        {
+            new(rowOffset, sizeof(byte), $"Slot {record.SlotId} record marked as ghost in Status Bits A")
+        };
+
+        SetGhostCount(page, (short)(page.PageHeader.GhostRecordCount + 1), changes);
 
         return ApplyResult.Applied(changes);
     }

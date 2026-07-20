@@ -401,6 +401,7 @@ public sealed partial class IndexControl : IDisposable
         _rangeSelectedColour = RangeSelectedColour.ToSkColor();
 
         _activeSpanColours.Clear();
+
         CollectActiveSpanColours(PageSpans, PlayheadTimeUs, _rangeSelectedColour, _activeSpanColours);
 
         // Draw levels from the bottom up
@@ -631,13 +632,15 @@ public sealed partial class IndexControl : IDisposable
                 var isSelected = node.Node.PageAddress == selectedAddress;
                 var hasSpanColour = _activeSpanColours.TryGetValue(node.Node.PageAddress, out var spanColour);
 
+                var isHovered = node.Node == HoverNode;
+
                 if (miniMode)
                 {
                     DrawMiniPage(canvas, renderX, renderY, isSelected, isHighlighted, hasSpanColour, spanColour);
                 }
                 else
                 {
-                    DrawPage(canvas, renderX, renderY, isSelected, isHighlighted, hasSpanColour, spanColour);
+                    DrawPage(canvas, renderX, renderY, isSelected, isHovered, isHighlighted, hasSpanColour, spanColour);
 
                     if (!maxiMode)
                     {
@@ -764,6 +767,7 @@ public sealed partial class IndexControl : IDisposable
                           float x,
                           float y,
                           bool isSelected,
+                          bool isHovered,
                           bool isHighlighted,
                           bool hasSpanColour,
                           SKColor spanColour)
@@ -802,7 +806,7 @@ public sealed partial class IndexControl : IDisposable
         }
 
         _indexPagePaint.Style = SKPaintStyle.Stroke;
-        _indexPagePaint.StrokeWidth = 1f;
+        _indexPagePaint.StrokeWidth = isHighlighted ? 2f : 1f;
 
         canvas.DrawRect(indexPageRect, _indexPagePaint);
     }

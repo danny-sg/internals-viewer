@@ -11,6 +11,8 @@ public class PageAddressLinkButtonColumn<T> : DataGridBoundColumn
 {
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
+    public event EventHandler<PageAddressEventArgs>? PageOver;
+
     protected override FrameworkElement GenerateElement(DataGridCell cell, object dataItem)
     {
         var pageAddress = PageAddress.Empty;
@@ -32,6 +34,9 @@ public class PageAddressLinkButtonColumn<T> : DataGridBoundColumn
                 PageClicked?.Invoke(this, new PageAddressEventArgs(pageAddress));
             }),
         };
+
+        button.PointerEntered += (_, _) => PageOver?.Invoke(this, new PageAddressEventArgs(pageAddress));
+        button.PointerExited += (_, _) => PageOver?.Invoke(this, new PageAddressEventArgs(PageAddress.Empty));
 
         return button;
     }

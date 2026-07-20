@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.TransactionLog.LogRecords;
+namespace InternalsViewer.TransactionLog.LogRecords;
 
 /// <summary>
 /// LOP_MODIFY_ROW log record
@@ -18,8 +18,8 @@ public sealed record ModifyRowLogRecord : RowLogRecord
     /// Number of bytes replaced in the row
     /// </summary>
     /// <remarks>
-    /// 2 bytes at offset 58. The length of the range currently on the page that the modification replaces, so it
-    /// pairs with AfterData's length changing the row size when the before and after images differ in length.
+    /// 2 bytes at offset 58. The length of the range currently on the page that the modification replaces, so it pairs with AfterData's
+    /// length changing the row size when the before and after images differ in length.
     /// </remarks>
     public int ModifySize { get; set; }
 

@@ -2,10 +2,13 @@ using System.Buffers.Binary;
 using System.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.TransactionLog;
+namespace InternalsViewer.TransactionLog;
 
+/// <summary>
+/// Parses a log record from a raw byte array
+/// </summary>
 internal static class LogRecordParser
 {
     private const int HeaderSize = 24;
@@ -105,6 +108,9 @@ internal static class LogRecordParser
             case LogOperation.LOP_MODIFY_COLUMNS:
                 return ParseModifyColumns(span, lsn, previousLsn);
 
+            case LogOperation.LOP_MODIFY_HEADER:
+                return ParseModifyHeader(span, lsn, previousLsn);
+
             case LogOperation.LOP_FORMAT_PAGE:
                 return new FormatPageLogRecord
                 {
@@ -116,7 +122,7 @@ internal static class LogRecordParser
                     PageType = BinaryPrimitives.ReadUInt16LittleEndian(span[PageTypeOffset..]),
                     PageLevel = span[PageLevelOffset],
                     FormatOption = span[FormatOptionOffset],
-                    PageStat = BinaryPrimitives.ReadUInt16LittleEndian(span[PageStatOffset..])
+                    PageStatusFlags = BinaryPrimitives.ReadUInt16LittleEndian(span[PageStatOffset..])
                 };
 
             case LogOperation.LOP_SET_BITS:
@@ -150,6 +156,25 @@ internal static class LogRecordParser
         }
     }
 
+    private static ModifyHeaderLogRecord ParseModifyHeader(ReadOnlySpan<byte> span,
+                                                           LogSequenceNumber lsn,
+                                                           LogSequenceNumber previousLsn)
+    {
+        var contents = ParseVariableContents(span);
+
+        return new ModifyHeaderLogRecord
+        {
+            Lsn = lsn,
+            PreviousLsn = previousLsn,
+            PageAddress = ParsePageAddress(span),
+            SlotId = BinaryPrimitives.ReadUInt16LittleEndian(span[SlotIdOffset..]),
+            PreviousPageLsn = LogSequenceNumberParser.Parse(span[PreviousPageLsnOffset..]),
+            HeaderOffset = BinaryPrimitives.ReadUInt16LittleEndian(span[OffsetInRowOffset..]),
+            BeforeData = GetElement(contents, 0),
+            AfterData = GetElement(contents, 1)
+        };
+    }
+
     private static BeginTransactionLogRecord ParseBeginTransaction(ReadOnlySpan<byte> span,
                                                                    LogSequenceNumber lsn,
                                                                    LogSequenceNumber previousLsn)
@@ -180,7 +205,7 @@ internal static class LogRecordParser
             SlotId = BinaryPrimitives.ReadUInt16LittleEndian(span[SlotIdOffset..]),
             PreviousPageLsn = LogSequenceNumberParser.Parse(span[PreviousPageLsnOffset..]),
             PartitionId = BinaryPrimitives.ReadInt64LittleEndian(span[PartitionIdOffset..]),
-            NumElements = contents.Length,
+            ElementCount = contents.Length,
             RowData = GetElement(contents, 0)
         };
     }
@@ -199,7 +224,7 @@ internal static class LogRecordParser
             SlotId = BinaryPrimitives.ReadUInt16LittleEndian(span[SlotIdOffset..]),
             PreviousPageLsn = LogSequenceNumberParser.Parse(span[PreviousPageLsnOffset..]),
             PartitionId = BinaryPrimitives.ReadInt64LittleEndian(span[PartitionIdOffset..]),
-            NumElements = contents.Length,
+            ElementCount = contents.Length,
             RowData = GetElement(contents, 0)
         };
     }
@@ -218,7 +243,7 @@ internal static class LogRecordParser
             SlotId = BinaryPrimitives.ReadUInt16LittleEndian(span[SlotIdOffset..]),
             PreviousPageLsn = LogSequenceNumberParser.Parse(span[PreviousPageLsnOffset..]),
             PartitionId = BinaryPrimitives.ReadInt64LittleEndian(span[PartitionIdOffset..]),
-            NumElements = contents.Length,
+            ElementCount = contents.Length,
             OffsetInRow = BinaryPrimitives.ReadUInt16LittleEndian(span[OffsetInRowOffset..]),
             ModifySize = BinaryPrimitives.ReadUInt16LittleEndian(span[ModifySizeOffset..]),
             BeforeData = GetElement(contents, 0),
@@ -266,7 +291,7 @@ internal static class LogRecordParser
             SlotId = BinaryPrimitives.ReadUInt16LittleEndian(span[SlotIdOffset..]),
             PreviousPageLsn = LogSequenceNumberParser.Parse(span[PreviousPageLsnOffset..]),
             PartitionId = BinaryPrimitives.ReadInt64LittleEndian(span[PartitionIdOffset..]),
-            NumElements = contents.Length,
+            ElementCount = contents.Length,
             Modifications = modifications
         };
     }
@@ -327,6 +352,9 @@ internal static class LogRecordParser
         return BaseDateTime.AddDays(days).AddTicks(time * TimeSpan.TicksPerSecond / 300);
     }
 
+    /// <summary>
+    /// Align to a DWORD (double word - signed 32-bit int)
+    /// </summary>
     private static int AlignToDword(int offset)
     {
         return (offset + 3) & ~3;

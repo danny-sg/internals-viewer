@@ -26,6 +26,7 @@ public sealed partial class QueryView : Page, IDisposable
         EventTimeline.PlayheadTimeChanged += OnPlayheadTimeChanged;
         EventTimeline.PlanNodeSelected += OnTimelinePlanNodeSelected;
         EventTimeline.EventSelected += OnTimelineEventSelected;
+        EventTimeline.EventDoubleClicked += OnTimelineEventDoubleClicked;
         EventTimeline.IndexOpenRequested += OnTimelineIndexOpenRequested;
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
@@ -38,6 +39,7 @@ public sealed partial class QueryView : Page, IDisposable
         EventTimeline.PlayheadTimeChanged -= OnPlayheadTimeChanged;
         EventTimeline.PlanNodeSelected -= OnTimelinePlanNodeSelected;
         EventTimeline.EventSelected -= OnTimelineEventSelected;
+        EventTimeline.EventDoubleClicked -= OnTimelineEventDoubleClicked;
         EventTimeline.IndexOpenRequested -= OnTimelineIndexOpenRequested;
         EventTimeline.PlayStateChanged -= OnPlayStateChanged;
 
@@ -154,6 +156,11 @@ public sealed partial class QueryView : Page, IDisposable
     private void OnTimelineEventSelected(EngineEvent engineEvent)
     {
         ViewModel.NavigateToEvent(engineEvent);
+    }
+
+    private void OnTimelineEventDoubleClicked(EngineEvent engineEvent)
+    {
+        ViewModel.OpenEventPage(engineEvent);
     }
 
     private void OnTimelineIndexOpenRequested(ExecutionOperatorEvent op)

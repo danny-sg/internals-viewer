@@ -90,9 +90,24 @@ public sealed partial class AllocationControl : IDisposable
 
     public static readonly DependencyProperty ExtentCountProperty
         = DependencyProperty.Register(nameof(ExtentCount),
-                                     typeof(int),
-                                     typeof(AllocationControl),
-                                     new PropertyMetadata(null, OnPropertyChanged));
+            typeof(int),
+            typeof(AllocationControl),
+            new PropertyMetadata(null, OnPropertyChanged));
+
+    /// <summary>
+    /// Start page for use in allocation/PFS pages where the map is showing a discrete allocation bitmap rather than a chain
+    /// </summary>
+    public int StartPage
+    {
+        get => (int)GetValue(StartPageProperty);
+        set => SetValue(StartPageProperty, value);
+    }
+
+    public static readonly DependencyProperty StartPageProperty
+        = DependencyProperty.Register(nameof(StartPage),
+            typeof(int),
+            typeof(AllocationControl),
+            new PropertyMetadata(null, OnPropertyChanged));
 
     public ObservableCollection<AllocationLayer> Layers
     {
@@ -256,14 +271,10 @@ public sealed partial class AllocationControl : IDisposable
 
     private readonly SKPaint _spanPaint = new();
 
-    // Borders in paint order, rebuilt only when the Borders property changes (see OnBordersChanged).
     private AllocationBorder[] _orderedBorders = [];
 
-    // Reused across borders and frames: DrawBorders repopulates it per border on every playhead tick.
     private readonly HashSet<int> _liveCells = [];
 
-    // Stroke for lock-border outlines (the colour is set per border). Crisp, square edges: no antialiasing so the 2px
-    // lines land on whole pixels, and square caps so the separately-drawn edges meet cleanly at corners.
     private readonly SKPaint _overlayBorderPaint = new()
     {
         Style = SKPaintStyle.Stroke,
@@ -630,8 +641,6 @@ public sealed partial class AllocationControl : IDisposable
         }
     }
 
-    // The static allocation map per layer: the allocated extents (chains) and any single pages. The playhead-driven page
-    // spans are drawn separately by DrawPageActivity, so they can be redrawn without re-recording this.
     private void DrawExtentMap(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
     {
         foreach (var layer in Layers)
@@ -680,8 +689,6 @@ public sealed partial class AllocationControl : IDisposable
         }
     }
 
-    // The playhead-driven page spans (or heatmap) per layer — the reads that have happened up to the current playhead
-    // time. Drawn live over the cached map on every paint.
     private void DrawPageActivity(SKCanvas canvas, ExtentLayout layout)
     {
         foreach (var layer in Layers)
@@ -1107,14 +1114,24 @@ public sealed partial class AllocationControl : IDisposable
                 break;
         }
 
-        AllocationOver.ExtentId = extentId;
-        AllocationOver.PageId = pageId;
+        if (StartPage > 0)
+        {
+            var startExtent = StartPage / 8;
+
+            AllocationOver.ExtentId = extentId + startExtent;
+            AllocationOver.PageId = pageId + StartPage;
+        }
+        else
+        {
+            AllocationOver.ExtentId = extentId;
+            AllocationOver.PageId = pageId;
+        }
+  
         AllocationOver.LayerName = layerName;
         AllocationOver.PfsValue = PfsChain?.GetPageStatus(pageId) ?? PfsByte.Unknown;
 
         if (IsTooltipEnabled)
         {
-            // Position before opening so the popup never appears for a frame at its previous/zero offset.
             TooltipPopup.HorizontalOffset = position.X + 5;
             TooltipPopup.VerticalOffset = position.Y + 5;
 

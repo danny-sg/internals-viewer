@@ -10,9 +10,16 @@ public class LogRecordTreeTemplateSelector : DataTemplateSelector
 
     public DataTemplate? AnnotationTemplate { get; set; }
 
+    public DataTemplate? AnnotationHeaderTemplate { get; set; }
+
     protected override DataTemplate? SelectTemplateCore(object item)
     {
-        return item is TreeViewNode { Content: LogRecordAnnotation } ? AnnotationTemplate : RecordTemplate;
+        return item switch
+        {
+            TreeViewNode { Content: AnnotationHeader } => AnnotationHeaderTemplate,
+            TreeViewNode { Content: LogRecordAnnotation } => AnnotationTemplate,
+            _ => RecordTemplate
+        };
     }
 
     protected override DataTemplate? SelectTemplateCore(object item, DependencyObject container)

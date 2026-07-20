@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.TransactionLog;
+﻿namespace InternalsViewer.TransactionLog;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo

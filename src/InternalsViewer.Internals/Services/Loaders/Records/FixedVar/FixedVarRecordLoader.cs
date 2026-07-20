@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 using InternalsViewer.Internals.Extensions;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Services.Loaders.Records.Fields;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
@@ -25,7 +26,7 @@ public abstract class FixedVarRecordLoader
         record.HasVariableLengthColumns = (record.StatusBitsA & 0b100000) != 0;
         record.HasRowVersioning = (record.StatusBitsA & 0b1000000) != 0;
 
-        var tags = new List<string> { record.RecordType.ToString() };
+        var tags = new List<string> { record.RecordType.ToString().SplitCamelCase() };
 
         tags.AddIf("Has Null Bitmap", record.HasNullBitmap);
         tags.AddIf("Has Variable Length Columns", record.HasVariableLengthColumns);

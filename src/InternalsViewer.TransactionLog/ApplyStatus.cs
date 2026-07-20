@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.TransactionLog;
+namespace InternalsViewer.TransactionLog;
 
 public enum ApplyStatus
 {

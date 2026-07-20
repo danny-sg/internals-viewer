@@ -2,7 +2,7 @@
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.UI.App.Messages;
 

@@ -1,4 +1,4 @@
-using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.Query.Events.Splits;
 

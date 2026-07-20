@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.TransactionLog.LogRecords;
+namespace InternalsViewer.TransactionLog.LogRecords;
 
 /// <summary>
 /// Row scoped log record
@@ -21,5 +21,5 @@ public abstract record RowLogRecord : PageLogRecord
     /// The variable section starts at the fixed length boundary: a 2 byte element count, then that many 2 byte lengths, then the element
     /// data with each element aligned to a 4 byte boundary (padding bytes are uninitialised memory, not zeros).
     /// </remarks>
-    public int NumElements { get; set; }
+    public int ElementCount { get; set; }
 }

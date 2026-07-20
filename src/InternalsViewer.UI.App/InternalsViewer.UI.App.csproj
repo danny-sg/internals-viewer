@@ -516,6 +516,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\InternalsViewer.TransactionLog\InternalsViewer.TransactionLog.csproj" />
     </ItemGroup>
 
     <ItemGroup>

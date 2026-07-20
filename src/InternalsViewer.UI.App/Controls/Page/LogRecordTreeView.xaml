@@ -21,7 +21,10 @@
             <Setter Property="Padding" Value="8,0,0,0" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
+            <!-- Stretch so annotation rows fill the tree width and their right-aligned Offset/Length columns land
+                 on the right edge. Record rows use a left-aligned DataRow so they are unaffected. -->
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Enabled" />
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Visible" />
             <Setter Property="ScrollViewer.IsHorizontalRailEnabled" Value="True" />
@@ -125,6 +128,8 @@
             <Setter Property="FontFamily" Value="Consolas"/>
         </Style>
 
+
+
         <Style TargetType="controls:HeaderedTreeView">
             <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
         </Style>
@@ -165,31 +170,92 @@
         </DataTemplate>
 
         <DataTemplate x:Key="AnnotationTemplate" x:DataType="muxc:TreeViewNode">
-            <Grid>
+            <Grid HorizontalAlignment="Stretch" Margin="0,0,8,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="60"/>
-                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="72"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="56"/>
+                    <ColumnDefinition Width="60"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
+                <Border Grid.Column="0"
+                        CornerRadius="2"
+                        Padding="4,1"
+                        Margin="0,0,4,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Background="{x:Bind ((models:LogRecordAnnotation)Content).CategoryColour,
+                                            Converter={StaticResource HexColorToBrushConverter}}">
+                    <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Category}"
+                               FontSize="10"
+                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                </Border>
+                <TextBlock Grid.Column="2"
                            Text="{x:Bind ((models:LogRecordAnnotation)Content).Offset}"
                            Style="{StaticResource HexStyle}"
+                           HorizontalAlignment="Right"
                            VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1"
+                <TextBlock Grid.Column="3"
                            Text="{x:Bind ((models:LogRecordAnnotation)Content).Length}"
                            Style="{StaticResource HexStyle}"
+                           HorizontalAlignment="Right"
                            VerticalAlignment="Center" />
-                <TextBlock Grid.Column="2"
-                           Text="{x:Bind ((models:LogRecordAnnotation)Content).Description}"
-                           Style="{StaticResource ListTextBlock}"
-                           VerticalAlignment="Stretch"
-                           TextTrimming="WordEllipsis" />
+                <StackPanel Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            Orientation="Horizontal"
+                            Spacing="6"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
+                                             Converter={StaticResource MarkStyleConverter}, ConverterParameter=Name}"
+                               Style="{StaticResource ListTextBlock}"
+                               Visibility="{x:Bind ((models:LogRecordAnnotation)Content).FieldVisibility}"/>
+                    <Border CornerRadius="2"
+                            Padding="4,1"
+                            VerticalAlignment="Center"
+                            Visibility="{x:Bind ((models:LogRecordAnnotation)Content).FieldVisibility}"
+                            Background="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
+                                                Converter={StaticResource MarkStyleConverter}, ConverterParameter=Back}">
+                        <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Value}"
+                                   FontFamily="Consolas"
+                                   FontSize="12"
+                                   Foreground="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
+                                                       Converter={StaticResource MarkStyleConverter}, ConverterParameter=Fore}"/>
+                    </Border>
+                    <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Description}"
+                               Style="{StaticResource ListTextBlock}"
+                               VerticalAlignment="Center"
+                               TextTrimming="WordEllipsis"
+                               Visibility="{x:Bind ((models:LogRecordAnnotation)Content).DescriptionVisibility}"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AnnotationHeaderTemplate" x:DataType="muxc:TreeViewNode">
+            <Grid HorizontalAlignment="Stretch" Margin="0,0,8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="72"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="56"/>
+                    <ColumnDefinition Width="60"/>
+                </Grid.ColumnDefinitions>
+                <Grid.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="FontSize" Value="11" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}" />
+                    </Style>
+                </Grid.Resources>
+                <TextBlock Grid.Column="0" Text="Region" />
+                <TextBlock Grid.Column="1" Text="Change" />
+                <TextBlock Grid.Column="2" Text="Offset" HorizontalAlignment="Right" />
+                <TextBlock Grid.Column="3" Text="Length" HorizontalAlignment="Right" />
             </Grid>
         </DataTemplate>
 
         <selectors:LogRecordTreeTemplateSelector x:Key="NodeTemplateSelector"
                                                  RecordTemplate="{StaticResource RecordTemplate}"
-                                                 AnnotationTemplate="{StaticResource AnnotationTemplate}"/>
+                                                 AnnotationTemplate="{StaticResource AnnotationTemplate}"
+                                                 AnnotationHeaderTemplate="{StaticResource AnnotationHeaderTemplate}"/>
     </UserControl.Resources>
 
     <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"

@@ -139,6 +139,26 @@ public sealed partial class HexViewControl
         control.DrawChangeSpans();
     }
 
+    public int? ScrollToOffset
+    {
+        get => (int?)GetValue(ScrollToOffsetProperty);
+        set => SetValue(ScrollToOffsetProperty, value);
+    }
+
+    public static readonly DependencyProperty ScrollToOffsetProperty = DependencyProperty
+        .Register(nameof(ScrollToOffset),
+            typeof(int?),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnScrollToOffsetChanged));
+
+    private static void OnScrollToOffsetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is int offset)
+        {
+            ScrollToPosition((HexViewControl)d, offset);
+        }
+    }
+
     private double[]? _columnPositions;
 
     private double _byteWidth;

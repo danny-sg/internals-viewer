@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.TransactionLog;
+namespace InternalsViewer.TransactionLog;
 
 /// <summary>
 /// Outcome of applying a log record to a page image
