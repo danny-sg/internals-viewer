@@ -11,6 +11,8 @@ public sealed record LatchEvent : PageEngineEvent
 
     public override string Description => $"Latch: {LatchClass} {LatchMode} - {PageAddress}";
 
+    public override string Name => "Latch";
+
     public override string Detail
     {
         get

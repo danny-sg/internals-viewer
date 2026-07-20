@@ -234,17 +234,26 @@ internal static class LogRecordParser
 
         var offsetPairs = GetElement(contents, 0);
 
+        var beforeLengths = GetElement(contents, 1);
+
         var regionCount = offsetPairs.Length / (2 * sizeof(ushort));
 
         var modifications = new List<ColumnModification>(regionCount);
 
         for (var i = 0; i < regionCount; i++)
         {
+            var beforeData = GetElement(contents, 4 + i * 2);
+
+            var beforeLength = beforeLengths.Length >= (i + 1) * sizeof(ushort)
+                ? BinaryPrimitives.ReadUInt16LittleEndian(beforeLengths.AsSpan(i * sizeof(ushort)))
+                : beforeData.Length;
+
             modifications.Add(new ColumnModification
             {
                 BeforeOffset = BinaryPrimitives.ReadUInt16LittleEndian(offsetPairs.AsSpan(i * 2 * sizeof(ushort))),
                 AfterOffset = BinaryPrimitives.ReadUInt16LittleEndian(offsetPairs.AsSpan(i * 2 * sizeof(ushort) + 2)),
-                BeforeData = GetElement(contents, 4 + i * 2),
+                BeforeLength = beforeLength,
+                BeforeData = beforeData,
                 AfterData = GetElement(contents, 4 + i * 2 + 1)
             });
         }

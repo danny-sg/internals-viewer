@@ -77,7 +77,7 @@ public abstract class PageLogRecordApplier
     }
 
     /// <summary>
-    /// Rebuilds the parsed offset table from the page image after a structural change
+    /// Rebuilds the parsed offset table from the page image
     /// </summary>
     protected static void RebuildOffsetTable(PageData page)
     {
@@ -90,6 +90,171 @@ public abstract class PageLogRecordApplier
         }
 
         page.OffsetTable = offsetTable;
+    }
+
+    /// <summary>
+    /// Calculates the length of a FixedVar record from its bytes alone
+    /// </summary>
+    /// <remarks>
+    /// Follows the record structure - status bits, fixed length size, column count, null bitmap, variable count and variable end offset
+    /// array - so no table metadata is needed.
+    ///
+    /// The record end is the last variable column's end offset (masked of the 0x8000 complex column flag), or the end of the null bitmap
+    /// / variable count for records with no variable data.
+    ///
+    /// Only primary records are supported - forwarding stubs, ghosts and compressed records return false.
+    /// </remarks>
+    protected static bool TryGetRowLength(byte[] data, int rowOffset, out int length)
+    {
+        length = 0;
+
+        var page = data.AsSpan();
+
+        if (rowOffset < 0 || rowOffset + 4 > page.Length)
+        {
+            return false;
+        }
+
+        var statusA = page[rowOffset];
+
+        var recordType = (statusA >> 1) & 0x7;
+
+        if (recordType != 0)
+        {
+            return false;
+        }
+
+        var hasNullBitmap = (statusA & 0x10) != 0;
+
+        var hasVariableColumns = (statusA & 0x20) != 0;
+
+        var columnCountPosition = rowOffset + BinaryPrimitives.ReadUInt16LittleEndian(page[(rowOffset + 2)..]);
+
+        if (columnCountPosition + 2 > page.Length)
+        {
+            return false;
+        }
+
+        var columnCount = BinaryPrimitives.ReadUInt16LittleEndian(page[columnCountPosition..]);
+
+        var position = columnCountPosition + 2;
+
+        if (hasNullBitmap)
+        {
+            position += (columnCount + 7) / 8;
+        }
+
+        if (!hasVariableColumns)
+        {
+            length = position - rowOffset;
+
+            return length > 0 && rowOffset + length <= page.Length;
+        }
+
+        if (position + 2 > page.Length)
+        {
+            return false;
+        }
+
+        var variableCount = BinaryPrimitives.ReadUInt16LittleEndian(page[position..]);
+
+        position += 2;
+
+        if (variableCount == 0)
+        {
+            length = position - rowOffset;
+
+            return rowOffset + length <= page.Length;
+        }
+
+        var lastOffsetPosition = position + 2 * (variableCount - 1);
+
+        if (lastOffsetPosition + 2 > page.Length)
+        {
+            return false;
+        }
+
+        length = BinaryPrimitives.ReadUInt16LittleEndian(page[lastOffsetPosition..]) & 0x7FFF;
+
+        return length > 0 && rowOffset + length <= page.Length;
+    }
+
+    /// <summary>
+    /// Writes a rebuilt row back to the page, in place or relocated to the free data offset
+    /// </summary>
+    /// <remarks>
+    /// A shrinking row is rewritten in place leaving its old tail as a hole; a growing row is extended in place when it is the last row
+    /// before the free data offset, otherwise it is relocated to the free data offset (rows always land at free data) and the slot's
+    /// offset table entry is re-pointed, leaving the old copy as a hole.
+    ///
+    /// Free data and free count accounting is updated to match.
+    /// </remarks>
+    protected static ApplyResult PlaceRebuiltRow(PageData page,
+                                                 int slotId,
+                                                 int rowOffset,
+                                                 int oldLength,
+                                                 byte[] newRow,
+                                                 int firstChangeOffset,
+                                                 string description,
+                                                 List<ChangeSpan> changes)
+    {
+        var delta = newRow.Length - oldLength;
+
+        var header = page.PageHeader;
+
+        var offsetTableStart = PageData.Size - 2 * header.SlotCount;
+
+        var isLastRow = rowOffset + oldLength == header.FreeData;
+
+        if (delta < 0 || isLastRow)
+        {
+            if (isLastRow && rowOffset + newRow.Length > offsetTableStart)
+            {
+                return new ApplyResult(ApplyStatus.NotSupported,
+                                       "Not enough contiguous free space (page needs compaction)");
+            }
+
+            newRow.CopyTo(page.Data.AsSpan(rowOffset));
+
+            changes.Add(new ChangeSpan(rowOffset + firstChangeOffset,
+                                       newRow.Length - firstChangeOffset,
+                                       description));
+
+            if (isLastRow)
+            {
+                SetFreeData(page, (ushort)(rowOffset + newRow.Length), changes);
+            }
+        }
+        else
+        {
+            if (header.FreeData + newRow.Length > offsetTableStart)
+            {
+                return new ApplyResult(ApplyStatus.NotSupported,
+                                       "Not enough contiguous free space (page needs compaction)");
+            }
+
+            var newOffset = header.FreeData;
+
+            newRow.CopyTo(page.Data.AsSpan(newOffset));
+
+            WriteOffsetTableEntry(page, slotId, (ushort)newOffset);
+
+            changes.Add(new ChangeSpan(newOffset,
+                                       newRow.Length,
+                                       $"{description} (row relocated from offset {rowOffset})"));
+
+            changes.Add(new ChangeSpan(GetOffsetTableEntryPosition(slotId),
+                                       sizeof(ushort),
+                                       $"Slot offset table entry {slotId} set to {newOffset}"));
+
+            SetFreeData(page, (ushort)(newOffset + newRow.Length), changes);
+
+            RebuildOffsetTable(page);
+        }
+
+        SetFreeCount(page, (ushort)(header.FreeCount - delta), changes);
+
+        return ApplyResult.Applied(changes);
     }
 
     protected static bool TryGetSlotOffset(PageData page, int slotId, out int offset)

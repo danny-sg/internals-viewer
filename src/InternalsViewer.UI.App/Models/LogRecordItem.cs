@@ -17,6 +17,20 @@ public partial class LogRecordItem : ObservableObject
 
     internal ObservableCollection<LogRecordAnnotation> Annotations { get; set; } = [];
 
+    /// <summary>
+    /// Whether the record is applied by the current replay - checked for the target record and every record
+    /// before it
+    /// </summary>
+    [ObservableProperty]
+    private bool _isSelected;
+
+    /// <summary>
+    /// Whether the record's checkbox is interactive - records before the replay target are checked but disabled,
+    /// as they can only be unapplied by moving the target
+    /// </summary>
+    [ObservableProperty]
+    private bool _isEnabled = true;
+
     public string Lsn => Record.Lsn.ToString();
 
     public string Operation => Record.Operation.ToString();

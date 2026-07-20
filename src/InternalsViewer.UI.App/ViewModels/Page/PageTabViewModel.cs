@@ -392,7 +392,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                 if (target is not null && pageItems.Count > 0)
                 {
-                    LogRecordApplier.Rebase(page, pageItems[0].Record.PreviousPageLsn);
+                    LogRecordApplier.Rebase(page, pageItems.Select(i => i.Record).ToList());
 
                     var targetLsn = (target.Record.Lsn.VirtualLogFile,
                                      target.Record.Lsn.FileOffset,
@@ -430,7 +430,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                     if (status.Length == 0)
                     {
-                        status = $"Page state as of {target.Record.Lsn.ToBinaryString()}";
+                        status = $"Page at LSN {target.Record.Lsn.ToBinaryString()}";
                     }
                 }
 

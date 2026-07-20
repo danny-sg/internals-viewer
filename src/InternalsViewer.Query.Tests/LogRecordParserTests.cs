@@ -151,6 +151,8 @@ public class LogRecordParserTests
 
         Assert.Equal(8, record.Modifications[0].BeforeOffset);
         Assert.Equal(8, record.Modifications[0].AfterOffset);
+        Assert.Equal(2, record.Modifications[0].BeforeLength);
+        Assert.Equal(12, record.Modifications[1].BeforeLength);
         Assert.Equal(Convert.FromHexString("E803"), record.Modifications[0].BeforeData);
         Assert.Equal(Convert.FromHexString("5904"), record.Modifications[0].AfterData);
 

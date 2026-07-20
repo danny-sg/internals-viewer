@@ -4,6 +4,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Splits;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Interfaces.Events;
@@ -257,6 +258,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         if (logRecords.Count > 0)
         {
             TransactionLogEventMatcher.Match(events, logRecords);
+
+            PageSplitEventMatcher.Match(events, logRecords);
         }
 
         return new QueryResult

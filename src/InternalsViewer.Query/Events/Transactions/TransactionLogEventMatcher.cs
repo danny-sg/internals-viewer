@@ -22,12 +22,16 @@ internal class TransactionLogEventMatcher
 
         foreach (var record in logRecords)
         {
+            MatchKey key;
+
             if (record is not RowLogRecord rowRecord)
             {
-                continue;
+                key = new MatchKey(0, record.Operation, record.Context, record.LogRecordSize);
             }
-
-            var key = new MatchKey(rowRecord.PartitionId, record.Operation, record.Context, record.LogRecordSize);
+            else
+            {
+                key = new MatchKey(rowRecord.PartitionId, record.Operation, record.Context, record.LogRecordSize);
+            }
 
             if (!index.TryGetValue(key, out var bucket))
             {

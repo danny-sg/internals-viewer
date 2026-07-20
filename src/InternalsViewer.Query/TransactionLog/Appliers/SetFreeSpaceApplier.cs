@@ -11,7 +11,7 @@ namespace InternalsViewer.Query.TransactionLog.Appliers;
 /// </remarks>
 public sealed class SetFreeSpaceApplier : PageLogRecordApplier<SetFreeSpaceLogRecord>
 {
-    private const int PfsByteArrayOffset = 100;
+    internal const int PfsByteArrayOffset = 100;
 
     protected override ApplyResult ApplyRecord(PageData page, SetFreeSpaceLogRecord record)
     {

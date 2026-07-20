@@ -94,4 +94,35 @@ public static class LogRecordApplier
     {
         PageLogRecordApplier.StampLsn(page, lsn);
     }
+
+    /// <summary>
+    /// Prepares a baseline page image for replaying the given records, rebasing the LSN and any PFS byte state
+    /// </summary>
+    /// <remarks>
+    /// PFS changes are non-transactional, so rollback does not restore them - the compensating row operations emit
+    /// fresh forward PFS updates instead, and background activity (ghost cleanup, other sessions in the same PFS
+    /// interval) can move the bytes again before the baseline is loaded. The chain itself records the capture-time
+    /// starting state though: the first captured record for each PFS offset carries the old value, so seeding those
+    /// bytes makes the chain's before-image checks self-consistent. The records must be the page's records in LSN
+    /// order.
+    /// </remarks>
+    public static void Rebase(PageData page, IReadOnlyList<PageLogRecord> records)
+    {
+        if (records.Count == 0)
+        {
+            return;
+        }
+
+        PageLogRecordApplier.StampLsn(page, records[0].PreviousPageLsn);
+
+        var seededOffsets = new HashSet<int>();
+
+        foreach (var record in records)
+        {
+            if (record is SetFreeSpaceLogRecord setFreeSpace && seededOffsets.Add(setFreeSpace.PageOffset))
+            {
+                page.Data[SetFreeSpaceApplier.PfsByteArrayOffset + setFreeSpace.PageOffset] = setFreeSpace.OldValue;
+            }
+        }
+    }
 }

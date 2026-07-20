@@ -10,6 +10,7 @@
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
+    xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="TitleStyle" 
@@ -82,6 +83,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <CommandBar 
                     Grid.Column="0"
@@ -187,8 +189,21 @@
                                            Value="{x:Bind ViewModel.IndexId, Mode=OneWay}" />
                         </Grid>
                     </AppBarElementContainer>
-
-
+                </CommandBar>
+                <CommandBar Grid.Column="2"         
+                            Background="Transparent" 
+                            IsOpen="False"       
+                   
+                            DefaultLabelPosition="Right" 
+                            HorizontalAlignment="Right">
+                    <AppBarElementContainer VerticalAlignment="Center">
+                        <Border Background="{ThemeResource TextFillColorTertiaryBrush}" 
+                                Padding="4" 
+                                CornerRadius="2">
+                            <TextBlock Foreground="White"
+                                   Text="{x:Bind ViewModel.ReplayStatus, Mode=OneWay}"/>
+                        </Border>
+                    </AppBarElementContainer>
                 </CommandBar>
             </Grid>
 
@@ -241,10 +256,12 @@
                 </ListView>
             </Grid>
 
+       
             <!--Tab View/Log Record view-->
             <Grid Grid.Column="2" Grid.Row="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="{x:Bind ViewModel.LogRecordsHeight, Mode=OneWay}"/>
                 </Grid.RowDefinitions>
 
@@ -290,17 +307,26 @@
                                                       Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
                     </TabViewItem>
                 </TabView>
-                <Grid Grid.Row="1"
+                <controls1:GridSplitter Grid.Row="1"
+                                        x:Name="LogRecordsSplitter"
+                                        Height="1"
+                                        Visibility="{x:Bind ViewModel.LogRecordsVisibility, Mode=OneWay}"
+                                        Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                        VerticalAlignment="Stretch">
+
+                </controls1:GridSplitter>
+
+                <Grid Grid.Row="2"
                       VerticalAlignment="Stretch"
                       Visibility="{x:Bind ViewModel.LogRecordsVisibility, Mode=OneWay}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="14,0,14,0" Spacing="14">
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="14,8,14,0" Spacing="14">
                         <TextBlock FontWeight="Bold">Log Operations</TextBlock>
-                        <TextBlock Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                   Text="{x:Bind ViewModel.ReplayStatus, Mode=OneWay}"/>
+
                     </StackPanel>
                     <page:LogRecordTreeView x:Name="LogRecordTreeView"
                                             Grid.Row="1"
@@ -312,8 +338,6 @@
                                             SelectedAnnotation="{x:Bind ViewModel.SelectedChangeSpan, Mode=TwoWay}"/>
                 </Grid>
             </Grid>
-
-
         </Grid>
     </Grid>
 </UserControl>

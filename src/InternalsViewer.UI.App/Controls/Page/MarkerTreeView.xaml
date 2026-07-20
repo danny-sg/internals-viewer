@@ -15,6 +15,7 @@
         <Style TargetType="controls:DataColumn">
             <Setter Property="FontSize" Value="12" />
         </Style>
+
         <Thickness x:Key="TreeViewItemPresenterMargin">0</Thickness>
         <Thickness x:Key="TreeViewItemPresenterPadding">0</Thickness>
 
@@ -191,7 +192,7 @@
                            Text="{x:Bind Value}"
                            Style="{StaticResource ListTextBlock}"
                            TextTrimming="WordEllipsis"/>
-                
+
                 <controls1:CopyButton Content="&#xE8C8;" 
                                       Grid.Column="1"
                                       ToolTipService.ToolTip="Copy value to clipboard"
@@ -226,9 +227,9 @@
         </DataTemplate>
 
         <DataTemplate x:Key="TreeViewItemTemplate" x:DataType="muxc:TreeViewNode">
-            <controls:DataRow>
+            <controls:DataRow HorizontalAlignment="Left">
                 <!--Name Column-->
-                <Grid Padding="0">
+                <Grid Padding="0" HorizontalAlignment="Left">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -256,26 +257,26 @@
 
                 <!--Value Column-->
                 <ContentControl ContentTemplateSelector="{StaticResource ValueTemplateSelector}"
-                                  Content="{x:Bind Content}"/>
+                                HorizontalAlignment="Left" 
+                                Content="{x:Bind Content}"/>
             </controls:DataRow>
         </DataTemplate>
     </UserControl.Resources>
 
     <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1,0,1,1">
-        <controls:HeaderedTreeView
-                                   x:Name="TreeView"
+        <controls:HeaderedTreeView x:Name="TreeView"
                                    SelectionMode="Single"
                                    SelectionChanged="TreeView_SelectionChanged"
                                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                    VerticalAlignment="Stretch"
                                    ItemTemplate="{StaticResource TreeViewItemTemplate}">
-        <controls:HeaderedTreeView.Header>
-            <controls:DataTable ColumnSpacing="2">
-                <controls:DataColumn Content="Name" MinWidth="120" CanResize="True" DesiredWidth="200" />
-                <controls:DataColumn Content="Value" DesiredWidth="*" CanResize="True"/>
-            </controls:DataTable>
-        </controls:HeaderedTreeView.Header>
-    </controls:HeaderedTreeView>
+            <controls:HeaderedTreeView.Header>
+                <controls:DataTable ColumnSpacing="2" MinWidth="320">
+                    <controls:DataColumn Content="Name" MinWidth="120" CanResize="True" DesiredWidth="200" />
+                    <controls:DataColumn Content="Value" MinWidth="160" CanResize="True" DesiredWidth="160" />
+                </controls:DataTable>
+            </controls:HeaderedTreeView.Header>
+        </controls:HeaderedTreeView>
     </Border>
 </UserControl>

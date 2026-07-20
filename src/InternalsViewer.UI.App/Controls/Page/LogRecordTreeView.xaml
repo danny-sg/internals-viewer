@@ -18,10 +18,6 @@
         <Thickness x:Key="TreeViewItemPresenterPadding">0</Thickness>
 
         <Style TargetType="TreeViewItem">
-            <!--
-                Same template workaround as MarkerTreeView - the hidden selection checkbox still takes up space, so
-                the template collapses it to remove the gap at the left edge of each item.
-            -->
             <Setter Property="Padding" Value="8,0,0,0" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
@@ -134,7 +130,22 @@
         </Style>
 
         <DataTemplate x:Key="RecordTemplate" x:DataType="muxc:TreeViewNode">
-            <controls:DataRow>
+            <controls:DataRow HorizontalAlignment="Left">
+                <Viewbox Width="16"
+                         Height="16"
+                         HorizontalAlignment="Left"
+                         VerticalAlignment="Center"
+                         Margin="4,0,0,0">
+                    <CheckBox MinWidth="0"
+                              MinHeight="0"
+                              Width="20"
+                              Height="20"
+                              Padding="0"
+                              IsChecked="{x:Bind ((models:LogRecordItem)Content).IsSelected, Mode=OneWay}"
+                              IsEnabled="{x:Bind ((models:LogRecordItem)Content).IsEnabled, Mode=OneWay}"
+                              Checked="RecordCheckBox_Checked"
+                              Unchecked="RecordCheckBox_Unchecked"/>
+                </Viewbox>
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Lsn}"
                            Style="{StaticResource HexStyle}"
                            VerticalAlignment="Center"
@@ -154,7 +165,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="AnnotationTemplate" x:DataType="muxc:TreeViewNode">
-            <Grid >
+            <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="60"/>
                     <ColumnDefinition Width="70"/>
@@ -190,12 +201,13 @@
                                    VerticalAlignment="Stretch"
                                    ItemTemplateSelector="{StaticResource NodeTemplateSelector}">
             <controls:HeaderedTreeView.Header>
-                <controls:DataTable ColumnSpacing="2">
+                <controls:DataTable ColumnSpacing="2" MinWidth="620">
+                    <controls:DataColumn Content="" MinWidth="22" DesiredWidth="26" />
                     <controls:DataColumn Content="LSN" MinWidth="100" CanResize="True" DesiredWidth="130" />
                     <controls:DataColumn Content="Operation" MinWidth="100" CanResize="True" DesiredWidth="170" />
                     <controls:DataColumn Content="Context" MinWidth="80" CanResize="True" DesiredWidth="140" />
                     <controls:DataColumn Content="Slot" MinWidth="40" CanResize="True" DesiredWidth="50" />
-                    <controls:DataColumn Content="Description" DesiredWidth="*" CanResize="True" />
+                    <controls:DataColumn Content="Description" MinWidth="220" CanResize="True" DesiredWidth="220" />
                 </controls:DataTable>
             </controls:HeaderedTreeView.Header>
         </controls:HeaderedTreeView>

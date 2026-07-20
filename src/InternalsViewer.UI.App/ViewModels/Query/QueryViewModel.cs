@@ -33,7 +33,10 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.TransactionLog.LogRecords;
+using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Settings;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -43,6 +46,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           SettingsService settingsService,
                                           SettingsViewModel settingsViewModel,
                                           IndexTabViewModelFactory indexTabViewModelFactory,
+                                          PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider)
 {
@@ -51,6 +55,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  settingsService,
                                                                  settingsViewModel,
                                                                  indexTabViewModelFactory,
+                                                                 pageTabViewModelFactory,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
                                                                  database);
@@ -212,6 +217,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private void OnLayoutChanged()
     {
         PruneClosedIndexes();
+
+        PruneClosedPages();
 
         ScheduleSaveLayout();
     }
@@ -516,6 +523,106 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SyncIndexPage(PlayheadTimeUs);
     }
 
+    private readonly Dictionary<string, PageTabViewModel> _openPages = new();
+
+    /// <summary>
+    /// The captured log records for a page, matched from the query's transaction log events
+    /// </summary>
+    public List<PageLogRecord> GetPageLogRecords(PageAddress pageAddress)
+    {
+        return Events.OfType<TransactionLogEvent>()
+                     .Where(logEvent => logEvent.PageAddress == pageAddress)
+                     .Select(logEvent => logEvent.LogRecord)
+                     .OfType<PageLogRecord>()
+                     .ToList();
+    }
+
+    /// <summary>
+    /// Opens a page as a document tab inside the query view's dock layout, with any captured log records for it
+    /// </summary>
+    /// <remarks>
+    /// Page documents are transient like index tabs - keyed by page address so a repeat open focuses and reloads
+    /// the existing tab, and pruned when the user closes them
+    /// </remarks>
+    public void OpenPage(PageAddress pageAddress)
+    {
+        var logRecords = GetPageLogRecords(pageAddress);
+
+        var key = $"Page:{pageAddress}";
+
+        if (Layout.TryGetDocument(key, out var existing))
+        {
+            Layout.Show(existing);
+
+            if (_openPages.TryGetValue(key, out var openViewModel))
+            {
+                _ = LoadPageDocument(openViewModel, pageAddress, logRecords);
+            }
+
+            return;
+        }
+
+        var pageViewModel = _pageTabViewModelFactory.Create(Database);
+
+        var document = new DocumentViewModel(title: $"Page {pageAddress}",
+                                             content: pageViewModel,
+                                             viewFactory: static () => new PageDocumentView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false);
+
+        Layout.RegisterDocument(key, document);
+
+        _openPages[key] = pageViewModel;
+
+        Layout.Show(document);
+
+        _ = LoadPageDocument(pageViewModel, pageAddress, logRecords);
+    }
+
+    private async Task LoadPageDocument(PageTabViewModel pageViewModel,
+                                        PageAddress pageAddress,
+                                        IReadOnlyList<PageLogRecord> logRecords)
+    {
+        try
+        {
+            await pageViewModel.LoadPage(pageAddress, null);
+
+            pageViewModel.LogRecords = new ObservableCollection<LogRecordItem>(
+                logRecords.Select(r => new LogRecordItem { Record = r }));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening page {PageAddress}", pageAddress);
+        }
+    }
+
+    /// <summary>
+    /// Drops page tabs the user has closed (they are transient and recreated on demand)
+    /// </summary>
+    private void PruneClosedPages()
+    {
+        if (_openPages.Count == 0)
+        {
+            return;
+        }
+
+        var closed = _openPages.Keys
+            .Where(k => !Layout.IsShown(k))
+            .ToList();
+
+        foreach (var key in closed)
+        {
+            _openPages.Remove(key);
+
+            if (Layout.RemoveDocument(key, out var document))
+            {
+                document.DisposeView();
+            }
+        }
+    }
+
     /// <summary>
     /// Drops index tabs the user has closed (they are transient and recreated on demand)
     /// </summary>
@@ -656,6 +763,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           SettingsService settingsService,
                           SettingsViewModel settingsViewModel,
                           IndexTabViewModelFactory indexTabViewModelFactory,
+                          PageTabViewModelFactory pageTabViewModelFactory,
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                           DatabaseSource database)
@@ -667,6 +775,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _settingsService = settingsService;
         _settingsViewModel = settingsViewModel;
         _indexTabViewModelFactory = indexTabViewModelFactory;
+        _pageTabViewModelFactory = pageTabViewModelFactory;
         _traceDirectoryService = traceDirectoryService;
         Message = string.Empty;
 
@@ -722,6 +831,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private readonly SettingsViewModel _settingsViewModel;
 
     private readonly IndexTabViewModelFactory _indexTabViewModelFactory;
+
+    private readonly PageTabViewModelFactory _pageTabViewModelFactory;
 
     private readonly TraceDirectoryService _traceDirectoryService;
 

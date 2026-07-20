@@ -9,6 +9,7 @@ using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Parsers.Xml;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Splits;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
 using InternalsViewer.Query.Parsing.Plans;
@@ -55,6 +56,8 @@ public sealed class EventParser
                 or "memory_grant_updated_by_feedback"
                 or "sort_warning"
                 => MemoryEventParser.Map(database, e),
+            "page_split"
+                => PageSplitEventParser.Map(database, e),
             "transaction_log"
                 => TransactionLogEventParser.Map(database, e),
             "sql_transaction"

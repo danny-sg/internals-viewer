@@ -106,7 +106,7 @@ public class LogRecordApplierTests
     }
 
     [Fact]
-    public void Reports_Size_Changing_Splice_As_Not_Supported()
+    public void Rejects_Size_Changing_Modify_Row_When_Range_Is_Beyond_The_Row()
     {
         var page = CreatePage();
 
@@ -126,6 +126,47 @@ public class LogRecordApplierTests
         var result = LogRecordApplier.Apply(page, record);
 
         Assert.Equal(ApplyStatus.NotSupported, result.Status);
+    }
+
+    [Fact]
+    public void Rebase_Seeds_Pfs_Bytes_From_First_Record_Old_Values()
+    {
+        var page = CreateSlottedPage([96], freeData: 200, freeCount: 1000);
+
+        // The baseline byte has drifted from the capture-time value (PFS changes are not rolled back)
+        page.Data[100 + 2228] = 0x99;
+
+        var first = new SetFreeSpaceLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            PageOffset = 2228,
+            OldValue = 0x40,
+            NewValue = 0x41
+        };
+
+        var second = new SetFreeSpaceLogRecord
+        {
+            Lsn = new LogSequenceNumber(0x33, 0x3000, 1),
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = first.Lsn,
+            PageOffset = 2228,
+            OldValue = 0x41,
+            NewValue = 0x42
+        };
+
+        LogRecordApplier.Rebase(page, [first, second]);
+
+        Assert.Equal(0x40, page.Data[100 + 2228]);
+        Assert.Equal(InitialLsn, page.PageHeader.Lsn);
+
+        var result = LogRecordApplier.Replay(page, [first, second], second.Lsn);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+        Assert.Equal(0x42, page.Data[100 + 2228]);
     }
 
     [Fact]
@@ -342,6 +383,237 @@ public class LogRecordApplierTests
         Assert.Equal([96, 130, 110], page.OffsetTable.Select(o => (int)o));
         Assert.Equal(3, page.PageHeader.SlotCount);
         Assert.Equal([9, 9, 9], page.Data[130..133]);
+    }
+
+    private static byte[] BuildRow(byte[] fixedData, byte[] variableData)
+    {
+        var columnCountPosition = 4 + fixedData.Length;
+
+        var totalLength = columnCountPosition + 2 + 1 + 2 + 2 + variableData.Length;
+
+        var row = new List<byte> { 0x30, 0x00 };
+
+        row.AddRange(BitConverter.GetBytes((ushort)columnCountPosition));
+        row.AddRange(fixedData);
+        row.AddRange(BitConverter.GetBytes((ushort)2));
+        row.Add(0x00);
+        row.AddRange(BitConverter.GetBytes((ushort)1));
+        row.AddRange(BitConverter.GetBytes((ushort)totalLength));
+        row.AddRange(variableData);
+
+        return row.ToArray();
+    }
+
+    [Fact]
+    public void Applies_Shrinking_Modify_Row_In_Place()
+    {
+        var page = CreateSlottedPage([96], freeData: 200, freeCount: 1000);
+
+        var row = BuildRow([1, 2, 3, 4], "HELLO"u8.ToArray());
+
+        row.CopyTo(page.Data, 96);
+
+        var record = new ModifyRowLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.HEAP,
+            SlotId = 0,
+            OffsetInRow = 15,
+            ModifySize = 5,
+            BeforeData = "HELLO"u8.ToArray(),
+            AfterData = "HI"u8.ToArray()
+        };
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+        Assert.Equal("HI"u8.ToArray(), page.Data[111..113]);
+        Assert.Equal([96], page.OffsetTable.Select(o => (int)o));
+        Assert.Equal(200, page.PageHeader.FreeData);
+        Assert.Equal(1003, page.PageHeader.FreeCount);
+    }
+
+    [Fact]
+    public void Applies_Growing_Modify_Row_By_Relocating_The_Row()
+    {
+        var page = CreateSlottedPage([96], freeData: 200, freeCount: 1000);
+
+        var row = BuildRow([1, 2, 3, 4], "HELLO"u8.ToArray());
+
+        row.CopyTo(page.Data, 96);
+
+        var record = new ModifyRowLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.HEAP,
+            SlotId = 0,
+            OffsetInRow = 15,
+            ModifySize = 5,
+            BeforeData = "HELLO"u8.ToArray(),
+            AfterData = "WORLDWIDE"u8.ToArray()
+        };
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+        Assert.Equal([200], page.OffsetTable.Select(o => (int)o));
+        Assert.Equal(row[..15], page.Data[200..215]);
+        Assert.Equal("WORLDWIDE"u8.ToArray(), page.Data[215..224]);
+        Assert.Equal(224, page.PageHeader.FreeData);
+        Assert.Equal(996, page.PageHeader.FreeCount);
+    }
+
+    [Fact]
+    public void Applies_Growing_Modify_Row_In_Place_When_Row_Is_Last()
+    {
+        var page = CreateSlottedPage([96], freeData: 116, freeCount: 1000);
+
+        var row = BuildRow([1, 2, 3, 4], "HELLO"u8.ToArray());
+
+        row.CopyTo(page.Data, 96);
+
+        var record = new ModifyRowLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.HEAP,
+            SlotId = 0,
+            OffsetInRow = 15,
+            ModifySize = 5,
+            BeforeData = "HELLO"u8.ToArray(),
+            AfterData = "WORLDWIDE"u8.ToArray()
+        };
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+        Assert.Equal([96], page.OffsetTable.Select(o => (int)o));
+        Assert.Equal("WORLDWIDE"u8.ToArray(), page.Data[111..120]);
+        Assert.Equal(120, page.PageHeader.FreeData);
+        Assert.Equal(996, page.PageHeader.FreeCount);
+    }
+
+    [Fact]
+    public void Applies_Size_Changing_Modify_Columns_By_Rebuilding_The_Row()
+    {
+        var page = CreateSlottedPage([96], freeData: 200, freeCount: 1000);
+
+        var row = BuildRow([1, 2, 3, 4], "HELLO"u8.ToArray());
+
+        row.CopyTo(page.Data, 96);
+
+        var record = new ModifyColumnsLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.HEAP,
+            SlotId = 0,
+            Modifications =
+            [
+                new ColumnModification
+                {
+                    BeforeOffset = 4,
+                    AfterOffset = 4,
+                    BeforeLength = 2,
+                    BeforeData = [1, 2],
+                    AfterData = [9, 9, 9]
+                },
+                new ColumnModification
+                {
+                    BeforeOffset = 15,
+                    AfterOffset = 16,
+                    BeforeLength = 5,
+                    BeforeData = "HELLO"u8.ToArray(),
+                    AfterData = "HI"u8.ToArray()
+                }
+            ]
+        };
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+        Assert.Equal([9, 9, 9], page.Data[100..103]);
+        Assert.Equal("HI"u8.ToArray(), page.Data[112..114]);
+        Assert.Equal([96], page.OffsetTable.Select(o => (int)o));
+        Assert.Equal(200, page.PageHeader.FreeData);
+        Assert.Equal(1002, page.PageHeader.FreeCount);
+    }
+
+    [Fact]
+    public void Applies_Growing_Modify_Columns_By_Relocating_The_Row()
+    {
+        var page = CreateSlottedPage([96], freeData: 200, freeCount: 1000);
+
+        var row = BuildRow([1, 2, 3, 4], "HELLO"u8.ToArray());
+
+        row.CopyTo(page.Data, 96);
+
+        var record = new ModifyColumnsLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.HEAP,
+            SlotId = 0,
+            Modifications =
+            [
+                new ColumnModification
+                {
+                    BeforeOffset = 15,
+                    AfterOffset = 15,
+                    BeforeLength = 5,
+                    BeforeData = "HELLO"u8.ToArray(),
+                    AfterData = "WORLDWIDE"u8.ToArray()
+                }
+            ]
+        };
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+        Assert.Equal([200], page.OffsetTable.Select(o => (int)o));
+        Assert.Equal(row[..15], page.Data[200..215]);
+        Assert.Equal("WORLDWIDE"u8.ToArray(), page.Data[215..224]);
+        Assert.Equal(224, page.PageHeader.FreeData);
+        Assert.Equal(996, page.PageHeader.FreeCount);
+    }
+
+    [Fact]
+    public void Rejects_Size_Changing_Modify_Row_When_Row_Structure_Is_Not_Supported()
+    {
+        var page = CreateSlottedPage([96], freeData: 200, freeCount: 1000);
+
+        // Forwarding stub record type (status bits type 3)
+        page.Data[96] = 0x06;
+
+        var record = new ModifyRowLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.HEAP,
+            SlotId = 0,
+            OffsetInRow = 4,
+            ModifySize = 5,
+            BeforeData = [1, 2, 3, 4, 5],
+            AfterData = [9]
+        };
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.NotSupported, result.Status);
     }
 
     [Fact]

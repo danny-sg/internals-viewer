@@ -1,44 +1,25 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using InternalsViewer.UI.App.Models;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.Page;
 
 public sealed partial class LogRecordTreeView
 {
-    private readonly Dictionary<LogRecordItem, TreeViewNode> _nodesByItem = new(ReferenceEqualityComparer.Instance);
-
     private readonly Dictionary<LogRecordAnnotation, TreeViewNode> _nodesByAnnotation =
         new(ReferenceEqualityComparer.Instance);
 
-    // Same selection echo guard as MarkerTreeView - SelectedRecord is TwoWay-bound so a selection made here can
-    // come back through the view model
+    // Same selection echo guard as MarkerTreeView - SelectedRecord and SelectedAnnotation are TwoWay-bound so a
+    // change made here can come back through the view model
     private bool _isSyncingSelection;
-
-    // Selection at the point the pointer went down, captured before the click's own selection processing runs -
-    // a tap that lands on the record that was selected before the click is a repeat click, which toggles off
-    private LogRecordItem? _selectedAtPointerPressed;
-
-    private LogRecordAnnotation? _annotationAtPointerPressed;
 
     public LogRecordTreeView()
     {
         InitializeComponent();
-
-        // Registered with handledEventsToo as the TreeView's internals mark pointer events handled before they
-        // would bubble here
-        TreeView.AddHandler(PointerPressedEvent,
-                            new PointerEventHandler((_, _) =>
-                            {
-                                _selectedAtPointerPressed = SelectedRecord;
-                                _annotationAtPointerPressed = SelectedAnnotation;
-                            }),
-                            true);
-
-        TreeView.AddHandler(TappedEvent, new TappedEventHandler(TreeView_Tapped), true);
     }
 
     public ObservableCollection<LogRecordItem>? Records
@@ -65,9 +46,21 @@ public sealed partial class LogRecordTreeView
             typeof(LogRecordTreeView),
             new PropertyMetadata(null, OnSelectedRecordChanged));
 
+    public LogRecordAnnotation? SelectedAnnotation
+    {
+        get => (LogRecordAnnotation?)GetValue(SelectedAnnotationProperty);
+        set => SetValue(SelectedAnnotationProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedAnnotationProperty = DependencyProperty
+        .Register(nameof(SelectedAnnotation),
+            typeof(LogRecordAnnotation),
+            typeof(LogRecordTreeView),
+            new PropertyMetadata(null, OnSelectedAnnotationChanged));
+
     // Nodes are built directly rather than via ItemsSource for the same container recycling reason as
     // MarkerTreeView (microsoft/microsoft-ui-xaml#7044). Annotations are added as child nodes, so a record with an
-    // empty annotation list renders as a plain row and gains an expander once a replay populates it.
+    // empty annotation list renders as a plain row and gains children once a replay populates it.
     private static void OnRecordsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not LogRecordTreeView control)
@@ -76,14 +69,11 @@ public sealed partial class LogRecordTreeView
         }
 
         control.TreeView.RootNodes.Clear();
-        control._nodesByItem.Clear();
         control._nodesByAnnotation.Clear();
 
         foreach (var item in (e.NewValue as ObservableCollection<LogRecordItem>) ?? [])
         {
             var node = new TreeViewNode { Content = item, IsExpanded = true };
-
-            control._nodesByItem[item] = node;
 
             foreach (var annotation in item.Annotations)
             {
@@ -103,20 +93,73 @@ public sealed partial class LogRecordTreeView
             control.SelectedAnnotation = null;
         }
 
-        control.SyncSelectedNode(control.SelectedRecord);
+        control.SyncCheckedStates();
+
+        control.ScrollToSelectedRecord();
     }
 
-    public LogRecordAnnotation? SelectedAnnotation
+    /// <summary>
+    /// Brings the selected record's node to the top of the view, with its annotation children visible below it
+    /// </summary>
+    /// <remarks>
+    /// A replay reassigns the records collection, rebuilding every node and resetting the tree's scroll position -
+    /// deferred at low priority so the rebuilt containers have been realised by the layout pass first
+    /// </remarks>
+    private void ScrollToSelectedRecord()
     {
-        get => (LogRecordAnnotation?)GetValue(SelectedAnnotationProperty);
-        set => SetValue(SelectedAnnotationProperty, value);
+        if (SelectedRecord is null)
+        {
+            return;
+        }
+
+        var node = TreeView.RootNodes.FirstOrDefault(n => ReferenceEquals(n.Content, SelectedRecord));
+
+        if (node is null)
+        {
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (TreeView.ContainerFromNode(node) is UIElement container)
+            {
+                container.StartBringIntoView(new BringIntoViewOptions { VerticalAlignmentRatio = 0 });
+            }
+            else
+            {
+                // Virtualised out of view - scroll via the tree's underlying list so the container realises
+                FindDescendant<ListView>(TreeView)?.ScrollIntoView(node, ScrollIntoViewAlignment.Leading);
+            }
+        });
     }
 
-    public static readonly DependencyProperty SelectedAnnotationProperty = DependencyProperty
-        .Register(nameof(SelectedAnnotation),
-            typeof(LogRecordAnnotation),
-            typeof(LogRecordTreeView),
-            new PropertyMetadata(null, OnSelectedAnnotationChanged));
+    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+
+            if (child is T match)
+            {
+                return match;
+            }
+
+            if (FindDescendant<T>(child) is { } descendant)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
+    }
+
+    private static void OnSelectedRecordChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is LogRecordTreeView control)
+        {
+            control.SyncCheckedStates();
+        }
+    }
 
     private static void OnSelectedAnnotationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -125,86 +168,66 @@ public sealed partial class LogRecordTreeView
             return;
         }
 
-        if (e.NewValue is LogRecordAnnotation annotation)
-        {
-            control._isSyncingSelection = true;
+        control._isSyncingSelection = true;
 
-            control.TreeView.SelectedNode = control._nodesByAnnotation.GetValueOrDefault(annotation);
-
-            control._isSyncingSelection = false;
-        }
-        else
-        {
-            control.SyncSelectedNode(control.SelectedRecord);
-        }
-    }
-
-    private static void OnSelectedRecordChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is not LogRecordTreeView control || control._isSyncingSelection)
-        {
-            return;
-        }
-
-        control.SyncSelectedNode(e.NewValue as LogRecordItem);
-    }
-
-    private void SyncSelectedNode(LogRecordItem? item)
-    {
-        _isSyncingSelection = true;
-
-        TreeView.SelectedNode = item is not null && _nodesByItem.TryGetValue(item, out var node)
-            ? node
+        control.TreeView.SelectedNode = e.NewValue is LogRecordAnnotation annotation
+            ? control._nodesByAnnotation.GetValueOrDefault(annotation)
             : null;
 
+        control._isSyncingSelection = false;
+    }
+
+    /// <summary>
+    /// Reflects the selected record into the item checkboxes
+    /// </summary>
+    /// <remarks>
+    /// The target record and everything above it show checked, since a replay applies all earlier records too.
+    /// The earlier records are disabled - only the target itself can be unchecked (restoring the page) or a later
+    /// record checked (moving the replay forward); moving backwards is uncheck-then-check.
+    /// </remarks>
+    private void SyncCheckedStates()
+    {
+        _isSyncingSelection = true;
+
+        var records = Records ?? [];
+
+        var targetIndex = SelectedRecord is null ? -1 : records.IndexOf(SelectedRecord);
+
+        for (var i = 0; i < records.Count; i++)
+        {
+            records[i].IsSelected = targetIndex >= 0 && i <= targetIndex;
+
+            records[i].IsEnabled = targetIndex < 0 || i >= targetIndex;
+        }
+
         _isSyncingSelection = false;
     }
 
-    // A tap on the record that was already selected when the pointer went down is a repeat click, which toggles
-    // the record off and restores the page to its original state. Comparing against the pointer-pressed snapshot
-    // makes this immune to whether the click's own selection processing runs before or after Tapped bubbles.
-    private void TreeView_Tapped(object sender, TappedRoutedEventArgs e)
+    private void RecordCheckBox_Checked(object sender, RoutedEventArgs e)
     {
-        var element = e.OriginalSource as DependencyObject;
-
-        TreeViewNode? tappedNode = null;
-
-        while (element is not null)
-        {
-            if (element is FrameworkElement { DataContext: TreeViewNode node })
-            {
-                tappedNode = node;
-                break;
-            }
-
-            element = VisualTreeHelper.GetParent(element);
-        }
-
-        if (tappedNode?.Content is not LogRecordItem item)
+        if (_isSyncingSelection)
         {
             return;
         }
 
-        if (!ReferenceEquals(item, _selectedAtPointerPressed) || !ReferenceEquals(item, SelectedRecord))
+        if ((sender as FrameworkElement)?.DataContext is TreeViewNode { Content: LogRecordItem item })
+        {
+            SelectedRecord = item;
+        }
+    }
+
+    private void RecordCheckBox_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_isSyncingSelection)
         {
             return;
         }
 
-        // A click on the record while one of its annotation rows was selected returns selection to the record
-        // rather than toggling it off
-        if (_annotationAtPointerPressed is not null)
+        if ((sender as FrameworkElement)?.DataContext is TreeViewNode { Content: LogRecordItem item }
+            && ReferenceEquals(item, SelectedRecord))
         {
-            return;
+            SelectedRecord = null;
         }
-
-        _isSyncingSelection = true;
-
-        TreeView.SelectedNode = null;
-
-        _isSyncingSelection = false;
-
-        SelectedAnnotation = null;
-        SelectedRecord = null;
     }
 
     private void TreeView_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
@@ -216,16 +239,9 @@ public sealed partial class LogRecordTreeView
 
         _isSyncingSelection = true;
 
-        // Selecting an annotation keeps the record selection (and therefore the replay state) where it was
-        if (sender.SelectedNode?.Content is LogRecordAnnotation annotation)
-        {
-            SelectedAnnotation = annotation;
-        }
-        else
-        {
-            SelectedAnnotation = null;
-            SelectedRecord = sender.SelectedNode?.Content as LogRecordItem;
-        }
+        // Row selection only drives the annotation highlight - the record a page is replayed to is driven by the
+        // checkboxes
+        SelectedAnnotation = sender.SelectedNode?.Content as LogRecordAnnotation;
 
         _isSyncingSelection = false;
     }

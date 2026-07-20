@@ -8,7 +8,20 @@ public sealed record TransactionLogEvent : RowIdentifierEngineEvent
 {
     public LogOperation Operation { get; init; }
 
-    public override string Description => $"{Operation}/{Context}";
+    public override string Description
+    {
+        get
+        {
+            if (PageAddress is not null)
+            {
+                return $"{Operation}/{Context} {PageAddress}";
+            }
+
+            return $"{Operation}/{Context}";
+        }
+    }
+
+    public override string Name => "Transaction Log Record";
 
     public LogContext Context { get; set; }
 
