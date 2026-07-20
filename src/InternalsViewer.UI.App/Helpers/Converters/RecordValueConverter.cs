@@ -16,7 +16,7 @@ internal class RecordValueConverter: IValueConverter
 
         var field = record.Fields.FirstOrDefault(f => f.Name == parameter.ToString());
 
-        return field?.Value ?? $"{ parameter} not found";
+        return field?.Value ?? $"{parameter} not found";
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)

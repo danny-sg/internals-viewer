@@ -244,8 +244,6 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
             return;
         }
 
-        // When the bar is too short for the corner dot to sit inside it, draw a full-height colour band down the bar's
-        // left edge instead. Clipping to the bar's rounded rect gives the band the bar's own rounded left corners.
         if (b.BarBottom - b.BarTop < ObjectMarkerMargin + 2 * ObjectMarkerRadius)
         {
             var bandWidth = Math.Min(ObjectMarkerBandWidth, b.EndX - b.StartX);

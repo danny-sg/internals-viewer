@@ -53,8 +53,6 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private float _zoom = 1;
 
-    // When on, the index control keeps the whole tree fitted to the viewport (and re-fits on resize); turned off
-    // automatically when the user zooms manually.
     [ObservableProperty]
     private bool _isZoomToFit = true;
 
@@ -102,12 +100,6 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private PageAddress? _selectedPageAddress;
 
-    /// <summary>
-    /// Reads and latches against this index, sorted by StartUs - same shape as the allocation map's own
-    /// overlay: each span carries its own colour and lifetime (a read's EndUs is the query's end, so it
-    /// stays once hit; a latch's EndUs is its hold end, so it flashes), so IndexControl just draws
-    /// whichever span is active for the current playhead - no read/latch distinction needed here.
-    /// </summary>
     [ObservableProperty]
     private IReadOnlyList<PageSpan> _pageSpans = [];
 

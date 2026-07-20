@@ -88,6 +88,11 @@ internal sealed class TimelineRowSet : IDisposable
     // The first active row whose event type the event is an instance of, or -1 when its lane isn't shown.
     public int IndexOf(EngineEvent ev)
     {
+        if (ev is IoEvent)
+        {
+            return IndexOf(typeof(ReadEventGroup));
+        }
+
         for (var i = 0; i < _active.Length; i++)
         {
             if (_active[i].EventType.IsInstanceOfType(ev))

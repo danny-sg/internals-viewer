@@ -20,7 +20,7 @@ public sealed partial class EventTimelineControl
             {
                 foreach (var member in readGroup.Events)
                 {
-                    if (member is not IoEvent and not FileEvent)
+                    if (member is not FileEvent)
                     {
                         yield return member;
                     }

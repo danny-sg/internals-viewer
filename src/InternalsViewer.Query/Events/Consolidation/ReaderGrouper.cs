@@ -190,7 +190,7 @@ public static class ReaderGrouper
 
             // An owned spine keeps its group's own spine: that is the suspend, which carries the SQL-measured read
             // duration, so the pages join it rather than splitting the one read across two groups.
-            members[owners.TryGetValue(spine, out var owner) ? owner : spine].Add(e);
+            members[owners.GetValueOrDefault(spine, spine)].Add(e);
 
             consumed.Add(e);
         }
@@ -380,11 +380,23 @@ public static class ReaderGrouper
     {
         var kind = spine is FileEvent || members.Any(IsFileReadMarker) ? ReadType.NonCached : ReadType.Cached;
 
-        var identity = members.FirstOrDefault(m => !string.IsNullOrEmpty(m.TableName)) ?? spine;
+        var completion = spine.TimeUs + spine.DurationUs;
 
-        var planHandleId = members.Select(m => m.PlanHandleId).FirstOrDefault(h => h != 0);
+        foreach (var member in members)
+        {
+            if (member is IoEvent { IsRead: true })
+            {
+                member.TimeUs = completion;
+            }
+        }
 
-        var pages = members.OfType<PageEngineEvent>()
+        var ordered = members.OrderBy(m => m.TimeUs).ToList();
+
+        var identity = ordered.FirstOrDefault(m => !string.IsNullOrEmpty(m.TableName)) ?? spine;
+
+        var planHandleId = ordered.Select(m => m.PlanHandleId).FirstOrDefault(h => h != 0);
+
+        var pages = ordered.OfType<PageEngineEvent>()
                            .Where(m => m.PageAddress is not null)
                            .Select(m => m.PageAddress!.Value)
                            .Distinct()
@@ -395,7 +407,7 @@ public static class ReaderGrouper
         return new ReadEventGroup
         {
             Name = "Page Read",
-            Events = members,
+            Events = ordered,
             ReadType = kind,
             Pages = pages,
             SequenceId = spine.SequenceId,
