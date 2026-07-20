@@ -508,8 +508,6 @@ public sealed partial class HexViewControl
             {
                 Highlight(marker);
             }
-
-            target.ScrollViewer.ScrollToVerticalOffset(0);
         }
     }
 

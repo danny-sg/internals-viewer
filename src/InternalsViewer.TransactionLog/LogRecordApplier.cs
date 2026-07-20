@@ -126,7 +126,7 @@ public static class LogRecordApplier
         {
             if (record is SetFreeSpaceLogRecord setFreeSpace && seededOffsets.Add(setFreeSpace.PageOffset))
             {
-                page.Data[SetFreeSpaceApplier.PfsByteArrayOffset + setFreeSpace.PageOffset] = setFreeSpace.OldValue;
+                page.Data[SetFreeSpaceApplier.GetPfsByteOffset(setFreeSpace)] = setFreeSpace.OldValue;
             }
         }
     }

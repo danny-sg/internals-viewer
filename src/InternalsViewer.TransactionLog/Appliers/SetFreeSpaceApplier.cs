@@ -13,9 +13,12 @@ public sealed class SetFreeSpaceApplier : PageLogRecordApplier<SetFreeSpaceLogRe
 {
     internal const int PfsByteArrayOffset = 100;
 
+    internal static int GetPfsByteOffset(SetFreeSpaceLogRecord record)
+        => PfsByteArrayOffset + (record.PageAddress.PageId + record.PageOffset) % PfsPage.PfsInterval;
+
     protected override ApplyResult ApplyRecord(PageData page, SetFreeSpaceLogRecord record)
     {
-        var offset = PfsByteArrayOffset + record.PageOffset;
+        var offset = GetPfsByteOffset(record);
 
         if (page.Data[offset] != record.OldValue)
         {

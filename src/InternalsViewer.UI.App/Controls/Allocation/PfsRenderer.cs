@@ -24,6 +24,8 @@ public sealed class PfsRenderer : IDisposable
 
     private SKPaint GhostPaint { get; }
 
+    private SKPaint GhostLightenPaint { get; }
+
     private SKPaint GhostEyePaint { get; }
 
     private readonly SKPath _ghostPath;
@@ -38,7 +40,7 @@ public sealed class PfsRenderer : IDisposable
 
     private static readonly Color AllocatedColour = Color.FromArgb(50, 0, 0, 91);
 
-    private static readonly Color GhostColour = Color.FromArgb(100, 0, 230, 0);
+    private static readonly Color GhostColour = Color.FromArgb(140, 0, 200, 0);
 
     public PfsRenderer(Size pageSize)
     {
@@ -69,6 +71,14 @@ public sealed class PfsRenderer : IDisposable
             Color = GhostColour.ToSkColor(),
             Style = SKPaintStyle.Fill,
             IsAntialias = true
+        };
+
+        GhostLightenPaint = new SKPaint
+        {
+            Color = GhostColour.ToSkColor(),
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+            BlendMode = SKBlendMode.Screen
         };
 
         GhostEyePaint = new SKPaint
@@ -157,6 +167,7 @@ public sealed class PfsRenderer : IDisposable
                 canvas.Scale(width, height);
 
                 canvas.DrawPath(_ghostPath, GhostPaint);
+                canvas.DrawPath(_ghostPath, GhostLightenPaint);
 
                 if (Math.Min(position.Width, position.Height) >= EyeMinRenderSize)
                 {
@@ -186,6 +197,7 @@ public sealed class PfsRenderer : IDisposable
         IamFlagFont.Dispose();
         IamFlagPaint.Dispose();
         GhostPaint.Dispose();
+        GhostLightenPaint.Dispose();
         GhostEyePaint.Dispose();
         _ghostPath.Dispose();
         AllocatedPaint.Dispose();

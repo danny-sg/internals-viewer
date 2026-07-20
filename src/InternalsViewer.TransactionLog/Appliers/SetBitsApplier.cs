@@ -18,6 +18,9 @@ public sealed class SetBitsApplier : PageLogRecordApplier<SetBitsLogRecord>
 
     private const int PfsByteArrayOffset = 100;
 
+    private static int GetByteIndex(PageData page, int rawByteIndex, bool isPfs)
+        => isPfs ? (page.PageAddress.PageId + rawByteIndex) % PfsPage.PfsInterval : rawByteIndex;
+
     protected override ApplyResult ApplyRecord(PageData page, SetBitsLogRecord record)
     {
         var firstBit = record.FirstBit - BitmapPrefixBits;
@@ -27,15 +30,15 @@ public sealed class SetBitsApplier : PageLogRecordApplier<SetBitsLogRecord>
             return new ApplyResult(ApplyStatus.NotSupported, $"Bit {record.FirstBit} is inside the bitmap prefix");
         }
 
-        var arrayOffset = record.Context == LogContext.PFS
-            ? PfsByteArrayOffset
-            : AllocationPage.AllocationArrayOffset;
+        var isPfs = record.Context == LogContext.PFS;
+
+        var arrayOffset = isPfs ? PfsByteArrayOffset : AllocationPage.AllocationArrayOffset;
 
         for (var i = 0; i < record.BitCount; i++)
         {
             var bit = firstBit + i;
 
-            var offset = arrayOffset + bit / 8;
+            var offset = arrayOffset + GetByteIndex(page, bit / 8, isPfs);
 
             var mask = (byte)(1 << (bit % 8));
 
@@ -49,12 +52,13 @@ public sealed class SetBitsApplier : PageLogRecordApplier<SetBitsLogRecord>
             }
         }
 
-        var startOffset = arrayOffset + firstBit / 8;
+        var startOffset = arrayOffset + GetByteIndex(page, firstBit / 8, isPfs);
 
-        var endOffset = arrayOffset + (firstBit + record.BitCount - 1) / 8;
+        var endOffset = arrayOffset + GetByteIndex(page, (firstBit + record.BitCount - 1) / 8, isPfs);
 
-        var description = record.Context == LogContext.PFS
-            ? $"PFS flag bit for page offset {firstBit / 8} set to {record.BitValue}"
+        var description = isPfs
+            ? $"PFS flag bit for page ({page.PageAddress.FileId}:{page.PageAddress.PageId + firstBit / 8}) " +
+              $"set to {record.BitValue}"
             : $"{record.Context} bitmap: {record.BitCount} bit(s) from bit {firstBit} set to {record.BitValue}";
 
         return ApplyResult.Applied([new ChangeSpan(startOffset, endOffset - startOffset + 1, description)]);

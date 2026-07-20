@@ -102,9 +102,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [ObservableProperty]
     private ObservableCollection<LogRecordItem> _logRecords = [];
 
-    // The height/visibility depend on this rather than on LogRecords directly - a replay reassigns LogRecords to
-    // rebuild the tree, and re-pushing the row height would reset the GridSplitter's dragged position. This bool
-    // only notifies when it actually flips, so a same-count reassignment leaves the splitter alone.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LogRecordsVisibility))]
     [NotifyPropertyChangedFor(nameof(LogRecordsHeight))]
@@ -133,6 +130,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     [ObservableProperty]
     private PfsChain? _pfsChain;
+
+    [ObservableProperty]
+    private IReadOnlyList<AllocationBorder>? _pfsBorders;
 
     [ObservableProperty]
     private string _markerTabName = "Page Header";
@@ -282,6 +282,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                     Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} " +
                            $"Page {pageAddress}";
 
+                    ScrollToOffset = null;
+
                     DisplayPage(resultPage, (short?)slot);
 
                     NextPage = new PageAddress(PageAddress.FileId, PageAddress.PageId + 1);
@@ -295,6 +297,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                     ChangeSpans = [];
                     SelectedChangeSpan = null;
+                    PfsBorders = null;
 
                     IsLoading = false;
                 });
@@ -398,6 +401,65 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             Category = category,
             CategoryColour = colour
         };
+    }
+
+    /// <summary>
+    /// Builds the border outlining the PFS map cells whose bytes the replayed records changed
+    /// </summary>
+    private static List<AllocationBorder> BuildPfsChangeBorders(
+        IEnumerable<List<LogRecordAnnotation>> annotations,
+        PageAddress pageAddress)
+    {
+        var cells = new SortedSet<int>();
+
+        foreach (var annotation in annotations.SelectMany(a => a))
+        {
+            for (var offset = annotation.Offset; offset < annotation.Offset + annotation.Length; offset++)
+            {
+                var cell = offset - PfsPageParser.PfsOffset;
+
+                if (cell >= 0 && cell < PfsPage.PfsInterval)
+                {
+                    cells.Add(cell);
+                }
+            }
+        }
+
+        if (cells.Count == 0)
+        {
+            return [];
+        }
+
+        var ranges = new List<TimedRange>();
+
+        var from = -1;
+        var previous = -1;
+
+        foreach (var cell in cells)
+        {
+            if (from < 0)
+            {
+                from = cell;
+            }
+            else if (cell != previous + 1)
+            {
+                ranges.Add(new TimedRange(from, previous, 0, long.MaxValue));
+
+                from = cell;
+            }
+
+            previous = cell;
+        }
+
+        ranges.Add(new TimedRange(from, previous, 0, long.MaxValue));
+
+        return
+        [
+            new AllocationBorder(AllocationBorderScope.Page,
+                                 pageAddress.FileId,
+                                 System.Drawing.Color.OrangeRed,
+                                 ranges)
+        ];
     }
 
     partial void OnSelectedLogRecordChanged(LogRecordItem? value)
@@ -537,6 +599,10 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                     }
                 }
 
+                var pfsBorders = page is PfsPage
+                    ? BuildPfsChangeBorders(annotations.Values, page.PageAddress)
+                    : null;
+
                 DispatcherQueue.TryEnqueue(() =>
                 {
                     SelectedChangeSpan = null;
@@ -554,6 +620,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                     LogRecords = new ObservableCollection<LogRecordItem>(LogRecords);
 
                     DisplayPage(page, currentSlot);
+
+                    PfsBorders = pfsBorders;
 
                     ReplayStatus = status;
                 });

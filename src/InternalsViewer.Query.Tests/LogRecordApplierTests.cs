@@ -8,7 +8,7 @@ namespace InternalsViewer.Query.Tests;
 
 public class LogRecordApplierTests
 {
-    private static readonly PageAddress Address = new(1, 100);
+    private static readonly PageAddress Address = new(1, 1);
 
     private static readonly LogSequenceNumber InitialLsn = new(0x33, 0x1000, 1);
 
@@ -134,7 +134,7 @@ public class LogRecordApplierTests
         var page = CreateSlottedPage([96], freeData: 200, freeCount: 1000);
 
         // The baseline byte has drifted from the capture-time value (PFS changes are not rolled back)
-        page.Data[100 + 2228] = 0x99;
+        page.Data[100 + 2229] = 0x99;
 
         var first = new SetFreeSpaceLogRecord
         {
@@ -160,13 +160,13 @@ public class LogRecordApplierTests
 
         LogRecordApplier.Rebase(page, [first, second]);
 
-        Assert.Equal(0x40, page.Data[100 + 2228]);
+        Assert.Equal(0x40, page.Data[100 + 2229]);
         Assert.Equal(InitialLsn, page.PageHeader.Lsn);
 
         var result = LogRecordApplier.Replay(page, [first, second], second.Lsn);
 
         Assert.Equal(ApplyStatus.Applied, result.Status);
-        Assert.Equal(0x42, page.Data[100 + 2228]);
+        Assert.Equal(0x42, page.Data[100 + 2229]);
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class LogRecordApplierTests
     {
         var page = CreatePage();
 
-        page.Data[100 + 2228] = 0x40;
+        page.Data[100 + 2229] = 0x40;
 
         var record = new SetFreeSpaceLogRecord
         {
@@ -190,7 +190,7 @@ public class LogRecordApplierTests
         var result = LogRecordApplier.Apply(page, record);
 
         Assert.Equal(ApplyStatus.Applied, result.Status);
-        Assert.Equal(0x41, page.Data[100 + 2228]);
+        Assert.Equal(0x41, page.Data[100 + 2229]);
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public class LogRecordApplierTests
         var result = LogRecordApplier.Apply(page, record);
 
         Assert.Equal(ApplyStatus.Applied, result.Status);
-        Assert.Equal(0x08, page.Data[100 + 2280]);
+        Assert.Equal(0x08, page.Data[100 + 2281]);
     }
 
     [Fact]

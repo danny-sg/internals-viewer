@@ -326,6 +326,7 @@
                                                       BorderColor="{ThemeResource CardStrokeColorDefault}"
                                                       GridColor="{ThemeResource AllocationBorderColor}"
                                                       PfsChain="{x:Bind ViewModel.PfsChain, Mode=OneWay}"
+                                                      Borders="{x:Bind ViewModel.PfsBorders, Mode=OneWay}"
                                                       Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
                                                       FileId="{x:Bind ViewModel.AllocationFileId, Mode=OneWay}"/>
                     </TabViewItem>
