@@ -6,10 +6,10 @@ namespace InternalsViewer.UI.App.Models;
 public sealed partial class DatabaseFile(IAllocationViewModel parent) : ObservableObject
 {
     [ObservableProperty]
-    private short fileId;
+    private short _fileId;
 
     [ObservableProperty]
-    private int size;
+    private int _size;
 
     public IAllocationViewModel Parent { get; } = parent;
 }
