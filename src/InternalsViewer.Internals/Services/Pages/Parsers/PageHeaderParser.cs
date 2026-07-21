@@ -1,5 +1,4 @@
 ﻿using System.Buffers.Binary;
-using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;

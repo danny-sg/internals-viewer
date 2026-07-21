@@ -81,11 +81,11 @@ public class PageHelpersTests
     }
 
     [Theory]
-    [InlineData(1, true)]                              // First PFS page
-    [InlineData(PfsPage.PfsInterval + 1, true)]        // Second PFS page (8089)
-    [InlineData(PfsPage.PfsInterval * 2 + 1, true)]    // Third PFS page
+    [InlineData(1, true)]                          // First PFS page
+    [InlineData(PfsPage.PfsInterval, true)]        // Second PFS page (8088)
+    [InlineData(PfsPage.PfsInterval * 2, true)]    // Third PFS page
     [InlineData(2, false)]
-    [InlineData(PfsPage.PfsInterval, false)]
+    [InlineData(PfsPage.PfsInterval - 1, false)]
     [InlineData(PfsPage.PfsInterval + 2, false)]
     public void IsPfs_Returns_Correct_For_Boundary_Pages(int pageId, bool expected)
     {

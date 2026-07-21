@@ -40,6 +40,6 @@ public class DataPageParserTests(ITestOutputHelper testOutput)
         Assert.Equal(5850, page.OffsetTable[411]);
         Assert.Equal(5864, page.OffsetTable[412]);
 
-        Assert.Equal(page.PageHeader.SlotCount, page.OffsetTable.Count);
+        Assert.Equal(page.PageHeader.SlotCount, page.OffsetTable.Length);
     }
 }

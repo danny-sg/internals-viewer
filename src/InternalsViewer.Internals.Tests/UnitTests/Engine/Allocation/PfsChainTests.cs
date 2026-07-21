@@ -4,19 +4,19 @@ namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Allocation;
 
 public class PfsChainTests
 {
-    private static PfsPage BuildPage(int byteCount, Dictionary<int, PfsByte>? overrides = null)
-    {
-        var page = new PfsPage();
+    private const byte Allocated = 0x40;
+    private const byte Iam = 0x10;
+    private const byte Mixed = 0x20;
 
-        for (var i = 0; i < byteCount; i++)
+    private static PfsPage BuildPage(int byteCount, Dictionary<int, byte>? overrides = null)
+    {
+        var page = new PfsPage { PfsBytes = new byte[byteCount] };
+
+        if (overrides != null)
         {
-            if (overrides != null && overrides.TryGetValue(i, out var value))
+            foreach (var (index, value) in overrides)
             {
-                page.PfsBytes.Add(value);
-            }
-            else
-            {
-                page.PfsBytes.Add(new PfsByte { Value = 0 });
+                page.PfsBytes[index] = value;
             }
         }
 
@@ -26,15 +26,13 @@ public class PfsChainTests
     [Fact]
     public void GetPageStatus_Returns_Byte_For_Page_In_First_Pfs_Page()
     {
-        var allocated = new PfsByte { IsAllocated = true };
-
         var chain = new PfsChain();
 
-        chain.PfsPages.Add(BuildPage(10, new Dictionary<int, PfsByte> { [3] = allocated }));
+        chain.PfsPages.Add(BuildPage(10, new Dictionary<int, byte> { [3] = Allocated }));
 
         var result = chain.GetPageStatus(3);
 
-        Assert.Same(allocated, result);
+        Assert.Equal(new PfsByte(Allocated), result);
         Assert.True(result.IsAllocated);
     }
 
@@ -48,7 +46,7 @@ public class PfsChainTests
         // Page belongs to the second PFS page (index 1) which does not exist.
         var result = chain.GetPageStatus(PfsPage.PfsInterval + 1);
 
-        Assert.Same(PfsByte.Unknown, result);
+        Assert.Equal(PfsByte.Unknown, result);
     }
 
     [Fact]
@@ -60,7 +58,7 @@ public class PfsChainTests
 
         var result = chain.GetPageStatus(50);
 
-        Assert.Same(PfsByte.Unknown, result);
+        Assert.Equal(PfsByte.Unknown, result);
     }
 
     [Fact]
@@ -70,37 +68,34 @@ public class PfsChainTests
 
         var result = chain.GetPageStatus(0);
 
-        Assert.Same(PfsByte.Unknown, result);
+        Assert.Equal(PfsByte.Unknown, result);
     }
 
     [Fact]
     public void GetPageStatus_Indexes_Into_Correct_Pfs_Page()
     {
-        var target = new PfsByte { IsIam = true };
-
         var chain = new PfsChain();
 
         // First PFS page is full size; the target lives at byte 5 of the second PFS page.
         chain.PfsPages.Add(BuildPage(PfsPage.PfsInterval));
-        chain.PfsPages.Add(BuildPage(10, new Dictionary<int, PfsByte> { [5] = target }));
+        chain.PfsPages.Add(BuildPage(10, new Dictionary<int, byte> { [5] = Iam }));
 
         var result = chain.GetPageStatus(PfsPage.PfsInterval + 5);
 
-        Assert.Same(target, result);
+        Assert.Equal(new PfsByte(Iam), result);
         Assert.True(result.IsIam);
     }
 
     [Fact]
     public void GetPageStatus_Maps_Page_Zero_To_First_Byte()
     {
-        var first = new PfsByte { IsMixed = true };
-
         var chain = new PfsChain();
 
-        chain.PfsPages.Add(BuildPage(10, new Dictionary<int, PfsByte> { [0] = first }));
+        chain.PfsPages.Add(BuildPage(10, new Dictionary<int, byte> { [0] = Mixed }));
 
         var result = chain.GetPageStatus(0);
 
-        Assert.Same(first, result);
+        Assert.Equal(new PfsByte(Mixed), result);
+        Assert.True(result.IsMixed);
     }
 }

@@ -27,7 +27,7 @@ public class LobOverflowFieldLoaderTests
     {
         var data = TestData.ToByteArray();
 
-        var field = LobOverflowFieldLoader.Load(data, 0);
+        var field = LobOverflowFieldLoader.Load(data, 0, true);
 
         Assert.Equal(BlobFieldType.RowOverflow, field.PointerType);
         Assert.Equal(0, field.Level);

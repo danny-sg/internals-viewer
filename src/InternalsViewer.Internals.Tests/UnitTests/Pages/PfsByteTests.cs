@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Internals.Tests.UnitTests.Pages;
+namespace InternalsViewer.Internals.Tests.UnitTests.Pages;
 
 public class PfsByteTests
 {
@@ -9,23 +9,22 @@ public class PfsByteTests
     [InlineData(SpaceFree.OneHundredPercent, false, true, false, false, "PFS Status: Not Allocated | 100% Full | IAM Page")]
     [InlineData(SpaceFree.OneHundredPercent, false, true, true, true, "PFS Status: Allocated | 100% Full | IAM Page | Mixed Extent")]
     [InlineData(SpaceFree.EightyPercent, true, true, true, true, "PFS Status: Allocated | 80% Full | IAM Page | Mixed Extent | Has Ghost")]
-    public void Can_Get_ToString_Description (SpaceFree pageSpaceFree, 
-                                              bool ghostRecords, 
-                                              bool iam, 
-                                              bool mixed, 
-                                              bool allocation, 
+    public void Can_Get_ToString_Description (SpaceFree pageSpaceFree,
+                                              bool ghostRecords,
+                                              bool iam,
+                                              bool mixed,
+                                              bool allocation,
                                               string expected)
     {
-        var pfsPage = new PfsByte
-        {
-            PageSpaceFree = pageSpaceFree,
-            GhostRecords = ghostRecords,
-            IsIam = iam,
-            IsMixed = mixed,
-            IsAllocated = allocation
-        };
+        var value = (byte)((byte)pageSpaceFree
+                           | (ghostRecords ? 0x08 : 0)
+                           | (iam ? 0x10 : 0)
+                           | (mixed ? 0x20 : 0)
+                           | (allocation ? 0x40 : 0));
 
-        var result = pfsPage.ToString();
+        var pfsByte = new PfsByte(value);
+
+        var result = pfsByte.ToString();
 
         Assert.Equal(expected, result);
     }

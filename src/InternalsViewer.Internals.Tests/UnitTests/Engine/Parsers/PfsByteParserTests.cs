@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.Internals.Extensions;
+﻿using InternalsViewer.Internals.Extensions;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Parsers;
 
@@ -34,7 +33,7 @@ public class PfsByteParserTests(ITestOutputHelper output)
     {
         Output.WriteLine($"Input: {input:X2}, {input.ToBinaryString()}");
 
-        var pfsByte = PfsByteParser.Parse(input);
+        var pfsByte = new PfsByte(input);
 
         Assert.Equal(expectedSpaceFree, pfsByte.PageSpaceFree);
         Assert.Equal(expectedAllocated, pfsByte.IsAllocated);
@@ -65,21 +64,16 @@ public class PfsByteParserTests(ITestOutputHelper output)
                                       bool iam,
                                       bool ghostRecords)
     {
-        var pfsByte = new PfsByte
-        {
-            PageSpaceFree = spaceFree,
-            IsAllocated = allocated,
-            IsMixed = mixed,
-            IsIam = iam,
-            GhostRecords = ghostRecords
-        };
+        Output.WriteLine($"Input: {expected:X2}, {expected.ToBinaryString()}");
 
-        Output.WriteLine($"Expected: {expected:X2}, {expected.ToBinaryString()}");
+        var pfsByte = new PfsByte(expected);
 
-        var result = PfsByteParser.Parse(pfsByte);
+        Assert.Equal(spaceFree, pfsByte.PageSpaceFree);
+        Assert.Equal(allocated, pfsByte.IsAllocated);
+        Assert.Equal(mixed, pfsByte.IsMixed);
+        Assert.Equal(iam, pfsByte.IsIam);
+        Assert.Equal(ghostRecords, pfsByte.GhostRecords);
 
-        Output.WriteLine($"Actual: {result:X2}, {result.ToBinaryString()}");
-
-        Assert.Equal(expected, result);
+        Assert.Equal(expected, pfsByte.Value);
     }
 }

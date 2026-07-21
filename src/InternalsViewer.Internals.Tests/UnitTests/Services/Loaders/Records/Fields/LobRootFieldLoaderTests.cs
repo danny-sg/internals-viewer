@@ -27,7 +27,7 @@ public class LobRootFieldLoaderTests
     {
         var data = TestData.ToByteArray();
 
-        var field = LobRootFieldLoader.Load(data, 0);
+        var field = LobRootFieldLoader.Load(data, 0, true);
 
         Assert.Equal(BlobFieldType.LobRoot, field.PointerType);
         Assert.Equal(0, field.Level);

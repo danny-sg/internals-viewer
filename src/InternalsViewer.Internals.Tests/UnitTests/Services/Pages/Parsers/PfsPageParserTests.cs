@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Internals.Services.Pages.Parsers;
+using InternalsViewer.Internals.Services.Pages.Parsers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Pages.Parsers;
 
@@ -14,13 +14,24 @@ public class PfsPageParserTests(ITestOutputHelper testOutput)
 
         var page = parser.Parse(pageData);
 
-        Assert.Equal(new PfsByte { IsAllocated = true, PageSpaceFree = SpaceFree.OneHundredPercent, IsIam = false, IsMixed = false },
-            page.PfsBytes[0]);
+        AssertPfsByte(page.PfsBytes[0], true, SpaceFree.OneHundredPercent, false, false);
 
-        Assert.Equal(new PfsByte { IsAllocated = true, PageSpaceFree = SpaceFree.OneHundredPercent, IsIam = false, IsMixed = false },
-            page.PfsBytes[1]);
+        AssertPfsByte(page.PfsBytes[1], true, SpaceFree.OneHundredPercent, false, false);
 
-        Assert.Equal(new PfsByte { IsAllocated = true, PageSpaceFree = SpaceFree.Empty, IsIam = true, IsMixed = true },
-            page.PfsBytes[100]);
+        AssertPfsByte(page.PfsBytes[100], true, SpaceFree.Empty, true, true);
+    }
+
+    private static void AssertPfsByte(byte value,
+                                      bool expectedIsAllocated,
+                                      SpaceFree expectedSpaceFree,
+                                      bool expectedIsIam,
+                                      bool expectedIsMixed)
+    {
+        var pfsByte = new PfsByte(value);
+
+        Assert.Equal(expectedIsAllocated, pfsByte.IsAllocated);
+        Assert.Equal(expectedSpaceFree, pfsByte.PageSpaceFree);
+        Assert.Equal(expectedIsIam, pfsByte.IsIam);
+        Assert.Equal(expectedIsMixed, pfsByte.IsMixed);
     }
 }

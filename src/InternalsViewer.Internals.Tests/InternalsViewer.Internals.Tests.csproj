@@ -8,7 +8,15 @@
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
         <UserSecretsId>84aabdef-755e-4080-9be4-a0483df133da</UserSecretsId>
+        <RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
+        <AnalysisLevel>none</AnalysisLevel>
     </PropertyGroup>
+
+    <ItemGroup>
+      <Compile Remove="UnitTests\Services\Records\**" />
+      <EmbeddedResource Remove="UnitTests\Services\Records\**" />
+      <None Remove="UnitTests\Services\Records\**" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
@@ -59,10 +67,6 @@
         <None Update="UnitTests\Test Data\Test Pages\TestDatabase_1_9_BootPage.page">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="UnitTests\Services\Records\" />
     </ItemGroup>
 
 </Project>

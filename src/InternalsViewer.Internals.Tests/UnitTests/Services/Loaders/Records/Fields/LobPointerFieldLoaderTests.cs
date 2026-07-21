@@ -24,7 +24,7 @@ public class LobPointerFieldLoaderTests
     {
         var data = TestData.ToByteArray();
 
-        var field = LobPointerFieldLoader.Load(data, 0);
+        var field = LobPointerFieldLoader.Load(data, 0, true);
 
         Assert.Equal(BlobFieldType.LobPointer, field.PointerType);
         Assert.Equal(4063559680, field.Timestamp);

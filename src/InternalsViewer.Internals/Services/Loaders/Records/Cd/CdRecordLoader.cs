@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Annotations;
+﻿using System.Data;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
@@ -9,8 +10,6 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Services.Loaders.Records.Fields;
-using System.Data;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 

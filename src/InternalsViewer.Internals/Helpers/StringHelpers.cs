@@ -64,9 +64,6 @@ public static partial class StringHelpers
         });
     }
 
-    [GeneratedRegex("(\\B[A-Z])")]
-    private static partial Regex CamelCaseBoundaryRegex();
-
     public static string SplitCamelCase(this string value, string separator = DefaultSeparator)
     {
         var replacement = separator == DefaultSeparator ? DefaultSeparatorReplacement : $"{separator}$1";
@@ -114,4 +111,7 @@ public static partial class StringHelpers
     {
         return string.Join(", ", values);
     }
+
+    [GeneratedRegex("(\\B[A-Z])")]
+    private static partial Regex CamelCaseBoundaryRegex();
 }

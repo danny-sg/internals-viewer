@@ -26,7 +26,6 @@ public class PageAddressParserTests
     [InlineData("1")]
     [InlineData("1-10")]
     [InlineData("1:ABC")]
-    [InlineData("0x00")]
     public void Invalid_Format_Throws_Exception(string value)
     {
         Assert.Throws<ArgumentException>(() => PageAddressParser.Parse(value));

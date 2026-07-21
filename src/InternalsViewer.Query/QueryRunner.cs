@@ -72,17 +72,19 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var isReplayMode = false;
 
+        var hasErrors = false;
+
         var (preCommands, commands, postCommands) = QueryParser.Parse(payload);
 
         if (!payload.QueryOptions.Trace)
         {
             try
             {
-                (rowCount, resultSets) = await RunQueryDirect(payload.SqlText,
-                                                              connectionString,
-                                                              payload.QueryOptions,
-                                                              progress,
-                                                              cancellationToken);
+                (rowCount, resultSets, hasErrors) = await RunQueryDirect(payload.SqlText,
+                                                                         connectionString,
+                                                                         payload.QueryOptions,
+                                                                         progress,
+                                                                         cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -106,7 +108,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             return new QueryResult
             {
-                IsSuccess = true,
+                IsSuccess = !hasErrors,
                 EngineEvents = [],
                 ExecutionPlans = [],
                 ResultSets = resultSets,
@@ -141,7 +143,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         try
         {
-            (var filePath, rowCount, logRecords, resultSets)
+            (var filePath, rowCount, logRecords, resultSets, hasErrors)
                 = await RunQueryWithEventSession(sessionId,
                                                  preCommands,
                                                  commands[0],
@@ -264,7 +266,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         return new QueryResult
         {
-            IsSuccess = true,
+            IsSuccess = !hasErrors,
             EngineEvents = events,
             ExecutionPlans = executionPlans,
             CallStackTree = callStack,
@@ -318,7 +320,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     /// </remarks>
     private static HashSet<EngineEvent> KeepSet(List<EngineEvent> events) => events.ExpandOwned();
 
-    private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets)>
+    private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets, bool hasErrors)>
         RunQueryWithEventSession(string sessionName,
                                  string[] preCommandSql,
                                  string commandSql,
@@ -330,6 +332,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                  IProgress<string>? progress,
                                  CancellationToken cancellationToken)
     {
+        var hasErrors = false;
+
         long rowCount = 0;
 
         await using var connection = new SqlConnection(connectionString);
@@ -340,6 +344,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             foreach (SqlError error in e.Errors)
             {
+                hasErrors = true;
+
                 progress?.Report(error.Message);
             }
         };
@@ -472,7 +478,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                         rows.Add(new ResultRow(values));
                     }
 
-                    resultSets.Add(new QueryResultSet { Columns = columns, Rows = rows });
+                    resultSets.Add(new QueryResultSet { Columns = columns, Rows = rows});
                 }
                 else
                 {
@@ -542,16 +548,19 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             }
         }
 
-        return (filePath, rowCount, logRecords, resultSets);
+        return (filePath, rowCount, logRecords, resultSets, hasErrors);
     }
 
-    private async Task<(long RowCount, List<QueryResultSet> ResultSets)> RunQueryDirect(string commandSql,
-                                                                                        string connectionString,
-                                                                                        QueryOptions queryOptions,
-                                                                                        IProgress<string>? progress,
-                                                                                        CancellationToken cancellationToken)
+    private async Task<(long RowCount, List<QueryResultSet> ResultSets, bool HasErrors)> 
+        RunQueryDirect(string commandSql,
+                       string connectionString,
+                       QueryOptions queryOptions,
+                       IProgress<string>? progress,
+                       CancellationToken cancellationToken)
     {
         long rowCount = 0;
+
+        var hasErrors = false;
 
         List<QueryResultSet> resultSets = [];
 
@@ -563,6 +572,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             foreach (SqlError error in e.Errors)
             {
+                hasErrors = true;
                 progress?.Report(error.Message);
             }
         };
@@ -623,7 +633,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             await reader.CloseAsync();
         }
 
-        return (rowCount, resultSets);
+        return (rowCount, resultSets, hasErrors);
     }
 
     private static Dictionary<int, Dictionary<string, string>> BuildStringPools(List<ResultColumn> columns)
