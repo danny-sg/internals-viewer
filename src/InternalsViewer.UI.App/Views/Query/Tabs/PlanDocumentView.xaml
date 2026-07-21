@@ -14,19 +14,47 @@
             <plan:ExecutionPlanControl Plan="{x:Bind}" />
         </DataTemplate>
     </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <CommandBar Grid.Row="0"
+                    IsOpen="False"
+                    Padding="0"
+                    VerticalAlignment="Center"
+                    DefaultLabelPosition="Right"
+                    HorizontalAlignment="Left"
+                    VerticalContentAlignment="Top"
+                    MinHeight="0"
+                    OverflowButtonVisibility="Collapsed"
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"
+                    Background="Transparent">
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ToggleButton Margin="12,0,12,0"
+                              BorderThickness="0"
+                              IsChecked="{x:Bind HasFlameGraph, Mode=TwoWay}"
+                              IsEnabled="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=OneWay}">
+                    <TextBlock Text="Flame Graph" VerticalAlignment="Center" />
+                </ToggleButton>
+            </AppBarElementContainer>
+        </CommandBar>
+        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollMode="Enabled"
+                      VerticalScrollMode="Enabled"
+                      ZoomMode="Enabled"
+                      Grid.Row="1"
+                      MinZoomFactor="0.25"
+                      MaxZoomFactor="2.0"
+                      Background="White"
+                      Padding="8">
+            <ItemsRepeater x:Name="PlanRepeater"
+                           ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
+                           Layout="{StaticResource PlanStackLayout}"
+                           ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
+        </ScrollViewer>
+    </Grid>
 
-    <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                  VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollMode="Enabled"
-                  VerticalScrollMode="Enabled"
-                  ZoomMode="Enabled"
-                  MinZoomFactor="0.25"
-                  MaxZoomFactor="2.0"
-                  Background="White"
-                  Padding="8">
-        <ItemsRepeater x:Name="PlanRepeater"
-                       ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
-                       Layout="{StaticResource PlanStackLayout}"
-                       ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
-    </ScrollViewer>
 </UserControl>

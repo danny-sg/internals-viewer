@@ -14,6 +14,19 @@ public sealed partial class PlanDocumentView : UserControl
 
     private QueryViewModel? _subscribed;
 
+    private bool _hasFlameGraph = true;
+
+    public bool HasFlameGraph
+    {
+        get => _hasFlameGraph;
+        set
+        {
+            _hasFlameGraph = value;
+
+            ApplyToPlans(p => p.HasFlameGraph = value);
+        }
+    }
+
     public PlanDocumentView()
     {
         InitializeComponent();
@@ -43,6 +56,7 @@ public sealed partial class PlanDocumentView : UserControl
             p.ActiveNodes = ViewModel?.ActivePlanNodes;
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
             p.Events = ViewModel?.Events;
+            p.HasFlameGraph = HasFlameGraph;
         });
     }
 
@@ -104,6 +118,7 @@ public sealed partial class PlanDocumentView : UserControl
             planControl.ActiveNodes = viewModel.ActivePlanNodes;
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
             planControl.Events = viewModel.Events;
+            planControl.HasFlameGraph = HasFlameGraph;
 
             // ItemsRepeater recycles elements, so guard against subscribing the same control twice.
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;

@@ -96,6 +96,16 @@ public sealed class ExecutionPlanControl : Canvas
         DependencyProperty.Register(nameof(Plan), typeof(ExecutionPlan), typeof(ExecutionPlanControl),
             new PropertyMetadata(null, OnPlanChanged));
 
+    public bool HasFlameGraph
+    {
+        get => (bool)GetValue(HasFlameGraphProperty);
+        set => SetValue(HasFlameGraphProperty, value);
+    }
+
+    public static readonly DependencyProperty HasFlameGraphProperty =
+        DependencyProperty.Register(nameof(HasFlameGraph), typeof(bool), typeof(ExecutionPlanControl),
+            new PropertyMetadata(true, OnPlanChanged));
+
     /// <summary>
     /// The selected node (from a timeline click or an in-plan click). Drives the selection highlight and
     /// brings the node into view; independent of the time-derived active set.
@@ -206,7 +216,7 @@ public sealed class ExecutionPlanControl : Canvas
         _hierarchy = OperatorHierarchy.Build(Events ?? []);
 
         // Reserve the icicle strip only when this plan actually has linked call stacks to draw.
-        _nodeHeight = HasLinkedCallstacks() ? BaseNodeHeight + IcicleStripHeight : BaseNodeHeight;
+        _nodeHeight = HasFlameGraph && HasLinkedCallstacks() ? BaseNodeHeight + IcicleStripHeight : BaseNodeHeight;
 
         var positions = new Dictionary<PlanNode, Point>();
         var leaf = new LeafCursor();
@@ -222,8 +232,11 @@ public sealed class ExecutionPlanControl : Canvas
         {
             foreach (var child in node.Children)
             {
-                var (connector, arrow) = DrawConnector(point, positions[child], RelativeCost(child, totalCost),
-                                                       node, child);
+                var (connector, arrow) = DrawConnector(point, 
+                                                       positions[child], 
+                                                       RelativeCost(child, totalCost),
+                                                       node, 
+                                                       child);
 
                 _connectorByProducer[child] = connector;
                 _arrowByProducer[child] = arrow;
@@ -246,7 +259,6 @@ public sealed class ExecutionPlanControl : Canvas
         UpdateFlows();
     }
 
-    // True when any of the query's events is matched to this plan and carries a call stack (reads via their members).
     private bool HasLinkedCallstacks()
     {
         if (Plan is null || Events is null)
@@ -322,7 +334,7 @@ public sealed class ExecutionPlanControl : Canvas
             Height = _nodeHeight
         };
 
-        if (Plan is { } plan && Events is { } events)
+        if (HasFlameGraph && Plan is { } plan && Events is { } events)
         {
             var id = new PlanNodeIdentifier(plan.PlanHandleId, node.NodeId);
 
@@ -575,10 +587,7 @@ public sealed class ExecutionPlanControl : Canvas
             return false;
         }
 
-        if (_selectedControl is not null)
-        {
-            _selectedControl.IsSelected = false;
-        }
+        _selectedControl?.IsSelected = false;
 
         _selectedControl = nodeControl;
 
