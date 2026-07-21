@@ -170,6 +170,38 @@ public class LogRecordApplierTests
     }
 
     [Fact]
+    public void Rebase_Seeds_Schema_Version_Row_Bytes_From_Before_Image()
+    {
+        var page = CreateSlottedPage([96], freeData: 200, freeCount: 1000);
+
+        page.Data[100] = 0x99;
+        page.Data[101] = 0x99;
+
+        var record = new ModifyRowLogRecord
+        {
+            Lsn = RecordLsn,
+            PreviousLsn = default,
+            PageAddress = Address,
+            PreviousPageLsn = InitialLsn,
+            Context = LogContext.SCHEMA_VERSION,
+            SlotId = 0,
+            OffsetInRow = 4,
+            ModifySize = 2,
+            BeforeData = [0xAA, 0xBB],
+            AfterData = [0xCC, 0xDD]
+        };
+
+        LogRecordApplier.Rebase(page, [record]);
+
+        Assert.Equal([0xAA, 0xBB], page.Data[100..102]);
+
+        var result = LogRecordApplier.Apply(page, record);
+
+        Assert.Equal(ApplyStatus.Applied, result.Status);
+        Assert.Equal([0xCC, 0xDD], page.Data[100..102]);
+    }
+
+    [Fact]
     public void Applies_Set_Free_Space_To_Pfs_Byte()
     {
         var page = CreatePage();

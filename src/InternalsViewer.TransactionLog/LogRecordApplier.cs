@@ -124,9 +124,22 @@ public static class LogRecordApplier
 
         foreach (var record in records)
         {
-            if (record is SetFreeSpaceLogRecord setFreeSpace && seededOffsets.Add(setFreeSpace.PageOffset))
+            if (record is SetFreeSpaceLogRecord setFreeSpace
+                && seededOffsets.Add(SetFreeSpaceApplier.GetPfsByteOffset(setFreeSpace)))
             {
                 page.Data[SetFreeSpaceApplier.GetPfsByteOffset(setFreeSpace)] = setFreeSpace.OldValue;
+            }
+
+            if (record is ModifyRowLogRecord { Context: LogContext.SCHEMA_VERSION, BeforeData.Length: > 0 } modifyRow
+                && modifyRow.SlotId >= 0
+                && modifyRow.SlotId < page.OffsetTable.Length)
+            {
+                var offset = page.OffsetTable[modifyRow.SlotId] + modifyRow.OffsetInRow;
+
+                if (offset + modifyRow.BeforeData.Length <= page.Data.Length && seededOffsets.Add(offset))
+                {
+                    modifyRow.BeforeData.CopyTo(page.Data.AsSpan(offset));
+                }
             }
         }
     }
