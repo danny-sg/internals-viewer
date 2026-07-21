@@ -1,4 +1,6 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+﻿
+
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
   <g id="sql-execution-plan-btree-icon">
     <g id="btree-structural-paths" stroke="#424242" stroke-width="2" fill="none" stroke-linejoin="round">
       <path id="btree-central-trunk-path" d="M 16 5 L 16 25" />
