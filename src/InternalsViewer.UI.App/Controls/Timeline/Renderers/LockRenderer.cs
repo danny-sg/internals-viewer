@@ -7,13 +7,15 @@ using SkiaSharp;
 namespace InternalsViewer.UI.App.Controls.Timeline.Renderers;
 
 /// <summary>
-/// Draws the Lock lane: one category sub-band per lock-mode present, each a concurrency bar chart, with escalation
-/// markers over the top
+/// Draws the Lock lane
 /// </summary>
 /// <remarks>
-/// The bands are ordered by category (most exclusive on top) so an escalation to a coarser lock steps UP, with intent
-/// modes banded apart below the real locks. Within a band the locks are a single concurrency bar chart: column height
-/// grows with the number of locks held at that instant, so overlaps rise above the baseline as a taller bar rather than
+/// One category sub-band per lock-mode present each a concurrency bar chart, with escalation markers over the top
+/// 
+/// The bands are ordered by category (most exclusive on top) so an escalation to a coarser lock steps up, with intent modes banded apart
+/// below the real locks. Within a band the locks are a single concurrency bar chart.
+///
+/// Column height grows with the number of locks held at that instant, so overlaps rise above the baseline as a taller bar rather than
 /// splitting into separate lanes, and the band reads the same for two overlaps as for thousands.
 /// </remarks>
 internal sealed class LockRenderer(RenderResource resources, CurrentSelection selection, List<HitRegion> hitRegions)
@@ -22,6 +24,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
     private const float MinLockBarHeight = 2f;
 
     private const byte LockBarAlpha = 230;
+    
     private const byte IntentLockBarAlpha = 128;
 
     private const byte DimAlpha = 70;
@@ -29,6 +32,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
     private const float MarkerWidth = 1f;
 
     private const float EscalationCaretSize = 4f;
+
     private const float EscalationOutlineWidth = 1.5f;
 
     private static readonly SKColor EscalationOutlineColour = new(10, 10, 10, 235);
@@ -109,7 +113,6 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
             return;
         }
 
-        // Difference array over pixel columns: +1 at each lock's start, -1 at its end.
         var concurrency = new int[span + 1];
 
         foreach (var lockEvent in locks)
@@ -145,7 +148,6 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
             hitRegions.Add(new HitRegion(new SKRect(startX - 1, bandTop, endX + 1, bandTop + bandHeight), lockEvent, null));
         }
 
-        // Prefix-sum the deltas into a per-column concurrency, tracking the peak to normalise the height.
         var running = 0;
         var peak = 0;
 
@@ -236,7 +238,6 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
 
         using var stem = _pathBuilder.Detach();
 
-        // Op returns null if the union fails; the stem alone still marks the instant.
         return caret.Op(stem, SKPathOp.Union) ?? new SKPath(stem);
     }
 
