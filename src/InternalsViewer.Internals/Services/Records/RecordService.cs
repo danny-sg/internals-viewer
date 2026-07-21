@@ -119,7 +119,7 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
                    .ToList();
     }
 
-    private IEnumerable<FixedVarIndexRecord> GetFixedVarIndexRecords(IndexPage page)
+    private List<FixedVarIndexRecord> GetFixedVarIndexRecords(IndexPage page)
     {
         var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);

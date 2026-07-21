@@ -168,7 +168,7 @@ public sealed partial class IndexControl : IDisposable
     // (a full-bleed fit can leave content == viewport, which flips a scrollbar on, shrinking the viewport, and so on).
     private const float FitPadding = 0.95f;
 
-    private const float ZoomMiniMode = 0.4f;
+    private const float ZoomMiniMode = 0.8f;
     private const float ZoomMaxiMode = 4f;
 
     private float PageWidth => 20 * _zoom;
@@ -218,16 +218,14 @@ public sealed partial class IndexControl : IDisposable
 
     private readonly Dictionary<int, List<IndexTreeNode>> _nodesByLevel = [];
 
-    // Widest column per level, and across the whole tree — topology, not pixels, so they survive a zoom. The pixel
-    // extents used for centring/scrollbars are derived from these via GetNodeX at the current zoom.
     private readonly Dictionary<int, int> _levelMaxColumn = [];
     private int _globalMaxColumn;
 
     private readonly Dictionary<PageAddress, int> _ordinalByAddress = [];
     private int _levelCount;
 
-    // The pixel position of a node at the current zoom, derived from its zoom-independent row/column.
     private float NodeX(IndexTreeNode node) => GetNodeX(node.Column - 1);
+
     private float NodeY(IndexTreeNode node) => GetNodeY(node.Node.Level, node.Row - 1);
 
     // Reused for every parent-connector polyline so painting stays allocation-free.
@@ -308,8 +306,6 @@ public sealed partial class IndexControl : IDisposable
         {
             control._zoom = (float)e.NewValue;
 
-            // A zoom the user drove (wheel, or the view's Ctrl+wheel writing Zoom) disengages fit; a fit-driven zoom
-            // keeps it on.
             if (!control._applyingFit)
             {
                 control.IsZoomToFit = false;
@@ -321,7 +317,6 @@ public sealed partial class IndexControl : IDisposable
             control._isZoomToFit = (bool)e.NewValue;
         }
 
-        // Only the node set changes the tree topology; zoom just rescales the derived positions, so it never rebuilds.
         if (e.Property == NodesProperty)
         {
             control.BuildIndexTree();
@@ -644,7 +639,7 @@ public sealed partial class IndexControl : IDisposable
                 }
                 else
                 {
-                    DrawPage(canvas, renderX, renderY, isSelected, isHovered, isHighlighted, hasSpanColour, spanColour);
+                    DrawPage(canvas, renderX, renderY, isSelected, isHighlighted, hasSpanColour, spanColour);
 
                     if (!maxiMode)
                     {
@@ -686,7 +681,6 @@ public sealed partial class IndexControl : IDisposable
                           false, 
                           false);
             }
-
         }
     }
 
@@ -771,7 +765,6 @@ public sealed partial class IndexControl : IDisposable
                           float x,
                           float y,
                           bool isSelected,
-                          bool isHovered,
                           bool isHighlighted,
                           bool hasSpanColour,
                           SKColor spanColour)
@@ -989,6 +982,7 @@ public sealed partial class IndexControl : IDisposable
         }
 
         var maxWidth = GetNodeX(_globalMaxColumn - 1) + PageWidth + (HorizontalMargin * 2);
+
         var maxHeight = _nodePositions.Max(NodeY) + PageHeight + VerticalMargin;
 
         if (maxWidth < IndexCanvas.ActualWidth)
@@ -1033,10 +1027,8 @@ public sealed partial class IndexControl : IDisposable
         var ratio = oldZoom > 0 ? newZoom / oldZoom : 1f;
 
         var wasHorizontalScrollable = HorizontalScrollBar.Maximum > 0;
-        var wasVerticalScrollable = VerticalScrollBar.Maximum > 0;
 
         var horizontalCentre = (HorizontalScrollBar.Value + IndexCanvas.ActualWidth / 2) * ratio;
-        var verticalCentre = (VerticalScrollBar.Value + IndexCanvas.ActualHeight / 2) * ratio;
 
         UpdateScrollbars();
 
@@ -1045,13 +1037,6 @@ public sealed partial class IndexControl : IDisposable
             HorizontalScrollBar.Value = Math.Clamp(horizontalCentre - IndexCanvas.ActualWidth / 2,
                                                    0,
                                                    HorizontalScrollBar.Maximum);
-        }
-
-        if (wasVerticalScrollable && VerticalScrollBar.Maximum > 0)
-        {
-            VerticalScrollBar.Value = Math.Clamp(verticalCentre - IndexCanvas.ActualHeight / 2,
-                                                 0,
-                                                 VerticalScrollBar.Maximum);
         }
     }
 
@@ -1227,7 +1212,7 @@ public sealed partial class IndexControl : IDisposable
 
         // Find the level first as the level offsets are used to center the tree.
         var level = _nodePositions.FirstOrDefault(n => y >= NodeY(n) - yScrollOffset
-                                                      && y <= NodeY(n) - yScrollOffset + PageHeight)?.Node.Level;
+                                                       && y <= NodeY(n) - yScrollOffset + PageHeight)?.Node.Level;
 
         if (level is null)
         {
@@ -1237,9 +1222,9 @@ public sealed partial class IndexControl : IDisposable
         var xOffset = GetLevelStartX(level.Value) - xScrollOffset;
 
         var node = _nodePositions.FirstOrDefault(n => x >= xOffset + NodeX(n)
-                                                     && x <= xOffset + NodeX(n) + PageWidth
-                                                     && y >= NodeY(n) - yScrollOffset
-                                                     && y <= NodeY(n) - yScrollOffset + PageHeight);
+                                                      && x <= xOffset + NodeX(n) + PageWidth
+                                                      && y >= NodeY(n) - yScrollOffset
+                                                      && y <= NodeY(n) - yScrollOffset + PageHeight);
 
         return node?.Node;
     }

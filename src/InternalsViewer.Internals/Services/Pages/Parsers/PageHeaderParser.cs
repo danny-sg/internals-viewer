@@ -34,6 +34,17 @@ public static class PageHeaderParser
     private const byte TornBitsOffset = 60;
     private const byte UnusedOffset = 62;
 
+    private static readonly (int Bit, string Name)[] FlagBitsNames =
+    [
+        (0x2, "PG_ALIGNED4"),
+        (0x4, "Fixed Length Row"),
+        (0x8, "Has Free Slot"),
+        (0x200, "Has Checksum"),
+        (0x2000, "Version Info"),
+        (0x4000, "ADD_BEG"),
+        (0x8000, "ADD_END"),
+    ];
+
     public static PageHeader Parse(byte[] data, bool isMarkEnabled = true)
     {
         return Parse(data.AsSpan(), isMarkEnabled);
@@ -92,17 +103,20 @@ public static class PageHeaderParser
         pageHeader.Lsn = LogSequenceNumberParser.Parse(data[LsnOffset..]);
     }
 
-    private static void SetHeaderMarkers(DataStructure header)
+    private static void SetHeaderMarkers(PageHeader header)
     {
         header.MarkProperty(nameof(PageHeader.HeaderVersion), HeaderVersionOffset, sizeof(byte));
 
         header.MarkProperty(nameof(PageHeader.PageType), PageTypeOffset, sizeof(byte));
 
-        header.MarkProperty(nameof(PageHeader.TypeFlagBits), TypeFlagBitsOffset, sizeof(byte));
+        header.MarkProperty(nameof(PageHeader.TypeFlagBits),
+                            TypeFlagBitsOffset,
+                            sizeof(byte),
+                            GetTypeFlagBitsTags(header.TypeFlagBits, header.PageType));
 
         header.MarkProperty(nameof(PageHeader.Level), LevelOffset, sizeof(byte));
 
-        header.MarkProperty(nameof(PageHeader.FlagBits), FlagBitsOffset, sizeof(short));
+        header.MarkProperty(nameof(PageHeader.FlagBits), FlagBitsOffset, sizeof(short), GetFlagBitsTags(header.FlagBits));
 
         header.MarkProperty(nameof(PageHeader.InternalIndexId), IndexIdOffset, sizeof(short));
 
@@ -135,5 +149,40 @@ public static class PageHeaderParser
         header.MarkProperty(nameof(PageHeader.TornBits), TornBitsOffset, sizeof(int));
 
         header.MarkProperty(nameof(PageHeader.AllocationUnitId));
+    }
+
+    private static string[]? GetFlagBitsTags(short flagBits)
+    {
+        var tags = new List<string>();
+
+        foreach (var (bit, name) in FlagBitsNames)
+        {
+            if ((flagBits & bit) != 0)
+            {
+                tags.Add(name);
+            }
+        }
+
+        return tags.ToArray();
+    }
+
+    private static string[]? GetTypeFlagBitsTags(byte typeFlagBits, PageType pageType)
+    {
+        var tags = new List<string>();
+
+        if (pageType == PageType.Pfs)
+        {
+            if ((typeFlagBits & 0x1) != 0)
+            {
+                tags.Add("Has Ghosts");
+            }
+
+            if ((typeFlagBits & 0x4) != 0)
+            {
+                tags.Add("Has Version Pages");
+            }
+        }
+
+        return tags.ToArray();
     }
 }

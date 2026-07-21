@@ -98,11 +98,12 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
     private string GetPageSymbolValue()
     {
         var dictionaryEntry = CompressedDataConverter.DecodeInternalInt(Data.ToArray(), 0);
+
         ReadOnlySpan<byte> dictionaryValue = Record.CompressionInfo.CompressionDictionary?.DictionaryEntries[dictionaryEntry].Data ?? [];
 
         string value;
 
-        if (AnchorField is not null && Data is { IsEmpty: false, Length: > 1 })
+        if (AnchorField is not null && Data is { IsEmpty: false, Length: > 0 })
         {
             var compositeData = ExpandAnchor(dictionaryValue);
 
@@ -118,7 +119,7 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
                                                                      ColumnStructure.Precision,
                                                                      ColumnStructure.Scale);
         }
-
-        return $"Dictionary Entry {dictionaryEntry} - {value}";
+        
+        return value;
     }
 }

@@ -140,7 +140,8 @@ public static class CompressedDataConverter
     /// </summary>
     /// <remarks>
     /// SQL Server row compression stores integers big-endian with the sign bit in the high byte masked.
-    /// Unsigned values have 0x80 XOR'd into the most-significant byte; signed values are sign-extended with 0xFF.
+    /// 
+    /// Unsigned values have 0x80 XOR'd into the most-significant byte. Signed values are sign-extended with 0xFF.
     /// </remarks>
     private static Span<byte> DecodeInt(ReadOnlySpan<byte> data, bool unsigned, int size)
     {

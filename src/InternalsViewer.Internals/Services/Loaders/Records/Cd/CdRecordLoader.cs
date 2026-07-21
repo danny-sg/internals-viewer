@@ -1,5 +1,5 @@
-﻿using System.Data;
-using InternalsViewer.Internals.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
@@ -9,6 +9,8 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Services.Loaders.Records.Fields;
+using System.Data;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.Cd;
 
@@ -75,9 +77,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
     private ILogger<CdRecordLoader<TStructure>> Logger { get; } = logger;
 
-    public CdIndexRecord Load(AllocationUnitPage page,
-                              ushort slotOffset,
-                              Structure<TStructure> structure)
+    public CdIndexRecord Load(AllocationUnitPage page, ushort slotOffset, Structure<TStructure> structure)
     {
         int currentPosition = slotOffset;
 
@@ -345,7 +345,12 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                                              .Cast<CdRecordField>()
                                              .FirstOrDefault(f => f.ColumnStructure.ColumnId == i + 1);
 
-            record.MarkValue(ItemType.ShortFieldValue, field.Name, field, field.Offset, field.Length);
+            if (record.IsMarkEnabled)
+            {
+                string[] tags = ["Short Field", .. GetFieldCompressionTags(field)];
+
+                record.MarkValue(ItemType.ShortFieldValue, field.Name, field, field.Offset, field.Length, tags);
+            }
 
             record.Fields.Add(field);
         }
@@ -390,13 +395,47 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                     field.BlobInlineRoot = LobFieldLoader.Load(field.Data.ToArray(), field.Offset, field.IsMarkEnabled);
                 }
 
-                record.MarkValue(ItemType.LongFieldValue, field.Name, field, field.Offset, field.Length);
+                if (record.IsMarkEnabled)
+                {
+                    string[] tags = ["Long Field", ..GetFieldCompressionTags(field)];
+
+                    record.MarkValue(ItemType.LongFieldValue,
+                                     field.Name, 
+                                     field, 
+                                     field.Offset, 
+                                     field.Length,
+                                     tags.ToArray());
+                }
 
                 previousOffset = RecordHelpers.DecodeOffset(nextOffset);
 
                 columnIndex++;
             }
         }
+    }
+
+    private static string[] GetFieldCompressionTags(CdRecordField field)
+    {
+        var hasAnchor = field.AnchorField is { IsNull: false, Data.IsEmpty: false };
+
+        if (field.IsPageSymbol)
+        {
+            var dictionaryEntry = CompressedDataConverter.DecodeInternalInt(field.Data.ToArray(), 0);
+
+            if (hasAnchor)
+            {
+                return [$"Anchor + Dictionary Entry {dictionaryEntry}"];
+            }
+
+            return [$"Dictionary Entry {dictionaryEntry}"];
+        }
+
+        if (hasAnchor)
+        {
+            return ["Anchor"];
+        }
+
+        return [];
     }
 
     /// <summary>
