@@ -56,14 +56,22 @@
                     Background="Transparent">
 
             <AppBarElementContainer VerticalContentAlignment="Center">
-                <ToggleButton Margin="12,0,12,0"
+                <StackPanel Orientation="Horizontal">
+                    <ToggleButton Margin="12,0,0,0"
                               BorderThickness="0"
                               x:Name="BufferPoolToggle"
                               IsChecked="{x:Bind ViewModel.ShowBufferPool, Mode=OneWay}"
                               Command="{x:Bind ViewModel.ToggleBufferPoolCommand}"
                               CommandParameter="{x:Bind BufferPoolToggle.IsChecked, Mode=OneWay}" >
-                    <TextBlock Text="Buffer Pool" VerticalAlignment="Center" />
-                </ToggleButton>
+                        <TextBlock Text="Buffer Pool" VerticalAlignment="Center" />
+                    </ToggleButton>
+                    <ToggleButton Margin="12,0,12,0"
+                              BorderThickness="0"
+                              x:Name="PfsToggle"
+                              IsChecked="{x:Bind ViewModel.IsPfsVisible, Mode=TwoWay}">
+                        <TextBlock Text="PFS" VerticalAlignment="Center" />
+                    </ToggleButton>
+                </StackPanel>
             </AppBarElementContainer>
         </CommandBar>
         <CommandBar IsOpen="False"
