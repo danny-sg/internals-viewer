@@ -19,17 +19,24 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
     private const string AudioOnGlyph = "";
     private const string AudioOffGlyph = "";
 
+    private static readonly double[] PlaySpeeds = [0.5, 1, 5, 10];
+
     private readonly Button _playButton;
     private readonly Button _stepBackButton;
     private readonly Button _stepForwardButton;
+    private readonly Button _playSpeedButton;
     private readonly ToggleButton _threadsButton;
     private readonly ToggleButton _audioButton;
     private readonly ProgressRing _audioProgress;
+
+    private int _playSpeedIndex = 1;
 
     public event Action? PlayPauseRequested;
 
     /// <summary>Raised on a step; the argument is true for forward, false for back.</summary>
     public event Action<bool>? StepRequested;
+
+    public event Action<double>? PlaySpeedChanged;
 
     public event Action<bool>? ThreadsToggled;
 
@@ -58,6 +65,16 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
 
         _stepForwardButton = MakeButton(new FontIcon { Glyph = "", FontSize = 12 }, 30);
         _stepForwardButton.Click += OnStepForwardButtonClick;
+
+        _playSpeedButton = MakeButton(new TextBlock
+        {
+            Text = FormatSpeed(PlaySpeeds[_playSpeedIndex]),
+            FontSize = 10,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        }, 34);
+        ToolTipService.SetToolTip(_playSpeedButton, "Playback speed");
+        _playSpeedButton.Click += OnPlaySpeedButtonClick;
 
         _threadsButton = new ToggleButton
         {
@@ -110,6 +127,7 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         Children.Add(_stepBackButton);
         Children.Add(_playButton);
         Children.Add(_stepForwardButton);
+        Children.Add(_playSpeedButton);
         Children.Add(_threadsButton);
         Children.Add(audioSlot);
     }
@@ -154,11 +172,25 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         CornerRadius = new CornerRadius(0),
     };
 
+    private static string FormatSpeed(double speed) => $"{speed:0.#}x";
+
     private void OnPlayButtonClick(object sender, RoutedEventArgs e) => PlayPauseRequested?.Invoke();
 
     private void OnStepBackButtonClick(object sender, RoutedEventArgs e) => StepRequested?.Invoke(false);
 
     private void OnStepForwardButtonClick(object sender, RoutedEventArgs e) => StepRequested?.Invoke(true);
+
+    private void OnPlaySpeedButtonClick(object sender, RoutedEventArgs e)
+    {
+        _playSpeedIndex = (_playSpeedIndex + 1) % PlaySpeeds.Length;
+
+        if (_playSpeedButton.Content is TextBlock text)
+        {
+            text.Text = FormatSpeed(PlaySpeeds[_playSpeedIndex]);
+        }
+
+        PlaySpeedChanged?.Invoke(PlaySpeeds[_playSpeedIndex]);
+    }
 
     private void OnThreadsToggled(object sender, RoutedEventArgs e) => ThreadsToggled?.Invoke(_threadsButton.IsChecked == true);
 
@@ -179,6 +211,7 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         _playButton.Click -= OnPlayButtonClick;
         _stepBackButton.Click -= OnStepBackButtonClick;
         _stepForwardButton.Click -= OnStepForwardButtonClick;
+        _playSpeedButton.Click -= OnPlaySpeedButtonClick;
         _threadsButton.Checked -= OnThreadsToggled;
         _threadsButton.Unchecked -= OnThreadsToggled;
         _audioButton.Checked -= OnAudioToggled;
