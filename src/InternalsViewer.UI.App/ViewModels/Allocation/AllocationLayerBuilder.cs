@@ -97,7 +97,7 @@ internal static class AllocationLayerBuilder
         layers.Add(systemLayer);
 
         layers.AddRange(GenerateAllocationLayers("GAM", database.Gam, Color.Green, true));
-        layers.AddRange(GenerateAllocationLayers("SGAM", database.SGam, Color.OrangeRed, true));
+        layers.AddRange(GenerateAllocationLayers("SGAM", database.SGam, Color.OrangeRed, false));
         layers.AddRange(GenerateAllocationLayers("DCM", database.Dcm, Color.CornflowerBlue, true));
         layers.AddRange(GenerateAllocationLayers("BCM", database.Bcm, Color.Purple, true));
 
