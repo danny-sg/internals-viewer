@@ -317,6 +317,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
         _transport.PlayPauseRequested += OnPlayPauseRequested;
         _transport.StepRequested += OnStepRequested;
+        _transport.PlaySpeedChanged += OnPlaySpeedChanged;
         _transport.ThreadsToggled += OnThreadsToggled;
         _transport.AudioToggled += OnAudioToggled;
 
@@ -409,6 +410,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
         _transport.PlayPauseRequested -= OnPlayPauseRequested;
         _transport.StepRequested -= OnStepRequested;
+        _transport.PlaySpeedChanged -= OnPlaySpeedChanged;
         _transport.ThreadsToggled -= OnThreadsToggled;
         _transport.AudioToggled -= OnAudioToggled;
         _transport.Dispose();

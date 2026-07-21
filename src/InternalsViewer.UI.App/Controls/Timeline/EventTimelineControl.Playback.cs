@@ -12,6 +12,8 @@ public sealed partial class EventTimelineControl
 
     private double _playStep;
 
+    private double _playSpeed = 1;
+
     private bool _isPlaying;
 
     /// <summary>
@@ -37,6 +39,16 @@ public sealed partial class EventTimelineControl
     }
 
     private void OnStepRequested(bool forward) => StepToAdjacentEvent(forward);
+
+    private void OnPlaySpeedChanged(double speed)
+    {
+        _playSpeed = speed;
+
+        if (_isPlaying)
+        {
+            SetPlayStep();
+        }
+    }
 
     private void OnThreadsToggled(bool showThreads)
     {
@@ -117,9 +129,7 @@ public sealed partial class EventTimelineControl
 
         _isPlaying = true;
 
-        var rangeMs = Math.Max(rangeEnd - rangeStart, 1e-6);
-
-        _playStep = rangeMs * PlayTickMs / BasePlayDurationMs;
+        SetPlayStep();
 
         SyncHandlesToPlayhead();
         FirePlayhead();
@@ -131,6 +141,15 @@ public sealed partial class EventTimelineControl
         PlayStateChanged?.Invoke(true);
 
         _skCanvas.Invalidate();
+    }
+
+    private void SetPlayStep()
+    {
+        var (rangeStart, rangeEnd) = ActiveRange;
+
+        var rangeMs = Math.Max(rangeEnd - rangeStart, 1e-6);
+
+        _playStep = rangeMs * PlayTickMs / BasePlayDurationMs * _playSpeed;
     }
 
     private void StopPlay()
