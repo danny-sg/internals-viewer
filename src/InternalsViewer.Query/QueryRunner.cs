@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Batches;
@@ -15,6 +14,8 @@ using InternalsViewer.TransactionLog;
 using InternalsViewer.TransactionLog.LogRecords;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace InternalsViewer.Query;
 
@@ -72,19 +73,17 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var isReplayMode = false;
 
-        var hasErrors = false;
-
         var (preCommands, commands, postCommands) = QueryParser.Parse(payload);
 
         if (!payload.QueryOptions.Trace)
         {
             try
             {
-                (rowCount, resultSets, hasErrors) = await RunQueryDirect(payload.SqlText,
-                                                                         connectionString,
-                                                                         payload.QueryOptions,
-                                                                         progress,
-                                                                         cancellationToken);
+                (rowCount, resultSets) = await RunQueryDirect(payload.SqlText,
+                                                              connectionString,
+                                                              payload.QueryOptions,
+                                                              progress,
+                                                              cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -108,7 +107,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             return new QueryResult
             {
-                IsSuccess = !hasErrors,
+                IsSuccess = true,
                 EngineEvents = [],
                 ExecutionPlans = [],
                 ResultSets = resultSets,
@@ -143,7 +142,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         try
         {
-            (var filePath, rowCount, logRecords, resultSets, hasErrors)
+            (var filePath, rowCount, logRecords, resultSets)
                 = await RunQueryWithEventSession(sessionId,
                                                  preCommands,
                                                  commands[0],
@@ -266,7 +265,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         return new QueryResult
         {
-            IsSuccess = !hasErrors,
+            IsSuccess = true,
             EngineEvents = events,
             ExecutionPlans = executionPlans,
             CallStackTree = callStack,
@@ -320,7 +319,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     /// </remarks>
     private static HashSet<EngineEvent> KeepSet(List<EngineEvent> events) => events.ExpandOwned();
 
-    private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets, bool hasErrors)>
+    private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets)>
         RunQueryWithEventSession(string sessionName,
                                  string[] preCommandSql,
                                  string commandSql,
@@ -332,23 +331,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                  IProgress<string>? progress,
                                  CancellationToken cancellationToken)
     {
-        var hasErrors = false;
-
         long rowCount = 0;
 
         await using var connection = new SqlConnection(connectionString);
 
-        connection.FireInfoMessageEventOnUserErrors = true;
-
-        SqlInfoMessageEventHandler onInfoMessage = (_, e) =>
-        {
-            foreach (SqlError error in e.Errors)
-            {
-                hasErrors = true;
-
-                progress?.Report(error.Message);
-            }
-        };
+        SqlInfoMessageEventHandler onInfoMessage = (_, e) => progress?.Report(e.Message);
 
         await connection.OpenAsync(cancellationToken);
 
@@ -493,8 +480,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             connection.InfoMessage -= onInfoMessage;
 
-            connection.FireInfoMessageEventOnUserErrors = false;
-
             progress?.Report($"Query executed in: {Stopwatch.GetElapsedTime(queryStart)}");
 
             if (isReplayMode)
@@ -548,10 +533,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             }
         }
 
-        return (filePath, rowCount, logRecords, resultSets, hasErrors);
+        return (filePath, rowCount, logRecords, resultSets);
     }
 
-    private async Task<(long RowCount, List<QueryResultSet> ResultSets, bool HasErrors)> 
+    private async Task<(long RowCount, List<QueryResultSet> ResultSets)> 
         RunQueryDirect(string commandSql,
                        string connectionString,
                        QueryOptions queryOptions,
@@ -560,22 +545,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     {
         long rowCount = 0;
 
-        var hasErrors = false;
-
         List<QueryResultSet> resultSets = [];
 
         await using var connection = new SqlConnection(connectionString);
 
-        connection.FireInfoMessageEventOnUserErrors = true;
-
-        connection.InfoMessage += (_, e) =>
-        {
-            foreach (SqlError error in e.Errors)
-            {
-                hasErrors = true;
-                progress?.Report(error.Message);
-            }
-        };
+        connection.InfoMessage += (_, e) => progress?.Report(e.Message);
 
         await connection.OpenAsync(cancellationToken);
 
@@ -633,7 +607,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             await reader.CloseAsync();
         }
 
-        return (rowCount, resultSets, hasErrors);
+        return (rowCount, resultSets);
     }
 
     private static Dictionary<int, Dictionary<string, string>> BuildStringPools(List<ResultColumn> columns)
