@@ -11,7 +11,9 @@ Each block represents a [page](https://learn.microsoft.com/en-us/sql/relational-
 ::: tip
 Clicking on a page will open it in the [Page Viewer](/docs/user-guide/page-viewer)
 
-The Allocation Map can be zoomed in and out with **Ctrl + mouse wheel**
+Use the mouse wheel or scrollbar to scroll up and down the database file.
+
+The Allocation Map can be zoomed in and out with **Ctrl + mouse wheel**.
 :::
 
 ::: details How this works
@@ -34,8 +36,9 @@ The **Overlay** menu adds a layer of extra information on top of the Allocation 
 
 ![Overlay menu](/docs/user-guide/images/database-allocations-view-overlay-menu.png)
 
-- **GAM** / **SGAM** - the [Global Allocation Map](https://learn.microsoft.com/en-us/sql/relational-databases/pages-and-extents-architecture-guide#gam-and-sgam-pages), tracking which extents are allocated, and the Shared Global Allocation Map, tracking mixed extents with free pages
-- **PFS** - Page Free Space, see below
+- **GAM** [Global Allocation Map](https://learn.microsoft.com/en-us/sql/relational-databases/pages-and-extents-architecture-guide#gam-and-sgam-pages), tracking which extents are allocated
+- **SGAM** Shared Global Allocation Map, tracking mixed extents with free pages
+- **PFS** - Page Free Space, see below.
 - **Buffer Pool** - see below
 - **DCM** / **BCM** - the Differential Changed Map, tracking extents changed since the last full backup, and the Bulk Changed Map, tracking extents changed by minimally logged operations since the last log backup
 
@@ -47,8 +50,10 @@ The [Buffer Pool](https://learn.microsoft.com/en-us/sql/relational-databases/mem
 
 ![Allocation map with Buffer Pool overlay](/docs/user-guide/images/database-allocations-view-buffer-pool-cropped.png)
 
-- **Cyan** - the page is clean, i.e. unmodified since it was read
-- **Red** - the page is dirty, i.e. modified in memory but not yet written to disk
+Pages in the Buffer Pool can be _clean_, meaning they have not been modified, or _dirty_, meaning they have been modified and changes have not yet been written to disk (but will have been written to the transaction log).
+
+- **Cyan** - the page is clean
+- **Red** - the page is dirty
 
 ::: tip
 This is a good way to see write behaviour in action - modify some data, and the changed pages show as dirty (red) in the Buffer Pool overlay until SQL Server flushes them back to disk, e.g. by running `CHECKPOINT`. See [Log Records](/docs/user-guide/query/LogRecords) for why modified pages can stay dirty in memory long after the query finishes.

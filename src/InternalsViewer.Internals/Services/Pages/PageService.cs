@@ -26,14 +26,15 @@ public sealed class PageService(ILogger<PageService> logger,
                                     CancellationToken cancellationToken,
                                     bool isMarkEnabled = true)
     {
-        using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
+        if (Logger.IsEnabled(LogLevel.Debug))
         {
             Logger.LogDebug("Loading page {PageAddress}", pageAddress);
-
-            var page = await loader.Load(database, pageAddress, cancellationToken, isMarkEnabled);
-
-            return ParsePage(page, pageAddress);
         }
+
+        var page = await loader.Load(database, pageAddress, cancellationToken, isMarkEnabled);
+
+        return ParsePage(page, pageAddress);
+
     }
 
     public async Task<Page> GetPage(DatabaseSource database,
@@ -41,14 +42,15 @@ public sealed class PageService(ILogger<PageService> logger,
                                     byte[] buffer,
                                     CancellationToken cancellationToken)
     {
-        using (Logger.BeginScope("PageService.GetPage: {PageAddress}", pageAddress))
+        if (Logger.IsEnabled(LogLevel.Debug))
         {
             Logger.LogDebug("Loading page {PageAddress} into buffer", pageAddress);
-
-            var page = await loader.LoadInto(database, pageAddress, buffer, cancellationToken);
-
-            return ParsePage(page, pageAddress);
         }
+
+        var page = await loader.LoadInto(database, pageAddress, buffer, cancellationToken);
+
+        return ParsePage(page, pageAddress);
+
     }
 
     public async Task<T> GetPage<T>(DatabaseSource database,
@@ -80,7 +82,10 @@ public sealed class PageService(ILogger<PageService> logger,
 
     private Page ParsePage(PageData page, PageAddress pageAddress)
     {
-        Logger.LogDebug("Page {PageAddress}: Page Type: {PageType}", pageAddress, page.PageHeader.PageType);
+        if (Logger.IsEnabled(LogLevel.Debug))
+        {
+            Logger.LogDebug("Page {PageAddress}: Page Type: {PageType}", pageAddress, page.PageHeader.PageType);
+        }
 
         if (!Parsers.TryGetValue(page.PageHeader.PageType, out var parser))
         {
@@ -90,8 +95,6 @@ public sealed class PageService(ILogger<PageService> logger,
 
             throw new ArgumentException($"No parser found for page type {page.PageHeader.PageType}");
         }
-
-        Logger.LogTrace("Using Parser: {ParserType}", parser.GetType());
 
         return parser.Parse(page);
     }

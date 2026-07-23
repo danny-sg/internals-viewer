@@ -4,10 +4,12 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
+using InternalsViewer.Internals.Providers.Metadata;
 
 namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
@@ -66,6 +68,17 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
 
         result.AllocationUnits = await GetAllocationUnits(database, cancellationToken);
 
+        var filesFirstPage = GetFirstPage(InternalTableConstants.FilesId, result.AllocationUnits);
+
+        result.Files = await GetFiles(filesFirstPage, database, cancellationToken);
+
+        if (database.Connection?.PageReader is IMultiFilePageReader multiFileReader)
+        {
+            Logger.LogDebug("Resolving data file locations from file metadata");
+
+            await multiFileReader.RegisterFiles(FileProvider.GetFiles(result), cancellationToken);
+        }
+
         var rowSetsFirstPage = GetFirstPage(InternalTableConstants.RowSetId, result.AllocationUnits);
 
         result.RowSets = await GetRowSets(rowSetsFirstPage, database, cancellationToken);
@@ -93,10 +106,6 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         var indexColumnsFirstPage = GetFirstPage(InternalTableConstants.IndexColumnsId, result.AllocationUnits);
 
         result.IndexColumns = await GetIndexColumns(indexColumnsFirstPage, database, cancellationToken);
-
-        var filesFirstPage = GetFirstPage(InternalTableConstants.FilesId, result.AllocationUnits);
-
-        result.Files = await GetFiles(filesFirstPage, database, cancellationToken);
 
         return result;
     }
