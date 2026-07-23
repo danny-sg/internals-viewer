@@ -2,6 +2,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Services.Pages.Loaders;
 
@@ -15,6 +16,10 @@ public sealed class PageService(ILogger<PageService> logger,
                                 IEnumerable<IPageParser> parsers) : IPageService
 {
     private ILogger<PageService> Logger { get; } = logger;
+
+    private Dictionary<PageType, IPageParser> Parsers { get; } =
+        parsers.SelectMany(p => p.SupportedPageTypes.Select(t => (PageType: t, Parser: p)))
+               .ToDictionary(t => t.PageType, t => t.Parser);
 
     public async Task<Page> GetPage(DatabaseSource database,
                                     PageAddress pageAddress,
@@ -77,9 +82,7 @@ public sealed class PageService(ILogger<PageService> logger,
     {
         Logger.LogDebug("Page {PageAddress}: Page Type: {PageType}", pageAddress, page.PageHeader.PageType);
 
-        var parser = parsers.FirstOrDefault(p => p.SupportedPageTypes.Any(t => page.PageHeader.PageType == t));
-
-        if (parser == null)
+        if (!Parsers.TryGetValue(page.PageHeader.PageType, out var parser))
         {
             Logger.LogError("Page {PageAddress}: Page Type: {PageType} - No parser found for page type",
                             pageAddress,

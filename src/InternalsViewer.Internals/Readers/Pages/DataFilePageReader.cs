@@ -20,8 +20,8 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader
     /// Reads a page from a SQL Server data file
     /// </summary>
     /// <remarks>
-    /// SQL Server data files (MDF/LDF) are stored in 8 KB (8192 bytes) pages, so a page is located in the file at
-    /// location (Page Id * 8192)
+    /// SQL Server data files (MDF/LDF) are stored in 8 KB (8192 bytes) pages, so a page is located in the file at location (Page Id
+    /// * 8192)
     /// 
     /// The file has to be detached/not attached to SQL Server to be read as it will be locked by the SQL Server
     /// process.
