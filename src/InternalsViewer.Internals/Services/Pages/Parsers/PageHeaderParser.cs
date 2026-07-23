@@ -10,17 +10,18 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// Responsible for loading the header of a Page
 /// </summary>
 public static class PageHeaderParser
-{
+{    
+    internal const byte PreviousPageOffset = 8;
+    internal const byte PageTypeOffset = 1;
+    internal const byte LevelOffset = 3;
+    internal const byte FixedLengthOffset = 14;
+    internal const byte NextPageOffset = 16;
+    internal const byte SlotCountOffset = 22;
+
     private const byte HeaderVersionOffset = 0;
-    private const byte PageTypeOffset = 1;
     private const byte TypeFlagBitsOffset = 2;
-    private const byte LevelOffset = 3;
     private const byte FlagBitsOffset = 4;
     private const byte IndexIdOffset = 6;
-    private const byte PreviousPageOffset = 8;
-    private const byte FixedLengthOffset = 14;
-    private const byte NextPageOffset = 16;
-    private const byte SlotCountOffset = 22;
     private const byte ObjectIdOffset = 24;
     private const byte FreeCountOffset = 28;
     private const byte FreeDataOffset = 30;

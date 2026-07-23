@@ -18,7 +18,7 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader, I
 {
     private const short PrimaryFileId = 1;
 
-    private const FileOptions OpenOptions = FileOptions.RandomAccess;
+    private const FileOptions OpenOptions = FileOptions.None;
 
     private string PrimaryFilePath { get; } = path;
 
