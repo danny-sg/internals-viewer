@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
+    <ProjectReference Include="..\..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
   </ItemGroup>
 
     <ItemGroup>

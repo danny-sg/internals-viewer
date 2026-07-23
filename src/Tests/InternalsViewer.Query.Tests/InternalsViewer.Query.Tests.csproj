@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\InternalsViewer.Query\InternalsViewer.Query.csproj" />
+    <ProjectReference Include="..\..\InternalsViewer.Query\InternalsViewer.Query.csproj" />
   </ItemGroup>
 
   <ItemGroup>
