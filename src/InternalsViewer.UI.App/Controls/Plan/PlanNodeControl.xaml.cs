@@ -132,21 +132,30 @@ public sealed partial class PlanNodeControl : UserControl
     private static void OnIsActiveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).UpdateStateVisual();
 
-    private const byte ActiveBackgroundAlpha = 25;
+    private const byte ActiveBackgroundAlpha = 50;
 
     private void UpdateStateVisual()
     {
-        // Selection currently has no visual (the plumbing is kept for later use). Only the time-derived
-        // active state is shown: a background tinted by operator type (e.g. data-access blue).
         if (IsActive && Node is { } node)
         {
             var type = EventColourProvider.GetOperatorColour(node).ToWindowsColor();
 
-            NodeBorder.Background = new SolidColorBrush(Color.FromArgb(ActiveBackgroundAlpha, type.R, type.G, type.B));
+            NodeImageBorder.Background = new SolidColorBrush(Color.FromArgb(ActiveBackgroundAlpha, type.R, type.G, type.B));
         }
         else
         {
-            NodeBorder.Background = null;
+            NodeImageBorder.Background = null;
+        }
+
+        if (IsSelected && Node is { } selectedNode)
+        {
+            var type = EventColourProvider.GetOperatorColour(selectedNode).ToWindowsColor();
+
+            NodeImageBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(255, type.R, type.G, type.B));
+        }
+        else
+        {
+            NodeImageBorder.BorderBrush = null;
         }
     }
 

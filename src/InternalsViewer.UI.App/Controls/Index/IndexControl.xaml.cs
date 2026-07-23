@@ -190,7 +190,6 @@ public sealed partial class IndexControl : IDisposable
 
     private readonly SKPaint _indexPagePaint;
     private readonly SKPaint _linePaint;
-    private readonly SKPaint _shadowPaint;
     private readonly SKPaint _detailTextPaint;
 
     private readonly SKFont _detailFont = new(SKTypeface.Default, 10f);
@@ -198,20 +197,13 @@ public sealed partial class IndexControl : IDisposable
 
     private readonly SKColor _borderColour = SKColors.Gray;
     private readonly SKColor _highlightedBorderColour = SKColors.Green;
-
     private readonly SKColor _lineColour = SKColors.DarkGray;
     private readonly SKColor _miniColour = SKColors.LightGray;
 
-    // Resolved from the colour dependency properties once per paint (so the draw loop doesn't box/unbox
-    // the colour through GetValue per node).
+    private SKColor _selectedBackgroundColour = SKColors.White;
+    private SKColor _singleSelectedColour = SKColors.Navy;
+    private SKColor _rangeSelectedColour = SKColors.Navy;
 
-    private SKColor _selectedBackgroundColour = Microsoft.UI.Colors.White.ToSkColor();
-
-    private SKColor _singleSelectedColour = Microsoft.UI.Colors.Navy.ToSkColor();
-    private SKColor _rangeSelectedColour = Microsoft.UI.Colors.Navy.ToSkColor();
-
-    // Each currently-active page's own span colour, rebuilt once per paint (bounded by the playhead, same
-    // as the allocation map's DrawPageSpans) for an O(1) lookup per node in the draw loop.
     private readonly Dictionary<PageAddress, SKColor> _activeSpanColours = [];
 
     private readonly List<IndexTreeNode> _nodePositions = [];
@@ -228,7 +220,6 @@ public sealed partial class IndexControl : IDisposable
 
     private float NodeY(IndexTreeNode node) => GetNodeY(node.Node.Level, node.Row - 1);
 
-    // Reused for every parent-connector polyline so painting stays allocation-free.
     private readonly SKPoint[] _linePoints = new SKPoint[5];
 
     private const float MinZoom = 0.05f;
@@ -254,20 +245,6 @@ public sealed partial class IndexControl : IDisposable
         IndexCanvas.PointerWheelChanged += IndexCanvas_PointerWheelChanged;
 
         Loaded += IndexControl_OnLoaded;
-
-        _shadowPaint = new SKPaint
-        {
-
-            Style = SKPaintStyle.Fill,
-            Color = new SKColor(0, 0, 0, 70),
-            IsAntialias = true,
-            StrokeWidth = 1
-        };
-
-        float sigmaX = 5;
-        float sigmaY = 5;
-
-        _shadowPaint.ImageFilter = SKImageFilter.CreateBlur(sigmaX, sigmaY);
 
         _indexPagePaint = new SKPaint
         {
@@ -331,7 +308,6 @@ public sealed partial class IndexControl : IDisposable
             control.UpdateScrollbars();
         }
 
-        // Re-fit when the tree changes or fit is (re-)enabled.
         if (e.Property == NodesProperty || (e.Property == IsZoomToFitProperty && control._isZoomToFit))
         {
             control.ApplyZoomToFit();
@@ -344,8 +320,10 @@ public sealed partial class IndexControl : IDisposable
     /// When fit mode is on, sets <see cref="Zoom"/> so the whole tree fits the viewport
     /// </summary>
     /// <remarks>
-    /// Every layout dimension scales linearly with the zoom, so the fitting zoom is the current zoom scaled by the
-    /// smaller of the width/height viewport-to-content ratios. Setting <see cref="Zoom"/> rebuilds and repaints.
+    /// Every layout dimension scales linearly with the zoom, so the fitting zoom is the current zoom scaled by the smaller of the width/
+    /// height viewport-to-content ratios.
+    ///
+    /// Setting <see cref="Zoom"/> rebuilds and repaints.
     /// </remarks>
     private void ApplyZoomToFit()
     {
@@ -1233,7 +1211,6 @@ public sealed partial class IndexControl : IDisposable
     {
         _indexPagePaint.Dispose();
         _linePaint.Dispose();
-        _shadowPaint.Dispose();
         _detailTextPaint.Dispose();
         _detailFont.Dispose();
         _detailBoldFont.Dispose();

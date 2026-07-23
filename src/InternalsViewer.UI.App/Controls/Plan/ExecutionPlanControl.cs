@@ -106,10 +106,6 @@ public sealed class ExecutionPlanControl : Canvas
         DependencyProperty.Register(nameof(HasFlameGraph), typeof(bool), typeof(ExecutionPlanControl),
             new PropertyMetadata(true, OnPlanChanged));
 
-    /// <summary>
-    /// The selected node (from a timeline click or an in-plan click). Drives the selection highlight and
-    /// brings the node into view; independent of the time-derived active set.
-    /// </summary>
     public PlanNode? SelectedNode
     {
         get => (PlanNode?)GetValue(SelectedNodeProperty);
@@ -131,10 +127,6 @@ public sealed class ExecutionPlanControl : Canvas
         }
     }
 
-    /// <summary>
-    /// The operators whose run-time span contains the playhead. Highlighted as "running now"; a parallel
-    /// query lights up several at once.
-    /// </summary>
     public IReadOnlyList<PlanNode>? ActiveNodes
     {
         get => (IReadOnlyList<PlanNode>?)GetValue(ActiveNodesProperty);
@@ -153,11 +145,6 @@ public sealed class ExecutionPlanControl : Canvas
         control.UpdateFlows();
     }
 
-    /// <summary>
-    /// The active operators that have started emitting rows (the rest are still consuming / blocked).
-    /// Determines each flow line's colour and tooltip: emitting lines are vivid in the operator type
-    /// colour and labelled "Streaming"; blocked lines are salmon and labelled "Blocked".
-    /// </summary>
     public IReadOnlyList<PlanNode>? EmittingNodes
     {
         get => (IReadOnlyList<PlanNode>?)GetValue(EmittingNodesProperty);
@@ -200,10 +187,13 @@ public sealed class ExecutionPlanControl : Canvas
     private void Rebuild()
     {
         StopAllFlows();
+        
         Children.Clear();
+
         _connectorByProducer.Clear();
         _arrowByProducer.Clear();
         _secondaryArrowByProducer.Clear();
+        
         _selectedControl = null;
 
         if (Plan is null || Plan.Root.Count == 0)
@@ -255,7 +245,9 @@ public sealed class ExecutionPlanControl : Canvas
         Height = maxY + _nodeHeight + CanvasMargin;
 
         SelectByNode(SelectedNode);
+
         UpdateActiveHighlights();
+        
         UpdateFlows();
     }
 
@@ -295,6 +287,7 @@ public sealed class ExecutionPlanControl : Canvas
                                    LeafCursor leaf)
     {
         var x = CanvasMargin + depth * ColumnPitch;
+
         double y;
 
         if (node.Children.Count == 0)
@@ -338,8 +331,6 @@ public sealed class ExecutionPlanControl : Canvas
         {
             var id = new PlanNodeIdentifier(plan.PlanHandleId, node.NodeId);
 
-            // The operator carries the frames its segment is bounded by; the plan node on its own knows only the shape.
-            // Nothing matched it if it is absent, which is the same as having no segment to draw.
             if (_hierarchy.Operators.FirstOrDefault(o => o.PlanNodeIdentifier == id) is { } operatorEvent)
             {
                 control.IcicleSegments =
@@ -532,11 +523,13 @@ public sealed class ExecutionPlanControl : Canvas
         }
 
         _isPanning = true;
+
         _panOrigin = e.GetCurrentPoint(_scrollViewer).Position;
         _panOriginHorizontalOffset = _scrollViewer.HorizontalOffset;
         _panOriginVerticalOffset = _scrollViewer.VerticalOffset;
 
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeAll);
+
         e.Handled = true;
     }
 
@@ -608,10 +601,6 @@ public sealed class ExecutionPlanControl : Canvas
         return true;
     }
 
-    /// <summary>
-    /// Highlights every node whose operator is active at the playhead (running now), distinct from the
-    /// click selection. A parallel query lights up several at once.
-    /// </summary>
     private void UpdateActiveHighlights()
     {
         var active = ActiveNodes;

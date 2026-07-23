@@ -15,7 +15,6 @@ using InternalsViewer.TransactionLog.LogRecords;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace InternalsViewer.Query;
 
