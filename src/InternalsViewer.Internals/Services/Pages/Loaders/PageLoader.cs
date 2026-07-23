@@ -1,5 +1,4 @@
-﻿using System.Buffers.Binary;
-using System.Threading;
+﻿using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -56,29 +55,7 @@ public sealed class PageLoader : IPageLoader
             PageAddress = pageAddress,
             Data = data,
             PageHeader = header,
-            OffsetTable = LoadOffsetTable(data, header.SlotCount),
             IsMarkEnabled = isMarkEnabled
         };
-    }
-
-    /// <summary>
-    /// Load the offset table with a given slot count from the page data
-    /// </summary>
-    private static ushort[] LoadOffsetTable(byte[] data, int slotCount)
-    {
-        var offsetTable = new ushort[slotCount];
-
-        ReadOnlySpan<byte> span = data;
-
-        var offset = PageData.Size - 2;
-
-        for (var slotIndex = 0; slotIndex < slotCount; slotIndex++)
-        {
-            offsetTable[slotIndex] = BinaryPrimitives.ReadUInt16LittleEndian(span.Slice(offset, 2));
-
-            offset -= 2;
-        }
-
-        return offsetTable;
     }
 }

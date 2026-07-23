@@ -42,13 +42,22 @@
             <StackPanel Padding="10"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Orientation="Horizontal"
+                        Orientation="Vertical"
                         Visibility="{x:Bind ViewModel.IsInitialized,
                                 Mode=OneWay,
                                 Converter={StaticResource BoolToVisibilityConverter},
                                 ConverterParameter=True}">
-                <ProgressRing IsActive="{x:Bind ViewModel.IsInitialized, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}" />
-                <TextBlock Margin="10,0,0,0">Loading...</TextBlock>
+                <TextBlock HorizontalAlignment="Center"
+                           Text="{x:Bind ViewModel.LoadingText, Mode=OneWay}"/>
+                <ProgressBar Width="300"
+                             Margin="0,10,0,0"
+                             IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"
+                             Maximum="{x:Bind ViewModel.ProgressMaximum, Mode=OneWay}"
+                             Value="{x:Bind ViewModel.LoadedPageCount, Mode=OneWay}"/>
+                <TextBlock Margin="0,10,0,0"
+                           HorizontalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}"/>
             </StackPanel>
 
             <index:IndexControl x:Name="IndexControl"

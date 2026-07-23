@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
@@ -66,6 +67,35 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private bool _isInitialized;
 
     [ObservableProperty]
+    private int _loadedPageCount;
+
+    [ObservableProperty]
+    private long _totalPageCount;
+
+    public string ProgressText => TotalPageCount > 0
+        ? $"{LoadedPageCount:N0} / {TotalPageCount:N0} pages"
+        : $"{LoadedPageCount:N0} pages";
+
+    public bool IsProgressIndeterminate => TotalPageCount == 0;
+
+    public double ProgressMaximum => TotalPageCount;
+
+    public string LoadingText => string.IsNullOrEmpty(IndexName)
+        ? "Loading Index..."
+        : $"Loading {IndexName}...";
+
+    partial void OnIndexNameChanged(string value) => OnPropertyChanged(nameof(LoadingText));
+
+    partial void OnLoadedPageCountChanged(int value) => OnPropertyChanged(nameof(ProgressText));
+
+    partial void OnTotalPageCountChanged(long value)
+    {
+        OnPropertyChanged(nameof(ProgressText));
+        OnPropertyChanged(nameof(IsProgressIndeterminate));
+        OnPropertyChanged(nameof(ProgressMaximum));
+    }
+
+    [ObservableProperty]
     private bool _isRecordsLoading;
 
     private const int RecordsSpinnerDelayMs = 100;
@@ -123,6 +153,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     {
         Logger.LogDebug("Refreshing Index Tab");
 
+        LoadedPageCount = 0;
+
+        var progress = new Progress<int>(count => LoadedPageCount = count);
+
         // Worker thread
         await Task.Run(async () =>
             {
@@ -133,7 +167,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
                 Logger.LogDebug("Getting nodes for index from root node: {RootPage}", RootPage);
 
-                var result = await IndexService.GetNodes(Database, RootPage, CancellationToken);
+                var result = await IndexService.GetNodes(Database, RootPage, CancellationToken, progress);
 
                 Logger.LogDebug("{Count} node(s) found", result.Count);
 
@@ -249,6 +283,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     private void SetAllocationUnitDescription(AllocationUnit allocationUnit)
     {
+        TotalPageCount = allocationUnit.UsedPages;
+
         ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
         ObjectId = allocationUnit.ObjectId;
 

@@ -46,6 +46,10 @@
       <Content Remove="Assets\Samples\SampleQueries.sql" />
     </ItemGroup>
     <ItemGroup>
+      <Content Remove="Assets\Instructions\*.md" />
+      <EmbeddedResource Include="Assets\Instructions\*.md" />
+    </ItemGroup>
+    <ItemGroup>
       <!-- Execution plan operator icons are addressed via ms-appx and must be packaged as content. -->
       <Content Include="Controls\Plan\Icons\*.svg">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

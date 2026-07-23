@@ -20,6 +20,8 @@ public sealed class IndexService(ILogger<IndexService> logger,
 {
     private const int MaxParallelPageLoads = 16;
 
+    private const int ProgressReportInterval = 4096;
+
     private ILogger<IndexService> Logger { get; } = logger;
 
     private IPageService PageService { get; } = pageService;
@@ -29,11 +31,24 @@ public sealed class IndexService(ILogger<IndexService> logger,
     /// <summary>
     /// Gets the index nodes for an index, starting from a root node page address
     /// </summary>
-    public async Task<List<IndexNode>> GetNodes(DatabaseSource database, 
+    public async Task<List<IndexNode>> GetNodes(DatabaseSource database,
                                                 PageAddress rootPage,
-                                                CancellationToken cancellationToken)
+                                                CancellationToken cancellationToken,
+                                                IProgress<int>? progress = null)
     {
         var start = Stopwatch.GetTimestamp();
+
+        var loadedPageCount = 0;
+
+        void OnPageLoaded()
+        {
+            var count = Interlocked.Increment(ref loadedPageCount);
+
+            if (count % ProgressReportInterval == 0)
+            {
+                progress?.Report(count);
+            }
+        }
 
         var nodes = new List<IndexNode>();
 
@@ -51,7 +66,7 @@ public sealed class IndexService(ILogger<IndexService> logger,
         while (currentLevel.Count > 0)
         {
             // I/O for the whole level, in parallel
-            var loaded = await LoadLevel(database, currentLevel, cancellationToken);
+            var loaded = await LoadLevel(database, currentLevel, OnPageLoaded, cancellationToken);
 
             // Node construction for the next level, single-threaded and in order
             var nextLevel = new List<IndexNode>();
@@ -83,9 +98,17 @@ public sealed class IndexService(ILogger<IndexService> logger,
                         nextLevel.Add(childNode);
                     }
 
-                    if (!childNode.Parents.Contains(node.PageAddress))
+                    if (childNode.Parent == PageAddress.Empty)
                     {
-                        childNode.Parents.Add(node.PageAddress);
+                        childNode.Parent = node.PageAddress;
+                    }
+                    else if (childNode.Parent != node.PageAddress)
+                    {
+                        Logger.LogDebug("Page {PageAddress} has multiple parents - keeping {Parent}, " +
+                                        "ignoring {Ignored}",
+                                        childNode.PageAddress,
+                                        childNode.Parent,
+                                        node.PageAddress);
                     }
                 }
             }
@@ -93,6 +116,8 @@ public sealed class IndexService(ILogger<IndexService> logger,
             currentLevel = nextLevel;
             level++;
         }
+
+        progress?.Report(loadedPageCount);
 
         Logger.LogInformation("Index loaded in {Duration}", Stopwatch.GetElapsedTime(start));
 
@@ -102,8 +127,9 @@ public sealed class IndexService(ILogger<IndexService> logger,
     /// <summary>
     /// Reads every page on a level in parallel, returning results in the same order as the input
     /// </summary>
-    private async Task<LoadedPage[]> LoadLevel(DatabaseSource database, 
-                                               List<IndexNode> levelNodes, 
+    private async Task<LoadedPage[]> LoadLevel(DatabaseSource database,
+                                               List<IndexNode> levelNodes,
+                                               Action onPageLoaded,
                                                CancellationToken cancellationToken)
     {
         var results = new LoadedPage[levelNodes.Count];
@@ -114,11 +140,15 @@ public sealed class IndexService(ILogger<IndexService> logger,
                                         MaxDegreeOfParallelism = MaxParallelPageLoads,
                                         CancellationToken = cancellationToken
                                     },
-                                    async (i, ct)
-                                        => results[i] = await LoadPage(database,
-                                                                       levelNodes[i].PageAddress,
-                                                                       ct));
-        
+                                    async (i, ct) =>
+                                    {
+                                        results[i] = await LoadPage(database,
+                                                                    levelNodes[i].PageAddress,
+                                                                    ct);
+
+                                        onPageLoaded();
+                                    });
+
         return results;
     }
 

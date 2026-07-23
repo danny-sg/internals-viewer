@@ -9,7 +9,7 @@ public sealed class IndexNode(PageAddress pageAddress)
 
     public PageType PageType { get; set; }
 
-    public List<PageAddress> Parents { get; set; } = new();
+    public PageAddress Parent { get; set; }
 
     public PageAddress NextPage { get; set; }
 

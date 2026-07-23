@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
@@ -6,86 +7,107 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Services.Pages.Parsers;
+using Microsoft.Win32.SafeHandles;
 
 namespace InternalsViewer.Internals.Readers.Pages;
 
 /// <summary>
 /// Page Reader for SQL Server data files
 /// </summary>
-/// <param name="path"></param>
 public sealed class DataFilePageReader(string path) : PageReader, IPageReader, IMultiFilePageReader
 {
     private const short PrimaryFileId = 1;
 
+    private const FileOptions OpenOptions = FileOptions.RandomAccess;
+
     private string PrimaryFilePath { get; } = path;
 
-    private Dictionary<short, string> FilePaths { get; } = new() { [PrimaryFileId] = path };
+    private ConcurrentDictionary<short, OpenDataFile> OpenFiles { get; } = new();
 
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    public ValueTask DisposeAsync()
+    {
+        foreach (var file in OpenFiles.Values)
+        {
+            file.Handle.Dispose();
+        }
+
+        OpenFiles.Clear();
+
+        return ValueTask.CompletedTask;
+    }
 
     /// <summary>
     /// Reads a page from a SQL Server data file
     /// </summary>
     /// <remarks>
-    /// SQL Server data files (MDF/LDF) are stored in 8 KB (8192 bytes) pages, so a page is located in the file at location (Page Id
+    /// SQL Server data files (MDF/NDF) are stored in 8 KB (8192 bytes) pages, so a page is located in the file at location (Page Id
     /// * 8192)
     ///
-    /// The file has to be detached/not attached to SQL Server to be read as it will be locked by the SQL Server
-    /// process.
+    /// The file has to be detached/not attached to SQL Server to be read as it will be locked by the SQL Server process.
     /// </remarks>
-    public async Task<byte[]> Read(string name, PageAddress pageAddress, CancellationToken cancellationToken)
+    public Task<byte[]> Read(string name, PageAddress pageAddress, CancellationToken cancellationToken)
     {
         var data = new byte[PageData.Size];
 
-        await ReadInto(name, pageAddress, data, cancellationToken);
+        ReadInto(name, pageAddress, data, cancellationToken);
 
-        return data;
+        return Task.FromResult(data);
     }
 
-    public async Task ReadInto(string name,
-                               PageAddress pageAddress,
-                               byte[] buffer,
-                               CancellationToken cancellationToken)
+    public Task ReadInto(string name,
+                         PageAddress pageAddress,
+                         byte[] buffer,
+                         CancellationToken cancellationToken)
     {
-        if (!FilePaths.TryGetValue(pageAddress.FileId, out var filePath))
-        {
-            throw new InvalidOperationException(
-                $"No data file registered for File Id {pageAddress.FileId}. Secondary data files are resolved " +
-                $"from the file metadata when the database is loaded.");
-        }
+        var file = GetFile(pageAddress.FileId);
 
         var offset = (long)pageAddress.PageId * PageData.Size;
-
-        await using var file = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
         if (offset < 0 || offset + PageData.Size > file.Length)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(pageAddress),
-                $"Page {pageAddress} (offset {offset}) is outside file '{filePath}' (length {file.Length}).");
+                $"Page {pageAddress} (offset {offset}) is outside file '{file.Path}' (length {file.Length}).");
         }
 
-        file.Seek(offset, SeekOrigin.Begin);
+        ReadExactly(file, offset, buffer.AsSpan(0, PageData.Size));
 
-        await file.ReadExactlyAsync(buffer, 0, PageData.Size, cancellationToken);
+        return Task.CompletedTask;
     }
 
-    public async Task RegisterFiles(IReadOnlyList<DatabaseFile> files, CancellationToken cancellationToken)
+    /// <summary>
+    /// Registers the database files with the reader + creates file handles
+    /// </summary>
+    /// <remarks>
+    /// Databases can have multiple data files, and the page address contains a file id to indicate which file the page is in.
+    ///
+    /// This method registers the files with the reader so that it can resolve the file id to a file path.
+    ///
+    /// A list of DatabaseFile is provided from the primary file metadata, which contains the file id, file name and physical path of the
+    /// file. The reader resolves the file names from this information, checking files that sit alongside the .mdf file.
+    ///
+    /// Handles are created for each file so pages can be read from the relevant file id and high volume loads can be performed without
+    /// having to open/close files for each page read. Handles are returned and disposed when the reader is disposed.
+    /// </remarks>
+    public Task RegisterFiles(IReadOnlyList<DatabaseFile> files, CancellationToken cancellationToken)
     {
         var missingFiles = new List<DatabaseFile>();
 
         foreach (var file in files.Where(f => f.FileType == FileType.Rows && f.FileId != PrimaryFileId))
         {
-            var filePath = await ResolveFilePath(file, cancellationToken);
+            var openFile = ResolveFile(file);
 
-            if (filePath == null)
+            if (openFile == null)
             {
                 missingFiles.Add(file);
 
                 continue;
             }
 
-            FilePaths[file.FileId] = filePath;
+            if (!OpenFiles.TryAdd(file.FileId, openFile))
+            {
+                openFile.Handle.Dispose();
+            }
         }
 
         if (missingFiles.Count > 0)
@@ -97,9 +119,44 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader, I
                 $"database file metadata, falling back to the directory containing '{PrimaryFilePath}'.",
                 missingFiles);
         }
+
+        return Task.CompletedTask;
     }
 
-    private async Task<string?> ResolveFilePath(DatabaseFile file, CancellationToken cancellationToken)
+    private OpenDataFile GetFile(short fileId)
+    {
+        if (OpenFiles.TryGetValue(fileId, out var file))
+        {
+            return file;
+        }
+
+        if (fileId != PrimaryFileId)
+        {
+            throw new InvalidOperationException(
+                $"No data file registered for File Id {fileId}. Secondary data files are resolved " +
+                $"from the file metadata when the database is loaded.");
+        }
+
+        var primary = Open(PrimaryFilePath);
+
+        if (!OpenFiles.TryAdd(PrimaryFileId, primary))
+        {
+            primary.Handle.Dispose();
+
+            return OpenFiles[PrimaryFileId];
+        }
+
+        return primary;
+    }
+
+    private static OpenDataFile Open(string filePath)
+    {
+        var handle = File.OpenHandle(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, OpenOptions);
+
+        return new OpenDataFile(filePath, handle, RandomAccess.GetLength(handle));
+    }
+
+    private OpenDataFile? ResolveFile(DatabaseFile file)
     {
         var primaryDirectory = Path.GetDirectoryName(PrimaryFilePath) ?? string.Empty;
 
@@ -107,21 +164,21 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader, I
 
         foreach (var candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists))
         {
-            if (await IsMatchingDataFile(candidate, file.FileId, cancellationToken))
+            var openFile = Open(candidate);
+
+            if (IsMatchingDataFile(openFile, file.FileId))
             {
-                return candidate;
+                return openFile;
             }
+
+            openFile.Handle.Dispose();
         }
 
         return null;
     }
 
-    private static async Task<bool> IsMatchingDataFile(string filePath,
-                                                       short fileId,
-                                                       CancellationToken cancellationToken)
+    private static bool IsMatchingDataFile(OpenDataFile file, short fileId)
     {
-        await using var file = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-
         if (file.Length < PageData.Size)
         {
             return false;
@@ -129,10 +186,30 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader, I
 
         var data = new byte[PageData.Size];
 
-        await file.ReadExactlyAsync(data, 0, PageData.Size, cancellationToken);
+        ReadExactly(file, 0, data);
 
         var header = PageHeaderParser.Parse(data, false);
 
         return header.PageType == PageType.FileHeader && header.PageAddress == new PageAddress(fileId, 0);
     }
+
+    private static void ReadExactly(OpenDataFile file, long offset, Span<byte> buffer)
+    {
+        var totalRead = 0;
+
+        while (totalRead < buffer.Length)
+        {
+            var read = RandomAccess.Read(file.Handle, buffer[totalRead..], offset + totalRead);
+
+            if (read == 0)
+            {
+                throw new EndOfStreamException(
+                    $"Unexpected end of file '{file.Path}' reading at offset {offset + totalRead}.");
+            }
+
+            totalRead += read;
+        }
+    }
+
+    private sealed record OpenDataFile(string Path, SafeFileHandle Handle, long Length);
 }

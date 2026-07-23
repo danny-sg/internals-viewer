@@ -26,13 +26,16 @@ public abstract class FixedVarRecordLoader
         record.HasVariableLengthColumns = (record.StatusBitsA & 0b100000) != 0;
         record.HasRowVersioning = (record.StatusBitsA & 0b1000000) != 0;
 
-        var tags = new List<string> { record.RecordType.ToString().SplitCamelCase() };
+        if (record.IsMarkEnabled)
+        {
+            var tags = new List<string> { record.RecordType.ToString().SplitCamelCase() };
 
-        tags.AddIf("Has Null Bitmap", record.HasNullBitmap);
-        tags.AddIf("Has Variable Length Columns", record.HasVariableLengthColumns);
-        tags.AddIf("Has Row Versioning", record.HasRowVersioning);
+            tags.AddIf("Has Null Bitmap", record.HasNullBitmap);
+            tags.AddIf("Has Variable Length Columns", record.HasVariableLengthColumns);
+            tags.AddIf("Has Row Versioning", record.HasRowVersioning);
 
-        record.MarkProperty(nameof(FixedVarRecord.StatusBitsA), record.Offset, 1, tags.ToArray());
+            record.MarkProperty(nameof(FixedVarRecord.StatusBitsA), record.Offset, 1, tags.ToArray());
+        }
     }
 
     /// <summary>

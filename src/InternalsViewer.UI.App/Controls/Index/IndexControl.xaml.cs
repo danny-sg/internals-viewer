@@ -505,7 +505,7 @@ public sealed partial class IndexControl : IDisposable
 
         foreach (var node in levelNodes)
         {
-            if (previousNode != null && !previousNode.Parents.SequenceEqual(node.Parents))
+            if (previousNode != null && previousNode.Parent != node.Parent)
             {
                 // Start a new column, leaving a gap of a column as the parent node has changed
                 row = 1;
@@ -699,44 +699,41 @@ public sealed partial class IndexControl : IDisposable
         // cap rather than the join.
         _linePaint.StrokeCap = SKStrokeCap.Round;
 
-        foreach (var parent in node.Parents)
+        if (!_ordinalByAddress.TryGetValue(node.Parent, out var parentOrdinal))
         {
-            if (!_ordinalByAddress.TryGetValue(parent, out var parentOrdinal))
-            {
-                continue;
-            }
-
-            var parentX = nextLevelStartX + GetNodeX(parentOrdinal);
-
-            var y1Line1 = (float)Math.Floor(y + PageHeight / 2);
-
-            var x2Line1 = (float)Math.Floor(x - HorizontalMargin / 2);
-
-            var y2Line2 = (float)Math.Floor(GetNodeY(node.Level - 1, 0) 
-                                            + PageHeight 
-                                            + (VerticalMargin / 4f) 
-                                            - yScrollOffset);
-
-            var x2Line3 = (float)Math.Floor(parentX + (PageWidth / 2));
-
-            var y2Line4 = (float)Math.Floor(GetNodeY(node.Level - 1, 0) + PageHeight - yScrollOffset);
-
-           var lineLeft = Math.Min(x2Line1, x2Line3);
-            var lineRight = Math.Max(x, x2Line3);
-
-            if (lineRight < clip.Left || lineLeft > clip.Right || y1Line1 < clip.Top || y2Line4 > clip.Bottom)
-            {
-                continue;
-            }
-
-            _linePoints[0] = new SKPoint(x, y1Line1);
-            _linePoints[1] = new SKPoint(x2Line1, y1Line1);
-            _linePoints[2] = new SKPoint(x2Line1, y2Line2);
-            _linePoints[3] = new SKPoint(x2Line3, y2Line2);
-            _linePoints[4] = new SKPoint(x2Line3, y2Line4);
-
-            canvas.DrawPoints(SKPointMode.Polygon, _linePoints, _linePaint);
+            return;
         }
+
+        var parentX = nextLevelStartX + GetNodeX(parentOrdinal);
+
+        var y1Line1 = (float)Math.Floor(y + PageHeight / 2);
+
+        var x2Line1 = (float)Math.Floor(x - HorizontalMargin / 2);
+
+        var y2Line2 = (float)Math.Floor(GetNodeY(node.Level - 1, 0)
+                                        + PageHeight
+                                        + (VerticalMargin / 4f)
+                                        - yScrollOffset);
+
+        var x2Line3 = (float)Math.Floor(parentX + (PageWidth / 2));
+
+        var y2Line4 = (float)Math.Floor(GetNodeY(node.Level - 1, 0) + PageHeight - yScrollOffset);
+
+        var lineLeft = Math.Min(x2Line1, x2Line3);
+        var lineRight = Math.Max(x, x2Line3);
+
+        if (lineRight < clip.Left || lineLeft > clip.Right || y1Line1 < clip.Top || y2Line4 > clip.Bottom)
+        {
+            return;
+        }
+
+        _linePoints[0] = new SKPoint(x, y1Line1);
+        _linePoints[1] = new SKPoint(x2Line1, y1Line1);
+        _linePoints[2] = new SKPoint(x2Line1, y2Line2);
+        _linePoints[3] = new SKPoint(x2Line3, y2Line2);
+        _linePoints[4] = new SKPoint(x2Line3, y2Line4);
+
+        canvas.DrawPoints(SKPointMode.Polygon, _linePoints, _linePaint);
     }
 
     private void DrawPage(SKCanvas canvas,

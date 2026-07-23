@@ -7,15 +7,30 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
-    <UserControl.Resources>
 
-    </UserControl.Resources>
-    <controls1:MarkdownTextBlock x:Name="MarkdownTextBlock"
-                                Text="#Test"
-                                UseAutoLinks="True"
-                                UseEmphasisExtras="True"
-                                UseListExtras="True"
-                                UsePipeTables="True"
-                                UseTaskLists="True" />
+    <NavigationView x:Name="TopicsNavigation"
+                    PaneDisplayMode="Top"
+                    IsBackButtonVisible="Collapsed"
+                    IsSettingsVisible="False"
+                    SelectionChanged="TopicsNavigation_SelectionChanged">
+        <NavigationView.MenuItems>
+            <NavigationViewItem Content="Overview"
+                                Tag="Overview"
+                                IsSelected="True" />
+            <NavigationViewItem Content="Choosing Events"
+                                Tag="ChoosingEvents" />
+        </NavigationView.MenuItems>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <controls1:MarkdownTextBlock x:Name="MarkdownTextBlock"
+                                         Margin="16,8,16,16"
+                                         UseAutoLinks="True"
+                                         UseEmphasisExtras="True"
+                                         UseListExtras="True"
+                                         UsePipeTables="True"
+                                         UseTaskLists="True"
+                                         OnLinkClicked="MarkdownTextBlock_OnLinkClicked" />
+        </ScrollViewer>
+    </NavigationView>
 
 </UserControl>

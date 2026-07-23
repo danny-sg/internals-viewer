@@ -13,7 +13,6 @@ public abstract class PageParser
             Database = pageData.Database,
             Data = pageData.Data,
             PageAddress = pageData.PageAddress,
-            OffsetTable = pageData.OffsetTable,
             IsMarkEnabled = pageData.IsMarkEnabled
         };
 

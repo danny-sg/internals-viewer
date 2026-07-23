@@ -32,7 +32,7 @@ public sealed class DataFilePageReaderTests : IDisposable
 
         var secondaryPath = CreateDataFile(@"Recorded\Test_2.ndf", 2, 0x22);
 
-        var reader = new DataFilePageReader(primaryPath);
+        await using var reader = new DataFilePageReader(primaryPath);
 
         await reader.RegisterFiles([CreateRowsFile(2, secondaryPath)], CancellationToken.None);
 
@@ -50,7 +50,7 @@ public sealed class DataFilePageReaderTests : IDisposable
 
         var recordedPath = Path.Combine(testDirectory, "Missing", "Test_2.ndf");
 
-        var reader = new DataFilePageReader(primaryPath);
+        await using var reader = new DataFilePageReader(primaryPath);
 
         await reader.RegisterFiles([CreateRowsFile(2, recordedPath)], CancellationToken.None);
 
@@ -66,7 +66,7 @@ public sealed class DataFilePageReaderTests : IDisposable
 
         var recordedPath = Path.Combine(testDirectory, "Missing", "Test_2.ndf");
 
-        var reader = new DataFilePageReader(primaryPath);
+        await using var reader = new DataFilePageReader(primaryPath);
 
         var exception = await Assert.ThrowsAsync<MissingDataFileException>(
             () => reader.RegisterFiles([CreateRowsFile(2, recordedPath)], CancellationToken.None));
@@ -85,7 +85,7 @@ public sealed class DataFilePageReaderTests : IDisposable
 
         var recordedPath = Path.Combine(testDirectory, "Missing", "Test_2.ndf");
 
-        var reader = new DataFilePageReader(primaryPath);
+        await using var reader = new DataFilePageReader(primaryPath);
 
         await Assert.ThrowsAsync<MissingDataFileException>(
             () => reader.RegisterFiles([CreateRowsFile(2, recordedPath)], CancellationToken.None));
@@ -103,7 +103,7 @@ public sealed class DataFilePageReaderTests : IDisposable
             PhysicalName = Path.Combine(testDirectory, "Missing", "Test_log.ldf")
         };
 
-        var reader = new DataFilePageReader(primaryPath);
+        await using var reader = new DataFilePageReader(primaryPath);
 
         await reader.RegisterFiles([logFile], CancellationToken.None);
     }
@@ -113,7 +113,7 @@ public sealed class DataFilePageReaderTests : IDisposable
     {
         var primaryPath = CreateDataFile("Test.mdf", 1);
 
-        var reader = new DataFilePageReader(primaryPath);
+        await using var reader = new DataFilePageReader(primaryPath);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => reader.Read(string.Empty, new PageAddress(2, 0), CancellationToken.None));

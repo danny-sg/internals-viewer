@@ -27,12 +27,19 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     {
         var data = page.Data;
 
-        using var scope = Logger.BeginScope("Data Record Loader: {FileId}{PageId}:{Offset}",
-                                            page.PageAddress.FileId,
-                                            page.PageAddress.PageId,
-                                            slotOffset);
+        var isTraceEnabled = Logger.IsEnabled(LogLevel.Trace);
 
-        Logger.LogTrace("Table structure: {Structure}", structure);
+        using var scope = isTraceEnabled
+            ? Logger.BeginScope("Data Record Loader: {FileId}{PageId}:{Offset}",
+                                page.PageAddress.FileId,
+                                page.PageAddress.PageId,
+                                slotOffset)
+            : null;
+
+        if (isTraceEnabled)
+        {
+            Logger.LogTrace("Table structure: {Structure}", structure);
+        }
 
         var record = new DataRecord
         {
@@ -205,9 +212,9 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     /// <summary>
     /// Loads the column values.
     /// </summary>
-    private void LoadValues(DataRecord dataRecord, TableStructure structure, byte[] pageData)
+    private static void LoadValues(DataRecord dataRecord, TableStructure structure, byte[] pageData)
     {
-        var columnValues = new List<FixedVarRecordField>();
+        dataRecord.Fields.EnsureCapacity(dataRecord.Fields.Count + structure.Columns.Count);
 
         var nullBitmapOffset = 0;
 
@@ -242,11 +249,9 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
                     field = LoadNullField(column, dataRecord.IsMarkEnabled);
                 }
 
-                columnValues.Add(field);
+                dataRecord.Fields.Add(field);
             }
         }
-
-        dataRecord.Fields.AddRange(columnValues);
     }
 
     private static FixedVarRecordField LoadNullField(ColumnStructure column, bool isMarkEnabled)
