@@ -161,6 +161,8 @@ public sealed partial class TabGroupView : UserControl
         if (Tabs.SelectedItem is TabViewItem { Tag: DocumentViewModel document })
         {
             Group.SelectedDocument = document;
+
+            Dock?.NotifySelectionChanged();
         }
     }
 

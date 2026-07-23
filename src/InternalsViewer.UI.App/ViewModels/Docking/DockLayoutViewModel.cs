@@ -19,12 +19,16 @@ public sealed partial class DockLayoutViewModel : ObservableObject
     /// <summary>Raised after the tree's shape changes (split, move between groups, collapse).</summary>
     public event EventHandler? LayoutChanged;
 
+    public event EventHandler? SelectionChanged;
+
     public DockLayoutViewModel(LayoutNode root)
     {
         this.root = root;
     }
 
     private void OnLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
+
+    public void NotifySelectionChanged() => SelectionChanged?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Replaces the entire layout tree (e.g. when restoring a persisted layout) and rebuilds.</summary>
     public void SetRoot(LayoutNode root)
@@ -82,6 +86,8 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
         group.Documents.Add(document);
         group.SelectedDocument = document;
+
+        OnLayoutChanged();
     }
 
     /// <summary>Selects <paramref name="document"/> in whichever group currently hosts it.</summary>

@@ -31,6 +31,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     /// <summary>Raised after a change that should be persisted (a tab shown/closed, the dock rearranged, timeline toggled)</summary>
     public event Action? Changed;
 
+    public event Action? SelectionChanged;
+
     public DockLayoutViewModel Dock { get; }
 
     /// <param name="content">
@@ -74,6 +76,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Dock = new DockLayoutViewModel(new TabGroupNode(_documentsByKey[SqlKey]));
 
         Dock.LayoutChanged += OnDockLayoutChanged;
+        Dock.SelectionChanged += OnDockSelectionChanged;
     }
 
     [ObservableProperty]
@@ -229,9 +232,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Changed?.Invoke();
     }
 
+    private void OnDockSelectionChanged(object? sender, EventArgs e) => SelectionChanged?.Invoke();
+
     public void Dispose()
     {
         Dock.LayoutChanged -= OnDockLayoutChanged;
+        Dock.SelectionChanged -= OnDockSelectionChanged;
 
         foreach (var document in _documentsByKey.Values)
         {

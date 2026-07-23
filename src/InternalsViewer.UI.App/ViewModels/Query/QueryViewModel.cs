@@ -212,10 +212,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private bool _isRestoringLayout;
     private bool _layoutRestored;
+    private bool _layoutTouched;
     private bool _saveScheduled;
 
     private void OnLayoutChanged()
     {
+        if (!_isRestoringLayout)
+        {
+            _layoutTouched = true;
+        }
+
         PruneClosedIndexes();
 
         PruneClosedPages();
@@ -272,7 +278,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         var dto = await _settingsService.ReadSettingAsync<QueryLayoutState>(LayoutSettingKey);
 
-        if (dto is null)
+        if (dto is null || _layoutTouched)
         {
             return;
         }
@@ -823,6 +829,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Layout = new QueryLayoutViewModel(this);
 
         Layout.Changed += OnLayoutChanged;
+        Layout.SelectionChanged += ScheduleSaveLayout;
 
         DispatcherQueue.TryEnqueue(async () =>
         {
@@ -1136,6 +1143,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         QueryOptions.FilterChanged -= RefreshFilteredEvents;
         QueryOptions.Changed -= ScheduleSaveLayout;
         Layout.Changed -= OnLayoutChanged;
+        Layout.SelectionChanged -= ScheduleSaveLayout;
 
         Events = [];
         FilteredEvents = [];
