@@ -3,15 +3,12 @@ layout: home
 
 hero:
   name: "Internals Viewer"
-  text: "Tutorials and documentation"
-  # tagline: My great project tagline
+  text: "User Guide and Tutorials"
   actions:
     - theme: brand
-      text: Getting started
-      link: /docs/introduction/getting-started
+      text: User guide
+      link: /docs/user-guide/getting-started
     - theme: alt
       text: Tutorial
       link: /docs/tutorial/0-introduction
-
 ---
-

@@ -51,7 +51,7 @@ The base tables have fixed, well-known object and index ids, and an allocation u
 
 Together these answer every question the rest of the application asks: what objects exist, what their names are, which columns they have and at what offsets in the record, what indexes exist, and where everything starts.
 
-There is circularity here: the metadata that describes how to decode records is itself stored as records, which have to be decoded to read it. The bootstrap works because the base tables' own structures are fixed and known ahead of time. As mentioned in [Background](/docs/introduction/background.md) these base tables are some of the most ancient parts of the database. If anything changes in these tables it will be linked to very core functionality changes in the engine.
+There is circularity here: the metadata that describes how to decode records is itself stored as records, which have to be decoded to read it. The bootstrap works because the base tables' own structures are fixed and known ahead of time. As mentioned in [Background](/docs/user-guide/background.md), these base tables are some of the most ancient parts of the database. If anything changes in these tables it will be linked to very core functionality changes in the engine.
 
 ::: details Verifying with SQL
 The equivalent of the first step can be seen on a live database (the undocumented `sys.fn_PhysLocFormatter` formats the binary page addresses):

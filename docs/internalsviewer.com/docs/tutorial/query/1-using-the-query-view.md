@@ -10,6 +10,7 @@ This section of the tutorial covers:
 - [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) - the two fundamental access patterns compared
 - [Lookups](/docs/tutorial/query/5-lookups) - key lookups, covering indexes, and RID lookups
 - [Joins](/docs/tutorial/query/6-joins) - the three physical join operators and their access patterns
+- [Log Records](/docs/tutorial/query/7-log-records) - tracing a delete down to the byte level
 
 It uses the `dbo.ClusteredTable` table and `IX_ClusteredTable_TextField` index created in Parts 2 and 3.
 
@@ -32,28 +33,18 @@ WHERE  TextField LIKE 'This is row 123%'
 
 Internals Viewer runs the query with a trace session and captures what the engine did - physical page reads, locks acquired and released, waits, page splits, the execution plan, and more. When the query completes the captured activity is loaded into the timeline at the bottom.
 
-Two toolbar options control how visible the storage engine activity is:
-
-- **Clear Buffer Pool** - SQL Server caches pages in memory (the buffer pool), and a cached page produces no physical read. Clearing the buffer pool first means every page the query touches has to be read from disk, so the reads show up in the trace. This runs `DBCC DROPCLEANBUFFERS` - don't do this on a server anyone else is using!
-- **Disable Read-Ahead** - when scanning, SQL Server normally reads large chunks of pages ahead of the scan. Disabling read-ahead makes the engine read pages individually, which is slower but much easier to follow.
+**Clear Buffer Pool** and **Disable Read-Ahead** on the editor's command bar make this activity more visible - see [SQL Editor](/docs/user-guide/query/Editor) for what they do.
 
 > [!NOTE]
 > Data modification queries (INSERT / UPDATE / DELETE) are run inside a transaction that is rolled back after the trace is captured, so you can experiment without permanently changing the data.
 
 ## The timeline
 
-The timeline at the bottom shows the captured activity against time, in lanes:
-
-- **Plan** - the execution plan operators, one bar per operator showing when it was active
-- **Read** - physical page reads
-- **Lock** - locks acquired and released
-- **Wait** - waits, where the query had to stop and wait for a resource
+The timeline at the bottom shows the captured activity against time, replayed with playback controls - play, step, speed, and a draggable playhead. See [Timeline](/docs/user-guide/query/Timeline) for the full set of bands and how to work with it.
 
 ![Query timeline](/docs/tutorial/images/screenshots/Query_timeline_cropped.png)
 
-The playback controls replay the query like a recording - play, step forward, step back, and a speed control. The red cursor marks the current position, and you can drag it to scrub through the trace.
-
-Zoom in on the Read lane - each tick is a single 8 KB page being read from disk. For our indexed query there should only be a handful of reads: the root-to-leaf seek we walked manually in Part 3. Now try a query that can't use the index:
+Zoom in on the Read band - each tick is a single 8 KB page being read from disk. For our indexed query there should only be a handful of reads: the root-to-leaf seek we walked manually in Part 3. Now try a query that can't use the index:
 
 ```SQL
 SELECT Id

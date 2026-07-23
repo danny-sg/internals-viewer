@@ -11,11 +11,11 @@ This part uses the `dbo.HeapTable` and `dbo.ClusteredTable` tables created in [P
 
 ## Step 1 - B-Tree indexes
 
-SQL Server indexes are B-Trees (balanced trees). Every index has a single _root_ page at the top and one or more _leaf_ pages at the bottom, with _intermediate_ levels in between if the index is big enough.
+SQL Server [indexes](https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide) are B-Trees (balanced trees). Every index has a single _root_ page at the top and one or more _leaf_ pages at the bottom, with _intermediate_ levels in between if the index is big enough.
 
 - In a **clustered index** the leaf level is the table data itself, in key order. The table only exists once - the clustered index _is_ the table.
 - In a **non-clustered index** the leaf level contains the index key columns plus a pointer back to the row - the clustering key for a table with a clustered index, or a RID (Row Identifier) for a heap.
-- A **heap** has no index structure at all - just data pages tracked by the IAM chain.
+- A [**heap**](https://learn.microsoft.com/en-us/sql/relational-databases/indexes/heaps-tables-without-clustered-indexes) has no index structure at all - just data pages tracked by the IAM chain.
 
 Pages above the leaf level are Index pages. Each record on an index page contains a key value and a _down page pointer_ to the page at the level below where that key range starts. A seek starts at the root and follows down page pointers until it reaches the leaf.
 

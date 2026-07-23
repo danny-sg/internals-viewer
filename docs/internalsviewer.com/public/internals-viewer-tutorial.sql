@@ -348,6 +348,16 @@ FROM   dbo.HeapTable h
          ON c.Id = h.NumberField
 GO
 
+-- [Log Records]
+--
+-- Enable Trace in the SQL Editor, then run this delete. Open the
+-- affected pages from the timeline (index, heap, and the PFS page
+-- covering them) to see the LOP_DELETE_ROWS/MARK_AS_GHOST,
+-- LOP_DELETE_ROWS/HEAP, and LOP_SET_BITS/PFS log operations.
+
+DELETE FROM dbo.HeapTable WHERE NumberField = 100
+GO
+
 -- ================================================================
 -- Part 5 - LOB data
 -- ================================================================

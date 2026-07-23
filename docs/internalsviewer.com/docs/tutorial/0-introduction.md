@@ -27,12 +27,13 @@ This tutorial will cover:
   - [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) - the two access patterns on the Index view
   - [Lookups](/docs/tutorial/query/5-lookups) - key lookups, covering indexes, and RID lookups
   - [Joins](/docs/tutorial/query/6-joins) - Nested Loops, Merge, and Hash compared
+  - [Log Records](/docs/tutorial/query/7-log-records) - tracing a delete down to the byte level
 
 - [Part 5 - LOB data](/docs/tutorial/5-lob-data)
   - How `VARCHAR(MAX)` values are stored - in row, off page, and split
   - LOB pointers, roots, and data chunks
 
-To follow along you'll need a SQL Server instance where you can create a new database, and permission to connect with the `sysadmin` role - see [Permissions](/docs/introduction/permissions).
+To follow along you'll need a SQL Server instance where you can create a new database, and permission to connect with the `sysadmin` role - see [Permissions](/docs/user-guide/permissions).
 
 All of the SQL used in the tutorial is available as a single script: <a href="/internals-viewer/internals-viewer-tutorial.sql" download="internals-viewer-tutorial.sql">internals-viewer-tutorial.sql</a>
 

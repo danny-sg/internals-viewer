@@ -1,6 +1,6 @@
 # Joins
 
-SQL Server has three physical join operators - **Nested Loops**, **Merge Join**, and **Hash Match** - and they drive the storage engine in completely different ways. On this page we'll trace the same logical join hinted three ways and compare their access patterns side by side:
+SQL Server has three [physical join operators](https://learn.microsoft.com/en-us/sql/relational-databases/performance/joins) - **Nested Loops**, **Merge Join**, and **Hash Match** - and they drive the storage engine in completely different ways. On this page we'll trace the same logical join hinted three ways and compare their access patterns side by side:
 
 - Loop join - a seek per row
 - Merge join - two sorted streams zipped together
@@ -86,7 +86,7 @@ Hash Match reads the entire smaller input (the heap) first and builds a hash tab
 
 What to watch:
 
-- The two phases are visible in the Plan lane: during the **build** phase the heap scan runs while the Hash Match bar sits in its dimmed consuming state and nothing flows to the SELECT; then the **probe** phase starts and the probe input's scan streams through
+- The two phases are visible in the Plan lane. During the **build** phase the heap scan runs while the Hash Match bar sits in its dimmed consuming state and nothing flows to the SELECT. Then the **probe** phase starts and the probe input's scan streams through
 - The Read lane shows the same story - a short burst of reads (the heap), a pause, then the long steady scan of the probe input
 - Unlike the other two joins there are no seeks at all - both inputs are consumed by scans, and the matching happens in memory
 
@@ -104,4 +104,4 @@ What to watch:
 
 Finally, remove the hint and trace the query once more - the plan shows which strategy the optimizer picks when left to its own devices, and by now the timeline will tell you why.
 
-Next: [Part 5 - LOB data](/docs/tutorial/5-lob-data)
+Next: [Log Records](/docs/tutorial/query/7-log-records)

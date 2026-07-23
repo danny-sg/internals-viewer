@@ -31,17 +31,8 @@ The header bar shows which object the page belongs to - the table, the index nam
 > [!TIP]
 > Clicking a page address link in the Page Viewer opens the page in the same tab. **Shift + click** opens it in a separate tab instead - useful for keeping the current page open while following a pointer, e.g. comparing the two ends of a `Next Page` link.
 
-::: tip Finding the page for a row
-To go from a row to its page, the (undocumented) `%%physloc%%` virtual column returns the row's physical location, and `sys.fn_PhysLocFormatter` formats it as `(File Id:Page Id:Slot Id)`:
-
-```SQL
-SELECT sys.fn_PhysLocFormatter(%%physloc%%) AS RowLocation
-      ,*
-FROM   dbo.HeapTable
-```
-
-Paste the address into the page address box to open the page, and the Slot Id picks out the row's record.
-:::
+> [!TIP]
+> To find the page a specific row is stored on, the `%%physloc%%` virtual column gives a row's physical address - see [Finding the page for a row](/docs/user-guide/page-viewer#opening-pages) in the user guide.
 
 ## Step 2 - The page header
 

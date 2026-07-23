@@ -60,8 +60,8 @@ That is what connects the views: an operator in the Execution Plan pane, its act
 
 The operators are also classified by _how_ they process rows, which is what the Plan lane and Execution Plan animate during replay:
 
-- **Streaming operators** (scans, seeks, nested loops, compute scalar...) emit rows as they receive them - their bar is active from their start.
-- **Blocking operators** (hash match, sort...) must consume their input before they can produce anything. For these the timeline works out when rows first flowed *out* of the operator; the span before that is the consume phase, drawn dimmed. A hash join is broken into its **build** phase (reading the build input into the hash table) and **probe** phase (streaming the probe input through it).
+- **Streaming operators** (scans, seeks, nested loops, compute scalar, etc.) emit rows as they receive them - their bar is active from their start.
+- **Blocking operators** (hash match, sort, etc.) must consume their input before they can produce anything. For these the timeline works out when rows first flowed *out* of the operator, and the span before that is the consume phase, drawn dimmed. A hash join is broken into its **build** phase (reading the build input into the hash table) and **probe** phase (streaming the probe input through it).
 
 The phases propagate up the tree: a streaming operator can't emit rows before its child does, so it inherits its child's emit time - a blocking operator anywhere below delays the whole chain above it. This is why, replaying a hash join, nothing streams to the `SELECT` until the build phase completes, and why a sort at the bottom of a plan pushes every bar above it into its dimmed waiting state.
 
@@ -75,7 +75,7 @@ The `package0.callstack` action doesn't produce function names - each raw frame 
 
 2. **Resolve** - the RVA is mapped to a function name against the cached PDB using the Debug Interface Access (DIA) API, giving the `module!Class::Method` symbol and the offset into the function. DIA normally comes with Visual Studio, but its redistributable `msdia140.dll` ships with Internals Viewer and is accessed registration-free through a small C++ bridge (`InternalsViewer.Query.DiaBridge`) - so there are no dependencies to install and no COM registration step.
 
-3. **Classify** - the resolved symbols are classified by a mapping dictionary into the **Module** badge (Storage Engine, Query Processor, SQL OS, SQL Server Host...) and the **Category** badge (Index Access, Row Access, Page Access, Buffer Manager, Buffer Pool, Latching, Lock Manager...) shown in the Call Stack pane. Frames belonging to infrastructure - Extended Events publishing, scheduling, thread management - are flagged so the frames doing the actual work stand out.
+3. **Classify** - the resolved symbols are classified by a mapping dictionary into the **Module** badge (Storage Engine, Query Processor, SQL OS, SQL Server Host, etc.) and the **Category** badge (Index Access, Row Access, Page Access, Buffer Manager, Buffer Pool, Latching, Lock Manager, etc.) shown in the Call Stack pane. Frames belonging to infrastructure - Extended Events publishing, scheduling, thread management - are flagged so the frames doing the actual work stand out.
 
 ## Data modifications
 

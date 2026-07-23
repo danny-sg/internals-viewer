@@ -19,18 +19,46 @@ export default defineConfig({
 
     sidebar: [
       {
-        text: "Introduction",
+        text: "User Guide",
         items: [
           {
             text: "Getting Started",
-            link: "docs/introduction/getting-started",
+            link: "docs/user-guide/getting-started",
           },
-          { text: "Installation", link: "docs/introduction/installation" },
-          { text: "Database", link: "docs/introduction/database-view" },
-          { text: "Page Viewer", link: "docs/introduction/page-viewer" },
-          { text: "Index Viewer", link: "docs/introduction/index-viewer" },
-          { text: "Query", link: "docs/introduction/query" },
-          { text: "Background", link: "docs/introduction/background" },
+          { text: "Installation", link: "docs/user-guide/installation" },
+          { text: "Permissions", link: "docs/user-guide/permissions" },
+          { text: "Allocations", link: "docs/user-guide/allocations" },
+          { text: "Page Viewer", link: "docs/user-guide/page-viewer" },
+          { text: "Index View", link: "docs/user-guide/index-view" },
+          {
+            text: "Query",
+            collapsed: false,
+            items: [
+              { text: "Overview", link: "docs/user-guide/query" },
+              { text: "Timeline", link: "docs/user-guide/query/Timeline" },
+              { text: "Events", link: "docs/user-guide/query/Events" },
+              { text: "Reads", link: "docs/user-guide/query/Reads" },
+              { text: "Locks", link: "docs/user-guide/query/Locks" },
+              { text: "Latches", link: "docs/user-guide/query/Latches" },
+              { text: "Waits", link: "docs/user-guide/query/Waits" },
+              {
+                text: "Allocations",
+                link: "docs/user-guide/query/Allocations",
+              },
+              { text: "Call Stack", link: "docs/user-guide/query/CallStack" },
+              {
+                text: "Execution Plan",
+                link: "docs/user-guide/query/ExecutionPlan",
+              },
+              { text: "SQL Editor", link: "docs/user-guide/query/Editor" },
+              {
+                text: "Log Records",
+                link: "docs/user-guide/query/LogRecords",
+              },
+            ],
+          },
+          { text: "Settings", link: "docs/user-guide/settings" },
+          { text: "Background", link: "docs/user-guide/background" },
         ],
       },
       {
@@ -68,6 +96,10 @@ export default defineConfig({
                 link: "docs/tutorial/query/5-lookups",
               },
               { text: "Joins", link: "docs/tutorial/query/6-joins" },
+              {
+                text: "Log Records",
+                link: "docs/tutorial/query/7-log-records",
+              },
             ],
           },
           { text: "LOB data", link: "docs/tutorial/5-lob-data" },
@@ -97,6 +129,7 @@ export default defineConfig({
           { text: "Data Records", link: "docs/reference/data-records" },
           { text: "Index Records", link: "docs/reference/index-records" },
           { text: "Compression", link: "docs/reference/compression" },
+          { text: "Log Appliers", link: "docs/reference/log-appliers" },
           { text: "Glossary", link: "docs/reference/glossary" },
           { text: "Resources", link: "docs/reference/resources" },
         ],

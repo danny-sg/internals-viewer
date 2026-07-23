@@ -71,12 +71,12 @@ This shows an extent (8 pages) has been allocated to the table:
 
 Each page is 8 KB (8192 bytes), so this extent covers 64 KB.
 
-SQL Server used to begin allocations for an object with up to eight single pages from mixed extents. Since SQL Server 2016 the `MIXED_PAGE_ALLOCATION` database option is off by default, meaning single page allocations are not used and extents are _uniform_, i.e. all eight pages belong to the same object.
+SQL Server used to begin allocations for an object with up to eight single pages from [mixed extents](https://learn.microsoft.com/en-us/sql/relational-databases/pages-and-extents-architecture-guide#extents). Since SQL Server 2016 the `MIXED_PAGE_ALLOCATION` database option is off by default, meaning single page allocations are not used and extents are _uniform_, i.e. all eight pages belong to the same object.
 
 > [!TIP]
 > The allocation map can be zoomed in and out with **Ctrl + mouse wheel**.
 
-If you toggle the Tooltip button and put the cursor over the extent it will tell you the Page and Extent number and the allocated object
+If you toggle the Tooltip button and put the cursor over the extent it will tell you the Page and Extent number and the allocated object.
 
 ![01 tooltip](/docs/tutorial/images/01-tooltip.png)
 

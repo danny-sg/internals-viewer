@@ -8,7 +8,7 @@ A set of pages belonging to one object, of one type of data. A table or index ha
 
 ### Anchor Record {#anchor-record}
 
-Part of the [Compression Info](/docs/reference/compression) structure on a PAGE compressed page. Holds a per-column anchor value; records on the page store only the difference from the anchor (column prefix compression).
+Part of the [Compression Info](/docs/reference/compression) structure on a PAGE compressed page. Holds a per-column anchor value. Records on the page store only the difference from the anchor (column prefix compression).
 
 ### B-Tree {#b-tree}
 
@@ -52,7 +52,7 @@ The page address stored in an index record above the leaf level, pointing to the
 
 ### Extent {#extent}
 
-A group of eight contiguous pages (64 KB), the unit SQL Server uses to manage allocations. A _uniform_ extent belongs entirely to one object; a _mixed_ extent can have pages from different objects (off by default since SQL Server 2016).
+A group of eight contiguous pages (64 KB), the unit SQL Server uses to manage allocations. A _uniform_ extent belongs entirely to one object, while a _mixed_ extent can have pages from different objects (off by default since SQL Server 2016).
 
 ### Forwarding Stub / Forwarded Record {#forwarding-stub}
 
@@ -64,23 +64,23 @@ Allocation page tracking which extents in a file are allocated, one bit per exte
 
 ### Ghost Record {#ghost-record}
 
-A record that has been logically deleted but not yet physically removed. The delete marks the record as a ghost; a background ghost cleanup task removes it later. The page header's Ghost Record Count tracks them.
+A record that has been logically deleted but not yet physically removed. The delete marks the record as a ghost, and a background ghost cleanup task removes it later. The page header's Ghost Record Count tracks them.
 
 ### Heap {#heap}
 
-A table without a clustered index. Heap pages are not linked together and have no order; the only way to find them is the [IAM chain](#iam). Rows in a heap are addressed by [RID](#rid).
+A table without a clustered index. Heap pages are not linked together and have no order - the only way to find them is the [IAM chain](#iam). Rows in a heap are addressed by [RID](#rid).
 
 ### IAM (Index Allocation Map) {#iam}
 
-Allocation page tracking which extents belong to a specific [allocation unit](#allocation-unit), one bit per extent. An IAM page covers about 4 GB of one file; further ranges or files chain additional IAM pages together via the page header - the _IAM chain_. Internals Viewer's allocation map is a render of every object's IAM chain.
+Allocation page tracking which extents belong to a specific [allocation unit](#allocation-unit), one bit per extent. An IAM page covers about 4 GB of one file. Further ranges or files chain additional IAM pages together via the page header - the _IAM chain_. Internals Viewer's allocation map is a render of every object's IAM chain.
 
 ### Index Level {#index-level}
 
-A page's level in the [B-Tree](#b-tree), stored in the page header. Level 0 is the leaf; the root has the highest level.
+A page's level in the [B-Tree](#b-tree), stored in the page header. Level 0 is the leaf, and the root has the highest level.
 
 ### Leaf {#leaf}
 
-The bottom level of an index. For a clustered index the leaf pages are the data pages; for a non-clustered index they contain the index keys plus a pointer to the row (clustering key or RID).
+The bottom level of an index. For a clustered index the leaf pages are the data pages. For a non-clustered index they contain the index keys plus a pointer to the row (clustering key or RID).
 
 ### LOB (Large Object) {#lob}
 
@@ -96,7 +96,7 @@ The unique, ever-increasing identifier of a transaction log record. Every page h
 
 ### Mixed Extent {#mixed-extent}
 
-An extent whose pages can belong to different objects. Used for first allocations in older versions of SQL Server; off by default since SQL Server 2016 (`MIXED_PAGE_ALLOCATION`).
+An extent whose pages can belong to different objects. Used for first allocations in older versions of SQL Server, and off by default since SQL Server 2016 (`MIXED_PAGE_ALLOCATION`).
 
 ### Non-Clustered Index {#non-clustered-index}
 
@@ -120,7 +120,7 @@ The location of a page, written as `(File Id:Page Id)`, e.g. `(1:704)`. The phys
 
 ### PFS (Page Free Space) {#pfs}
 
-Allocation page tracking the status of every page: whether it is allocated, how full it is, and whether it is an IAM page or has ghost records. One byte per page, so a PFS page covers 8088 pages; the first is `(1:1)` and they repeat at that interval.
+Allocation page tracking the status of every page: whether it is allocated, how full it is, and whether it is an IAM page or has ghost records. One byte per page, so a PFS page covers 8088 pages. The first is `(1:1)` and they repeat at that interval.
 
 ### Read-Ahead {#read-ahead}
 
@@ -128,7 +128,7 @@ The storage engine's optimisation of reading pages ahead of a scan in large chun
 
 ### RID (Row Identifier) {#rid}
 
-The physical address of a row in a heap, in `(File Id:Page Id:Slot Id)` format. Used by non-clustered indexes on heaps; a RID lookup goes straight to the page and slot.
+The physical address of a row in a heap, in `(File Id:Page Id:Slot Id)` format. Used by non-clustered indexes on heaps - a RID lookup goes straight to the page and slot.
 
 ### Root Page {#root-page}
 
@@ -140,15 +140,15 @@ Allocation page tracking mixed extents with at least one free page, one bit per 
 
 ### Slot {#slot}
 
-A record's position on a page. The _slot offset array_ at the end of the page holds a two byte offset per record; the array defines the logical (key) order of the records regardless of their physical position on the page.
+A record's position on a page. The _slot offset array_ at the end of the page holds a two byte offset per record. The array defines the logical (key) order of the records regardless of their physical position on the page.
 
 ### Sparse Column {#sparse-column}
 
-A column declared `SPARSE`, optimised for mostly-null data. Null sparse columns take no space at all; non-null values are stored in a [sparse vector](/docs/reference/data-records#sparse-vector) at the end of the record.
+A column declared `SPARSE`, optimised for mostly-null data. Null sparse columns take no space at all, and non-null values are stored in a [sparse vector](/docs/reference/data-records#sparse-vector) at the end of the record.
 
 ### Torn Bits {#torn-bits}
 
-Page header field used by page verification. With `TORN_PAGE_DETECTION` it holds a bit per 512 byte sector to detect partial writes; with the default `CHECKSUM` option it holds the page checksum.
+Page header field used by page verification. With `TORN_PAGE_DETECTION` it holds a bit per 512 byte sector to detect partial writes. With the default `CHECKSUM` option it holds the page checksum.
 
 ### Uniform Extent {#uniform-extent}
 

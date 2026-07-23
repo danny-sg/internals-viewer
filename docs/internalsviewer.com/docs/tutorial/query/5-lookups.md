@@ -61,7 +61,7 @@ WHERE  TextField = 'This is row 54321'
 
 The Key Lookup disappears. `TextField` is the index key and `Id` is the clustering key carried in every leaf record, so the leaf record contains everything the query needs - the index _covers_ the query and the clustered index is never touched. The whole query is a single root-to-leaf path down the smaller tree.
 
-This is the point of `INCLUDE` columns: `CREATE INDEX ... ON dbo.ClusteredTable (TextField) INCLUDE (CreatedDate)` stores `CreatedDate` in the leaf records too, making the index cover the first query without widening the keys above the leaf.
+This is the point of [`INCLUDE` columns](https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-indexes-with-included-columns): `CREATE INDEX ... ON dbo.ClusteredTable (TextField) INCLUDE (CreatedDate)` stores `CreatedDate` in the leaf records too, making the index cover the first query without widening the keys above the leaf.
 
 ## Non-clustered index on a heap - RID lookup
 

@@ -1,73 +1,58 @@
 # Query
 
-The Query view runs SQL against the connected database while tracing what the storage engine does - every physical page read, lock, wait, and plan operator - then replays the activity on a timeline.
+The Query view runs SQL against the connected database while tracing what the storage engine does - every physical page read, lock, latch, wait, and plan operator - then replays the activity on a [Timeline](/docs/user-guide/query/Timeline).
 
 Open it with the **Query** button on the database toolbar.
 
 ## Running a query
 
-Enter SQL in the editor and press **Execute**. The query runs with a trace session, and when it completes the captured activity loads into the timeline. **Messages** shows the output messages, e.g. row counts.
+Enter SQL in the editor and press **Execute**. The query runs with a trace session, and when it completes the captured activity loads into the timeline.
 
-Two toolbar options make the storage engine activity more visible:
-
-- **Clear Buffer Pool** - empties the buffer pool first (`DBCC DROPCLEANBUFFERS`) so every page the query touches is physically read. Don't use this on a server anyone else is using
-- **Disable Read-Ahead** - makes the engine read pages individually instead of pre-fetching large blocks, giving a much clearer picture of the access pattern
-
-The **Events** menu on the command bar selects what the trace captures:
-
-![Events menu](/docs/tutorial/images/screenshots/Query_events_menu.png)
-
-Page I/O is always captured. **Locks**, **Waits**, and **Memory** (grants, spills, and sort warnings) can be toggled on and off, and **Call Stack** captures the SQL Server call stack for each event - see [Call stacks](#call-stacks) below.
+The editor's command bar has toggles for tracing options and result display - see [SQL Editor](/docs/user-guide/query/Editor) for the full set, and [Multi-statement queries](/docs/user-guide/query/Editor#multi-statement-queries) for tracing a single statement out of a larger script.
 
 ::: warning
-Data modification queries (INSERT / UPDATE / DELETE) are run inside a transaction that is rolled back after the trace is captured, so the data is left unchanged.
+Data modification queries (INSERT / UPDATE / DELETE) are run inside a transaction that is rolled back after the trace is captured, so the data is left unchanged. See [Log Records](/docs/user-guide/query/LogRecords) for how this works and what it captures.
 :::
 
-## Multi-statement queries
+## Events menu
 
-Only one statement can be traced at a time. Executing a query with multiple statements or `GO` batches gives the error:
+The **Events** menu selects what the trace captures:
 
-> Multi-statement queries cannot be traced. Select a single statement then right click and choose 'Trace query selection'.
+![Events menu](/docs/user-guide/images/query-events-menu.png)
 
-![Multi-statement query error](/docs/tutorial/images/screenshots/query-multi-statement-error.png)
+Page I/O is always captured. **Locks** opens a submenu of lock categories to capture (**Read**, **Update**, **Write**, **Schema**, **Range**, **Bulk**, or **None**/**Default**) - by default this excludes **Schema** locks, since they are held for a large part of the query's lifetime and would otherwise dominate the [Locks](/docs/user-guide/query/Locks) band. **Waits** and **Latches** can be toggled independently, as can **Memory** (grants, spills, and sort warnings) and **Call Stack** - see [Call Stack](/docs/user-guide/query/CallStack).
 
-For scripts where the statement of interest needs setup or teardown around it - building a temp table first, say - mark just that statement: select it, right-click, and choose **Trace query selection**.
+## Query menu
 
-![Trace query selection in the editor context menu](/docs/tutorial/images/screenshots/query-multi-statement-trace-query-selection.png)
+![Query menu](/docs/user-guide/images/query-options-menu.png)
 
-The marked statement stays highlighted in the editor. On **Execute**, everything before it runs first as untraced setup, the marked statement runs with the trace, and everything after it runs as untraced teardown - so the timeline shows only the statement of interest.
-
-![Editor with a marked query selection](/docs/tutorial/images/screenshots/query-multi-statement-trace-query-selected.png)
-
-To remove the marker, right-click and choose **Clear query selection**.
-
-## The timeline
-
-The timeline shows the captured activity against time, in lanes:
-
-- **Plan** - the execution plan operators, one bar per operator showing when it was active
-- **Read** - physical page reads
-- **Lock** - locks acquired and released
-- **Wait** - waits, where the query had to stop and wait for a resource
-
-The playback controls replay the query like a recording - play, step, and speed - and the red playhead can be dragged to scrub through the trace.
-
-- **Click an operator's bar** to select it and highlight when it actually streamed rows - blocking operators like a Sort consume their input for most of their lifetime and only stream at the end
-- **Right-click an index** in the Plan lane to open it in the [Index Viewer](/docs/introduction/index-viewer), linked to the trace so pages light up as they are read
+- **Crop to query** - on by default. Limits the captured trace to the statement being run, rather than everything happening on the connection
+- **Include System Objects** - includes system tables and indexes in captured events, normally filtered out
 
 ## Views
 
 The **View** menu opens additional panes:
 
-- **SQL Editor** - the query editor
-- **Allocations** - the allocation map, highlighting pages as they are read during replay
-- **Execution Plan** - the captured plan, connected to the timeline to show where data is streaming and where an operator is blocked
-- **Events** - the raw list of captured events behind the timeline
-- **Call Stack** - the decoded SQL Server call stack for the current event, when the Call Stack event is enabled
-- **Timeline** - the replay timeline
-- **Settings** - trace options
+![View menu](/docs/user-guide/images/query-view-menu.png)
 
-Panes are tabs that can be dragged into any layout - drop a tab beside or below another pane to split the space, or onto a pane to stack them. **Reset Layout** restores the default.
+- **SQL Editor** - the query [editor](/docs/user-guide/query/Editor)
+- **Allocations** - the allocation map, scoped to the query - see [Allocations](/docs/user-guide/query/Allocations)
+- **Execution Plan** - the captured plan, connected to the timeline - see [Execution Plan](/docs/user-guide/query/ExecutionPlan)
+- **Events** - the raw list of captured events behind the timeline - see [Events](/docs/user-guide/query/Events)
+- **Call Stack** - the decoded SQL Server call stack for the current event - see [Call Stack](/docs/user-guide/query/CallStack)
+- **Timeline** - the replay timeline - see [Timeline](/docs/user-guide/query/Timeline)
+- **Reset Layout** - restores the default pane arrangement
+- **Instructions** - a quick reference for the view
+
+Pages and indexes opened from the trace - by double-clicking a timeline event, clicking a page link in the Events pane, or right-clicking an operator - also open as panes, so everything about the query stays in one tab.
+
+## Layout
+
+Panes are tabs that can be dragged into any layout - drop a tab beside or below another pane to split the space, or onto a pane to stack them. While dragging, the drop zones highlight to show where the tab will land.
+
+The **Details** and **Timeline** buttons on the top right show and hide the two halves of the view - the pane area and the timeline - with a splitter between them to adjust the balance.
+
+The layout is remembered - the pane arrangement, timeline visibility, and the Query and Events menu options are all restored the next time a Query tab is opened. **Reset Layout** on the View menu puts everything back to the default.
 
 ::: details How this works
 The query runs with an Extended Events session filtered to the connection, capturing page reads, locks, waits, per-operator profiles, and the execution plan. The events are matched to plan operators to build the timeline.
@@ -75,27 +60,6 @@ The query runs with an Extended Events session filtered to the connection, captu
 See [How query tracing works](/docs/deep-dives/query-tracing) for the details.
 :::
 
-## Call stacks
-
-Enable **Call Stack** in the Events menu and every captured event carries the SQL Server call stack that produced it - the chain of internal engine functions that were executing at the moment the event fired.
-
-![Event options with the Call Stack pane](/docs/tutorial/images/screenshots/Query_event_options.png)
-
-The **Call Stack** pane decodes the stack one row per frame:
-
-- **Module** and **Category** - classifications derived by Internals Viewer: which part of the engine the frame belongs to (Storage Engine, Query Processor, SQL OS...) and what it is doing (Index Access, Row Access, Buffer Pool, Latching...)
-- **Symbol** - the function itself as `module!Class::Method`, resolved from SQL Server's debugging symbols, with the offset into the function
-
-This gives visibility into the engine functions behind each event. Reading down the stack for a single page read during a scan, for example: the row scanner moving to the next row, the index page manager fetching the next page, the buffer pool getting the page, and a latch suspending while the I/O completes - how the operator actually executed, not just that it read a page.
-
-### Symbols
-
-Turning stack frames into function names requires the debugging symbols (PDB files) for the exact SQL Server build being traced. Internals Viewer handles this automatically: the first time call stacks are processed, the required symbol files are downloaded from the Microsoft public symbol server and cached locally, and later traces resolve straight from the cache. Download progress is shown in Messages. There is nothing to install or configure - no debugging tools and no symbol server setup.
-
-The cache location is the **Symbols Path** setting, in **Settings** on the start page. The default is `C:\Symbols`.
-
-![Settings](/docs/tutorial/images/screenshots/Settings.png)
-
-See [How query tracing works](/docs/deep-dives/query-tracing#resolving-call-stacks) for how the download and resolution work.
+## Next steps
 
 For a walkthrough, the tutorial's [Query section](/docs/tutorial/query/1-using-the-query-view) traces queries against a sample database - including [scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) and the [three physical join operators](/docs/tutorial/query/6-joins).

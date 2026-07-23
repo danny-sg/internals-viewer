@@ -21,7 +21,7 @@ The plan is a Clustered Index Scan. To watch it against the index structure:
 
 ![Query with index view](/docs/tutorial/images/screenshots/Query_layout_with_index.png)
 
-As the playhead moves, each page lights up at the moment the engine reads it. The scan sweeps through the leaf level page by page, left to right, in order - this is the linked list walk from Part 2 drawn live, `Next Page` after `Next Page` until the table is exhausted. Drag the playhead back and the pages replay in reverse; drag forward again and the sweep continues. The Read lane below shows the same thing as a steady stream of physical reads for the whole duration of the query.
+As the playhead moves, each page lights up at the moment the engine reads it. The scan sweeps through the leaf level page by page, left to right, in order - this is the linked list walk from Part 2 drawn live, `Next Page` after `Next Page` until the table is exhausted. Drag the playhead back and the pages replay in reverse, then drag forward again and the sweep continues. The Read lane below shows the same thing as a steady stream of physical reads for the whole duration of the query.
 
 ## The seek
 
@@ -37,8 +37,8 @@ WHERE  Id = 54321
 
 This time there is no sweep. Only a thin path lights up - the root page, an intermediate page, and the single leaf page containing `Id` 54321. Three pages out of hundreds, and the query is over almost as soon as it starts.
 
-::: info Reads per extent
-SQL Server will access pages on an extent basis, loading the eight pages in an extent together. Because of this more pages may appear to be accessed than appear in the I/O statistics. Internals Viewer will push the root page read to the start of an extent read but subsequently levels may appear out of order as they have already been read as part of the extent.
+::: info
+More pages can light up than the seek itself needs - SQL Server loads whole extents at a time, so neighbouring pages arrive with the ones the seek asked for. See [Reads per extent](/docs/user-guide/query/Reads#reads-per-extent) in the user guide.
 :::
 
 ## Scan vs seek
@@ -52,6 +52,6 @@ Scrubbing the playhead back and forward over the two traces shows the contrast:
 | Read lane                 | A steady stream for the whole query | A handful of ticks at the start     |
 | How pages are found       | Following `Next Page` links         | Following down page pointers        |
 
-The work is proportional to the table for a scan, but to the depth of the B-Tree for a seek - which is why a seek finds one row in a million-row table in three or four reads. Both queries return rows from the same pages of the same index; the difference is purely the path taken to get there.
+The work is proportional to the table for a scan, but to the depth of the B-Tree for a seek - which is why a seek finds one row in a million-row table in three or four reads. Both queries return rows from the same pages of the same index. The difference is purely the path taken to get there.
 
 Next: [Lookups](/docs/tutorial/query/5-lookups)

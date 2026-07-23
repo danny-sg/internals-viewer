@@ -75,7 +75,7 @@ The in row pointer is the same Blob Inline Root structure, but its `Level` is no
 Follow the RID:
 
 - The record at the root has a `Blob Type` of Internal - it holds no data at all, just links: `Current Links` 20 in use of a possible `Max Links` 501, one per chunk of the value.
-- Each child link is a `Child Offset` and an `At` page address: which part of the value it covers, and where that chunk is. The offsets are cumulative - 8,040, 16,080, 24,120... - so the storage engine can find any byte position in the 160,000 byte value by picking the right link, without reading the value from the start.
+- Each child link is a `Child Offset` and an `At` page address: which part of the value it covers, and where that chunk is. The offsets are cumulative - 8,040, 16,080, 24,120 etc. - so the storage engine can find any byte position in the 160,000 byte value by picking the right link, without reading the value from the start.
 - Follow an `At` link and you reach a `Data` record - one chunk of the value, around 8 KB of `43` (`C`) bytes. The chunks sit on their own LOB pages, allocated from the table's `LOB_DATA` allocation unit.
 
 ![LOB tree root record with child links](/docs/tutorial/images/screenshots/Lob_tree_root_cropped.png)

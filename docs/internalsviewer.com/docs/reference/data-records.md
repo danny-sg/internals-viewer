@@ -66,7 +66,7 @@ When a value is stored off-row the data record holds a pointer structure in its 
 
 ## LOB Records
 
-Off-row values are stored in LOB records on LOB (Text/Image) pages. Small values sit in a single record; larger values form a tree - a root record linking to data records, with internal records added as levels when the value grows.
+Off-row values are stored in LOB records on LOB (Text/Image) pages. Small values sit in a single record, while larger values form a tree - a root record linking to data records, with internal records added as levels when the value grows.
 
 |Key|Name|Description|
 |---|----|-----------|
