@@ -73,7 +73,7 @@ public sealed partial class SqlEditorControl : UserControl
 
     public static readonly DependencyProperty IsResultsVisibleProperty =
         DependencyProperty.Register(nameof(IsResultsVisible), typeof(bool), typeof(SqlEditorControl),
-            new PropertyMetadata(true, OnIsResultsVisibleChanged));
+            new PropertyMetadata(false, OnIsResultsVisibleChanged));
 
     public static readonly DependencyProperty AdditionalContentProperty =
         DependencyProperty.Register(nameof(AdditionalContent), typeof(object), typeof(SqlEditorControl),
@@ -102,6 +102,8 @@ public sealed partial class SqlEditorControl : UserControl
         control.QueryOptions = control.QueryOptions with { IncludeResults = (bool)e.NewValue };
         control.ApplyBottomPanelVisibility();
         control.ApplyResultsTabVisibility();
+
+        _ = App.GetService<SettingsService>().SaveSettingAsync(ResultsVisibleSettingKey, (bool)e.NewValue);
     }
 
     private static void OnResultSetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -110,9 +112,9 @@ public sealed partial class SqlEditorControl : UserControl
         control.ApplyBottomPanelVisibility();
         control.ApplyResultsTabVisibility();
 
-        if (e.NewValue is not null && control.IsResultsVisible)
+        if (e.NewValue is not null && control.IsResultsVisible && !control.IsError)
         {
-            control.ResultsTabView.SelectedIndex = 1;
+            control.ResultsTabView.SelectedItem = control.ResultsTab;
         }
     }
 
@@ -122,7 +124,18 @@ public sealed partial class SqlEditorControl : UserControl
 
     public static readonly DependencyProperty IsExecutingProperty =
         DependencyProperty.Register(nameof(IsExecuting), typeof(bool), typeof(SqlEditorControl),
-            new PropertyMetadata(false));
+            new PropertyMetadata(false, OnIsExecutingChanged));
+
+    private static void OnIsExecutingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is true)
+        {
+            var control = (SqlEditorControl)d;
+
+            control.IsMessagesVisible = true;
+            control.ResultsTabView.SelectedItem = control.MessagesTab;
+        }
+    }
 
     public static readonly DependencyProperty TrackedSelectionProperty =
         DependencyProperty.Register(nameof(TrackedSelection), typeof(TrackedSelectionRange), typeof(SqlEditorControl),
@@ -220,6 +233,8 @@ public sealed partial class SqlEditorControl : UserControl
 
     private const string FontSizeSettingKey = "SqlEditorFontSize";
 
+    private const string ResultsVisibleSettingKey = "SqlEditorResultsVisible";
+
     private bool _editorReady;
 
     private bool _initialized;
@@ -298,6 +313,8 @@ public sealed partial class SqlEditorControl : UserControl
             _initialized = true;
             IsEditorLoading = true;
             LoadingOverlay.Visibility = Visibility.Visible;
+
+            await ApplySavedResultsVisibilityAsync();
 
             await WebView.EnsureCoreWebView2Async();
 
@@ -422,6 +439,15 @@ public sealed partial class SqlEditorControl : UserControl
         }
     }
 #pragma warning restore VSTHRD100
+
+    private async Task ApplySavedResultsVisibilityAsync()
+    {
+        var saved = await App.GetService<SettingsService>().ReadSettingAsync<bool?>(ResultsVisibleSettingKey) ?? false;
+
+        IsResultsVisible = saved;
+
+        QueryOptions = QueryOptions with { IncludeResults = saved };
+    }
 
     // Applies the persisted editor font size (set by Ctrl+wheel zoom) once the editor is ready
     private async Task ApplySavedFontSizeAsync()
