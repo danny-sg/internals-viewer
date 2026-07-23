@@ -18,6 +18,13 @@ public sealed class AllocationRenderer : IDisposable
         BackgroundPaint = GetExtentPaint(SystemColors.Control, SystemColors.ControlLightLight);
         AllocationPaint = GetExtentPaint(Color.Black, Color.Black);
         PagePaint = GetPagePaint(Color.Black, Color.Black);
+
+        PageMarkerPaint = new SKPaint
+        {
+            IsAntialias = true,
+            Style = SKPaintStyle.Fill,
+        };
+
         BorderPaint = GetBorderPaint();
     }
 
@@ -32,6 +39,8 @@ public sealed class AllocationRenderer : IDisposable
     private SKPaint AllocationPaint { get; }
 
     private SKPaint PagePaint { get; }
+
+    private SKPaint PageMarkerPaint { get; }
 
     private SKPaint BorderPaint { get; }
 
@@ -139,9 +148,19 @@ public sealed class AllocationRenderer : IDisposable
         }
     }
 
-    internal void DrawPageMarker(SKCanvas g, SKRect rect, LayerType layerLayerType)
+    internal void DrawPageMarker(SKCanvas g, SKRect rect, AllocationLayer layer, SKColor colour)
     {
-        switch (layerLayerType)
+        if (layer.LayerType == LayerType.Fill)
+        {
+            return;
+        }
+
+        if (PageMarkerPaint.Color != colour)
+        {
+            PageMarkerPaint.Color = colour;
+        }
+
+        switch (layer.LayerType)
         {
             case LayerType.TopLeft:
                 {
@@ -151,8 +170,8 @@ public sealed class AllocationRenderer : IDisposable
                     var originX = rect.Left + insetX - (rect.Left == 0 ? 0 : 1);
                     var originY = rect.Top + insetY - (rect.Top == 0 ? 0 : 1);
 
-                    var wedgeWidth = rect.Width * 0.65f;
-                    var wedgeHeight = rect.Height * 0.65f;
+                    var wedgeWidth = rect.Width * 0.45f;
+                    var wedgeHeight = rect.Height * 0.45f;
 
                     var p1 = new SKPoint(originX, originY);
                     var p2 = new SKPoint(originX + wedgeWidth, originY);
@@ -164,8 +183,9 @@ public sealed class AllocationRenderer : IDisposable
 
                     using var path = PathBuilder.Detach();
 
-                    g.DrawPath(path, PagePaint);
+                    g.DrawPath(path, PageMarkerPaint);
                 }
+
                 break;
         }
     }
@@ -250,6 +270,8 @@ public sealed class AllocationRenderer : IDisposable
         BorderPaint.Dispose();
         BackgroundPaint.Dispose();
         PagePaint.Dispose();
+        PageMarkerPaint.Dispose();
+
         PathBuilder.Dispose();
     }
 }

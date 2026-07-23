@@ -51,7 +51,10 @@ namespace InternalsViewer.Query.Events.Consolidation;
 ///
 /// Both modes give out a signal via a BUF SH latch suspend begin/end - this has duration that accurately corresponds to the read duration.
 ///
-/// This suspend is when the page(s) are not in the buffer pool, and it switches to file based read.
+/// (Suspend is for an I/O latch and there will be an associated PAGEIOLATCH wait, but this isn't included in the grouping)
+/// 
+/// This suspend is when the page(s) are not in the buffer pool, and it switches to file based read - either contiguous or scatter/gather,
+/// then the physical_page_read events should be at the end to show that the pages have been read from disk, and the read is complete.
 /// </remarks>
 public static class ReaderGrouper
 {
@@ -63,7 +66,7 @@ public static class ReaderGrouper
 
         CollectContiguousDiskReads(events, members, consumed);
 
-        CollectGatherReads(events, members, consumed);
+        CollectScatterGatherReads(events, members, consumed);
 
         CollectBufferPoolReads(events, members, consumed);
 
@@ -138,9 +141,9 @@ public static class ReaderGrouper
         }
     }
 
-    private static void CollectGatherReads(IReadOnlyList<EngineEvent> events,
-                                           Dictionary<EngineEvent, List<EngineEvent>> members,
-                                           HashSet<EngineEvent> consumed)
+    private static void CollectScatterGatherReads(IReadOnlyList<EngineEvent> events,
+                                                  Dictionary<EngineEvent, List<EngineEvent>> members,
+                                                  HashSet<EngineEvent> consumed)
     {
         // A read the contiguous pass already claimed still describes the page range it loaded, so it stays a spine here and
         // the group that took it is where its pages go. When the scan catches up with read-ahead it suspends on the read's
@@ -188,8 +191,8 @@ public static class ReaderGrouper
                 continue;
             }
 
-            // An owned spine keeps its group's own spine: that is the suspend, which carries the SQL-measured read
-            // duration, so the pages join it rather than splitting the one read across two groups.
+            // An owned spine keeps its group's own spine: that is the suspend, which carries the SQL-measured read duration, so the pages
+            // join it rather than splitting the one read across two groups.
             members[owners.GetValueOrDefault(spine, spine)].Add(e);
 
             consumed.Add(e);
@@ -209,8 +212,7 @@ public static class ReaderGrouper
                 continue;
             }
 
-            // Only a single-page non-cached read absorbs a trailing SH re-read (the load-then-immediately-reread of that
-            // one page).
+            // Only a single-page non-cached read absorbs a trailing SH re-read (the load-then-immediately-reread of that one page).
             //
             // A multi-page read-ahead (gather) read must not swallow the scan's later SH reads of the pages it prefetched — those are the
             // scan iterator's own page reads and must surface as individual cached reads spread across the scan, not collapse into the

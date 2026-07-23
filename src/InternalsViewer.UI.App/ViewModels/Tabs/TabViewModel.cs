@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Dispatching;
 using System;
 using System.Threading;
 
@@ -18,15 +17,13 @@ public partial class TabViewModel : ObservableObject, IDisposable
 
     private readonly CancellationTokenSource _cts = new();
 
-    protected DispatcherQueue DispatcherQueue { get; }
+    protected UiDispatcher DispatcherQueue { get; }
 
     protected CancellationToken CancellationToken => _cts.Token;
 
     protected TabViewModel()
     {
-        DispatcherQueue = DispatcherQueue.GetForCurrentThread()
-                          ?? throw new InvalidOperationException(
-                              $"{GetType().Name} must be constructed on the UI thread.");
+        DispatcherQueue = UiDispatcher.ForCurrentThread();
 
         TabId = Guid.NewGuid().ToString();
     }

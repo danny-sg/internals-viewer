@@ -67,8 +67,14 @@ public static class LockGrouper
         return result;
     }
 
-    // The object (via the resolved allocation unit), owning transaction, and whether it is a schema lock — schema locks
-    // group apart from the data-lock chain. Null when the lock has no resolved object or no transaction.
+    /// <summary>
+    /// Get object/transaction/schema lock status
+    /// </summary>
+    /// <remarks>
+    /// Object resolved via Allocation Unit
+    ///
+    /// Schema locks group apart from the data-lock chain
+    /// </remarks>
     private static (int ObjectId, long TransactionId, bool IsSchema)? KeyOf(LockEvent lockEvent)
     {
         if (lockEvent.AllocationUnit is not { ObjectId: > 0 } allocationUnit)
@@ -77,8 +83,8 @@ public static class LockGrouper
         }
 
         return lockEvent.LockOwnerContext?.TransactionId is { } transactionId and > 0
-            ? (allocationUnit.ObjectId, transactionId, IsSchemaLock(lockEvent))
-            : null;
+               ? (allocationUnit.ObjectId, transactionId, IsSchemaLock(lockEvent))
+               : null;
     }
 
     // Schema-stability/modification locks guard the object's shape (DDL vs the running query), not its rows, so they are

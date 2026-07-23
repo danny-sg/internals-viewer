@@ -266,7 +266,9 @@ public sealed partial class AllocationControl : IDisposable
     private int PageCount => ExtentCount * 8;
 
     private AllocationRenderer? _renderer;
+
     private SKPaint? _borderPaint;
+
     private Size _lastExtentSize;
 
     private readonly SKPaint _spanPaint = new();
@@ -285,14 +287,10 @@ public sealed partial class AllocationControl : IDisposable
 
     private Color _lastGridColor;
 
-    // The allocation map (background/extents/PFS/lines/markers/scrollbar/border) is recorded into a picture once and
-    // replayed each paint; only the playhead-driven page spans and lock borders are redrawn live. Re-recorded only when
-    // the map itself changes — see StaticLayerKey and _staticVersion — so a playhead tick just replays and draws spans.
     private SKPicture? _staticLayer;
+
     private StaticLayerKey _staticLayerKey;
 
-    // Bumped whenever a change to the static map goes through Refresh (layers, colours, zoom, PFS, selection). Scroll and
-    // resize don't call Refresh but are caught by the key's own fields, so a playhead tick alone leaves the key unchanged.
     private int _staticVersion;
 
     private readonly record struct StaticLayerKey(int ScrollPosition, int Width, int Height, int Version);
@@ -556,6 +554,8 @@ public sealed partial class AllocationControl : IDisposable
             renderer.DrawPageLines(canvas, renderLayout.HorizontalCount, renderLayout.VerticalCount, renderLayout.RemainingCount);
         }
 
+        DrawPageMarkerActivity(canvas, renderLayout);
+
         DrawBorders(canvas, renderLayout);
     }
 
@@ -709,6 +709,19 @@ public sealed partial class AllocationControl : IDisposable
         }
     }
 
+    private void DrawPageMarkerActivity(SKCanvas canvas, ExtentLayout layout)
+    {
+        foreach (var layer in Layers)
+        {
+            if (!layer.IsVisible || layer.Opacity == 0)
+            {
+                continue;
+            }
+
+            DrawPageMarkerSpans(canvas, layout, layer);
+        }
+    }
+
     private void DrawPageMarkers(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
     {
         foreach (var layer in Layers)
@@ -722,7 +735,10 @@ public sealed partial class AllocationControl : IDisposable
             {
                 if (page.FileId == FileId)
                 {
-                    renderer.DrawPageMarker(canvas, GetPagePosition(page.PageId - (ScrollPosition * 8), layout), layer.LayerType);
+                    renderer.DrawPageMarker(canvas, 
+                                            GetPagePosition(page.PageId - (ScrollPosition * 8), layout), 
+                                            layer, 
+                                            layer.RendererColour);
                 }
             }
         }
@@ -784,9 +800,6 @@ public sealed partial class AllocationControl : IDisposable
                            ? GetExtentPosition(cell - firstCell, layout)
                            : GetPagePosition(cell - firstCell, layout);
 
-                // The on-screen column, derived the same way the rect is positioned (cell - firstCell), NOT the absolute
-                // cell. A resize changes gridWidth without re-aligning firstCell to it, so cell % gridWidth would place a
-                // cell's map-edge trim on a different column than its rect and the outline edges land wrong.
                 var column = (cell - firstCell) % gridWidth;
 
                 var leftX = column == 0 ? rect.Left + 1 : rect.Left;
@@ -815,12 +828,16 @@ public sealed partial class AllocationControl : IDisposable
         }
     }
 
-    // A border's paint order key: the earliest hold across its ranges (empty sorts last, though it is skipped anyway).
     private static long BorderStartUs(AllocationBorder border) =>
         border.Cells.Count == 0 ? long.MaxValue : border.Cells.Min(c => c.StartUs);
 
     private void DrawPageSpans(SKCanvas canvas, ExtentLayout layout, AllocationLayer layer)
     {
+        if (layer.LayerType != LayerType.Fill)
+        {
+            return;
+        }
+
         var spans = layer.PageSpans;
 
         if (spans.Count == 0)
@@ -847,6 +864,43 @@ public sealed partial class AllocationControl : IDisposable
             _spanPaint.Color = (span.DisplayColour ?? layer.Colour).ToSkColor();
 
             canvas.DrawRect(GetPagePosition(span.Address.PageId - (ScrollPosition * 8), layout), _spanPaint);
+        }
+    }
+
+    private void DrawPageMarkerSpans(SKCanvas canvas, ExtentLayout layout, AllocationLayer layer)
+    {
+        if (layer.LayerType == LayerType.Fill)
+        {
+            return;
+        }
+
+        var spans = layer.PageSpans;
+
+        if (spans.Count == 0)
+        {
+            return;
+        }
+
+        var playhead = PlayheadTimeUs;
+
+        for (var i = 0; i < spans.Count; i++)
+        {
+            var span = spans[i];
+
+            if (span.StartUs > playhead)
+            {
+                break;
+            }
+
+            if (span.EndUs < playhead || span.Address.FileId != FileId)
+            {
+                continue;
+            }
+
+            _renderer?.DrawPageMarker(canvas,
+                                      GetPagePosition(span.Address.PageId - (ScrollPosition * 8), layout),
+                                      layer,
+                                      span.DisplayColour?.ToSkColor() ?? layer.RendererColour);
         }
     }
 
@@ -1126,7 +1180,7 @@ public sealed partial class AllocationControl : IDisposable
             AllocationOver.ExtentId = extentId;
             AllocationOver.PageId = pageId;
         }
-  
+
         AllocationOver.LayerName = layerName;
         AllocationOver.PfsValue = PfsChain?.GetPageStatus(pageId) ?? PfsByte.Unknown;
 
@@ -1170,7 +1224,7 @@ public sealed partial class AllocationControl : IDisposable
 
     private void AllocationCanvas_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-      //  AllocationOver.IsOpen = IsTooltipEnabled;
+        //  AllocationOver.IsOpen = IsTooltipEnabled;
     }
 
     public void Dispose()

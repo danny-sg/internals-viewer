@@ -5,6 +5,8 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Interfaces.Engine;
+using InternalsViewer.UI.App.Helpers;
+using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Models;
 
@@ -12,6 +14,18 @@ public sealed partial class AllocationLayer : ObservableObject
 {
     [ObservableProperty]
     private Color _colour;
+
+    private SKColor? _rendererColour;
+
+    public SKColor RendererColour
+    {
+        get
+        {
+            _rendererColour ??= Colour.ToSkColor();
+
+            return _rendererColour.Value;
+        }
+    }
 
     [ObservableProperty]
     private string _name = string.Empty;

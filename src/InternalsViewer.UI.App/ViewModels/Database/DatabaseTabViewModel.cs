@@ -185,7 +185,11 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
                 if (layer != null)
                 {
-                    layer.SinglePages = [..bufferPoolPages.Dirty, ..bufferPoolPages.Clean];
+                    layer.PageSpans =
+                    [
+                        ..bufferPoolPages.Clean.Select(s => new PageSpan(s, 0, 0, System.Drawing.Color.DarkCyan)),
+                        ..bufferPoolPages.Dirty.Select(s => new PageSpan(s, 0, 0, System.Drawing.Color.DarkRed)),
+                    ];
 
                     AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
                 }

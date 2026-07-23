@@ -261,6 +261,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <InternalsVisibleTo Include="InternalsViewer.UI.App.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
       <Content Update="Assets\AppIcon16.bmp">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
