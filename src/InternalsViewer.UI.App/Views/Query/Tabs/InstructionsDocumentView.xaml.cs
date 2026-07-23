@@ -36,7 +36,7 @@ public sealed partial class InstructionsDocumentView : UserControl
 
     private QueryOptionsViewModel? _subscribedOptions;
 
-    private string _currentPage = "Overview";
+    private string _currentPage = "GettingStarted";
 
     public InstructionsDocumentView()
     {

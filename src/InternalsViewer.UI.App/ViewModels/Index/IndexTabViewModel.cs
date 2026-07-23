@@ -76,7 +76,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         ? $"{LoadedPageCount:N0} / {TotalPageCount:N0} pages"
         : $"{LoadedPageCount:N0} pages";
 
-    public bool IsProgressIndeterminate => TotalPageCount == 0;
+    public bool IsProgressVisible => TotalPageCount >= IndexService.ProgressReportInterval;
 
     public double ProgressMaximum => TotalPageCount;
 
@@ -91,7 +91,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     partial void OnTotalPageCountChanged(long value)
     {
         OnPropertyChanged(nameof(ProgressText));
-        OnPropertyChanged(nameof(IsProgressIndeterminate));
+        OnPropertyChanged(nameof(IsProgressVisible));
         OnPropertyChanged(nameof(ProgressMaximum));
     }
 

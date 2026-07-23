@@ -15,4 +15,4 @@ excluded by default - they span most of the query, so they would dominate the Lo
 
 Options apply to the next **Execute**, so change them, run the query again, and compare.
 
-[Back to overview](guide:Overview)
+[Back to Getting Started](guide:GettingStarted)

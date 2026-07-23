@@ -5,12 +5,12 @@ namespace InternalsViewer.UI.App.Tests.Controls.Instructions;
 public class InstructionsPageProviderTests
 {
     [Fact]
-    public void Loads_The_Overview_Page_From_Embedded_Resources()
+    public void Loads_The_Getting_Started_Page_From_Embedded_Resources()
     {
-        var markdown = InstructionsPageProvider.GetPage("Overview");
+        var markdown = InstructionsPageProvider.GetPage("GettingStarted");
 
         Assert.NotNull(markdown);
-        Assert.Contains("# Query view", markdown);
+        Assert.Contains("# Getting started", markdown);
     }
 
     [Fact]
@@ -20,6 +20,21 @@ public class InstructionsPageProviderTests
 
         Assert.NotNull(markdown);
         Assert.Contains("option:ShowLatches", markdown);
+    }
+
+    [Theory]
+    [InlineData("GettingStarted")]
+    [InlineData("SqlEditor")]
+    [InlineData("ChoosingEvents")]
+    [InlineData("Timeline")]
+    [InlineData("Events")]
+    [InlineData("Allocations")]
+    [InlineData("ExecutionPlan")]
+    [InlineData("CallStack")]
+    [InlineData("LogRecords")]
+    public void Loads_A_Page_For_Every_Navigation_Item(string key)
+    {
+        Assert.NotNull(InstructionsPageProvider.GetPage(key));
     }
 
     [Fact]

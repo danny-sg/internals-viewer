@@ -8,17 +8,43 @@
     xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
 
+    <UserControl.Resources>
+        <Thickness x:Key="NavigationViewContentMargin">0</Thickness>
+        <Style TargetType="NavigationViewItem">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </UserControl.Resources>
+
     <NavigationView x:Name="TopicsNavigation"
-                    PaneDisplayMode="Top"
+                    PaneDisplayMode="Left"
+                    IsPaneToggleButtonVisible="False"
+                    OpenPaneLength="180"
                     IsBackButtonVisible="Collapsed"
                     IsSettingsVisible="False"
+                    AlwaysShowHeader="False"
+PaneTitle=""
                     SelectionChanged="TopicsNavigation_SelectionChanged">
+
         <NavigationView.MenuItems>
-            <NavigationViewItem Content="Overview"
-                                Tag="Overview"
+            <NavigationViewItem Content="Getting Started"
+                                Tag="GettingStarted"
                                 IsSelected="True" />
+            <NavigationViewItem Content="SQL Editor"
+                                Tag="SqlEditor" />
             <NavigationViewItem Content="Choosing Events"
                                 Tag="ChoosingEvents" />
+            <NavigationViewItem Content="Timeline"
+                                Tag="Timeline" />
+            <NavigationViewItem Content="Events"
+                                Tag="Events" />
+            <NavigationViewItem Content="Allocations"
+                                Tag="Allocations" />
+            <NavigationViewItem Content="Execution Plan"
+                                Tag="ExecutionPlan" />
+            <NavigationViewItem Content="Call Stack"
+                                Tag="CallStack" />
+            <NavigationViewItem Content="Log Records"
+                                Tag="LogRecords" />
         </NavigationView.MenuItems>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">

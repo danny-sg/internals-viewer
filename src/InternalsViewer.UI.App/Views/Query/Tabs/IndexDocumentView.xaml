@@ -51,12 +51,17 @@
                            Text="{x:Bind ViewModel.LoadingText, Mode=OneWay}"/>
                 <ProgressBar Width="300"
                              Margin="0,10,0,0"
-                             IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"
+                             Visibility="{x:Bind ViewModel.IsProgressVisible,
+                                    Mode=OneWay,
+                                    Converter={StaticResource BoolToVisibilityConverter}}"
                              Maximum="{x:Bind ViewModel.ProgressMaximum, Mode=OneWay}"
                              Value="{x:Bind ViewModel.LoadedPageCount, Mode=OneWay}"/>
                 <TextBlock Margin="0,10,0,0"
                            HorizontalAlignment="Center"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Visibility="{x:Bind ViewModel.IsProgressVisible,
+                                    Mode=OneWay,
+                                    Converter={StaticResource BoolToVisibilityConverter}}"
                            Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}"/>
             </StackPanel>
 
