@@ -41,7 +41,7 @@ public sealed partial class AllocationLayer : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsIndex))]
     private IndexType _indexType;
 
-    public bool IsIndex => IndexType is IndexType.Clustered or IndexType.NonClustered;
+    public bool IsIndex => IndexType is IndexType.Clustered or IndexType.NonClustered && TotalPages > 0;
 
     public string IndexTypeDescription => IsSystemObject ? string.Empty : IndexType.ToString().SplitCamelCase("-");
 

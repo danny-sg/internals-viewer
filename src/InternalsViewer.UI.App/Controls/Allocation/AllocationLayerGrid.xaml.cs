@@ -72,8 +72,6 @@ public sealed partial class AllocationLayerGrid
 
         var source = e.OriginalSource as DependencyObject;
 
-        // Clicks on the page-address / view-index links navigate; they must not toggle row selection.
-        // Marking the event handled stops the DataGrid from selecting the row underneath the link.
         if (LayoutHelpers.FindParent<ButtonBase>(source) != null)
         {
             e.Handled = true;
