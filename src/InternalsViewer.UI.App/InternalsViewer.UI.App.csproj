@@ -263,6 +263,7 @@
       <WarningLevel>7</WarningLevel>
     </PropertyGroup>
     <ItemGroup>
+      <ProjectReference Include="..\InternalsViewer.Connection.BackupFile\InternalsViewer.Connection.BackupFile.csproj" />
       <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
       <ProjectReference Include="..\InternalsViewer.Query\InternalsViewer.Query.csproj" />
     </ItemGroup>

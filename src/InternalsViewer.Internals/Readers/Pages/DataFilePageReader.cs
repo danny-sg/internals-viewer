@@ -24,6 +24,13 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader, I
 
     private ConcurrentDictionary<short, OpenDataFile> OpenFiles { get; } = new();
 
+    public Task Initialize(CancellationToken cancellationToken)
+    {
+        GetFile(PrimaryFileId);
+
+        return Task.CompletedTask;
+    }
+
     public ValueTask DisposeAsync()
     {
         foreach (var file in OpenFiles.Values)

@@ -1,4 +1,6 @@
-﻿namespace InternalsViewer.Internals.Connections.Backup;
+﻿using InternalsViewer.Internals.Connections;
+
+namespace InternalsViewer.Connection.BackupFile.Connection;
 
 public sealed class BackupConnectionTypeConfig : ConnectionTypeConfig
 {

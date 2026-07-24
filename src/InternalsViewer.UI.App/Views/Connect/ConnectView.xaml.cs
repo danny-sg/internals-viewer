@@ -82,6 +82,11 @@ public sealed partial class ConnectView
 
                 ContentFrame.Navigate(typeof(ConnectFilePage), connectFileViewModel);
                 break;
+            case "ConnectBackupPage":
+                var connectBackupViewModel = ConnectBackupViewModelFactory.Create();
+
+                ContentFrame.Navigate(typeof(ConnectBackupPage), connectBackupViewModel);
+                break;
             default:
                 ContentFrame.Navigate(pageType);
                 break;

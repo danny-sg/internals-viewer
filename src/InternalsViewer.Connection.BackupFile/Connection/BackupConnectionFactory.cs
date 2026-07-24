@@ -1,6 +1,7 @@
-﻿using InternalsViewer.Internals.Interfaces.Connections;
+﻿using InternalsViewer.Connection.BackupFile.Reader;
+using InternalsViewer.Internals.Interfaces.Connections;
 
-namespace InternalsViewer.Internals.Connections.Backup;
+namespace InternalsViewer.Connection.BackupFile.Connection;
 
 public sealed class BackupConnectionFactory : IConnectionTypeFactory<BackupConnectionTypeConfig>
 {
@@ -14,6 +15,8 @@ public sealed class BackupConnectionFactory : IConnectionTypeFactory<BackupConne
 
         configDelegate(config);
 
-        throw new NotImplementedException();
+        var name = Path.GetFileNameWithoutExtension(config.Filename);
+
+        return new BackupConnectionType(new BackupPageReader(config.Filename), name);
     }
 }

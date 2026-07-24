@@ -39,6 +39,8 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
 
     private ILogger<QueryPageReader> Logger { get; } = logger;
 
+    public Task Initialize(CancellationToken cancellationToken) => Task.CompletedTask;
+
     /// <summary>
     /// Loads the database page using DBCC PAGE (hex dump)
     /// </summary>

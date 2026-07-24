@@ -90,7 +90,7 @@ public partial class MainViewModel(SettingsService settingsService)
                 break;
 
             case "Backup":
-                var backupMessage = new ConnectFileMessage(recent.Value, recent);
+                var backupMessage = new ConnectBackupMessage(recent.Value, recent);
 
                 await WeakReferenceMessenger.Default.Send(backupMessage);
 

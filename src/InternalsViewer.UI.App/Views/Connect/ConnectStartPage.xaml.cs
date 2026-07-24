@@ -18,6 +18,11 @@ public sealed partial class ConnectStartPage
         WeakReferenceMessenger.Default.Send(new NavigateMessage("ConnectFilePage"));
     }
 
+    private void ConnectBackupTile_OnClick(object? sender, RoutedEventArgs e)
+    {
+        WeakReferenceMessenger.Default.Send(new NavigateMessage("ConnectBackupPage"));
+    }
+
     private void ConnectSqlServerHeaderTile_Click(object sender, RoutedEventArgs e)
     {
         WeakReferenceMessenger.Default.Send(new NavigateMessage("ConnectServerPage"));

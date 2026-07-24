@@ -1,5 +1,5 @@
 using CommunityToolkit.Mvvm.Messaging;
-using InternalsViewer.Internals.Connections.Backup;
+using InternalsViewer.Connection.BackupFile.Connection;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Address;
@@ -106,6 +106,9 @@ public sealed partial class MainWindow
         WeakReferenceMessenger.Default.Register<ConnectFileMessage>(this, (_, m)
             => m.Reply(ConnectFile(m.Filename, m.Recent)));
 
+        WeakReferenceMessenger.Default.Register<ConnectBackupMessage>(this, (_, m)
+            => m.Reply(ConnectBackup(m.Filename, m.Recent)));
+
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, (_, m)
             => m.Reply(OpenPage(m.Request)));
 
@@ -203,7 +206,7 @@ public sealed partial class MainWindow
         return true;
     }
 
-    private async Task<bool> ConnectBackup(string filename)
+    private async Task<bool> ConnectBackup(string filename, RecentConnection recent)
     {
         var factory = (IConnectionTypeFactory<BackupConnectionTypeConfig>)ConnectionFactories
             .Single(f => f.Identifier == BackupConnectionFactory.BackupIdentifier);
@@ -214,6 +217,8 @@ public sealed partial class MainWindow
         {
             return false;
         }
+
+        await ViewModel.AddRecentConnectionCommand.ExecuteAsync(recent);
 
         return true;
     }

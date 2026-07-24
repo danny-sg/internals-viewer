@@ -1,9 +1,9 @@
 ﻿using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Readers;
 
-namespace InternalsViewer.Internals.Connections.Backup;
+namespace InternalsViewer.Connection.BackupFile.Connection;
 
-public class BackupConnectionType(IPageReader pageReader, string name) : IConnectionType
+public sealed class BackupConnectionType(IPageReader pageReader, string name) : IConnectionType
 {
     public string Identifier => "Backup";
 

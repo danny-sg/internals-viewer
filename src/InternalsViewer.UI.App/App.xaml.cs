@@ -1,6 +1,8 @@
 ﻿using System;
 using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Connection.BackupFile.Connection;
 using InternalsViewer.Internals;
+using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Services.Logging;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events;
@@ -67,6 +69,8 @@ public partial class App
             services.AddSingleton<ILoggerProvider, AppLogLoggerProvider>();
 
             services.RegisterServices();
+
+            services.AddTransient<IConnectionTypeFactory, BackupConnectionFactory>();
 
             services.Configure<SettingsOptions>(context.Configuration.GetSection(nameof(SettingsOptions)));
 

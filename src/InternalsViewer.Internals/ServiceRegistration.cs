@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using InternalsViewer.Internals.Connections.Backup;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Interfaces.Connections;
@@ -70,7 +69,7 @@ public static class ServiceRegistration
     {
         services.AddTransient<IConnectionTypeFactory, ServerConnectionFactory>();
         services.AddTransient<IConnectionTypeFactory, FileConnectionFactory>();
-        services.AddTransient<IConnectionTypeFactory, BackupConnectionFactory>();
+        //services.AddTransient<IConnectionTypeFactory, BackupConnectionFactory>();
     }
 
     private static void RegisterPageParsers(IServiceCollection services)

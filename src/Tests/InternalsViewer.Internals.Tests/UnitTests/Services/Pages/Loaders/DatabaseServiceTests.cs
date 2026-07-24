@@ -1,6 +1,8 @@
 ﻿using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Internals.Interfaces.Connections;
+using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
@@ -24,6 +26,17 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
         metadata.Files.Add(new InternalFile { FileId = 2, FileType = (byte)FileType.Rows });
 
         return metadata;
+    }
+
+    private static IConnectionType BuildConnection()
+    {
+        var pageReader = new Mock<IPageReader>();
+
+        var connection = new Mock<IConnectionType>();
+
+        connection.SetupGet(c => c.PageReader).Returns(pageReader.Object);
+
+        return connection.Object;
     }
 
     [Fact]
@@ -51,7 +64,7 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
 
-        var result = await databaseService.LoadAsync("", null, CancellationToken.None);
+        var result = await databaseService.LoadAsync("", BuildConnection(), CancellationToken.None);
 
         Assert.NotNull(result.Gam[1]);
         Assert.NotNull(result.Gam[2]);
@@ -91,7 +104,7 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
                                                   iamChainService.Object,
                                                   pfsChainService.Object);
 
-        var result = await databaseService.LoadAsync("TestDatabase", null, CancellationToken.None);
+        var result = await databaseService.LoadAsync("TestDatabase", BuildConnection(), CancellationToken.None);
 
         Assert.NotNull(result.Pfs[1]);
         Assert.NotNull(result.Pfs[2]);

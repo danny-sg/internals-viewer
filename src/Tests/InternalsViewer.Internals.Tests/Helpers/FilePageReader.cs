@@ -5,6 +5,8 @@ namespace InternalsViewer.Internals.Tests.Helpers;
 
 public sealed class FilePageReader(string path) : PageReader, IPageReader
 {
+    public Task Initialize(CancellationToken cancellationToken) => Task.CompletedTask;
+
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private static void LoadTextPage(string pageText, byte[] buffer)

@@ -57,6 +57,10 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
             Name = name
         };
 
+        Logger.LogDebug("Initializing page reader");
+
+        await connection.PageReader.Initialize(cancellationToken);
+
         Logger.LogDebug("Loading Boot Page: {BootPageAddress}", BootPage.BootPageAddress);
 
         database.BootPage = await PageService.GetPage<BootPage>(database, BootPage.BootPageAddress, cancellationToken);

@@ -54,7 +54,8 @@
                 </connections:HeaderTile>
                 <connections:HeaderTile
                 Title="Backup file"
-                Description="Open a database from a full database backup.">
+                Description="Open a database from a full database backup."
+                Click="ConnectBackupTile_OnClick">
                     <connections:HeaderTile.Source>
                         <Image Source="/Assets/AppLogo-512.png" />
                     </connections:HeaderTile.Source>
