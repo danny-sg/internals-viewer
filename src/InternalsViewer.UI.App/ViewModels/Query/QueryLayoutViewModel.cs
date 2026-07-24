@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Tabs;
+using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
