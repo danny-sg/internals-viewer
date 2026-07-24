@@ -55,7 +55,6 @@
                                           Height="16"
                                           IsActive="{x:Bind IsExecuting, Mode=OneWay}"
                                           Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-                            <!--Sized to match the ProgressRing that replaces it, so the label doesn't shift on execute-->
                             <Grid Width="16"
                                   Height="16"
                                   Visibility="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
@@ -192,26 +191,19 @@
             <TabViewItem Header="Messages" IsClosable="False" x:Name="MessagesTab">
                 <Border Background="White" VerticalAlignment="Stretch">
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-
                         <TextBox x:Name="ResultMessage"
-                                   Grid.Row="0"
-                                   Padding="8"
-                                   TextWrapping="Wrap"
-                                   VerticalAlignment="Top"
-                                   FontFamily="Courier New"
-                                   Text="{x:Bind Message, Mode=OneWay}"
-                                   Foreground="{x:Bind ResultBrush, Mode=OneWay}"
-                                   IsReadOnly="True"
-                                   BorderThickness="0"
-                                   Background="Transparent" />
+                                 Padding="8"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
 
-                        <ContentPresenter Grid.Row="1"
-                                          VerticalContentAlignment="Bottom"
-                                          Content="{x:Bind AdditionalContent, Mode=OneWay}" />
+                                 FontFamily="Courier New"
+                                 Text="{x:Bind Message, Mode=OneWay}"
+                                 Foreground="{x:Bind ResultBrush, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 BorderThickness="0"
+                                 Background="Transparent" />
                     </Grid>
                 </Border>
             </TabViewItem>
