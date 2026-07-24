@@ -1,27 +1,54 @@
 # SQL Editor
 
-The [SQL Editor](view:SqlEditor) is where a query is written and run. It has SQL syntax highlighting and IntelliSense
-aware of the connected database's schema.
+The [SQL Editor](view:SqlEditor) is where queries are edited and run. Enter SQL and click **Execute**. Press the **Stop** button to cancel
+execution.
 
-The command bar toggles change how the next query is traced:
+The command bar includes options for how the query will be executed:
 
-- **Trace** - capture the transaction log records of data modifications, so they can be replayed on a page - see
-  [Log Records](guide:LogRecords)
-- **Clear Buffer Pool** - empty the buffer pool first, so every page the query touches is physically read. Avoid on a
-  server anyone else is using
-- **Disable Read-Ahead** - read pages individually instead of pre-fetching large blocks, for a clearer access pattern
-- **Results** / **Messages** - show or discard the query's result set, and show the messages output
+## Trace
 
-Tips:
+Trace mode will detect if a query is a modification query (insert/update/delete etc.) and execute the query inside a transaction that is
+rolled back when events are captured. This allows the query to be replayed against the initial state of the database.
 
-- **Ctrl + Enter** executes from the keyboard
-- If text is selected, Execute runs just the selection
+If Trace is off the modifcation will execute without a transaction and without log capture.
+
+## Clear Buffer Pool
+
+Clearing the buffer pool clears the in-memory data cache for the **entire server** before the query runs. This means that the query will
+run 'cold' - reads will be physical reads from disk rather than logical reads from memory.
+
+> **This option should not be used on a production server**
+
+## Disable Read Ahead
+
+Read-ahead is a performance optimization where SQL Server will anticipate reads/pages the query may need and fetches them ahead of time.
+
+This option disables read-ahead for the session by running `DBCC TRACEON(652)` before the query executes.
+
+Disabling Read Ahead gives a simpler read and toggling it on and off allows you to see the difference and effect of using it.
+
+> Trace Flag 652 doesn't disable read ahead for all scenarios - there are certain operators and access methods where it is ignored.
+> 
+> Read-ahead reads can be seen in the Events list and Timeline where the read covers a range of pages, e.g. 'Read (Disk): 64 pages from (Page Address)'
+> and the call stack will reference read ahead functions, e.g. `BPool::ReadAhead`.
+
+## Results
+
+If **Results** is selected the query data results will be included on the Results tab when the query has run.
+
+## Messages
+
+The messages tab includes messages/errors from the query and information about the post-query parsing/capture that runs for tracing.
+
+## Tips
+
+- **Ctrl + Enter** or `F5` executes a query
+- Select text and execute to run just the selected portion of a query
 - **Ctrl + mouse wheel** changes the editor font size
-- Data modifications (INSERT / UPDATE / DELETE) run inside a transaction that is rolled back after the trace, so the
-  data is left unchanged
 
 ## Multi-statement scripts
 
-Only one statement can be traced at a time. To trace one statement out of a larger script, select it, right-click, and
-choose **Trace query selection** - everything before it runs as untraced setup, and everything after as untraced
-teardown.
+If you have a script that requires setup/teardown and do not want to trace that part of it, select the SQL that will be traced, right click,
+and choose 'Trace Query Selection'. This will trace only the hilighted portion while still running any other parts of the query.
+
+Clear the selection by right clicking and choosing 'Clear query selection'.

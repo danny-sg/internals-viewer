@@ -1,39 +1,33 @@
-# Getting started
+# Getting Started
 
-The Query view runs SQL against the connected database while tracing what the storage engine does - every page read,
-lock, latch, and wait - then replays the activity on the timeline.
+Query tracing allows you to run a SQL query and trace the individual engine events that occured and ran the query.
 
-Follow the steps to trace your first query:
+This includes page reads (disk and buffer pool), locks, latches, waits, and log records if the query is a modification query. You can also 
+capture the call stack and execution plan.
 
-## 1 - Write a query
+Internals Viewer takes the raw captures and puts them together in a consolidated view that connects all of the information and allows you 
+to step through the query as it actually executed.
 
-Open the [SQL Editor](view:SqlEditor) and enter a query against a table in the database. A simple `SELECT` against a
-reasonably sized table works well - the more pages it reads, the more there is to watch.
+To run a query trace:
 
-## 2 - Make the reads visible
+- Select the events to capture in the _Events_ menu
+- Open the [SQL Editor](view:SqlEditor) and enter a query
+- Click **Execute**
 
-On the editor's command bar turn on **Clear Buffer Pool**, so every page has to be physically read instead of being
-served from memory, and **Disable Read-Ahead**, so pages are read one at a time as the engine needs them.
+Events will be displayed on the [Timeline](view:Timeline). You can press the Play button or move the playhead to move to different points 
+on the timeline and view different visualization tabs for the query execution including:
 
-## 3 - Execute
+- [Allocations](view:Allocations)
+- [Execution Plan](view:ExecutionPlan)
+- [Call Stack](view:CallStack)
+- Indexes
 
-Press **Execute** (or **Ctrl + Enter**). The query runs with a trace session attached, and when it completes the
-captured activity loads into the timeline at the bottom.
+Tabs can be grouped into different layouts. Drag the tab headers to dock and group.
 
-## 4 - Replay it
-
-Press play on the timeline, or drag the red playhead to scrub through the trace. Each tick on the Read band is a page
-being read.
-
-- Open the [Allocations](view:Allocations) pane and replay again - pages light up on the allocation map as they are
-  read
-- Open the [Execution Plan](view:ExecutionPlan) pane to watch rows flow between operators
-- Click any event to see its detail in the [Events](view:Events) pane
-
-## 5 - Go deeper
-
-- [Choose which events to capture](guide:ChoosingEvents) - waits, latches, memory, and call stacks
-- [Read the timeline](guide:Timeline) - bands, playback, zoom, and selection
-- [Trace a data modification](guide:LogRecords) - see a query's changes at the byte level, then roll them back
-
-The full guide is at [internalsviewer.com](https://internalsviewer.com).
+> **Production Warning**
+>
+> A single query has the potential to generate thousands, or hundreds of thousands of events. Factors include the complexity of the query, 
+> the number of rows it accesses, and the duration for the query.
+>
+> It is not recommended to run query tracing on a production database. There is a performance overhead to capturing events and captures 
+> may include clearing the buffer pool (`DBCC DROPCLEANBUFFERS`) and running checkpoints (`CHECKPOINT`).

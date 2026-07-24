@@ -34,6 +34,8 @@
             <Setter Property="Margin" Value="0" />
             <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
             <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Enabled" />
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Visible" />
             <Setter Property="ScrollViewer.IsHorizontalRailEnabled" Value="True" />
@@ -174,7 +176,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="ValueDefaultTemplate" x:DataType="models:Marker">
-            <Grid>
+            <Grid VerticalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
@@ -248,7 +250,9 @@
 
                 <!--Value Column-->
                 <ContentControl ContentTemplateSelector="{StaticResource ValueTemplateSelector}"
-                                HorizontalAlignment="Left" 
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                VerticalContentAlignment="Center"
                                 Content="{x:Bind Content}"/>
             </controls:DataRow>
         </DataTemplate>
