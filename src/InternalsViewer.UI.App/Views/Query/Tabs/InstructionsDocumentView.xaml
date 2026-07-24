@@ -10,6 +10,12 @@
 
     <UserControl.Resources>
         <Thickness x:Key="NavigationViewContentMargin">0</Thickness>
+
+        <StaticResource x:Key="InstructionsInlineCodeBackgroundBrush" ResourceKey="ControlFillColorDefaultBrush" />
+        <StaticResource x:Key="InstructionsInlineCodeBorderBrush" ResourceKey="ControlStrokeColorDefaultBrush" />
+        <StaticResource x:Key="InstructionsQuoteBackgroundBrush" ResourceKey="CardBackgroundFillColorDefaultBrush" />
+        <StaticResource x:Key="InstructionsQuoteBorderBrush" ResourceKey="AccentFillColorDefaultBrush" />
+
         <Style TargetType="NavigationViewItem">
             <Setter Property="FontSize" Value="12" />
         </Style>
@@ -22,7 +28,8 @@
                     IsBackButtonVisible="Collapsed"
                     IsSettingsVisible="False"
                     AlwaysShowHeader="False"
-PaneTitle=""
+                    PaneTitle=""
+                    Margin="0,14,0,0"
                     SelectionChanged="TopicsNavigation_SelectionChanged">
 
         <NavigationView.MenuItems>
@@ -31,12 +38,10 @@ PaneTitle=""
                                 IsSelected="True" />
             <NavigationViewItem Content="SQL Editor"
                                 Tag="SqlEditor" />
-            <NavigationViewItem Content="Choosing Events"
-                                Tag="ChoosingEvents" />
-            <NavigationViewItem Content="Timeline"
-                                Tag="Timeline" />
             <NavigationViewItem Content="Events"
                                 Tag="Events" />
+            <NavigationViewItem Content="Timeline"
+                                Tag="Timeline" />
             <NavigationViewItem Content="Allocations"
                                 Tag="Allocations" />
             <NavigationViewItem Content="Execution Plan"

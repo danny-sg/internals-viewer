@@ -1,6 +1,6 @@
 using InternalsViewer.Query.Events;
 
-namespace InternalsViewer.UI.App.Views.Query.Tabs;
+namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 /// <summary>
 /// An event as the subject of the scope header — what the isolated call tree below it belongs to

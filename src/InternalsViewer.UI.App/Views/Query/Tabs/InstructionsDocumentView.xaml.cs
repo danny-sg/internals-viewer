@@ -5,6 +5,7 @@ using CommunityToolkit.WinUI.Controls;
 using InternalsViewer.UI.App.Controls.Instructions;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.System;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
@@ -42,10 +43,33 @@ public sealed partial class InstructionsDocumentView : UserControl
     {
         InitializeComponent();
 
+        MarkdownTextBlock.Config = CreateConfig();
+
         Loaded += (_, _) => RenderCurrentPage();
         Unloaded += (_, _) => Unsubscribe();
         DataContextChanged += (_, _) => Subscribe();
     }
+
+    private MarkdownConfig CreateConfig() => new()
+    {
+        Themes = new MarkdownThemes
+        {
+            ParagraphMargin = new Thickness(0, 0, 0, 12),
+            H1Margin = new Thickness(0, 0, 0, 16),
+            H2Margin = new Thickness(0, 12, 0, 8),
+            H3Margin = new Thickness(0, 10, 0, 6),
+            InlineCodeBackground = (Brush)Resources["InstructionsInlineCodeBackgroundBrush"],
+            InlineCodeBorderBrush = (Brush)Resources["InstructionsInlineCodeBorderBrush"],
+            InlineCodeBorderThickness = new Thickness(1),
+            InlineCodeCornerRadius = new CornerRadius(4),
+            InlineCodePadding = new Thickness(4, 0, 4, 2),
+            QuoteBackground = (Brush)Resources["InstructionsQuoteBackgroundBrush"],
+            QuoteBorderBrush = (Brush)Resources["InstructionsQuoteBorderBrush"],
+            QuoteBorderThickness = new Thickness(3, 0, 0, 0),
+            QuotePadding = new Thickness(12, 8, 12, 8),
+            QuoteMargin = new Thickness(0, 8, 0, 8)
+        }
+    };
 
     private void Subscribe()
     {

@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace InternalsViewer.UI.App.Views.Query.Tabs;
+namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 /// <summary>
 /// Picks the row template for the Callstack tree — a plan operator (when scoped) or a call frame

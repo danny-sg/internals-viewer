@@ -4,15 +4,15 @@ using System.ComponentModel;
 using System.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using InternalsViewer.Query.Events;
 
-namespace InternalsViewer.UI.App.Views.Query.Tabs;
+namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 public sealed partial class CallstackDocumentView : UserControl
 {
