@@ -131,12 +131,12 @@
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
     <PostBuildEvent>
-      <Command>if not exist "$(SolutionDir)runtimes\win-x64\native" (
-    mkdir "$(SolutionDir)runtimes\win-x64\native"
+      <Command>if not exist "$(ProjectDir)..\runtimes\win-x64\native" (
+    mkdir "$(ProjectDir)..\runtimes\win-x64\native"
 )
 
-copy /Y "$(TargetPath)" "$(SolutionDir)runtimes\win-x64\native\"
-copy /Y "$(ProjectDir)Native\msdia140.dll" "$(SolutionDir)runtimes\win-x64\native\"</Command>
+copy /Y "$(TargetPath)" "$(ProjectDir)..\runtimes\win-x64\native\"
+copy /Y "$(ProjectDir)Native\msdia140.dll" "$(ProjectDir)..\runtimes\win-x64\native\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -162,12 +162,12 @@ copy /Y "$(ProjectDir)Native\msdia140.dll" "$(SolutionDir)runtimes\win-x64\nativ
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
     <PostBuildEvent>
-      <Command>if not exist "$(SolutionDir)runtimes\win-x64\native" (
-    mkdir "$(SolutionDir)runtimes\win-x64\native"
+      <Command>if not exist "$(ProjectDir)..\runtimes\win-x64\native" (
+    mkdir "$(ProjectDir)..\runtimes\win-x64\native"
 )
 
-copy /Y "$(TargetPath)" "$(SolutionDir)runtimes\win-x64\native\"
-copy /Y "$(ProjectDir)Native\msdia140.dll" "$(SolutionDir)runtimes\win-x64\native\"</Command>
+copy /Y "$(TargetPath)" "$(ProjectDir)..\runtimes\win-x64\native\"
+copy /Y "$(ProjectDir)Native\msdia140.dll" "$(ProjectDir)..\runtimes\win-x64\native\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

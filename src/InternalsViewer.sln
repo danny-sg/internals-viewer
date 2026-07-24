@@ -30,6 +30,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.Query.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.UI.App.Tests", "Tests\InternalsViewer.UI.App.Tests\InternalsViewer.UI.App.Tests.csproj", "{F708CEAB-7F6D-457A-A16A-E3BBF57A12AA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InternalsViewer.Connection.Sandbox", "InternalsViewer.Connection.Sandbox\InternalsViewer.Connection.Sandbox.csproj", "{D9F82B8F-62E8-4109-8349-60736CB770D5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -204,6 +206,22 @@ Global
 		{F708CEAB-7F6D-457A-A16A-E3BBF57A12AA}.Release|x64.Build.0 = Release|x64
 		{F708CEAB-7F6D-457A-A16A-E3BBF57A12AA}.Release|x86.ActiveCfg = Release|x86
 		{F708CEAB-7F6D-457A-A16A-E3BBF57A12AA}.Release|x86.Build.0 = Release|x86
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Debug|x64.Build.0 = Debug|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Debug|x86.Build.0 = Debug|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Release|ARM64.Build.0 = Release|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Release|x64.ActiveCfg = Release|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Release|x64.Build.0 = Release|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Release|x86.ActiveCfg = Release|Any CPU
+		{D9F82B8F-62E8-4109-8349-60736CB770D5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -215,7 +233,7 @@ Global
 		{F708CEAB-7F6D-457A-A16A-E3BBF57A12AA} = {22E8DA51-0EF6-4CEA-9053-6D49F4EF3F99}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		VisualSVNWorkingCopyRoot = 
 		SolutionGuid = {12A1406C-1C68-4A7F-A0FF-E4E7A65AECAE}
+		VisualSVNWorkingCopyRoot = 
 	EndGlobalSection
 EndGlobal
