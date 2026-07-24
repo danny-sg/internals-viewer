@@ -34,7 +34,6 @@ public sealed class PageService(ILogger<PageService> logger,
         var page = await loader.Load(database, pageAddress, cancellationToken, isMarkEnabled);
 
         return ParsePage(page, pageAddress);
-
     }
 
     public async Task<Page> GetPage(DatabaseSource database,
@@ -50,7 +49,6 @@ public sealed class PageService(ILogger<PageService> logger,
         var page = await loader.LoadInto(database, pageAddress, buffer, cancellationToken);
 
         return ParsePage(page, pageAddress);
-
     }
 
     public async Task<T> GetPage<T>(DatabaseSource database,
