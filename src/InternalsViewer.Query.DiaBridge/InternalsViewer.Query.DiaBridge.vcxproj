@@ -120,6 +120,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(VSInstallDir)DIA SDK\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -149,6 +150,8 @@ copy /Y "$(ProjectDir)Native\msdia140.dll" "$(SolutionDir)runtimes\win-x64\nativ
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(VSInstallDir)DIA SDK\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -158,6 +161,14 @@ copy /Y "$(ProjectDir)Native\msdia140.dll" "$(SolutionDir)runtimes\win-x64\nativ
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)runtimes\win-x64\native" (
+    mkdir "$(SolutionDir)runtimes\win-x64\native"
+)
+
+copy /Y "$(TargetPath)" "$(SolutionDir)runtimes\win-x64\native\"
+copy /Y "$(ProjectDir)Native\msdia140.dll" "$(SolutionDir)runtimes\win-x64\native\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DiaBridge.h" />
