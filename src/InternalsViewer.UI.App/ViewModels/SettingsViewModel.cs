@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -46,6 +47,18 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     // The custom trace directory the app writes to, or null when the SQL Server log directory should be used.
     public string? ActiveTraceDirectory =>
         UseCustomTraceDirectory && !string.IsNullOrWhiteSpace(TraceDirectory) ? TraceDirectory : null;
+
+    [ObservableProperty]
+    private string _memoryUsage = string.Empty;
+
+    public void RefreshMemoryUsage()
+    {
+        var bytes = GC.GetTotalMemory(false);
+
+        MemoryUsage = bytes >= 1024 * 1024 * 1024
+            ? $"{bytes / 1024d / 1024d / 1024d:N2} GB"
+            : $"{bytes / 1024d / 1024d:N0} MB";
+    }
 
     public async Task LoadAsync()
     {

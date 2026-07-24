@@ -100,6 +100,12 @@
             </StackPanel>
         </controls:SettingsCard>
 
+        <controls:SettingsCard Header="Current Memory Usage"
+                               Description="Managed heap memory currently in use">
+            <TextBlock VerticalAlignment="Center"
+                       Text="{x:Bind ViewModel.MemoryUsage, Mode=OneWay}"/>
+        </controls:SettingsCard>
+
         <controls:SettingsCard x:Name="AboutSettingsCard"
                                Description="Internals Viewer"
                                Header="About">

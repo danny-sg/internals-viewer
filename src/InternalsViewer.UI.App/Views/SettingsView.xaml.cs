@@ -17,11 +17,20 @@ public sealed partial class SettingsView : Page
 
     internal SettingsViewModel ViewModel { get; } = App.GetService<SettingsViewModel>();
 
+    private readonly DispatcherTimer _memoryTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+
     public SettingsView()
     {
         InitializeComponent();
 
         _ = ViewModel.LoadAsync();
+
+        ViewModel.RefreshMemoryUsage();
+
+        _memoryTimer.Tick += (_, _) => ViewModel.RefreshMemoryUsage();
+
+        Loaded += (_, _) => _memoryTimer.Start();
+        Unloaded += (_, _) => _memoryTimer.Stop();
     }
 
     private async void OpenLogButton_Click(object sender, RoutedEventArgs e)
