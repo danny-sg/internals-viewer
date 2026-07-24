@@ -211,6 +211,12 @@ public sealed partial class IndexControl : IDisposable
     private readonly Dictionary<int, List<IndexTreeNode>> _nodesByLevel = [];
 
     private readonly Dictionary<int, int> _levelMaxColumn = [];
+
+    private readonly Dictionary<int, int> _levelMaxRow = [];
+
+    private readonly Dictionary<int, int> _levelMaxColumnAfterParent = [];
+
+    private readonly Dictionary<int, int> _levelMaxColumnBeforeParent = [];
     private int _globalMaxColumn;
 
     private readonly Dictionary<PageAddress, int> _ordinalByAddress = [];
@@ -333,6 +339,7 @@ public sealed partial class IndexControl : IDisposable
         }
 
         var canvasWidth = (float)IndexCanvas.ActualWidth;
+
         var canvasHeight = (float)IndexCanvas.ActualHeight;
 
         if (canvasWidth <= 0 || canvasHeight <= 0)
@@ -341,7 +348,8 @@ public sealed partial class IndexControl : IDisposable
         }
 
         var contentWidth = GetNodeX(_globalMaxColumn - 1) + PageWidth + HorizontalMargin * 2;
-        var contentHeight = _nodePositions.Max(NodeY) + PageHeight + VerticalMargin;
+
+        var contentHeight = GetMaxNodeY() + PageHeight + VerticalMargin;
 
         if (contentWidth <= 0 || contentHeight <= 0)
         {
@@ -430,8 +438,25 @@ public sealed partial class IndexControl : IDisposable
     private float GetNodeX(int n)
         => (PageWidth + HorizontalMargin) * n;
 
-    private float GetNodeY(int level, int row) 
+    private float GetNodeY(int level, int row)
         => PageHeight + VerticalMargin * level + (PageHeight + VerticalMargin * row);
+
+    private float GetMaxNodeY()
+    {
+        var max = 0f;
+
+        foreach (var (level, maxRow) in _levelMaxRow)
+        {
+            var y = GetNodeY(level, maxRow - 1);
+
+            if (y > max)
+            {
+                max = y;
+            }
+        }
+
+        return max;
+    }
 
     /// <summary>
     /// Build a virtual structure of the tree per level
@@ -441,7 +466,11 @@ public sealed partial class IndexControl : IDisposable
         _nodePositions.Clear();
         _nodesByLevel.Clear();
         _levelMaxColumn.Clear();
+        _levelMaxRow.Clear();
+        _levelMaxColumnAfterParent.Clear();
+        _levelMaxColumnBeforeParent.Clear();
         _ordinalByAddress.Clear();
+
         _globalMaxColumn = 0;
         _levelCount = 0;
 
@@ -477,6 +506,25 @@ public sealed partial class IndexControl : IDisposable
             if (!_levelMaxColumn.TryGetValue(level, out var max) || treeNode.Column > max)
             {
                 _levelMaxColumn[level] = treeNode.Column;
+            }
+
+            if (!_levelMaxRow.TryGetValue(level, out var maxRow) || treeNode.Row > maxRow)
+            {
+                _levelMaxRow[level] = treeNode.Row;
+            }
+
+            var parentOrdinal = _ordinalByAddress.GetValueOrDefault(treeNode.Node.Parent);
+
+            var columnAfterParent = treeNode.Column - parentOrdinal;
+
+            if (!_levelMaxColumnAfterParent.TryGetValue(level, out var maxAfter) || columnAfterParent > maxAfter)
+            {
+                _levelMaxColumnAfterParent[level] = columnAfterParent;
+            }
+
+            if (!_levelMaxColumnBeforeParent.TryGetValue(level, out var maxBefore) || -columnAfterParent > maxBefore)
+            {
+                _levelMaxColumnBeforeParent[level] = -columnAfterParent;
             }
 
             if (treeNode.Column > _globalMaxColumn)
@@ -592,15 +640,53 @@ public sealed partial class IndexControl : IDisposable
         // Snapshot the dependency-property reads once per level instead of per node.
         var selectedAddress = SelectedPageAddress;
         var highlightedAddresses = HighlightedPageAddresses;
+        var hoverNode = HoverNode;
 
         var miniMode = _zoom < ZoomMiniMode;
         var maxiMode = _zoom > ZoomMaxiMode;
 
-        foreach (var node in levelNodes)
-        {
-            var renderX = startX + NodeX(node) - xScrollOffset;
+        var stride = PageWidth + HorizontalMargin;
 
-            var renderY = NodeY(node) - yScrollOffset;
+        var verticalMargin = VerticalMargin;
+
+        var levelBaseY = PageHeight + (verticalMargin * level) + PageHeight;
+
+        var minColumn = (int)Math.Floor((clip.Left + xScrollOffset - startX) / stride) + 1;
+        var maxColumn = (int)Math.Ceiling((clip.Right + xScrollOffset - startX) / stride) + 1;
+
+        if (!miniMode)
+        {
+            var maxLineLeft = (stride * _levelMaxColumnBeforeParent.GetValueOrDefault(level))
+                              + nextLevelStartX - startX;
+
+            var maxLineRight = (stride * _levelMaxColumnAfterParent.GetValueOrDefault(level))
+                               + startX - nextLevelStartX;
+
+            if (maxLineLeft > 0)
+            {
+                minColumn -= (int)Math.Ceiling(maxLineLeft / stride);
+            }
+
+            if (maxLineRight > 0)
+            {
+                maxColumn += (int)Math.Ceiling(maxLineRight / stride);
+            }
+        }
+
+        var startIndex = FindFirstColumnIndex(levelNodes, minColumn);
+
+        for (var i = startIndex; i < levelNodes.Count; i++)
+        {
+            var node = levelNodes[i];
+
+            if (node.Column > maxColumn)
+            {
+                break;
+            }
+
+            var renderX = startX + (stride * (node.Column - 1)) - xScrollOffset;
+
+            var renderY = levelBaseY + (verticalMargin * (node.Row - 1)) - yScrollOffset;
 
             // Only draw the page if it is visible
             if (clip.Contains(renderX, renderY))
@@ -608,8 +694,6 @@ public sealed partial class IndexControl : IDisposable
                 var isHighlighted = highlightedAddresses.Contains(node.Node.PageAddress);
                 var isSelected = node.Node.PageAddress == selectedAddress;
                 var hasSpanColour = _activeSpanColours.TryGetValue(node.Node.PageAddress, out var spanColour);
-
-                var isHovered = node.Node == HoverNode;
 
                 if (miniMode)
                 {
@@ -660,6 +744,29 @@ public sealed partial class IndexControl : IDisposable
                           false);
             }
         }
+    }
+
+    private static int FindFirstColumnIndex(List<IndexTreeNode> levelNodes, int minColumn)
+    {
+        var low = 0;
+
+        var high = levelNodes.Count;
+
+        while (low < high)
+        {
+            var mid = (low + high) / 2;
+
+            if (levelNodes[mid].Column < minColumn)
+            {
+                low = mid + 1;
+            }
+            else
+            {
+                high = mid;
+            }
+        }
+
+        return low;
     }
 
     /// <summary>
@@ -1182,26 +1289,68 @@ public sealed partial class IndexControl : IDisposable
 
     private IndexNode? GetIndexNodeAtPosition(double x, double y)
     {
-        var xScrollOffset = (float)HorizontalScrollBar.Value;
-        var yScrollOffset = (float)VerticalScrollBar.Value;
-
-        // Find the level first as the level offsets are used to center the tree.
-        var level = _nodePositions.FirstOrDefault(n => y >= NodeY(n) - yScrollOffset
-                                                       && y <= NodeY(n) - yScrollOffset + PageHeight)?.Node.Level;
-
-        if (level is null)
+        if (_nodePositions.Count == 0)
         {
             return null;
         }
 
-        var xOffset = GetLevelStartX(level.Value) - xScrollOffset;
+        var xScrollOffset = (float)HorizontalScrollBar.Value;
+        var yScrollOffset = (float)VerticalScrollBar.Value;
 
-        var node = _nodePositions.FirstOrDefault(n => x >= xOffset + NodeX(n)
-                                                      && x <= xOffset + NodeX(n) + PageWidth
-                                                      && y >= NodeY(n) - yScrollOffset
-                                                      && y <= NodeY(n) - yScrollOffset + PageHeight);
+        var pageHeight = PageHeight;
+        var verticalMargin = VerticalMargin;
 
-        return node?.Node;
+        // Find the level first as the level offsets are used to center the tree.
+        var worldY = y + yScrollOffset - (pageHeight * 2);
+
+        if (worldY < 0)
+        {
+            return null;
+        }
+
+        var band = (int)Math.Floor(worldY / verticalMargin);
+
+        if (worldY - (band * verticalMargin) > pageHeight)
+        {
+            return null;
+        }
+
+        var level = Math.Min(band, _levelCount);
+
+        var row = (band - level) + 1;
+
+        var worldX = x + xScrollOffset - GetLevelStartX(level);
+
+        if (worldX < 0)
+        {
+            return null;
+        }
+
+        var stride = PageWidth + HorizontalMargin;
+
+        var column = (int)Math.Floor(worldX / stride) + 1;
+
+        if (worldX - ((column - 1) * stride) > PageWidth)
+        {
+            return null;
+        }
+
+        if (!_nodesByLevel.TryGetValue(level, out var levelNodes))
+        {
+            return null;
+        }
+
+        var index = FindFirstColumnIndex(levelNodes, column);
+
+        for (var i = index; i < levelNodes.Count && levelNodes[i].Column == column; i++)
+        {
+            if (levelNodes[i].Row == row)
+            {
+                return levelNodes[i].Node;
+            }
+        }
+
+        return null;
     }
 
     public void Dispose()
