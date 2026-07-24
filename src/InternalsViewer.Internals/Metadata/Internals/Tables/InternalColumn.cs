@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 /// Columns - sys.syscolpars
 /// </summary>
 [InternalsMetadata]
-public record InternalColumn
+public sealed record InternalColumn
 {
     [InternalsMetadataColumn("id", 1, SqlDbType.Int, 4, 4, 1)]
     public int ObjectId { get; set; }
@@ -55,5 +55,5 @@ public record InternalColumn
     public int Chk { get; set; }
 
     [InternalsMetadataColumn("idtval", 16, SqlDbType.VarBinary, 64, -2, 16)]
-    public byte[]? IdtVal { get; set; } = Array.Empty<byte>();
+    public byte[]? IdtVal { get; set; } = [];
 }

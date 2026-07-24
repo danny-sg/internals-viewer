@@ -48,14 +48,9 @@ public sealed class LobRecord : FixedVarRecord
     public short Size { get; set; }
 
     [DataStructureItem(ItemType.BlobData)]
-    public byte[] Data { get; set; } = Array.Empty<byte>(); 
+    public byte[] Data { get; set; } = []; 
 
-    public List<BlobChildLink> BlobChildren { get; set; } = new();
+    public List<BlobChildLink> BlobChildren { get; set; } = [];
 
-    public BlobChildLink[] BlobChildrenArray => BlobChildren.ToArray();
-
-    internal static string GetRecordType(RecordType recordType)
-    {
-        throw new NotImplementedException();
-    }
+    public BlobChildLink[] BlobChildrenArray => [.. BlobChildren];
 }

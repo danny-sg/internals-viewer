@@ -37,7 +37,7 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
     
     private int[] _endExtents = [];
 
-    public List<IamPage> Pages { get; } = new();
+    public List<IamPage> Pages { get; } = [];
 
     public PageAddress[] SinglePageSlots { get; set; } = [];
 
@@ -56,7 +56,9 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
         for (var i = 0; i < count; i++)
         {
             var page = pages[i];
+            
             _pages[i] = page;
+
             _startExtents[i] = page.StartPage.PageId / 8;
             _endExtents[i] = (page.StartPage.PageId + (AllocationPage.AllocationExtentInterval * 8)) / 8;
         }

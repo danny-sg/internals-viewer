@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Internals.Engine.Records.Index;
 
-public class FixedVarIndexRecord : FixedVarRecord, IIndexRecord
+public sealed class FixedVarIndexRecord : FixedVarRecord, IIndexRecord
 {
     /// <summary>
     /// Down page pointer to the next page in the index

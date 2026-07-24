@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 /// sys.sysiscols
 /// </summary>
 [InternalsMetadata]
-public record InternalIndexColumn
+public sealed record InternalIndexColumn
 {
     [InternalsMetadataColumn("idmajor", 1, SqlDbType.Int, 4, 4, 1)]
     public int ObjectId { get; set; }

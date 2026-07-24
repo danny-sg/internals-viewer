@@ -67,7 +67,7 @@ public sealed class CompressionInfoLoader(CdDataRecordLoader cdDataRecordLoader)
             tags.AddIf("Has Anchor Record", ci.HasAnchorRecord);
             tags.AddIf("Has Dictionary", ci.HasDictionary);
 
-            ci.MarkProperty(nameof(ci.Header), offset, sizeof(byte), tags.ToArray());
+            ci.MarkProperty(nameof(ci.Header), offset, sizeof(byte), [.. tags]);
         }
     }
 

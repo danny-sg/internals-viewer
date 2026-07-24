@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.Engine.Address;
 /// </summary>
 public readonly record struct PageAddress(short FileId, int PageId)
 {
-    public static readonly PageAddress Empty = default(PageAddress);
+    public static readonly PageAddress Empty = default;
 
     /// <summary>
     /// Size of a Page Address is 6 bytes (2 byte File Id + 4 byte Page Id)
@@ -27,7 +27,7 @@ public readonly record struct PageAddress(short FileId, int PageId)
     /// <summary>
     /// Extent (block of 8 pages) for the Page Address
     /// </summary>
-    public readonly int Extent => (PageId - 1) / 8;
+    public int Extent => (PageId - 1) / 8;
 
     public override string ToString()
     {

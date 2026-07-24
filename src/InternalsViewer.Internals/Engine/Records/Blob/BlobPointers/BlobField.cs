@@ -14,10 +14,10 @@ public class BlobField : Field
     [DataStructureItem(ItemType.Timestamp, "Timestamp")]
     public uint Timestamp { get; set; }
 
-    public List<BlobChildLink> Links { get; set; } = new();
+    public List<BlobChildLink> Links { get; set; } = [];
 
     [DataStructureItem(ItemType.Rid, "RID")]
-    public BlobChildLink[] LinksArray => Links.ToArray();
+    public BlobChildLink[] LinksArray => [.. Links];
 
     [DataStructureItem(ItemType.PointerType, "Pointer Type")]
     public BlobFieldType PointerType { get; set; }

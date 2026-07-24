@@ -11,7 +11,7 @@ public static class FileProvider
 {
     public static List<DatabaseFile> GetFiles(InternalMetadata metadata)
     {
-        return metadata.Files.Select(GetFile).Where(f => f.FileType == FileType.Rows).ToList();
+        return [.. metadata.Files.Select(GetFile).Where(f => f.FileType == FileType.Rows)];
     }
 
     private static DatabaseFile GetFile(InternalFile source)

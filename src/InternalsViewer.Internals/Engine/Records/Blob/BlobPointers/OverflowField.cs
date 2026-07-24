@@ -5,7 +5,7 @@ namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 /// <summary>
 /// Row Overflow field
 /// </summary>
-public class OverflowField : BlobField
+public sealed class OverflowField : BlobField
 {
     [DataStructureItem(ItemType.OverflowLevel)]
     public byte Level { get; set; }

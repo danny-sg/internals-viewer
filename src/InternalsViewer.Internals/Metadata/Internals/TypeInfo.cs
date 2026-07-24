@@ -5,7 +5,7 @@ namespace InternalsViewer.Internals.Metadata.Internals;
 /// <summary>
 ///     Parses the ti (Type Info) field of the sys.sysallocunits table
 /// </summary>
-public record TypeInfo
+public sealed record TypeInfo
 {
     public byte Scale { get; set; }
 

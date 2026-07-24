@@ -16,7 +16,7 @@ namespace InternalsViewer.Internals.Engine.Allocation;
 /// </remarks>
 public sealed class PfsChain
 {
-    public List<PfsPage> PfsPages { get; } = new();
+    public List<PfsPage> PfsPages { get; } = [];
 
     /// <summary>
     /// Gets the PFS status for a given page

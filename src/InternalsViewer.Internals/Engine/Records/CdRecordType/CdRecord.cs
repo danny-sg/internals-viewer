@@ -13,7 +13,7 @@ public class CdRecord(CompressionInfo compressionInfo) : Record
     public RowIdentifier? RowIdentifier { get; set; }
 
     [DataStructureItem(ItemType.ColumnDescriptors)]
-    public ColumnDescriptor[] ColumnDescriptors { get; set; } = Array.Empty<ColumnDescriptor>();
+    public ColumnDescriptor[] ColumnDescriptors { get; set; } = [];
 
     public short CompressedSize { get; set; }
 
@@ -23,10 +23,10 @@ public class CdRecord(CompressionInfo compressionInfo) : Record
     public byte Header { get; set; }
 
     [DataStructureItem(ItemType.ShortDataClusterArray)]
-    public byte[] ShortDataClusterArray { get; set; } = Array.Empty<byte>();
+    public byte[] ShortDataClusterArray { get; set; } = [];
 
     [DataStructureItem(ItemType.LongDataClusterArray)]
-    public byte[] LongDataClusterArray { get; set; } = Array.Empty<byte>();
+    public byte[] LongDataClusterArray { get; set; } = [];
 
     public bool IsCompressedDataRecord { get; set; }
     
@@ -41,5 +41,5 @@ public class CdRecord(CompressionInfo compressionInfo) : Record
     public ushort LongDataOffsetCount { get; set; }
 
     [DataStructureItem(ItemType.LongDataOffsetArray)]
-    public ushort[] LongDataOffsetArray { get; set; } = Array.Empty<ushort>();
+    public ushort[] LongDataOffsetArray { get; set; } = [];
 }

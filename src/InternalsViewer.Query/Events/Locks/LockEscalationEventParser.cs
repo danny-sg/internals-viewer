@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.Events.Locks;
 
 internal class LockEscalationEventParser : IEventParser<LockEscalationEvent>
 {
-    public static LockEscalationEvent? Map(DatabaseSource? databaseSource, EventResult e)
+    public static LockEscalationEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
         var objectId = (int)(e.GetLong("object_id") ?? 0);
 

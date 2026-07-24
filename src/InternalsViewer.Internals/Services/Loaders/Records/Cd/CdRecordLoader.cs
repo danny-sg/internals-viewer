@@ -144,17 +144,16 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
 
         record.RecordType = (CompressedRecordType)((record.Header >> 2) & 7);
 
-        var tags = new List<string>();
+        if (record.IsMarkEnabled)
+        {
+            var tags = new List<string> { record.RecordType.ToString() };
 
-        tags.Add(record.RecordType.ToString());
+            tags.AddIf("Compressed", record.IsCompressedDataRecord);
+            tags.AddIf("Has Long Data Region", record.HasLongDataRegion);
+            tags.AddIf("Has Versioning", record.HasVersioning);
 
-        tags.AddIf("Compressed", record.IsCompressedDataRecord);
-        tags.AddIf("Has Long Data Region", record.HasLongDataRegion);
-        tags.AddIf("Has Versioning", record.HasVersioning);
-
-        record.MarkProperty(nameof(record.Header), offset, sizeof(byte), tags.ToArray());
-
-        Logger.LogDebug("Record Type: {0}", record.RecordType);
+            record.MarkProperty(nameof(record.Header), offset, sizeof(byte), [.. tags]);
+        }
     }
 
     /// <summary>
@@ -403,7 +402,7 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
                                      field, 
                                      field.Offset, 
                                      field.Length,
-                                     tags.ToArray());
+                                     [.. tags]);
                 }
 
                 previousOffset = RecordHelpers.DecodeOffset(nextOffset);
@@ -502,6 +501,6 @@ public class CdRecordLoader<TStructure>(ILogger<CdRecordLoader<TStructure>> logg
             bytePosition++;
         }
 
-        record.ColumnDescriptors = columnDescriptors.ToArray();
+        record.ColumnDescriptors = [.. columnDescriptors];
     }
 }

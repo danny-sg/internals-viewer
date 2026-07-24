@@ -12,9 +12,9 @@ public abstract class Record : DataStructure, IRecord
 
     public ushort Offset { get; set; }
 
-    public List<RecordField> Fields { get; } = new();
+    public List<RecordField> Fields { get; } = [];
 
-    public RecordField[] FieldsArray => Fields.ToArray();
+    public RecordField[] FieldsArray => [.. Fields];
 
     [DataStructureItem(ItemType.ColumnCount)]
     public short ColumnCount { get; set; }

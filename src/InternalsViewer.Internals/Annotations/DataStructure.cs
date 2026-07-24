@@ -4,7 +4,7 @@ namespace InternalsViewer.Internals.Annotations;
 
 public class DataStructure : IDataStructure
 {
-    public List<DataStructureItem> MarkItems => field ??= new();
+    public List<DataStructureItem> MarkItems => field ??= [];
 
     public bool IsMarkEnabled { get; set; }
 

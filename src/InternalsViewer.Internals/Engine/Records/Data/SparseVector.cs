@@ -26,7 +26,7 @@ public sealed class SparseVector : DataStructure
     [DataStructureItem(ItemType.SparseColumnOffsets)]
     public string OffsetsDescription => RecordHelpers.GetArrayString(Offset);
 
-    public ushort[] Offset { get; set; } = Array.Empty<ushort>();
+    public ushort[] Offset { get; set; } = [];
 
     [DataStructureItem(ItemType.SparseColumnCount)]
     public short ColCount { get; set; }

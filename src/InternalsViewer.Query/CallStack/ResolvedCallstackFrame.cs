@@ -21,9 +21,7 @@ public sealed record ResolvedCallstackFrame
     /// Matches the showplan <c>PhysicalOperator</c>s this frame is the entry point of; empty when the frame is not one
     /// </summary>
     /// <remarks>
-    /// Frames carrying these cut the call tree into per-operator segments. See
-    /// <see cref="Categories.SymbolCategoryRule.PlanOperator"/> for why it is a list of patterns, and why it is not
-    /// <see cref="Iterator"/>.
+    /// Frames carrying these cut the call tree into per-operator segments
     /// </remarks>
     public IReadOnlyList<GlobPattern> PlanOperator { get; init; } = [];
 

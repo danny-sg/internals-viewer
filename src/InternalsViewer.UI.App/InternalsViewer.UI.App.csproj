@@ -48,6 +48,9 @@
     <ItemGroup>
       <Content Remove="Assets\Instructions\*.md" />
       <EmbeddedResource Include="Assets\Instructions\*.md" />
+      <Content Include="Assets\Instructions\Images\*.svg">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
     <ItemGroup>
       <!-- Execution plan operator icons are addressed via ms-appx and must be packaged as content. -->

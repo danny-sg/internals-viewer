@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.UI.App.Models.Schema;
 
-public class DatabaseSchema
+public sealed class DatabaseSchema
 {
     public List<SqlTable> Tables { get; set; } = new();
 
@@ -11,19 +11,19 @@ public class DatabaseSchema
     public List<SqlSchema> Schemas { get; set; } = new();
 }
 
-public class SqlSchema
+public sealed class SqlSchema
 {
     public string Name { get; set; } = string.Empty;
 }
 
-public class SqlTable
+public sealed class SqlTable
 {
     public string Name { get; set; } = string.Empty;
 
     public string Schema { get; set; } = string.Empty;
 }
 
-public class SqlColumn
+public sealed class SqlColumn
 {
     public string Name { get; set; } = string.Empty;
 

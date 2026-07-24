@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace InternalsViewer.Internals.Metadata.SourceGenerators;
 
-public class TypeFinder : ISyntaxReceiver
+public sealed class TypeFinder : ISyntaxReceiver
 {
     public List<RecordDeclarationSyntax> LoadTypes { get; } = new();
 

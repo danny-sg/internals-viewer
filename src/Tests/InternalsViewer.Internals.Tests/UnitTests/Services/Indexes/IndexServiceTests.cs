@@ -2,6 +2,8 @@ using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Services.Indexes;
@@ -72,6 +74,48 @@ public class IndexServiceTests(ITestOutputHelper testOutput)
 
         Assert.Equal(Root, leaf1.Parent);
         Assert.Equal(Root, leaf2.Parent);
+    }
+
+    [Fact]
+    public async Task Ignores_Ghost_Index_Records()
+    {
+        var rootPage = CreatePage(PageType.Index, 1, PageAddress.Empty, PageAddress.Empty, [Leaf1, Leaf2]);
+
+        rootPage[96 + FixedLength] = (byte)((byte)RecordType.GhostIndex << 1);
+
+        var pages = new Dictionary<PageAddress, byte[]>
+        {
+            [Root] = rootPage,
+            [Leaf1] = CreatePage(PageType.Data, 0, PageAddress.Empty, PageAddress.Empty, [])
+        };
+
+        var service = new IndexService(TestLogger.GetLogger<IndexService>(TestOutput));
+
+        var nodes = await service.GetNodes(CreateDatabase(pages), Root, CancellationToken.None);
+
+        Assert.Equal(2, nodes.Count);
+        Assert.DoesNotContain(nodes, n => n.PageAddress == Leaf2);
+    }
+
+    [Fact]
+    public async Task Ignores_Compressed_Ghost_Index_Records()
+    {
+        var rootPage = CreateCdIndexPage(1, [Leaf1, Leaf2]);
+
+        rootPage[96 + 16] = (byte)(1 | ((byte)CompressedRecordType.GhostIndex << 2));
+
+        var pages = new Dictionary<PageAddress, byte[]>
+        {
+            [Root] = rootPage,
+            [Leaf1] = CreatePage(PageType.Data, 0, PageAddress.Empty, PageAddress.Empty, [])
+        };
+
+        var service = new IndexService(TestLogger.GetLogger<IndexService>(TestOutput));
+
+        var nodes = await service.GetNodes(CreateDatabase(pages), Root, CancellationToken.None);
+
+        Assert.Equal(2, nodes.Count);
+        Assert.DoesNotContain(nodes, n => n.PageAddress == Leaf2);
     }
 
     [Fact]

@@ -11,7 +11,7 @@
             BorderThickness="0"
             Padding="0,4,0,0"
             CornerRadius="4"
-            ToolTipService.ToolTip="{x:Bind ToolTipText, Mode=OneWay}">
+            ToolTipService.ToolTip="{x:Bind ToolTipText}">
         <StackPanel Orientation="Vertical"
                     HorizontalAlignment="Center"
                     Spacing="2">
@@ -21,30 +21,30 @@
                     Width="38"
                     Height="38"
                     HorizontalAlignment="Center" >
-                <Image Source="{x:Bind IconSource, Mode=OneWay}"
+                <Image Source="{x:Bind IconSource}"
                    Name="NodeImage"
                    Width="32"
                    Height="32"
                    HorizontalAlignment="Center" />
             </Border>
-            <TextBlock Text="{x:Bind OperatorName, Mode=OneWay}"
+            <TextBlock Text="{x:Bind OperatorName}"
                        FontSize="11"
                        FontWeight="SemiBold"
                        TextAlignment="Center"
                        TextWrapping="Wrap"
                        HorizontalAlignment="Center" />
-            <TextBlock Text="{x:Bind DetailText, Mode=OneWay}"
+            <TextBlock Text="{x:Bind DetailText}"
                        FontSize="10"
                        TextAlignment="Center"
                        TextTrimming="CharacterEllipsis"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       Visibility="{x:Bind DetailVisibility, Mode=OneWay}"
+                       Visibility="{x:Bind DetailVisibility}"
                        HorizontalAlignment="Center" />
-            <TextBlock Text="{x:Bind CostText, Mode=OneWay}"
+            <TextBlock Text="{x:Bind CostText}"
                        FontSize="10"
                        TextAlignment="Center"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       Visibility="{x:Bind CostVisibility, Mode=OneWay}"
+                       Visibility="{x:Bind CostVisibility}"
                        HorizontalAlignment="Center" />
 
             <!-- Mini icicle of the call stacks linked to this operator; populated in code-behind, collapsed

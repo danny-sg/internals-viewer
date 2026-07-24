@@ -25,7 +25,7 @@ public record ColumnStructure
     /// <summary>
     /// Data length if fixed length
     /// </summary>
-    public short DataLength { get; set; } = 0;
+    public short DataLength { get; set; }
 
     /// <summary>
     /// Leaf offset for fixed length fields (+ve), or variable length offset (-ve)

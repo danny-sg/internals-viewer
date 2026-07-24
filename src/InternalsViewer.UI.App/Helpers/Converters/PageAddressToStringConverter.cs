@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;
 
-public class PageAddressToStringConverter: IValueConverter
+public sealed class PageAddressToStringConverter: IValueConverter
 {
     public object? Convert(object? value, Type targetType, object parameter, string language)
     {

@@ -28,7 +28,7 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 ///     - External Resource Pool  125
 /// </remarks>
 [InternalsMetadata]
-public record InternalEntityObject
+public sealed record InternalEntityObject
 {
     [InternalsMetadataColumn("class", 1, SqlDbType.TinyInt, 1, 4, 1)]
     public byte ClassId { get; set; }

@@ -16,7 +16,7 @@ namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 ///         - Anchor Record
 ///         - Dictionary
 /// </remarks>
-public class CompressionInfo(int offset) : DataStructure
+public sealed class CompressionInfo(int offset) : DataStructure
 {
     [DataStructureItem(ItemType.PageModificationCount)]
     public short PageModificationCount { get; set; }

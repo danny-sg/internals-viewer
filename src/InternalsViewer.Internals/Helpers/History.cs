@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Helpers;
 
-public class History<T>
+public sealed class History<T>
 {
     private Stack<T> BackStack { get; } = new();
 

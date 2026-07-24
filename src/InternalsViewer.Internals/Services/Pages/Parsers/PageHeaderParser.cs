@@ -151,7 +151,7 @@ public static class PageHeaderParser
         header.MarkProperty(nameof(PageHeader.AllocationUnitId));
     }
 
-    private static string[]? GetFlagBitsTags(short flagBits)
+    private static string[] GetFlagBitsTags(short flagBits)
     {
         var tags = new List<string>();
 
@@ -163,10 +163,10 @@ public static class PageHeaderParser
             }
         }
 
-        return tags.ToArray();
+        return [.. tags];
     }
 
-    private static string[]? GetTypeFlagBitsTags(byte typeFlagBits, PageType pageType)
+    private static string[] GetTypeFlagBitsTags(byte typeFlagBits, PageType pageType)
     {
         var tags = new List<string>();
 
@@ -183,6 +183,6 @@ public static class PageHeaderParser
             }
         }
 
-        return tags.ToArray();
+        return [.. tags];
     }
 }

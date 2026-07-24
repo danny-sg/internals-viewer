@@ -14,7 +14,7 @@ public static class AllocationUnitProvider
 {
     public static List<AllocationUnit> GetAllocationUnits(InternalMetadata metadata)
     {
-        return metadata.AllocationUnits.Values.Select(a => GetAllocationUnit(metadata, a)).ToList();
+        return [.. metadata.AllocationUnits.Values.Select(a => GetAllocationUnit(metadata, a))];
     }
 
     public static AllocationUnit GetAllocationUnit(InternalMetadata metadata, InternalAllocationUnit source)

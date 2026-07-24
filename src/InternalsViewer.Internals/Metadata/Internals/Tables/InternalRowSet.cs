@@ -59,10 +59,10 @@ public sealed record InternalRowSet
     public short MinInt { get; set; }
 
     [InternalsMetadataColumn("rsguid", 16, SqlDbType.VarBinary, 16, -1, 16)]
-    public byte[]? Rsguid { get; set; } = Array.Empty<byte>();
+    public byte[]? Rsguid { get; set; } = [];
 
     [InternalsMetadataColumn("lockres", 17, SqlDbType.VarBinary, 8, -2, 17)]
-    public byte[]? Lockres { get; set; } = Array.Empty<byte>();
+    public byte[]? Lockres { get; set; } = [];
 
     [InternalsMetadataColumn("scope_id", 18, SqlDbType.Int, 4, 53, 18)]
     public int? ScopeId { get; set; }

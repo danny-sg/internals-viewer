@@ -130,32 +130,34 @@ public static class IndexStructureProvider
     {
         if (structure.TableStructure == null)
         {
-            return new List<IndexColumnStructure>();
+            return [];
         }
 
-        return structure.TableStructure
-                        .Columns
-                        .Where(c => c.IsKey || c.IsUniqueifier)
-                        .Select(s => new IndexColumnStructure
-                        {
-                            ColumnId = s.ColumnId,
-                            ColumnName = s.ColumnName,
-                            DataType = s.DataType,
-                            LeafOffset = s.LeafOffset,
-                            NodeOffset = s.NodeOffset,
-                            Precision = s.Precision,
-                            DataLength = s.DataLength,
-                            Scale = s.Scale,
-                            IsDropped = s.IsDropped,
-                            IsUniqueifier = s.IsUniqueifier,
-                            IsSparse = s.IsSparse,
-                            NullBitIndex = s.NullBitIndex,
-                            BitPosition = s.BitPosition,
-                            IsIncludeColumn = false,
-                            IndexColumnId = 0,
-                            IsKey = s.IsKey
-                        })
-                        .ToList();
+        return
+        [
+            .. structure.TableStructure
+                .Columns
+                .Where(c => c.IsKey || c.IsUniqueifier)
+                .Select(s => new IndexColumnStructure
+                {
+                    ColumnId = s.ColumnId,
+                    ColumnName = s.ColumnName,
+                    DataType = s.DataType,
+                    LeafOffset = s.LeafOffset,
+                    NodeOffset = s.NodeOffset,
+                    Precision = s.Precision,
+                    DataLength = s.DataLength,
+                    Scale = s.Scale,
+                    IsDropped = s.IsDropped,
+                    IsUniqueifier = s.IsUniqueifier,
+                    IsSparse = s.IsSparse,
+                    NullBitIndex = s.NullBitIndex,
+                    BitPosition = s.BitPosition,
+                    IsIncludeColumn = false,
+                    IndexColumnId = 0,
+                    IsKey = s.IsKey
+                })
+        ];
     }
 
     /// <summary>

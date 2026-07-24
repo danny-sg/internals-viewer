@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Internals.Connections.Backup;
 
-public class BackupConnectionFactory : IConnectionTypeFactory<BackupConnectionTypeConfig>
+public sealed class BackupConnectionFactory : IConnectionTypeFactory<BackupConnectionTypeConfig>
 {
     public const string BackupIdentifier = "Backup";
 

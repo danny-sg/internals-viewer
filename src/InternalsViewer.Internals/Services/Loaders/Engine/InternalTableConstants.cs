@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
-public class InternalTableConstants
+public static class InternalTableConstants
 {
     public static readonly (int ObjectId, int IndexId) ColumnLayoutsId = (3, 0);
 

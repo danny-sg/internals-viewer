@@ -70,7 +70,7 @@ public sealed class LobRecordLoader : FixedVarRecordLoader
 
     private static void LoadLargeRoot(LobRecord record, byte[] data)
     {
-        record.BlobChildren = new List<BlobChildLink>();
+        record.BlobChildren = [];
 
         record.MarkProperty(nameof(LobRecord.MaxLinks), record.Offset + LobRecord.MaxLinksOffset, sizeof(short));
 

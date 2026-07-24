@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 
-public class DictionaryEntry(int symbol, ushort offset, byte[] data) : DataStructure
+public sealed class DictionaryEntry(int symbol, ushort offset, byte[] data) : DataStructure
 {
     [DataStructureItem(ItemType.DictionarySymbol)]
     public int Symbol { get; } = symbol;

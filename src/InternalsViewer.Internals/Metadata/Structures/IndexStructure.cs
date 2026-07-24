@@ -9,7 +9,7 @@ public sealed record IndexStructure(long AllocationUnitId)
 
     public TableStructure? TableStructure { get; set; }
 
-    public List<IndexColumnStructure> KeyColumns => field ??= Columns.Where(c => c.IsKey || c.IsUniqueifier).ToList();
+    public List<IndexColumnStructure> KeyColumns => field ??= [.. Columns.Where(c => c.IsKey || c.IsUniqueifier)];
 
-    public List<IndexColumnStructure> IndexKeyColumns => field ??= Columns.Where(c => c.IsIndexKey).ToList();
+    public List<IndexColumnStructure> IndexKeyColumns => field ??= [.. Columns.Where(c => c.IsIndexKey)];
 }

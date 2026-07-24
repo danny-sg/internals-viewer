@@ -62,7 +62,7 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
     /// </param>
     private byte[] ExpandAnchor(ReadOnlySpan<byte> fieldData)
     {
-        AnchorLength = CompressedDataConverter.DecodeInternalInt(fieldData.ToArray(), 0);
+        AnchorLength = CompressedDataConverter.DecodeInternalInt([.. fieldData], 0);
 
         var dataOffset = (fieldData[0] & 0x80) != 0 ? 2 : 1;
 

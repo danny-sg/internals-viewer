@@ -35,7 +35,7 @@ public sealed class IamChainService(IPageService pageService) : IIamChainService
 
             iam.Pages.Add(page);
 
-            iam.SinglePageSlots = iam.SinglePageSlots.Concat(page.SinglePageSlots).ToArray();
+            iam.SinglePageSlots = [.. iam.SinglePageSlots, .. page.SinglePageSlots];
 
             if (page.PageHeader.NextPage != PageAddress.Empty)
             {

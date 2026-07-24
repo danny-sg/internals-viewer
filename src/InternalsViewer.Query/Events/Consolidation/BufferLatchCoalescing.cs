@@ -8,7 +8,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// <remarks>
 /// A scan touching every row on a page re-latches the page's buffer (BUF) structure many times in the same instant, so
 /// the quantised capture shows a run of identical <c>latch_acquired</c> on the same page at the same timestamp. They are one page visit,
-/// not many reads — left separate, <see cref="EventReader.SpreadEvents"/> lays the run end-to-end and smears these identical same-page 
+/// not many reads — left separate, SpreadEvents lays the run end-to-end and smears these identical same-page 
 /// events forward across the axis. A run of acquires sharing (page, class, mode) within <see cref="CoalesceGapUs"/> is folded into its
 /// earliest, whose hold is extended to span the whole visit.
 ///

@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.Fields;
 
-public class LobRootFieldLoader
+public static class LobRootFieldLoader
 {
     public const int ChildOffset = 12;
     public const short LevelOffset = 2;
@@ -42,7 +42,7 @@ public class LobRootFieldLoader
 
     private static void LoadLinks(RootField field, byte[] data, int offset)
     {
-        field.Links = new List<BlobChildLink>();
+        field.Links = [];
 
         field.SlotCount = (data.Length - 12) / 12;
 

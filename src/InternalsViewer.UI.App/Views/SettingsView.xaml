@@ -60,7 +60,7 @@
                                        Description="Automatically delete trace files after a trace has run">
                     <ToggleSwitch IsOn="{x:Bind ViewModel.AutoDeleteTrace, Mode=TwoWay}"
                                   HorizontalAlignment="Right"
-                               OnContent=""
+                                  OnContent=""
                                   OffContent=""
                                   IsEnabled="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay}"/>
                 </controls:SettingsCard>
@@ -100,8 +100,7 @@
             </StackPanel>
         </controls:SettingsCard>
 
-        <controls:SettingsCard Header="Current Memory Usage"
-                               Description="Managed heap memory currently in use">
+        <controls:SettingsCard Header="Current Memory Usage">
             <TextBlock VerticalAlignment="Center"
                        Text="{x:Bind ViewModel.MemoryUsage, Mode=OneWay}"/>
         </controls:SettingsCard>

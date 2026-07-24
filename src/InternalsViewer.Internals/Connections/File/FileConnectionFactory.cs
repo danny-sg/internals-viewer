@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Readers.Pages;
 
 namespace InternalsViewer.Internals.Connections.File;
 
-public class FileConnectionFactory : IConnectionTypeFactory<FileConnectionTypeConfig>
+public sealed class FileConnectionFactory : IConnectionTypeFactory<FileConnectionTypeConfig>
 {
     public const string FileIdentifier = "File";
 

@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
 namespace InternalsViewer.Internals.Services.Loaders.Records.Fields;
 
-public class LobPointerFieldLoader
+public static class LobPointerFieldLoader
 {
     public const int RowIdOffset = 8;
 
@@ -26,7 +26,7 @@ public class LobPointerFieldLoader
 
     private static void LoadLinks(PointerField field, byte[] data, int offset)
     {
-        field.Links = new List<BlobChildLink>();
+        field.Links = [];
 
         var rowIdData = new byte[8];
         Array.Copy(data, RowIdOffset, rowIdData, 0, 8);

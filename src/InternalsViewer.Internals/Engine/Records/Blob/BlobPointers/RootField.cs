@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Internals.Engine.Records.Blob.BlobPointers;
 
-public class RootField : BlobField
+public sealed class RootField : BlobField
 {
     [DataStructureItem(ItemType.SlotCount)]
     public int SlotCount { get; set; }

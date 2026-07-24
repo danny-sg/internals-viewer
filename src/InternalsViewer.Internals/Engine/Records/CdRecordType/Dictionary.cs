@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Annotations;
 
 namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 
-public class Dictionary(int offset) : DataStructure
+public sealed class Dictionary(int offset) : DataStructure
 {
     public int Offset { get; } = offset;
 

@@ -124,9 +124,11 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         var structure = IndexStructureProvider.GetIndexStructure(page.Database,
                                                                  page.PageHeader.AllocationUnitId);
 
-        return page.OffsetTable
-                   .Select((s, index) => FixedVarIndexRecordLoader.Load(page, s, index, structure))
-                   .ToList();
+        return
+        [
+            .. page.OffsetTable
+                .Select((s, index) => FixedVarIndexRecordLoader.Load(page, s, index, structure))
+        ];
     }
 
     private IEnumerable<CdIndexRecord> GetCdIndexRecords(IndexPage page)

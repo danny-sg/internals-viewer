@@ -10,7 +10,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Records.Fields;
 /// <remarks>
 /// 
 /// </remarks>
-public class LobOverflowFieldLoader
+public static class LobOverflowFieldLoader
 {
     private const int ChildOffset = 12;
     private const int LevelOffset = 1;
@@ -49,9 +49,9 @@ public class LobOverflowFieldLoader
         return field;
     }
 
-    protected static void LoadLinks(OverflowField field, byte[] data, int offset)
+    private static void LoadLinks(OverflowField field, byte[] data, int offset)
     {
-        field.Links = new List<BlobChildLink>();
+        field.Links = [];
 
         field.MarkProperty("Length", offset + ChildOffset, sizeof(int));
 
