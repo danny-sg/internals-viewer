@@ -340,9 +340,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var directory = string.IsNullOrWhiteSpace(eventOptions.TraceDirectory)
                         ? await connection.ExecuteScalar<string>(EventSql.GetFileLocationSql(), cancellationToken)
-                        : eventOptions.TraceDirectory.TrimEnd('\\');
+                        : eventOptions.TraceDirectory.TrimEnd('\\', '/');
 
-        var filePath = $"{directory}\\{sessionName}.xel";
+        var separator = directory?.StartsWith('/') == true ? '/' : '\\';
+
+        var filePath = $"{directory}{separator}{sessionName}.xel";
 
         List<LogRecord> logRecords = [];
 

@@ -39,6 +39,14 @@ public class EventSqlTests
     }
 
     [Fact]
+    public void GetFileLocationSql_Strips_Filename_For_Windows_And_Linux_Separators()
+    {
+        var sql = EventSql.GetFileLocationSql();
+
+        Assert.Contains(@"PATINDEX('%[\/]%'", sql);
+    }
+
+    [Fact]
     public void GetCreateSessionSql_Includes_Spid_SessionName_Filter()
     {
         var sql = EventSql.GetCreateSessionSql("MySession", @"C:\Trace\MySession.xel", 52, false, new EventOptions());

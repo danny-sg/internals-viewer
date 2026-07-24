@@ -10,7 +10,7 @@ internal static class EventSql
                 SELECT LEFT(
                     CAST(SERVERPROPERTY('ErrorLogFileName') AS NVARCHAR(4000)),
                     LEN(CAST(SERVERPROPERTY('ErrorLogFileName') AS NVARCHAR(4000)))
-                    - CHARINDEX('\', REVERSE(CAST(SERVERPROPERTY('ErrorLogFileName') AS NVARCHAR(4000))))
+                    - PATINDEX('%[\/]%', REVERSE(CAST(SERVERPROPERTY('ErrorLogFileName') AS NVARCHAR(4000))))
             );";
     }
 
