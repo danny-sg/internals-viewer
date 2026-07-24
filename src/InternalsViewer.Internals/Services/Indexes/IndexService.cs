@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Engine.Indexes;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Parsers;
+using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Services.Pages.Parsers;
 
@@ -247,6 +248,13 @@ public sealed class IndexService(ILogger<IndexService> logger)
 
     private static PageAddress GetFixedVarDownPointer(ReadOnlySpan<byte> page, int slotOffset, int fixedLengthSize)
     {
+        var recordType = (RecordType)((page[slotOffset] >> 1) & 7);
+
+        if (recordType is RecordType.GhostIndex or RecordType.GhostData or RecordType.GhostRecordVersion)
+        {
+            return PageAddress.Empty;
+        }
+
         var pointerOffset = slotOffset + fixedLengthSize - PageAddress.Size;
 
         if (pointerOffset < PageHeader.Size || pointerOffset + PageAddress.Size > PageData.Size)
@@ -261,7 +269,11 @@ public sealed class IndexService(ILogger<IndexService> logger)
     {
         var recordType = (CompressedRecordType)((page[slotOffset] >> 2) & 7);
 
-        if (recordType == CompressedRecordType.Forwarding)
+        if (recordType is CompressedRecordType.Forwarding
+            or CompressedRecordType.GhostEmpty
+            or CompressedRecordType.GhostData
+            or CompressedRecordType.GhostForwarded
+            or CompressedRecordType.GhostIndex)
         {
             return PageAddress.Empty;
         }
