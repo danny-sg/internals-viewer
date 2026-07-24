@@ -14,10 +14,49 @@
     <UserControl.Resources>
         <StackLayout Orientation="Vertical" x:Key="VerticalStackLayout" />
         <DataTemplate x:Key="AllocationFileTemplate" x:DataType="models:DatabaseFile">
-            <Grid>
-                <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
-                                              Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}"
-                                              ExtentCount="{x:Bind Parent.ExtentCount, Mode=OneWay}" 
+            <Grid Height="{x:Bind Parent.AllocationMapHeight, Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Visibility="{x:Bind IsHeaderVisible, Mode=OneWay}"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        Padding="8,2">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                <Run Text="File"/> <Run Text="{x:Bind FileId, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBlock FontWeight="SemiBold" Text="{x:Bind Name, Mode=OneWay}"/>
+                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="{x:Bind FileName, Mode=OneWay}"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Visibility="{x:Bind IsViewToggleVisible, Mode=OneWay}"
+                                Padding="4,2"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                VerticalAlignment="Center"
+                                ToolTipService.ToolTip="Switch to tabbed view"
+                                Click="OnSwitchToTabsClick">
+                            <FontIcon Glyph="&#xE8A9;" FontSize="12"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <allocation:AllocationControl Grid.Row="1"
+                                              IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
+                                              ExtentCount="{x:Bind Parent.ExtentCount, Mode=OneWay}"
                                               Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
                                               FileId="{x:Bind FileId, Mode=OneWay}"
                                               BorderColor="{ThemeResource CardStrokeColorDefault}"
@@ -27,6 +66,27 @@
                                               PageClicked="OnPageSelected"
                                               x:Name="AllocationControl"/>
             </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="AllocationFileTabTemplate" x:DataType="models:DatabaseFile">
+            <TabViewItem IsClosable="False">
+                <TabViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                            <Run Text="File"/> <Run Text="{x:Bind FileId, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock FontWeight="SemiBold" Text="{x:Bind Name, Mode=OneWay}"/>
+                    </StackPanel>
+                </TabViewItem.Header>
+                <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
+                                              ExtentCount="{x:Bind Parent.ExtentCount, Mode=OneWay}"
+                                              Layers="{x:Bind Parent.AllocationLayers, Mode=OneWay}"
+                                              FileId="{x:Bind FileId, Mode=OneWay}"
+                                              BorderColor="{ThemeResource CardStrokeColorDefault}"
+                                              GridColor="{ThemeResource AllocationBorderColor}"
+                                              PfsChain="{x:Bind Parent.PfsChain, Mode=OneWay}"
+                                              IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
+                                              PageClicked="OnPageSelected"/>
+            </TabViewItem>
         </DataTemplate>
     </UserControl.Resources>
 
@@ -55,8 +115,8 @@
                     </AppBarToggleButton.Icon>
                 </AppBarToggleButton>
                 <AppBarToggleButton x:Name="AllocationInfoAppBarToggleButton"
-                                    Icon="DockBottom" 
-                                    Label="Allocations" 
+                                    Icon="DockBottom"
+                                    Label="Allocations"
                                     IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
                 <AppBarElementContainer>
                     <ToggleSplitButton Content="{x:Bind TabViewModel.Overlay, Mode=OneWay}"
@@ -112,12 +172,38 @@
 
         <ItemsRepeater
             x:Name="AllocationItemRepeater"
-            Grid.Row="1" 
+            Grid.Row="1"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch"
+            Visibility="{x:Bind ToInverseVisibility(TabViewModel.IsTabbedView), Mode=OneWay}"
             ItemsSource="{x:Bind TabViewModel.DatabaseFiles}"
             Layout="{StaticResource VerticalStackLayout}"
             ItemTemplate="{StaticResource AllocationFileTemplate}" />
+
+        <TabView x:Name="AllocationTabView"
+                 Grid.Row="1"
+                 Visibility="{x:Bind TabViewModel.IsTabbedView, Mode=OneWay}"
+                 IsAddTabButtonVisible="False"
+                 VerticalAlignment="Stretch"
+                 CanDragTabs="False"
+                 CanReorderTabs="False"
+                 TabWidthMode="SizeToContent"
+                 SelectionChanged="AllocationTabView_SelectionChanged"
+                 TabItemsSource="{x:Bind TabViewModel.DatabaseFiles, Mode=OneWay}"
+                 TabItemTemplate="{StaticResource AllocationFileTabTemplate}">
+            <TabView.TabStripFooter>
+                <Button HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Margin="4,0"
+                        Padding="4,2"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        ToolTipService.ToolTip="Switch to stacked view"
+                        Click="OnSwitchToStackedClick">
+                    <FontIcon Glyph="&#xE8A9;" FontSize="12"/>
+                </Button>
+            </TabView.TabStripFooter>
+        </TabView>
 
         <allocation:AllocationLayerGrid Grid.Row="2"
                                         x:Name="AllocationLayerGrid"

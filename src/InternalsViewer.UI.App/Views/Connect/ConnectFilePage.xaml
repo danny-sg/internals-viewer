@@ -14,7 +14,7 @@
             <converters:BoolNegationConverter x:Key="BoolNegationConverter" />
         </Grid.Resources>
         <StackPanel Spacing="6" Background="Transparent" >
-            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">MDF File</TextBlock>
+            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">MDF/LDF Files</TextBlock>
             <TextBlock Style="{ThemeResource BodyTextBlockStyle}" Margin="0,0,14,14">
                 Connect Internals Viewer to a SQL Server MDF file (primary database file). The file must be detached from SQL Server or set 
                 offline.

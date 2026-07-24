@@ -15,8 +15,10 @@ public sealed class BackupConnectionFactory : IConnectionTypeFactory<BackupConne
 
         configDelegate(config);
 
-        var name = Path.GetFileNameWithoutExtension(config.Filename);
+        var filenames = config.Filenames.Count > 0 ? config.Filenames : [config.Filename];
 
-        return new BackupConnectionType(new BackupPageReader(config.Filename), name);
+        var name = Path.GetFileNameWithoutExtension(filenames[0]);
+
+        return new BackupConnectionType(new BackupPageReader(filenames), name);
     }
 }

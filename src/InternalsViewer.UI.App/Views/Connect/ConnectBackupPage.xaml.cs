@@ -1,6 +1,8 @@
 using System;
+using System.Linq;
 using Windows.Storage.Pickers;
 using InternalsViewer.UI.App.ViewModels.Connections;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace InternalsViewer.UI.App.Views.Connect;
@@ -38,12 +40,19 @@ public sealed partial class ConnectBackupPage
 
         openPicker.FileTypeFilter.Add(".bak");
 
-        var file = await openPicker.PickSingleFileAsync();
+        var files = await openPicker.PickMultipleFilesAsync();
 
-        if (file != null)
+        if (files.Count > 0)
         {
-            ViewModel.Filename = file.Path;
-            ViewModel.IsValid = true;
+            ViewModel.AddFiles(files.Select(f => f.Path));
+        }
+    }
+
+    private void RemoveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string path })
+        {
+            ViewModel.RemoveFileCommand.Execute(path);
         }
     }
 }

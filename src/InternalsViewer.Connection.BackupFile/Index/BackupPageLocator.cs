@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Engine.Pages;
 namespace InternalsViewer.Connection.BackupFile.Index;
 
 /// <summary>
-/// Locates a page address offset in a backup file using a page index map
+/// Locates the stripe and offset for a page address using the page index run map
 /// </summary>
 internal sealed class BackupPageLocator(IReadOnlyDictionary<short, IReadOnlyList<PageRun>> runs)
 {
@@ -18,9 +18,9 @@ internal sealed class BackupPageLocator(IReadOnlyDictionary<short, IReadOnlyList
     /// <remarks>
     /// Checks file id then uses a binary search to search the page runs
     /// </remarks>
-    public bool TryGetOffset(PageAddress pageAddress, out long offset)
+    public bool TryGetLocation(PageAddress pageAddress, out BackupPageLocation location)
     {
-        offset = 0;
+        location = default;
 
         if (!Runs.TryGetValue(pageAddress.FileId, out var fileRuns))
         {
@@ -47,7 +47,9 @@ internal sealed class BackupPageLocator(IReadOnlyDictionary<short, IReadOnlyList
             }
             else
             {
-                offset = run.StartOffset + (long)(pageAddress.PageId - run.StartPageId) * PageData.Size;
+                var offset = run.StartOffset + (long)(pageAddress.PageId - run.StartPageId) * PageData.Size;
+
+                location = new BackupPageLocation(run.StripeIndex, offset);
 
                 return true;
             }

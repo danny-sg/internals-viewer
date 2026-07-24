@@ -19,7 +19,7 @@
         <StackPanel Spacing="6" Background="Transparent" >
             <RichTextBlock Margin="0,0,0,14">
                 <Paragraph Margin="0,0,0,14">
-                    Connect Internals Viewer to a live SQL Server database.
+                    Connect Internals Viewer to a live SQL Server database
                 </Paragraph>
                 <Paragraph>This requires the server level
                     <Hyperlink 

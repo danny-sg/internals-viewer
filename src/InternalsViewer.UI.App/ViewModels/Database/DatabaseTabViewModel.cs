@@ -62,6 +62,9 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     private DatabaseFile[] _databaseFiles = [];
 
     [ObservableProperty]
+    private bool _isTabbedView;
+
+    [ObservableProperty]
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
     // The database view has no lock overlay; lock borders are an events-view (query) concern.
@@ -256,7 +259,15 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         Name = name;
 
         DatabaseFiles = Database.Files
-                                .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
+                                .Select((f, i) => new DatabaseFile(this)
+                                {
+                                    FileId = f.FileId,
+                                    Name = f.Name,
+                                    FileName = f.FileName,
+                                    Size = f.Size,
+                                    IsHeaderVisible = Database.Files.Count > 1,
+                                    IsViewToggleVisible = i == 0 && Database.Files.Count > 1
+                                })
                                 .ToArray();
 
         IsLoading = true;

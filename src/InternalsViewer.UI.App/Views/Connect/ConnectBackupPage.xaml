@@ -10,41 +10,91 @@
 
     <Grid Padding="20">
         <StackPanel Spacing="6" Background="Transparent" >
-            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">Backup File</TextBlock>
+            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">Database Backup</TextBlock>
             <TextBlock Style="{ThemeResource BodyTextBlockStyle}" Margin="0,0,14,14">
-                Connect Internals Viewer to a SQL Server full database backup (.bak) file. The backup must be uncompressed and
-                unencrypted.
+                Connect Internals Viewer to a SQL Server full database backup (.bak) files. The backup must be uncompressed and
+                unencrypted. For a backup striped across multiple files, add every file in the set.
             </TextBlock>
 
-            <controls:SettingsCard Header="Filename"
-                                   CornerRadius="4,4,0,0">
-                <StackPanel Orientation="Horizontal">
-                    <TextBox Text="{x:Bind ViewModel.Filename, Mode=TwoWay}"
-                             HorizontalAlignment="Stretch"
-                             MinWidth="600"
-                             Margin="0,0,0,10"/>
+            <InfoBar Severity="Error"
+                     Title="Unable to open backup"
+                     IsClosable="False"
+                     IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                     Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
 
-                    <Button Content="Browse"
-                            Margin="10,0,0,10"
+            <controls:SettingsCard Header="Backup files"
+                                   HorizontalAlignment="Stretch"
+                                   CornerRadius="4,4,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <ListView ItemsSource="{x:Bind ViewModel.Filenames, Mode=OneWay}"
+                              HorizontalAlignment="Stretch"
+                              MinWidth="600"
+                              MaxHeight="220"
+                              SelectionMode="None"
+                              Grid.Row="0"
+                              Margin="0,0,0,10">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="MinHeight" Value="0"/>
+                                <Setter Property="Margin" Value="0,0,0,4"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <Border BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="10,4">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{x:Bind}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <Button Grid.Column="1"
+                                                Margin="10,2,0,2"
+                                                Tag="{x:Bind}"
+                                                Click="RemoveButton_Click">
+                                            <FontIcon Glyph="&#xE711;" FontSize="12"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <Button Content="Add files"
+                            Margin="0,0,0,10"
+                            Grid.Row="1"
                             Name="BrowseButton"
                             HorizontalAlignment="Right"
                             MinWidth="75"
                             Click="BrowseButton_Click"/>
-                </StackPanel>
-            </controls:SettingsCard>
 
-            <controls:SettingsCard Header="Connect backup">
-                <StackPanel Orientation="Horizontal">
-                    <ProgressRing HorizontalAlignment="Left"
-                                  IsActive="false"/>
-                    <Button Content="Open"
-                            Margin="10,0,0,0"
-                            Name="OpenButton"
-                            Command="{x:Bind ViewModel.ConnectCommand}"
-                            IsEnabled="{x:Bind ViewModel.IsValid, Mode=OneWay}"
-                            MinWidth="150"
-                            Style="{ThemeResource AccentButtonStyle}"/>
-                </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Grid.Row="2">
+                        <ProgressRing HorizontalAlignment="Right"
+                                      IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"/>
+                        <Button Content="Open"
+                                Margin="10,0,0,0"
+                                Name="OpenButton"
+                                Command="{x:Bind ViewModel.ConnectCommand}"
+                                IsEnabled="{x:Bind ViewModel.IsValid, Mode=OneWay}"
+                                MinWidth="150"
+                                Style="{ThemeResource AccentButtonStyle}"/>
+                    </StackPanel>
+                </Grid>
+
             </controls:SettingsCard>
         </StackPanel>
 

@@ -9,6 +9,8 @@ internal static class StreamTypes
 
     public static readonly string EndPadStream = "SPAD";
 
+    public static readonly string RaidStream = "RAID";
+
     public static readonly string SqlConfigurationStream = "MQCI";
 
     public static readonly string SqlDataStream = "MQDA";

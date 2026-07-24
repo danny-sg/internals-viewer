@@ -23,13 +23,16 @@ internal sealed class BackupPageIndexBuilder
 
     private int _currentPageCount;
 
+    private int _currentStripeIndex;
+
     private long _currentStartOffset;
 
-    public void AddPage(short fileId, int pageId, long offset)
+    public void AddPage(short fileId, int pageId, int stripeIndex, long offset)
     {
         if (_hasCurrentRun
             && fileId == _currentFileId
             && pageId == _currentStartPageId + _currentPageCount
+            && stripeIndex == _currentStripeIndex
             && offset == _currentStartOffset + (long)_currentPageCount * PageData.Size)
         {
             _currentPageCount++;
@@ -40,15 +43,19 @@ internal sealed class BackupPageIndexBuilder
         CloseRun();
 
         _hasCurrentRun = true;
+
         _currentFileId = fileId;
         _currentStartPageId = pageId;
         _currentPageCount = 1;
+        _currentStripeIndex = stripeIndex;
         _currentStartOffset = offset;
     }
 
-    public bool TryAddUnidentifiedPage(long offset)
+    public bool TryAddUnidentifiedPage(int stripeIndex, long offset)
     {
-        if (!_hasCurrentRun || offset != _currentStartOffset + (long)_currentPageCount * PageData.Size)
+        if (!_hasCurrentRun
+            || stripeIndex != _currentStripeIndex
+            || offset != _currentStartOffset + (long)_currentPageCount * PageData.Size)
         {
             return false;
         }
@@ -65,11 +72,21 @@ internal sealed class BackupPageIndexBuilder
             return;
         }
 
-        _runs.Add(new PageRun(_currentFileId, _currentStartPageId, _currentPageCount, _currentStartOffset));
+        _runs.Add(new PageRun(_currentFileId, _currentStartPageId, _currentPageCount, _currentStripeIndex, _currentStartOffset));
 
         _hasCurrentRun = false;
     }
 
+    /// <summary>
+    /// Builds the locator, applying last-wins to overlapping runs
+    /// </summary>
+    /// <remarks>
+    /// The same page can appear more than once - a full backup ends with a small data block re-dumping the system pages
+    /// (file header/PFS/GAM/DCM) updated during the backup, and the later image is the correct one.
+    ///
+    /// Runs are added in write order, so iterating in reverse and clipping each earlier run to the gaps left by later runs keeps the most
+    /// recent image of every page.
+    /// </remarks>
     public BackupPageLocator Build()
     {
         CloseRun();
@@ -91,6 +108,13 @@ internal sealed class BackupPageIndexBuilder
         return new BackupPageLocator(result);
     }
 
+    /// <summary>
+    /// Adds the parts of a run not already covered by more recent runs
+    /// </summary>
+    /// <remarks>
+    /// Accepted runs are sorted and disjoint. The candidate is walked against them and only the uncovered ranges are added, with offsets
+    /// rebased to each slice start.
+    /// </remarks>
     private static void AddClipped(List<PageRun> accepted, PageRun candidate)
     {
         var pieces = new List<PageRun>();
@@ -136,6 +160,6 @@ internal sealed class BackupPageIndexBuilder
     {
         var offset = run.StartOffset + (long)(startPageId - run.StartPageId) * PageData.Size;
 
-        return new PageRun(run.FileId, startPageId, endPageId - startPageId + 1, offset);
+        return new PageRun(run.FileId, startPageId, endPageId - startPageId + 1, run.StripeIndex, offset);
     }
 }

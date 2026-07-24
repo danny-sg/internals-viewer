@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Connection.BackupFile.Index;
+using InternalsViewer.Connection.BackupFile.Index;
 using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Connection.BackupFile.Tests;
@@ -12,13 +12,13 @@ public class BackupPageIndexBuilderTests
     {
         var builder = new BackupPageIndexBuilder();
 
-        builder.AddPage(1, 0, 1000);
-        builder.AddPage(1, 1, 1000 + PageSize);
-        builder.AddPage(1, 2, 1000 + 2 * PageSize);
+        builder.AddPage(1, 0, 0, 1000);
+        builder.AddPage(1, 1, 0, 1000 + PageSize);
+        builder.AddPage(1, 2, 0, 1000 + 2 * PageSize);
 
-        var index = builder.Build();
+        var locator = builder.Build();
 
-        var run = Assert.Single(index.Runs[1]);
+        var run = Assert.Single(locator.Runs[1]);
 
         Assert.Equal(0, run.StartPageId);
         Assert.Equal(3, run.PageCount);
@@ -30,18 +30,38 @@ public class BackupPageIndexBuilderTests
     {
         var builder = new BackupPageIndexBuilder();
 
-        builder.AddPage(1, 0, 1000);
-        builder.AddPage(1, 1, 1000 + PageSize);
-        builder.AddPage(1, 64, 1000 + 2 * PageSize);
+        builder.AddPage(1, 0, 0, 1000);
+        builder.AddPage(1, 1, 0, 1000 + PageSize);
+        builder.AddPage(1, 64, 0, 1000 + 2 * PageSize);
 
-        var index = builder.Build();
+        var locator = builder.Build();
 
-        Assert.Equal(2, index.Runs[1].Count);
+        Assert.Equal(2, locator.Runs[1].Count);
 
-        Assert.True(index.TryGetOffset(new PageAddress(1, 64), out var offset));
-        Assert.Equal(1000 + 2 * PageSize, offset);
+        Assert.True(locator.TryGetLocation(new PageAddress(1, 64), out var location));
+        Assert.Equal(1000 + 2 * PageSize, location.Offset);
 
-        Assert.False(index.TryGetOffset(new PageAddress(1, 2), out _));
+        Assert.False(locator.TryGetLocation(new PageAddress(1, 2), out _));
+    }
+
+    [Fact]
+    public void Stripe_Change_Starts_A_New_Run()
+    {
+        var builder = new BackupPageIndexBuilder();
+
+        builder.AddPage(1, 0, 0, 1000);
+        builder.AddPage(1, 1, 1, 1000 + PageSize);
+
+        var locator = builder.Build();
+
+        Assert.Equal(2, locator.Runs[1].Count);
+
+        Assert.True(locator.TryGetLocation(new PageAddress(1, 0), out var firstLocation));
+        Assert.Equal(0, firstLocation.StripeIndex);
+
+        Assert.True(locator.TryGetLocation(new PageAddress(1, 1), out var secondLocation));
+        Assert.Equal(1, secondLocation.StripeIndex);
+        Assert.Equal(1000 + PageSize, secondLocation.Offset);
     }
 
     [Fact]
@@ -49,20 +69,20 @@ public class BackupPageIndexBuilderTests
     {
         var builder = new BackupPageIndexBuilder();
 
-        builder.AddPage(1, 0, 1000);
+        builder.AddPage(1, 0, 0, 1000);
 
-        Assert.True(builder.TryAddUnidentifiedPage(1000 + PageSize));
+        Assert.True(builder.TryAddUnidentifiedPage(0, 1000 + PageSize));
 
-        builder.AddPage(1, 2, 1000 + 2 * PageSize);
+        builder.AddPage(1, 2, 0, 1000 + 2 * PageSize);
 
-        var index = builder.Build();
+        var locator = builder.Build();
 
-        var run = Assert.Single(index.Runs[1]);
+        var run = Assert.Single(locator.Runs[1]);
 
         Assert.Equal(3, run.PageCount);
 
-        Assert.True(index.TryGetOffset(new PageAddress(1, 1), out var offset));
-        Assert.Equal(1000 + PageSize, offset);
+        Assert.True(locator.TryGetLocation(new PageAddress(1, 1), out var location));
+        Assert.Equal(1000 + PageSize, location.Offset);
     }
 
     [Fact]
@@ -70,11 +90,11 @@ public class BackupPageIndexBuilderTests
     {
         var builder = new BackupPageIndexBuilder();
 
-        Assert.False(builder.TryAddUnidentifiedPage(1000));
+        Assert.False(builder.TryAddUnidentifiedPage(0, 1000));
 
-        var index = builder.Build();
+        var locator = builder.Build();
 
-        Assert.Empty(index.Runs);
+        Assert.Empty(locator.Runs);
     }
 
     [Fact]
@@ -84,21 +104,21 @@ public class BackupPageIndexBuilderTests
 
         for (var pageId = 0; pageId < 10; pageId++)
         {
-            builder.AddPage(1, pageId, 1000 + (long)pageId * PageSize);
+            builder.AddPage(1, pageId, 0, 1000 + (long)pageId * PageSize);
         }
 
         builder.CloseRun();
 
-        builder.AddPage(1, 0, 500000);
-        builder.AddPage(1, 1, 500000 + PageSize);
+        builder.AddPage(1, 0, 0, 500000);
+        builder.AddPage(1, 1, 0, 500000 + PageSize);
 
-        var index = builder.Build();
+        var locator = builder.Build();
 
-        Assert.True(index.TryGetOffset(new PageAddress(1, 1), out var overriddenOffset));
-        Assert.Equal(500000 + PageSize, overriddenOffset);
+        Assert.True(locator.TryGetLocation(new PageAddress(1, 1), out var overriddenLocation));
+        Assert.Equal(500000 + PageSize, overriddenLocation.Offset);
 
-        Assert.True(index.TryGetOffset(new PageAddress(1, 5), out var originalOffset));
-        Assert.Equal(1000 + 5 * PageSize, originalOffset);
+        Assert.True(locator.TryGetLocation(new PageAddress(1, 5), out var originalLocation));
+        Assert.Equal(1000 + 5 * PageSize, originalLocation.Offset);
     }
 
     [Fact]
@@ -106,19 +126,19 @@ public class BackupPageIndexBuilderTests
     {
         var builder = new BackupPageIndexBuilder();
 
-        builder.AddPage(1, 10, 1000);
-        builder.AddPage(3, 10, 1000 + PageSize);
+        builder.AddPage(1, 10, 0, 1000);
+        builder.AddPage(3, 10, 0, 1000 + PageSize);
 
-        var index = builder.Build();
+        var locator = builder.Build();
 
-        Assert.Equal(2, index.Runs[1].Count + index.Runs[3].Count);
+        Assert.Equal(2, locator.Runs[1].Count + locator.Runs[3].Count);
 
-        Assert.True(index.TryGetOffset(new PageAddress(1, 10), out var file1Offset));
-        Assert.Equal(1000, file1Offset);
+        Assert.True(locator.TryGetLocation(new PageAddress(1, 10), out var file1Location));
+        Assert.Equal(1000, file1Location.Offset);
 
-        Assert.True(index.TryGetOffset(new PageAddress(3, 10), out var file3Offset));
-        Assert.Equal(1000 + PageSize, file3Offset);
+        Assert.True(locator.TryGetLocation(new PageAddress(3, 10), out var file3Location));
+        Assert.Equal(1000 + PageSize, file3Location.Offset);
 
-        Assert.False(index.TryGetOffset(new PageAddress(2, 10), out _));
+        Assert.False(locator.TryGetLocation(new PageAddress(2, 10), out _));
     }
 }

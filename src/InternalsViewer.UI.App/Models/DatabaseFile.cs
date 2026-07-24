@@ -9,7 +9,19 @@ public sealed partial class DatabaseFile(IAllocationViewModel parent) : Observab
     private short _fileId;
 
     [ObservableProperty]
+    private string _name = string.Empty;
+
+    [ObservableProperty]
+    private string _fileName = string.Empty;
+
+    [ObservableProperty]
     private int _size;
+
+    [ObservableProperty]
+    private bool _isHeaderVisible;
+
+    [ObservableProperty]
+    private bool _isViewToggleVisible;
 
     public IAllocationViewModel Parent { get; } = parent;
 }

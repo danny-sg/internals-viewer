@@ -24,6 +24,8 @@ public class ConnectBackupMessage(string filename, RecentConnection recent) : As
     public string Filename { get; } = filename;
 
     public RecentConnection Recent { get; set; } = recent;
+
+    public string? ErrorMessage { get; set; }
 }
 
 public class ConnectRecentMessage(RecentConnection recent) : AsyncRequestMessage<bool>

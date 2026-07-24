@@ -17,7 +17,7 @@ namespace InternalsViewer.Connection.BackupFile.Reader;
 /// </remarks>
 internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string filename)
 {
-    private static readonly byte[] CompressedBackupSignature = "MSSQLBAK"u8.ToArray();
+    private static readonly byte[] CompressedBackupSignature = [.. "MSSQLBAK"u8];
 
     private const int CommonHeaderLength = 52;
 
@@ -35,14 +35,15 @@ internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string 
 
     public BackupReader Reader { get; } = new(filename);
 
-    private long dataSetStartPosition = -1;
+    private long _dataSetStartPosition = -1;
 
-    private int formatLogicalBlockSize;
+    private int _formatLogicalBlockSize;
 
     public List<DescriptorBlock> Load()
     {
         var blocks = new List<DescriptorBlock>();
 
+        // MTF requires TAPE as the first block, anything else will be an incompatible format
         if (Reader.PeekNextBlockType() != BlockType.Tape)
         {
             ThrowNotMtf();
@@ -68,11 +69,11 @@ internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string 
             switch (block)
             {
                 case TapeHeaderDescriptorBlock tape:
-                    formatLogicalBlockSize = tape.FormatLogicalBlockSize;
+                    _formatLogicalBlockSize = tape.FormatLogicalBlockSize;
                     break;
 
                 case StartOfDataSetDescriptorBlock:
-                    dataSetStartPosition = startPosition;
+                    _dataSetStartPosition = startPosition;
                     break;
 
                 case EndOfDataSetDescriptorBlock:
@@ -90,9 +91,17 @@ internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string 
         return blocks;
     }
 
+    /// <summary>
+    /// Safely skips unknown blocks to try and rejoin known blocks
+    /// </summary>
+    /// <remarks>
+    /// The length of a block is dependent on its type/parsed values. If we can't parse the block we don't know when it ends.
+    ///
+    /// This process scans forward looking for the start of known block types, marked by 4-byte ASCII tags.
+    /// </remarks>
     private bool TrySkipUnknownSection(long unknownStartPosition)
     {
-        if (dataSetStartPosition < 0 || formatLogicalBlockSize <= 0)
+        if (_dataSetStartPosition < 0 || _formatLogicalBlockSize <= 0)
         {
             return false;
         }
@@ -105,6 +114,7 @@ internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string 
                           unknownType,
                           unknownStartPosition);
 
+        // Recognized block tags
         var knownTypes = BackupReader.KnownBlockTypes
                                      .Select(t => BitConverter.GetBytes((uint)t))
                                      .ToList();
@@ -157,6 +167,18 @@ internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string 
         return false;
     }
 
+    /// <summary>
+    /// Bounds/consistency check that a candidate position is a genuine descriptor block start
+    /// </summary>
+    /// <remarks>
+    /// A block type tag found by the scan proves nothing on its own - page and section payloads can contain the same
+    /// 4 bytes by chance.
+    ///
+    /// A real common header must have a plausible OffsetToFirstEvent (52 is the header size, 4096 is a generous
+    /// ceiling over observed values), the constant OS id/version, and a Format Logical Address that resolves to the
+    /// candidate's own position in the file. Payload bytes cannot fake the address check as the required value
+    /// depends on where in the file the bytes sit.
+    /// </remarks>
     private bool IsValidBlockStart(long candidatePosition)
     {
         if (candidatePosition + CommonHeaderLength > Reader.BaseStream.Length)
@@ -170,7 +192,7 @@ internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string 
 
         var offsetToFirstEvent = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(OffsetToFirstEventOffset));
 
-        if (offsetToFirstEvent < CommonHeaderLength || offsetToFirstEvent > 4096)
+        if (offsetToFirstEvent is < CommonHeaderLength or > 4096)
         {
             return false;
         }
@@ -182,7 +204,7 @@ internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string 
 
         var formatLogicalAddress = BinaryPrimitives.ReadUInt64LittleEndian(header.AsSpan(FormatLogicalAddressOffset));
 
-        return dataSetStartPosition + (long)formatLogicalAddress * formatLogicalBlockSize == candidatePosition;
+        return _dataSetStartPosition + (long)formatLogicalAddress * _formatLogicalBlockSize == candidatePosition;
     }
 
     private void ThrowNotMtf()

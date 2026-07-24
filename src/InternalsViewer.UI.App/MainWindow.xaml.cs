@@ -1,11 +1,14 @@
+using System.IO;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Connection.BackupFile.Connection;
+using InternalsViewer.Connection.BackupFile.Reader;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
+using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Messages;
@@ -107,7 +110,7 @@ public sealed partial class MainWindow
             => m.Reply(ConnectFile(m.Filename, m.Recent)));
 
         WeakReferenceMessenger.Default.Register<ConnectBackupMessage>(this, (_, m)
-            => m.Reply(ConnectBackup(m.Filename, m.Recent)));
+            => m.Reply(ConnectBackup(m)));
 
         WeakReferenceMessenger.Default.Register<OpenPageMessage>(this, (_, m)
             => m.Reply(OpenPage(m.Request)));
@@ -206,22 +209,45 @@ public sealed partial class MainWindow
         return true;
     }
 
-    private async Task<bool> ConnectBackup(string filename, RecentConnection recent)
+    private async Task<bool> ConnectBackup(ConnectBackupMessage message)
     {
         var factory = (IConnectionTypeFactory<BackupConnectionTypeConfig>)ConnectionFactories
             .Single(f => f.Identifier == BackupConnectionFactory.BackupIdentifier);
 
-        var connection = factory.Create(c => c.Filename = filename);
+        var filenames = message.Filename.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        if (!await AddConnection(connection))
+        var connection = factory.Create(c => c.Filenames = [.. filenames]);
+
+        var error = await TryAddConnection(connection);
+
+        if (error is null)
         {
-            return false;
+            await ViewModel.AddRecentConnectionCommand.ExecuteAsync(message.Recent);
+
+            return true;
         }
 
-        await ViewModel.AddRecentConnectionCommand.ExecuteAsync(recent);
+        await connection.DisposeAsync();
 
-        return true;
+        if (IsExpectedBackupError(error))
+        {
+            message.ErrorMessage = error.Message;
+        }
+        else
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(error));
+        }
+
+        return false;
     }
+
+    private static bool IsExpectedBackupError(Exception exception) =>
+        exception is NotSupportedException
+            or InvalidDataException
+            or BackupMediaSetException
+            or MissingDataFileException
+            or FileNotFoundException
+            or EndOfStreamException;
 
     private async Task<bool> OpenPage(OpenPageRequest request)
     {
@@ -344,6 +370,20 @@ public sealed partial class MainWindow
 
     private async Task<bool> AddConnection(IConnectionType connection)
     {
+        var error = await TryAddConnection(connection);
+
+        if (error is null)
+        {
+            return true;
+        }
+
+        await WeakReferenceMessenger.Default.Send(new ExceptionMessage(error));
+
+        return false;
+    }
+
+    private async Task<Exception?> TryAddConnection(IConnectionType connection)
+    {
         try
         {
             DatabaseSource database = null!;
@@ -378,12 +418,11 @@ public sealed partial class MainWindow
                 WindowTabView.SelectedItem = tab;
             });
 
-            return true;
+            return null;
         }
         catch (Exception ex)
         {
-            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
-            return false;
+            return ex;
         }
     }
 

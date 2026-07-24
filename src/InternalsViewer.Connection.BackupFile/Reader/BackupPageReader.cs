@@ -1,11 +1,10 @@
-﻿using InternalsViewer.Connection.BackupFile.Format.Blocks.Descriptors;
+using InternalsViewer.Connection.BackupFile.Format.Configuration;
 using InternalsViewer.Connection.BackupFile.Index;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Readers.Pages;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Win32.SafeHandles;
 
 namespace InternalsViewer.Connection.BackupFile.Reader;
@@ -13,55 +12,63 @@ namespace InternalsViewer.Connection.BackupFile.Reader;
 /// <summary>
 /// Page reader for SQL Server backup files
 /// </summary>
-internal sealed class BackupPageReader(string filename) : PageReader, IPageReader, IMultiFilePageReader
+internal sealed class BackupPageReader(IReadOnlyList<string> filenames)
+    : PageReader, IPageReader, IMultiFilePageReader
 {
-    private string Filename { get; } = filename;
+    public BackupPageReader(string filename) : this([filename])
+    {
+    }
 
-    private SafeFileHandle? Handle { get; set; }
+    private IReadOnlyList<string> Filenames { get; } = filenames;
+
+    private List<SafeFileHandle> Handles { get; } = [];
 
     private BackupPageLocator? Locator { get; set; }
 
+    public BackupConfiguration? Configuration { get; private set; }
+
     /// <summary>
-    /// Initializes the backup page reader by loading the backup file and building the page index
+    /// Initializes the backup page reader by reading the media set and building the page index
     /// </summary>
     /// <remarks>
-    /// The page index maps page address to file offset.
+    /// The media set (one or more .bak files) is parsed and validated as complete and consistent, and the backup
+    /// configuration is captured.
     ///
-    /// The backup file is loaded and parsed to extract the descriptor blocks.
+    /// A read handle is then opened per stripe in family sequence order. The stripe index assigned here must match
+    /// the Handles list - page runs resolve reads via Handles[StripeIndex].
     ///
-    /// The page index is then built using the descriptor blocks.
+    /// The page index is then built by scanning the data streams of every stripe, mapping page address to stripe and
+    /// offset.
     /// </remarks>
     public async Task Initialize(CancellationToken cancellationToken)
     {
         await Task.Run(() =>
         {
-            var loader = new BackupFileLoader(NullLogger<BackupFileLoader>.Instance, Filename);
+            var mediaSet = BackupMediaSetReader.Read(Filenames);
 
-            List<DescriptorBlock> blocks;
+            Configuration = mediaSet.Configuration;
 
-            try
-            {
-                blocks = loader.Load();
-            }
-            finally
-            {
-                loader.Reader.Dispose();
-            }
-
-            var handle = File.OpenHandle(Filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var stripes = new List<BackupStripe>();
 
             try
             {
-                Locator = BackupPageIndexer.Build(handle, blocks, cancellationToken);
+                foreach (var family in mediaSet.Families)
+                {
+                    var handle = File.OpenHandle(family.Filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                    Handles.Add(handle);
+
+                    stripes.Add(new BackupStripe(stripes.Count, handle, family.Blocks));
+                }
+
+                Locator = BackupPageIndexer.Build(stripes, cancellationToken);
             }
             catch
             {
-                handle.Dispose();
+                DisposeHandles();
 
                 throw;
             }
-
-            Handle = handle;
         }, cancellationToken);
     }
 
@@ -106,9 +113,7 @@ internal sealed class BackupPageReader(string filename) : PageReader, IPageReade
 
     public ValueTask DisposeAsync()
     {
-        Handle?.Dispose();
-
-        Handle = null;
+        DisposeHandles();
 
         return ValueTask.CompletedTask;
     }
@@ -117,24 +122,34 @@ internal sealed class BackupPageReader(string filename) : PageReader, IPageReade
     /// Gets page data for a page address from a backup file
     /// </summary>
     /// <remarks>
-    /// The index map built during initialization is used to locate the offset of the page in the backup file. 
+    /// The index map built during initialization is used to locate the offset of the page in the backup file.
     ///
     /// Once the offset has been located, the page data can be read directly from the backup file from offset to offset + 8192 bytes (page
     /// size).
     /// </remarks>
     private void ReadBackupFileInto(PageAddress pageAddress, byte[] buffer)
     {
-        if (Handle is null || Locator is null)
+        if (Handles.Count == 0 || Locator is null)
         {
             throw new InvalidOperationException("Initialize must be called before pages can be read.");
         }
 
-        if (!Locator.TryGetOffset(pageAddress, out var offset))
+        if (!Locator.TryGetLocation(pageAddress, out var location))
         {
             throw new PageNotInBackupException(pageAddress);
         }
 
-        ReadExactly(Handle, offset, buffer.AsSpan(0, PageData.Size));
+        ReadExactly(Handles[location.StripeIndex], location.Offset, buffer.AsSpan(0, PageData.Size));
+    }
+
+    private void DisposeHandles()
+    {
+        foreach (var handle in Handles)
+        {
+            handle.Dispose();
+        }
+
+        Handles.Clear();
     }
 
     private static void ReadExactly(SafeFileHandle handle, long offset, Span<byte> buffer)

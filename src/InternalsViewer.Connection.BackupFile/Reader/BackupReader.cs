@@ -8,6 +8,15 @@ using InternalsViewer.Connection.BackupFile.Format.Streams;
 
 namespace InternalsViewer.Connection.BackupFile.Reader;
 
+/// <summary>
+/// BinaryReader extended with the MTF primitives used to parse a backup file
+/// </summary>
+/// <remarks>
+/// Provides the block type to parser factory plus readers for the format's string, date, and OS specific encodings.
+///
+/// There is no block size field - blocks parse themselves forward via this reader, so the position of the next structure is always defined
+/// by the values decoded so far.
+/// </remarks>
 internal sealed class BackupReader : BinaryReader
 {
     private delegate DescriptorBlock DescriptorBlockFactory(BackupReader reader);

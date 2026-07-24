@@ -15,26 +15,31 @@ namespace InternalsViewer.Connection.BackupFile.Index;
 ///
 /// The index is RLE encoded, so the mappings are stored as runs of consecutive pages, storing a range of addresses/offsets.
 ///
-/// Descriptor Blocks are iterated until the end or a EndOfDataSetDescriptorBlock is found. Only MSDA (data file stream)
-/// blocks are processed, with a stream type of SqlDataStream (MQDA).
+/// Descriptor Blocks are iterated until the end or a EndOfDataSetDescriptorBlock is found. Only MSDA (data file stream) blocks are
+/// processed, with a stream type of SqlDataStream (MQDA).
 ///
 /// Descriptor Blocks
 ///     --> MSDA Blocks
 ///         --> SqlDataStream Streams
 ///
-/// Streams are validated to check they are compatible with this indexer - they must be uncompressed and unencrypted. The
-/// payload is a 2 byte prefix followed by a whole number of 8kb pages, so alignment is checked excluding the prefix.
+/// Streams are validated to check they are compatible with this indexer - they must be uncompressed and unencrypted. The payload is a 2
+/// byte prefix followed by a whole number of 8kb pages, so alignment is checked excluding the prefix.
 ///
-/// The stream is scanned in chunks of 128 pages, reading each page header at 8kb intervals. Pages are checked for certain
-/// backup specific values:
+/// The stream is scanned in chunks of 128 pages, reading each page header at 8kb intervals. Pages are checked for certain backup specific
+/// values:
 ///
 ///  - Header Version != 1 - Empty/zero page - no identity in the header, so it joins the current run positionally as
 ///    previous + 1, or is ignored if there is no current run
+/// 
 ///  - Page Type 101 - Filler Page - padding added by BACKUP, not file content - ignored and the current run is closed
-///  - Else the File Id and Page Id are read from the fixed header locations and added to the index
 ///
-/// A run cannot span streams as the byte offsets are not contiguous across stream boundaries, so the current run is
-/// closed at the end of each stream.
+/// - Else the File Id and Page Id are read from the fixed header locations and added to the index
+///
+/// A run cannot span streams as the byte offsets are not contiguous across stream boundaries, so the current run is closed at the end of
+/// each stream.
+///
+/// Data blocks from all stripes are scanned in Format Logical Address order as a proxy for write order, so the end-of-backup system page
+/// re-dump overrides the originals regardless of which stripe it landed on.
 /// </remarks>
 internal static class BackupPageIndexer
 {
@@ -54,24 +59,39 @@ internal static class BackupPageIndexer
 
     private const int FileIdOffset = 36;
 
-    public static BackupPageLocator Build(SafeFileHandle handle,
-                                        IReadOnlyList<DescriptorBlock> blocks,
-                                        CancellationToken cancellationToken)
+    /// <summary>
+    /// Builds the mappings between stripes (files), pages, and offsets in the files
+    /// </summary>
+    public static BackupPageLocator Build(IReadOnlyList<BackupStripe> stripes, CancellationToken cancellationToken)
     {
         var builder = new BackupPageIndexBuilder();
 
-        foreach (var block in blocks)
+        var dataBlocks = new List<(BackupStripe Stripe, DescriptorBlock Block)>();
+
+        foreach (var stripe in stripes)
         {
-            if (block is EndOfDataSetDescriptorBlock)
+            foreach (var block in stripe.Blocks)
             {
-                break;
-            }
+                if (block is EndOfDataSetDescriptorBlock)
+                {
+                    break;
+                }
 
-            if (block.BlockType != BlockType.MSDA)
-            {
-                continue;
+                // Data stream blocks
+                if (block.BlockType == BlockType.MSDA)
+                {
+                    dataBlocks.Add((stripe, block));
+                }
             }
+        }
 
+        var orderedDataBlocks = dataBlocks.OrderBy(b => b.Block.FormatLogicalAddress)
+                                          .ThenBy(b => b.Stripe.Index);
+
+        // Scanned in order. Pages can appear more than once (certain allocation pages are repeated at the end to ensure a final version).
+        // The ordering ensures the final version overwrites earlier versions.
+        foreach (var (stripe, block) in orderedDataBlocks)
+        {
             foreach (var stream in block.Streams)
             {
                 if (stream.Header.StreamId != StreamTypes.SqlDataStream || stream.Header.StreamLength == 0)
@@ -81,7 +101,7 @@ internal static class BackupPageIndexer
 
                 Validate(stream.Header);
 
-                ScanStream(handle, stream, builder, cancellationToken);
+                ScanStream(stripe, stream, builder, cancellationToken);
 
                 builder.CloseRun();
             }
@@ -90,6 +110,9 @@ internal static class BackupPageIndexer
         return builder.Build();
     }
 
+    /// <summary>
+    /// Check the stream is valid/compatible
+    /// </summary>
     private static void Validate(StreamHeader header)
     {
         if (header.DataCompressionAlgorithm != 0)
@@ -112,7 +135,13 @@ internal static class BackupPageIndexer
         }
     }
 
-    private static void ScanStream(SafeFileHandle handle,
+    /// <summary>
+    /// Scan a file sending to the builder to identify contiguous sequences of pages
+    /// </summary>
+    /// <remarks>
+    /// Reads in chunks locating page addresses directly in the page headers.
+    /// </remarks>
+    private static void ScanStream(BackupStripe stripe,
                                    DataStream stream,
                                    BackupPageIndexBuilder builder,
                                    CancellationToken cancellationToken)
@@ -133,7 +162,7 @@ internal static class BackupPageIndexer
 
             var chunkOffset = payloadStart + pageIndex * PageData.Size;
 
-            ReadExactly(handle, chunkOffset, buffer.AsSpan(0, pagesToRead * PageData.Size));
+            ReadExactly(stripe.Handle, chunkOffset, buffer.AsSpan(0, pagesToRead * PageData.Size));
 
             for (var i = 0; i < pagesToRead; i++)
             {
@@ -143,7 +172,7 @@ internal static class BackupPageIndexer
 
                 if (page[HeaderVersionOffset] != ExpectedHeaderVersion)
                 {
-                    builder.TryAddUnidentifiedPage(pageOffset);
+                    builder.TryAddUnidentifiedPage(stripe.Index, pageOffset);
 
                     continue;
                 }
@@ -165,7 +194,7 @@ internal static class BackupPageIndexer
                         $"Unexpected page image at backup offset {pageOffset} - page address {fileId}:{pageId}.");
                 }
 
-                builder.AddPage(fileId, pageId, pageOffset);
+                builder.AddPage(fileId, pageId, stripe.Index, pageOffset);
             }
 
             pageIndex += pagesToRead;

@@ -23,12 +23,12 @@
                         <ImageIcon Source="ms-appx:///Assets/Database.svg"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Database File" Tag="ConnectFilePage">
+                <NavigationViewItem Content="Data Files" Tag="ConnectFilePage">
                     <NavigationViewItem.Icon>
                         <ImageIcon Source="ms-appx:///Assets/DatabaseFile.svg"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Database Backup File" Tag="ConnectBackupPage" >
+                <NavigationViewItem Content="Database Backup" Tag="ConnectBackupPage" >
                     <NavigationViewItem.Icon>
                         <ImageIcon Source="ms-appx:///Assets/DatabaseFile.svg"/>
                     </NavigationViewItem.Icon>

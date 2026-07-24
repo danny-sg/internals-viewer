@@ -27,6 +27,38 @@ public sealed partial class DatabaseView : IDisposable
 
         AllocationInfoAppBarToggleButton.Checked += AppBarToggleButton_Changed;
         AllocationInfoAppBarToggleButton.Unchecked += AppBarToggleButton_Changed;
+
+        AllocationTabView.Loaded += AllocationTabView_Loaded;
+    }
+
+    private void AllocationTabView_Loaded(object sender, RoutedEventArgs e)
+    {
+        EnsureTabSelected();
+    }
+
+    private void EnsureTabSelected()
+    {
+        if (AllocationTabView.SelectedIndex < 0 && TabViewModel.DatabaseFiles.Length > 0)
+        {
+            AllocationTabView.SelectedIndex = 0;
+        }
+    }
+
+    public Visibility ToInverseVisibility(bool value) => value ? Visibility.Collapsed : Visibility.Visible;
+
+    private void OnSwitchToTabsClick(object sender, RoutedEventArgs e)
+    {
+        TabViewModel.IsTabbedView = true;
+    }
+
+    private void OnSwitchToStackedClick(object sender, RoutedEventArgs e)
+    {
+        TabViewModel.IsTabbedView = false;
+    }
+
+    private void AllocationTabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        EnsureTabSelected();
     }
 
     private void OnPageSelected(object? sender, PageAddressEventArgs e)
@@ -83,10 +115,19 @@ public sealed partial class DatabaseView : IDisposable
             }
         }
 
+        foreach (var child in AllocationTabView.FindChildren())
+        {
+            if (child is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
         AllocationItemRepeater.SizeChanged -= OnParentSizeChanged;
         AllocationLayerGrid.PageClicked -= OnPageSelected;
         AllocationLayerGrid.ViewIndexClicked -= OnViewIndexClicked;
         AllocationInfoAppBarToggleButton.Checked -= AppBarToggleButton_Changed;
-        AllocationInfoAppBarToggleButton.Unchecked -= AppBarToggleButton_Changed;;
+        AllocationInfoAppBarToggleButton.Unchecked -= AppBarToggleButton_Changed;
+        AllocationTabView.Loaded -= AllocationTabView_Loaded;
     }
 }
