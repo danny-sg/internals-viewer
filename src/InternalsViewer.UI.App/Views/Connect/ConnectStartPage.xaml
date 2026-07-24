@@ -45,8 +45,8 @@
                         <Image Source="/Assets/AppLogo-512.png"/>
                     </connections:HeaderTile.Source>
                 </connections:HeaderTile>
-                <connections:HeaderTile Title="Data file"
-                                        Description="Open an MDF data file for a database that has been taken offline"
+                <connections:HeaderTile Title="Data files"
+                                        Description="Open MDF/LDF data files for a database that has been taken offline"
                                         Click="ConnectFileTile_OnClick">
                     <connections:HeaderTile.Source>
                         <Image Source="/Assets/AppLogo-512.png" />

@@ -7,8 +7,8 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
     <Grid Background="{ThemeResource LayerFillColorDefault}">
-        <NavigationView x:Name="ConnectNavigationView" 
-                        PaneTitle="Internals Viewer 2026.1"
+        <NavigationView x:Name="ConnectNavigationView"
+                        PaneTitle="{x:Bind PaneTitle}"
                         PaneDisplayMode="Auto" 
                         IsTabStop="False" 
                         IsBackButtonVisible="Collapsed"
