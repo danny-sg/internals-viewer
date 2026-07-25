@@ -22,6 +22,15 @@ internal static class ChunkMapper
 
     private const long DefaultCheckpointInterval = 4L * 1024 * 1024;
 
+    /// <summary>
+    /// Window size for decoding that is thrown away rather than read back
+    /// </summary>
+    /// <remarks>
+    /// Neither of these passes serves reads, so the window only has to hold the retained history plus the largest single chunk - the
+    /// default is sized to double as a read cache, which puts 4 MB on the large object heap for nothing.
+    /// </remarks>
+    private const int DecodeBufferSize = 256 * 1024;
+
     public static ChunkMap Build(Stream source,
                                  ILogger logger,
                                  CancellationToken cancellationToken,
@@ -33,7 +42,7 @@ internal static class ChunkMapper
 
         using var decoder = ChunkDecoderFactory.Create(source);
 
-        var writer = new SlidingWindowWriter(Stream.Null, decoder.MaximumMatchOffset);
+        var writer = new SlidingWindowWriter(Stream.Null, decoder.MaximumMatchOffset, DecodeBufferSize);
 
         var chunks = new List<ChunkEntry>();
 
@@ -153,7 +162,7 @@ internal static class ChunkMapper
 
         using var tape = new MemoryStream();
 
-        var writer = new SlidingWindowWriter(tape, decoder.MaximumMatchOffset);
+        var writer = new SlidingWindowWriter(tape, decoder.MaximumMatchOffset, DecodeBufferSize);
 
         decoder.Decode(payload, header.UncompressedSize, writer);
 
