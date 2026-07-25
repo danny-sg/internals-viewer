@@ -55,7 +55,7 @@ public sealed class FilePageReader(string path) : PageReader, IPageReader
 
     public Task Initialize(CancellationToken cancellationToken, IProgress<ProgressDetail>? progress = null)
     {
-        throw new NotImplementedException();
+        return Task.CompletedTask;
     }
 
     public async Task<byte[]> Read(string name, PageAddress pageAddress, CancellationToken token)
