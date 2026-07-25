@@ -1,3 +1,5 @@
+﻿using InternalsViewer.Connection.BackupFile.Compression;
+using InternalsViewer.Connection.BackupFile.Content;
 using InternalsViewer.Connection.BackupFile.Format.Configuration;
 using InternalsViewer.Connection.BackupFile.Index;
 using InternalsViewer.Internals.Engine.Address;
@@ -5,7 +7,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Readers.Pages;
-using Microsoft.Win32.SafeHandles;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace InternalsViewer.Connection.BackupFile.Reader;
 
@@ -21,7 +23,9 @@ internal sealed class BackupPageReader(IReadOnlyList<string> filenames)
 
     private IReadOnlyList<string> Filenames { get; } = filenames;
 
-    private List<SafeFileHandle> Handles { get; } = [];
+    private List<IBackupContentSource> Sources { get; } = [];
+
+    private IBackupContentSource[] StripeContents { get; set; } = [];
 
     private BackupPageLocator? Locator { get; set; }
 
@@ -34,8 +38,8 @@ internal sealed class BackupPageReader(IReadOnlyList<string> filenames)
     /// The media set (one or more .bak files) is parsed and validated as complete and consistent, and the backup
     /// configuration is captured.
     ///
-    /// A read handle is then opened per stripe in family sequence order. The stripe index assigned here must match
-    /// the Handles list - page runs resolve reads via Handles[StripeIndex].
+    /// A content source is opened per file, then ordered by family sequence into stripes. The stripe index must
+    /// match the StripeContents array - page runs resolve reads via StripeContents[StripeIndex].
     ///
     /// The page index is then built by scanning the data streams of every stripe, mapping page address to stripe and
     /// offset.
@@ -44,7 +48,7 @@ internal sealed class BackupPageReader(IReadOnlyList<string> filenames)
     {
         await Task.Run(() =>
         {
-            var mediaSet = BackupMediaSetReader.Read(Filenames);
+            var mediaSet = BackupMediaSetReader.Read(OpenSources(cancellationToken));
 
             Configuration = mediaSet.Configuration;
 
@@ -54,18 +58,16 @@ internal sealed class BackupPageReader(IReadOnlyList<string> filenames)
             {
                 foreach (var family in mediaSet.Families)
                 {
-                    var handle = File.OpenHandle(family.Filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-
-                    Handles.Add(handle);
-
-                    stripes.Add(new BackupStripe(stripes.Count, handle, family.Blocks));
+                    stripes.Add(new BackupStripe(stripes.Count, family.Content, family.Blocks));
                 }
+
+                StripeContents = [.. stripes.Select(s => s.Content)];
 
                 Locator = BackupPageIndexer.Build(stripes, cancellationToken);
             }
             catch
             {
-                DisposeHandles();
+                DisposeSources();
 
                 throw;
             }
@@ -113,9 +115,26 @@ internal sealed class BackupPageReader(IReadOnlyList<string> filenames)
 
     public ValueTask DisposeAsync()
     {
-        DisposeHandles();
+        DisposeSources();
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Opens a content source for every file in the media set
+    /// </summary>
+    private IReadOnlyList<BackupMediaSource> OpenSources(CancellationToken cancellationToken)
+    {
+        foreach (var filename in Filenames)
+        {
+            IBackupContentSource content = CompressedBackupFormat.IsCompressed(filename)
+                                           ? new CompressedBackupContentSource(filename, NullLogger.Instance, cancellationToken)
+                                           : new FileBackupContentSource(filename);
+
+            Sources.Add(content);
+        }
+
+        return [.. Filenames.Select((f, i) => new BackupMediaSource(f, Sources[i]))];
     }
 
     /// <summary>
@@ -129,7 +148,7 @@ internal sealed class BackupPageReader(IReadOnlyList<string> filenames)
     /// </remarks>
     private void ReadBackupFileInto(PageAddress pageAddress, byte[] buffer)
     {
-        if (Handles.Count == 0 || Locator is null)
+        if (StripeContents.Length == 0 || Locator is null)
         {
             throw new InvalidOperationException("Initialize must be called before pages can be read.");
         }
@@ -139,33 +158,16 @@ internal sealed class BackupPageReader(IReadOnlyList<string> filenames)
             throw new PageNotInBackupException(pageAddress);
         }
 
-        ReadExactly(Handles[location.StripeIndex], location.Offset, buffer.AsSpan(0, PageData.Size));
+        StripeContents[location.StripeIndex].Read(location.Offset, buffer.AsSpan(0, PageData.Size));
     }
 
-    private void DisposeHandles()
+    private void DisposeSources()
     {
-        foreach (var handle in Handles)
+        foreach (var source in Sources)
         {
-            handle.Dispose();
+            source.Dispose();
         }
 
-        Handles.Clear();
-    }
-
-    private static void ReadExactly(SafeFileHandle handle, long offset, Span<byte> buffer)
-    {
-        var totalRead = 0;
-
-        while (totalRead < buffer.Length)
-        {
-            var read = RandomAccess.Read(handle, buffer[totalRead..], offset + totalRead);
-
-            if (read == 0)
-            {
-                throw new EndOfStreamException($"Unexpected end of backup file reading at offset {offset + totalRead}.");
-            }
-
-            totalRead += read;
-        }
+        Sources.Clear();
     }
 }

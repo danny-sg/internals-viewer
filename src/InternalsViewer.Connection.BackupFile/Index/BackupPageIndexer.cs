@@ -3,7 +3,6 @@ using InternalsViewer.Connection.BackupFile.Format.Blocks;
 using InternalsViewer.Connection.BackupFile.Format.Blocks.Descriptors;
 using InternalsViewer.Connection.BackupFile.Format.Streams;
 using InternalsViewer.Internals.Engine.Pages;
-using Microsoft.Win32.SafeHandles;
 
 namespace InternalsViewer.Connection.BackupFile.Index;
 
@@ -162,7 +161,7 @@ internal static class BackupPageIndexer
 
             var chunkOffset = payloadStart + pageIndex * PageData.Size;
 
-            ReadExactly(stripe.Handle, chunkOffset, buffer.AsSpan(0, pagesToRead * PageData.Size));
+            stripe.Content.Read(chunkOffset, buffer.AsSpan(0, pagesToRead * PageData.Size));
 
             for (var i = 0; i < pagesToRead; i++)
             {
@@ -201,20 +200,4 @@ internal static class BackupPageIndexer
         }
     }
 
-    private static void ReadExactly(SafeFileHandle handle, long offset, Span<byte> buffer)
-    {
-        var totalRead = 0;
-
-        while (totalRead < buffer.Length)
-        {
-            var read = RandomAccess.Read(handle, buffer[totalRead..], offset + totalRead);
-
-            if (read == 0)
-            {
-                throw new EndOfStreamException($"Unexpected end of backup file reading at offset {offset + totalRead}.");
-            }
-
-            totalRead += read;
-        }
-    }
 }

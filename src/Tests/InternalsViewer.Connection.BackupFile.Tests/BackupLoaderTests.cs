@@ -38,6 +38,10 @@ public class BackupLoaderTests(ITestOutputHelper testOutput)
     ///     BACKUP LOG TestDatabase
     ///     To DISK='C:\Temp\TestBackups\TestDatabase_TailLog.trn'
     ///     WITH CONTINUE_AFTER_ERROR;
+    ///
+    ///     BACKUP DATABASE TestDatabase TO 
+    ///     DISK = 'C:\Temp\TestBackups\TestDatabase_Compressed_MS_XPRESS.bak'
+    ///     WITH COMPRESSION (ALGORITHM = MS_XPRESS);
     /// 
     /// </remarks>
     [Theory]

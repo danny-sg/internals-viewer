@@ -1,3 +1,4 @@
+using InternalsViewer.Connection.BackupFile.Content;
 using InternalsViewer.Connection.BackupFile.Format.Blocks.Descriptors;
 using InternalsViewer.Connection.BackupFile.Format.Configuration;
 
@@ -19,4 +20,7 @@ internal sealed record BackupMediaSet(BackupConfiguration? Configuration, IReadO
 /// <remarks>
 /// Backup media family = .bak file
 /// </remarks>
-internal sealed record BackupMediaFamily(int FamilySequence, string Filename, IReadOnlyList<DescriptorBlock> Blocks);
+internal sealed record BackupMediaFamily(int FamilySequence,
+                                         string Filename,
+                                         IBackupContentSource Content,
+                                         IReadOnlyList<DescriptorBlock> Blocks);

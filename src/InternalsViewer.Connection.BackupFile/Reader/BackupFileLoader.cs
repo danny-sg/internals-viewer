@@ -15,8 +15,22 @@ namespace InternalsViewer.Connection.BackupFile.Reader;
 ///
 /// Files are composed of a series of blocks of different types. The BackupFileLoader reads and parses blocks sequentially.
 /// </remarks>
-internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string filename)
+internal sealed class BackupFileLoader
 {
+    public BackupFileLoader(ILogger<BackupFileLoader> logger, string filename)
+    {
+        Logger = logger;
+
+        Reader = new BackupReader(filename);
+    }
+
+    public BackupFileLoader(ILogger<BackupFileLoader> logger, Stream stream)
+    {
+        Logger = logger;
+
+        Reader = new BackupReader(stream);
+    }
+
     private static readonly byte[] CompressedBackupSignature = [.. "MSSQLBAK"u8];
 
     private const int CommonHeaderLength = 52;
@@ -31,9 +45,9 @@ internal sealed class BackupFileLoader(ILogger<BackupFileLoader> logger, string 
 
     private const int ScanBufferLength = 0x400000;
 
-    public ILogger<BackupFileLoader> Logger { get; } = logger;
+    public ILogger<BackupFileLoader> Logger { get; }
 
-    public BackupReader Reader { get; } = new(filename);
+    public BackupReader Reader { get; }
 
     private long _dataSetStartPosition = -1;
 

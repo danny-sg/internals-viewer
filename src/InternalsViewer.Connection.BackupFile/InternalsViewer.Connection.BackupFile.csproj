@@ -18,4 +18,8 @@
     <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Compression\Blocks\" />
+  </ItemGroup>
+
 </Project>

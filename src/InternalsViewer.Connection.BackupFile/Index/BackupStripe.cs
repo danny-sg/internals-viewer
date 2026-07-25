@@ -1,5 +1,5 @@
+using InternalsViewer.Connection.BackupFile.Content;
 using InternalsViewer.Connection.BackupFile.Format.Blocks.Descriptors;
-using Microsoft.Win32.SafeHandles;
 
 namespace InternalsViewer.Connection.BackupFile.Index;
 
@@ -13,4 +13,4 @@ namespace InternalsViewer.Connection.BackupFile.Index;
 /// Index is the 0-based position in the ordered media set and must match the reader's handle list - both are derived
 /// from the same family sequence ordering.
 /// </remarks>
-internal sealed record BackupStripe(int Index, SafeFileHandle Handle, IReadOnlyList<DescriptorBlock> Blocks);
+internal sealed record BackupStripe(int Index, IBackupContentSource Content, IReadOnlyList<DescriptorBlock> Blocks);

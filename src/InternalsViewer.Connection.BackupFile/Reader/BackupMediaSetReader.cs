@@ -1,3 +1,4 @@
+﻿using InternalsViewer.Connection.BackupFile.Content;
 using InternalsViewer.Connection.BackupFile.Format.Blocks;
 using InternalsViewer.Connection.BackupFile.Format.Blocks.Descriptors;
 using InternalsViewer.Connection.BackupFile.Format.Configuration;
@@ -15,10 +16,10 @@ namespace InternalsViewer.Connection.BackupFile.Reader;
 /// </remarks>
 internal static class BackupMediaSetReader
 {
-    public static BackupMediaSet Read(IReadOnlyList<string> filenames)
+    public static BackupMediaSet Read(IReadOnlyList<BackupMediaSource> sources)
     {
         // Parse media family (files) from filenames
-        var families = filenames.Select(LoadFamily).ToList();
+        var families = sources.Select(LoadFamily).ToList();
 
         // Validate files/media set
         ValidateMediaSet(families);
@@ -29,6 +30,7 @@ internal static class BackupMediaSetReader
         var orderedFamilies = families.OrderBy(f => f.Raid?.FamilySequence ?? 1)
                                       .Select(f => new BackupMediaFamily(f.Raid?.FamilySequence ?? 1,
                                                                          f.Filename,
+                                                                         f.Content,
                                                                          f.Blocks))
                                       .ToList();
 
@@ -38,7 +40,10 @@ internal static class BackupMediaSetReader
     /// <summary>
     /// Parsed - but not validated media family
     /// </summary>
-    private sealed record LoadedFamily(string Filename, IReadOnlyList<DescriptorBlock> Blocks, RaidStreamInfo? Raid);
+    private sealed record LoadedFamily(string Filename,
+                                       IBackupContentSource Content,
+                                       IReadOnlyList<DescriptorBlock> Blocks,
+                                       RaidStreamInfo? Raid);
 
     /// <summary>
     /// Loads backup family (.bak file)
@@ -46,9 +51,10 @@ internal static class BackupMediaSetReader
     /// <remarks>
     /// Loads to blocks and RAID info
     /// </remarks>
-    private static LoadedFamily LoadFamily(string filename)
+    private static LoadedFamily LoadFamily(BackupMediaSource source)
     {
-        var loader = new BackupFileLoader(NullLogger<BackupFileLoader>.Instance, filename);
+        var loader = new BackupFileLoader(NullLogger<BackupFileLoader>.Instance,
+                                          new BackupContentStream(source.Content));
 
         List<DescriptorBlock> blocks;
 
@@ -68,7 +74,7 @@ internal static class BackupMediaSetReader
 
         var raid = raidData is null ? null : RaidStreamInfo.Parse(raidData);
 
-        return new LoadedFamily(filename, blocks, raid);
+        return new LoadedFamily(source.Filename, source.Content, blocks, raid);
     }
 
     /// <summary>

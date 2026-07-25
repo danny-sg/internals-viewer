@@ -44,6 +44,10 @@ internal sealed class BackupReader : BinaryReader
     {
     }
 
+    public BackupReader(Stream stream) : base(stream)
+    {
+    }
+
     public bool TryReadBlock(out DescriptorBlock block)
     {
         var blockType = PeekNextBlockType();
