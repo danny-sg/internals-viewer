@@ -1,3 +1,4 @@
+﻿using InternalsViewer.Connection.BackupFile.Media;
 using InternalsViewer.Connection.BackupFile.Reader;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages.Enums;

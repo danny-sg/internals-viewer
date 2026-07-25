@@ -12,8 +12,7 @@
         <StackPanel Spacing="6" Background="Transparent" >
             <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">Database Backup</TextBlock>
             <TextBlock Style="{ThemeResource BodyTextBlockStyle}" Margin="0,0,14,14">
-                Connect Internals Viewer to a SQL Server full database backup (.bak) files. The backup must be uncompressed and
-                unencrypted. For a backup striped across multiple files, add every file in the set.
+                Connect Internals Viewer to a SQL Server full database backup (.bak) files. Backups must be unencrypted. Add every file for multi-file backups.
             </TextBlock>
 
             <InfoBar Severity="Error"
@@ -27,6 +26,7 @@
                                    CornerRadius="4,4,0,0">
                 <Grid>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -92,6 +92,28 @@
                                 IsEnabled="{x:Bind ViewModel.IsValid, Mode=OneWay}"
                                 MinWidth="150"
                                 Style="{ThemeResource AccentButtonStyle}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="3"
+                                Spacing="6"
+                                Margin="0,10,0,0"
+                                Visibility="{x:Bind ViewModel.HasProgress, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <ProgressBar Value="{x:Bind ViewModel.ProgressPercentage, Mode=OneWay}"
+                                     IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"
+                                     Maximum="100"
+                                     HorizontalAlignment="Stretch"
+                                     Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <TextBox Name="ProgressTextBox"
+                                 Height="140"
+                                 IsReadOnly="True"
+                                 AcceptsReturn="True"
+                                 TextWrapping="NoWrap"
+                                 IsSpellCheckEnabled="False"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                 Text="{x:Bind ViewModel.ProgressLog, Mode=OneWay}"/>
                     </StackPanel>
                 </Grid>
 

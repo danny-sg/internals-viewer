@@ -1,4 +1,4 @@
-using InternalsViewer.Connection.BackupFile.Connection;
+﻿using InternalsViewer.Connection.BackupFile.Connection;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +11,33 @@ public class DatabaseLoadTests
     private const string FullBackupPath = @"C:\Temp\TestBackups\TestDatabase_Full.bak";
 
     private const string WideWorldImportersBackupPath = @"C:\Temp\TestBackups\WideWorldImporters_Uncompressed.bak";
+
+    /// <summary>
+    /// A compressed backup loads with no expansion, decoding blocks on demand
+    /// </summary>
+    [RequiresFileFact(@"C:\Temp\TestBackups\IV2025_Compressed.bak")]
+    public async Task Can_Load_Database_From_Compressed_Backup()
+    {
+        var host = Host.CreateDefaultBuilder()
+                       .UseContentRoot(AppContext.BaseDirectory)
+                       .ConfigureServices((_, services) => services.RegisterServices())
+                       .Build();
+
+        var databaseService = host.Services.GetRequiredService<IDatabaseService>();
+
+        var connection = new BackupConnectionFactory()
+            .Create(c => c.Filename = @"C:\Temp\TestBackups\IV2025_Compressed.bak");
+
+        var database = await databaseService.LoadAsync("InternalsViewer_2025", connection, CancellationToken.None);
+
+        Assert.NotNull(database.BootPage);
+        Assert.StartsWith("InternalsViewer_2025", database.BootPage.DatabaseName);
+
+        Assert.NotEmpty(database.Metadata.Files);
+        Assert.NotEmpty(database.AllocationUnits);
+        Assert.NotEmpty(database.Gam);
+        Assert.NotEmpty(database.Pfs);
+    }
 
     [RequiresFileFact(@"C:\Temp\TestBackups\TestDatabase_Full_MultiFile_1.bak")]
     public async Task Can_Load_Database_From_Striped_Backup()

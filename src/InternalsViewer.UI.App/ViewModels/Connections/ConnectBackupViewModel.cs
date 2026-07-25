@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Connections;
 
@@ -18,6 +20,8 @@ public static class ConnectBackupViewModelFactory
 
 public partial class ConnectBackupViewModel : ObservableObject
 {
+    private string lastMessage = string.Empty;
+
     public ObservableCollection<string> Filenames { get; } = [];
 
     [ObservableProperty]
@@ -30,7 +34,19 @@ public partial class ConnectBackupViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string errorMessage = string.Empty;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasProgress))]
+    private string progressLog = string.Empty;
+
+    [ObservableProperty]
+    private double progressPercentage;
+
+    [ObservableProperty]
+    private bool isProgressIndeterminate = true;
+
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+
+    public bool HasProgress => !string.IsNullOrEmpty(ProgressLog);
 
     public void AddFiles(IEnumerable<string> paths)
     {
@@ -62,6 +78,12 @@ public partial class ConnectBackupViewModel : ObservableObject
     {
         ErrorMessage = string.Empty;
 
+        ProgressLog = string.Empty;
+
+        lastMessage = string.Empty;
+
+        IsProgressIndeterminate = true;
+
         IsBusy = true;
 
         try
@@ -73,7 +95,10 @@ public partial class ConnectBackupViewModel : ObservableObject
                 Value = string.Join(";", Filenames)
             };
 
-            var message = new ConnectBackupMessage(recent.Value, recent);
+            var message = new ConnectBackupMessage(recent.Value, recent)
+            {
+                Progress = new Progress<ProgressDetail>(Report)
+            };
 
             await WeakReferenceMessenger.Default.Send(message);
 
@@ -87,7 +112,35 @@ public partial class ConnectBackupViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+
+            IsProgressIndeterminate = false;
         }
+    }
+
+    /// <summary>
+    /// Records a stage of the load, adding a line only when the stage itself changes
+    /// </summary>
+    /// <remarks>
+    /// A stage reports its message unchanged while its percentage climbs, so comparing against the last message keeps a long scan to one
+    /// line and lets the percentage drive the bar instead.
+    ///
+    /// The Progress is constructed on the UI thread, so its callback marshals back onto that thread from the load running on the thread
+    /// pool.
+    /// </remarks>
+    private void Report(ProgressDetail detail)
+    {
+        if (detail.Message != lastMessage)
+        {
+            lastMessage = detail.Message;
+
+            ProgressLog = ProgressLog.Length == 0
+                ? detail.Message
+                : $"{ProgressLog}{Environment.NewLine}{detail.Message}";
+        }
+
+        IsProgressIndeterminate = detail.IsIndeterminate;
+
+        ProgressPercentage = detail.Percentage ?? 0;
     }
 
     private void Validate()

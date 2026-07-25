@@ -126,8 +126,12 @@ public sealed partial class DatabaseView : IDisposable
         AllocationItemRepeater.SizeChanged -= OnParentSizeChanged;
         AllocationLayerGrid.PageClicked -= OnPageSelected;
         AllocationLayerGrid.ViewIndexClicked -= OnViewIndexClicked;
+        PageAddressTextBox.AddressChanged -= OnPageSelected;
         AllocationInfoAppBarToggleButton.Checked -= AppBarToggleButton_Changed;
         AllocationInfoAppBarToggleButton.Unchecked -= AppBarToggleButton_Changed;
         AllocationTabView.Loaded -= AllocationTabView_Loaded;
+
+        // Releases the connection, and with it the backup's file handles, decode window and page map
+        _ = (DataContext as DatabaseTabViewModel)?.DisposeAsync().AsTask();
     }
 }

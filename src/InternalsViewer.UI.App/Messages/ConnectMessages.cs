@@ -1,5 +1,7 @@
-﻿using CommunityToolkit.Mvvm.Messaging.Messages;
+﻿using System;
+using CommunityToolkit.Mvvm.Messaging.Messages;
 using InternalsViewer.UI.App.Models.Connections;
+using InternalsViewer.Internals.Engine.Loading;
 
 namespace InternalsViewer.UI.App.Messages;
 
@@ -26,6 +28,8 @@ public class ConnectBackupMessage(string filename, RecentConnection recent) : As
     public RecentConnection Recent { get; set; } = recent;
 
     public string? ErrorMessage { get; set; }
+
+    public IProgress<ProgressDetail>? Progress { get; set; }
 }
 
 public class ConnectRecentMessage(RecentConnection recent) : AsyncRequestMessage<bool>
