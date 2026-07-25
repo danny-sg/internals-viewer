@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using InternalsViewer.Connection.BackupFile.Connection;
 using InternalsViewer.Connection.BackupFile.Content;
 using InternalsViewer.Internals;
@@ -56,10 +56,10 @@ public class DownloadedBackupTests(ITestOutputHelper testOutput)
 
     private void Report(string path)
     {
-        using var content = new CompressedBackupContentSource(path, NullLogger.Instance, CancellationToken.None);
+        using var content = new CompressedContentSource(path, NullLogger.Instance, CancellationToken.None);
 
-        TestOutput.WriteLine($"{Path.GetFileName(path)}: {content.BlockCount} blocks, {content.Length:N0} bytes, " +
-                             $"{content.FailedBlockCount} failed");
+        TestOutput.WriteLine($"{Path.GetFileName(path)}: {content.ChunkCount} blocks, {content.Length:N0} bytes, " +
+                             $"{content.FailedChunkCount} failed");
 
         var buffer = new byte[4];
 

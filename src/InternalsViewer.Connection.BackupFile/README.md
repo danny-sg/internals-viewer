@@ -44,3 +44,5 @@ The nomenclature around backups is a bit strange due to the lineage of the file 
 
 - `Media Set` - set of `Media Family` (files) that make up a backup
 - `Media Family` - a single file that is part of a `Media Set`
+
+When multiple files are used for a backup, pages are "striped" across the files. The striping is similar to RAID, where different types can striped, mirrored, or stripe-mirrored.

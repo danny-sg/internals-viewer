@@ -9,6 +9,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Providers.Metadata;
+using InternalsViewer.Internals.Engine.Loading;
 
 namespace InternalsViewer.Internals.Services.Loaders.Engine;
 
@@ -45,7 +46,8 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
     /// </summary>
     public async Task<DatabaseSource> LoadAsync(string name, 
                                                 IConnectionType connection, 
-                                                CancellationToken cancellationToken)
+                                                CancellationToken cancellationToken,
+                                                IProgress<ProgressDetail>? progress = null)
     {
         var startTimestamp = Stopwatch.GetTimestamp();
 
@@ -59,11 +61,15 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
 
         Logger.LogDebug("Initializing page reader");
 
-        await connection.PageReader.Initialize(cancellationToken);
+        await connection.PageReader.Initialize(cancellationToken, progress);
+
+        progress?.Report(new ProgressDetail("Loading boot page"));
 
         Logger.LogDebug("Loading Boot Page: {BootPageAddress}", BootPage.BootPageAddress);
 
         database.BootPage = await PageService.GetPage<BootPage>(database, BootPage.BootPageAddress, cancellationToken);
+
+        progress?.Report(new ProgressDetail("Loading metadata"));
 
         Logger.LogDebug("Booting database from internal tables/metadata");
 
@@ -76,9 +82,13 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
 
         database.Files = FileProvider.GetFiles(database.Metadata);
 
+        progress?.Report(new ProgressDetail("Reading allocations"));
+
         Logger.LogDebug("Reading allocations");
 
         await RefreshAllocations(database, cancellationToken);
+
+        progress?.Report(new ProgressDetail($"Loaded in {Stopwatch.GetElapsedTime(startTimestamp).TotalSeconds:N1}s"));
 
         Logger.LogInformation("Database loaded in {Duration}", Stopwatch.GetElapsedTime(startTimestamp));
 

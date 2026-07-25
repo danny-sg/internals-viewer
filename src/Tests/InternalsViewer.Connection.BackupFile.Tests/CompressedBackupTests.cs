@@ -1,8 +1,11 @@
-using System.Text;
+﻿using System.Text;
 using InternalsViewer.Connection.BackupFile.Compression;
 using InternalsViewer.Connection.BackupFile.Content;
+using InternalsViewer.Connection.BackupFile.Mtf.Blocks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
+using InternalsViewer.Connection.BackupFile.Mtf;
+using InternalsViewer.Connection.BackupFile.Mtf.Blocks;
 
 namespace InternalsViewer.Connection.BackupFile.Tests;
 
@@ -34,8 +37,8 @@ public class CompressedBackupTests(ITestOutputHelper testOutput)
     {
         using var content = Open();
 
-        TestOutput.WriteLine($"{content.BlockCount} blocks, {content.Length} bytes, " +
-                             $"{content.FailedBlockCount} failed");
+        TestOutput.WriteLine($"{content.ChunkCount} blocks, {content.Length} bytes, " +
+                             $"{content.FailedChunkCount} failed");
 
         var buffer = new byte[4];
 
@@ -87,8 +90,8 @@ public class CompressedBackupTests(ITestOutputHelper testOutput)
     {
         using var content = Open();
 
-        var loader = new Reader.BackupFileLoader(NullLogger<Reader.BackupFileLoader>.Instance,
-                                                 new BackupContentStream(content));
+        var loader = new MtfBlockLoader(NullLogger<MtfBlockLoader>.Instance,
+                                                 new ContentStream(content));
 
         try
         {
@@ -161,7 +164,7 @@ public class CompressedBackupTests(ITestOutputHelper testOutput)
         Assert.True(accuracy > 0.999, $"Only {accuracy:P2} of bytes matched the uncompressed pair");
     }
 
-    private static CompressedBackupContentSource Open()
+    private static CompressedContentSource Open()
         => new(CompressedPath, NullLogger.Instance, CancellationToken.None);
 
     private static byte[] ReadAll()

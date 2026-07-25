@@ -9,11 +9,14 @@
 /// the window has to be retained though - everything older is flushed to the destination stream, which keeps
 /// memory bounded regardless of backup size.
 /// </remarks>
-internal sealed class SlidingWindowWriter(Stream destination, int bufferSize = 4 * 1024 * 1024, int retain = 0)
+internal sealed class SlidingWindowWriter(Stream destination,
+                                          int maximumMatchOffset,
+                                          int bufferSize = 4 * 1024 * 1024,
+                                          int retain = 0)
 {
-    private readonly byte[] _buffer = new byte[Math.Max(bufferSize, CompressedBackupFormat.MaximumMatchOffset * 4)];
+    private readonly byte[] _buffer = new byte[Math.Max(bufferSize, maximumMatchOffset * 4)];
 
-    private readonly int _retain = Math.Max(retain, CompressedBackupFormat.MaximumMatchOffset);
+    private readonly int _retain = Math.Max(retain, maximumMatchOffset);
 
     private int _position;
 
@@ -28,6 +31,23 @@ internal sealed class SlidingWindowWriter(Stream destination, int bufferSize = 4
     /// Output still held in the buffer, usable both as match history and as a read cache
     /// </summary>
     public ReadOnlySpan<byte> Window => _buffer.AsSpan(0, _position);
+
+    /// <summary>
+    /// The most recent output, being all a restart has to be seeded with
+    /// </summary>
+    /// <remarks>
+    /// A match reaches back at most maximumMatchOffset bytes, so anything older cannot affect decoding and does not have to be captured.
+    /// Checkpointing <see cref="Window"/> instead would hold a copy of the whole buffer per checkpoint for the life of the map.
+    /// </remarks>
+    public ReadOnlySpan<byte> History
+    {
+        get
+        {
+            var length = Math.Min(_position, maximumMatchOffset);
+
+            return _buffer.AsSpan(_position - length, length);
+        }
+    }
 
     /// <summary>
     /// Restores the writer to a previously captured point so decoding can resume from there

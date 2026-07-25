@@ -1,8 +1,11 @@
-﻿using InternalsViewer.Connection.BackupFile.Reader;
-using InternalsViewer.Connection.BackupFile.Format.Blocks.Descriptors.SqlServer;
-using InternalsViewer.Connection.BackupFile.Format.Streams;
+﻿using InternalsViewer.Connection.BackupFile.Mtf;
+using InternalsViewer.Connection.BackupFile.Mtf.Blocks;
+using InternalsViewer.Connection.BackupFile.Reader;
+using InternalsViewer.Connection.BackupFile.Mtf.Blocks.Descriptors.SqlServer;
+using InternalsViewer.Connection.BackupFile.Mtf.Streams;
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
+using InternalsViewer.Connection.BackupFile.Mtf.Blocks;
 
 namespace InternalsViewer.Connection.BackupFile.Tests;
 
@@ -52,7 +55,7 @@ public class BackupLoaderTests(ITestOutputHelper testOutput)
     {
         TestOutput.WriteLine(filename);
 
-        var loader = new BackupFileLoader(TestLogger.GetLogger<BackupFileLoader>(TestOutput), filename);
+        var loader = new MtfBlockLoader(TestLogger.GetLogger<MtfBlockLoader>(TestOutput), filename);
 
         var blocks = loader.Load();
 
@@ -105,7 +108,7 @@ public class BlockTests
 
         var data = dataString.ToByteArray();
 
-        var reader = new BackupReader(data);
+        var reader = new MtfReader(data);
 
         var block = new StreamBlock(reader);
     }

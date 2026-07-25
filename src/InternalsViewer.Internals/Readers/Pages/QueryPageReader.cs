@@ -1,10 +1,11 @@
-using System.Data;
+﻿using System.Data;
 using System.Diagnostics;
 using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Readers;
 using Microsoft.Data.SqlClient;
+using InternalsViewer.Internals.Engine.Loading;
 
 namespace InternalsViewer.Internals.Readers.Pages;
 
@@ -39,7 +40,7 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
 
     private ILogger<QueryPageReader> Logger { get; } = logger;
 
-    public Task Initialize(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task Initialize(CancellationToken cancellationToken, IProgress<ProgressDetail>? progress = null) => Task.CompletedTask;
 
     /// <summary>
     /// Loads the database page using DBCC PAGE (hex dump)

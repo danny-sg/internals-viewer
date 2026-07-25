@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Services.Pages.Parsers;
 using Microsoft.Win32.SafeHandles;
+using InternalsViewer.Internals.Engine.Loading;
 
 namespace InternalsViewer.Internals.Readers.Pages;
 
@@ -24,7 +25,7 @@ public sealed class DataFilePageReader(string path) : PageReader, IPageReader, I
 
     private ConcurrentDictionary<short, OpenDataFile> OpenFiles { get; } = new();
 
-    public Task Initialize(CancellationToken cancellationToken)
+    public Task Initialize(CancellationToken cancellationToken, IProgress<ProgressDetail>? progress = null)
     {
         GetFile(PrimaryFileId);
 

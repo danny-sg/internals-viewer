@@ -1,7 +1,6 @@
-using System.IO;
+﻿using System.IO;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Connection.BackupFile.Connection;
-using InternalsViewer.Connection.BackupFile.Reader;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Address;
@@ -37,6 +36,8 @@ using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.Models;
 using WinUIEx;
 using QueryView = InternalsViewer.UI.App.Views.Query.QueryView;
+using InternalsViewer.Connection.BackupFile.Media;
+using InternalsViewer.Internals.Engine.Loading;
 
 namespace InternalsViewer.UI.App;
 
@@ -218,7 +219,7 @@ public sealed partial class MainWindow
 
         var connection = factory.Create(c => c.Filenames = [.. filenames]);
 
-        var error = await TryAddConnection(connection);
+        var error = await TryAddConnection(connection, message.Progress);
 
         if (error is null)
         {
@@ -382,7 +383,7 @@ public sealed partial class MainWindow
         return false;
     }
 
-    private async Task<Exception?> TryAddConnection(IConnectionType connection)
+    private async Task<Exception?> TryAddConnection(IConnectionType connection, IProgress<ProgressDetail>? progress = null)
     {
         try
         {
@@ -390,7 +391,7 @@ public sealed partial class MainWindow
 
             await Task.Run(async () =>
             {
-                database = await DatabaseService.LoadAsync(connection.Name, connection, WindowCts.Token);
+                database = await DatabaseService.LoadAsync(connection.Name, connection, WindowCts.Token, progress);
             });
 
             var viewModel = DatabaseTabViewModelFactory.Create(database);

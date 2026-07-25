@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Readers.Pages;
+using InternalsViewer.Internals.Engine.Loading;
 
 namespace InternalsViewer.Internals.Tests.Helpers;
 
@@ -50,6 +51,11 @@ public sealed class FilePageReader(string path) : PageReader, IPageReader
         }
 
         return await File.ReadAllTextAsync(files[0]);
+    }
+
+    public Task Initialize(CancellationToken cancellationToken, IProgress<ProgressDetail>? progress = null)
+    {
+        throw new NotImplementedException();
     }
 
     public async Task<byte[]> Read(string name, PageAddress pageAddress, CancellationToken token)

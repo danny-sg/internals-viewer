@@ -29,14 +29,14 @@ public class CompressedFilestreamTests(ITestOutputHelper testOutput)
     [RequiresFileFact(CompressedPath)]
     public void Decoded_Stream_Keeps_Mtf_Structures_Aligned()
     {
-        using var content = new CompressedBackupContentSource(CompressedPath,
+        using var content = new CompressedContentSource(CompressedPath,
                                                               NullLogger.Instance,
                                                               CancellationToken.None);
 
         var reference = File.ReadAllBytes(UncompressedPath);
 
         TestOutput.WriteLine($"decoded {content.Length:N0}, uncompressed pair {reference.Length:N0}, " +
-                             $"{content.BlockCount} blocks");
+                             $"{content.ChunkCount} blocks");
 
         foreach (var tag in new[] { "TAPE", "SFMB", "SSET", "VOLB", "MSCI", "MSDA", "PH6S", "MSTL", "MSLS" })
         {
@@ -100,7 +100,7 @@ public class CompressedFilestreamTests(ITestOutputHelper testOutput)
 
     private static int IndexOf(byte[] data, string tag) => data.AsSpan().IndexOf(Encoding.ASCII.GetBytes(tag));
 
-    private static long FindInStream(CompressedBackupContentSource content, string tag)
+    private static long FindInStream(CompressedContentSource content, string tag)
     {
         var pattern = Encoding.ASCII.GetBytes(tag);
 
