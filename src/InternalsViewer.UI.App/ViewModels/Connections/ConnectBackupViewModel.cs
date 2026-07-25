@@ -20,29 +20,29 @@ public static class ConnectBackupViewModelFactory
 
 public partial class ConnectBackupViewModel : ObservableObject
 {
-    private string lastMessage = string.Empty;
+    private string _lastMessage = string.Empty;
 
     public ObservableCollection<string> Filenames { get; } = [];
 
     [ObservableProperty]
-    private bool isValid;
+    private bool _isValid;
 
     [ObservableProperty]
-    private bool isBusy;
+    private bool _isBusy;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
-    private string errorMessage = string.Empty;
+    private string _errorMessage = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasProgress))]
-    private string progressLog = string.Empty;
+    private string _progressLog = string.Empty;
 
     [ObservableProperty]
-    private double progressPercentage;
+    private double _progressPercentage;
 
     [ObservableProperty]
-    private bool isProgressIndeterminate = true;
+    private bool _isProgressIndeterminate = true;
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
@@ -74,13 +74,23 @@ public partial class ConnectBackupViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void Clear()
+    {
+        Filenames.Clear();
+
+        ErrorMessage = string.Empty;
+
+        Validate();
+    }
+
+    [RelayCommand]
     private async Task Connect()
     {
         ErrorMessage = string.Empty;
 
         ProgressLog = string.Empty;
 
-        lastMessage = string.Empty;
+        _lastMessage = string.Empty;
 
         IsProgressIndeterminate = true;
 
@@ -129,9 +139,9 @@ public partial class ConnectBackupViewModel : ObservableObject
     /// </remarks>
     private void Report(ProgressDetail detail)
     {
-        if (detail.Message != lastMessage)
+        if (detail.Message != _lastMessage)
         {
-            lastMessage = detail.Message;
+            _lastMessage = detail.Message;
 
             ProgressLog = ProgressLog.Length == 0
                 ? detail.Message

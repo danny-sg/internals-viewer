@@ -3,14 +3,14 @@ using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Connection.BackupFile.Tests;
 
-public class PageMapBuilderTests
+public class PageMapRunBuilderTests
 {
     private const int PageSize = 8192;
 
     [Fact]
     public void Consecutive_Pages_Collapse_Into_A_Single_Run()
     {
-        var builder = new PageMapBuilder();
+        var builder = new PageMapRunBuilder();
 
         builder.AddPage(1, 0, 0, 1000);
         builder.AddPage(1, 1, 0, 1000 + PageSize);
@@ -28,7 +28,7 @@ public class PageMapBuilderTests
     [Fact]
     public void Page_Id_Gap_Starts_A_New_Run()
     {
-        var builder = new PageMapBuilder();
+        var builder = new PageMapRunBuilder();
 
         builder.AddPage(1, 0, 0, 1000);
         builder.AddPage(1, 1, 0, 1000 + PageSize);
@@ -47,7 +47,7 @@ public class PageMapBuilderTests
     [Fact]
     public void Stripe_Change_Starts_A_New_Run()
     {
-        var builder = new PageMapBuilder();
+        var builder = new PageMapRunBuilder();
 
         builder.AddPage(1, 0, 0, 1000);
         builder.AddPage(1, 1, 1, 1000 + PageSize);
@@ -67,7 +67,7 @@ public class PageMapBuilderTests
     [Fact]
     public void Unidentified_Page_Extends_The_Active_Run()
     {
-        var builder = new PageMapBuilder();
+        var builder = new PageMapRunBuilder();
 
         builder.AddPage(1, 0, 0, 1000);
 
@@ -88,7 +88,7 @@ public class PageMapBuilderTests
     [Fact]
     public void Unidentified_Page_Without_An_Active_Run_Is_Ignored()
     {
-        var builder = new PageMapBuilder();
+        var builder = new PageMapRunBuilder();
 
         Assert.False(builder.TryAddUnidentifiedPage(0, 1000));
 
@@ -100,7 +100,7 @@ public class PageMapBuilderTests
     [Fact]
     public void Later_Run_Overrides_Earlier_Run_For_Overlapping_Pages()
     {
-        var builder = new PageMapBuilder();
+        var builder = new PageMapRunBuilder();
 
         for (var pageId = 0; pageId < 10; pageId++)
         {
@@ -124,7 +124,7 @@ public class PageMapBuilderTests
     [Fact]
     public void Files_Are_Tracked_Separately()
     {
-        var builder = new PageMapBuilder();
+        var builder = new PageMapRunBuilder();
 
         builder.AddPage(1, 10, 0, 1000);
         builder.AddPage(3, 10, 0, 1000 + PageSize);

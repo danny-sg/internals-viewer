@@ -67,7 +67,7 @@ internal static class PageMapper
                                 CancellationToken cancellationToken,
                                 IProgress<ProgressDetail>? progress = null)
     {
-        var builder = new PageMapBuilder();
+        var builder = new PageMapRunBuilder();
 
         var dataBlocks = new List<(Stripe Stripe, DescriptorBlock Block)>();
 
@@ -139,11 +139,11 @@ internal static class PageMapper
     /// </remarks>
     private static void ScanStream(Stripe stripe,
                                    DataStream stream,
-                                   PageMapBuilder builder,
+                                   PageMapRunBuilder runBuilder,
                                    CancellationToken cancellationToken,
                                    IProgress<ProgressDetail>? progress = null)
     {
-        var reporter = new PercentageReporter(progress, "Mapping pages");
+        var reporter = new PercentageReporter(progress, "Mapping pages between backup file and page address");
 
         var payloadStart = stream.DataPosition + PayloadPrefixLength;
 
@@ -173,14 +173,14 @@ internal static class PageMapper
 
                 if (page[HeaderVersionOffset] != ExpectedHeaderVersion)
                 {
-                    builder.TryAddUnidentifiedPage(stripe.Index, pageOffset);
+                    runBuilder.TryAddUnidentifiedPage(stripe.Index, pageOffset);
 
                     continue;
                 }
 
                 if (page[PageTypeOffset] == FillerPageType)
                 {
-                    builder.CloseRun();
+                    runBuilder.CloseRun();
 
                     continue;
                 }
@@ -195,7 +195,7 @@ internal static class PageMapper
                         $"Unexpected page image at backup offset {pageOffset} - page address {fileId}:{pageId}.");
                 }
 
-                builder.AddPage(fileId, pageId, stripe.Index, pageOffset);
+                runBuilder.AddPage(fileId, pageId, stripe.Index, pageOffset);
             }
 
             pageIndex += pagesToRead;

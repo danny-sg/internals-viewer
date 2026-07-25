@@ -3,7 +3,7 @@
 namespace InternalsViewer.Connection.BackupFile.Mapping;
 
 /// <summary>
-/// Builds page index runs for a SQL Server backup file
+/// Builds page mapping runs for a SQL Server backup file
 /// </summary>
 /// <remarks>
 /// RLE - Run Length Encoding - compression based on the fact that the data profile is often a series of consecutive pages, so the index
@@ -11,7 +11,7 @@ namespace InternalsViewer.Connection.BackupFile.Mapping;
 /// 
 /// A run is where pages between the start and end (start + page count - 1) are consecutive and therefore the offsets are consecutive.
 /// </remarks>
-internal sealed class PageMapBuilder
+internal sealed class PageMapRunBuilder
 {
     private readonly List<PageRun> _runs = [];
 

@@ -52,7 +52,7 @@ internal sealed class CompressedContentSource : IContentSource
                                    logger,
                                    cancellationToken,
                                    progress,
-                                   $"Decompressing {Path.GetFileName(filename)}");
+                                   $"Decompressing {Path.GetFileName(filename)} to chunks");
 
         _writer = new SlidingWindowWriter(Stream.Null, _decoder.MaximumMatchOffset, WindowSize, RetainSize);
     }
