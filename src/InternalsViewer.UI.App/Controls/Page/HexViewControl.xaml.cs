@@ -362,7 +362,17 @@ public sealed partial class HexViewControl
             ScrollToPosition(control, marker.StartPosition);
         }
 
+        if (SelectionRange(e.OldValue as Marker) == SelectionRange(e.NewValue as Marker))
+        {
+            return;
+        }
+
         SetHexData(control.Data, control);
+    }
+
+    private static (int Start, int End)? SelectionRange(Marker? marker)
+    {
+        return marker is null ? null : (marker.StartPosition, marker.EndPosition);
     }
 
     private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -377,43 +387,17 @@ public sealed partial class HexViewControl
 
     private static void SetHexData(IReadOnlyList<byte> data, HexViewControl target)
     {
+        var runs = HexTextBuilder.Build(data,
+                                        BytesPerLine,
+                                        target.SelectedMarker?.StartPosition,
+                                        target.SelectedMarker?.EndPosition);
+
         var paragraph = new Paragraph();
 
-        var stringBuilder = new StringBuilder();
-
-        var position = 0;
-
-        for (var line = 0; line < data.Count / BytesPerLine; line++)
+        foreach (var run in runs)
         {
-            for (var byteIndex = 0; byteIndex < BytesPerLine; byteIndex++)
-            {
-                if (position == target.SelectedMarker?.StartPosition)
-                {
-                    // Flush current run, replace with selection inline
-                    paragraph.Inlines.Add(FlushRun(stringBuilder));
-                }
-
-                stringBuilder.Append(StringHelpers.ToHexString(data[position]));
-
-                if (position == target.SelectedMarker?.EndPosition)
-                {
-                    // Flush current run with selection formatting
-                    paragraph.Inlines.Add(FlushSelectionRun(stringBuilder, target.SelectedMarker));
-                }
-
-                // Add a space between bytes, but not for the last byte of the line
-                if (byteIndex != 15)
-                {
-                    stringBuilder.Append(" ");
-                }
-
-                position++;
-            }
-
-            stringBuilder.Append(Environment.NewLine);
+            paragraph.Inlines.Add(CreateInline(run));
         }
-
-        paragraph.Inlines.Add(FlushRun(stringBuilder));
 
         target.HexRichTextBlock.Blocks.Clear();
         target.HexRichTextBlock.Blocks.Add(paragraph);
@@ -423,22 +407,14 @@ public sealed partial class HexViewControl
         target.DrawChangeSpans();
     }
 
-    private static Inline FlushRun(StringBuilder stringBuilder)
+    private static Inline CreateInline(HexRun run)
     {
-        var run = new Run { Text = stringBuilder.ToString() };
+        if (!run.IsSelected)
+        {
+            return new Run { Text = run.Text };
+        }
 
-        stringBuilder.Clear();
-
-        return run;
-    }
-
-    private static Inline FlushSelectionRun(StringBuilder stringBuilder, Marker marker)
-    {
-        var run = new Run { Text = stringBuilder.ToString(), TextDecorations = TextDecorations.Underline, FontWeight = FontWeights.Bold };
-
-        stringBuilder.Clear();
-
-        return run;
+        return new Run { Text = run.Text, TextDecorations = TextDecorations.Underline, FontWeight = FontWeights.Bold };
     }
 
     private static Inline FlushSelectionContainerRun(StringBuilder stringBuilder, Marker marker)

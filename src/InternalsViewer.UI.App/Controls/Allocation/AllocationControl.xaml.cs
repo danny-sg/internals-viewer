@@ -377,7 +377,18 @@ public sealed partial class AllocationControl : IDisposable
 
         PointerWheelChanged += AllocationControl_PointerWheelChanged;
 
-        Loaded += (_, _) => Refresh();
+        Loaded += (_, _) =>
+        {
+            TabDiagnostics.Log(nameof(AllocationControl), "Loaded");
+
+            var start = TabDiagnostics.Start();
+
+            Refresh();
+
+            TabDiagnostics.LogElapsed(nameof(AllocationControl), "Refresh", start);
+        };
+
+        Unloaded += (_, _) => TabDiagnostics.Log(nameof(AllocationControl), "Unloaded");
 
         SetScrollBarValues();
     }

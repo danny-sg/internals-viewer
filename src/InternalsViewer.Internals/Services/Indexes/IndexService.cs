@@ -19,13 +19,13 @@ namespace InternalsViewer.Internals.Services.Indexes;
 /// </summary>
 public sealed class IndexService(ILogger<IndexService> logger)
 {
-    public const int ProgressReportInterval = 4096;
-
     private const int MaxParallelPageLoads = 16;
   
     private const int CdClusterSize = 30;
 
     private static readonly List<PageAddress> EmptyDownPointers = [];
+
+    public int ProgressReportInterval { get; set; } = 4096;
 
     private static ReadOnlySpan<byte> CdShortDataSizes => [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 1, 0, 0, 0];
 

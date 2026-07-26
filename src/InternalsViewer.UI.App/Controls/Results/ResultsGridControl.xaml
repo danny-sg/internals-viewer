@@ -18,17 +18,17 @@
                           SelectionMode="Single"
                           IsReadOnly="True"
                           GridLinesVisibility="All"
-                          RowHeight="28"
+                          RowHeight="22"
                           MinColumnWidth="20"
                           FontSize="10"
+                          SelectedItem="{x:Bind SelectedRow, Mode=TwoWay}"
                           Background="{ThemeResource LayerFillColorDefaultBrush}">
             <toolkit:DataGrid.Resources>
                 <ui:Color x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundColor">Transparent</ui:Color>
                 <ui:Color x:Key="DataGridRowSelectedUnfocusedBackgroundColor">Transparent</ui:Color>
                 <StaticResource x:Key="DataGridRowSelectedHoveredBackgroundColor"
                                 ResourceKey="SystemListLowColor" />
-                <x:Double x:Key="DataGridRowHeight">24</x:Double>
-                <Thickness x:Key="DataGridCellTheme_Padding">4,0,4,0</Thickness>
+         
             </toolkit:DataGrid.Resources>
 
 

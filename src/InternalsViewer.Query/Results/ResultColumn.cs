@@ -1,3 +1,10 @@
+using System.Drawing;
+
 namespace InternalsViewer.Query.Results;
 
-public sealed record ResultColumn(int Ordinal, string Name, string DataTypeName, Type ClrType, bool IsNullable);
+public sealed record ResultColumn(int Ordinal, string Name, Type ClrType, bool IsNullable)
+{
+    public Color? BackgroundColour { get; set; }
+
+    public int? Width { get; set; }
+}

@@ -165,6 +165,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                     IsInitialized = false;
                 });
 
+                IndexService.ProgressReportInterval = TotalPageCount > 100_000 ? 4096 : 1;
+
                 Logger.LogDebug("Getting nodes for index from root node: {RootPage}", RootPage);
 
                 var result = await IndexService.GetNodes(Database, RootPage, CancellationToken, progress);
@@ -308,12 +310,15 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             Slot = r.Slot,
             DownPagePointer = r.DownPagePointer,
             RowIdentifier = r.Rid,
-            Fields = r.Fields.Select(f => new IndexRecordFieldModel
-            {
-                Name = f.Name,
-                Value = f.Value,
-                DataType = f.ColumnStructure.DataType
-            }).ToList()
+            Fields =
+            [
+                .. r.Fields.Select(f => new IndexRecordFieldModel
+                {
+                    Name = f.Name,
+                    Value = f.Value,
+                    DataType = f.ColumnStructure.DataType
+                })
+            ]
         }).ToList();
 
         return models;
@@ -324,12 +329,15 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         var models = source.Select(r => new IndexRecordModel
         {
             Slot = r.Slot,
-            Fields = r.Fields.Select(f => new IndexRecordFieldModel
-            {
-                Name = f.Name,
-                Value = f.Value,
-                DataType = f.ColumnStructure.DataType
-            }).ToList()
+            Fields =
+            [
+                .. r.Fields.Select(f => new IndexRecordFieldModel
+                {
+                    Name = f.Name,
+                    Value = f.Value,
+                    DataType = f.ColumnStructure.DataType
+                })
+            ]
         }).ToList();
 
         return models;

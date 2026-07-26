@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Internals.Helpers;
 
-public class SqlTypeHelpers
+public static class SqlTypeHelpers
 {
     private static readonly Dictionary<byte, SqlDbType> Types = new()
     {

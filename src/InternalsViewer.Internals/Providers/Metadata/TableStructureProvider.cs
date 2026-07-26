@@ -8,7 +8,7 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 /// <summary>
 /// Provider responsible for providing table structure information from the metadata collection
 /// </summary>
-public class TableStructureProvider
+public static class TableStructureProvider
 {
     /// <summary>
     /// Gets the table structure for the specified allocation unit, using the database-level cache.

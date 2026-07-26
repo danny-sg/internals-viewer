@@ -1,32 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
-using Windows.UI;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Interfaces.Annotations;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Services.Pages.Parsers;
+using InternalsViewer.Query.Results;
 using InternalsViewer.TransactionLog;
-using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Markers;
-using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI;
-using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
@@ -91,6 +90,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PageForwardCommand))]
     [NotifyCanExecuteChangedFor(nameof(PageBackCommand))]
+    [NotifyPropertyChangedFor(nameof(IsDataTabVisible))]
     private Internals.Engine.Pages.Page _page = new EmptyPage();
 
     [ObservableProperty]
@@ -143,6 +143,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [ObservableProperty]
     private bool _isAllocationsTabVisible;
 
+    public bool IsDataTabVisible => Page.PageHeader.PageType is PageType.Data or PageType.Index;
+
     [ObservableProperty]
     private bool _isPfsTabVisible;
 
@@ -161,14 +163,20 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [ObservableProperty]
     private int? _scrollToOffset;
 
-    private const int HeaderTab = 0;
-    private const int RowDataTabIndex = 1;
-    private const int AllocationsTabIndex = 2;
+    [ObservableProperty] 
+    private QueryResultSet _recordsResultSet = new();
 
-    private const short PageHeaderSlot = -100;
-    private const short IamHeaderSlot = -10;
+    [ObservableProperty]
+    private ResultRow<long>? _selectedRecordRow;
+
+    private const int HeaderTab = 0;
+
+    private const short PageHeaderSlot = PageDisplayBuilder.PageHeaderSlot;
+    private const short IamHeaderSlot = PageDisplayBuilder.IamHeaderSlot;
     private const short PfsHeaderSlot = -10;
-    private const short CompressionInfoSlot = -90;
+    private const short CompressionInfoSlot = PageDisplayBuilder.CompressionInfoSlot;
+
+    private PageDisplayBuilder DisplayBuilder { get; } = new(logger, recordService);
 
     public Visibility LogRecordsVisibility => HasLogRecords ? Visibility.Visible : Visibility.Collapsed;
 
@@ -179,6 +187,14 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     partial void OnLogRecordsChanged(ObservableCollection<LogRecordItem> value)
     {
         UpdateLogRecordsVisibility();
+    }
+
+    partial void OnSelectedRecordRowChanged(ResultRow<long>? value)
+    {
+        if (SelectedSlot?.Index != value?.Id)
+        {
+            SelectedSlot = PageSlots.FirstOrDefault(s => s.Index == value?.Id);
+        }
     }
 
     partial void OnPageAddressChanged(PageAddress value)
@@ -227,6 +243,14 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         }
 
         ScrollToOffset = value.Offset;
+
+        var selectedRecord = RecordsResultSet.Rows
+                                             .FirstOrDefault(r => r.Id == value.Index);
+
+        if (selectedRecord is not null && selectedRecord != SelectedRecordRow)
+        {
+            SelectedRecordRow = selectedRecord;
+        }
     }
 
     [RelayCommand]
@@ -277,6 +301,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                 _baselineData = (byte[])resultPage.Data.Clone();
 
+                var display = DisplayBuilder.Build(resultPage, (short?)slot, pageAddress);
+
                 DispatcherQueue.TryEnqueue(() =>
                 {
                     Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} " +
@@ -284,7 +310,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                     ScrollToOffset = null;
 
-                    DisplayPage(resultPage, (short?)slot);
+                    ApplyPageDisplay(display);
 
                     NextPage = new PageAddress(PageAddress.FileId, PageAddress.PageId + 1);
 
@@ -306,76 +332,81 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         History.Add(PageAddress);
     }
 
-    private void DisplayPage(Internals.Engine.Pages.Page resultPage, short? slot)
+    private void ApplyPageDisplay(PageDisplay display)
     {
-        var headerSlot = new PageSlot
+        if (display.ObjectDescription is { } description)
         {
-            Index = PageHeaderSlot,
-            Description = "Page Header"
-        };
+            ObjectName = description.ObjectName;
+            IndexName = description.IndexName;
+            IndexType = description.IndexType;
+            ObjectIndexType = description.ObjectIndexType;
 
-        var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
-        {
-            Index = (short)i,
-            Offset = s,
-            Description = $"0x{s:X}"
-        }).ToList();
+            if (description.ObjectId is { } objectId)
+            {
+                ObjectId = objectId;
+            }
 
-        slots.Insert(0, headerSlot);
-
-        Logger.LogDebug("Building Offset Table");
-
-        switch (resultPage)
-        {
-            case FileHeaderPage:
-                break;
-            case AllocationUnitPage allocationUnitPage:
-                DisplayAllocationUnitPage(allocationUnitPage);
-
-                if (allocationUnitPage.CompressionInfo != null)
-                {
-                    slots.Insert(1, new PageSlot
-                    {
-                        Index = CompressionInfoSlot,
-                        Description = "Compression Info"
-                    });
-                }
-                break;
-            case IamPage iamPage:
-                DisplayIamPage(iamPage);
-
-                slots.Insert(1, new PageSlot
-                {
-                    Index = IamHeaderSlot,
-                    Description = "IAM Header"
-                });
-
-                break;
-            case AllocationPage allocationPage:
-                DisplayAllocationPage(allocationPage);
-
-                break;
-            case PfsPage pfsPage:
-                DisplayPfsPage(pfsPage);
-                break;
-            default:
-                IndexName = string.Empty;
-                ObjectName = string.Empty;
-                IndexType = string.Empty;
-                ObjectIndexType = string.Empty;
-                break;
+            if (description.IndexId is { } indexId)
+            {
+                IndexId = indexId;
+            }
         }
 
-        PageSlots = new ObservableCollection<PageSlot>(new[] { headerSlot }.Union(slots));
+        if (display.Records is { } records)
+        {
+            Records.Clear();
+            Records.AddRange(records);
 
-        // Preserve the selected slot by index across a page rebuild (e.g. replaying/toggling log operations); only
-        // fall back to the header when that slot no longer exists in the rebuilt page.
-        SelectedSlot = PageSlots.FirstOrDefault(s => s.Index == slot) ?? headerSlot;
+            RecordsResultSet = display.RecordsResultSet ?? new QueryResultSet();
+        }
+
+        if (display.AllocationFileId is { } allocationFileId)
+        {
+            AllocationFileId = allocationFileId;
+        }
+
+        if (display.AllocationStartPage is { } allocationStartPage)
+        {
+            AllocationStartPage = allocationStartPage;
+        }
+
+        if (display.AllocationLayer is { } allocationLayer)
+        {
+            AllocationLayers = [allocationLayer];
+        }
+
+        if (display.PfsChain is { } pfsChain)
+        {
+            PfsChain = pfsChain;
+        }
+
+        if (display.IsRowDataTabVisible is { } isRowDataTabVisible)
+        {
+            IsRowDataTabVisible = isRowDataTabVisible;
+        }
+
+        if (display.IsAllocationsTabVisible is { } isAllocationsTabVisible)
+        {
+            IsAllocationsTabVisible = isAllocationsTabVisible;
+        }
+
+        if (display.IsPfsTabVisible is { } isPfsTabVisible)
+        {
+            IsPfsTabVisible = isPfsTabVisible;
+        }
+
+        if (display.TabSwitch is { } tabSwitch && SelectedTabIndex == tabSwitch.From)
+        {
+            SelectedTabIndex = tabSwitch.To;
+        }
+
+        PageSlots = new ObservableCollection<PageSlot>(display.Slots);
+
+        SelectedSlot = PageSlots.FirstOrDefault(s => s.Index == display.Slot) ?? display.Slots[0];
         SelectedMarker = null;
 
-        Page = resultPage;
+        Page = display.Page;
 
-        AddPageMarkers(resultPage);
         AddPageHeaderMarkers();
     }
 
@@ -418,7 +449,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             {
                 var cell = offset - PfsPageParser.PfsOffset;
 
-                if (cell >= 0 && cell < PfsPage.PfsInterval)
+                if (cell is >= 0 and < PfsPage.PfsInterval)
                 {
                     cells.Add(cell);
                 }
@@ -524,7 +555,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             return PageSlots.FirstOrDefault(s => s.Index == slotId);
         }
 
-        return PageSlots.Where(s => s.Index >= 0 && s.Offset > 0 && s.Offset <= offset)
+        return PageSlots.Where(s => s is { Index: >= 0, Offset: > 0 } && s.Offset <= offset)
                         .OrderByDescending(s => s.Offset)
                         .FirstOrDefault();
     }
@@ -586,9 +617,11 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
                         var offsetTableStart = PageData.Size - page.PageHeader.SlotCount * 2;
 
-                        annotations[pageItem] = result.Changes
-                                                      .Select(c => CreateAnnotation(c, offsetTableStart))
-                                                      .ToList();
+                        annotations[pageItem] =
+                        [
+                            .. result.Changes
+                                .Select(c => CreateAnnotation(c, offsetTableStart))
+                        ];
                     }
 
                     page = PageService.ParsePage(Database, PageAddress, page.Data);
@@ -602,6 +635,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 var pfsBorders = page is PfsPage
                     ? BuildPfsChangeBorders(annotations.Values, page.PageAddress)
                     : null;
+
+                var display = DisplayBuilder.Build(page, currentSlot, PageAddress);
 
                 DispatcherQueue.TryEnqueue(() =>
                 {
@@ -619,7 +654,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                     // Reassigned so the log record tree rebuilds with the new annotation children
                     LogRecords = new ObservableCollection<LogRecordItem>(LogRecords);
 
-                    DisplayPage(page, currentSlot);
+                    ApplyPageDisplay(display);
 
                     PfsBorders = pfsBorders;
 
@@ -682,133 +717,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private bool CanGoForward() => History.CanGoForward();
 
     private bool CanGoBack() => History.CanGoBack();
-
-    private void DisplayIamPage(IamPage iamPage)
-    {
-        LoadIamLayer(iamPage);
-
-        SetAllocationUnitDescription(iamPage.AllocationUnit);
-
-        IsRowDataTabVisible = true;
-        IsAllocationsTabVisible = true;
-        IsPfsTabVisible = false;
-
-        SelectedTabIndex = SelectedTabIndex == RowDataTabIndex ? AllocationsTabIndex : SelectedTabIndex;
-    }
-
-    private void DisplayAllocationPage(AllocationPage allocationPage)
-    {
-        LoadAllocationLayer(allocationPage);
-
-        IsAllocationsTabVisible = true;
-        IsRowDataTabVisible = false;
-        IsPfsTabVisible = false;
-
-        SelectedTabIndex = SelectedTabIndex == RowDataTabIndex ? AllocationsTabIndex : SelectedTabIndex;
-    }
-
-    private void DisplayPfsPage(PfsPage pfsPage)
-    {
-        PfsChain = new PfsChain { PfsPages = { pfsPage } };
-
-        IsAllocationsTabVisible = false;
-        IsRowDataTabVisible = true;
-        IsPfsTabVisible = true;
-
-        AllocationFileId = pfsPage.PageAddress.FileId;
-        AllocationStartPage = PageAddress.PageId == 1 ? 0 : PageAddress.PageId;
-
-        SelectedTabIndex = SelectedTabIndex == RowDataTabIndex ? AllocationsTabIndex : SelectedTabIndex;
-    }
-
-    private void DisplayAllocationUnitPage(AllocationUnitPage allocationUnitPage)
-    {
-        SetAllocationUnitDescription(allocationUnitPage.AllocationUnit);
-
-        LoadRecords(allocationUnitPage);
-
-        IsAllocationsTabVisible = false;
-        IsRowDataTabVisible = true;
-        IsPfsTabVisible = false;
-
-        // Slot selection is set authoritatively by DisplayPage after the slot list is rebuilt, so it is not touched
-        // here (doing so would clobber the preserved selection)
-
-        SelectedTabIndex = SelectedTabIndex == AllocationsTabIndex ? RowDataTabIndex : SelectedTabIndex;
-    }
-
-    private void LoadIamLayer(IamPage iamPage)
-    {
-        var layer = AllocationLayerBuilder.GenerateLayer(iamPage, iamPage.StartPage.PageId);
-
-        // IAMs are not necessarily in the same file as where they are tracking. The Start Page file determines the file
-        AllocationFileId = iamPage.StartPage.FileId;
-
-        layer.Name = $"IAM Page {iamPage.PageAddress}";
-        layer.Colour = System.Drawing.Color.Brown;
-
-        layer.IsVisible = true;
-
-        AllocationLayers = new ObservableCollection<AllocationLayer>(new[] { layer });
-    }
-
-    private void LoadAllocationLayer(AllocationPage allocationPage)
-    {
-        var layer = AllocationLayerBuilder.GenerateLayer(allocationPage, 0);
-
-        AllocationFileId = allocationPage.PageAddress.FileId;
-
-        layer.Name = $"Allocation Page {allocationPage.PageAddress}";
-        layer.Colour = System.Drawing.Color.Brown;
-
-        layer.IsVisible = true;
-
-        AllocationLayers = new ObservableCollection<AllocationLayer>(new[] { layer });
-    }
-
-    private void SetAllocationUnitDescription(AllocationUnit allocationUnit)
-    {
-        ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
-        ObjectId = allocationUnit.ObjectId;
-
-        IndexName = allocationUnit.IndexName;
-        IndexId = allocationUnit.IndexId;
-
-        IndexType = allocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
-                                                         ? "Non-Clustered"
-                                                         : string.Empty;
-        ObjectIndexType = allocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
-                                                         ? "Clustered"
-                                                         : "Heap";
-    }
-
-    private void LoadRecords(AllocationUnitPage target)
-    {
-        Logger.LogDebug("Loading Records");
-
-        Records.Clear();
-
-        try
-        {
-            Records.AddRange(RecordService.GetRecords(target));
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, $"Error loading record(s)");
-        }
-
-        Logger.LogDebug("{RecordCount} Record(s) loaded", Records.Count);
-    }
-
-    /// <summary>
-    /// Add the header and offset table markers (applies to all pages)
-    /// </summary>
-    private void AddPageMarkers(PageData p)
-    {
-        var m = GetPageMarkers(p);
-
-        Markers = new ObservableCollection<Marker>(m);
-    }
 
     private void AddPageHeaderMarkers()
     {

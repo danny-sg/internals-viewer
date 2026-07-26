@@ -16,6 +16,11 @@ public sealed partial class PageView : IDisposable
 {
     public PageTabViewModel ViewModel => (PageTabViewModel)DataContext;
 
+    public Visibility GetTabContentVisibility(int selectedIndex, bool isTabVisible, int index)
+    {
+        return selectedIndex == index && isTabVisible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     public PageView()
     {
         InitializeComponent();

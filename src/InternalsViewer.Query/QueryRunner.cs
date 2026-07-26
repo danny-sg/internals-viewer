@@ -443,7 +443,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                     var stringPools = BuildStringPools(columns);
 
-                    var rows = new List<ResultRow>();
+                    var rows = new List<ResultRow<long>>();
 
                     while (await reader.ReadAsync(cancellationToken))
                     {
@@ -463,7 +463,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                             values[i] = rawValue;
                         }
 
-                        rows.Add(new ResultRow(values));
+                        rows.Add(new ResultRow<long>(values));
                     }
 
                     resultSets.Add(new QueryResultSet { Columns = columns, Rows = rows});
@@ -570,7 +570,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                     var stringPools = BuildStringPools(columns);
                     
-                    var rows = new List<ResultRow>();
+                    var rows = new List<ResultRow<long>>();
 
                     while (await reader.ReadAsync(cancellationToken))
                     {
@@ -590,7 +590,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                             values[i] = rawValue;
                         }
 
-                        rows.Add(new ResultRow(values));
+                        rows.Add(new ResultRow<long>(values));
                     }
 
                     resultSets.Add(new QueryResultSet { Columns = columns, Rows = rows });

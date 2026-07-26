@@ -53,7 +53,7 @@
                     </connections:HeaderTile.Source>
                 </connections:HeaderTile>
                 <connections:HeaderTile
-                Title="Database Backup"
+                Title="Database backup"
                 Description="Open a database from a full database backup"
                 Click="ConnectBackupTile_OnClick">
                     <connections:HeaderTile.Source>

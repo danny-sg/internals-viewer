@@ -11,6 +11,7 @@
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="TitleStyle" 
@@ -262,76 +263,102 @@
             <!--Tab View/Log Record view-->
             <Grid Grid.Column="2" Grid.Row="1">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="{x:Bind ViewModel.LogRecordsHeight, Mode=OneWay}"/>
                 </Grid.RowDefinitions>
 
-                <TabView  
-                     Margin="14,10,14,14" 
+                <TabView
+                     Margin="14,10,14,0"
                      SelectedIndex="{x:Bind ViewModel.SelectedTabIndex, Mode=TwoWay}"
                      IsAddTabButtonVisible="False"
-                     VerticalAlignment="Stretch"
                      HorizontalAlignment="Stretch"
                      Grid.Row="0"
                      TabWidthMode="SizeToContent">
                     <TabView.Resources>
                     </TabView.Resources>
 
-                    <TabViewItem IsClosable="False" 
+                    <TabViewItem IsClosable="False"
                              x:Name="RowDataTabViewItem"
-                             Visibility="{x:Bind ViewModel.IsRowDataTabVisible, 
+                             Visibility="{x:Bind ViewModel.IsRowDataTabVisible,
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
                         <TabViewItem.Header>
                             <TextBlock Text="{x:Bind ViewModel.MarkerTabName, Mode=OneWay}"/>
                         </TabViewItem.Header>
-
-                        <page:MarkerTreeView x:Name="MarkerTreeView"
-                                         Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
-                                         SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
                     </TabViewItem>
 
-                    <TabViewItem IsClosable="False" 
-                             x:Name="AllocationTabViewItem" 
-                             Visibility="{x:Bind ViewModel.IsAllocationsTabVisible, 
+                    <TabViewItem IsClosable="False"
+                             x:Name="AllocationTabViewItem"
+                             Visibility="{x:Bind ViewModel.IsAllocationsTabVisible,
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
                         <TabViewItem.Header>
                             Allocations
                         </TabViewItem.Header>
-                        <allocation:AllocationControl x:Name="AllocationControl"
-                                                      ExtentCount="63903" 
-                                                      IsTooltipEnabled="True"
-                                                      BorderColor="{ThemeResource CardStrokeColorDefault}"
-                                                      GridColor="{ThemeResource AllocationBorderColor}"
-                                                      FileId="{x:Bind ViewModel.AllocationFileId, Mode=OneWay}"
-                                                      Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
                     </TabViewItem>
-                    <TabViewItem IsClosable="False" 
-                                 x:Name="PfsTabViewItem" 
-                                 Visibility="{x:Bind ViewModel.IsPfsTabVisible, 
+                    <TabViewItem IsClosable="False"
+                                 x:Name="PfsTabViewItem"
+                                 Visibility="{x:Bind ViewModel.IsPfsTabVisible,
                                                  Converter={StaticResource BoolToVisibilityConverter},
                                                  Mode=OneWay}">
                         <TabViewItem.Header>
                             PFS
                         </TabViewItem.Header>
-                        <allocation:AllocationControl x:Name="PfsControl"
-                                                      ExtentCount="1011" 
-                                                      IsPfsVisible="true"
-                                                      Zoom="2"
-                                                      IsTooltipEnabled="True"
-                                                      PageClicked="PfsControl_PageClicked"
-                                                      StartPage="{x:Bind ViewModel.AllocationStartPage, Mode=OneWay}"
-                                                      BorderColor="{ThemeResource CardStrokeColorDefault}"
-                                                      GridColor="{ThemeResource AllocationBorderColor}"
-                                                      PfsChain="{x:Bind ViewModel.PfsChain, Mode=OneWay}"
-                                                      Borders="{x:Bind ViewModel.PfsBorders, Mode=OneWay}"
-                                                      Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
-                                                      FileId="{x:Bind ViewModel.AllocationFileId, Mode=OneWay}"/>
+                    </TabViewItem>
+                    <TabViewItem IsClosable="False"
+                                 x:Name="DataTabView"
+                                 Visibility="{x:Bind ViewModel.IsDataTabVisible,
+                                                 Converter={StaticResource BoolToVisibilityConverter},
+                                                 Mode=OneWay}">
+                        <TabViewItem.Header>
+                            Data
+                        </TabViewItem.Header>
                     </TabViewItem>
                 </TabView>
-                <controls1:GridSplitter Grid.Row="1"
+
+                <Grid Grid.Row="1" Margin="14,0,14,14">
+                    <page:MarkerTreeView x:Name="MarkerTreeView"
+                                         Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex,
+                                                             ViewModel.IsRowDataTabVisible, 0), Mode=OneWay}"
+                                         Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                         SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
+
+                    <allocation:AllocationControl x:Name="AllocationControl"
+                                                  Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex,
+                                                                      ViewModel.IsAllocationsTabVisible, 1), Mode=OneWay}"
+                                                  ExtentCount="63903"
+                                                  IsTooltipEnabled="True"
+                                                  BorderColor="{ThemeResource CardStrokeColorDefault}"
+                                                  GridColor="{ThemeResource AllocationBorderColor}"
+                                                  FileId="{x:Bind ViewModel.AllocationFileId, Mode=OneWay}"
+                                                  Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"/>
+
+                    <allocation:AllocationControl x:Name="PfsControl"
+                                                  Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex,
+                                                                      ViewModel.IsPfsTabVisible, 2), Mode=OneWay}"
+                                                  ExtentCount="1011"
+                                                  IsPfsVisible="true"
+                                                  Zoom="2"
+                                                  IsTooltipEnabled="True"
+                                                  PageClicked="PfsControl_PageClicked"
+                                                  StartPage="{x:Bind ViewModel.AllocationStartPage, Mode=OneWay}"
+                                                  BorderColor="{ThemeResource CardStrokeColorDefault}"
+                                                  GridColor="{ThemeResource AllocationBorderColor}"
+                                                  PfsChain="{x:Bind ViewModel.PfsChain, Mode=OneWay}"
+                                                  Borders="{x:Bind ViewModel.PfsBorders, Mode=OneWay}"
+                                                  Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
+                                                  FileId="{x:Bind ViewModel.AllocationFileId, Mode=OneWay}"/>
+
+                    <results:ResultsGridControl x:Name="ResultsGrid"
+                                                Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex,
+                                                                    ViewModel.IsDataTabVisible, 3), Mode=OneWay}"
+                                                ResultSet="{x:Bind ViewModel.RecordsResultSet, Mode=OneWay}"
+                                                SelectedRow="{x:Bind ViewModel.SelectedRecordRow, Mode=TwoWay}"/>
+                </Grid>
+
+                <controls1:GridSplitter Grid.Row="2"
                                         x:Name="LogRecordsSplitter"
                                         Height="1"
                                         Visibility="{x:Bind ViewModel.LogRecordsVisibility, Mode=OneWay}"
@@ -340,7 +367,7 @@
 
                 </controls1:GridSplitter>
 
-                <Grid Grid.Row="2"
+                <Grid Grid.Row="3"
                       VerticalAlignment="Stretch"
                       Visibility="{x:Bind ViewModel.LogRecordsVisibility, Mode=OneWay}">
                     <Grid.RowDefinitions>

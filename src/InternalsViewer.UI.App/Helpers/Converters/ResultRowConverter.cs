@@ -8,7 +8,16 @@ internal sealed class ResultRowConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
     {
-        if (value is not ResultRow row || parameter is not int ordinal)
+        var ordinal = parameter switch
+        {
+            int i => i,
+            short s => s,
+            long l => (int)l,
+            string text when int.TryParse(text, out var parsed) => parsed,
+            _ => -1
+        };
+
+        if (value is not ResultRow<long> row || ordinal < 0 || ordinal >= row.FieldCount)
         {
             return string.Empty;
         }

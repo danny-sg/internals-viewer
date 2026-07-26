@@ -51,11 +51,10 @@ internal static class SqlConnectionExtensions
         for (var i = 0; i < reader.FieldCount; i++)
         {
             var name = reader.GetName(i);
-            var typeName = reader.GetDataTypeName(i);
             var clrType = reader.GetFieldType(i) ?? typeof(object);
             var nullable = schemaTable?.Rows[i]["AllowDBNull"] is true;
 
-            columns.Add(new ResultColumn(i, name, typeName, clrType, nullable));
+            columns.Add(new ResultColumn(i, name, clrType, nullable));
         }
 
         return columns;

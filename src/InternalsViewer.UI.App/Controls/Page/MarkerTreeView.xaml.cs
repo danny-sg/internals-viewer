@@ -5,6 +5,7 @@ using System.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Controls;
 
@@ -122,6 +123,10 @@ public sealed partial class MarkerTreeView
     public MarkerTreeView()
     {
         InitializeComponent();
+
+        Loaded += (_, _) => TabDiagnostics.Log(nameof(MarkerTreeView), "Loaded");
+
+        Unloaded += (_, _) => TabDiagnostics.Log(nameof(MarkerTreeView), "Unloaded");
     }
 
     private void PageLink_Click(object sender, RoutedEventArgs e)
