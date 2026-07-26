@@ -38,31 +38,15 @@ public sealed partial class ResultsGridControl : UserControl
 
     private Size _lastKnownSize = new(800, 600);
 
-    private int _realizedRows;
-
     public ResultsGridControl()
     {
         InitializeComponent();
-
-        Loaded += (_, _) => TabDiagnostics.Log(nameof(ResultsGridControl), "Loaded");
-
-        Unloaded += (_, _) => TabDiagnostics.Log(nameof(ResultsGridControl), "Unloaded");
 
         SizeChanged += (_, e) =>
         {
             if (e.NewSize is { Width: > 0, Height: > 0 })
             {
                 _lastKnownSize = e.NewSize;
-            }
-        };
-
-        ResultsDataGrid.LoadingRow += (_, _) =>
-        {
-            _realizedRows++;
-
-            if (_realizedRows == 1)
-            {
-                TabDiagnostics.Log(nameof(ResultsGridControl), "First row realized");
             }
         };
     }
@@ -77,10 +61,6 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void Rebuild()
     {
-        var start = TabDiagnostics.Start();
-
-        _realizedRows = 0;
-
         ResultsDataGrid.Columns.Clear();
         ResultsDataGrid.ItemsSource = null;
 
@@ -104,8 +84,6 @@ public sealed partial class ResultsGridControl : UserControl
 
         StatusText.Text = rows.Count == 1 ? "1 row" : $"{rows.Count:N0} rows";
 
-        TabDiagnostics.LogElapsed(nameof(ResultsGridControl), $"Rebuild ({rows.Count} rows, {columns.Count} cols)", start);
-
         DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, WarmRows);
     }
 
@@ -124,16 +102,7 @@ public sealed partial class ResultsGridControl : UserControl
             return;
         }
 
-        var start = TabDiagnostics.Start();
-
-        var size = GetWarmSize();
-
-        ResultsDataGrid.Measure(size);
-
-        TabDiagnostics.LogElapsed(nameof(ResultsGridControl),
-                                  $"Warm at {size.Width:F0}x{size.Height:F0} "
-                                  + $"({_realizedRows} rows realised, desired height {ResultsDataGrid.DesiredSize.Height:F0})",
-                                  start);
+        ResultsDataGrid.Measure(GetWarmSize());
     }
 
     /// <summary>

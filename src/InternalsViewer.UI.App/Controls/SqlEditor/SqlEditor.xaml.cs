@@ -323,11 +323,11 @@ public sealed partial class SqlEditorControl : UserControl
             var assetsPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Monaco");
 
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                "monaco.local",
+                "monaco.localhost",
                 assetsPath,
                 CoreWebView2HostResourceAccessKind.Allow);
 
-            WebView.CoreWebView2.Navigate("http://monaco.local/index.html");
+            WebView.CoreWebView2.Navigate("http://monaco.localhost/index.html");
         }
         catch (Exception ex)
         {
