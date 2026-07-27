@@ -316,8 +316,3 @@ public sealed class EventReader(ILogger<EventReader> logger)
         }
     }
 }
-
-public readonly record struct XEventPayload(string Name, string Value)
-{
-    public override string ToString() => Value;
-}

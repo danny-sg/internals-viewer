@@ -10,10 +10,3 @@ public sealed record ResultColumn(int Ordinal, string Name, Type ClrType, bool I
 
     public ResultAlignment Alignment { get; set; } = ResultAlignment.Left;
 }
-
-public enum ResultAlignment
-{
-    Left,
-    Center,
-    Right
-}

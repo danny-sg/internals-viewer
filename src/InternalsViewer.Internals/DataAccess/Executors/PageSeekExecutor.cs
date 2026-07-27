@@ -44,8 +44,8 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
             Counters = totals
         };
 
-        var target = forward ? bounds.StartKey : bounds.EndKey;
-        var inclusive = forward ? bounds.StartInclusive : bounds.EndInclusive;
+        var target = forward ? bounds.StartValue : bounds.EndValue;
+        var inclusive = forward ? bounds.IsStartInclusive : bounds.IsEndInclusive;
 
         var entry = forward ? 0 : page.SlotCount;
 
@@ -149,7 +149,7 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
                                             bool forward,
                                             out bool compared)
     {
-        var boundary = forward ? bounds.EndKey : bounds.StartKey;
+        var boundary = forward ? bounds.EndValue : bounds.StartValue;
 
         compared = false;
 
@@ -158,7 +158,7 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
             return true;
         }
 
-        var inclusive = forward ? bounds.EndInclusive : bounds.StartInclusive;
+        var inclusive = forward ? bounds.IsEndInclusive : bounds.IsStartInclusive;
 
         var width = GetWidth(bounds, boundary);
 

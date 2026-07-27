@@ -28,11 +28,12 @@ public sealed class PlanNode
 
     public ScanInfo? ScanInfo { get; set; }
 
+    public PredicateInfo? PredicateInfo { get; set; }
+
     public HashSet<string> Outputs { get; set; } = [];
 
     public Dictionary<int, ThreadRuntime> CountersByThread { get; set; } = new();
 
-    /// <summary>Total rows processed across all threads (run-time).</summary>
     public long RowsProcessed => CountersByThread.Values.Sum(c => c.RowsProcessed);
 
     /// <summary>
@@ -42,9 +43,8 @@ public sealed class PlanNode
     /// ready after parse.
     /// </summary>
     public long DurationUs =>
-        CountersByThread.TryGetValue(0, out var coordinator) && coordinator.ElapsedUs > 0
+        CountersByThread.TryGetValue(0, out var coordinator) 
+        && coordinator.ElapsedUs > 0
             ? coordinator.ElapsedUs
             : CountersByThread.Values.Select(c => c.ElapsedUs).DefaultIfEmpty(0).Max();
 }
-
-public readonly record struct ThreadRuntime(long RowsProcessed, long ElapsedUs);

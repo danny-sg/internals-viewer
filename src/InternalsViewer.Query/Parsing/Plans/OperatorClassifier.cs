@@ -1,8 +1,7 @@
 namespace InternalsViewer.Query.Parsing.Plans;
 
 /// <summary>
-/// Classifies physical plan operators: what kind they are, how they consume their inputs (streaming vs
-/// blocking), and which child drives them. Pure plan-shape reasoning - no events or timing.
+/// Classifies physical plan operators
 /// </summary>
 public static class OperatorClassifier
 {
@@ -100,7 +99,9 @@ public static class OperatorClassifier
     public static bool IsHashJoin(PlanNode n) =>
         IsHash(n) && n.Children.Count >= 2;
 
-    /// <summary>How <paramref name="parent"/> consumes the given <paramref name="child"/> input.</summary>
+    /// <summary>
+    /// How <paramref name="parent"/> consumes the given <paramref name="child"/> input
+    /// </summary>
     public static InputRole RoleOf(PlanNode parent, PlanNode child)
     {
         // Hash join: the build side is blocking, the probe side streams.

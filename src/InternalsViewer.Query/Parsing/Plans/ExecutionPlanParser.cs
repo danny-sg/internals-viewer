@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using InternalsViewer.Query.Parsing.Plans.Predicates;
 
 namespace InternalsViewer.Query.Parsing.Plans;
 
@@ -20,9 +21,11 @@ public static class ExecutionPlanParser
 
         var plan = new ExecutionPlan(planHandleId);
 
+        var parameters = PlanParameters.Parse(queryPlan.Parent ?? queryPlan);
+
         var rootRelationalOperators = queryPlan.Elements()
                                                .Where(e => e.Name.LocalName == "RelOp")
-                                               .Select(e => ParseRelationalOperator(e, 1))
+                                               .Select(e => ParseRelationalOperator(e, parameters, 1))
                                                .ToList();
 
         var statementNode = BuildStatementNode(queryPlan.Parent, rootRelationalOperators);
@@ -70,7 +73,9 @@ public static class ExecutionPlanParser
         return action?.Element("value")?.Value ?? string.Empty;
     }
 
-    private static PlanNode ParseRelationalOperator(XElement element, int level = 1)
+    private static PlanNode ParseRelationalOperator(XElement element,
+                                                    PlanParameters parameters,
+                                                    int level = 1)
     {
         var node = new PlanNode
         {
@@ -99,9 +104,10 @@ public static class ExecutionPlanParser
         {
             node.ScanInfo = ParseScanInfo(element);
 
-            // Showplan XML has no Key Lookup operator - a key lookup arrives as a Clustered Index
-            // Seek with Lookup="1" on its IndexScan element. Rename it as SSMS does. (A RID Lookup
-            // also carries Lookup="1" but is already named by its PhysicalOp.)
+            node.PredicateInfo = ParsePredicateInfo(element, parameters);
+
+            // Showplan XML has no Key Lookup operator - a key lookup arrives as a Clustered Index Seek with Lookup="1" on its IndexScan
+            // element. Rename it as SSMS does. (A RID Lookup also carries Lookup="1" but is already named by its PhysicalOp.)
             if (node.ScanInfo.IsLookup &&
                 string.Equals(node.PhysicalOperator, "Clustered Index Seek", StringComparison.OrdinalIgnoreCase))
             {
@@ -111,7 +117,7 @@ public static class ExecutionPlanParser
 
         foreach (var child in children)
         {
-            node.Children.Add(ParseRelationalOperator(child, level + 1));
+            node.Children.Add(ParseRelationalOperator(child, parameters, level + 1));
         }
 
         return node;
@@ -138,12 +144,6 @@ public static class ExecutionPlanParser
             );
     }
 
-    /// <summary>
-    /// Per-thread run-time counters for this operator, keyed by thread id, from its
-    /// <c>RunTimeCountersPerThread</c> entries: rows processed (<c>ActualRowsRead</c>, else
-    /// <c>ActualRows</c>) and wall-clock elapsed (<c>ActualElapsedms</c>). Empty when the plan has no
-    /// run-time information. Counters are a direct child of this RelOp, so children are not included.
-    /// </summary>
     private static Dictionary<int, ThreadRuntime> ExtractThreadCounters(XElement relOp)
     {
         var counters = new Dictionary<int, ThreadRuntime>();
@@ -195,10 +195,9 @@ public static class ExecutionPlanParser
     }
 
     /// <summary>
-    /// Finds this RelOp's own &lt;Object&gt; element (e.g. under its IndexScan/TableScan), without
-    /// descending into a nested child RelOp. A plain <c>.Descendants()</c> search would walk into child
-    /// operators too and pick up the first one's object - so a join/sort/filter with no object of its own
-    /// would wrongly inherit its first child's table.
+    /// Finds this RelOp's own Object element (e.g. under its IndexScan/TableScan), without descending into a nested child RelOp. A plain
+    /// <c>.Descendants()</c> search would walk into child operators too and pick up the first one's object - so a join/sort/filter with
+    /// no object of its own would wrongly inherit its first child's table.
     /// </summary>
     private static XElement? FindOwnObjectElement(XElement element)
     {
@@ -249,6 +248,39 @@ public static class ExecutionPlanParser
         return info;
     }
 
+    /// <summary>
+    /// Parses the seek ranges and residual predicate of a data access operator
+    /// </summary>
+    private static PredicateInfo ParsePredicateInfo(XElement element,
+                                                    PlanParameters parameters,
+                                                    ColumnOrdinalResolver? resolveOrdinal = null)
+    {
+        var indexScan = element.Elements().FirstOrDefault(e => e.Name.LocalName == "IndexScan");
+
+        var seekPredicates = indexScan?
+            .Elements()
+            .FirstOrDefault(e => e.Name.LocalName == "SeekPredicates");
+
+        var seekParser = new SeekPredicateParser(resolveOrdinal, parameters.Resolve);
+
+        var bounds = seekParser.ParseSeekPredicates(seekPredicates);
+
+        var predicateElement = element.Elements()
+                                      .FirstOrDefault(e => e.Name.LocalName == "Predicate");
+
+        var predicateParser = new PredicateParser(resolveOrdinal, parameters.Resolve);
+
+        var residual = predicateParser.ParsePredicateElement(predicateElement);
+
+        return new PredicateInfo
+        {
+            SeekBounds = bounds,
+            Residual = residual,
+            HasUntranslatedPredicate = (predicateElement is not null && residual is null) ||
+                                       (seekPredicates is not null && bounds.IsDefaultOrEmpty)
+        };
+    }
+
     private static ScanInfo ParseScanInfo(XElement scanElement)
     {
         var indexScan = scanElement.Elements().FirstOrDefault(e => e.Name.LocalName == "IndexScan");
@@ -271,29 +303,33 @@ public static class ExecutionPlanParser
         return scanInfo;
     }
 
-    private static List<ColumnRef> ParseKeys(XElement parent)
+    private static List<ColumnReference> ParseKeys(XElement parent)
     {
-        return parent
-            .Descendants()
-            .Where(e => e.Name.LocalName == "ColumnReference")
-            .Select(c => new ColumnRef
-            {
-                Database = GetAttribute("Database", c) ?? string.Empty,
-                Schema = GetAttribute("Schema", c) ?? string.Empty,
-                Table = GetAttribute("Table", c) ?? string.Empty,
-                Column = GetAttribute("Column", c) ?? string.Empty
-            })
-            .ToList();
+        return
+        [
+            .. parent
+                .Descendants()
+                .Where(e => e.Name.LocalName == "ColumnReference")
+                .Select(c => new ColumnReference
+                {
+                    Database = GetAttribute("Database", c) ?? string.Empty,
+                    Schema = GetAttribute("Schema", c) ?? string.Empty,
+                    Table = GetAttribute("Table", c) ?? string.Empty,
+                    Column = GetAttribute("Column", c) ?? string.Empty
+                })
+        ];
     }
 
     public static HashSet<string> ExtractTables(XElement nodeElement)
     {
-        return nodeElement
-            .Descendants()
-            .Where(e => e.Name.LocalName == "ColumnReference")
-            .Select(c => $"{GetAttribute("Schema", c)}.{GetAttribute("Table", c)}")
-            .Where(t => !string.IsNullOrEmpty(t))
-            .Select(t => t.ToLowerInvariant())
-            .ToHashSet();
+        return
+        [
+            .. nodeElement
+                .Descendants()
+                .Where(e => e.Name.LocalName == "ColumnReference")
+                .Select(c => $"{GetAttribute("Schema", c)}.{GetAttribute("Table", c)}")
+                .Where(t => !string.IsNullOrEmpty(t))
+                .Select(t => t.ToLowerInvariant())
+        ];
     }
 }

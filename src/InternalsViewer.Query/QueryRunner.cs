@@ -18,13 +18,6 @@ using System.Diagnostics;
 
 namespace InternalsViewer.Query;
 
-public sealed record ExecuteSqlPayload(string SqlText,
-                                       QueryOptions QueryOptions,
-                                       StatementType StatementType,
-                                       TrackedSelectionRange? TrackedSelection);
-
-public sealed record TrackedSelectionRange(int Start, int End);
-
 public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                 EventReader eventReader,
                                 LogRecordReader logRecordReader)

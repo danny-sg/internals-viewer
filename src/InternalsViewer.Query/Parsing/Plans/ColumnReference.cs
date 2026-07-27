@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Query.Parsing.Plans;
 
-public sealed record ColumnRef
+public sealed record ColumnReference
 {
     public string Database { get; set; } = string.Empty;
 

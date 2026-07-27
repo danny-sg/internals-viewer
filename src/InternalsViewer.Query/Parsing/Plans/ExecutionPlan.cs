@@ -2,7 +2,9 @@ namespace InternalsViewer.Query.Parsing.Plans;
 
 public sealed class ExecutionPlan(short planHandleId)
 {
-    /// <summary>Interned id of this plan's handle (see <see cref="PlanHandleRegistry"/>).</summary>
+    /// <summary>
+    /// Interned id of this plan's handle (see <see cref="PlanHandleRegistry"/>)
+    /// </summary>
     public short PlanHandleId { get; init; } = planHandleId;
 
     public List<PlanNode> Root { get; set; } = [];

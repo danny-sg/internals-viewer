@@ -1,11 +1,11 @@
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 
 /// <summary>
-/// The key range a seek is restricted to
+/// Key range for a seek
 /// </summary>
 /// <remarks>
-/// An unbounded start or end key represents an open ended range, which is how a seek with only
-/// one boundary specified in the execution plan behaves.
+/// An unbounded start or end value represents an open-ended range, which is how a seek with only one boundary specified in the execution
+/// plan behaves.
 /// </remarks>
 public sealed record SeekBounds
 {
@@ -14,53 +14,53 @@ public sealed record SeekBounds
     /// </summary>
     public static readonly SeekBounds All = new();
 
-    public AccessKey StartKey { get; init; } = AccessKey.Unbounded;
+    public AccessKey StartValue { get; init; } = AccessKey.Unbounded;
 
-    public bool StartInclusive { get; init; } = true;
+    public bool IsStartInclusive { get; init; } = true;
 
-    public AccessKey EndKey { get; init; } = AccessKey.Unbounded;
+    public AccessKey EndValue { get; init; } = AccessKey.Unbounded;
 
-    public bool EndInclusive { get; init; } = true;
+    public bool IsEndInclusive { get; init; } = true;
 
     /// <summary>
     /// Number of leading key columns taking part in comparisons
     /// </summary>
     public int CompareWidth { get; init; } = int.MaxValue;
 
-    public bool HasStart => !StartKey.IsUnbounded;
+    public bool HasStart => !StartValue.IsUnbounded;
 
-    public bool HasEnd => !EndKey.IsUnbounded;
+    public bool HasEnd => !EndValue.IsUnbounded;
 
     /// <summary>
     /// Creates a range matching a single key value
     /// </summary>
-    public static SeekBounds Equality(AccessKey key)
+    public static SeekBounds Equality(AccessKey value)
     {
         return new SeekBounds
         {
-            StartKey = key,
-            StartInclusive = true,
-            EndKey = key,
-            EndInclusive = true,
-            CompareWidth = key.Count
+            StartValue = value,
+            IsStartInclusive = true,
+            EndValue = value,
+            IsEndInclusive = true,
+            CompareWidth = value.Count
         };
     }
 
     /// <summary>
-    /// Creates a range between two keys
+    /// Creates a range between two key values
     /// </summary>
-    public static SeekBounds Between(AccessKey startKey,
-                                     AccessKey endKey,
-                                     bool startInclusive = true,
-                                     bool endInclusive = true)
+    public static SeekBounds Between(AccessKey startValue,
+                                     AccessKey endValue,
+                                     bool isStartInclusive = true,
+                                     bool isEndInclusive = true)
     {
         return new SeekBounds
         {
-            StartKey = startKey,
-            StartInclusive = startInclusive,
-            EndKey = endKey,
-            EndInclusive = endInclusive,
-            CompareWidth = Math.Max(startKey.Count, endKey.Count)
+            StartValue = startValue,
+            IsStartInclusive = isStartInclusive,
+            EndValue = endValue,
+            IsEndInclusive = isEndInclusive,
+            CompareWidth = Math.Max(startValue.Count, endValue.Count)
         };
     }
 }

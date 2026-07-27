@@ -1,0 +1,128 @@
+using System.Xml.Linq;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+
+namespace InternalsViewer.Query.Parsing.Plans.Predicates;
+
+/// <summary>
+/// Supplies the compiled value of a plan parameter
+/// </summary>
+/// <remarks>
+/// An auto parameterized plan replaces literals with parameters, so the value a seek compares against is held in the plan's ParameterList
+/// rather than at the point of use.
+/// </remarks>
+public delegate AccessValue? ParameterValueResolver(string parameterName);
+
+/// <summary>
+/// Builds access path expressions from a showplan ScalarOperator tree
+/// </summary>
+public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal = null,
+                                         ParameterValueResolver? resolveParameter = null)
+{
+    private ColumnOrdinalResolver ResolveOrdinal { get; } = resolveOrdinal ?? (_ => null);
+
+    private ParameterValueResolver ResolveParameter { get; } = resolveParameter ?? (_ => null);
+
+    /// <summary>
+    /// Parses a scalar expression, returning null when the expression is not one the access path
+    /// model can represent
+    /// </summary>
+    /// <remarks>
+    /// An unrepresentable expression is not an error. A predicate containing one is treated as unknown rather than being dropped, so the
+    /// caller can still show that a predicate exists.
+    /// </remarks>
+    public AccessExpression? Parse(XElement? scalarOperator)
+    {
+        var content = GetContent(scalarOperator);
+
+        if (content is null)
+        {
+            return null;
+        }
+
+        return content.Name.LocalName switch
+        {
+            ShowplanNames.Const => ParseConstant(content),
+            ShowplanNames.Identifier => ParseIdentifier(content),
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Gets the column a scalar expression refers to, ignoring any ordinal mapping
+    /// </summary>
+    public ColumnReference? ParseColumnReference(XElement? scalarOperator)
+    {
+        var content = GetContent(scalarOperator);
+
+        var reference = content?.Name.LocalName == ShowplanNames.ColumnReference
+            ? content
+            : content?.Elements().FirstOrDefault(e => e.Name.LocalName == ShowplanNames.ColumnReference);
+
+        return reference is null ? null : ReadColumnReference(reference);
+    }
+
+    /// <summary>
+    /// Gets the element carrying the meaning of a scalar operator
+    /// </summary>
+    /// <remarks>
+    /// A ScalarOperator wraps a single child describing what it does, but predicates nest scalar operators inside one another, so the
+    /// wrapper is unwrapped until the described element is reached.
+    ///
+    /// A Convert is unwrapped too. An implicit conversion is applied by the engine to make types match and does not change which value is
+    /// being compared, so the operand underneath is what the access path needs.
+    /// </remarks>
+    internal static XElement? GetContent(XElement? element)
+    {
+        while (element is not null &&
+               element.Name.LocalName is ShowplanNames.ScalarOperator or ShowplanNames.Convert)
+        {
+            element = element.Elements().FirstOrDefault();
+        }
+
+        return element;
+    }
+
+    private static AccessExpression ParseConstant(XElement element)
+    {
+        var literal = element.Attribute(ShowplanNames.ConstValue)?.Value;
+
+        return new AccessExpression.Constant(ConstValueParser.Parse(literal));
+    }
+
+    private AccessExpression? ParseIdentifier(XElement element)
+    {
+        var reference = element.Elements()
+                               .FirstOrDefault(e => e.Name.LocalName == ShowplanNames.ColumnReference);
+
+        if (reference is null)
+        {
+            return null;
+        }
+
+        var column = ReadColumnReference(reference);
+
+        // A reference with no table naming it and a leading @ is a parameter, not a column
+        if (column.Column.StartsWith('@') && string.IsNullOrEmpty(column.Table))
+        {
+            var parameter = ResolveParameter(column.Column);
+
+            return parameter is null ? null : new AccessExpression.Constant(parameter.Value);
+        }
+
+        var ordinal = ResolveOrdinal(column);
+
+        return ordinal is null ? null : new AccessExpression.Column(ordinal.Value, column.Column);
+    }
+
+    private static ColumnReference ReadColumnReference(XElement element)
+    {
+        return new ColumnReference
+        {
+            Database = element.Attribute("Database")?.Value ?? string.Empty,
+            Schema = element.Attribute("Schema")?.Value ?? string.Empty,
+            Table = element.Attribute("Table")?.Value ?? string.Empty,
+            Column = element.Attribute(ShowplanNames.Column)?.Value ?? string.Empty
+        };
+    }
+}
