@@ -6,6 +6,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    HorizontalAlignment="Left"
+    VerticalAlignment="Center"
     mc:Ignorable="d">
     <Grid Margin="8" Padding="0">
         <Grid.RowDefinitions>
@@ -19,7 +21,7 @@
         </Grid.ColumnDefinitions>
         <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0">
             <TextBlock x:Name="ObjectNameTextBlock"
-                       FontWeight="Bold"
+                       FontWeight="{x:Bind ObjectNameFontWeight, Mode=OneWay}"
                        Margin="0,0,10,0"
                        Text="{x:Bind ObjectName, Mode=OneWay}" />
             <Grid
@@ -33,6 +35,7 @@
         </StackPanel>
         <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0">
             <TextBlock x:Name="IndexNameTextBlock"
+                       FontWeight="{x:Bind IndexNameFontWeight, Mode=OneWay}"
                        Margin="0,0,10,0"
                        Text="{x:Bind IndexName, Mode=OneWay}" />
             <Grid Margin="0"

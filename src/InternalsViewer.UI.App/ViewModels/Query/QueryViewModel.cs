@@ -502,7 +502,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         if (Layout.TryGetDocument(key, out var existing))
         {
+            var viewModel = existing.Content as IndexTabViewModel;
+
+            viewModel?.PlanNode = node;
+
             Layout.Show(existing);
+
             return;
         }
 
@@ -523,6 +528,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var indexViewModel = _indexTabViewModelFactory.Create(Database);
 
         indexViewModel.RootPage = allocationUnit.RootPage;
+        indexViewModel.AllocationUnit = allocationUnit;
         indexViewModel.PlanNode = node;
 
         var document = new DocumentViewModel(title: $"Index: {index}",
@@ -534,6 +540,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              persist: false);
 
         Layout.RegisterDocument(key, document);
+
         _openIndexes[key] = indexViewModel;
 
         Layout.Show(document);
@@ -551,11 +558,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// </summary>
     public List<PageLogRecord> GetPageLogRecords(PageAddress pageAddress)
     {
-        return Events.OfType<TransactionLogEvent>()
-                     .Where(logEvent => logEvent.PageAddress == pageAddress)
-                     .Select(logEvent => logEvent.LogRecord)
-                     .OfType<PageLogRecord>()
-                     .ToList();
+        return
+        [
+            .. Events.OfType<TransactionLogEvent>()
+                .Where(logEvent => logEvent.PageAddress == pageAddress)
+                .Select(logEvent => logEvent.LogRecord)
+                .OfType<PageLogRecord>()
+        ];
     }
 
     /// <summary>
@@ -707,12 +716,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool IsInIndex(PageAddress page, PageAddress rootPage) =>
         Database.FindPageAllocationUnit(page)?.RootPage == rootPage;
 
-    /// <summary>
-    /// Updates each open index tab's active page (the latest span at or before the playhead) and current
-    /// playhead position. The range/flash highlighting itself is computed by IndexControl straight from
-    /// the (already time-sorted) spans pushed by RefreshIndexPageSpans, so this only needs to resolve the
-    /// single "active" page via binary search - no per-tick event scan.
-    /// </summary>
     private void SyncIndexPage(long playheadUs)
     {
         if (_openIndexes.Count == 0)
@@ -814,9 +817,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _systemObjectIds =
         [
             .. database.AllocationUnits
-                .Values
-                .Where(u => u.IsSystem)
-                .Select(u => u.ObjectId)
+                       .Values
+                       .Where(u => u.IsSystem)
+                       .Select(u => u.ObjectId)
         ];
 
         QueryOptions.FilterChanged += RefreshFilteredEvents;
@@ -872,7 +875,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         else
         {
             layer.Opacity = 0;
-            AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+            AllocationLayers = [.. AllocationLayers];
         }
     }
 
@@ -887,12 +890,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                                                  ? message
                                                                  : Message + Environment.NewLine + message);
 
-        // The menu-driven options (crop, system objects, lock categories, waits/latches/memory/callstack) already live
-        // on this instance; only the run-time trace settings are layered on here.
         var eventOptions = QueryOptions.Options;
 
-        // When a custom trace directory is configured, SQL Server writes the .xel there — ensure its service account can
-        // (grant on use). Null falls back to the SQL Server log directory.
         var traceDirectory = _settingsViewModel.ActiveTraceDirectory;
 
         eventOptions.TraceDirectory = traceDirectory;
@@ -1109,7 +1108,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                     layer.Opacity = 80;
                     layer.SinglePages = [.. bufferPoolPages.Dirty, .. bufferPoolPages.Clean];
 
-                    AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+                    AllocationLayers = [.. AllocationLayers];
                 }
             });
         }

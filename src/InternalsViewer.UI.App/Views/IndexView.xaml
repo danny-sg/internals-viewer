@@ -24,7 +24,8 @@
             <AppBarButton Label="Refresh" Icon="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" />
             <AppBarSeparator />
             <AppBarElementContainer>
-                <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
+                <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
+                                                          IsIndex="True" />
             </AppBarElementContainer>
         </CommandBar>
 

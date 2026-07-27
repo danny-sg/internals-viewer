@@ -21,7 +21,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace InternalsViewer.UI.App.ViewModels.Index;
 
@@ -79,7 +78,6 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     [ObservableProperty]
     private AllocationUnit? _allocationUnit;
-
 
     public string ProgressText => TotalPageCount > 0
         ? $"{LoadedPageCount:N0} / {TotalPageCount:N0} pages"

@@ -17,7 +17,7 @@
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <CommandBar Grid.Row="0"
@@ -45,17 +45,19 @@
                            HorizontalAlignment="Left" />
                     <TextBlock Text="{x:Bind ViewModel.PlanNode.LogicalOperator}" Padding="0,0,8,0"/>
                     <predicates:PredicateTextBox x:Name="PredicateTextBox"
-                                                 Margin="10,0,0,0"
+                                                 Margin="0,0,4,0"
                                                  Visibility="{x:Bind ViewModel.HasPredicate,
                                                  Mode=OneWay,
                                                  Converter={StaticResource BoolToVisibilityConverter}}"
                                                                                             VerticalAlignment="Center"
                                                                                             Text="{x:Bind ViewModel.PredicateText, Mode=OneWay}" />
+
                 </StackPanel>
             </AppBarElementContainer>
             <AppBarSeparator />
             <AppBarElementContainer>
-                <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
+                <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
+                                                          IsIndex="True" />
             </AppBarElementContainer>
         </CommandBar>
 

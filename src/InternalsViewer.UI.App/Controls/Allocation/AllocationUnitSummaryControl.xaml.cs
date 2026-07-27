@@ -4,6 +4,8 @@ using InternalsViewer.Internals.Engine.Database;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using IndexTypeEnum = InternalsViewer.Internals.Engine.Database.Enums.IndexType;
+using FontWeight = Windows.UI.Text.FontWeight;
+using FontWeights = Microsoft.UI.Text.FontWeights;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
 
@@ -15,12 +17,24 @@ public sealed partial class AllocationUnitSummaryControl : UserControl, INotifyP
                                      typeof(AllocationUnitSummaryControl),
                                      new PropertyMetadata(null, OnAllocationUnitChanged));
 
+    public static readonly DependencyProperty IsIndexProperty =
+        DependencyProperty.Register(nameof(IsIndex),
+                                     typeof(bool),
+                                     typeof(AllocationUnitSummaryControl),
+                                     new PropertyMetadata(false, OnIsIndexChanged));
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public AllocationUnit? AllocationUnit
     {
         get => (AllocationUnit?)GetValue(AllocationUnitProperty);
         set => SetValue(AllocationUnitProperty, value);
+    }
+
+    public bool IsIndex
+    {
+        get => (bool)GetValue(IsIndexProperty);
+        set => SetValue(IsIndexProperty, value);
     }
 
     public string ObjectName => AllocationUnit is { } allocationUnit
@@ -41,6 +55,10 @@ public sealed partial class AllocationUnitSummaryControl : UserControl, INotifyP
         ? "Clustered"
         : "Heap";
 
+    public FontWeight ObjectNameFontWeight => IsIndex ? FontWeights.Normal : FontWeights.Bold;
+
+    public FontWeight IndexNameFontWeight => IsIndex ? FontWeights.Bold : FontWeights.Normal;
+
     public AllocationUnitSummaryControl()
     {
         InitializeComponent();
@@ -56,6 +74,14 @@ public sealed partial class AllocationUnitSummaryControl : UserControl, INotifyP
         control.OnPropertyChanged(nameof(IndexId));
         control.OnPropertyChanged(nameof(IndexType));
         control.OnPropertyChanged(nameof(ObjectIndexType));
+    }
+
+    private static void OnIsIndexChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AllocationUnitSummaryControl)d;
+
+        control.OnPropertyChanged(nameof(ObjectNameFontWeight));
+        control.OnPropertyChanged(nameof(IndexNameFontWeight));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
