@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Data;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
@@ -75,25 +74,25 @@ public class PredicateWriterTests
     [Fact]
     public void Equality_Bounds_Are_Written_As_Equality()
     {
-        var bounds = SeekBounds.Equality(TestKey.Of(42));
+        var bounds = SeekBounds.Equality(TestKey.Of([42], "Id"));
 
-        Assert.Equal("Id = 42", Text(bounds, ["Id"]));
+        Assert.Equal("Id = 42", Text(bounds));
     }
 
     [Fact]
     public void Half_Open_Range_Is_Written_With_Both_Sides()
     {
-        var bounds = SeekBounds.Between(TestKey.Of(10), TestKey.Of(20), true, false);
+        var bounds = SeekBounds.Between(TestKey.Of([10], "Id"), TestKey.Of([20], "Id"), true, false);
 
-        Assert.Equal("Id >= 10 AND Id < 20", Text(bounds, ["Id"]));
+        Assert.Equal("Id >= 10 AND Id < 20", Text(bounds));
     }
 
     [Fact]
     public void Composite_Bounds_Are_Written_As_A_Row_Comparison()
     {
-        var bounds = SeekBounds.Equality(TestKey.Of(1, 2));
+        var bounds = SeekBounds.Equality(TestKey.Of([1, 2], "CustomerId", "OrderId"));
 
-        Assert.Equal("(CustomerId, OrderId) = (1, 2)", Text(bounds, ["CustomerId", "OrderId"]));
+        Assert.Equal("(CustomerId, OrderId) = (1, 2)", Text(bounds));
     }
 
     [Fact]
@@ -125,8 +124,8 @@ public class PredicateWriterTests
         return PredicateWriter.ToText(PredicateWriter.Write(predicate));
     }
 
-    private static string Text(SeekBounds bounds, ImmutableArray<string> keyColumns = default)
+    private static string Text(SeekBounds bounds)
     {
-        return PredicateWriter.ToText(PredicateWriter.Write(bounds, keyColumns));
+        return PredicateWriter.ToText(PredicateWriter.Write(bounds));
     }
 }

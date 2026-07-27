@@ -78,7 +78,6 @@
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Controls\Page\HexViewControl.xaml" />
         <None Remove="Controls\Page\MarkerTreeView.xaml" />
-        <None Remove="Controls\Predicates\PredicateView.xaml" />
         <None Remove="Controls\PasswordDialog.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
         <None Remove="Controls\SqlEditor\SqlEditor.xaml" />
@@ -401,7 +400,7 @@
       <Page Update="Controls\Page\HexViewControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Controls\Predicates\PredicateView.xaml">
+      <Page Update="Controls\Predicates\PredicateTextBox.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\Connections\BackupFileConnectionControl.xaml">

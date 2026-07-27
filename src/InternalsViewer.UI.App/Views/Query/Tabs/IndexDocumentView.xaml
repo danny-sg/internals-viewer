@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
+    xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
     mc:Ignorable="d">
     <Grid VerticalAlignment="Stretch"
           HorizontalAlignment="Stretch">
@@ -13,11 +14,14 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <!--Command bar: view options for the index tree-->
         <CommandBar Grid.Row="0"
                     IsOpen="False"
-                    Padding="0"
+                    Padding="12,0,0,0"
                     VerticalAlignment="Center"
                     DefaultLabelPosition="Right"
                     HorizontalAlignment="Left"
@@ -27,25 +31,47 @@
                     BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                     Background="Transparent"
                     BorderThickness="0,0,0,1">
-  
+
+
             <AppBarElementContainer VerticalContentAlignment="Center">
+                <StackPanel Orientation="Horizontal" >
+                    <Image Source="{x:Bind ViewModel.IconSource}"
+                           Name="NodeImage"
+                           Width="32"
+                           Height="32"
+                           HorizontalAlignment="Left" />
+                    <TextBlock Text="{x:Bind ViewModel.PlanNode.LogicalOperator}"/>
+                    <predicates:PredicateTextBox x:Name="PredicateTextBox"
+                                                 Width="300"
+                                                 Margin="10,0,0,0"
+                                                 VerticalAlignment="Center"
+                                                 Text="{x:Bind ViewModel.PredicateText, Mode=OneWay}" />
+                </StackPanel>
+            </AppBarElementContainer>
+        </CommandBar>
+
+        <CommandBar Grid.Row="0"
+                    Grid.Column="1"
+                        IsOpen="False"
+                        VerticalAlignment="Center"
+                        DefaultLabelPosition="Right"
+                        HorizontalAlignment="Right"
+                        VerticalContentAlignment="Top"
+                        MinHeight="0"
+                        OverflowButtonVisibility="Collapsed"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        Background="Transparent"
+                        BorderThickness="0,0,0,1">
+            <AppBarElementContainer VerticalContentAlignment="Center" HorizontalAlignment="Right">
                 <ToggleButton Margin="12,0,12,0"
                               BorderThickness="0"
                               IsChecked="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}">
                     <TextBlock Text="Zoom to Fit" VerticalAlignment="Center" />
                 </ToggleButton>
             </AppBarElementContainer>
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <ToggleButton Margin="12,0,12,0"
-                              BorderThickness="0"
-                              IsChecked="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}">
-                    <TextBlock Text="Zoom to Fit" VerticalAlignment="Center" />
-                </ToggleButton>
-            </AppBarElementContainer>
+        </CommandBar>
 
-</CommandBar>
-
-        <Grid Grid.Row="1" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+        <Grid Grid.Row="1" Grid.ColumnSpan="2" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
             <!--Loading spinner shown until the index tree is built-->
             <StackPanel Padding="10"
                         HorizontalAlignment="Center"

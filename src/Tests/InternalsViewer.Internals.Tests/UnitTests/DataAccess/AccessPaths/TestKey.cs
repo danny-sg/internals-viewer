@@ -10,4 +10,13 @@ internal static class TestKey
     {
         return AccessKey.Create([.. values.Select(v => AccessValue.FromInteger(SqlDbType.Int, v))]);
     }
+
+    public static AccessKey Of(int[] values, params string[] columnNames)
+    {
+        return AccessKey.Create(
+        [
+            .. values.Select((v, i) => AccessValue.FromInteger(SqlDbType.Int, v)
+                                                   .WithColumnName(i < columnNames.Length ? columnNames[i] : null))
+        ]);
+    }
 }

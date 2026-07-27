@@ -6,28 +6,21 @@ using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.Predicates;
 
-/// <summary>
-/// Displays formatted predicate text
-/// </summary>
-/// <remarks>
-/// The control renders a token sequence and nothing else, so what is shown always matches the model the caller formatted, and the control
-/// never has to interpret a predicate itself.
-/// </remarks>
-public sealed partial class PredicateView : UserControl
+public sealed partial class PredicateTextBox : UserControl
 {
     public static readonly DependencyProperty TextProperty =
         DependencyProperty.Register(nameof(Text),
                                     typeof(PredicateText),
-                                    typeof(PredicateView),
+                                    typeof(PredicateTextBox),
                                     new PropertyMetadata(null, OnSourceChanged));
 
     public static readonly DependencyProperty PlaceholderTextProperty =
         DependencyProperty.Register(nameof(PlaceholderText),
                                     typeof(string),
-                                    typeof(PredicateView),
+                                    typeof(PredicateTextBox),
                                     new PropertyMetadata(string.Empty, OnSourceChanged));
 
-    public PredicateView()
+    public PredicateTextBox()
     {
         InitializeComponent();
 
@@ -56,7 +49,7 @@ public sealed partial class PredicateView : UserControl
 
     private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((PredicateView)d).Render();
+        ((PredicateTextBox)d).Render();
     }
 
     private void Render()
@@ -127,14 +120,22 @@ public sealed partial class PredicateView : UserControl
     {
         var key = kind switch
         {
-            PredicateTokenKind.Keyword => "PredicateKeywordBrush",
-            PredicateTokenKind.Column => "PredicateColumnBrush",
-            PredicateTokenKind.Operator => "PredicateOperatorBrush",
-            PredicateTokenKind.Number => "PredicateNumberBrush",
-            PredicateTokenKind.Literal => "PredicateLiteralBrush",
-            PredicateTokenKind.Null => "PredicateNullBrush",
-            PredicateTokenKind.Punctuation => "PredicatePunctuationBrush",
-            PredicateTokenKind.Unknown => "PredicateUnknownBrush",
+            PredicateTokenKind.Keyword 
+                => "PredicateKeywordBrush",
+            PredicateTokenKind.Column 
+                => "PredicateColumnBrush",
+            PredicateTokenKind.Operator 
+                => "PredicateOperatorBrush",
+            PredicateTokenKind.Number 
+                => "PredicateNumberBrush",
+            PredicateTokenKind.Literal 
+                => "PredicateLiteralBrush",
+            PredicateTokenKind.Null 
+                => "PredicateNullBrush",
+            PredicateTokenKind.Punctuation 
+                => "PredicatePunctuationBrush",
+            PredicateTokenKind.Unknown 
+                => "PredicateUnknownBrush",
             _ => null
         };
 

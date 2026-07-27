@@ -6,25 +6,23 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 /// <summary>
 /// A single typed key or predicate value
 /// </summary>
-/// <remarks>
-/// Values are stored inline to avoid boxing. Fixed length numeric and temporal types use the
-/// <see cref="Numeric"/> or <see cref="Real"/> payload, everything else uses <see cref="Data"/>.
-/// </remarks>
 public readonly struct AccessValue : IEquatable<AccessValue>
 {
-    public static readonly AccessValue Null = new(SqlDbType.Variant, AccessValueKind.Null, 0, 0, default);
+    public static readonly AccessValue Null = new(SqlDbType.Variant, AccessValueKind.Null, 0, 0, default, null);
 
     private AccessValue(SqlDbType dataType,
                         AccessValueKind kind,
                         long numeric,
                         double real,
-                        ReadOnlyMemory<byte> data)
+                        ReadOnlyMemory<byte> data,
+                        string? columnName)
     {
         DataType = dataType;
         Kind = kind;
         Numeric = numeric;
         Real = real;
         Data = data;
+        ColumnName = columnName;
     }
 
     public SqlDbType DataType { get; }
@@ -37,6 +35,15 @@ public readonly struct AccessValue : IEquatable<AccessValue>
 
     public ReadOnlyMemory<byte> Data { get; }
 
+    /// <summary>
+    /// The column this value compares against, when known
+    /// </summary>
+    /// <remarks>
+    /// Carrying the name on the value itself lets a predicate or seek bound be written back to text without a caller having to supply the
+    /// index's key columns separately.
+    /// </remarks>
+    public string? ColumnName { get; }
+
     public bool IsNull => Kind == AccessValueKind.Null;
 
     public static bool operator ==(AccessValue left, AccessValue right) => left.Equals(right);
@@ -48,7 +55,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public static AccessValue FromNull(SqlDbType dataType)
     {
-        return new AccessValue(dataType, AccessValueKind.Null, 0, 0, default);
+        return new AccessValue(dataType, AccessValueKind.Null, 0, 0, default, null);
     }
 
     /// <summary>
@@ -56,7 +63,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public static AccessValue FromInteger(SqlDbType dataType, long value)
     {
-        return new AccessValue(dataType, AccessValueKind.Integer, value, 0, default);
+        return new AccessValue(dataType, AccessValueKind.Integer, value, 0, default, null);
     }
 
     /// <summary>
@@ -64,7 +71,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public static AccessValue FromReal(SqlDbType dataType, double value)
     {
-        return new AccessValue(dataType, AccessValueKind.Real, 0, value, default);
+        return new AccessValue(dataType, AccessValueKind.Real, 0, value, default, null);
     }
 
     /// <summary>
@@ -81,7 +88,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
             BitConverter.TryWriteBytes(data.AsSpan(index * sizeof(int)), bits[index]);
         }
 
-        return new AccessValue(dataType, AccessValueKind.Decimal, 0, 0, data);
+        return new AccessValue(dataType, AccessValueKind.Decimal, 0, 0, data, null);
     }
 
     /// <summary>
@@ -89,7 +96,15 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public static AccessValue FromBytes(SqlDbType dataType, ReadOnlyMemory<byte> value)
     {
-        return new AccessValue(dataType, AccessValueKind.Bytes, 0, 0, value);
+        return new AccessValue(dataType, AccessValueKind.Bytes, 0, 0, value, null);
+    }
+
+    /// <summary>
+    /// Returns a copy of this value labelled with the column it compares against
+    /// </summary>
+    public AccessValue WithColumnName(string? columnName)
+    {
+        return new AccessValue(DataType, Kind, Numeric, Real, Data, columnName);
     }
 
     /// <summary>
@@ -132,7 +147,8 @@ public readonly struct AccessValue : IEquatable<AccessValue>
             AccessValueKind.Null => 0,
             AccessValueKind.Integer
                 or AccessValueKind.Real
-                or AccessValueKind.Decimal => GetNumericHashCode(),
+                or AccessValueKind.Decimal 
+                => GetNumericHashCode(),
             _ => GetBytesHashCode()
         };
     }
@@ -141,10 +157,14 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     {
         return Kind switch
         {
-            AccessValueKind.Null => "NULL",
-            AccessValueKind.Integer => Numeric.ToString(),
-            AccessValueKind.Real => Real.ToString(CultureInfo.InvariantCulture),
-            AccessValueKind.Decimal => ToDecimal().ToString(CultureInfo.InvariantCulture),
+            AccessValueKind.Null 
+                => "NULL",
+            AccessValueKind.Integer 
+                => Numeric.ToString(),
+            AccessValueKind.Real 
+                => Real.ToString(CultureInfo.InvariantCulture),
+            AccessValueKind.Decimal 
+                => ToDecimal().ToString(CultureInfo.InvariantCulture),
             _ => Convert.ToHexString(Data.Span)
         };
     }
@@ -161,8 +181,10 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     {
         double value = Kind switch
         {
-            AccessValueKind.Integer => Numeric,
-            AccessValueKind.Real => Real,
+            AccessValueKind.Integer 
+                => Numeric,
+            AccessValueKind.Real 
+                => Real,
             _ => (double)ToDecimal()
         };
 

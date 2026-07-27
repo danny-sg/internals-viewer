@@ -29,19 +29,11 @@ public sealed record PredicateText(ImmutableArray<PredicateToken> Tokens)
     }
 
     /// <summary>
-    /// Formats a seek range, labelling it with the index key columns when they are known
+    /// Formats a seek range, using the column name each boundary value carries
     /// </summary>
-    public static PredicateText From(SeekBounds bounds, ImmutableArray<string> keyColumns = default)
+    public static PredicateText From(SeekBounds bounds)
     {
-        return new PredicateText(PredicateWriter.Write(bounds, keyColumns));
-    }
-
-    /// <summary>
-    /// Formats a seek range, labelling it with the index key columns when they are known
-    /// </summary>
-    public static PredicateText From(SeekBounds bounds, IEnumerable<string>? keyColumns)
-    {
-        return From(bounds, keyColumns is null ? default : [.. keyColumns]);
+        return new PredicateText(PredicateWriter.Write(bounds));
     }
 
     public override string ToString()

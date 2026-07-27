@@ -19,10 +19,10 @@ public static class PlanNodePredicateText
     /// A seek is described by its key ranges and a scan has none, so the presence of bounds decides which of the two is written and a scan
     /// falls back to the predicate it filters with.
     /// </remarks>
-    public static PredicateText GetText(this PlanNode node, ImmutableArray<string> keyColumns = default)
+    public static PredicateText GetText(this PlanNode node)
     {
         return node.PredicateInfo is { HasSeekBounds: true }
-            ? node.GetSeekText(keyColumns)
+            ? node.GetSeekText()
             : node.GetResidualText();
     }
 
@@ -33,7 +33,7 @@ public static class PlanNodePredicateText
     /// Several ranges on one operator are alternatives, as an IN list produces, so they are joined with OR to read the way the seek
     /// behaves.
     /// </remarks>
-    public static PredicateText GetSeekText(this PlanNode node, ImmutableArray<string> keyColumns = default)
+    public static PredicateText GetSeekText(this PlanNode node)
     {
         if (node.PredicateInfo is not { HasSeekBounds: true } info)
         {
@@ -51,7 +51,7 @@ public static class PlanNodePredicateText
                 tokens.Add(new PredicateToken(PredicateTokenKind.Space, " "));
             }
 
-            tokens.AddRange(PredicateWriter.Write(bounds, keyColumns));
+            tokens.AddRange(PredicateWriter.Write(bounds));
         }
 
         return new PredicateText(tokens.ToImmutable());

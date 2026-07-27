@@ -469,12 +469,26 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private readonly Dictionary<string, IndexTabViewModel> _openIndexes = new();
 
     public void OpenIndex(ExecutionOperatorEvent op)
-        => OpenIndex(op.SchemaName, op.TableName, op.IndexName);
+    {
+        if (op.PlanNodeIdentifier is not null)
+        {
+            var planNode = ResolvePlanNode(op.PlanNodeIdentifier);
+
+            if (planNode is not null)
+            {
+                OpenIndex(planNode);
+
+                return;
+            }
+        }
+
+        OpenIndex(op.SchemaName, op.TableName, op.IndexName);
+    }
 
     public void OpenIndex(PlanNode node)
-        => OpenIndex(node.Schema, node.Table, node.Index);
+        => OpenIndex(node.Schema, node.Table, node.Index, node);
 
-    private void OpenIndex(string? schema, string? table, string? index)
+    private void OpenIndex(string? schema, string? table, string? index, PlanNode? node = null)
     {
         if (string.IsNullOrEmpty(index))
         {
@@ -509,6 +523,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var indexViewModel = _indexTabViewModelFactory.Create(Database);
 
         indexViewModel.RootPage = allocationUnit.RootPage;
+        indexViewModel.PlanNode = node;
 
         var document = new DocumentViewModel(title: $"Index: {index}",
                                              content: indexViewModel,

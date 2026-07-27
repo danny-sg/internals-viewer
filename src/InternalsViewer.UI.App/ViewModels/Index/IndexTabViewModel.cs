@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
@@ -9,16 +10,18 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using System.Xml.Linq;
 
 namespace InternalsViewer.UI.App.ViewModels.Index;
 
@@ -153,7 +156,15 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private PlanNode? _planNode;
 
+    partial void OnPlanNodeChanged(PlanNode? value)
+    {
+        OnPropertyChanged(nameof(PredicateText));
+        OnPropertyChanged(nameof(IconSource));
+    }
+
     public PredicateText? PredicateText => PlanNode?.GetText();
+
+    public SvgImageSource? IconSource => PlanNode is null ? null : new SvgImageSource(PlanIconResolver.Resolve(PlanNode));
 
     [RelayCommand]
     public async Task Refresh()

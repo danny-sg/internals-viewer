@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 
@@ -25,15 +26,14 @@ public static class PredicateWriter
     /// Writes seek bounds as the range condition they represent
     /// </summary>
     /// <remarks>
-    /// Bounds are written against the key columns they apply to when those columns are known, falling back to positional names so the
-    /// output still reads as a condition when the index definition is not to hand.
+    /// Bounds are written against the column name each boundary value carries, falling back to a positional name when a value was not
+    /// labelled, so the output still reads as a condition when the column is not known.
     /// </remarks>
-    public static ImmutableArray<PredicateToken> Write(SeekBounds bounds,
-                                                       ImmutableArray<string> keyColumns = default)
+    public static ImmutableArray<PredicateToken> Write(SeekBounds bounds)
     {
         var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
 
-        WriteBounds(tokens, bounds, keyColumns);
+        WriteBounds(tokens, bounds);
 
         return tokens.ToImmutable();
     }
@@ -51,9 +51,7 @@ public static class PredicateWriter
         return string.Concat(tokens.Select(t => t.Text));
     }
 
-    private static void WriteBounds(ImmutableArray<PredicateToken>.Builder tokens,
-                                    SeekBounds bounds,
-                                    ImmutableArray<string> keyColumns)
+    private static void WriteBounds(ImmutableArray<PredicateToken>.Builder tokens, SeekBounds bounds)
     {
         if (bounds is { HasStart: false, HasEnd: false })
         {
@@ -66,7 +64,7 @@ public static class PredicateWriter
         if (bounds is { HasStart: true, HasEnd: true, IsStartInclusive: true, IsEndInclusive: true } &&
             bounds.StartValue.Equals(bounds.EndValue))
         {
-            WriteKeyComparison(tokens, bounds.StartValue, keyColumns, "=");
+            WriteKeyComparison(tokens, bounds.StartValue, "=");
 
             return;
         }
@@ -75,7 +73,7 @@ public static class PredicateWriter
 
         if (bounds.HasStart)
         {
-            WriteKeyComparison(tokens, bounds.StartValue, keyColumns, bounds.IsStartInclusive ? ">=" : ">");
+            WriteKeyComparison(tokens, bounds.StartValue, bounds.IsStartInclusive ? ">=" : ">");
 
             written = true;
         }
@@ -87,11 +85,11 @@ public static class PredicateWriter
                 Space(tokens);
 
                 tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "AND"));
-                
+
                 Space(tokens);
             }
 
-            WriteKeyComparison(tokens, bounds.EndValue, keyColumns, bounds.IsEndInclusive ? "<=" : "<");
+            WriteKeyComparison(tokens, bounds.EndValue, bounds.IsEndInclusive ? "<=" : "<");
         }
     }
 
@@ -103,7 +101,6 @@ public static class PredicateWriter
     /// </remarks>
     private static void WriteKeyComparison(ImmutableArray<PredicateToken>.Builder tokens,
                                            AccessKey key,
-                                           ImmutableArray<string> keyColumns,
                                            string comparison)
     {
         var isComposite = key.Count > 1;
@@ -121,7 +118,7 @@ public static class PredicateWriter
                 Space(tokens);
             }
 
-            tokens.Add(new PredicateToken(PredicateTokenKind.Column, KeyColumnName(keyColumns, index)));
+            tokens.Add(new PredicateToken(PredicateTokenKind.Column, KeyColumnName(key[index], index)));
         }
 
         if (isComposite)
@@ -155,14 +152,9 @@ public static class PredicateWriter
         }
     }
 
-    private static string KeyColumnName(ImmutableArray<string> keyColumns, int index)
+    private static string KeyColumnName(AccessValue value, int index)
     {
-        if (!keyColumns.IsDefaultOrEmpty && index < keyColumns.Length)
-        {
-            return keyColumns[index];
-        }
-
-        return $"Key{index + 1}";
+        return value.ColumnName ?? $"Key{index + 1}";
     }
 
     /// <summary>

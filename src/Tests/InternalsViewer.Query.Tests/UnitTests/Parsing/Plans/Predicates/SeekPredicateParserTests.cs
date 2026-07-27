@@ -55,5 +55,6 @@ public class SeekPredicateParserTests
         Assert.True(seek.IsEndInclusive);
         Assert.Equal(42, seek.StartValue.Values[0].Numeric);
         Assert.Equal(42, seek.EndValue.Values[0].Numeric);
+        Assert.Equal("Id", seek.StartValue.Values[0].ColumnName);
     }
 }

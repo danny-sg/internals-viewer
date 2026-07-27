@@ -94,6 +94,12 @@ public sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = 
             return [];
         }
 
+        var columnNames = GetChild(boundary, ShowplanNames.RangeColumns)
+                                  ?.Elements()
+                                  .Where(e => e.Name.LocalName == ShowplanNames.ColumnReference)
+                                  .Select(e => e.Attribute(ShowplanNames.Column)?.Value)
+                                  .ToList();
+
         var expressions = boundary.Descendants()
                                   .Where(e => e.Name.LocalName == ShowplanNames.RangeExpressions)
                                   .SelectMany(e => e.Elements())
@@ -102,14 +108,16 @@ public sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = 
 
         var values = ImmutableArray.CreateBuilder<AccessValue>();
 
-        foreach (var expression in expressions)
+        for (var index = 0; index < expressions.Count; index++)
         {
-            if (Expressions.Parse(expression) is not AccessExpression.Constant constant)
+            if (Expressions.Parse(expressions[index]) is not AccessExpression.Constant constant)
             {
                 return [];
             }
 
-            values.Add(constant.Value);
+            var columnName = columnNames is not null && index < columnNames.Count ? columnNames[index] : null;
+
+            values.Add(constant.Value.WithColumnName(columnName));
         }
 
         return values.ToImmutable();
