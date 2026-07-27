@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -14,9 +8,17 @@ using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Services.Indexes;
+using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 
 namespace InternalsViewer.UI.App.ViewModels.Index;
 
@@ -147,6 +149,11 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     [ObservableProperty]
     private ObservableCollection<PageAddress> _highlightedPages = [];
+
+    [ObservableProperty]
+    private PlanNode? _planNode;
+
+    public PredicateText? PredicateText => PlanNode?.GetText();
 
     [RelayCommand]
     public async Task Refresh()

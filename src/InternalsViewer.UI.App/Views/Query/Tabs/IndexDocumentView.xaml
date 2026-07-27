@@ -7,8 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     mc:Ignorable="d">
-    <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-          VerticalAlignment="Stretch"
+    <Grid VerticalAlignment="Stretch"
           HorizontalAlignment="Stretch">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -26,8 +25,9 @@
                     MinHeight="0"
                     OverflowButtonVisibility="Collapsed"
                     BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,0,1"
-                    Background="Transparent">
+                    Background="Transparent"
+                    BorderThickness="0,0,0,1">
+  
             <AppBarElementContainer VerticalContentAlignment="Center">
                 <ToggleButton Margin="12,0,12,0"
                               BorderThickness="0"
@@ -35,9 +35,17 @@
                     <TextBlock Text="Zoom to Fit" VerticalAlignment="Center" />
                 </ToggleButton>
             </AppBarElementContainer>
-        </CommandBar>
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ToggleButton Margin="12,0,12,0"
+                              BorderThickness="0"
+                              IsChecked="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}">
+                    <TextBlock Text="Zoom to Fit" VerticalAlignment="Center" />
+                </ToggleButton>
+            </AppBarElementContainer>
 
-        <Grid Grid.Row="1">
+</CommandBar>
+
+        <Grid Grid.Row="1" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
             <!--Loading spinner shown until the index tree is built-->
             <StackPanel Padding="10"
                         HorizontalAlignment="Center"
