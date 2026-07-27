@@ -42,6 +42,8 @@
                     <ui:Color x:Key="AllocationBorderColor">Black</ui:Color>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+    
         </ResourceDictionary>
+    
     </Application.Resources>
 </Application>

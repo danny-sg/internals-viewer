@@ -21,17 +21,19 @@
                           RowHeight="22"
                           MinColumnWidth="20"
                           FontSize="10"
+                          BorderThickness="1,0,1,0"
+                          BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                           SelectedItem="{x:Bind SelectedRow, Mode=TwoWay}"
                           Background="{ThemeResource LayerFillColorDefaultBrush}">
             <toolkit:DataGrid.Resources>
+                <StaticResource x:Key="DataGridRowSelectedBackgroundColor" ResourceKey="SystemChromeMediumColor" />
+                <x:Double x:Key="DataGridRowSelectedBackgroundOpacity">1</x:Double>
                 <ui:Color x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundColor">Transparent</ui:Color>
                 <ui:Color x:Key="DataGridRowSelectedUnfocusedBackgroundColor">Transparent</ui:Color>
                 <StaticResource x:Key="DataGridRowSelectedHoveredBackgroundColor"
                                 ResourceKey="SystemListLowColor" />
          
             </toolkit:DataGrid.Resources>
-
-
         </toolkit:DataGrid>
         <Border Grid.Row="1"
                 Padding="8,4"

@@ -7,4 +7,6 @@ public sealed record IndexColumnStructure : ColumnStructure
     public bool IsIndexKey { get; set; }
 
     public int IndexColumnId { get; set; }
+
+    public bool IsRowIdentifier { get; set; }
 }

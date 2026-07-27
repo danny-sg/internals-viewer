@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
@@ -227,6 +228,8 @@ public static class IndexStructureProvider
             keyColumn = keyStack.Pop(k => k.DataType == typeInfo.DataType);
         }
 
+        var isRowIdentifier = IsRowIdentifier(structure, typeInfo.DataType, typeInfo.MaxLength, leafOffset, column, keyColumn);
+
         // The 2nd bit of the status field indicates if the column has been dropped
         var isDropped = Convert.ToBoolean(layout.Status & 2);
 
@@ -244,6 +247,10 @@ public static class IndexStructureProvider
         else if (isUniqueifier)
         {
             name = "UNIQUIFIER";
+        }
+        else if (isRowIdentifier)
+        {
+            name = "RID";
         }
         else
         {
@@ -272,7 +279,8 @@ public static class IndexStructureProvider
             IsIncludeColumn = isIncludeColumn,
             IndexColumnId = indexColumn?.IndexColumnId ?? 0,
             IsKey = isKey,
-            IsIndexKey = indexColumn?.KeyOrdinal > 0
+            IsIndexKey = indexColumn?.KeyOrdinal > 0,
+            IsRowIdentifier = isRowIdentifier
         };
 
         return columnStructure;
@@ -311,5 +319,38 @@ public static class IndexStructureProvider
     {
         return Convert.ToBoolean(status & 16)
                || (indexType == IndexType.NonClustered && dataType == SqlDbType.Int && leafOffset < 0);
+    }
+
+    /// <summary>
+    /// If the column is a Row Identifier (RID)
+    /// </summary>
+    /// <remarks>
+    /// A RID is a hidden binary(8) column added to a non-clustered index on a heap, holding the physical address (Page Address + slot) of
+    /// the row in the heap.
+    ///
+    /// There is no status bit for a RID, so it has to be identified by pattern. At the metadata level the available signals are -
+    ///
+    ///     - The index is non-clustered and the base table is a heap, so there are no clustered keys to carry instead
+    ///     - The column is a fixed length binary column of 8 bytes
+    ///     - The column could not be mapped to an index column or a clustered key column, so it is not a user column
+    /// </remarks>
+    private static bool IsRowIdentifier(IndexStructure structure,
+                                        SqlDbType dataType,
+                                        short dataLength,
+                                        short leafOffset,
+                                        InternalColumn? column,
+                                        ColumnStructure? keyColumn)
+    {
+        if (structure.IndexType != IndexType.NonClustered || structure.TableStructure != null)
+        {
+            return false;
+        }
+
+        if (dataType != SqlDbType.Binary || dataLength != RowIdentifier.Size)
+        {
+            return false;
+        }
+
+        return leafOffset >= 0 && column == null && keyColumn == null;
     }
 }

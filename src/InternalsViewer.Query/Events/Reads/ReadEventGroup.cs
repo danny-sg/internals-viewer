@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Reads;
@@ -30,9 +31,37 @@ public sealed record ReadEventGroup : PageEngineEvent, IEventGroup
 
     public int PageCount => Pages.Count;
 
-    public override string Description => PageCount > 1
-        ? $"{TypeLabel}: {PageCount} pages from {PageAddress}"
-        : $"{TypeLabel}: {PageAddress}";
+    public override string Description
+    {
+        get
+        {
+            if (PageCount > 1)
+            {
+                return $"{TypeLabel}: {PageCount} pages from {PageAddress}";
+            }
+
+            var description = $"{TypeLabel}: {PageAddress}";
+
+            if (PageAddress == AllocationUnit?.FirstIamPage)
+            {
+                return $"{description} - First IAM Page";
+            }
+
+            if (PageAddress == AllocationUnit?.RootPage)
+            {
+                return $"{description} - Root Page";
+            }
+
+            if (AllocationUnit is null && PageAddress.HasValue)
+            {
+                var pageName = PageNameHelper.TryGetPageName(PageAddress.Value);
+
+                return $"{description} - {pageName}";
+            }
+
+            return description;
+        }
+    }
 
     private string TypeLabel => ReadType == ReadType.NonCached ? "Read (Disk)" : "Read (Buffer Pool)";
 }

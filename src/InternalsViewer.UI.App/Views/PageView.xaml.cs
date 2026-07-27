@@ -29,6 +29,7 @@ public sealed partial class PageView : IDisposable
         MarkerTreeView.PageClicked += Control_PageClicked;
         AllocationControl.PageClicked += Control_PageClicked;
         LogRecordTreeView.RecordClicked += OnLogRecordClicked;
+        ResultsGrid.PageClicked += Control_PageClicked;
     }
 
     private void OnLogRecordClicked(Models.LogRecordItem item)
@@ -108,5 +109,6 @@ public sealed partial class PageView : IDisposable
         MarkerTreeView.PageClicked -= Control_PageClicked;
         AllocationControl.PageClicked -= Control_PageClicked;
         LogRecordTreeView.RecordClicked -= OnLogRecordClicked;
+        ResultsGrid.PageClicked -= Control_PageClicked;
     }
 }
