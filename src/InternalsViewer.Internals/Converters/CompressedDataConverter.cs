@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Converters;
 
 public static class CompressedDataConverter
 {
-    public static string CompressedBinaryToBinary(ReadOnlySpan<byte> data, SqlDbType sqlType, byte precision, byte scale)
+    public static string CompressedBinaryToString(ReadOnlySpan<byte> data, SqlDbType sqlType, byte precision, byte scale)
     {
         if (data.IsEmpty)
         {
@@ -56,6 +56,38 @@ public static class CompressedDataConverter
         }
     }
 
+    /// <summary>
+    /// Expands compressed data to the fixed width representation the type normally uses
+    /// </summary>
+    /// <remarks>
+    /// Row compression trims leading bytes and stores integers big-endian, so compressed data
+    /// cannot be handed straight to <see cref="DataConverter"/>. This restores the full width
+    /// little-endian form and reports the type to decode it as, which is not always the column
+    /// type - compressed unicode is stored as single byte characters.
+    /// </remarks>
+    public static (byte[] Data, SqlDbType DataType) Expand(ReadOnlySpan<byte> data, SqlDbType sqlType)
+    {
+        if (data.IsEmpty)
+        {
+            return ([], sqlType);
+        }
+
+        var unsigned = (data[0] & 0x80) != 0;
+
+        return sqlType switch
+        {
+            SqlDbType.BigInt => ([.. DecodeInt(data, unsigned, 8)], sqlType),
+            SqlDbType.SmallInt => ([.. DecodeInt(data, unsigned, 2)], sqlType),
+            SqlDbType.Int => ([.. DecodeInt(data, unsigned, 4)], sqlType),
+            SqlDbType.Money => ([.. DecodeInt(data, unsigned, 4)], sqlType),
+            SqlDbType.SmallMoney => ([.. DecodeInt(data, unsigned, 8)], sqlType),
+            SqlDbType.NChar or SqlDbType.NVarChar => ([.. data], SqlDbType.VarChar),
+            SqlDbType.DateTime => (ExpandDateTime(data, unsigned), SqlDbType.DateTime),
+            SqlDbType.SmallDateTime => (ExpandSmallDateTime(data), SqlDbType.SmallDateTime),
+            _ => ([.. data], sqlType)
+        };
+    }
+
     public static int DecodeInternalInt(byte[] data, int startPosition)
     {
         if ((data[startPosition] & 0x80) != 0 && data.Length > 1)
@@ -95,20 +127,31 @@ public static class CompressedDataConverter
 
     private static string DecodeSmallDateTime(ReadOnlySpan<byte> data)
     {
+        return DataConverter.BinaryToString(ExpandSmallDateTime(data), SqlDbType.SmallDateTime);
+    }
+
+    private static byte[] ExpandSmallDateTime(ReadOnlySpan<byte> data)
+    {
         if (data.Length == 2)
         {
-            Span<byte> expandedDate = stackalloc byte[4];
-            data.CopyTo(expandedDate[2..]);
+            var expandedDate = new byte[4];
 
-            return DataConverter.BinaryToString(expandedDate, SqlDbType.SmallDateTime);
+            data.CopyTo(expandedDate.AsSpan(2));
+
+            return expandedDate;
         }
 
-        return DataConverter.BinaryToString(data, SqlDbType.SmallDateTime);
+        return [.. data];
     }
 
     private static string DecodeDateTime(ReadOnlySpan<byte> data, bool unsigned)
     {
-        Span<byte> expandedDateTime = stackalloc byte[8];
+        return DataConverter.BinaryToString(ExpandDateTime(data, unsigned), SqlDbType.DateTime);
+    }
+
+    private static byte[] ExpandDateTime(ReadOnlySpan<byte> data, bool unsigned)
+    {
+        var expandedDateTime = new byte[8];
 
         if (data.Length < 5)
         {
@@ -129,10 +172,10 @@ public static class CompressedDataConverter
                 dateDecoded[0] ^= 0x80;
             }
 
-            DecodeInt(dateDecoded, unsigned, 4).CopyTo(expandedDateTime[4..]);
+            DecodeInt(dateDecoded, unsigned, 4).CopyTo(expandedDateTime.AsSpan(4));
         }
 
-        return DataConverter.BinaryToString(expandedDateTime, SqlDbType.DateTime);
+        return expandedDateTime;
     }
 
     /// <summary>
