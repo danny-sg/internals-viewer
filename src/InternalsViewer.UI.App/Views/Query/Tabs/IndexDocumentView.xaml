@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
+    xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     mc:Ignorable="d">
     <Grid VerticalAlignment="Stretch"
           HorizontalAlignment="Stretch">
@@ -28,25 +29,33 @@
                     VerticalContentAlignment="Top"
                     MinHeight="0"
                     OverflowButtonVisibility="Collapsed"
-                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                    Background="Transparent"
-                    BorderThickness="0,0,0,1">
+                    BorderThickness="0,0,0,1" 
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="Transparent">
 
 
-            <AppBarElementContainer VerticalContentAlignment="Center">
+            <AppBarElementContainer VerticalContentAlignment="Center"
+                                    Name="PredicateElementContainer">
+
                 <StackPanel Orientation="Horizontal" >
                     <Image Source="{x:Bind ViewModel.IconSource}"
                            Name="NodeImage"
                            Width="32"
                            Height="32"
                            HorizontalAlignment="Left" />
-                    <TextBlock Text="{x:Bind ViewModel.PlanNode.LogicalOperator}"/>
+                    <TextBlock Text="{x:Bind ViewModel.PlanNode.LogicalOperator}" Padding="0,0,8,0"/>
                     <predicates:PredicateTextBox x:Name="PredicateTextBox"
-                                                 Width="300"
                                                  Margin="10,0,0,0"
-                                                 VerticalAlignment="Center"
-                                                 Text="{x:Bind ViewModel.PredicateText, Mode=OneWay}" />
+                                                 Visibility="{x:Bind ViewModel.HasPredicate,
+                                                 Mode=OneWay,
+                                                 Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                                            VerticalAlignment="Center"
+                                                                                            Text="{x:Bind ViewModel.PredicateText, Mode=OneWay}" />
                 </StackPanel>
+            </AppBarElementContainer>
+            <AppBarSeparator />
+            <AppBarElementContainer>
+                <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
             </AppBarElementContainer>
         </CommandBar>
 

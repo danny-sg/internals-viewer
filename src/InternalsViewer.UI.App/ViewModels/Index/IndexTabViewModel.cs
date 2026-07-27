@@ -77,6 +77,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private long _totalPageCount;
 
+    [ObservableProperty]
+    private AllocationUnit? _allocationUnit;
+
+
     public string ProgressText => TotalPageCount > 0
         ? $"{LoadedPageCount:N0} / {TotalPageCount:N0} pages"
         : $"{LoadedPageCount:N0} pages";
@@ -85,11 +89,11 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     public double ProgressMaximum => TotalPageCount;
 
-    public string LoadingText => string.IsNullOrEmpty(IndexName)
+    public string LoadingText => string.IsNullOrEmpty(AllocationUnit?.IndexName)
         ? "Loading Index..."
-        : $"Loading {IndexName}...";
+        : $"Loading {AllocationUnit.IndexName}...";
 
-    partial void OnIndexNameChanged(string value) => OnPropertyChanged(nameof(LoadingText));
+    partial void OnAllocationUnitChanged(AllocationUnit? value) => OnPropertyChanged(nameof(LoadingText));
 
     partial void OnLoadedPageCountChanged(int value) => OnPropertyChanged(nameof(ProgressText));
 
@@ -106,23 +110,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private const int RecordsSpinnerDelayMs = 100;
 
     [ObservableProperty]
-    private string _objectName = string.Empty;
-
-    [ObservableProperty]
-    private int _objectId;
-
-    [ObservableProperty]
-    private int _indexId;
-
-    [ObservableProperty]
-    private string _indexName = string.Empty;
-
-    [ObservableProperty]
     private string _objectIndexType = string.Empty;
-
-    [ObservableProperty]
-    private string _indexType = string.Empty;
-
+    
     [ObservableProperty]
     private bool _isTooltipEnabled;
 
@@ -160,9 +149,12 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     {
         OnPropertyChanged(nameof(PredicateText));
         OnPropertyChanged(nameof(IconSource));
+        OnPropertyChanged(nameof(HasPredicate));
     }
 
     public PredicateText? PredicateText => PlanNode?.GetText();
+
+    public bool HasPredicate => (PredicateText?.Tokens.Length ?? 0) > 0;
 
     public SvgImageSource? IconSource => PlanNode is null ? null : new SvgImageSource(PlanIconResolver.Resolve(PlanNode));
 
@@ -294,31 +286,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     partial void OnRootPageChanged(PageAddress value)
     {
         var allocationUnit = Database.AllocationUnits.Values.FirstOrDefault(a => a.RootPage == value);
+        
+        AllocationUnit = allocationUnit;
 
-        if (allocationUnit != null)
-        {
-            SetAllocationUnitDescription(allocationUnit);
-        }
-    }
-
-    private void SetAllocationUnitDescription(AllocationUnit allocationUnit)
-    {
-        TotalPageCount = allocationUnit.UsedPages;
-
-        ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
-        ObjectId = allocationUnit.ObjectId;
-
-        IndexName = allocationUnit.IndexName;
-        IndexId = allocationUnit.IndexId;
-
-        IndexType = allocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
-            ? "Non-Clustered"
-            : string.Empty;
-        ObjectIndexType = allocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
-            ? "Clustered"
-            : "Heap";
-
-        Name = "Index: " + IndexName;
+        Name = "Index: " + AllocationUnit?.IndexName;
     }
 
     private static List<IndexRecordModel> GetIndexRecordModels(IEnumerable<IIndexRecord> source)

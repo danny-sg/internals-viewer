@@ -26,6 +26,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.UI;
+using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
@@ -58,22 +59,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private IRecordService RecordService { get; } = recordService;
 
     [ObservableProperty]
-    private string _objectName = string.Empty;
-
-    [ObservableProperty]
-    private int _objectId;
-
-    [ObservableProperty]
-    private int _indexId;
-
-    [ObservableProperty]
-    private string _indexName = string.Empty;
-
-    [ObservableProperty]
-    private string _objectIndexType = string.Empty;
-
-    [ObservableProperty]
-    private string _indexType = string.Empty;
+    private AllocationUnit? _allocationUnit;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -334,23 +320,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private void ApplyPageDisplay(PageDisplay display)
     {
-        if (display.ObjectDescription is { } description)
-        {
-            ObjectName = description.ObjectName;
-            IndexName = description.IndexName;
-            IndexType = description.IndexType;
-            ObjectIndexType = description.ObjectIndexType;
-
-            if (description.ObjectId is { } objectId)
-            {
-                ObjectId = objectId;
-            }
-
-            if (description.IndexId is { } indexId)
-            {
-                IndexId = indexId;
-            }
-        }
+        AllocationUnit = display.AllocationUnit;
 
         if (display.Records is { } records)
         {

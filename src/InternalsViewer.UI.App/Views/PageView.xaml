@@ -124,71 +124,8 @@
                             HorizontalAlignment="Left">
 
                     <AppBarElementContainer>
-                        <Grid Margin="8" Padding="0">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0">
-                                <TextBlock x:Name="ObjectName"
-                                           FontWeight="Bold"
-                                           Margin="0,0,10,0"  
-                                           Text="{x:Bind ViewModel.ObjectName, Mode=OneWay}" />
-                                <Grid 
-                                    Margin="0"
-                                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-                                    <TextBlock x:Name="ObjectIndexType"
-                                               Margin="0"  
-                                               Foreground="BlueViolet"
-                                               Text="{x:Bind ViewModel.ObjectIndexType, Mode=OneWay}" />
-                                </Grid>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0">
-                                <TextBlock x:Name="IndexName"
-                                           Margin="0,0,10,0"  
-                                           Text="{x:Bind ViewModel.IndexName, Mode=OneWay}" />
-                                <Grid Margin="0"
-                                      Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-                                    <TextBlock x:Name="IndexType"
-                                               Margin="0"  
-                                               Foreground="DarkGreen"
-                                               Text="{x:Bind ViewModel.IndexType, Mode=OneWay}" />
-                                </Grid >
-                            </StackPanel>
-
-                            <TextBlock x:Name="ObjectIdNameTextBlock"
-                                       Margin="14,0,0,0"  
-                                       Grid.Row="0"
-                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                       Grid.Column="1"
-                                       Text="Object Id" />
-
-                            <TextBlock x:Name="IndexIdNameTextBlock"
-                                       Margin="14,0,0,0" 
-                                       Grid.Row="1"
-                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                       Grid.Column="1"
-                                       Text="Index Id" />
-
-                            <controls:CopyTextBlock 
-                                           x:Name="ObjectIdTextBlock"
-                                           Margin="14,0,0,0"  
-                                           Grid.Row="0"
-                                           Grid.Column="2"
-                                           Value="{x:Bind ViewModel.ObjectId, Mode=OneWay}" />
-
-                            <controls:CopyTextBlock 
-                                           x:Name="IndexIdTextBlock"
-                                           Margin="14,0,0,0"  
-                                           Grid.Row="1"
-                                           Grid.Column="2"
-                                           Value="{x:Bind ViewModel.IndexId, Mode=OneWay}" />
-                        </Grid>
+                        <allocation:AllocationUnitSummaryControl
+                            AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
                     </AppBarElementContainer>
                 </CommandBar>
                 <CommandBar Grid.Column="2"         
