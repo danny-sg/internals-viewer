@@ -5,6 +5,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
@@ -287,7 +288,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            // Return without touching anything if the saved dock tree can't be rebuilt
             if (!Layout.RestoreRoot(dto.Root))
             {
                 return;
@@ -296,8 +296,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             Layout.IsTimelineVisible = dto.TimelineVisible;
 
             var lockCategories = dto.LockModeCategories is { } categories
-                ? [.. categories.Where(c => c != LockModeCategory.None)]
-                : dto.IncludeLock ? EventOptions.DefaultLockModeCategories() : [];
+                                 ? [.. categories.Where(c => c != LockModeCategory.None)]
+                                 : dto.IncludeLock ? EventOptions.DefaultLockModeCategories() : [];
 
             QueryOptions.Restore(dto.CropToQuery,
                                  dto.IncludeSystemObjects,
@@ -680,38 +680,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    // Per-index-root spans, built once whenever the event set (re)builds - see RefreshIndexPageSpans -
-    // rather than rescanned per playhead tick. Same shape and colouring as the allocation map's own
-    // "Events" overlay: each span already carries its own DisplayColour and lifetime (EndUs = the query's
-    // end for a read, so it stays once hit; EndUs = the hold end for a latch, so it flashes), so
-    // IndexControl just draws whichever span is active - it has no read/latch distinction of its own.
-    private readonly Dictionary<PageAddress, IReadOnlyList<PageSpan>> _indexPageSpansByRoot = new();
-
-    // Reads only, kept separately (without colour) purely so SyncIndexPage can binary-search for the
-    // active page - a latch doesn't count as "the page being read".
-    private readonly Dictionary<PageAddress, IReadOnlyList<PageSpan>> _indexReadSpansByRoot = new();
+    private List<PageSpan> _pageSpans = [];
 
     /// <summary>
-    /// Rebuilds <see cref="_indexPageSpansByRoot"/>/<see cref="_indexReadSpansByRoot"/> from the current
-    /// event set and pushes them into every open index tab. Called whenever the event set changes (see
-    /// <see cref="RefreshLayers"/>) - not per playhead tick, since none of this depends on the playhead.
+    /// Rebuilds <see cref="_pageSpans"/> from the current event set and pushes the spans relevant to
+    /// each open index tab. Called whenever the event set changes (see <see cref="RefreshLayers"/>) -
+    /// not per playhead tick, since none of this depends on the playhead.
     /// </summary>
     private void RefreshIndexPageSpans(List<EngineEvent> engineEvents, EventColourProvider colours)
     {
-        var (allSpans, readSpans) = new PageSpanBuilder().GetIndexPageSpans(engineEvents, colours, Database);
-
-        _indexPageSpansByRoot.Clear();
-        _indexReadSpansByRoot.Clear();
-
-        foreach (var (root, spans) in allSpans)
-        {
-            _indexPageSpansByRoot[root] = [.. spans.OrderBy(s => s.StartUs)];
-        }
-
-        foreach (var (root, spans) in readSpans)
-        {
-            _indexReadSpansByRoot[root] = [.. spans.OrderBy(s => s.StartUs)];
-        }
+        _pageSpans = PageSpanBuilder.GetEventsPageSpans(engineEvents, colours, StartOffset, EndOffset, Database);
 
         foreach (var viewModel in _openIndexes.Values)
         {
@@ -723,13 +701,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void ApplyIndexPageSpans(IndexTabViewModel viewModel)
     {
-        viewModel.PageSpans = _indexPageSpansByRoot.TryGetValue(viewModel.RootPage, out var spans)
-            ? spans
-            : [];
+        viewModel.PageSpans = [.. _pageSpans.Where(s => IsInIndex(s.Address, viewModel.RootPage))];
     }
 
+    private bool IsInIndex(PageAddress page, PageAddress rootPage) =>
+        Database.FindPageAllocationUnit(page)?.RootPage == rootPage;
+
     /// <summary>
-    /// Updates each open index tab's active page (the latest read at or before the playhead) and current
+    /// Updates each open index tab's active page (the latest span at or before the playhead) and current
     /// playhead position. The range/flash highlighting itself is computed by IndexControl straight from
     /// the (already time-sorted) spans pushed by RefreshIndexPageSpans, so this only needs to resolve the
     /// single "active" page via binary search - no per-tick event scan.
@@ -745,7 +724,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             viewModel.PlayheadTimeUs = playheadUs;
 
-            if (!_indexReadSpansByRoot.TryGetValue(viewModel.RootPage, out var spans) || spans.Count == 0)
+            var spans = viewModel.PageSpans;
+
+            if (spans.Count == 0)
             {
                 viewModel.SelectedPageAddress = null;
                 continue;
@@ -757,7 +738,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    /// <summary>The index of the first span whose StartUs is &gt; <paramref name="value"/>.</summary>
     private static int UpperBoundByStartUs(IReadOnlyList<PageSpan> spans, long value)
     {
         var lo = 0;
@@ -813,9 +793,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Name = $"{Database.Name}: Query";
 
-        DatabaseFiles = database.Files
-                                .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
-                                .ToArray();
+        DatabaseFiles =
+        [
+            .. database.Files
+                .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
+        ];
 
         ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, 20);
 
@@ -829,11 +811,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         PfsChain = Database.Pfs[1];
 
-        _systemObjectIds = database.AllocationUnits
-                                   .Values
-                                   .Where(u => u.IsSystem)
-                                   .Select(u => u.ObjectId)
-                                   .ToHashSet();
+        _systemObjectIds =
+        [
+            .. database.AllocationUnits
+                .Values
+                .Where(u => u.IsSystem)
+                .Select(u => u.ObjectId)
+        ];
 
         QueryOptions.FilterChanged += RefreshFilteredEvents;
 
@@ -1030,8 +1014,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             indexViewModel.PageSpans = [];
         }
 
-        _indexPageSpansByRoot.Clear();
-        _indexReadSpansByRoot.Clear();
+        _pageSpans = [];
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
         AllocationBorders = [];
@@ -1167,9 +1150,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _openIndexes.Clear();
 
-        _indexPageSpansByRoot.Clear();
-        
-        _indexReadSpansByRoot.Clear();
+        _pageSpans = [];
 
         Layout.Dispose();
 
