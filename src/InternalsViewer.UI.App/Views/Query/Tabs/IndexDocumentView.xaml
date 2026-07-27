@@ -23,8 +23,9 @@
         <CommandBar Grid.Row="0"
                     IsOpen="False"
                     Padding="12,0,0,0"
-                    VerticalAlignment="Center"
+                    
                     DefaultLabelPosition="Right"
+                    VerticalAlignment="Center"
                     HorizontalAlignment="Left"
                     VerticalContentAlignment="Top"
                     MinHeight="0"
@@ -35,6 +36,7 @@
 
 
             <AppBarElementContainer VerticalContentAlignment="Center"
+                                    
                                     Name="PredicateElementContainer">
 
                 <StackPanel Orientation="Horizontal" >
@@ -45,7 +47,7 @@
                            HorizontalAlignment="Left" />
                     <TextBlock Text="{x:Bind ViewModel.PlanNode.LogicalOperator}" Padding="0,0,8,0"/>
                     <predicates:PredicateTextBox x:Name="PredicateTextBox"
-                                                 Margin="0,0,4,0"
+                                              
                                                  Visibility="{x:Bind ViewModel.HasPredicate,
                                                  Mode=OneWay,
                                                  Converter={StaticResource BoolToVisibilityConverter}}"
@@ -53,7 +55,14 @@
                                                                                             Text="{x:Bind ViewModel.PredicateText, Mode=OneWay}" />
 
                 </StackPanel>
+
+          
             </AppBarElementContainer>
+            <AppBarButton Label="Step">
+                <AppBarButton.Icon>
+                    <FontIcon Glyph="&#xE8B5;" />
+                </AppBarButton.Icon>
+            </AppBarButton>
             <AppBarSeparator />
             <AppBarElementContainer>
                 <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
