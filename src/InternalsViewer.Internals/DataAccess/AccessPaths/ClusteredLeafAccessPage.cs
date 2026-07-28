@@ -26,6 +26,8 @@ public sealed class ClusteredLeafAccessPage(DataPage page, List<IRecord> records
 
     public byte Level => 0;
 
+    public bool IsRoot => page.AllocationUnit.RootPage == PageAddress;
+
     public bool IsLeaf => true;
 
     public int SlotCount => records.Count;

@@ -40,8 +40,8 @@ public static class PredicateEvaluator
         {
             AccessExpression.Constant constant 
                 => constant.Value,
-            AccessExpression.Column column 
-                => row.GetValue(column.Ordinal),
+            AccessExpression.Column column
+                => row.GetValue(column.Ordinal, column.Name),
             _ => throw new NotSupportedException(
                 $"Expression {expression.GetType().Name} is not supported.")
         };

@@ -120,7 +120,12 @@ public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal =
 
         var ordinal = ResolveOrdinal(column);
 
-        return ordinal is null ? null : new AccessExpression.Column(ordinal.Value, column.Column);
+        if (ordinal is null && string.IsNullOrEmpty(column.Table))
+        {
+            return null;
+        }
+
+        return new AccessExpression.Column(ordinal ?? -1, column.Column);
     }
 
     private static ColumnReference ReadColumnReference(XElement element)

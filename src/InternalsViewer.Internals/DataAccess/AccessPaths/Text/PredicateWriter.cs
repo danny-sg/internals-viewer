@@ -250,7 +250,7 @@ public static class PredicateWriter
         return value.ColumnName ?? $"Key{index + 1}";
     }
 
-    private static void WriteKeyValues(ImmutableArray<PredicateToken>.Builder tokens, AccessKey key, int length)
+    internal static void WriteKeyValues(ImmutableArray<PredicateToken>.Builder tokens, AccessKey key, int length)
     {
         var isComposite = length > 1;
 

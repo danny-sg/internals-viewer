@@ -10,5 +10,5 @@ public interface IRowValueSource
     /// <summary>
     /// Gets the value for a column ordinal, or a null value if the column is not present
     /// </summary>
-    AccessValue GetValue(int ordinal);
+    AccessValue GetValue(int ordinal, string? columnName = null);
 }

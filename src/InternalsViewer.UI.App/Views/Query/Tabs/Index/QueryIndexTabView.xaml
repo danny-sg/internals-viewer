@@ -204,6 +204,12 @@
                             </AppBarButton.Icon>
                         </AppBarButton>
 
+                        <AppBarButton Label="End" Command="{x:Bind ViewModel.RunToEndCommand}">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="&#xE893;" />
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+
                         <AppBarButton Label="Reset" Command="{x:Bind ViewModel.ResetStepCommand}">
                             <AppBarButton.Icon>
                                 <FontIcon Glyph="&#xE72C;" />
@@ -231,8 +237,10 @@
                     </CommandBar>
                 </Grid>
 
-                <accessSteps:AccessStepsControl 
-                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"  Grid.Row="1" StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}" CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
+                <accessSteps:AccessStepsControl Grid.Row="1"
+                                                Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                                StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}"
+                                                CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
                 <controls:GridSplitter Grid.Row="2"
                                        HorizontalAlignment="Stretch"
                                        VerticalAlignment="Stretch"
@@ -246,6 +254,7 @@
                     </controls:GridSplitter.Template>
                 </controls:GridSplitter>
                 <TabView Grid.Row="3"
+                         VerticalAlignment="Stretch"
                          IsAddTabButtonVisible="False"
                          CanReorderTabs="False"
                          TabWidthMode="SizeToContent"
@@ -257,11 +266,18 @@
                                               SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
                                               BorderThickness="0" />
                         </TabViewItem>
+               
                         <TabViewItem Header="Results" IsClosable="False">
                             <index:RecordGrid x:Name="ResultsGrid"
                                               HideSlotColumn="True"
                                               Records="{x:Bind ViewModel.ResultRecords, Mode=OneWay}"
                                               BorderThickness="0" />
+                        </TabViewItem>
+                        <TabViewItem Header="Details" IsClosable="False">
+                            <accessSteps:SeekStrategyPanel Strategy="{x:Bind ViewModel.Strategy, Mode=OneWay}"
+                                                           CurrentPhase="{x:Bind ViewModel.CurrentPhase, Mode=OneWay}"
+                                                           Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"
+                                                           IsWalkActive="{x:Bind ViewModel.IsWalkInProgress, Mode=OneWay}" />
                         </TabViewItem>
                     </TabView.TabItems>
                 </TabView>

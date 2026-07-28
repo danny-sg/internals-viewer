@@ -7,11 +7,10 @@ namespace InternalsViewer.Internals.Interfaces.DataAccess;
 /// A page as seen by an access path, exposing slot access for a single page
 /// </summary>
 /// <remarks>
-/// Implemented by heap data pages, which have no keys. Pages belonging to an index implement
-/// <see cref="IIndexAccessPage"/>, which adds key ordering and child page navigation.
+/// Implemented by heap data pages, which have no keys. Pages belonging to an index implement <see cref="IIndexAccessPage"/>, which adds
+/// key ordering and child page navigation.
 ///
-/// Moving between pages is the responsibility of the caller, so this contract describes one page
-/// in isolation.
+/// Moving between pages is the responsibility of the caller, so this contract describes one page in isolation.
 /// </remarks>
 public interface IAccessPage
 {
@@ -24,14 +23,12 @@ public interface IAccessPage
 
     bool IsLeaf { get; }
 
+    bool IsRoot { get;  }
+
     int SlotCount { get; }
 
     /// <summary>
     /// Gets the underlying record for a slot, used when evaluating residual predicates
     /// </summary>
-    /// <remarks>
-    /// Returns the common record contract so an index record, a clustered index leaf record and a
-    /// heap data record are all usable by the same access path.
-    /// </remarks>
     IRecord GetRecord(int slot);
 }

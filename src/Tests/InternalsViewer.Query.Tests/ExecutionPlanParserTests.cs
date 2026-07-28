@@ -556,7 +556,8 @@ public class ExecutionPlanParserTests
 
         Assert.NotNull(node.PredicateInfo);
         Assert.False(node.PredicateInfo!.HasSeekBounds);
-        Assert.True(node.PredicateInfo.Residual is not null || node.PredicateInfo.HasUntranslatedPredicate);
+        Assert.NotNull(node.PredicateInfo.Residual);
+        Assert.False(node.PredicateInfo.HasUntranslatedPredicate);
     }
 
     [Fact]

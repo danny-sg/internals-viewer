@@ -1,6 +1,9 @@
+using System.Data;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 using InternalsViewer.Internals.DataAccess.Executors;
 using InternalsViewer.Internals.Engine.Address;
 
@@ -154,6 +157,56 @@ public class PageSeekExecutorTests
         Assert.Equal(ScanDirection.Forward, probeStart.Direction);
         Assert.Empty(steps.OfType<AccessStep.Probe>());
         Assert.Equal(0, steps.OfType<AccessStep.ProbeResult>().Single().Slot);
+    }
+
+    [Fact]
+    public void Continuation_Page_Walks_From_The_First_Slot_Without_Probing()
+    {
+        var page = TestIndexPage.Create(60, 70, 80);
+
+        var bounds = SeekBounds.Between(TestKey.Of(50), TestKey.Of(75));
+
+        var executor = new PageSeekExecutor(new TestRowBinder());
+
+        var steps = executor.Execute(page, bounds, ScanDirection.Forward, isContinuation: true).ToList();
+
+        Assert.DoesNotContain(steps, s => s is AccessStep.ProbeStart or AccessStep.Probe or AccessStep.ProbeResult);
+
+        Assert.Equal(0, steps.OfType<AccessStep.Row>().First().Slot);
+        Assert.Equal(2, steps.OfType<AccessStep.RangeEnd>().Single().Slot);
+    }
+
+    [Fact]
+    public void Rows_Without_A_Residual_Are_Not_Tagged_As_Filtered()
+    {
+        var page = TestIndexPage.Create(10, 20, 30, 40, 50);
+
+        var steps = Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward);
+
+        Assert.All(steps.OfType<AccessStep.Row>(), r => Assert.False(r.HasResidual));
+    }
+
+    [Fact]
+    public void Residual_Rows_Are_Tagged_As_Filtered()
+    {
+        var page = TestIndexPage.Create(10, 20, 30);
+
+        var residual = new AccessPredicate.Comparison(
+            new AccessExpression.Column(-1, "Id"),
+            ComparisonOperator.GreaterThanOrEqual,
+            new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 20)));
+
+        var executor = new PageSeekExecutor(new TestRowBinder());
+
+        var steps = executor.Execute(page, SeekBounds.All, ScanDirection.Forward, residual).ToList();
+
+        var rows = steps.OfType<AccessStep.Row>().ToList();
+
+        Assert.Equal(3, rows.Count);
+        Assert.All(rows, r => Assert.True(r.HasResidual));
+        Assert.Equal(RowOutcome.NoMatch, rows[0].Outcome);
+        Assert.Equal(RowOutcome.Match, rows[1].Outcome);
+        Assert.Equal(RowOutcome.Match, rows[2].Outcome);
     }
 
     [Fact]

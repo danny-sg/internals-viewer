@@ -125,9 +125,28 @@ public class PredicateParserTests
     }
 
     [Fact]
-    public void Unresolvable_Column_Makes_The_Predicate_Untranslatable()
+    public void Unresolved_Table_Column_Falls_Back_To_Its_Name()
     {
         var xml = Compare("EQ", Identifier("OrderId"), Const("1"));
+
+        var parser = new PredicateParser(_ => null);
+
+        var comparison = Assert.IsType<AccessPredicate.Comparison>(parser.Parse(XElement.Parse(xml)));
+
+        var column = Assert.IsType<AccessExpression.Column>(comparison.Left);
+
+        Assert.Equal(-1, column.Ordinal);
+        Assert.Equal("OrderId", column.Name);
+    }
+
+    [Fact]
+    public void Unresolvable_Expression_Column_Makes_The_Predicate_Untranslatable()
+    {
+        var expression = """
+                         <ScalarOperator><Identifier><ColumnReference Column="Expr1002" /></Identifier></ScalarOperator>
+                         """;
+
+        var xml = Compare("EQ", expression, Const("1"));
 
         var parser = new PredicateParser(_ => null);
 

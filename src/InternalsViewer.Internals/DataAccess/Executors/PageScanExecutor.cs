@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+﻿using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.Interfaces.DataAccess;
@@ -23,9 +23,11 @@ public sealed class PageScanExecutor(IRowBinder rowBinder)
 
         var forward = direction == ScanDirection.Forward;
 
+        var hasResidual = residual is not (null or AccessPredicate.True);
+
         totals = Publish(totals.AddPageRead(), onCountersChanged);
 
-        yield return new AccessStep.ReadPage(page.PageAddress, page.Level, page.IsLeaf, page.SlotCount)
+        yield return new AccessStep.ReadPage(page.PageAddress, page.Level, page.IsRoot, page.IsLeaf, page.SlotCount)
         {
             Counters = totals
         };
@@ -40,7 +42,7 @@ public sealed class PageScanExecutor(IRowBinder rowBinder)
             {
                 totals = Publish(totals.AddGhostSkipped(), onCountersChanged);
 
-                yield return new AccessStep.Row(cursor, RowOutcome.Ghost) { Counters = totals };
+                yield return new AccessStep.Row(cursor, RowOutcome.Ghost) { HasResidual = hasResidual, Counters = totals };
 
                 cursor += forward ? 1 : -1;
 
@@ -61,7 +63,7 @@ public sealed class PageScanExecutor(IRowBinder rowBinder)
                 totals = Publish(totals.AddRowOutput(), onCountersChanged);
             }
 
-            yield return new AccessStep.Row(cursor, outcome) { Counters = totals };
+            yield return new AccessStep.Row(cursor, outcome) { HasResidual = hasResidual, Counters = totals };
 
             if (outcome == RowOutcome.Match && totals.RowsOutput == rowGoal)
             {

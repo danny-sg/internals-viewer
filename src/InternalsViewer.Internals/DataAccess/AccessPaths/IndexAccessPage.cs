@@ -26,6 +26,8 @@ public sealed class IndexAccessPage(IndexPage page, List<IIndexRecord> records, 
 
     public bool IsLeaf => Level == 0;
 
+    public bool IsRoot => page.AllocationUnit.RootPage == PageAddress;
+
     public int SlotCount => records.Count;
 
     public IRecord GetRecord(int slot) => records[slot];

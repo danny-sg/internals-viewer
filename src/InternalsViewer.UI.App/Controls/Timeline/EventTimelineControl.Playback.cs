@@ -26,6 +26,24 @@ public sealed partial class EventTimelineControl
     /// </summary>
     public event Action<bool>? PlayStateChanged;
 
+    public void MovePlayheadTo(long timeUs)
+    {
+        if (_sortedEvents.Count == 0 || ToUs(_playheadTime) == timeUs)
+        {
+            return;
+        }
+
+        _playheadTime = Math.Clamp(timeUs / 1000.0, _minTime, _maxTime);
+
+        SyncHandlesToPlayhead();
+
+        FirePlayhead();
+
+        EnsurePlayheadVisible();
+
+        _skCanvas.Invalidate();
+    }
+
     private void OnPlayPauseRequested()
     {
         if (_isPlaying)

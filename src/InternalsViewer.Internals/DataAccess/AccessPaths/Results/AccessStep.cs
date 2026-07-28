@@ -16,7 +16,7 @@ public abstract record AccessStep(StepLayer Layer, SeekPhase SeekPhase)
     /// <summary>
     /// A page was read and is now being examined
     /// </summary>
-    public sealed record ReadPage(PageAddress PageAddress, byte Level, bool IsLeaf, int SlotCount)
+    public sealed record ReadPage(PageAddress PageAddress, byte Level, bool IsRoot, bool IsLeaf, int SlotCount)
         : AccessStep(StepLayer.Page, SeekPhase.Descent);
 
     public sealed record ProbeStart(int SlotCount) : AccessStep(StepLayer.Search, SeekPhase.Descent)
@@ -68,7 +68,10 @@ public abstract record AccessStep(StepLayer Layer, SeekPhase SeekPhase)
     /// <summary>
     /// A row was examined
     /// </summary>
-    public sealed record Row(int Slot, RowOutcome Outcome) : AccessStep(StepLayer.Row, SeekPhase.Walk);
+    public sealed record Row(int Slot, RowOutcome Outcome) : AccessStep(StepLayer.Row, SeekPhase.Walk)
+    {
+        public bool HasResidual { get; init; }
+    }
 
     /// <summary>
     /// A key failed the trailing boundary test, ending the range
@@ -87,7 +90,10 @@ public abstract record AccessStep(StepLayer Layer, SeekPhase SeekPhase)
     /// <summary>
     /// A leaf level page link was followed
     /// </summary>
-    public sealed record LeafLink(PageAddress FromPage, PageAddress ToPage) : AccessStep(StepLayer.Page, SeekPhase.Descent);
+    public sealed record LeafLink(PageAddress FromPage, PageAddress ToPage) : AccessStep(StepLayer.Page, SeekPhase.Descent)
+    {
+        public ScanDirection Direction { get; init; }
+    }
 
     /// <summary>
     /// The access path stopped producing rows

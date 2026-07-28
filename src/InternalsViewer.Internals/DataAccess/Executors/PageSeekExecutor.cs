@@ -17,10 +17,11 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
                                            ScanDirection direction,
                                            AccessPredicate? residual = null,
                                            long? rowGoal = null,
+                                           bool isContinuation = false,
                                            AccessCounters counters = default,
                                            Action<AccessCounters>? onCountersChanged = null)
     {
-        return Walk(page, bounds, direction, residual, rowGoal, counters, onCountersChanged);
+        return Walk(page, bounds, direction, residual, rowGoal, isContinuation, counters, onCountersChanged);
     }
 
     private IEnumerable<AccessStep> Walk(IIndexAccessPage page,
@@ -28,88 +29,96 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
                                          ScanDirection direction,
                                          AccessPredicate? residual,
                                          long? rowGoal,
+                                         bool isContinuation,
                                          AccessCounters totals,
                                          Action<AccessCounters>? onCountersChanged)
     {
         var forward = direction == ScanDirection.Forward;
 
+        var hasResidual = residual is not (null or AccessPredicate.True);
+
         totals = Publish(totals.AddPageRead(), onCountersChanged);
 
-        yield return new AccessStep.ReadPage(page.PageAddress, page.Level, page.IsLeaf, page.SlotCount)
+        yield return new AccessStep.ReadPage(page.PageAddress, page.Level, page.IsRoot, page.IsLeaf, page.SlotCount)
         {
             Counters = totals
         };
 
-        var target = forward ? bounds.StartValue : bounds.EndValue;
-        var inclusive = forward ? bounds.IsStartInclusive : bounds.IsEndInclusive;
+        var cursor = forward ? 0 : page.SlotCount - 1;
 
-        var entry = forward ? 0 : page.SlotCount;
-
-        var width = 0;
-
-        SeekRule? rule = null;
-
-        if (!target.IsUnbounded)
+        if (!isContinuation)
         {
-            width = GetWidth(bounds, target);
+            var target = forward ? bounds.StartValue : bounds.EndValue;
+            var inclusive = forward ? bounds.IsStartInclusive : bounds.IsEndInclusive;
 
-            rule = forward
-                ? page.IsLeaf
-                    ? (inclusive ? SeekRule.LowestGreaterOrEqual : SeekRule.LowestGreater)
-                    : (inclusive ? SeekRule.HighestLess : SeekRule.HighestLessOrEqual)
-                : (inclusive ? SeekRule.HighestLessOrEqual : SeekRule.HighestLess);
-        }
+            var entry = forward ? 0 : page.SlotCount;
 
-        yield return new AccessStep.ProbeStart(page.SlotCount)
-        {
-            Rule = rule,
-            Target = target,
-            Width = width,
-            Direction = direction,
-            IsLeaf = page.IsLeaf,
-            Counters = totals
-        };
+            var width = 0;
 
-        if (!target.IsUnbounded)
-        {
-            var useLowerBound = forward ? inclusive : !inclusive;
+            SeekRule? rule = null;
 
-            var (bound, probes) = useLowerBound
-                ? AccessPathSearch.LowerBound(page, target, width)
-                : AccessPathSearch.UpperBound(page, target, width);
-
-            foreach (var probe in probes)
+            if (!target.IsUnbounded)
             {
-                totals = Publish(totals.AddComparisons(1), onCountersChanged);
+                width = GetWidth(bounds, target);
 
-                yield return probe with { Counters = totals };
+                rule = forward
+                    ? page.IsLeaf
+                        ? (inclusive ? SeekRule.LowestGreaterOrEqual : SeekRule.LowestGreater)
+                        : (inclusive ? SeekRule.HighestLess : SeekRule.HighestLessOrEqual)
+                    : (inclusive ? SeekRule.HighestLessOrEqual : SeekRule.HighestLess);
             }
 
-            entry = !page.IsLeaf && forward ? Math.Max(0, bound - 1) : bound;
-        }
-
-        var cursor = forward ? entry : entry - 1;
-
-        yield return new AccessStep.ProbeResult(cursor, cursor >= page.SlotCount || cursor < 0)
-        {
-            Rule = rule,
-            Target = target,
-            Width = width,
-            Counters = totals
-        };
-
-        if (!page.IsLeaf)
-        {
-            if (cursor < 0 || cursor >= page.SlotCount)
+            yield return new AccessStep.ProbeStart(page.SlotCount)
             {
-                yield return new AccessStep.Stopped(StopReason.PageExhausted) { Counters = totals };
+                Rule = rule,
+                Target = target,
+                Width = width,
+                Direction = direction,
+                IsLeaf = page.IsLeaf,
+                Counters = totals
+            };
+
+            if (!target.IsUnbounded)
+            {
+                var useLowerBound = forward ? inclusive : !inclusive;
+
+                var (bound, probes) = useLowerBound
+                    ? AccessPathSearch.LowerBound(page, target, width)
+                    : AccessPathSearch.UpperBound(page, target, width);
+
+                foreach (var probe in probes)
+                {
+                    totals = Publish(totals.AddComparisons(1), onCountersChanged);
+
+                    yield return probe with { Counters = totals };
+                }
+
+                entry = !page.IsLeaf && forward ? Math.Max(0, bound - 1) : bound;
+            }
+
+            cursor = forward ? entry : entry - 1;
+
+            yield return new AccessStep.ProbeResult(cursor, cursor >= page.SlotCount || cursor < 0)
+            {
+                Rule = rule,
+                Target = target,
+                Width = width,
+                Counters = totals
+            };
+
+            if (!page.IsLeaf)
+            {
+                if (cursor < 0 || cursor >= page.SlotCount)
+                {
+                    yield return new AccessStep.Stopped(StopReason.PageExhausted) { Counters = totals };
+
+                    yield break;
+                }
+
+                yield return new AccessStep.Descend(cursor, page.GetChildPage(cursor)) { Counters = totals };
 
                 yield break;
             }
-
-            yield return new AccessStep.Descend(cursor, page.GetChildPage(cursor)) { Counters = totals };
-
-            yield break;
         }
 
         while (forward ? cursor < page.SlotCount : cursor >= 0)
@@ -118,7 +127,7 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
             {
                 totals = Publish(totals.AddGhostSkipped(), onCountersChanged);
 
-                yield return new AccessStep.Row(cursor, RowOutcome.Ghost) { Counters = totals };
+                yield return new AccessStep.Row(cursor, RowOutcome.Ghost) { HasResidual = hasResidual, Counters = totals };
 
                 cursor += forward ? 1 : -1;
 
@@ -164,7 +173,7 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
                 totals = Publish(totals.AddRowOutput(), onCountersChanged);
             }
 
-            yield return new AccessStep.Row(cursor, outcome) { Counters = totals };
+            yield return new AccessStep.Row(cursor, outcome) { HasResidual = hasResidual, Counters = totals };
 
             if (outcome == RowOutcome.Match && totals.RowsOutput == rowGoal)
             {

@@ -176,7 +176,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<QueryResultSet> _resultSets = [];
 
     public QueryResultSet? ActiveResultSet => ResultSets.Count > 0 ? ResultSets[0] : null;
-    
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CallStackRoots))]
     private CallStackTree? _callStack;
@@ -471,6 +471,23 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly Dictionary<string, IndexTabViewModel> _openIndexes = new();
 
+
+    [RelayCommand]
+    public void OpenIndexes()
+    {
+        foreach (var op in ExecutionPlans.SelectMany(e => e.NodesById.Values)
+                                         .Where(v => !string.IsNullOrEmpty(v.Index) && 
+                                                     v.PhysicalOperator is "Index Seek" 
+                                                         or "Index Scan"
+                                                         or "Clustered Index Seek" 
+                                                         or "Clustered Index Scan"
+                                                         or "Key Lookup (Clustered)" 
+                                                         or "RID Lookup"))
+        {
+            OpenIndex(op);
+        }
+    }
+
     public void OpenIndex(ExecutionOperatorEvent op)
     {
         if (op.PlanNodeIdentifier is not null)
@@ -696,6 +713,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
+    public event Action<long>? PlayheadMoveRequested;
+
     private void OnIndexPageNavigated(object? sender, PageAddress pageAddress)
     {
         var readEndUs = GetFirstReadEndUs(pageAddress);
@@ -703,6 +722,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         if (readEndUs is not null)
         {
             SetPlayheadTime(readEndUs.Value);
+
+            PlayheadMoveRequested?.Invoke(readEndUs.Value);
         }
     }
 

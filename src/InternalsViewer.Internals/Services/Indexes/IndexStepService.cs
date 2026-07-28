@@ -58,6 +58,8 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
     public PageAddress? CurrentPageAddress => CurrentPage?.PageAddress;
 
+    public SeekStrategy? Strategy { get; private set; }
+
     public async Task StartAsync(DatabaseSource database,
                                  long allocationUnitId,
                                  PageAddress rootPageAddress,
@@ -71,6 +73,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
         Bounds = bounds;
         Residual = residual;
         RowGoal = GetRowGoal(IndexStructure, bounds);
+        Strategy = SeekStrategyBuilder.Build(IndexStructure, bounds, direction, RowGoal);
         Direction = direction;
         Counters = default;
         IsComplete = false;
@@ -114,11 +117,17 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
             if (nextPage != PageAddress.Empty)
             {
-                var link = new AccessStep.LeafLink(CurrentPage.PageAddress, nextPage) { Counters = Counters };
+                Counters = Counters.AddLeafLinkFollowed();
+
+                var link = new AccessStep.LeafLink(CurrentPage.PageAddress, nextPage)
+                {
+                    Direction = Direction,
+                    Counters = Counters
+                };
 
                 TakenSteps.Add(link);
 
-                await LoadPageAsync(nextPage, cancellationToken);
+                await LoadPageAsync(nextPage, cancellationToken, isContinuation: true);
 
                 IsComplete = false;
 
@@ -134,7 +143,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
         return step;
     }
 
-    private async Task LoadPageAsync(PageAddress pageAddress, CancellationToken cancellationToken)
+    private async Task LoadPageAsync(PageAddress pageAddress, CancellationToken cancellationToken, bool isContinuation = false)
     {
         var page = await PageService.GetPage(Database, pageAddress, cancellationToken);
 
@@ -150,7 +159,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
         var executor = new PageSeekExecutor(new RecordRowBinder());
 
-        CurrentPageSteps = executor.Execute(CurrentPage, Bounds, Direction, Residual, RowGoal, counters: Counters)
+        CurrentPageSteps = executor.Execute(CurrentPage, Bounds, Direction, Residual, RowGoal, isContinuation, counters: Counters)
                                    .GetEnumerator();
     }
 

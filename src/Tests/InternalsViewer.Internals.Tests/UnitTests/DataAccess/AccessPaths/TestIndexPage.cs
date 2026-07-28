@@ -28,6 +28,8 @@ internal sealed class TestIndexPage(PageAddress pageAddress,
 
     public byte Level { get; } = level;
 
+    public bool IsRoot { get; set; }
+
     public bool IsLeaf => Level == 0;
 
     public int SlotCount => Keys.Count;
@@ -112,8 +114,13 @@ internal sealed class TestRowValueSource(int key) : IRowValueSource
 {
     private int Key { get; } = key;
 
-    public AccessValue GetValue(int ordinal)
+    public AccessValue GetValue(int ordinal, string? columnName = null)
     {
-        return ordinal == 0 ? AccessValue.FromInteger(SqlDbType.Int, Key) : AccessValue.Null;
+        if (ordinal == 0 || (ordinal < 0 && columnName is not null))
+        {
+            return AccessValue.FromInteger(SqlDbType.Int, Key);
+        }
+
+        return AccessValue.Null;
     }
 }

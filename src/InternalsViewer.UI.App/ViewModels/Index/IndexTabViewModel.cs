@@ -186,6 +186,25 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private bool _isRunning;
 
+    [ObservableProperty]
+    private SeekStrategy? _strategy;
+
+    public SeekPhase? CurrentPhase => CurrentStep?.SeekPhase;
+
+    public AccessCounters CurrentCounters => CurrentStep?.Counters ?? default;
+
+    public bool IsWalkInProgress => IsStepping && !IsStepComplete;
+
+    partial void OnCurrentStepChanged(AccessStep? value)
+    {
+        OnPropertyChanged(nameof(CurrentPhase));
+        OnPropertyChanged(nameof(CurrentCounters));
+    }
+
+    partial void OnIsSteppingChanged(bool value) => OnPropertyChanged(nameof(IsWalkInProgress));
+
+    partial void OnIsStepCompleteChanged(bool value) => OnPropertyChanged(nameof(IsWalkInProgress));
+
     private const int RunStepDelayMs = 150;
 
     partial void OnPlanNodeChanged(PlanNode? value)
@@ -331,18 +350,23 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         var bounds = predicateInfo.SeekBounds[0];
 
-        await IndexStepService.StartAsync(Database,
-                                          AllocationUnit.AllocationUnitId,
-                                          RootPage,
-                                          bounds,
-                                          predicateInfo.Residual,
-                                          ScanDirection.Forward,
-                                          CancellationToken);
+        await Task.Run(() => IndexStepService.StartAsync(Database,
+                                                         AllocationUnit.AllocationUnitId,
+                                                         RootPage,
+                                                         bounds,
+                                                         predicateInfo.Residual,
+                                                         ScanDirection.Forward,
+                                                         CancellationToken),
+                       CancellationToken);
+
+        Strategy = IndexStepService.Strategy;
 
         IsStepping = true;
 
         await StepNext();
     }
+
+    private int _runDelayMs;
 
     [RelayCommand]
     public async Task Run()
@@ -356,6 +380,33 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         ClearStepState();
 
+        _runDelayMs = RunStepDelayMs;
+
+        await RunLoop();
+    }
+
+    [RelayCommand]
+    public async Task RunToEnd()
+    {
+        if (IsRunning)
+        {
+            _runDelayMs = 0;
+
+            return;
+        }
+
+        if (!IsStepping || IsStepComplete)
+        {
+            ClearStepState();
+        }
+
+        _runDelayMs = 0;
+
+        await RunLoop();
+    }
+
+    private async Task RunLoop()
+    {
         IsRunning = true;
 
         try
@@ -369,7 +420,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                     break;
                 }
 
-                await Task.Delay(RunStepDelayMs, CancellationToken);
+                if (_runDelayMs > 0)
+                {
+                    await Task.Delay(_runDelayMs, CancellationToken);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -395,6 +449,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         CurrentStep = null;
         SelectedSlot = null;
         ResultRecords = [];
+        Strategy = null;
         IsStepComplete = false;
         IsStepping = false;
     }
@@ -415,7 +470,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 return;
             }
 
-            var step = await IndexStepService.StepNextAsync(CancellationToken);
+            var step = await Task.Run(() => IndexStepService.StepNextAsync(CancellationToken), CancellationToken);
 
             if (step is null)
             {

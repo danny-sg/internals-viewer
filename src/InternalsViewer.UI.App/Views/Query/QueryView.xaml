@@ -60,6 +60,11 @@
                             <ToggleMenuFlyoutItem Text="Include System Objects"
                                                   IsChecked="{x:Bind ViewModel.QueryOptions.IncludeSystemObjects, Mode=TwoWay}"/>
                         </MenuBarItem>
+                        <MenuBarItem Title="Index">
+                            <MenuFlyoutItem Text="Open all indexes"
+                                            Command="{x:Bind ViewModel.OpenIndexesCommand}"/>
+
+                        </MenuBarItem>
 
                         <MenuBarItem Title="Events">
                             <MenuFlyoutSubItem Text="Locks">

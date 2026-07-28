@@ -20,6 +20,10 @@
             <converters:EnumToTextConverter x:Key="EnumToTextConverter" />
             <converters:ProbeStartToTextConverter x:Key="ProbeStartToTextConverter" />
             <converters:RangeEndToTextConverter x:Key="RangeEndToTextConverter" />
+            <converters:ReadPageToTextConverter x:Key="ReadPageToTextConverter" />
+            <converters:RowOutcomeToTextConverter x:Key="RowOutcomeToTextConverter" />
+            <converters:RowEmitToVisibilityConverter x:Key="RowEmitToVisibilityConverter" />
+            <converters:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
 
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
@@ -58,6 +62,9 @@
                     <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                         <TextBlock Text="Read Page" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="{Binding Converter={StaticResource ReadPageToTextConverter}}"
+                                   Style="{StaticResource StepPropertyStyle}"
+                                   Margin="4,0,0,0" />
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -119,8 +126,8 @@
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Descend" Style="{StaticResource StepLabelStyle}" />
-                        <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" />
-                        <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" Width="34" />
+                        <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" Width="80"/>
                         <TextBlock Text="Down Page Pointer" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding ChildPage}" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
@@ -133,7 +140,7 @@
                         <TextBlock Text="Probe Result" Style="{StaticResource StepLabelStyle}" />
                         <StackPanel Orientation="Vertical">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" />
+                                <TextBlock Text="Slot" Width="34" Style="{StaticResource StepPropertyStyle}" />
                                 <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
@@ -151,11 +158,22 @@
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Row" Style="{StaticResource StepLabelStyle}" />
-                        <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" />
-                        <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Text="Outcome" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
-                        <TextBlock Text="{Binding Outcome, Converter={StaticResource EnumToTextConverter}}"
+                        <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}"/>
+                        <TextBlock Text="{Binding Slot}" Width="34" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Outcome" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding Converter={StaticResource RowOutcomeToTextConverter}}"
                                    Style="{StaticResource StepValueStyle}" />
+                        <Border Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
+                                Background="{ThemeResource SystemFillColorSuccessBrush}"
+                                BorderBrush="#0B5D0B"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="6,0,6,1"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="→ Emit"
+                                       Foreground="White"
+                                       FontSize="11" />
+                        </Border>
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -167,7 +185,7 @@
                         <StackPanel Orientation="Vertical">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" />
-                                <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
+                                <TextBlock Text="{Binding Slot}" Width="34" Style="{StaticResource StepValueStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
@@ -187,7 +205,9 @@
                         <TextBlock Text="Leaf Link" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="From" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding FromPage}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Text="To" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding Converter={StaticResource LeafLinkToTextConverter}}"
+                                   Style="{StaticResource StepPropertyStyle}"
+                                   Margin="8,0,0,0" />
                         <TextBlock Text="{Binding ToPage}" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                 </Grid>
