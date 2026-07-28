@@ -398,4 +398,182 @@ public class ExecutionPlanParserTests
 
         Assert.Equal(0.0032875, plan.Root[0].EstimatedCost);
     }
+
+    // ------------------------------------------------------------------
+    // Range seek predicates
+    // ------------------------------------------------------------------
+
+    private const string RangeSeekXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.0032875">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="Clustered Index Seek"
+                           LogicalOp="Clustered Index Seek"
+                           EstimatedTotalSubtreeCost="0.0032875"
+                           EstimateRows="399"
+                           AvgRowSize="11"
+                           Parallel="0">
+                      <OutputList>
+                        <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                         Table="[ClusteredTable]" Column="Id"/>
+                      </OutputList>
+                      <IndexScan Ordered="1" ScanDirection="FORWARD" ForcedIndex="0"
+                                 ForceSeek="0" ForceScan="0" NoExpandHint="0"
+                                 Storage="RowStore">
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                             Table="[ClusteredTable]" Column="Id"/>
+                          </DefinedValue>
+                        </DefinedValues>
+                        <Object Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                Table="[ClusteredTable]" Index="[PK_ClusteredTable]"
+                                IndexKind="Clustered"/>
+                        <SeekPredicates>
+                          <SeekPredicateNew>
+                            <SeekKeys>
+                              <StartRange ScanType="GT">
+                                <RangeColumns>
+                                  <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                                   Table="[ClusteredTable]" Column="Id"/>
+                                </RangeColumns>
+                                <RangeExpressions>
+                                  <ScalarOperator ScalarString="CONVERT_IMPLICIT(int,[@1],0)">
+                                    <Convert DataType="int" Style="0" Implicit="1">
+                                      <ScalarOperator>
+                                        <Identifier>
+                                          <ColumnReference Column="@1"/>
+                                        </Identifier>
+                                      </ScalarOperator>
+                                    </Convert>
+                                  </ScalarOperator>
+                                </RangeExpressions>
+                              </StartRange>
+                              <EndRange ScanType="LT">
+                                <RangeColumns>
+                                  <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                                   Table="[ClusteredTable]" Column="Id"/>
+                                </RangeColumns>
+                                <RangeExpressions>
+                                  <ScalarOperator ScalarString="CONVERT_IMPLICIT(int,[@2],0)">
+                                    <Convert DataType="int" Style="0" Implicit="1">
+                                      <ScalarOperator>
+                                        <Identifier>
+                                          <ColumnReference Column="@2"/>
+                                        </Identifier>
+                                      </ScalarOperator>
+                                    </Convert>
+                                  </ScalarOperator>
+                                </RangeExpressions>
+                              </EndRange>
+                            </SeekKeys>
+                          </SeekPredicateNew>
+                        </SeekPredicates>
+                      </IndexScan>
+                    </RelOp>
+                    <ParameterList>
+                      <ColumnReference Column="@1" ParameterCompiledValue="(100)"/>
+                      <ColumnReference Column="@2" ParameterCompiledValue="(500)"/>
+                    </ParameterList>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    private const string ScanWithResidualXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.5">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="Clustered Index Scan"
+                           LogicalOp="Clustered Index Scan"
+                           EstimatedTotalSubtreeCost="0.5"
+                           EstimateRows="100"
+                           AvgRowSize="11"
+                           Parallel="0">
+                      <OutputList>
+                        <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                         Table="[ClusteredTable]" Column="Id"/>
+                      </OutputList>
+                      <IndexScan Ordered="0" ForcedIndex="0" ForceScan="0" NoExpandHint="0"
+                                 Storage="RowStore">
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                             Table="[ClusteredTable]" Column="Id"/>
+                          </DefinedValue>
+                        </DefinedValues>
+                        <Object Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                Table="[ClusteredTable]" Index="[PK_ClusteredTable]"
+                                IndexKind="Clustered"/>
+                        <Predicate>
+                          <ScalarOperator ScalarString="[InternalsViewerDemo].[dbo].[ClusteredTable].[Id]&lt;=(100)">
+                            <Compare CompareOp="LE">
+                              <ScalarOperator>
+                                <Identifier>
+                                  <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                                   Table="[ClusteredTable]" Column="Id"/>
+                                </Identifier>
+                              </ScalarOperator>
+                              <ScalarOperator>
+                                <Const ConstValue="(100)"/>
+                              </ScalarOperator>
+                            </Compare>
+                          </ScalarOperator>
+                        </Predicate>
+                      </IndexScan>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void Scan_Residual_Predicate_Inside_IndexScan_Is_Found()
+    {
+        var plan = Parse(ScanWithResidualXml);
+
+        var node = plan.NodesById[0];
+
+        Assert.NotNull(node.PredicateInfo);
+        Assert.False(node.PredicateInfo!.HasSeekBounds);
+        Assert.True(node.PredicateInfo.Residual is not null || node.PredicateInfo.HasUntranslatedPredicate);
+    }
+
+    [Fact]
+    public void Range_Seek_Predicate_Produces_Seek_Bounds()
+    {
+        var plan = Parse(RangeSeekXml);
+
+        var node = plan.NodesById[0];
+
+        Assert.NotNull(node.PredicateInfo);
+        Assert.True(node.PredicateInfo!.HasSeekBounds);
+
+        var bounds = Assert.Single(node.PredicateInfo.SeekBounds);
+
+        Assert.False(bounds.IsStartInclusive);
+        Assert.False(bounds.IsEndInclusive);
+        Assert.Equal(100, bounds.StartValue.Values[0].Numeric);
+        Assert.Equal(500, bounds.EndValue.Values[0].Numeric);
+    }
 }

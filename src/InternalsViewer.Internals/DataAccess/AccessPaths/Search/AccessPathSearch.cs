@@ -51,9 +51,16 @@ public static class AccessPathSearch
 
             var comparison = page.CompareKeyPrefix(middle, target, width);
 
-            probes.Add(new AccessStep.Probe(low, high, middle, comparison));
-
             var searchRight = findFirstGreaterThan ? comparison <= 0 : comparison < 0;
+
+            probes.Add(new AccessStep.Probe(low, high, middle, comparison)
+            {
+                Key = page.GetKey(middle),
+                Target = target,
+                Width = width,
+                SearchRight = searchRight,
+                SlotCount = page.SlotCount
+            });
 
             if (searchRight)
             {

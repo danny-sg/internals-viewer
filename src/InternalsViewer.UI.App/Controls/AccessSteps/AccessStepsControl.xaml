@@ -6,58 +6,111 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
+    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
+    xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
+    xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
     x:Name="Root"
     mc:Ignorable="d">
 
     <UserControl.Resources>
         <ResourceDictionary>
+            <converters:AccessStepToPredicateTextConverter x:Key="AccessStepToPredicateTextConverter" />
+            <converters:ProbeDirectionToTextConverter x:Key="ProbeDirectionToTextConverter" />
+            <converters:SeekRuleToTextConverter x:Key="SeekRuleToTextConverter" />
+            <converters:EnumToTextConverter x:Key="EnumToTextConverter" />
+            <converters:ProbeStartToTextConverter x:Key="ProbeStartToTextConverter" />
+            <converters:RangeEndToTextConverter x:Key="RangeEndToTextConverter" />
+
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
-                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="VerticalAlignment" Value="Top" />
                 <Setter Property="Margin" Value="0,0,8,0" />
-            </Style>
+                <Setter Property="Width" Value="80" />
 
-            <Style x:Key="StepSeparatorStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorDisabledBrush}" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Margin" Value="8,0,8,0" />
-                <Setter Property="Text" Value="|" />
             </Style>
 
             <Style x:Key="StepValueStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Padding" Value="0,0,4,0" />
+            </Style>
+
+            <Style x:Key="StepPropertyStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorDisabledBrush}" />
+                <Setter Property="Padding" Value="0,0,4,0" />
+            </Style>
+
+            <Style x:Key="StepDetailStyle" TargetType="predicates:PredicateTextBox">
+                <Setter Property="TextPadding" Value="0,2,0,0" />
+                <Setter Property="HasBackground" Value="False" />
             </Style>
 
             <Style x:Key="StepRowStyle" TargetType="Grid">
                 <Setter Property="Padding" Value="8,4,8,4" />
             </Style>
 
-            <DataTemplate x:Key="EnterPageTemplate" >
+            <DataTemplate x:Key="ReadPageTemplate" >
+                <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
+                        <TextBlock Text="Read Page" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ProbeStartTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Enter Page" Style="{StaticResource StepLabelStyle}" />
-                        <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Style="{StaticResource StepSeparatorStyle}" />
-                        <TextBlock Text="{Binding Level}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Style="{StaticResource StepSeparatorStyle}" />
-                        <TextBlock Text="{Binding IsLeaf}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Probe Start" Style="{StaticResource StepLabelStyle}" />
+                        <StackPanel Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Slot Count" Style="{StaticResource StepPropertyStyle}" />
+                                <TextBlock Text="{Binding SlotCount}" Style="{StaticResource StepValueStyle}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Rule, Converter={StaticResource SeekRuleToTextConverter}}"
+                                           Style="{StaticResource StepValueStyle}" />
+                                <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                                                             Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
+                                <TextBlock Text="{Binding Converter={StaticResource ProbeStartToTextConverter}}"
+                                           Style="{StaticResource StepPropertyStyle}"
+                                           Margin="4,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </DataTemplate>
 
             <DataTemplate x:Key="ProbeTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Probe" Style="{StaticResource StepLabelStyle}" />
-                        <TextBlock Text="{Binding High}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Text="-" Style="{StaticResource StepSeparatorStyle}" />
-                        <TextBlock Text="{Binding Low}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Style="{StaticResource StepSeparatorStyle}" />
-                        <TextBlock Text="{Binding Middle}" Style="{StaticResource StepValueStyle}" />
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Probe" Style="{StaticResource StepLabelStyle}" />
+                    <StackPanel Grid.Column="1" Orientation="Vertical">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Slot (Mid)" Style="{StaticResource StepPropertyStyle}" />
+                            <TextBlock Text="{Binding Middle}" Style="{StaticResource StepValueStyle}" />
+
+                            <TextBlock Text="Low" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                            <TextBlock Text="{Binding Low}" Style="{StaticResource StepValueStyle}" />
+
+                            <TextBlock Text="High (Exclusive)" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                            <TextBlock Text="{Binding High}" Style="{StaticResource StepValueStyle}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                                                         Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
+                            <TextBlock Text="{Binding SearchRight, Converter={StaticResource ProbeDirectionToTextConverter}}"
+                                       Style="{StaticResource StepValueStyle}"
+                                       Margin="8,0,0,0" />
+                        </StackPanel>
+                        <accessSteps:ProbeRangeBar Probe="{Binding}" Margin="0,4,4,1" HorizontalAlignment="Stretch" />
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -66,20 +119,30 @@
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Descend" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Style="{StaticResource StepSeparatorStyle}" />
+                        <TextBlock Text="Down Page Pointer" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding ChildPage}" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                 </Grid>
             </DataTemplate>
 
-            <DataTemplate x:Key="EntryPointTemplate" >
+            <DataTemplate x:Key="ProbeResultTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Entry Point" Style="{StaticResource StepLabelStyle}" />
-                        <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Style="{StaticResource StepSeparatorStyle}" />
-                        <TextBlock Text="{Binding PastEnd}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Probe Result" Style="{StaticResource StepLabelStyle}" />
+                        <StackPanel Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" />
+                                <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Rule, Converter={StaticResource SeekRuleToTextConverter}}"
+                                           Style="{StaticResource StepValueStyle}" />
+                                <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                                                             Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -88,9 +151,11 @@
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Row" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Style="{StaticResource StepSeparatorStyle}" />
-                        <TextBlock Text="{Binding Outcome}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Outcome" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding Outcome, Converter={StaticResource EnumToTextConverter}}"
+                                   Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -99,7 +164,19 @@
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Range End" Style="{StaticResource StepLabelStyle}" />
-                        <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
+                        <StackPanel Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" />
+                                <TextBlock Text="{Binding Slot}" Style="{StaticResource StepValueStyle}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                                                             Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
+                                <TextBlock Text="{Binding Converter={StaticResource RangeEndToTextConverter}}"
+                                           Style="{StaticResource StepPropertyStyle}"
+                                           Margin="8,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -108,8 +185,9 @@
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Leaf Link" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="From" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding FromPage}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Style="{StaticResource StepSeparatorStyle}" />
+                        <TextBlock Text="To" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding ToPage}" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                 </Grid>
@@ -119,7 +197,8 @@
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Stopped" Style="{StaticResource StepLabelStyle}" />
-                        <TextBlock Text="{Binding Reason}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="{Binding Reason, Converter={StaticResource EnumToTextConverter}}"
+                                   Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -132,10 +211,11 @@
 
             <selectors:AccessStepTemplateSelector
                 x:Key="AccessStepTemplateSelector"
-                EnterPageTemplate="{StaticResource EnterPageTemplate}"
+                ReadPageTemplate="{StaticResource ReadPageTemplate}"
+                ProbeStartTemplate="{StaticResource ProbeStartTemplate}"
                 ProbeTemplate="{StaticResource ProbeTemplate}"
                 DescendTemplate="{StaticResource DescendTemplate}"
-                EntryPointTemplate="{StaticResource EntryPointTemplate}"
+                ProbeResultTemplate="{StaticResource ProbeResultTemplate}"
                 RowTemplate="{StaticResource RowTemplate}"
                 RangeEndTemplate="{StaticResource RangeEndTemplate}"
                 LeafLinkTemplate="{StaticResource LeafLinkTemplate}"
@@ -145,6 +225,7 @@
     </UserControl.Resources>
 
     <ListView x:Name="StepsList"
+              Background="{x:Bind Background, Mode=OneWay}"
               ItemsSource="{x:Bind StepHistory, Mode=OneWay}"
               SelectedItem="{x:Bind CurrentStep, Mode=OneWay}"
               ItemTemplateSelector="{StaticResource AccessStepTemplateSelector}"

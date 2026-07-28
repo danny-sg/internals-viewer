@@ -25,14 +25,14 @@ public sealed class PageScanExecutor(IRowBinder rowBinder)
 
         totals = Publish(totals.AddPageRead(), onCountersChanged);
 
-        yield return new AccessStep.EnterPage(page.PageAddress, page.Level, page.IsLeaf, page.SlotCount)
+        yield return new AccessStep.ReadPage(page.PageAddress, page.Level, page.IsLeaf, page.SlotCount)
         {
             Counters = totals
         };
 
         var cursor = forward ? 0 : page.SlotCount - 1;
 
-        yield return new AccessStep.EntryPoint(cursor, page.SlotCount == 0) { Counters = totals };
+        yield return new AccessStep.ProbeResult(cursor, page.SlotCount == 0) { Counters = totals };
 
         while (forward ? cursor < page.SlotCount : cursor >= 0)
         {

@@ -23,28 +23,38 @@ public static class AccessValueFactory
 
         return dataType switch
         {
-            SqlDbType.BigInt => AccessValue.FromInteger(dataType, field.GetValue<long>()),
-            SqlDbType.Int => AccessValue.FromInteger(dataType, field.GetValue<int>()),
-            SqlDbType.SmallInt => AccessValue.FromInteger(dataType, field.GetValue<short>()),
-            SqlDbType.TinyInt => AccessValue.FromInteger(dataType, field.GetValue<byte>()),
-            SqlDbType.Bit => AccessValue.FromInteger(dataType, field.GetValue<bool>() ? 1 : 0),
+            SqlDbType.BigInt 
+                => AccessValue.FromInteger(dataType, field.GetValue<long>()),
+            SqlDbType.Int 
+                => AccessValue.FromInteger(dataType, field.GetValue<int>()),
+            SqlDbType.SmallInt 
+                => AccessValue.FromInteger(dataType, field.GetValue<short>()),
+            SqlDbType.TinyInt 
+                => AccessValue.FromInteger(dataType, field.GetValue<byte>()),
+            SqlDbType.Bit 
+                => AccessValue.FromInteger(dataType, field.GetValue<bool>() ? 1 : 0),
 
             SqlDbType.DateTime
                 or SqlDbType.SmallDateTime
                 or SqlDbType.Date
-                or SqlDbType.DateTime2 => AccessValue.FromInteger(dataType, field.GetValue<DateTime>().Ticks),
+                or SqlDbType.DateTime2 
+                => AccessValue.FromInteger(dataType, field.GetValue<DateTime>().Ticks),
 
-            SqlDbType.Time => AccessValue.FromInteger(dataType, field.GetValue<TimeSpan>().Ticks),
+            SqlDbType.Time 
+                => AccessValue.FromInteger(dataType, field.GetValue<TimeSpan>().Ticks),
 
             SqlDbType.DateTimeOffset
                 => AccessValue.FromInteger(dataType, field.GetValue<DateTimeOffset>().UtcTicks),
 
-            SqlDbType.Float => AccessValue.FromReal(dataType, field.GetValue<double>()),
-            SqlDbType.Real => AccessValue.FromReal(dataType, field.GetValue<float>()),
+            SqlDbType.Float 
+                => AccessValue.FromReal(dataType, field.GetValue<double>()),
+            SqlDbType.Real 
+                => AccessValue.FromReal(dataType, field.GetValue<float>()),
 
             SqlDbType.Decimal
                 or SqlDbType.Money
-                or SqlDbType.SmallMoney => AccessValue.FromDecimal(dataType, field.GetValue<decimal>()),
+                or SqlDbType.SmallMoney 
+                => AccessValue.FromDecimal(dataType, field.GetValue<decimal>()),
 
             SqlDbType.UniqueIdentifier
                 => AccessValue.FromBytes(dataType, field.GetValue<Guid>().ToByteArray()),

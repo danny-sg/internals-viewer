@@ -140,6 +140,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private ObservableCollection<IndexRecordModel> _records = [];
 
     [ObservableProperty]
+    private ObservableCollection<IndexRecordModel> _resultRecords = [];
+
+    [ObservableProperty]
     private PageAddress? _selectedPageAddress;
 
     [ObservableProperty]
@@ -158,10 +161,15 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private int? _selectedLevel;
 
     [ObservableProperty]
+    private int? _selectedSlot;
+
+    [ObservableProperty]
     private ObservableCollection<PageAddress> _highlightedPages = [];
 
     [ObservableProperty]
     private PlanNode? _planNode;
+
+    public event EventHandler<PageAddress>? PageNavigated;
 
     [ObservableProperty]
     private ObservableCollection<AccessStep> _stepHistory = [];
@@ -175,8 +183,15 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private bool _isStepComplete;
 
+    [ObservableProperty]
+    private bool _isRunning;
+
+    private const int RunStepDelayMs = 150;
+
     partial void OnPlanNodeChanged(PlanNode? value)
     {
+        ClearStepState();
+        
         OnPropertyChanged(nameof(PredicateText));
         OnPropertyChanged(nameof(IconSource));
         OnPropertyChanged(nameof(HasPredicate));
@@ -312,9 +327,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             return;
         }
 
-        StepHistory.Clear();
-        CurrentStep = null;
-        IsStepComplete = false;
+        ClearStepState();
 
         var bounds = predicateInfo.SeekBounds[0];
 
@@ -332,36 +345,130 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     }
 
     [RelayCommand]
+    public async Task Run()
+    {
+        if (IsRunning)
+        {
+            IsRunning = false;
+
+            return;
+        }
+
+        ClearStepState();
+
+        IsRunning = true;
+
+        try
+        {
+            while (IsRunning && !IsStepComplete)
+            {
+                await StepNext();
+
+                if (!IsStepping || IsStepComplete)
+                {
+                    break;
+                }
+
+                await Task.Delay(RunStepDelayMs, CancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+    }
+
+    [RelayCommand]
+    public void ResetStep()
+    {
+        IsRunning = false;
+
+        ClearStepState();
+    }
+
+    private void ClearStepState()
+    {
+        StepHistory.Clear();
+        CurrentStep = null;
+        SelectedSlot = null;
+        ResultRecords = [];
+        IsStepComplete = false;
+        IsStepping = false;
+    }
+
+    [RelayCommand]
     public async Task StepNext()
     {
-        if (!IsStepping || IsStepComplete)
+        while (true)
         {
-            return;
-        }
+            if (!IsStepping)
+            {
+                await StartStep();
 
-        var step = await IndexStepService.StepNextAsync(CancellationToken);
+                return;
+            }
+            if (IsStepComplete)
+            {
+                return;
+            }
 
-        if (step is null)
-        {
-            IsStepComplete = true;
+            var step = await IndexStepService.StepNextAsync(CancellationToken);
 
-            return;
-        }
+            if (step is null)
+            {
+                IsStepComplete = true;
 
-        StepHistory.Insert(0, step);
+                return;
+            }
 
-        CurrentStep = step;
+            StepHistory.Insert(0, step);
 
-        if (step is AccessStep.Stopped)
-        {
-            IsStepComplete = true;
-        }
+            CurrentStep = step;
 
-        var pageAddress = IndexStepService.CurrentPageAddress;
+            SelectedSlot = step switch
+            {
+                AccessStep.Probe probe => probe.Middle,
+                AccessStep.ProbeResult probeResult => probeResult.Slot,
+                AccessStep.Row row => row.Slot,
+                AccessStep.RangeEnd rangeEnd => rangeEnd.Slot,
+                _ => null
+            };
 
-        if (pageAddress is not null && pageAddress != SelectedPageAddress)
-        {
-            await LoadPage(pageAddress.Value);
+            if (step is AccessStep.Row { Outcome: RowOutcome.Match } match)
+            {
+                var record = Records.FirstOrDefault(r => r.Slot == match.Slot);
+
+                if (record is not null)
+                {
+                    ResultRecords = new ObservableCollection<IndexRecordModel>([.. ResultRecords, record]);
+                }
+            }
+
+            if (step is AccessStep.Stopped)
+            {
+                IsStepComplete = true;
+            }
+
+            if (step is AccessStep.Descend)
+            {
+                continue;
+            }
+
+            var pageAddress = IndexStepService.CurrentPageAddress;
+
+            if (pageAddress is not null && pageAddress != SelectedPageAddress)
+            {
+                SelectedPageAddress = pageAddress;
+
+                await LoadPage(pageAddress.Value);
+
+                PageNavigated?.Invoke(this, pageAddress.Value);
+            }
+
+            break;
         }
     }
 

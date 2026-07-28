@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using Windows.System;
 using Windows.UI.Core;
@@ -12,6 +13,7 @@ using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
@@ -54,6 +56,18 @@ public sealed partial class IndexControl : IDisposable
     public static readonly DependencyProperty SelectedPageAddressProperty
         = DependencyProperty.Register(nameof(SelectedPageAddress),
                                       typeof(PageAddress?),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
+
+    public float? ZoomToSelectedPageAddress
+    {
+        get => (float?)GetValue(ZoomToSelectedPageAddressProperty);
+        set => SetValue(ZoomToSelectedPageAddressProperty, value);
+    }
+
+    public static readonly DependencyProperty ZoomToSelectedPageAddressProperty
+        = DependencyProperty.Register(nameof(ZoomToSelectedPageAddress),
+                                      typeof(float?),
                                       typeof(IndexControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
@@ -222,6 +236,19 @@ public sealed partial class IndexControl : IDisposable
     private readonly Dictionary<PageAddress, int> _ordinalByAddress = [];
     private int _levelCount;
 
+    private readonly Dictionary<PageAddress, IndexTreeNode> _treeNodeByAddress = [];
+
+    private const float ZoomToPageDurationMs = 450f;
+
+    private readonly Stopwatch _zoomToPageStopwatch = new();
+
+    private bool _isZoomToPageRunning;
+    private PageAddress _zoomToPageTargetAddress;
+    private float _zoomToPageStartZoom;
+    private float _zoomToPageTargetZoom;
+    private float _zoomToPageStartLookAtX;
+    private float _zoomToPageStartLookAtY;
+
     private float NodeX(IndexTreeNode node) => GetNodeX(node.Column - 1);
 
     private float NodeY(IndexTreeNode node) => GetNodeY(node.Node.Level, node.Row - 1);
@@ -317,6 +344,12 @@ public sealed partial class IndexControl : IDisposable
         if (e.Property == NodesProperty || (e.Property == IsZoomToFitProperty && control._isZoomToFit))
         {
             control.ApplyZoomToFit();
+        }
+
+        if (e.Property == ZoomToSelectedPageAddressProperty ||
+            (e.Property == SelectedPageAddressProperty && control.ZoomToSelectedPageAddress is > 0))
+        {
+            control.StartZoomToSelectedPage();
         }
 
         control.IndexCanvas.Invalidate();
@@ -470,6 +503,7 @@ public sealed partial class IndexControl : IDisposable
         _levelMaxColumnAfterParent.Clear();
         _levelMaxColumnBeforeParent.Clear();
         _ordinalByAddress.Clear();
+        _treeNodeByAddress.Clear();
 
         _globalMaxColumn = 0;
         _levelCount = 0;
@@ -493,6 +527,8 @@ public sealed partial class IndexControl : IDisposable
 
         foreach (var treeNode in _nodePositions)
         {
+            _treeNodeByAddress[treeNode.Node.PageAddress] = treeNode;
+
             var level = treeNode.Node.Level;
 
             if (!_nodesByLevel.TryGetValue(level, out var list))
@@ -1122,6 +1158,84 @@ public sealed partial class IndexControl : IDisposable
         }
     }
 
+    private void StartZoomToSelectedPage()
+    {
+        var targetZoom = ZoomToSelectedPageAddress;
+        var address = SelectedPageAddress;
+
+        if (targetZoom is not > 0 || address is null || !_treeNodeByAddress.ContainsKey(address.Value))
+        {
+            StopZoomToSelectedPage();
+
+            return;
+        }
+
+        _zoomToPageTargetAddress = address.Value;
+        _zoomToPageTargetZoom = Math.Clamp(targetZoom.Value, MinZoom, MaxZoom);
+        _zoomToPageStartZoom = _zoom;
+
+        _zoomToPageStartLookAtX = (float)((HorizontalScrollBar.Value + IndexCanvas.ActualWidth / 2) / _zoom);
+        _zoomToPageStartLookAtY = (float)((VerticalScrollBar.Value + IndexCanvas.ActualHeight / 2) / _zoom);
+
+        _zoomToPageStopwatch.Restart();
+
+        if (!_isZoomToPageRunning)
+        {
+            _isZoomToPageRunning = true;
+
+            CompositionTarget.Rendering += ZoomToPage_Rendering;
+        }
+    }
+
+    private void ZoomToPage_Rendering(object? sender, object e)
+    {
+        if (!_treeNodeByAddress.TryGetValue(_zoomToPageTargetAddress, out var target))
+        {
+            StopZoomToSelectedPage();
+
+            return;
+        }
+
+        var t = Math.Clamp(_zoomToPageStopwatch.ElapsedMilliseconds / ZoomToPageDurationMs, 0f, 1f);
+
+        var eased = t < 0.5f ? 4f * t * t * t : 1f - MathF.Pow(-2f * t + 2f, 3f) / 2f;
+
+        Zoom = _zoomToPageStartZoom + (_zoomToPageTargetZoom - _zoomToPageStartZoom) * eased;
+
+        var targetLookAtX = (GetLevelStartX(target.Node.Level) + GetNodeX(target.Column - 1) + PageWidth / 2) / _zoom;
+        var targetLookAtY = (NodeY(target) + PageHeight / 2) / _zoom;
+
+        var lookAtX = (_zoomToPageStartLookAtX + (targetLookAtX - _zoomToPageStartLookAtX) * eased) * _zoom;
+        var lookAtY = (_zoomToPageStartLookAtY + (targetLookAtY - _zoomToPageStartLookAtY) * eased) * _zoom;
+
+        if (HorizontalScrollBar.Maximum > 0)
+        {
+            HorizontalScrollBar.Value = Math.Clamp(lookAtX - IndexCanvas.ActualWidth / 2, 0, HorizontalScrollBar.Maximum);
+        }
+
+        if (VerticalScrollBar.Maximum > 0)
+        {
+            VerticalScrollBar.Value = Math.Clamp(lookAtY - IndexCanvas.ActualHeight / 2, 0, VerticalScrollBar.Maximum);
+        }
+
+        IndexCanvas.Invalidate();
+
+        if (t >= 1f)
+        {
+            StopZoomToSelectedPage();
+        }
+    }
+
+    private void StopZoomToSelectedPage()
+    {
+        if (_isZoomToPageRunning)
+        {
+            _isZoomToPageRunning = false;
+
+            CompositionTarget.Rendering -= ZoomToPage_Rendering;
+        }
+    }
+
     private void ScrollBar_OnScroll(object sender, ScrollEventArgs e)
     {
         IndexCanvas.Invalidate();
@@ -1148,6 +1262,8 @@ public sealed partial class IndexControl : IDisposable
 
     private void IndexCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        StopZoomToSelectedPage();
+
         var position = e.GetCurrentPoint(this).Position;
 
         _isPointerDown = true;
@@ -1270,6 +1386,8 @@ public sealed partial class IndexControl : IDisposable
             return;
         }
 
+        StopZoomToSelectedPage();
+
         var oldZoom = _zoom;
         var factor = delta > 0 ? 1.1f : 1f / 1.1f;
         var newZoom = Math.Clamp(oldZoom * factor, MinZoom, MaxZoom);
@@ -1355,6 +1473,8 @@ public sealed partial class IndexControl : IDisposable
 
     public void Dispose()
     {
+        StopZoomToSelectedPage();
+
         _indexPagePaint.Dispose();
         _linePaint.Dispose();
         _detailTextPaint.Dispose();

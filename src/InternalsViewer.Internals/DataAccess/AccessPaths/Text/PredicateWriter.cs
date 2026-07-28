@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 
@@ -36,6 +37,98 @@ public static class PredicateWriter
         WriteBounds(tokens, bounds);
 
         return tokens.ToImmutable();
+    }
+
+    public static ImmutableArray<PredicateToken> Write(AccessStep.Probe probe)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        WriteComparedKeys(tokens, probe.Key, probe.Target, probe.Width, probe.Comparison);
+
+        return tokens.ToImmutable();
+    }
+
+    public static ImmutableArray<PredicateToken> Write(AccessStep.RangeEnd rangeEnd)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        WriteComparedKeys(tokens, rangeEnd.Key, rangeEnd.Boundary, rangeEnd.Width, rangeEnd.Comparison);
+
+        return tokens.ToImmutable();
+    }
+
+    private static void WriteComparedKeys(ImmutableArray<PredicateToken>.Builder tokens,
+                                          in AccessKey key,
+                                          in AccessKey target,
+                                          int width,
+                                          int comparison)
+    {
+        var length = Math.Min(width, Math.Min(key.Count, target.Count));
+
+        if (length == 0)
+        {
+            return;
+        }
+
+        WriteKeyValues(tokens, key, length);
+
+        Space(tokens);
+
+        tokens.Add(new PredicateToken(PredicateTokenKind.Operator, comparison switch
+        {
+            < 0 => "<",
+            0 => "=",
+            > 0 => ">"
+        }));
+
+        Space(tokens);
+
+        WriteKeyValues(tokens, target, length);
+    }
+
+    public static ImmutableArray<PredicateToken> Write(AccessStep.ProbeResult probeResult)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        WriteRuleCondition(tokens, probeResult.Rule, probeResult.Target, probeResult.Width);
+
+        return tokens.ToImmutable();
+    }
+
+    public static ImmutableArray<PredicateToken> Write(AccessStep.ProbeStart probeStart)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        WriteRuleCondition(tokens, probeStart.Rule, probeStart.Target, probeStart.Width);
+
+        return tokens.ToImmutable();
+    }
+
+    private static void WriteRuleCondition(ImmutableArray<PredicateToken>.Builder tokens,
+                                           SeekRule? rule,
+                                           in AccessKey target,
+                                           int width)
+    {
+        var length = Math.Min(width, target.Count);
+
+        if (rule is null || length == 0)
+        {
+            return;
+        }
+
+        var symbol = rule switch
+        {
+            SeekRule.LowestGreaterOrEqual => ">=",
+            SeekRule.LowestGreater => ">",
+            SeekRule.HighestLessOrEqual => "<=",
+            _ => "<"
+        };
+
+        tokens.Add(new PredicateToken(PredicateTokenKind.Operator, symbol));
+
+        Space(tokens);
+
+        WriteKeyValues(tokens, target, length);
     }
 
     /// <summary>
@@ -155,6 +248,32 @@ public static class PredicateWriter
     private static string KeyColumnName(AccessValue value, int index)
     {
         return value.ColumnName ?? $"Key{index + 1}";
+    }
+
+    private static void WriteKeyValues(ImmutableArray<PredicateToken>.Builder tokens, AccessKey key, int length)
+    {
+        var isComposite = length > 1;
+
+        if (isComposite)
+        {
+            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, "("));
+        }
+
+        for (var index = 0; index < length; index++)
+        {
+            if (index > 0)
+            {
+                tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ","));
+                Space(tokens);
+            }
+
+            tokens.Add(AccessValueFormatter.Format(key[index]));
+        }
+
+        if (isComposite)
+        {
+            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ")"));
+        }
     }
 
     /// <summary>

@@ -255,9 +255,10 @@ public static class ExecutionPlanParser
                                                     PlanParameters parameters,
                                                     ColumnOrdinalResolver? resolveOrdinal = null)
     {
-        var indexScan = element.Elements().FirstOrDefault(e => e.Name.LocalName == "IndexScan");
+        var scanElement = element.Elements()
+                                 .FirstOrDefault(e => e.Name.LocalName is "IndexScan" or "TableScan");
 
-        var seekPredicates = indexScan?
+        var seekPredicates = scanElement?
             .Elements()
             .FirstOrDefault(e => e.Name.LocalName == "SeekPredicates");
 
@@ -265,8 +266,8 @@ public static class ExecutionPlanParser
 
         var bounds = seekParser.ParseSeekPredicates(seekPredicates);
 
-        var predicateElement = element.Elements()
-                                      .FirstOrDefault(e => e.Name.LocalName == "Predicate");
+        var predicateElement = (scanElement ?? element).Elements()
+                                                       .FirstOrDefault(e => e.Name.LocalName == "Predicate");
 
         var predicateParser = new PredicateParser(resolveOrdinal, parameters.Resolve);
 

@@ -13,7 +13,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
-public sealed partial class RecordGrid: IDisposable
+public sealed partial class RecordGrid : IDisposable
 {
     public AllocationLayerGridViewModel ViewModel { get; } = new();
 
@@ -31,7 +31,27 @@ public sealed partial class RecordGrid: IDisposable
         = DependencyProperty.Register(nameof(Records),
             typeof(ObservableCollection<AllocationLayer>),
             typeof(AllocationLayerGrid),
-            new PropertyMetadata(default, OnPropertyChanged));
+            new PropertyMetadata(null, OnPropertyChanged));
+
+    public int? SelectedSlot
+    {
+        get => (int?)GetValue(SelectedSlotProperty);
+        set => SetValue(SelectedSlotProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedSlotProperty
+        = DependencyProperty.Register(nameof(SelectedSlot),
+            typeof(int?),
+            typeof(RecordGrid),
+            new PropertyMetadata(null, OnPropertyChanged));
+
+    public bool HideSlotColumn { get; set; }
+
+    public static readonly DependencyProperty HideSlotColumnProperty
+        = DependencyProperty.Register(nameof(HideSlotColumn),
+            typeof(bool),
+            typeof(RecordGrid),
+            new PropertyMetadata(false, OnPropertyChanged));
 
     public RecordGrid()
     {
@@ -40,11 +60,27 @@ public sealed partial class RecordGrid: IDisposable
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
+        var control = (RecordGrid)d;
+
         if (e.Property == RecordsProperty)
         {
-            var control = (RecordGrid)d;
-
             control.AddColumns();
+        }
+
+        control.DispatcherQueue.TryEnqueue(control.ApplySelectedSlot);
+    }
+
+    private void ApplySelectedSlot()
+    {
+        var record = SelectedSlot is null
+            ? null
+            : Records?.FirstOrDefault(r => r.Slot == SelectedSlot);
+
+        DataGrid.SelectedItem = record;
+
+        if (record is not null)
+        {
+            DataGrid.ScrollIntoView(record, null);
         }
     }
 
@@ -54,14 +90,17 @@ public sealed partial class RecordGrid: IDisposable
 
         DataGrid.Columns.Clear();
 
-        var slotColumn = new DataGridTextColumn
+        if (!HideSlotColumn)
         {
-            Binding = new Binding { Path = new PropertyPath("Slot") },
-            Header = "Slot",
-            ElementStyle = (Style)Resources["SlotCellStyle"],
-        };
+            var slotColumn = new DataGridTextColumn
+            {
+                Binding = new Binding { Path = new PropertyPath("Slot") },
+                Header = "Slot",
+                ElementStyle = (Style) Resources["SlotCellStyle"],
+            };
 
-        DataGrid.Columns.Add(slotColumn);
+            DataGrid.Columns.Add(slotColumn);
+        }
 
         var converter = new RecordValueConverter();
 
@@ -95,7 +134,7 @@ public sealed partial class RecordGrid: IDisposable
             DataGrid.Columns.Add(column);
         }
 
-        if (Records.Any(r => r.RowIdentifier != null))
+        if (Records.Any(r => r.RowIdentifier != null && r.RowIdentifier != RowIdentifier.Empty))
         {
             var column = new DataGridTextColumn
             {
@@ -112,7 +151,7 @@ public sealed partial class RecordGrid: IDisposable
     /// </summary>
     private void RemoveEventHandlers()
     {
-        foreach(var column in DataGrid.Columns)
+        foreach (var column in DataGrid.Columns)
         {
             if (column is PageAddressLinkButtonColumn<IndexRecordModel> linkButtonColumn)
             {

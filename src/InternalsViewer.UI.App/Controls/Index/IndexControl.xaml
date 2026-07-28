@@ -20,7 +20,8 @@
             <Setter Property="Margin" Value="0,0,4,4" />
         </Style>
     </UserControl.Resources>
-    <Grid HorizontalAlignment="Stretch">
+    <Grid HorizontalAlignment="Stretch"
+          Background="{x:Bind Background, Mode=OneWay}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>

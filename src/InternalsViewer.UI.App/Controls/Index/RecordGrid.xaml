@@ -25,12 +25,16 @@
                           Background="{ThemeResource LayerFillColorDefaultBrush}"
                           ItemsSource="{x:Bind Records, Mode=OneWay}">
             <toolkit:DataGrid.Resources>
-                <ui:Color x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundColor">Transparent</ui:Color>
-                <ui:Color x:Key="DataGridRowSelectedUnfocusedBackgroundColor">Transparent</ui:Color>
+                <StaticResource
+                        x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundColor"
+                        ResourceKey="SystemListAccentMediumColor" />
+                <StaticResource
+                        x:Key="DataGridRowSelectedUnfocusedBackgroundColor"
+                        ResourceKey="SystemListAccentLowColor" />
 
                 <StaticResource
                         x:Key="DataGridRowSelectedHoveredBackgroundColor"
-                        ResourceKey="SystemListLowColor" />
+                        ResourceKey="SystemListAccentMediumColor" />
             </toolkit:DataGrid.Resources>
         </toolkit:DataGrid>
 

@@ -40,6 +40,8 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
     private AccessPredicate? Residual { get; set; }
 
+    private long? RowGoal { get; set; }
+
     private IIndexAccessPage CurrentPage { get; set; } = null!;
 
     private IEnumerator<AccessStep> CurrentPageSteps { get; set; } = null!;
@@ -68,6 +70,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
         IndexStructure = IndexStructureProvider.GetIndexStructure(database, allocationUnitId);
         Bounds = bounds;
         Residual = residual;
+        RowGoal = GetRowGoal(IndexStructure, bounds);
         Direction = direction;
         Counters = default;
         IsComplete = false;
@@ -96,20 +99,14 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
         TakenSteps.Add(step);
         Counters = step.Counters;
 
-        if (step is AccessStep.Row(var slot, _) && !CurrentPage.IsLeaf)
+        if (step is AccessStep.Descend(_, var childPage))
         {
-            var childPage = CurrentPage.GetChildPage(slot);
-
-            var descend = new AccessStep.Descend(slot, childPage) { Counters = Counters };
-
-            TakenSteps.Add(descend);
-
             await LoadPageAsync(childPage, cancellationToken);
 
-            return descend;
+            return step;
         }
 
-        if (step is AccessStep.Stopped(StopReason.RangeEnded or StopReason.PageExhausted) &&
+        if (step is AccessStep.Stopped(StopReason.PageExhausted) &&
             CurrentPage.IsLeaf &&
             Direction == ScanDirection.Forward)
         {
@@ -147,12 +144,23 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
                 => new IndexAccessPage(indexPage, [.. RecordService.GetIndexRecords(indexPage)], IndexStructure),
             DataPage dataPage
                 => new ClusteredLeafAccessPage(dataPage, [.. RecordService.GetDataRecords(dataPage)], IndexStructure),
-            _ => throw new InvalidOperationException($"Unexpected page type {page.GetType()} at {pageAddress}")
+            _ => 
+                throw new InvalidOperationException($"Unexpected page type {page.GetType()} at {pageAddress}")
         };
 
         var executor = new PageSeekExecutor(new RecordRowBinder());
 
-        CurrentPageSteps = executor.Execute(CurrentPage, Bounds, Direction, Residual, counters: Counters)
-                                    .GetEnumerator();
+        CurrentPageSteps = executor.Execute(CurrentPage, Bounds, Direction, Residual, RowGoal, counters: Counters)
+                                   .GetEnumerator();
+    }
+
+    private static long? GetRowGoal(IndexStructure indexStructure, SeekBounds bounds)
+    {
+        var isUniqueEquality = indexStructure.IsUnique
+                               && bounds is { HasStart: true, HasEnd: true, IsStartInclusive: true, IsEndInclusive: true }
+                               && bounds.StartValue.Equals(bounds.EndValue)
+                               && bounds.CompareWidth >= indexStructure.IndexKeyColumns.Count;
+
+        return isUniqueEquality ? 1 : null;
     }
 }

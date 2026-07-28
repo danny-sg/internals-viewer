@@ -1,5 +1,6 @@
 using System.Data;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
@@ -109,6 +110,94 @@ public class PredicateWriterTests
         Assert.Equal("ALL", Text(SeekBounds.All));
     }
 
+    [Fact]
+    public void Probe_Is_Written_As_The_Values_Compared()
+    {
+        var probe = new AccessStep.Probe(0, 8, 4, -1)
+        {
+            Key = TestKey.Of(843),
+            Target = TestKey.Of(1000),
+            Width = 1,
+            SearchRight = true
+        };
+
+        Assert.Equal("843 < 1000", Text(probe));
+    }
+
+    [Fact]
+    public void Equal_Probe_Is_Written_With_An_Equality_Operator()
+    {
+        var probe = new AccessStep.Probe(0, 8, 4, 0)
+        {
+            Key = TestKey.Of(1000),
+            Target = TestKey.Of(1000),
+            Width = 1
+        };
+
+        Assert.Equal("1000 = 1000", Text(probe));
+    }
+
+    [Fact]
+    public void Composite_Probe_Is_Written_As_A_Row_Comparison()
+    {
+        var probe = new AccessStep.Probe(0, 8, 4, 1)
+        {
+            Key = TestKey.Of(2, 5),
+            Target = TestKey.Of(2, 3),
+            Width = 2
+        };
+
+        Assert.Equal("(2, 5) > (2, 3)", Text(probe));
+    }
+
+    [Fact]
+    public void Probe_Result_Is_Written_As_Its_Condition()
+    {
+        var probeResult = new AccessStep.ProbeResult(29, false)
+        {
+            Rule = SeekRule.LowestGreaterOrEqual,
+            Target = TestKey.Of(5000),
+            Width = 1
+        };
+
+        Assert.Equal(">= 5000", Text(probeResult));
+    }
+
+    [Fact]
+    public void Node_Page_Probe_Result_Is_Written_With_The_Below_Target_Operator()
+    {
+        var probeResult = new AccessStep.ProbeResult(30, false)
+        {
+            Rule = SeekRule.HighestLess,
+            Target = TestKey.Of(5000),
+            Width = 1
+        };
+
+        Assert.Equal("< 5000", Text(probeResult));
+    }
+
+    [Fact]
+    public void Probe_Result_Without_A_Rule_Writes_Nothing()
+    {
+        var probeResult = new AccessStep.ProbeResult(0, false);
+
+        Assert.Equal(string.Empty, Text(probeResult));
+    }
+
+    [Fact]
+    public void Probe_Only_Writes_The_Columns_Taking_Part_In_The_Comparison()
+    {
+        var probe = new AccessStep.Probe(0, 8, 4, -1)
+        {
+            Key = TestKey.Of(2, 5),
+            Target = TestKey.Of(3),
+            Width = 1,
+            SearchRight = true
+        };
+
+        Assert.Equal("2 < 3", Text(probe));
+    }
+
     private static AccessExpression Column(int ordinal, string name)
     {
         return new AccessExpression.Column(ordinal, name);
@@ -127,5 +216,15 @@ public class PredicateWriterTests
     private static string Text(SeekBounds bounds)
     {
         return PredicateWriter.ToText(PredicateWriter.Write(bounds));
+    }
+
+    private static string Text(AccessStep.Probe probe)
+    {
+        return PredicateWriter.ToText(PredicateWriter.Write(probe));
+    }
+
+    private static string Text(AccessStep.ProbeResult probeResult)
+    {
+        return PredicateWriter.ToText(PredicateWriter.Write(probeResult));
     }
 }

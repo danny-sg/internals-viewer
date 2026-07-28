@@ -6,13 +6,15 @@ namespace InternalsViewer.UI.App.Helpers.Selectors;
 
 public class AccessStepTemplateSelector : DataTemplateSelector
 {
-    public DataTemplate EnterPageTemplate { get; set; } = null!;
+    public DataTemplate ReadPageTemplate { get; set; } = null!;
+
+    public DataTemplate ProbeStartTemplate { get; set; } = null!;
 
     public DataTemplate ProbeTemplate { get; set; } = null!;
 
     public DataTemplate DescendTemplate { get; set; } = null!;
 
-    public DataTemplate EntryPointTemplate { get; set; } = null!;
+    public DataTemplate ProbeResultTemplate { get; set; } = null!;
 
     public DataTemplate RowTemplate { get; set; } = null!;
 
@@ -28,10 +30,11 @@ public class AccessStepTemplateSelector : DataTemplateSelector
     {
         return item switch
         {
-            AccessStep.EnterPage => EnterPageTemplate,
+            AccessStep.ReadPage => ReadPageTemplate,
+            AccessStep.ProbeStart => ProbeStartTemplate,
             AccessStep.Probe => ProbeTemplate,
             AccessStep.Descend => DescendTemplate,
-            AccessStep.EntryPoint => EntryPointTemplate,
+            AccessStep.ProbeResult => ProbeResultTemplate,
             AccessStep.Row => RowTemplate,
             AccessStep.RangeEnd => RangeEndTemplate,
             AccessStep.LeafLink => LeafLinkTemplate,

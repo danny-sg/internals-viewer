@@ -7,8 +7,10 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
+using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
 using InternalsViewer.UI.App.Messages;
@@ -544,6 +546,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _openIndexes[key] = indexViewModel;
 
+        indexViewModel.PageNavigated += OnIndexPageNavigated;
+
         Layout.Show(document);
 
         // Reflect the already-built spans and current playhead position immediately.
@@ -681,6 +685,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         foreach (var key in closed)
         {
+            _openIndexes[key].PageNavigated -= OnIndexPageNavigated;
+
             _openIndexes.Remove(key);
 
             if (Layout.RemoveDocument(key, out var document))
@@ -688,6 +694,45 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 document.DisposeView();
             }
         }
+    }
+
+    private void OnIndexPageNavigated(object? sender, PageAddress pageAddress)
+    {
+        var readEndUs = GetFirstReadEndUs(pageAddress);
+
+        if (readEndUs is not null)
+        {
+            SetPlayheadTime(readEndUs.Value);
+        }
+    }
+
+    private long? GetFirstReadEndUs(PageAddress pageAddress)
+    {
+        foreach (var engineEvent in Events)
+        {
+            if (engineEvent is not ReadEventGroup group)
+            {
+                continue;
+            }
+
+            if (group.ReadType == ReadType.Cached)
+            {
+                var latch = group.Events
+                                 .OfType<LatchEvent>()
+                                 .FirstOrDefault(l => l.PageAddress == pageAddress);
+
+                if (latch is not null)
+                {
+                    return latch.TimeUs + latch.DurationUs;
+                }
+            }
+            else if (group.Pages.Contains(pageAddress))
+            {
+                return group.TimeUs + group.DurationUs;
+            }
+        }
+
+        return null;
     }
 
     private List<PageSpan> _pageSpans = [];
@@ -727,6 +772,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         foreach (var viewModel in _openIndexes.Values)
         {
             viewModel.PlayheadTimeUs = playheadUs;
+
+            if (viewModel.IsStepping)
+            {
+                continue;
+            }
 
             var spans = viewModel.PageSpans;
 
@@ -1147,6 +1197,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FilteredEvents = [];
         CallStack = null;
         SelectedEvent = null;
+
+        foreach (var indexViewModel in _openIndexes.Values)
+        {
+            indexViewModel.PageNavigated -= OnIndexPageNavigated;
+        }
 
         _openIndexes.Clear();
 

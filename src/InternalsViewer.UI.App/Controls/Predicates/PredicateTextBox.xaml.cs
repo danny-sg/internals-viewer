@@ -20,6 +20,18 @@ public sealed partial class PredicateTextBox : UserControl
                                     typeof(PredicateTextBox),
                                     new PropertyMetadata(string.Empty, OnSourceChanged));
 
+    public static readonly DependencyProperty TextPaddingProperty =
+        DependencyProperty.Register(nameof(TextPadding),
+                                    typeof(Thickness),
+                                    typeof(PredicateTextBox),
+                                    new PropertyMetadata(new Thickness(10, 8, 10, 8)));
+
+    public static readonly DependencyProperty HasBackgroundProperty =
+        DependencyProperty.Register(nameof(HasBackground),
+                                    typeof(bool),
+                                    typeof(PredicateTextBox),
+                                    new PropertyMetadata(true, OnHasBackgroundChanged));
+
     public PredicateTextBox()
     {
         InitializeComponent();
@@ -45,6 +57,37 @@ public sealed partial class PredicateTextBox : UserControl
     {
         get => (string)GetValue(PlaceholderTextProperty);
         set => SetValue(PlaceholderTextProperty, value);
+    }
+
+    public Thickness TextPadding
+    {
+        get => (Thickness)GetValue(TextPaddingProperty);
+        set => SetValue(TextPaddingProperty, value);
+    }
+
+    public bool HasBackground
+    {
+        get => (bool)GetValue(HasBackgroundProperty);
+        set => SetValue(HasBackgroundProperty, value);
+    }
+
+    private static void OnHasBackgroundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((PredicateTextBox)d).ApplyBackground();
+    }
+
+    private void ApplyBackground()
+    {
+        if (HasBackground)
+        {
+            BackgroundBorder.ClearValue(Microsoft.UI.Xaml.Controls.Border.BackgroundProperty);
+            BackgroundBorder.ClearValue(Microsoft.UI.Xaml.Controls.Border.BorderThicknessProperty);
+        }
+        else
+        {
+            BackgroundBorder.Background = null;
+            BackgroundBorder.BorderThickness = new Thickness(0);
+        }
     }
 
     private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -120,7 +163,7 @@ public sealed partial class PredicateTextBox : UserControl
     {
         var key = kind switch
         {
-            PredicateTokenKind.Keyword 
+            PredicateTokenKind.Keyword
                 => "PredicateKeywordBrush",
             PredicateTokenKind.Column 
                 => "PredicateColumnBrush",

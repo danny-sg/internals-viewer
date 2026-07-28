@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Text;
@@ -34,6 +35,26 @@ public sealed record PredicateText(ImmutableArray<PredicateToken> Tokens)
     public static PredicateText From(SeekBounds bounds)
     {
         return new PredicateText(PredicateWriter.Write(bounds));
+    }
+
+    public static PredicateText From(AccessStep.Probe probe)
+    {
+        return new PredicateText(PredicateWriter.Write(probe));
+    }
+
+    public static PredicateText From(AccessStep.ProbeResult probeResult)
+    {
+        return new PredicateText(PredicateWriter.Write(probeResult));
+    }
+
+    public static PredicateText From(AccessStep.RangeEnd rangeEnd)
+    {
+        return new PredicateText(PredicateWriter.Write(rangeEnd));
+    }
+
+    public static PredicateText From(AccessStep.ProbeStart probeStart)
+    {
+        return new PredicateText(PredicateWriter.Write(probeStart));
     }
 
     public override string ToString()

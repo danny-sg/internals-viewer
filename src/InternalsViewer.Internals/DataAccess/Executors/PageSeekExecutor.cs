@@ -35,7 +35,7 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
 
         totals = Publish(totals.AddPageRead(), onCountersChanged);
 
-        yield return new AccessStep.EnterPage(page.PageAddress, page.Level, page.IsLeaf, page.SlotCount)
+        yield return new AccessStep.ReadPage(page.PageAddress, page.Level, page.IsLeaf, page.SlotCount)
         {
             Counters = totals
         };
@@ -45,11 +45,36 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
 
         var entry = forward ? 0 : page.SlotCount;
 
+        var width = 0;
+
+        SeekRule? rule = null;
+
         if (!target.IsUnbounded)
         {
-            var width = GetWidth(bounds, target);
+            width = GetWidth(bounds, target);
 
-            var (bound, probes) = inclusive
+            rule = forward
+                ? page.IsLeaf
+                    ? (inclusive ? SeekRule.LowestGreaterOrEqual : SeekRule.LowestGreater)
+                    : (inclusive ? SeekRule.HighestLess : SeekRule.HighestLessOrEqual)
+                : (inclusive ? SeekRule.HighestLessOrEqual : SeekRule.HighestLess);
+        }
+
+        yield return new AccessStep.ProbeStart(page.SlotCount)
+        {
+            Rule = rule,
+            Target = target,
+            Width = width,
+            Direction = direction,
+            IsLeaf = page.IsLeaf,
+            Counters = totals
+        };
+
+        if (!target.IsUnbounded)
+        {
+            var useLowerBound = forward ? inclusive : !inclusive;
+
+            var (bound, probes) = useLowerBound
                 ? AccessPathSearch.LowerBound(page, target, width)
                 : AccessPathSearch.UpperBound(page, target, width);
 
@@ -60,15 +85,32 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
                 yield return probe with { Counters = totals };
             }
 
-            entry = bound;
+            entry = !page.IsLeaf && forward ? Math.Max(0, bound - 1) : bound;
         }
 
         var cursor = forward ? entry : entry - 1;
 
-        yield return new AccessStep.EntryPoint(cursor, cursor >= page.SlotCount || cursor < 0)
+        yield return new AccessStep.ProbeResult(cursor, cursor >= page.SlotCount || cursor < 0)
         {
+            Rule = rule,
+            Target = target,
+            Width = width,
             Counters = totals
         };
+
+        if (!page.IsLeaf)
+        {
+            if (cursor < 0 || cursor >= page.SlotCount)
+            {
+                yield return new AccessStep.Stopped(StopReason.PageExhausted) { Counters = totals };
+
+                yield break;
+            }
+
+            yield return new AccessStep.Descend(cursor, page.GetChildPage(cursor)) { Counters = totals };
+
+            yield break;
+        }
 
         while (forward ? cursor < page.SlotCount : cursor >= 0)
         {
@@ -83,7 +125,7 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
                 continue;
             }
 
-            var within = WithinTrailingBound(page, cursor, bounds, forward, out var compared);
+            var within = WithinTrailingBound(page, cursor, bounds, forward, out var compared, out var boundaryComparison);
 
             if (compared)
             {
@@ -92,7 +134,17 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
 
             if (!within)
             {
-                yield return new AccessStep.RangeEnd(cursor) { Counters = totals };
+                var boundary = forward ? bounds.EndValue : bounds.StartValue;
+
+                yield return new AccessStep.RangeEnd(cursor)
+                {
+                    Key = page.GetKey(cursor),
+                    Boundary = boundary,
+                    Width = GetWidth(bounds, boundary),
+                    Comparison = boundaryComparison,
+                    Counters = totals
+                };
+
                 yield return new AccessStep.Stopped(StopReason.RangeEnded) { Counters = totals };
 
                 yield break;
@@ -143,11 +195,13 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
                                             int slot,
                                             SeekBounds bounds,
                                             bool forward,
-                                            out bool compared)
+                                            out bool compared,
+                                            out int comparison)
     {
         var boundary = forward ? bounds.EndValue : bounds.StartValue;
 
         compared = false;
+        comparison = 0;
 
         if (boundary.IsUnbounded)
         {
@@ -158,7 +212,7 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
 
         var width = GetWidth(bounds, boundary);
 
-        var comparison = page.CompareKeyPrefix(slot, boundary, width);
+        comparison = page.CompareKeyPrefix(slot, boundary, width);
 
         compared = true;
 

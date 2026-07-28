@@ -26,7 +26,7 @@ public class AccessPathStepperTests
 
         Assert.True(stepper.MoveNext());
 
-        var step = Assert.IsType<AccessStep.EnterPage>(stepper.Current);
+        var step = Assert.IsType<AccessStep.ReadPage>(stepper.Current);
 
         Assert.Equal(page.PageAddress, step.PageAddress);
         Assert.Equal(3, step.SlotCount);
@@ -41,8 +41,8 @@ public class AccessPathStepperTests
         stepper.RunToEnd();
 
         Assert.Collection(stepper.History,
-                          step => Assert.IsType<AccessStep.EnterPage>(step),
-                          step => Assert.IsType<AccessStep.EntryPoint>(step),
+                          step => Assert.IsType<AccessStep.ReadPage>(step),
+                          step => Assert.IsType<AccessStep.ProbeResult>(step),
                           step => Assert.Equal(0, Assert.IsType<AccessStep.Row>(step).Slot),
                           step => Assert.Equal(1, Assert.IsType<AccessStep.Row>(step).Slot),
                           step => Assert.IsType<AccessStep.Stopped>(step));

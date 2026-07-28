@@ -100,6 +100,14 @@ public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal =
             return null;
         }
 
+        var definition = reference.Elements()
+                                  .FirstOrDefault(e => e.Name.LocalName == ShowplanNames.ScalarOperator);
+
+        if (definition is not null)
+        {
+            return Parse(definition);
+        }
+
         var column = ReadColumnReference(reference);
 
         // A reference with no table naming it and a leading @ is a parameter, not a column

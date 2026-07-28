@@ -156,7 +156,8 @@ public static class IndexStructureProvider
                     BitPosition = s.BitPosition,
                     IsIncludeColumn = false,
                     IndexColumnId = 0,
-                    IsKey = s.IsKey
+                    IsKey = s.IsKey,
+                    IsIndexKey = s.IsKey
                 })
         ];
     }

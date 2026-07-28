@@ -25,7 +25,7 @@
         <!--Top Command Bar-->
         <CommandBar Grid.Row="0"
                     IsOpen="False"
-                    Padding="12,0,0,0"
+                    Padding="8,0,0,0"
                     DefaultLabelPosition="Right"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Left"
@@ -35,10 +35,7 @@
                     BorderThickness="0,0,0,1" 
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     Background="Transparent">
-            <AppBarElementContainer VerticalContentAlignment="Center"
-                                    
-                                    Name="PredicateElementContainer">
-
+            <AppBarElementContainer VerticalContentAlignment="Center" Name="PredicateElementContainer"  Height="40" Margin="0,0,0,0">
                 <StackPanel Orientation="Horizontal" >
                     <Image Source="{x:Bind ViewModel.IconSource}"
                            Name="NodeImage"
@@ -57,35 +54,38 @@
 
 
             </AppBarElementContainer>
-            <AppBarButton Label="Step" Command="{x:Bind ViewModel.ToggleStepCommand}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE8B5;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarSeparator />
+
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ToggleButton Margin="12,0,12,0"
+                              IsChecked="{x:Bind ViewModel.IsDetailPaneVisible, Mode=TwoWay}"
+                              BorderThickness="0">
+                    <TextBlock Text="Trace" VerticalAlignment="Center" />
+                </ToggleButton>
+            </AppBarElementContainer>
+            <!--<AppBarSeparator />
             <AppBarElementContainer>
                 <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
                                                           IsIndex="True" />
-            </AppBarElementContainer>
+            </AppBarElementContainer>-->
         </CommandBar>
 
         <CommandBar Grid.Row="0"
                     Grid.Column="1"
-                        IsOpen="False"
-                        VerticalAlignment="Center"
-                        DefaultLabelPosition="Right"
-                        HorizontalAlignment="Right"
-                        VerticalContentAlignment="Top"
-                        MinHeight="0"
-                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                        Background="Transparent"
-                        BorderThickness="0,0,0,1">
+                    IsOpen="False"
+                    VerticalAlignment="Center"
+                    DefaultLabelPosition="Right"
+                    HorizontalAlignment="Right"
+                    VerticalContentAlignment="Top"
+                    MinHeight="0"
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                    Background="Transparent"
+                    BorderThickness="0,0,0,1">
             <CommandBar.SecondaryCommands>
 
-                    <AppBarToggleButton
+                <AppBarToggleButton
                         Label="Zoom to fit"
                         IsChecked="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}" />
-                    <AppBarToggleButton
+                <AppBarToggleButton
                         Label="Details"
                         IsChecked="{x:Bind ViewModel.IsDetailPaneVisible, Mode=TwoWay}" />
 
@@ -93,10 +93,10 @@
         </CommandBar>
 
         <Grid Name="BodyGrid" 
+              
               Grid.Row="1" 
               Grid.Column="0" 
-              Grid.ColumnSpan="2" 
-              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+              Grid.ColumnSpan="2" >
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="{x:Bind ViewModel.BodyColumnWidth, Mode=OneWay}" />
                 <ColumnDefinition Width="Auto" />
@@ -132,7 +132,8 @@
 
             <index:IndexControl x:Name="IndexControl"
                                 Grid.Column="0"
-                                Background="Transparent"
+                                
+                                Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                 Visibility="{x:Bind ViewModel.IsInitialized,
                                                 Mode=OneWay,
                                                 Converter={StaticResource BoolToVisibilityConverter}}"
@@ -142,6 +143,7 @@
                                 IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
                                 PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
                                 PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
+                                SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=OneWay}"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch" />
 
@@ -163,41 +165,106 @@
             <Grid Grid.Column="2"
                   Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  
                   BorderThickness="1,0,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <Grid Grid.Row="0"
-                      Padding="8,4,4,4"
-                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                      BorderThickness="0,0,0,1">
+                <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center">
-                        <TextBlock Margin="4,0,0,1" Text="{x:Bind ViewModel.PlanNode.LogicalOperator}"/>
-                        <Button Command="{x:Bind ViewModel.StartStepCommand}">Start</Button>
-                        <Button Command="{x:Bind ViewModel.StepNextCommand}">Next</Button>
-                    </StackPanel>
-                    <Button Grid.Column="1"
-                            Click="{x:Bind CloseDetailPane}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6"
-                            VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xE711;" FontSize="12" />
-                    </Button>
+                    <CommandBar Grid.Column="0"
+                                IsOpen="False"
+                                Padding="12,0,0,0"
+                                DefaultLabelPosition="Right"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left"
+                                VerticalContentAlignment="Top"
+                                MinHeight="0"
+                                OverflowButtonVisibility="Collapsed"
+                                BorderThickness="0,0,0,1"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                Background="{ThemeResource CommandBarBackground}">
+
+                        <AppBarButton Label="{x:Bind RunLabel(ViewModel.IsRunning), Mode=OneWay}"
+                                      Command="{x:Bind ViewModel.RunCommand}">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="{x:Bind RunGlyph(ViewModel.IsRunning), Mode=OneWay}" />
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+
+                        <AppBarButton Label="Step" Command="{x:Bind ViewModel.StepNextCommand}">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="&#xE8B5;" />
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+
+                        <AppBarButton Label="Reset" Command="{x:Bind ViewModel.ResetStepCommand}">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="&#xE72C;" />
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+                    </CommandBar>
+                    <CommandBar Grid.Column="1"
+                                IsOpen="False"
+                                DefaultLabelPosition="Right"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left"
+                                VerticalContentAlignment="Top"
+                                MinHeight="0"
+                                OverflowButtonVisibility="Collapsed"
+                                BorderThickness="0,0,0,1"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                Background="{ThemeResource CommandBarBackground}">
+                        <AppBarButton Click="{x:Bind CloseDetailPane}"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      FontSize="10"
+                                      VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE711;" />
+                        </AppBarButton>
+                    </CommandBar>
                 </Grid>
-                <accessSteps:AccessStepsControl  Grid.Row="1" StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}" CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
-                <index:RecordGrid Grid.Row="2"
-                                  x:Name="RecordGrid"
-                                  Records="{x:Bind ViewModel.Records, Mode=OneWay}"
-                                  BorderThickness="0" />
+
+                <accessSteps:AccessStepsControl 
+                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"  Grid.Row="1" StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}" CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
+                <controls:GridSplitter Grid.Row="2"
+                                       HorizontalAlignment="Stretch"
+                                       VerticalAlignment="Stretch"
+                                       ResizeBehavior="PreviousAndNext"
+                                       ResizeDirection="Auto"
+                                       Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                    <controls:GridSplitter.Template>
+                        <ControlTemplate TargetType="controls:GridSplitter">
+                            <Grid Background="{TemplateBinding Background}" />
+                        </ControlTemplate>
+                    </controls:GridSplitter.Template>
+                </controls:GridSplitter>
+                <TabView Grid.Row="3"
+                         IsAddTabButtonVisible="False"
+                         CanReorderTabs="False"
+                         TabWidthMode="SizeToContent"
+                         CanDragTabs="False">
+                    <TabView.TabItems>
+                        <TabViewItem Header="Page Data" IsClosable="False">
+                            <index:RecordGrid x:Name="RecordGrid"
+                                              Records="{x:Bind ViewModel.Records, Mode=OneWay}"
+                                              SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
+                                              BorderThickness="0" />
+                        </TabViewItem>
+                        <TabViewItem Header="Results" IsClosable="False">
+                            <index:RecordGrid x:Name="ResultsGrid"
+                                              HideSlotColumn="True"
+                                              Records="{x:Bind ViewModel.ResultRecords, Mode=OneWay}"
+                                              BorderThickness="0" />
+                        </TabViewItem>
+                    </TabView.TabItems>
+                </TabView>
                 <StackPanel Grid.Row="2"
                             Orientation="Horizontal"
                             HorizontalAlignment="Center"

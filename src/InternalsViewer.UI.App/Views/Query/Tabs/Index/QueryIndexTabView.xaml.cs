@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Windows.System;
 using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
@@ -21,6 +21,10 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
     private bool _hasLoaded;
 
     public IndexTabViewModel? ViewModel => DataContext as IndexTabViewModel;
+
+    public string RunLabel(bool isRunning) => isRunning ? "Stop" : "Run";
+
+    public string RunGlyph(bool isRunning) => isRunning ? "" : "";
 
     public QueryIndexTabView()
     {
@@ -124,5 +128,8 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
     {
         IndexControl.PageClicked -= OnPageClicked;
         IndexControl.Dispose();
+
+        RecordGrid.Dispose();
+        ResultsGrid.Dispose();
     }
 }
