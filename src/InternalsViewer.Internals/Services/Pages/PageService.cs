@@ -11,7 +11,7 @@ namespace InternalsViewer.Internals.Services.Pages;
 /// <summary>
 /// Service responsible for getting and parsing pages
 /// </summary>
-public sealed class PageService(ILogger<PageService> logger,
+public sealed partial class PageService(ILogger<PageService> logger,
                                 IPageLoader loader,
                                 IEnumerable<IPageParser> parsers) : IPageService
 {
@@ -26,10 +26,7 @@ public sealed class PageService(ILogger<PageService> logger,
                                     CancellationToken cancellationToken,
                                     bool isMarkEnabled = true)
     {
-        if (Logger.IsEnabled(LogLevel.Debug))
-        {
-            Logger.LogDebug("Loading page {PageAddress}", pageAddress);
-        }
+        LogLoadPage(Logger, pageAddress);
 
         var page = await loader.Load(database, pageAddress, cancellationToken, isMarkEnabled);
 
@@ -41,10 +38,7 @@ public sealed class PageService(ILogger<PageService> logger,
                                     byte[] buffer,
                                     CancellationToken cancellationToken)
     {
-        if (Logger.IsEnabled(LogLevel.Debug))
-        {
-            Logger.LogDebug("Loading page {PageAddress} into buffer", pageAddress);
-        }
+        LogLoadBufferPage(Logger, pageAddress);
 
         var page = await loader.LoadInto(database, pageAddress, buffer, cancellationToken);
 
@@ -80,10 +74,7 @@ public sealed class PageService(ILogger<PageService> logger,
 
     private Page ParsePage(PageData page, PageAddress pageAddress)
     {
-        if (Logger.IsEnabled(LogLevel.Debug))
-        {
-            Logger.LogDebug("Page {PageAddress}: Page Type: {PageType}", pageAddress, page.PageHeader.PageType);
-        }
+        LogPageType(Logger, pageAddress, page.PageHeader.PageType);
 
         if (!Parsers.TryGetValue(page.PageHeader.PageType, out var parser))
         {

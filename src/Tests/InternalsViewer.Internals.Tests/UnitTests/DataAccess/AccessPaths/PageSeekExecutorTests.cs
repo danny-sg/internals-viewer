@@ -207,6 +207,10 @@ public class PageSeekExecutorTests
         Assert.Equal(RowOutcome.NoMatch, rows[0].Outcome);
         Assert.Equal(RowOutcome.Match, rows[1].Outcome);
         Assert.Equal(RowOutcome.Match, rows[2].Outcome);
+
+        Assert.Null(rows[0].EmittedRecord);
+        Assert.NotNull(rows[1].EmittedRecord);
+        Assert.NotNull(rows[2].EmittedRecord);
     }
 
     [Fact]

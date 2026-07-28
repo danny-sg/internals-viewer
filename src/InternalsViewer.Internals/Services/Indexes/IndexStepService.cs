@@ -26,6 +26,18 @@ namespace InternalsViewer.Internals.Services.Indexes;
 /// </remarks>
 public sealed class IndexStepService(IPageService pageService, IRecordService recordService)
 {
+    private readonly byte[] _pageBuffer = new byte[PageData.Size];
+
+    public IReadOnlyList<AccessStep> History => TakenSteps;
+
+    public AccessStep? Current => TakenSteps.Count == 0 ? null : TakenSteps[^1];
+
+    public bool IsComplete { get; private set; }
+
+    public PageAddress? CurrentPageAddress => CurrentPage?.PageAddress;
+
+    public SeekStrategy? Strategy { get; private set; }
+
     private IPageService PageService { get; } = pageService;
 
     private IRecordService RecordService { get; } = recordService;
@@ -50,30 +62,44 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
     private List<AccessStep> TakenSteps { get; } = [];
 
-    public IReadOnlyList<AccessStep> History => TakenSteps;
-
-    public AccessStep? Current => TakenSteps.Count == 0 ? null : TakenSteps[^1];
-
-    public bool IsComplete { get; private set; }
-
-    public PageAddress? CurrentPageAddress => CurrentPage?.PageAddress;
-
-    public SeekStrategy? Strategy { get; private set; }
-
     public async Task StartAsync(DatabaseSource database,
                                  long allocationUnitId,
                                  PageAddress rootPageAddress,
                                  SeekBounds bounds,
                                  AccessPredicate? residual,
                                  ScanDirection direction,
-                                 CancellationToken cancellationToken)
+                                 CancellationToken cancellationToken,
+                                 long? rowGoal = null)
     {
         Database = database;
         IndexStructure = IndexStructureProvider.GetIndexStructure(database, allocationUnitId);
         Bounds = bounds;
         Residual = residual;
-        RowGoal = GetRowGoal(IndexStructure, bounds);
-        Strategy = SeekStrategyBuilder.Build(IndexStructure, bounds, direction, RowGoal, residual);
+
+        var uniqueGoal = GetRowGoal(IndexStructure, bounds);
+
+        string? rowGoalReason = null;
+
+        if (uniqueGoal is not null && (rowGoal is null || uniqueGoal < rowGoal))
+        {
+            RowGoal = uniqueGoal;
+
+            rowGoalReason = "The index is unique and the seek fixes every key column with an equality, so at most one row can match. " +
+                            "The walk stops after the first match instead of reading on to check.";
+        }
+        else if (rowGoal is not null)
+        {
+            RowGoal = rowGoal;
+
+            rowGoalReason = $"A TOP above this operator stops requesting rows once {rowGoal:N0} have been returned, " +
+                            "so the walk ends after that many rows have been output.";
+        }
+        else
+        {
+            RowGoal = null;
+        }
+
+        Strategy = SeekStrategyBuilder.Build(IndexStructure, bounds, direction, RowGoal, residual, rowGoalReason);
         Direction = direction;
         Counters = default;
         IsComplete = false;
@@ -145,15 +171,15 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
     private async Task LoadPageAsync(PageAddress pageAddress, CancellationToken cancellationToken, bool isContinuation = false)
     {
-        var page = await PageService.GetPage(Database, pageAddress, cancellationToken);
+        var page = await PageService.GetPage(Database, pageAddress, _pageBuffer, cancellationToken);
 
         CurrentPage = page switch
         {
             IndexPage indexPage
-                => new IndexAccessPage(indexPage, [.. RecordService.GetIndexRecords(indexPage)], IndexStructure),
+                => new IndexAccessPage(indexPage, RecordService, IndexStructure),
             DataPage dataPage
-                => new ClusteredLeafAccessPage(dataPage, [.. RecordService.GetDataRecords(dataPage)], IndexStructure),
-            _ => 
+                => new ClusteredLeafAccessPage(dataPage, RecordService, IndexStructure),
+            _ =>
                 throw new InvalidOperationException($"Unexpected page type {page.GetType()} at {pageAddress}")
         };
 

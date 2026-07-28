@@ -560,6 +560,78 @@ public class ExecutionPlanParserTests
         Assert.False(node.PredicateInfo.HasUntranslatedPredicate);
     }
 
+    private const string TopOverScanXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.5">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="Top"
+                           LogicalOp="Top"
+                           EstimatedTotalSubtreeCost="0.5"
+                           EstimateRows="10"
+                           AvgRowSize="73"
+                           Parallel="0">
+                      <OutputList>
+                        <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                         Table="[ClusteredTable]" Column="Id"/>
+                      </OutputList>
+                      <Top RowCount="0" IsPercent="false" WithTies="false">
+                        <TopExpression>
+                          <ScalarOperator ScalarString="(10)">
+                            <Const ConstValue="(10)"/>
+                          </ScalarOperator>
+                        </TopExpression>
+                        <RelOp NodeId="1"
+                               PhysicalOp="Clustered Index Scan"
+                               LogicalOp="Clustered Index Scan"
+                               EstimatedTotalSubtreeCost="0.4"
+                               EstimateRows="10"
+                               AvgRowSize="73"
+                               Parallel="0">
+                          <OutputList>
+                            <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                             Table="[ClusteredTable]" Column="Id"/>
+                          </OutputList>
+                          <IndexScan Ordered="0" ForcedIndex="0" ForceScan="0" NoExpandHint="0"
+                                     Storage="RowStore">
+                            <DefinedValues>
+                              <DefinedValue>
+                                <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                                 Table="[ClusteredTable]" Column="Id"/>
+                              </DefinedValue>
+                            </DefinedValues>
+                            <Object Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                    Table="[ClusteredTable]" Index="[PK_ClusteredTable]"
+                                    IndexKind="Clustered"/>
+                          </IndexScan>
+                        </RelOp>
+                      </Top>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void Top_Over_A_Scan_Sets_The_Row_Goal()
+    {
+        var plan = Parse(TopOverScanXml);
+
+        var scan = plan.NodesById[1];
+
+        Assert.NotNull(scan.PredicateInfo);
+        Assert.Equal(10, scan.PredicateInfo!.RowGoal);
+    }
+
     [Fact]
     public void Range_Seek_Predicate_Produces_Seek_Bounds()
     {

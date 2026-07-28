@@ -12,7 +12,8 @@ public static class SeekStrategyBuilder
                                      SeekBounds bounds,
                                      ScanDirection direction,
                                      long? rowGoal,
-                                     AccessPredicate? residual = null)
+                                     AccessPredicate? residual = null,
+                                     string? rowGoalReason = null)
     {
         var forward = direction == ScanDirection.Forward;
 
@@ -29,7 +30,7 @@ public static class SeekStrategyBuilder
         phases.Add(BuildWalk(bounds, exitTarget, exitInclusive, forward));
         phases.Add(BuildComplete(exitTarget, rowGoal));
 
-        var rowGoalReason = rowGoal == 1
+        rowGoalReason ??= rowGoal == 1
             ? "The index is unique and the seek fixes every key column with an equality, so at most one row can match. " +
               "The walk stops after the first match instead of reading on to check."
             : null;
@@ -136,11 +137,14 @@ public static class SeekStrategyBuilder
 
     private static SeekStrategyPhase BuildComplete(in AccessKey exitTarget, long? rowGoal)
     {
-        var lead = rowGoal == 1
-            ? "Stop after the first matching row (row goal 1)"
-            : exitTarget.IsUnbounded
+        var lead = rowGoal switch
+        {
+            1 => "Stop after the first matching row (row goal 1)",
+            not null => $"Stop after {rowGoal:N0} matching rows (row goal {rowGoal:N0})",
+            _ => exitTarget.IsUnbounded
                 ? "Stop at the end of the index"
-                : "Stop when a key leaves the range";
+                : "Stop when a key leaves the range"
+        };
 
         return new SeekStrategyPhase
         {

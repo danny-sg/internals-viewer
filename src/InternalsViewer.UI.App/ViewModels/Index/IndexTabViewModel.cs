@@ -187,6 +187,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private bool _isRunning;
 
     [ObservableProperty]
+    private bool _isRunningToEnd;
+
+    [ObservableProperty]
     private SeekStrategy? _strategy;
 
     public SeekPhase? CurrentPhase => CurrentStep?.SeekPhase;
@@ -300,7 +303,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             {
                 Logger.LogDebug("Loading Page: {PageAddress}", pageAddress);
 
-                page = await PageService.GetPage(Database, pageAddress, CancellationToken);
+                page = await PageService.GetPage(Database, pageAddress, CancellationToken, false);
 
                 if (page is IndexPage indexPage)
                 {
@@ -356,7 +359,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                                                          bounds,
                                                          predicateInfo.Residual,
                                                          ScanDirection.Forward,
-                                                         CancellationToken),
+                                                         CancellationToken,
+                                                         predicateInfo.RowGoal),
                        CancellationToken);
 
         Strategy = IndexStepService.Strategy;
@@ -423,6 +427,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             {
                 _isBatching = _runDelayMs == 0;
 
+                IsRunningToEnd = _isBatching;
+
                 await StepNext();
 
                 if (!IsStepping || IsStepComplete)
@@ -441,13 +447,23 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         }
         finally
         {
-            FlushBatchedSteps();
-
             IsRunning = false;
+        }
+
+        try
+        {
+            await FlushBatchedSteps();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            IsRunningToEnd = false;
         }
     }
 
-    private void FlushBatchedSteps()
+    private async Task FlushBatchedSteps()
     {
         if (!_isBatching)
         {
@@ -458,10 +474,30 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         if (_batchedSteps.Count > 0)
         {
-            var recent = _batchedSteps.Skip(Math.Max(0, _batchedSteps.Count - HistoryLimit))
-                                      .Reverse();
+            var chronological = Enumerable.Reverse(StepHistory).Concat(_batchedSteps).ToList();
 
-            StepHistory = new ObservableCollection<AccessStep>(recent.Concat(StepHistory).Take(HistoryLimit));
+            List<AccessStep> kept;
+
+            if (chronological.Count <= HistoryLimit)
+            {
+                kept = chronological;
+            }
+            else
+            {
+                var head = HistoryLimit / 2;
+                var tail = HistoryLimit - head;
+
+                kept =
+                [
+                    .. chronological.Take(head),
+                    new AccessStep.Truncated(chronological.Count - head - tail),
+                    .. chronological.TakeLast(tail)
+                ];
+            }
+
+            kept.Reverse();
+
+            StepHistory = new ObservableCollection<AccessStep>(kept);
 
             CurrentStep = _batchedSteps[^1];
 
@@ -478,6 +514,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         if (SelectedPageAddress is { } pageAddress)
         {
+            await LoadPage(pageAddress);
+
             PageNavigated?.Invoke(this, pageAddress);
         }
     }
@@ -560,20 +598,17 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 SelectedSlot = GetStepSlot(step);
             }
 
-            if (step is AccessStep.Row { Outcome: RowOutcome.Match } match)
+            if (step is AccessStep.Row { Outcome: RowOutcome.Match, EmittedRecord: { } emitted })
             {
-                var record = Records.FirstOrDefault(r => r.Slot == match.Slot);
+                var record = ToRecordModel(emitted);
 
-                if (record is not null)
+                if (_isBatching)
                 {
-                    if (_isBatching)
-                    {
-                        _batchedResults.Add(record);
-                    }
-                    else
-                    {
-                        ResultRecords.Add(record);
-                    }
+                    _batchedResults.Add(record);
+                }
+                else
+                {
+                    ResultRecords.Add(record);
                 }
             }
 
@@ -593,10 +628,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             {
                 SelectedPageAddress = pageAddress;
 
-                await LoadPage(pageAddress.Value);
-
                 if (!_isBatching)
                 {
+                    await LoadPage(pageAddress.Value);
+
                     PageNavigated?.Invoke(this, pageAddress.Value);
                 }
             }
@@ -629,6 +664,13 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         AllocationUnit = allocationUnit;
 
         Name = "Index: " + AllocationUnit?.IndexName;
+    }
+
+    private static IndexRecordModel ToRecordModel(IRecord record)
+    {
+        return record is IIndexRecord indexRecord
+            ? GetIndexRecordModels([indexRecord])[0]
+            : GetDataRecordModels([record])[0];
     }
 
     private static List<IndexRecordModel> GetIndexRecordModels(IEnumerable<IIndexRecord> source)

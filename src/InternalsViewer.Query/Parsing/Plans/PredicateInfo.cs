@@ -37,5 +37,7 @@ public sealed class PredicateInfo
     /// </remarks>
     public bool HasUntranslatedPredicate { get; init; }
 
+    public long? RowGoal { get; set; }
+
     public bool HasSeekBounds => !SeekBounds.IsDefaultOrEmpty;
 }

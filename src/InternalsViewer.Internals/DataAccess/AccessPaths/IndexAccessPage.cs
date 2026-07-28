@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.DataAccess;
 using InternalsViewer.Internals.Interfaces.Engine;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths;
@@ -15,9 +16,11 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths;
 /// The executor operates purely on <see cref="IIndexAccessPage"/>/<see cref="IAccessPage"/>, so this
 /// adapter is the only place that understands how key columns map onto decoded record fields.
 /// </remarks>
-public sealed class IndexAccessPage(IndexPage page, List<IIndexRecord> records, IndexStructure indexStructure)
+public sealed class IndexAccessPage(IndexPage page, IRecordService recordService, IndexStructure indexStructure)
     : IIndexAccessPage
 {
+    private readonly IIndexRecord?[] _records = new IIndexRecord?[page.OffsetTable.Length];
+
     public PageAddress PageAddress => page.PageHeader.PageAddress;
 
     public PageAddress NextPage => page.PageHeader.NextPage;
@@ -28,13 +31,15 @@ public sealed class IndexAccessPage(IndexPage page, List<IIndexRecord> records, 
 
     public bool IsRoot => page.AllocationUnit.RootPage == PageAddress;
 
-    public int SlotCount => records.Count;
+    public int SlotCount => _records.Length;
 
-    public IRecord GetRecord(int slot) => records[slot];
+    public IRecord GetRecord(int slot) => GetIndexRecord(slot);
+
+    private IIndexRecord GetIndexRecord(int slot) => _records[slot] ??= recordService.GetIndexRecord(page, slot, indexStructure);
 
     public AccessKey GetKey(int slot)
     {
-        var record = records[slot];
+        var record = GetIndexRecord(slot);
 
         var values = indexStructure.IndexKeyColumns
                                     .Select(keyColumn => CreateValue(record, keyColumn))
@@ -57,7 +62,7 @@ public sealed class IndexAccessPage(IndexPage page, List<IIndexRecord> records, 
             throw new NotSupportedException("The page is a leaf.");
         }
 
-        return records[slot].DownPagePointer;
+        return GetIndexRecord(slot).DownPagePointer;
     }
 
     private static AccessValue CreateValue(IIndexRecord record, IndexColumnStructure keyColumn)

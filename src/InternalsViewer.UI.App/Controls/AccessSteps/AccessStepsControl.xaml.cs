@@ -48,7 +48,7 @@ public sealed partial class AccessStepsControl : UserControl
 
         if (e.NewValue is not null)
         {
-            control.StepsList.ScrollIntoView(e.NewValue);
+            control.StepsScroller.ChangeView(null, 0, null, true);
         }
     }
 }

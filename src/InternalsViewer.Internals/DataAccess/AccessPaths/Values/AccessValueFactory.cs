@@ -66,7 +66,7 @@ public static class AccessValueFactory
                 or SqlDbType.NVarChar
                 or SqlDbType.NText => FromText(dataType, field.GetValue<string>()),
 
-            _ => AccessValue.FromBytes(dataType, field.Data)
+            _ => AccessValue.FromBytes(dataType, field.Data.ToArray())
         };
     }
 

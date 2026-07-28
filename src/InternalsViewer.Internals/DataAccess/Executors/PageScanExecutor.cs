@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+﻿using InternalsViewer.Internals.DataAccess.AccessPaths;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.Interfaces.DataAccess;
@@ -63,7 +64,12 @@ public sealed class PageScanExecutor(IRowBinder rowBinder)
                 totals = Publish(totals.AddRowOutput(), onCountersChanged);
             }
 
-            yield return new AccessStep.Row(cursor, outcome) { HasResidual = hasResidual, Counters = totals };
+            yield return new AccessStep.Row(cursor, outcome)
+            {
+                HasResidual = hasResidual,
+                EmittedRecord = outcome == RowOutcome.Match ? RecordSnapshot.Detach(page.GetRecord(cursor)) : null,
+                Counters = totals
+            };
 
             if (outcome == RowOutcome.Match && totals.RowsOutput == rowGoal)
             {

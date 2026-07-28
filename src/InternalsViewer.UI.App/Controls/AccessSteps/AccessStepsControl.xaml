@@ -223,6 +223,15 @@
                 </Grid>
             </DataTemplate>
 
+            <DataTemplate x:Key="TruncatedTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Opacity="0.6">
+                        <TextBlock Text="{Binding Count}" FontSize="12" />
+                        <TextBlock Text=" steps omitted" FontSize="12" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
             <DataTemplate x:Key="DefaultTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <TextBlock Text="{Binding}" Style="{StaticResource StepValueStyle}" />
@@ -240,25 +249,17 @@
                 RangeEndTemplate="{StaticResource RangeEndTemplate}"
                 LeafLinkTemplate="{StaticResource LeafLinkTemplate}"
                 StoppedTemplate="{StaticResource StoppedTemplate}"
+                TruncatedTemplate="{StaticResource TruncatedTemplate}"
                 DefaultTemplate="{StaticResource DefaultTemplate}" />
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <ListView x:Name="StepsList"
-              Background="{x:Bind Background, Mode=OneWay}"
-              ItemsSource="{x:Bind StepHistory, Mode=OneWay}"
-              SelectedItem="{x:Bind CurrentStep, Mode=OneWay}"
-              ItemTemplateSelector="{StaticResource AccessStepTemplateSelector}"
-              SelectionMode="None"
-              IsItemClickEnabled="False"
-              ItemContainerTransitions="{x:Null}"
-              Padding="0">
-        <ListView.ItemContainerStyle>
-            <Style TargetType="ListViewItem">
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="MinHeight" Value="0" />
-            </Style>
-        </ListView.ItemContainerStyle>
-    </ListView>
+    <ScrollViewer x:Name="StepsScroller"
+                  Background="{x:Bind Background, Mode=OneWay}"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <ItemsRepeater x:Name="StepsList"
+                       ItemsSource="{x:Bind StepHistory, Mode=OneWay}"
+                       ItemTemplate="{StaticResource AccessStepTemplateSelector}" />
+    </ScrollViewer>
 </UserControl>

@@ -10,7 +10,12 @@
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
+    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" IsInverse="True" />
+    </UserControl.Resources>
     <Grid VerticalAlignment="Stretch"
           HorizontalAlignment="Stretch">
         <Grid.RowDefinitions>
@@ -239,9 +244,13 @@
 
                 <accessSteps:AccessStepsControl Grid.Row="1"
                                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                                Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
+                                                        Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                                 StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}"
                                                 CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
                 <controls:GridSplitter Grid.Row="2"
+                                       Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
+                                               Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                        HorizontalAlignment="Stretch"
                                        VerticalAlignment="Stretch"
                                        ResizeBehavior="PreviousAndNext"
@@ -255,6 +264,8 @@
                 </controls:GridSplitter>
                 <TabView Grid.Row="3"
                          VerticalAlignment="Stretch"
+                         Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
+                                 Converter={StaticResource InverseBoolToVisibilityConverter}}"
                          IsAddTabButtonVisible="False"
                          CanReorderTabs="False"
                          TabWidthMode="SizeToContent"
@@ -290,6 +301,17 @@
                                     Converter={StaticResource BoolToVisibilityConverter}}">
                     <ProgressRing IsActive="{x:Bind ViewModel.IsRecordsLoading, Mode=OneWay}" />
                     <TextBlock Margin="10,0,0,0" VerticalAlignment="Center">Loading...</TextBlock>
+                </StackPanel>
+                <StackPanel Grid.Row="1"
+                            Grid.RowSpan="3"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Visibility="{x:Bind ViewModel.IsRunningToEnd,
+                                    Mode=OneWay,
+                                    Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ProgressRing IsActive="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay}" />
+                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center">Running</TextBlock>
                 </StackPanel>
             </Grid>
         </Grid>

@@ -24,6 +24,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate StoppedTemplate { get; set; } = null!;
 
+    public DataTemplate TruncatedTemplate { get; set; } = null!;
+
     public DataTemplate DefaultTemplate { get; set; } = null!;
 
     protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
@@ -39,6 +41,7 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.RangeEnd => RangeEndTemplate,
             AccessStep.LeafLink => LeafLinkTemplate,
             AccessStep.Stopped => StoppedTemplate,
+            AccessStep.Truncated => TruncatedTemplate,
             _ => DefaultTemplate
         };
     }

@@ -1,4 +1,6 @@
 using System.Xml.Linq;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 using InternalsViewer.Query.Parsing.Plans.Predicates;
 
 namespace InternalsViewer.Query.Parsing.Plans;
@@ -120,7 +122,43 @@ public static class ExecutionPlanParser
             node.Children.Add(ParseRelationalOperator(child, parameters, level + 1));
         }
 
+        if (string.Equals(node.PhysicalOperator, "Top", StringComparison.OrdinalIgnoreCase) &&
+            node.Children.Count == 1 &&
+            node.Children[0].PredicateInfo is { } childPredicateInfo)
+        {
+            childPredicateInfo.RowGoal = ParseTopRowCount(element, parameters);
+        }
+
         return node;
+    }
+
+    private static long? ParseTopRowCount(XElement element, PlanParameters parameters)
+    {
+        var top = element.Elements().FirstOrDefault(e => e.Name.LocalName == "Top");
+
+        if (top is null || IsTrue(top.Attribute("IsPercent")) || IsTrue(top.Attribute("WithTies")))
+        {
+            return null;
+        }
+
+        var scalar = top.Elements()
+                        .FirstOrDefault(e => e.Name.LocalName == "TopExpression")?
+                        .Elements()
+                        .FirstOrDefault(e => e.Name.LocalName == "ScalarOperator");
+
+        var expression = new ScalarOperatorParser(resolveParameter: parameters.Resolve).Parse(scalar);
+
+        if (expression is AccessExpression.Constant { Value.Kind: AccessValueKind.Integer } constant)
+        {
+            return constant.Value.Numeric;
+        }
+
+        return null;
+    }
+
+    private static bool IsTrue(XAttribute? attribute)
+    {
+        return attribute?.Value is "1" or "true";
     }
 
     private static void IndexNodes(PlanNode node, Dictionary<int, PlanNode> dict)

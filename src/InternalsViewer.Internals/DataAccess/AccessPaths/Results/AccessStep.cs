@@ -1,5 +1,6 @@
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 
@@ -71,6 +72,8 @@ public abstract record AccessStep(StepLayer Layer, SeekPhase SeekPhase)
     public sealed record Row(int Slot, RowOutcome Outcome) : AccessStep(StepLayer.Row, SeekPhase.Walk)
     {
         public bool HasResidual { get; init; }
+
+        public IRecord? EmittedRecord { get; init; }
     }
 
     /// <summary>
@@ -99,4 +102,6 @@ public abstract record AccessStep(StepLayer Layer, SeekPhase SeekPhase)
     /// The access path stopped producing rows
     /// </summary>
     public sealed record Stopped(StopReason Reason) : AccessStep(StepLayer.Access, SeekPhase.Complete);
+
+    public sealed record Truncated(long Count) : AccessStep(StepLayer.Access, SeekPhase.Walk);
 }

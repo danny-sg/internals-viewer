@@ -4,7 +4,9 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.DataAccess;
 using InternalsViewer.Internals.Interfaces.Engine;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Structures;
+using InternalsViewer.Internals.Providers.Metadata;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths;
 
@@ -17,9 +19,14 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths;
 /// columns are still described by the clustered index's <see cref="IndexStructure"/>, so this adapter
 /// mirrors <see cref="IndexAccessPage"/> while treating the page as always being the leaf.
 /// </remarks>
-public sealed class ClusteredLeafAccessPage(DataPage page, List<IRecord> records, IndexStructure indexStructure)
+public sealed class ClusteredLeafAccessPage(DataPage page, IRecordService recordService, IndexStructure indexStructure)
     : IIndexAccessPage
 {
+    private readonly IRecord?[] _records = new IRecord?[page.OffsetTable.Length];
+
+    private readonly TableStructure _tableStructure = TableStructureProvider.GetTableStructure(page.Database,
+                                                                                               page.PageHeader.AllocationUnitId);
+
     public PageAddress PageAddress => page.PageHeader.PageAddress;
 
     public PageAddress NextPage => page.PageHeader.NextPage;
@@ -30,13 +37,13 @@ public sealed class ClusteredLeafAccessPage(DataPage page, List<IRecord> records
 
     public bool IsLeaf => true;
 
-    public int SlotCount => records.Count;
+    public int SlotCount => _records.Length;
 
-    public IRecord GetRecord(int slot) => records[slot];
+    public IRecord GetRecord(int slot) => _records[slot] ??= recordService.GetDataRecord(page, slot, _tableStructure);
 
     public AccessKey GetKey(int slot)
     {
-        var record = records[slot];
+        var record = GetRecord(slot);
 
         var values = indexStructure.IndexKeyColumns
                                     .Select(keyColumn => CreateValue(record, keyColumn))
