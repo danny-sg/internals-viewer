@@ -39,6 +39,7 @@ using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Settings;
+using QueryIndexTabView = InternalsViewer.UI.App.Views.Query.Tabs.Index.QueryIndexTabView;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -533,7 +534,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var document = new DocumentViewModel(title: $"Index: {index}",
                                              content: indexViewModel,
-                                             viewFactory: static () => new IndexDocumentView(),
+                                             viewFactory: static () => new QueryIndexTabView(),
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
@@ -607,7 +608,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var document = new DocumentViewModel(title: $"Page {pageAddress}",
                                              content: pageViewModel,
-                                             viewFactory: static () => new PageDocumentView(),
+                                             viewFactory: static () => new QueryPageTabView(),
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,

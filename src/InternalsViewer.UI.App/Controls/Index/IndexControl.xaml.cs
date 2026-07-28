@@ -691,7 +691,7 @@ public sealed partial class IndexControl : IDisposable
             // Only draw the page if it is visible
             if (clip.Contains(renderX, renderY))
             {
-                var isHighlighted = highlightedAddresses.Contains(node.Node.PageAddress);
+                var isHighlighted = highlightedAddresses?.Contains(node.Node.PageAddress) ?? false;
                 var isSelected = node.Node.PageAddress == selectedAddress;
                 var hasSpanColour = _activeSpanColours.TryGetValue(node.Node.PageAddress, out var spanColour);
 

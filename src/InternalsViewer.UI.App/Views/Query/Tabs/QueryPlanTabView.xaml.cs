@@ -8,7 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
 /// <summary>Dock document hosting the execution plan diagrams for the active query.</summary>
-public sealed partial class PlanDocumentView : UserControl
+public sealed partial class QueryPlanTabView : UserControl
 {
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
@@ -27,7 +27,7 @@ public sealed partial class PlanDocumentView : UserControl
         }
     }
 
-    public PlanDocumentView()
+    public QueryPlanTabView()
     {
         InitializeComponent();
 

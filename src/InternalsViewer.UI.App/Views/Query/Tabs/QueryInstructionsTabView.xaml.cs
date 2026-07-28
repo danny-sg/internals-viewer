@@ -10,7 +10,7 @@ using Windows.System;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
-public sealed partial class InstructionsDocumentView : UserControl
+public sealed partial class QueryInstructionsTabView : UserControl
 {
     private static readonly Dictionary<string, (Func<QueryOptionsViewModel, bool> Get,
                                                 Action<QueryOptionsViewModel> Toggle)> OptionLinks = new()
@@ -39,7 +39,7 @@ public sealed partial class InstructionsDocumentView : UserControl
 
     private string _currentPage = "GettingStarted";
 
-    public InstructionsDocumentView()
+    public QueryInstructionsTabView()
     {
         InitializeComponent();
 

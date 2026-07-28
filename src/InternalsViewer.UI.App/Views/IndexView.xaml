@@ -61,10 +61,11 @@
               Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="{x:Bind ViewModel.BodyColumnWidth, Mode=OneWay}"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="{x:Bind ViewModel.DetailColumnWidth, Mode=OneWay}"/>
             </Grid.ColumnDefinitions>
-            
+
             <index:IndexControl x:Name="IndexControl"
                                 Grid.Column="0"
                                 Visibility="{x:Bind ViewModel.IsInitialized,
@@ -77,36 +78,69 @@
                                 SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"/>
-            <Grid Grid.Column="1" 
+
+            <controls1:GridSplitter Grid.Column="1"
+                                    Width="4"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    x:Name="IndexGridSplitter"
+                                    ResizeBehavior="CurrentAndNext"
+                                    ResizeDirection="Columns"
+                                    Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"
+                                    Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <controls1:GridSplitter.Template>
+                    <ControlTemplate TargetType="controls1:GridSplitter">
+                        <Grid Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </controls1:GridSplitter.Template>
+            </controls1:GridSplitter>
+
+            <Grid Grid.Column="2" 
                   x:Name="IndexGrid"
-                  Visibility="{x:Bind ViewModel.IndexDetailVisibility, Mode=OneWay}"      
+                  Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"      
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
                   BorderThickness="1,0,0,0" >
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal" Grid.Row="0" VerticalAlignment="Center"
-                            Padding="8"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                            BorderThickness="0,0,0,1" >
-                    <TextBlock Margin="4,0,0,1" FontWeight="Bold">Page Address</TextBlock>
-                    <HyperlinkButton x:Name="PageAddressLink"
-                                     Margin="4,0,0,0"
-                                     Style="{StaticResource PageAddressStyle}"
-                                     Content="{x:Bind ViewModel.SelectedPageAddress, Mode=OneWay}" />
-                    <TextBlock Margin="4,0,0,1" FontWeight="Bold">Previous Page</TextBlock>
-                    <HyperlinkButton x:Name="PreviousPageAddressLink"
-                                     Margin="4,0,0,0"
-                                     Style="{StaticResource PageAddressStyle}"
-                                     Content="{x:Bind ViewModel.SelectedPreviousPage, Mode=OneWay, FallbackValue='(0:0)'}" />
+                <Grid Grid.Row="0"
+                      Padding="8,4,4,4"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                      BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <TextBlock Margin="4,0,0,1" FontWeight="Bold">Page Address</TextBlock>
+                        <HyperlinkButton x:Name="PageAddressLink"
+                                         Margin="4,0,0,0"
+                                         Style="{StaticResource PageAddressStyle}"
+                                         Content="{x:Bind ViewModel.SelectedPageAddress, Mode=OneWay}" />
+                        <TextBlock Margin="4,0,0,1" FontWeight="Bold">Previous Page</TextBlock>
+                        <HyperlinkButton x:Name="PreviousPageAddressLink"
+                                         Margin="4,0,0,0"
+                                         Style="{StaticResource PageAddressStyle}"
+                                         Content="{x:Bind ViewModel.SelectedPreviousPage, Mode=OneWay, FallbackValue='(0:0)'}" />
 
-                    <TextBlock Margin="4,0,0,1" FontWeight="Bold">Next Page</TextBlock>
-                    <HyperlinkButton x:Name="NextPageAddressLink"
-                                     Margin="4,0,0,0"
-                                     Style="{StaticResource PageAddressStyle}"
-                                     Content="{x:Bind ViewModel.SelectedNextPage, Mode=OneWay, FallbackValue='(0:0)'}" />
-                </StackPanel>
+                        <TextBlock Margin="4,0,0,1" FontWeight="Bold">Next Page</TextBlock>
+                        <HyperlinkButton x:Name="NextPageAddressLink"
+                                         Margin="4,0,0,0"
+                                         Style="{StaticResource PageAddressStyle}"
+                                         Content="{x:Bind ViewModel.SelectedNextPage, Mode=OneWay, FallbackValue='(0:0)'}" />
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Click="{x:Bind CloseDetailPane}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6"
+                            VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE711;" FontSize="12" />
+                    </Button>
+                </Grid>
                 <index:RecordGrid Grid.Row="1"
                                   x:Name="RecordGrid"
                                   Records="{x:Bind ViewModel.Records, Mode=OneWay}"
@@ -123,16 +157,6 @@
                     <TextBlock Margin="10,0,0,0" VerticalAlignment="Center">Loading...</TextBlock>
                 </StackPanel>
             </Grid>
-            <controls1:GridSplitter Width="4"
-                                    Grid.Column="1"
-                                    x:Name="IndexGridSplitter"
-                                    HorizontalAlignment="Left"
-                                    ResizeBehavior="CurrentAndNext"
-                                    ResizeDirection="Columns">
-                <controls1:GridSplitter.RenderTransform>
-                    <TranslateTransform X="-7" />
-                </controls1:GridSplitter.RenderTransform>
-            </controls1:GridSplitter>
         </Grid>
     </Grid>
 </UserControl>

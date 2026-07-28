@@ -1,5 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -27,7 +29,8 @@ namespace InternalsViewer.UI.App.ViewModels.Index;
 public sealed class IndexTabViewModelFactory(ILogger<IndexTabViewModel> logger,
                                              IndexService indexService,
                                              IPageService pageService,
-                                             IRecordService recordService)
+                                             IRecordService recordService,
+                                             IndexStepService indexStepService)
 {
     private IndexService IndexService { get; } = indexService;
 
@@ -35,14 +38,17 @@ public sealed class IndexTabViewModelFactory(ILogger<IndexTabViewModel> logger,
 
     private IRecordService RecordService { get; } = recordService;
 
+    private IndexStepService IndexStepService { get; } = indexStepService;
+
     public IndexTabViewModel Create(DatabaseSource database)
-        => new(logger, IndexService, RecordService, PageService, database);
+        => new(logger, IndexService, RecordService, PageService, IndexStepService, database);
 }
 
 public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                                        IndexService indexService,
                                        IRecordService recordService,
                                        IPageService pageService,
+                                       IndexStepService indexStepService,
                                        DatabaseSource database) : TabViewModel
 {
     private ILogger<IndexTabViewModel> Logger { get; } = logger;
@@ -52,6 +58,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private IRecordService RecordService { get; } = recordService;
 
     private IPageService PageService { get; } = pageService;
+
+    private IndexStepService IndexStepService { get; } = indexStepService;
 
     public DatabaseSource Database { get; } = database;
 
@@ -114,7 +122,19 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private bool _isTooltipEnabled;
 
     [ObservableProperty]
-    private Visibility _indexDetailVisibility = Visibility.Collapsed;
+    [NotifyPropertyChangedFor(nameof(BodyColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(DetailColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(DetailSplitterVisibility))]
+    private bool _isDetailPaneVisible;
+
+    public GridLength BodyColumnWidth
+        => IsDetailPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
+
+    public GridLength DetailColumnWidth
+        => IsDetailPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility DetailSplitterVisibility
+        => IsDetailPaneVisible ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     private ObservableCollection<IndexRecordModel> _records = [];
@@ -142,6 +162,18 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     [ObservableProperty]
     private PlanNode? _planNode;
+
+    [ObservableProperty]
+    private ObservableCollection<AccessStep> _stepHistory = [];
+
+    [ObservableProperty]
+    private AccessStep? _currentStep;
+
+    [ObservableProperty]
+    private bool _isStepping;
+
+    [ObservableProperty]
+    private bool _isStepComplete;
 
     partial void OnPlanNodeChanged(PlanNode? value)
     {
@@ -203,7 +235,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             // Update via UI thread
             DispatcherQueue.TryEnqueue(() =>
             {
-                IndexDetailVisibility = Visibility.Collapsed;
+                IsDetailPaneVisible = false;
 
                 SelectedLevel = null;
                 SelectedNextPage = null;
@@ -219,7 +251,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         SelectedPageAddress = pageAddress;
 
-        IndexDetailVisibility = Visibility.Visible;
+        IsDetailPaneVisible = true;
 
         using var spinnerDelay = new CancellationTokenSource();
 
@@ -261,7 +293,76 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         IsRecordsLoading = false;
 
-        IndexDetailVisibility = Visibility.Visible;
+        IsDetailPaneVisible = true;
+    }
+
+    [RelayCommand]
+    public void ToggleStep()
+    {
+        IsDetailPaneVisible = !IsDetailPaneVisible;
+    }
+
+    [RelayCommand]
+    public async Task StartStep()
+    {
+        if (PlanNode?.PredicateInfo is not { HasSeekBounds: true } predicateInfo || AllocationUnit is null)
+        {
+            Logger.LogDebug("No seek predicate available to step through");
+
+            return;
+        }
+
+        StepHistory.Clear();
+        CurrentStep = null;
+        IsStepComplete = false;
+
+        var bounds = predicateInfo.SeekBounds[0];
+
+        await IndexStepService.StartAsync(Database,
+                                          AllocationUnit.AllocationUnitId,
+                                          RootPage,
+                                          bounds,
+                                          predicateInfo.Residual,
+                                          ScanDirection.Forward,
+                                          CancellationToken);
+
+        IsStepping = true;
+
+        await StepNext();
+    }
+
+    [RelayCommand]
+    public async Task StepNext()
+    {
+        if (!IsStepping || IsStepComplete)
+        {
+            return;
+        }
+
+        var step = await IndexStepService.StepNextAsync(CancellationToken);
+
+        if (step is null)
+        {
+            IsStepComplete = true;
+
+            return;
+        }
+
+        StepHistory.Insert(0, step);
+
+        CurrentStep = step;
+
+        if (step is AccessStep.Stopped)
+        {
+            IsStepComplete = true;
+        }
+
+        var pageAddress = IndexStepService.CurrentPageAddress;
+
+        if (pageAddress is not null && pageAddress != SelectedPageAddress)
+        {
+            await LoadPage(pageAddress.Value);
+        }
     }
 
     private async Task ShowRecordsSpinnerAfterDelay(CancellationToken token)

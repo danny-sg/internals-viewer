@@ -1,0 +1,42 @@
+using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+
+namespace InternalsViewer.UI.App.Helpers.Selectors;
+
+public class AccessStepTemplateSelector : DataTemplateSelector
+{
+    public DataTemplate EnterPageTemplate { get; set; } = null!;
+
+    public DataTemplate ProbeTemplate { get; set; } = null!;
+
+    public DataTemplate DescendTemplate { get; set; } = null!;
+
+    public DataTemplate EntryPointTemplate { get; set; } = null!;
+
+    public DataTemplate RowTemplate { get; set; } = null!;
+
+    public DataTemplate RangeEndTemplate { get; set; } = null!;
+
+    public DataTemplate LeafLinkTemplate { get; set; } = null!;
+
+    public DataTemplate StoppedTemplate { get; set; } = null!;
+
+    public DataTemplate DefaultTemplate { get; set; } = null!;
+
+    protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
+    {
+        return item switch
+        {
+            AccessStep.EnterPage => EnterPageTemplate,
+            AccessStep.Probe => ProbeTemplate,
+            AccessStep.Descend => DescendTemplate,
+            AccessStep.EntryPoint => EntryPointTemplate,
+            AccessStep.Row => RowTemplate,
+            AccessStep.RangeEnd => RangeEndTemplate,
+            AccessStep.LeafLink => LeafLinkTemplate,
+            AccessStep.Stopped => StoppedTemplate,
+            _ => DefaultTemplate
+        };
+    }
+}

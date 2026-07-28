@@ -28,4 +28,9 @@ public interface IIndexAccessPage : IAccessPage
     /// </summary>
     /// <exception cref="System.NotSupportedException">The page is a leaf</exception>
     PageAddress GetChildPage(int slot);
+
+    /// <summary>
+    /// The next page at the leaf level, following the page's linked list
+    /// </summary>
+    PageAddress NextPage { get; }
 }

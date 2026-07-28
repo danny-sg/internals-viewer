@@ -32,6 +32,8 @@ internal sealed class TestIndexPage(PageAddress pageAddress,
 
     public int SlotCount => Keys.Count;
 
+    public PageAddress NextPage { get; set; } = PageAddress.Empty;
+
     /// <summary>
     /// Number of times a key comparison was requested, used to verify counter totals
     /// </summary>

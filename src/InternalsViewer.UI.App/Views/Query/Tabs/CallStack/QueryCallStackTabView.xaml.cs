@@ -14,7 +14,7 @@ using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class CallstackDocumentView : UserControl
+public sealed partial class QueryCallStackTabView : UserControl
 {
     private readonly Dictionary<CallStackNode, TreeViewNode> _nodes = new();
 
@@ -64,7 +64,7 @@ public sealed partial class CallstackDocumentView : UserControl
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
-    public CallstackDocumentView()
+    public QueryCallStackTabView()
     {
         InitializeComponent();
 

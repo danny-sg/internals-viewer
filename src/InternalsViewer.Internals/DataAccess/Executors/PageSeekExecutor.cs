@@ -8,10 +8,6 @@ namespace InternalsViewer.Internals.DataAccess.Executors;
 /// <summary>
 /// Executes a seek against a single page, locating an entry point then walking the range
 /// </summary>
-/// <remarks>
-/// The walk stops at the end of the page rather than following a leaf link, so this represents
-/// the part of a seek that happens once the leaf has been reached.
-/// </remarks>
 public sealed class PageSeekExecutor(IRowBinder rowBinder)
 {
     private IRowBinder RowBinder { get; } = rowBinder;

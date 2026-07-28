@@ -3,11 +3,11 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
-public sealed partial class SqlDocumentView : UserControl
+public sealed partial class QuerySqlTabView : UserControl
 {
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
-    public SqlDocumentView()
+    public QuerySqlTabView()
     {
         InitializeComponent();
 

@@ -11,9 +11,9 @@ using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
-namespace InternalsViewer.UI.App.Views.Query.Tabs;
+namespace InternalsViewer.UI.App.Views.Query.Tabs.Index;
 
-public sealed partial class IndexDocumentView : UserControl, IDisposable
+public sealed partial class QueryIndexTabView : UserControl, IDisposable
 {
     private const float MinimumZoom = 0.001f;
     private const float MaximumZoom = 10f;
@@ -22,7 +22,7 @@ public sealed partial class IndexDocumentView : UserControl, IDisposable
 
     public IndexTabViewModel? ViewModel => DataContext as IndexTabViewModel;
 
-    public IndexDocumentView()
+    public QueryIndexTabView()
     {
         InitializeComponent();
 
@@ -108,6 +108,14 @@ public sealed partial class IndexDocumentView : UserControl, IDisposable
         catch (Exception ex)
         {
             await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+        }
+    }
+
+    private void CloseDetailPane()
+    {
+        if (ViewModel is not null)
+        {
+            ViewModel.IsDetailPaneVisible = false;
         }
     }
     #pragma warning restore VSTHRD100

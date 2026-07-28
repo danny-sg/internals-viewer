@@ -16,13 +16,13 @@ using Microsoft.UI.Xaml.Controls;
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
 /// <summary>Dock document hosting the engine-events grid for the active query.</summary>
-public sealed partial class EventsDocumentView : UserControl, IDisposable
+public sealed partial class QueryEventsTabView : UserControl, IDisposable
 {
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     private QueryViewModel? _subscribed;
 
-    public EventsDocumentView()
+    public QueryEventsTabView()
     {
         InitializeComponent();
 

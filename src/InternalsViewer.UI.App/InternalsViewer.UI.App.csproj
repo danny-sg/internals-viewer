@@ -321,6 +321,9 @@
       <Page Update="Controls\Results\ResultsGridControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
+      <Page Update="Controls\AccessSteps\AccessStepsControl.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
       <Page Update="Views\Query\Tabs\CallstackDocumentView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
@@ -536,6 +539,7 @@
     <ItemGroup>
       <Folder Include="Assets\Help\images\" />
       <Folder Include="Services\Records\" />
+      <Folder Include="Views\Query\Tabs\Index\" />
     </ItemGroup>
 
 

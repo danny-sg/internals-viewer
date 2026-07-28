@@ -10,11 +10,11 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
-public sealed partial class AllocationDocumentView : UserControl
+public sealed partial class QueryAllocationTabView : UserControl
 {
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
-    public AllocationDocumentView()
+    public QueryAllocationTabView()
     {
         InitializeComponent();
 

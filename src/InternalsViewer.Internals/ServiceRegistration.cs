@@ -61,6 +61,7 @@ public static class ServiceRegistration
         services.AddTransient<LobRecordLoader>();
 
         services.AddTransient<IndexService>();
+        services.AddTransient<IndexStepService>();
 
         RegisterPageParsers(services);
     }
