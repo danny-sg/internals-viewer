@@ -339,16 +339,16 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [RelayCommand]
     public async Task StartStep()
     {
-        if (PlanNode?.PredicateInfo is not { HasSeekBounds: true } predicateInfo || AllocationUnit is null)
+        if (PlanNode?.PredicateInfo is not { } predicateInfo || AllocationUnit is null)
         {
-            Logger.LogDebug("No seek predicate available to step through");
+            Logger.LogDebug("No predicate information available to step through");
 
             return;
         }
 
         ClearStepState();
 
-        var bounds = predicateInfo.SeekBounds[0];
+        var bounds = predicateInfo.HasSeekBounds ? predicateInfo.SeekBounds[0] : SeekBounds.All;
 
         await Task.Run(() => IndexStepService.StartAsync(Database,
                                                          AllocationUnit.AllocationUnitId,
@@ -368,7 +368,15 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     private int _runDelayMs;
 
-    [RelayCommand]
+    private const int HistoryLimit = 1000;
+
+    private bool _isBatching;
+
+    private readonly List<AccessStep> _batchedSteps = [];
+
+    private readonly List<IndexRecordModel> _batchedResults = [];
+
+    [RelayCommand(AllowConcurrentExecutions = true)]
     public async Task Run()
     {
         if (IsRunning)
@@ -385,7 +393,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         await RunLoop();
     }
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     public async Task RunToEnd()
     {
         if (IsRunning)
@@ -413,6 +421,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         {
             while (IsRunning && !IsStepComplete)
             {
+                _isBatching = _runDelayMs == 0;
+
                 await StepNext();
 
                 if (!IsStepping || IsStepComplete)
@@ -431,8 +441,57 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         }
         finally
         {
+            FlushBatchedSteps();
+
             IsRunning = false;
         }
+    }
+
+    private void FlushBatchedSteps()
+    {
+        if (!_isBatching)
+        {
+            return;
+        }
+
+        _isBatching = false;
+
+        if (_batchedSteps.Count > 0)
+        {
+            var recent = _batchedSteps.Skip(Math.Max(0, _batchedSteps.Count - HistoryLimit))
+                                      .Reverse();
+
+            StepHistory = new ObservableCollection<AccessStep>(recent.Concat(StepHistory).Take(HistoryLimit));
+
+            CurrentStep = _batchedSteps[^1];
+
+            SelectedSlot = GetStepSlot(CurrentStep);
+        }
+
+        if (_batchedResults.Count > 0)
+        {
+            ResultRecords = new ObservableCollection<IndexRecordModel>(ResultRecords.Concat(_batchedResults));
+        }
+
+        _batchedSteps.Clear();
+        _batchedResults.Clear();
+
+        if (SelectedPageAddress is { } pageAddress)
+        {
+            PageNavigated?.Invoke(this, pageAddress);
+        }
+    }
+
+    private static int? GetStepSlot(AccessStep step)
+    {
+        return step switch
+        {
+            AccessStep.Probe probe => probe.Middle,
+            AccessStep.ProbeResult probeResult => probeResult.Slot,
+            AccessStep.Row row => row.Slot,
+            AccessStep.RangeEnd rangeEnd => rangeEnd.Slot,
+            _ => null
+        };
     }
 
     [RelayCommand]
@@ -445,7 +504,11 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     private void ClearStepState()
     {
-        StepHistory.Clear();
+        _isBatching = false;
+        _batchedSteps.Clear();
+        _batchedResults.Clear();
+
+        StepHistory = [];
         CurrentStep = null;
         SelectedSlot = null;
         ResultRecords = [];
@@ -479,18 +542,23 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 return;
             }
 
-            StepHistory.Insert(0, step);
-
-            CurrentStep = step;
-
-            SelectedSlot = step switch
+            if (_isBatching)
             {
-                AccessStep.Probe probe => probe.Middle,
-                AccessStep.ProbeResult probeResult => probeResult.Slot,
-                AccessStep.Row row => row.Slot,
-                AccessStep.RangeEnd rangeEnd => rangeEnd.Slot,
-                _ => null
-            };
+                _batchedSteps.Add(step);
+            }
+            else
+            {
+                StepHistory.Insert(0, step);
+
+                if (StepHistory.Count > HistoryLimit)
+                {
+                    StepHistory.RemoveAt(StepHistory.Count - 1);
+                }
+
+                CurrentStep = step;
+
+                SelectedSlot = GetStepSlot(step);
+            }
 
             if (step is AccessStep.Row { Outcome: RowOutcome.Match } match)
             {
@@ -498,7 +566,14 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
                 if (record is not null)
                 {
-                    ResultRecords = new ObservableCollection<IndexRecordModel>([.. ResultRecords, record]);
+                    if (_isBatching)
+                    {
+                        _batchedResults.Add(record);
+                    }
+                    else
+                    {
+                        ResultRecords.Add(record);
+                    }
                 }
             }
 
@@ -520,7 +595,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
                 await LoadPage(pageAddress.Value);
 
-                PageNavigated?.Invoke(this, pageAddress.Value);
+                if (!_isBatching)
+                {
+                    PageNavigated?.Invoke(this, pageAddress.Value);
+                }
             }
 
             break;

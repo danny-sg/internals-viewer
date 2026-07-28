@@ -171,6 +171,16 @@ public sealed partial class SeekStrategyPanel : UserControl
                 FontSize = 12,
                 TextWrapping = TextWrapping.Wrap
             }, dimTitle: true));
+
+            if (Strategy.Residual is not null)
+            {
+                PhasesPanel.Children.Add(TitledRow("Residual", 110, new PredicateTextBox
+                {
+                    Text = PredicateText.From(Strategy.Residual),
+                    TextPadding = new Thickness(2, 0, 2, 0),
+                    HasBackground = false
+                }, dimTitle: true));
+            }
         }
 
         PhasesPanel.Children.Add(SectionHeader("Counters", topMargin: 12));

@@ -58,16 +58,44 @@ public sealed partial class RecordGrid : IDisposable
         InitializeComponent();
     }
 
+    private ObservableCollection<IndexRecordModel>? _subscribedRecords;
+
+    private bool _hasFieldColumns;
+
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (RecordGrid)d;
 
         if (e.Property == RecordsProperty)
         {
+            control.SubscribeRecords();
             control.AddColumns();
         }
 
         control.DispatcherQueue.TryEnqueue(control.ApplySelectedSlot);
+    }
+
+    private void SubscribeRecords()
+    {
+        if (_subscribedRecords is not null)
+        {
+            _subscribedRecords.CollectionChanged -= OnRecordsCollectionChanged;
+        }
+
+        _subscribedRecords = Records;
+
+        if (_subscribedRecords is not null)
+        {
+            _subscribedRecords.CollectionChanged += OnRecordsCollectionChanged;
+        }
+    }
+
+    private void OnRecordsCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (!_hasFieldColumns && Records?.Count > 0)
+        {
+            AddColumns();
+        }
     }
 
     private void ApplySelectedSlot()
@@ -89,6 +117,8 @@ public sealed partial class RecordGrid : IDisposable
         RemoveEventHandlers();
 
         DataGrid.Columns.Clear();
+
+        _hasFieldColumns = Records?.Count > 0;
 
         if (!HideSlotColumn)
         {
@@ -174,5 +204,11 @@ public sealed partial class RecordGrid : IDisposable
     public void Dispose()
     {
         RemoveEventHandlers();
+
+        if (_subscribedRecords is not null)
+        {
+            _subscribedRecords.CollectionChanged -= OnRecordsCollectionChanged;
+            _subscribedRecords = null;
+        }
     }
 }

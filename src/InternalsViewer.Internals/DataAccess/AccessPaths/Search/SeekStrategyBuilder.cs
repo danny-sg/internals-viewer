@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 using InternalsViewer.Internals.Metadata.Structures;
@@ -7,7 +8,11 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 
 public static class SeekStrategyBuilder
 {
-    public static SeekStrategy Build(IndexStructure indexStructure, SeekBounds bounds, ScanDirection direction, long? rowGoal)
+    public static SeekStrategy Build(IndexStructure indexStructure,
+                                     SeekBounds bounds,
+                                     ScanDirection direction,
+                                     long? rowGoal,
+                                     AccessPredicate? residual = null)
     {
         var forward = direction == ScanDirection.Forward;
 
@@ -35,7 +40,8 @@ public static class SeekStrategyBuilder
             RowGoal = rowGoal,
             RowGoalReason = rowGoalReason,
             Bounds = bounds,
-            Direction = direction
+            Direction = direction,
+            Residual = residual is AccessPredicate.True ? null : residual
         };
     }
 

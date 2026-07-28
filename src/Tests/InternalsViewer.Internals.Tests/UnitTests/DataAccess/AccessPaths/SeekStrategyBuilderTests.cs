@@ -1,4 +1,5 @@
 using System.Data;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
@@ -57,6 +58,21 @@ public class SeekStrategyBuilderTests
         Assert.True(strategy.Phases[0].Condition.IsDefaultOrEmpty);
         Assert.Contains("first down page pointer", strategy.Phases[0].Lead);
         Assert.Equal("Id >= 500", Text(strategy.Phases[2]));
+    }
+
+    [Fact]
+    public void Unbounded_Scan_With_A_Residual_Describes_A_Full_Walk()
+    {
+        var residual = new AccessPredicate.Like(new AccessExpression.Column(-1, "TextField"), "%Test%");
+
+        var strategy = SeekStrategyBuilder.Build(UniqueIndex(), SeekBounds.All, ScanDirection.Forward, null, residual);
+
+        Assert.Contains("first down page pointer", strategy.Phases[0].Lead);
+        Assert.Contains("first slot", strategy.Phases[1].Lead);
+        Assert.Contains("end of the index", strategy.Phases[2].Lead);
+        Assert.Equal("Stop at the end of the index", strategy.Phases[3].Lead);
+
+        Assert.Same(residual, strategy.Residual);
     }
 
     private static string Text(SeekStrategyPhase phase)

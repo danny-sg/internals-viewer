@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 
@@ -15,4 +14,6 @@ public sealed record SeekStrategy
     public SeekBounds? Bounds { get; init; }
 
     public ScanDirection Direction { get; init; }
+
+    public AccessPredicate? Residual { get; init; }
 }

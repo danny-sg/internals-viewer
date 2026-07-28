@@ -73,7 +73,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
         Bounds = bounds;
         Residual = residual;
         RowGoal = GetRowGoal(IndexStructure, bounds);
-        Strategy = SeekStrategyBuilder.Build(IndexStructure, bounds, direction, RowGoal);
+        Strategy = SeekStrategyBuilder.Build(IndexStructure, bounds, direction, RowGoal, residual);
         Direction = direction;
         Counters = default;
         IsComplete = false;
