@@ -55,7 +55,8 @@ public static class SeekStrategyBuilder
             Direction = direction,
             Residual = residual is AccessPredicate.True ? null : residual,
             HasUntranslatedResidual = hasUntranslatedResidual,
-            RangeCount = rangeCount
+            RangeCount = rangeCount,
+            Ranges = ranges ?? [bounds]
         };
     }
 

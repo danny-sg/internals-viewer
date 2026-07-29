@@ -389,7 +389,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
         StatusBarText.Text = filtered.Count == 0
             ? "No events"
-            : $"Total: {filtered.Count}   {string.Join("   ", counts)}";
+            : string.Join("   ", counts);
     }
 
     private static bool Matches(EngineEvent ev, string query) =>

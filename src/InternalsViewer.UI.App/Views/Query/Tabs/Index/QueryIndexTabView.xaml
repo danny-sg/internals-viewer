@@ -48,16 +48,7 @@
                            Height="32"
                            HorizontalAlignment="Left" />
                     <TextBlock Text="{x:Bind ViewModel.PlanNode.LogicalOperator}" Padding="0,0,8,0"/>
-                    <predicates:PredicateTextBox x:Name="PredicateTextBox"
-                                                 Visibility="{x:Bind ViewModel.HasPredicate,
-                                                 Mode=OneWay,
-                                                 Converter={StaticResource BoolToVisibilityConverter}}"
-                                                 VerticalAlignment="Center"
-                                                 Text="{x:Bind ViewModel.PredicateText, Mode=OneWay}" />
-
                 </StackPanel>
-
-
             </AppBarElementContainer>
 
             <AppBarElementContainer VerticalContentAlignment="Center">
@@ -67,11 +58,11 @@
                     <TextBlock Text="Trace" VerticalAlignment="Center" />
                 </ToggleButton>
             </AppBarElementContainer>
-            <!--<AppBarSeparator />
+            <AppBarSeparator />
             <AppBarElementContainer>
                 <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
                                                           IsIndex="True" />
-            </AppBarElementContainer>-->
+            </AppBarElementContainer>
         </CommandBar>
 
         <CommandBar Grid.Row="0"
@@ -135,6 +126,7 @@
                            Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}"/>
             </StackPanel>
 
+            <!--Index View-->
             <index:IndexControl x:Name="IndexControl"
                                 Grid.Column="0"
                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
@@ -147,7 +139,7 @@
                                 IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
                                 PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
                                 PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
-                                SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=OneWay}"
+                                SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch" 
                                 SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"/>
@@ -176,6 +168,7 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -280,11 +273,21 @@
                                               Records="{x:Bind ViewModel.ResultRecords, Mode=OneWay}"
                                               BorderThickness="0" />
                         </TabViewItem>
-                        <TabViewItem Header="Details" IsClosable="False">
-                            <accessSteps:SeekStrategyPanel Strategy="{x:Bind ViewModel.Strategy, Mode=OneWay}"
+                        <TabViewItem Header="Strategy" IsClosable="False">
+                            <accessSteps:SeekStrategyPanel FontSize="12" 
+                                                           Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                                           Strategy="{x:Bind ViewModel.Strategy, Mode=OneWay}"
                                                            CurrentPhase="{x:Bind ViewModel.CurrentPhase, Mode=OneWay}"
                                                            Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"
                                                            IsWalkActive="{x:Bind ViewModel.IsWalkInProgress, Mode=OneWay}" />
+                        </TabViewItem>
+                        <TabViewItem Header="Description" IsClosable="False">
+                            <accessSteps:SeekDescriptionPanel FontSize="12"
+                                                              Strategy="{x:Bind ViewModel.SeekDescription, Mode=OneWay}"
+                                                              PhysicalOperator="{x:Bind ViewModel.PlanNode.PhysicalOperator, Mode=OneWay}"
+                                                              LogicalOperator="{x:Bind ViewModel.PlanNode.LogicalOperator, Mode=OneWay}"
+                                                              IsOrdered="{x:Bind ViewModel.PlanNode.ScanInfo.IsOutputOrdered, Mode=OneWay}"
+                                                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"/>
                         </TabViewItem>
                     </TabView.TabItems>
                 </TabView>

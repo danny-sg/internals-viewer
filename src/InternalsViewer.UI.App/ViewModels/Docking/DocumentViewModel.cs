@@ -4,21 +4,11 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.ViewModels.Docking;
 
-/// <summary>
-/// A single tab in the dock. The docking layer is content-agnostic: a document carries the
-/// <see cref="Content"/> object used as its view's <c>DataContext</c> and a <see cref="ViewFactory"/>
-/// that builds the view on demand. This keeps the dock infrastructure decoupled from any specific
-/// view or view model.
-/// <para>
-/// When <see cref="KeepAlive"/> is set, the view instance is created once and reused — so hiding the
-/// tab (or moving/splitting groups) preserves its live state (e.g. a SQL editor's text) rather than
-/// rebuilding it.
-/// </para>
-/// </summary>
 public sealed partial class DocumentViewModel : ObservableObject
 {
-    private FrameworkElement? cachedView;
-    private ContentControl? currentHolder;
+    private FrameworkElement? _cachedView;
+
+    private ContentControl? _currentHolder;
 
     public DocumentViewModel(string title,
                              object content,
@@ -46,20 +36,26 @@ public sealed partial class DocumentViewModel : ObservableObject
     /// </summary>
     public bool Persist { get; }
 
-    /// <summary>The object set as the view's <c>DataContext</c> (e.g. the shared query view model).</summary>
+    /// <summary>
+    /// The object set as the view's <c>DataContext</c> (e.g. the shared query view model)
+    /// </summary>
     public object Content { get; }
 
-    /// <summary>Builds a view instance for this document.</summary>
+    /// <summary>
+    /// Builds a view instance for this document
+    /// </summary>
     public Func<FrameworkElement> ViewFactory { get; }
 
-    /// <summary>When true the single view instance is cached and reused across show/hide and re-layout.</summary>
+    /// <summary>
+    /// When true the single view instance is cached and reused across show/hide and re-layout
+    /// </summary>
     public bool KeepAlive { get; }
 
     [ObservableProperty]
-    private string title;
+    private string _title;
 
     [ObservableProperty]
-    private bool canClose;
+    private bool _canClose;
 
     /// <summary>
     /// Returns the element to host as a tab's content, with the view's <c>DataContext</c> set to
@@ -77,14 +73,11 @@ public sealed partial class DocumentViewModel : ObservableObject
             return view;
         }
 
-        cachedView ??= ViewFactory();
-        cachedView.DataContext = Content;
+        _cachedView ??= ViewFactory();
+        _cachedView.DataContext = Content;
 
         // Detach from the previous holder before re-hosting (an element can only have one parent).
-        if (currentHolder is not null)
-        {
-            currentHolder.Content = null;
-        }
+        _currentHolder?.Content = null;
 
         var holder = new ContentControl
         {
@@ -92,32 +85,36 @@ public sealed partial class DocumentViewModel : ObservableObject
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Stretch,
-            Content = cachedView
+            Content = _cachedView
         };
 
-        currentHolder = holder;
+        _currentHolder = holder;
 
         return holder;
     }
 
-    /// <summary>Disposes and drops the cached view (for keep-alive documents) when the tab is closed.</summary>
+    /// <summary>
+    /// Disposes and drops the cached view (for keep-alive documents) when the tab is closed
+    /// </summary>
     public void DisposeView()
     {
-        if (currentHolder is not null)
+        if (_currentHolder is not null)
         {
-            currentHolder.Content = null;
-            currentHolder = null;
+            _currentHolder.Content = null;
+            _currentHolder = null;
         }
 
-        if (cachedView is IDisposable disposable)
+        if (_cachedView is IDisposable disposable)
         {
             disposable.Dispose();
         }
 
-        cachedView = null;
+        _cachedView = null;
     }
 
-    /// <summary>Convenience factory for the common case of a parameterless view bound to <paramref name="content"/>.</summary>
+    /// <summary>
+    /// Convenience factory for the common case of a parameterless view bound to <paramref name="content"/>
+    /// </summary>
     public static DocumentViewModel Create<TView>(string title,
                                                   object content,
                                                   bool canClose = true,

@@ -98,13 +98,12 @@ public sealed partial class SeekStrategyPanel : UserControl
             return;
         }
 
-        PhasesPanel.Children.Add(SectionHeader("Strategy", topMargin: 0));
+        PhasesPanel.Children.Add(SeekPanelRows.SectionHeader("Strategy", topMargin: 0));
 
         foreach (var phase in Strategy.Phases)
         {
             var content = new RichTextBlock
             {
-                FontSize = 12,
                 TextWrapping = TextWrapping.Wrap
             };
 
@@ -134,7 +133,7 @@ public sealed partial class SeekStrategyPanel : UserControl
 
             content.Blocks.Add(paragraph);
 
-            var row = TitledRow(phase.Title, 80, content, semiBoldTitle: true);
+            var row = SeekPanelRows.TitledRow(phase.Title, 80, content, semiBoldTitle: true);
 
             _phaseRows.Add((phase.Phase, row));
 
@@ -146,54 +145,13 @@ public sealed partial class SeekStrategyPanel : UserControl
             PhasesPanel.Children.Add(new TextBlock
             {
                 Text = $"Row goal {Strategy.RowGoal} — {Strategy.RowGoalReason}",
-                FontSize = 12,
                 TextWrapping = TextWrapping.Wrap,
                 Opacity = 0.7,
                 Margin = new Thickness(0, 6, 0, 0)
             });
         }
 
-        if (Strategy.Bounds is not null)
-        {
-            PhasesPanel.Children.Add(SectionHeader("Search Details", topMargin: 12));
-
-            PhasesPanel.Children.Add(TitledRow("Seek Bounds", 110, new PredicateTextBox
-            {
-                Text = PredicateText.From(Strategy.Bounds),
-                TextPadding = new Thickness(2, 0, 2, 0),
-                HasBackground = false
-            }, dimTitle: true));
-
-            PhasesPanel.Children.Add(TitledRow("Scan Direction", 110, new TextBlock
-            {
-                Text = Strategy.Direction.ToString(),
-                FontSize = 12,
-                TextWrapping = TextWrapping.Wrap
-            }, dimTitle: true));
-
-            if (Strategy.Residual is not null)
-            {
-                PhasesPanel.Children.Add(TitledRow("Residual", 110, new PredicateTextBox
-                {
-                    Text = PredicateText.From(Strategy.Residual),
-                    TextPadding = new Thickness(2, 0, 2, 0),
-                    HasBackground = false
-                }, dimTitle: true));
-            }
-            else if (Strategy.HasUntranslatedResidual)
-            {
-                PhasesPanel.Children.Add(TitledRow("Residual", 110, new TextBlock
-                {
-                    Text = "Not translatable — rows are not filtered",
-                    FontSize = 12,
-                    FontStyle = Windows.UI.Text.FontStyle.Italic,
-                    TextWrapping = TextWrapping.Wrap,
-                    Opacity = 0.8
-                }, dimTitle: true));
-            }
-        }
-
-        PhasesPanel.Children.Add(SectionHeader("Counters", topMargin: 12));
+        PhasesPanel.Children.Add(SeekPanelRows.SectionHeader("Counters", topMargin: 12));
 
         if (Strategy.RangeCount > 1)
         {
@@ -214,7 +172,7 @@ public sealed partial class SeekStrategyPanel : UserControl
         ApplyCurrentPhase();
     }
 
-    private static InlineUIContainer ConditionInline(ImmutableArray<PredicateToken> tokens)
+    private InlineUIContainer ConditionInline(ImmutableArray<PredicateToken> tokens)
     {
         return new InlineUIContainer
         {
@@ -225,7 +183,8 @@ public sealed partial class SeekStrategyPanel : UserControl
                 {
                     Text = new PredicateText(tokens),
                     TextPadding = new Thickness(0),
-                    HasBackground = false
+                    HasBackground = false,
+                    FontSize = FontSize
                 }
             }
         };
@@ -238,11 +197,11 @@ public sealed partial class SeekStrategyPanel : UserControl
 
     private void AddCounterRow(string label, Func<AccessCounters, string> get)
     {
-        var value = new TextBlock { FontSize = 12 };
+        var value = new TextBlock();
 
         _counterValues.Add((value, get));
 
-        PhasesPanel.Children.Add(TitledRow(label, 110, value, dimTitle: true));
+        PhasesPanel.Children.Add(SeekPanelRows.TitledRow(label, 110, value, dimTitle: true));
     }
 
     private void ApplyCounters()
@@ -251,59 +210,6 @@ public sealed partial class SeekStrategyPanel : UserControl
         {
             value.Text = get(Counters);
         }
-    }
-
-    private static TextBlock SectionHeader(string text, double topMargin)
-    {
-        return new TextBlock
-        {
-            Text = text,
-            FontSize = 12,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Thickness(0, topMargin, 0, 4)
-        };
-    }
-
-    private static Grid TitledRow(string title,
-                                  double titleWidth,
-                                  FrameworkElement content,
-                                  bool semiBoldTitle = false,
-                                  bool dimTitle = false)
-    {
-        var row = new Grid
-        {
-            Margin = new Thickness(0, 2, 0, 2)
-        };
-
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(titleWidth) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        var titleBlock = new TextBlock
-        {
-            Text = title,
-            FontSize = 12,
-            VerticalAlignment = VerticalAlignment.Top
-        };
-
-        if (semiBoldTitle)
-        {
-            titleBlock.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
-        }
-
-        if (dimTitle)
-        {
-            titleBlock.Opacity = 0.7;
-        }
-
-        row.Children.Add(titleBlock);
-
-        content.HorizontalAlignment = HorizontalAlignment.Stretch;
-
-        Grid.SetColumn(content, 1);
-
-        row.Children.Add(content);
-
-        return row;
     }
 
     private void ApplyCurrentPhase()

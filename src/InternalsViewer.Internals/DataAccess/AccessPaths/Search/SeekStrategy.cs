@@ -20,4 +20,6 @@ public sealed record SeekStrategy
     public bool HasUntranslatedResidual { get; init; }
 
     public int RangeCount { get; init; }
+
+    public IReadOnlyList<SeekBounds> Ranges { get; init; } = [];
 }

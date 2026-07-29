@@ -76,6 +76,15 @@ public abstract record AccessStep(SeekPhase SeekPhase)
         public IRecord? EmittedRecord { get; init; }
     }
 
+    public sealed record RowRun(int FromSlot, int ToSlot, RowOutcome Outcome) : AccessStep(SeekPhase.Walk)
+    {
+        public int Count { get; init; }
+
+        public bool HasResidual { get; init; }
+
+        public int EmitCount { get; init; }
+    }
+
     /// <summary>
     /// A key failed the trailing boundary test, ending the range
     /// </summary>

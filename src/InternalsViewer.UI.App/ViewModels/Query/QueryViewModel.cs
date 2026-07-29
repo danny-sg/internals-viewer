@@ -715,9 +715,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public event Action<long>? PlayheadMoveRequested;
 
-    private void OnIndexPageNavigated(object? sender, PageAddress pageAddress)
+    private void OnIndexPageNavigated(object? sender, PageNavigatedEventArgs e)
     {
-        var readEndUs = GetFirstReadEndUs(pageAddress);
+        var readEndUs = GetReadEndUs(e.PageAddress, e.IsReset ? null : PlayheadTimeUs);
 
         if (readEndUs is not null)
         {
@@ -727,8 +727,24 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    private long? GetFirstReadEndUs(PageAddress pageAddress)
+    private long? GetReadEndUs(PageAddress pageAddress, long? afterUs)
     {
+        long? first = null;
+        long? next = null;
+
+        void Consider(long endUs)
+        {
+            if (first is null || endUs < first)
+            {
+                first = endUs;
+            }
+
+            if (afterUs is { } after && endUs > after && (next is null || endUs < next))
+            {
+                next = endUs;
+            }
+        }
+
         foreach (var engineEvent in Events)
         {
             if (engineEvent is not ReadEventGroup group)
@@ -738,22 +754,21 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             if (group.ReadType == ReadType.Cached)
             {
-                var latch = group.Events
-                                 .OfType<LatchEvent>()
-                                 .FirstOrDefault(l => l.PageAddress == pageAddress);
-
-                if (latch is not null)
+                foreach (var latch in group.Events.OfType<LatchEvent>())
                 {
-                    return latch.TimeUs + latch.DurationUs;
+                    if (latch.PageAddress == pageAddress)
+                    {
+                        Consider(latch.TimeUs + latch.DurationUs);
+                    }
                 }
             }
             else if (group.Pages.Contains(pageAddress))
             {
-                return group.TimeUs + group.DurationUs;
+                Consider(group.TimeUs + group.DurationUs);
             }
         }
 
-        return null;
+        return next ?? first;
     }
 
     private List<PageSpan> _pageSpans = [];
@@ -1081,6 +1096,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         foreach (var indexViewModel in _openIndexes.Values)
         {
+            indexViewModel.ResetStep();
+            indexViewModel.PlanNode = null;
             indexViewModel.SelectedPageAddress = null;
             indexViewModel.PageSpans = [];
         }

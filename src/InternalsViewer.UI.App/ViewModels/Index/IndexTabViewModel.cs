@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
@@ -169,7 +170,16 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private PlanNode? _planNode;
 
-    public event EventHandler<PageAddress>? PageNavigated;
+    public event EventHandler<PageNavigatedEventArgs>? PageNavigated;
+
+    private bool _hasNavigatedSinceReset;
+
+    private void RaisePageNavigated(PageAddress pageAddress)
+    {
+        PageNavigated?.Invoke(this, new PageNavigatedEventArgs(pageAddress, !_hasNavigatedSinceReset));
+
+        _hasNavigatedSinceReset = true;
+    }
 
     [ObservableProperty]
     private ObservableCollection<AccessStep> _stepHistory = [];
@@ -213,10 +223,36 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     partial void OnPlanNodeChanged(PlanNode? value)
     {
         ClearStepState();
-        
+
         OnPropertyChanged(nameof(PredicateText));
         OnPropertyChanged(nameof(IconSource));
         OnPropertyChanged(nameof(HasPredicate));
+        OnPropertyChanged(nameof(SeekDescription));
+    }
+
+    public SeekStrategy? SeekDescription
+    {
+        get
+        {
+            if (PlanNode?.PredicateInfo is not { } predicateInfo)
+            {
+                return null;
+            }
+
+            IReadOnlyList<SeekBounds> ranges = predicateInfo.HasSeekBounds ? predicateInfo.SeekBounds : [SeekBounds.All];
+
+            var residual = PlanNode.HasRedundantResidual() ? null : predicateInfo.Residual;
+
+            return new SeekStrategy
+            {
+                Bounds = ranges[0],
+                Ranges = ranges,
+                RangeCount = ranges.Count,
+                Direction = ScanDirection.Forward,
+                Residual = residual is AccessPredicate.True ? null : residual,
+                HasUntranslatedResidual = predicateInfo.HasUntranslatedPredicate
+            };
+        }
     }
 
     public PredicateText? PredicateText => PlanNode?.GetText();
@@ -477,7 +513,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         if (_batchedSteps.Count > 0)
         {
-            var chronological = StepHistory.Reverse().Concat(_batchedSteps).ToList();
+            var chronological = CoalesceRowRuns(StepHistory.Reverse().Concat(_batchedSteps));
 
             List<AccessStep> kept;
 
@@ -519,7 +555,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         {
             await LoadPage(pageAddress);
 
-            PageNavigated?.Invoke(this, pageAddress);
+            RaisePageNavigated(pageAddress);
         }
     }
 
@@ -530,10 +566,64 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             AccessStep.Probe probe => probe.Middle,
             AccessStep.ProbeResult probeResult => probeResult.Slot,
             AccessStep.Row row => row.Slot,
+            AccessStep.RowRun run => run.ToSlot,
             AccessStep.RangeEnd rangeEnd => rangeEnd.Slot,
             _ => null
         };
     }
+
+    private static List<AccessStep> CoalesceRowRuns(IEnumerable<AccessStep> steps)
+    {
+        var coalesced = new List<AccessStep>();
+
+        foreach (var step in steps)
+        {
+            if (step is AccessStep.Row row && coalesced.Count > 0 && ExtendRun(coalesced[^1], row) is { } run)
+            {
+                coalesced[^1] = run;
+            }
+            else
+            {
+                coalesced.Add(step);
+            }
+        }
+
+        return coalesced;
+    }
+
+    private static AccessStep.RowRun? ExtendRun(AccessStep previous, AccessStep.Row row)
+    {
+        return previous switch
+        {
+            AccessStep.Row prev when prev.Outcome == row.Outcome
+                                     && prev.HasResidual == row.HasResidual
+                                     && IsAdjacent(prev.Slot, row.Slot)
+                => new AccessStep.RowRun(prev.Slot, row.Slot, row.Outcome)
+                {
+                    Count = 2,
+                    HasResidual = row.HasResidual,
+                    EmitCount = EmitOf(prev) + EmitOf(row),
+                    Counters = row.Counters
+                },
+
+            AccessStep.RowRun prevRun when prevRun.Outcome == row.Outcome
+                                           && prevRun.HasResidual == row.HasResidual
+                                           && IsAdjacent(prevRun.ToSlot, row.Slot)
+                => prevRun with
+                {
+                    ToSlot = row.Slot,
+                    Count = prevRun.Count + 1,
+                    EmitCount = prevRun.EmitCount + EmitOf(row),
+                    Counters = row.Counters
+                },
+
+            _ => null
+        };
+    }
+
+    private static bool IsAdjacent(int from, int to) => to == from + 1 || to == from - 1;
+
+    private static int EmitOf(AccessStep.Row row) => row.Outcome == RowOutcome.Match ? 1 : 0;
 
     [RelayCommand]
     public void ResetStep()
@@ -546,6 +636,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private void ClearStepState()
     {
         _isBatching = false;
+        _hasNavigatedSinceReset = false;
         _batchedSteps.Clear();
         _batchedResults.Clear();
 
@@ -589,11 +680,18 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             }
             else
             {
-                StepHistory.Insert(0, step);
-
-                if (StepHistory.Count > HistoryLimit)
+                if (step is AccessStep.Row row && StepHistory.Count > 0 && ExtendRun(StepHistory[0], row) is { } run)
                 {
-                    StepHistory.RemoveAt(StepHistory.Count - 1);
+                    StepHistory[0] = run;
+                }
+                else
+                {
+                    StepHistory.Insert(0, step);
+
+                    if (StepHistory.Count > HistoryLimit)
+                    {
+                        StepHistory.RemoveAt(StepHistory.Count - 1);
+                    }
                 }
 
                 CurrentStep = step;
@@ -635,7 +733,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 {
                     await LoadPage(pageAddress.Value);
 
-                    PageNavigated?.Invoke(this, pageAddress.Value);
+                    RaisePageNavigated(pageAddress.Value);
                 }
             }
 

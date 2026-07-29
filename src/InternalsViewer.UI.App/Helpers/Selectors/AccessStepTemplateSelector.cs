@@ -18,6 +18,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate RowTemplate { get; set; } = null!;
 
+    public DataTemplate RowRunTemplate { get; set; } = null!;
+
     public DataTemplate RangeEndTemplate { get; set; } = null!;
 
     public DataTemplate LeafLinkTemplate { get; set; } = null!;
@@ -40,6 +42,7 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Descend => DescendTemplate,
             AccessStep.ProbeResult => ProbeResultTemplate,
             AccessStep.Row => RowTemplate,
+            AccessStep.RowRun => RowRunTemplate,
             AccessStep.RangeEnd => RangeEndTemplate,
             AccessStep.LeafLink => LeafLinkTemplate,
             AccessStep.Reseek => ReseekTemplate,

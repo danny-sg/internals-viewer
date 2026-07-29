@@ -23,6 +23,7 @@
             <converters:ReadPageToTextConverter x:Key="ReadPageToTextConverter" />
             <converters:RowOutcomeToTextConverter x:Key="RowOutcomeToTextConverter" />
             <converters:RowEmitToVisibilityConverter x:Key="RowEmitToVisibilityConverter" />
+            <converters:RowEmitTextConverter x:Key="RowEmitTextConverter" />
             <converters:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
 
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
@@ -178,6 +179,32 @@
                 </Grid>
             </DataTemplate>
 
+            <DataTemplate x:Key="RowRunTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Rows" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="Slots" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding FromSlot}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="-" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding ToSlot}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Outcome" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding Converter={StaticResource RowOutcomeToTextConverter}}"
+                                   Style="{StaticResource StepValueStyle}" />
+                        <Border Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
+                                Background="{ThemeResource SystemFillColorSuccessBrush}"
+                                BorderBrush="#0B5D0B"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="6,0,6,1"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Converter={StaticResource RowEmitTextConverter}}"
+                                       Foreground="White"
+                                       FontSize="11" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
             <DataTemplate x:Key="RangeEndTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
@@ -264,6 +291,7 @@
                 DescendTemplate="{StaticResource DescendTemplate}"
                 ProbeResultTemplate="{StaticResource ProbeResultTemplate}"
                 RowTemplate="{StaticResource RowTemplate}"
+                RowRunTemplate="{StaticResource RowRunTemplate}"
                 RangeEndTemplate="{StaticResource RangeEndTemplate}"
                 LeafLinkTemplate="{StaticResource LeafLinkTemplate}"
                 ReseekTemplate="{StaticResource ReseekTemplate}"

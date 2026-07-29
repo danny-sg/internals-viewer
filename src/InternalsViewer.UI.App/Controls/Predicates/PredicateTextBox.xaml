@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
+    FontSize="12"
     Margin="0">
 
     <UserControl.Resources>
@@ -18,9 +19,6 @@
                 <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
             </Style>
 
-            <Style x:Key="PredicateTextBox" TargetType="RichTextBlock">
-                <Setter Property="FontSize" Value="12" />
-            </Style>
             <ResourceDictionary.ThemeDictionaries>
 
                 <!--Monaco vs (light) SQL token colours-->
@@ -76,7 +74,7 @@
             Margin="{Binding Margin, ElementName=Root}">
         <RichTextBlock x:Name="TextHost"
                        FontFamily="Consolas"
-                       Style="{StaticResource PredicateTextBox}"
+                       FontSize="{Binding FontSize, ElementName=Root}"
                        Padding="{Binding TextPadding, ElementName=Root}"
                        IsTextSelectionEnabled="True"
                        TextWrapping="Wrap"
