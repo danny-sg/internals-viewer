@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 /// The role is what the writer knows about a token from the model, not how it should look. Choosing a colour or weight is left to the
 /// presentation layer so the same token sequence can be rendered differently in different contexts.
 /// </remarks>
-public enum PredicateTokenKind
+public enum PredicateTokenType
 {
     /// <summary>
     /// Whitespace separating other tokens

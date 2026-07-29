@@ -32,10 +32,7 @@ public readonly record struct AccessKey(ImmutableArray<AccessValue> Values)
     /// </remarks>
     public int ComparePrefix(in AccessKey other, int width)
     {
-        if (width < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(width));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(width);
 
         var length = Math.Min(width, Math.Min(Count, other.Count));
 

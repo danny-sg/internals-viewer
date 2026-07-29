@@ -46,9 +46,9 @@ public static class PlanNodePredicateText
         {
             if (tokens.Count > 0)
             {
-                tokens.Add(new PredicateToken(PredicateTokenKind.Space, " "));
-                tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "OR"));
-                tokens.Add(new PredicateToken(PredicateTokenKind.Space, " "));
+                tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
+                tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "OR"));
+                tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
             }
 
             tokens.AddRange(PredicateWriter.Write(bounds));

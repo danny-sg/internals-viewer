@@ -148,7 +148,7 @@ public static class ExecutionPlanParser
 
         var expression = new ScalarOperatorParser(resolveParameter: parameters.Resolve).Parse(scalar);
 
-        if (expression is AccessExpression.Constant { Value.Kind: AccessValueKind.Integer } constant)
+        if (expression is AccessExpression.Constant { Value.Type: AccessValueType.Integer } constant)
         {
             return constant.Value.Numeric;
         }

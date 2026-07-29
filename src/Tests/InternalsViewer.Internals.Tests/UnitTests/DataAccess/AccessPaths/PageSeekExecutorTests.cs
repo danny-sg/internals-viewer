@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
@@ -166,9 +166,7 @@ public class PageSeekExecutorTests
 
         var bounds = SeekBounds.Between(TestKey.Of(50), TestKey.Of(75));
 
-        var executor = new PageSeekExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(page, bounds, ScanDirection.Forward, isContinuation: true).ToList();
+        var steps = PageSeekExecutor.Execute(page, bounds, ScanDirection.Forward, isContinuation: true).ToList();
 
         Assert.DoesNotContain(steps, s => s is AccessStep.ProbeStart or AccessStep.Probe or AccessStep.ProbeResult);
 
@@ -196,9 +194,7 @@ public class PageSeekExecutorTests
             ComparisonOperator.GreaterThanOrEqual,
             new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 20)));
 
-        var executor = new PageSeekExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(page, SeekBounds.All, ScanDirection.Forward, residual).ToList();
+        var steps = PageSeekExecutor.Execute(page, SeekBounds.All, ScanDirection.Forward, residual).ToList();
 
         var rows = steps.OfType<AccessStep.Row>().ToList();
 
@@ -218,9 +214,7 @@ public class PageSeekExecutorTests
     {
         var page = TestIndexPage.Create(10, 20, 30, 40, 50);
 
-        var executor = new PageSeekExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward, rowGoal: 1).ToList();
+        var steps = PageSeekExecutor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward, rowGoal: 1).ToList();
 
         Assert.Equal(StopReason.RowGoalMet, steps.OfType<AccessStep.Stopped>().Single().Reason);
         Assert.DoesNotContain(steps, s => s is AccessStep.RangeEnd);
@@ -238,6 +232,25 @@ public class PageSeekExecutorTests
 
         Assert.Equal(3, rangeEnd.Slot);
         Assert.Equal("40 > 30", PredicateWriter.ToText(PredicateWriter.Write(rangeEnd)));
+    }
+
+    [Fact]
+    public void Probes_Narrow_The_Search_Window()
+    {
+        var page = TestIndexPage.Create(10, 20, 30, 40, 50, 60, 70, 80);
+
+        var steps = Execute(page, SeekBounds.Equality(TestKey.Of(50)), ScanDirection.Forward);
+
+        var probes = steps.OfType<AccessStep.Probe>().ToList();
+
+        Assert.NotEmpty(probes);
+
+        for (var index = 1; index < probes.Count; index++)
+        {
+            Assert.True(probes[index].High - probes[index].Low < probes[index - 1].High - probes[index - 1].Low);
+        }
+
+        Assert.Equal(probes.Count, probes[^1].Counters.Comparisons);
     }
 
     [Fact]
@@ -277,8 +290,6 @@ public class PageSeekExecutorTests
 
     private static List<AccessStep> Execute(TestIndexPage page, SeekBounds bounds, ScanDirection direction)
     {
-        var executor = new PageSeekExecutor(new TestRowBinder());
-
-        return [.. executor.Execute(page, bounds, direction)];
+        return [.. PageSeekExecutor.Execute(page, bounds, direction)];
     }
 }

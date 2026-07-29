@@ -138,7 +138,7 @@ public sealed partial class PredicateTextBox : UserControl
         var run = new Run
         {
             Text = token.Text,
-            Foreground = BrushFor(token.Kind)
+            Foreground = BrushFor(token.Type)
         };
 
         if (string.IsNullOrEmpty(token.Description))
@@ -159,25 +159,25 @@ public sealed partial class PredicateTextBox : UserControl
         return new InlineUIContainer { Child = block };
     }
 
-    private Brush BrushFor(PredicateTokenKind kind)
+    private Brush BrushFor(PredicateTokenType type)
     {
-        var key = kind switch
+        var key = type switch
         {
-            PredicateTokenKind.Keyword
+            PredicateTokenType.Keyword
                 => "PredicateKeywordBrush",
-            PredicateTokenKind.Column 
+            PredicateTokenType.Column 
                 => "PredicateColumnBrush",
-            PredicateTokenKind.Operator 
+            PredicateTokenType.Operator 
                 => "PredicateOperatorBrush",
-            PredicateTokenKind.Number 
+            PredicateTokenType.Number 
                 => "PredicateNumberBrush",
-            PredicateTokenKind.Literal 
+            PredicateTokenType.Literal 
                 => "PredicateLiteralBrush",
-            PredicateTokenKind.Null 
+            PredicateTokenType.Null 
                 => "PredicateNullBrush",
-            PredicateTokenKind.Punctuation 
+            PredicateTokenType.Punctuation 
                 => "PredicatePunctuationBrush",
-            PredicateTokenKind.Unknown 
+            PredicateTokenType.Unknown 
                 => "PredicateUnknownBrush",
             _ => null
         };

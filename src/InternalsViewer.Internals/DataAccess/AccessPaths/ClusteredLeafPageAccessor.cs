@@ -1,5 +1,4 @@
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.DataAccess;
@@ -17,10 +16,10 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths;
 /// <remarks>
 /// A clustered index's leaf level is the table's data pages rather than index pages, but the key
 /// columns are still described by the clustered index's <see cref="IndexStructure"/>, so this adapter
-/// mirrors <see cref="IndexAccessPage"/> while treating the page as always being the leaf.
+/// mirrors <see cref="IndexPageAccessor"/> while treating the page as always being the leaf.
 /// </remarks>
-public sealed class ClusteredLeafAccessPage(DataPage page, IRecordService recordService, IndexStructure indexStructure)
-    : IIndexAccessPage
+public sealed class ClusteredLeafPageAccessor(DataPage page, IRecordService recordService, IndexStructure indexStructure)
+    : IIndexPageAccessor
 {
     private readonly IRecord?[] _records = new IRecord?[page.OffsetTable.Length];
 
@@ -41,16 +40,7 @@ public sealed class ClusteredLeafAccessPage(DataPage page, IRecordService record
 
     public IRecord GetRecord(int slot) => _records[slot] ??= recordService.GetDataRecord(page, slot, _tableStructure);
 
-    public AccessKey GetKey(int slot)
-    {
-        var record = GetRecord(slot);
-
-        var values = indexStructure.IndexKeyColumns
-                                    .Select(keyColumn => CreateValue(record, keyColumn))
-                                    .ToArray();
-
-        return AccessKey.Create(values);
-    }
+    public AccessKey GetKey(int slot) => AccessKeyReader.GetKey(GetRecord(slot), indexStructure);
 
     public int CompareKeyPrefix(int slot, in AccessKey target, int width)
     {
@@ -62,14 +52,5 @@ public sealed class ClusteredLeafAccessPage(DataPage page, IRecordService record
     public PageAddress GetChildPage(int slot)
     {
         throw new NotSupportedException("The page is a leaf.");
-    }
-
-    private static AccessValue CreateValue(IRecord record, IndexColumnStructure keyColumn)
-    {
-        var field = record.Fields.FirstOrDefault(f => f.ColumnStructure.ColumnId == keyColumn.ColumnId);
-
-        return field is null
-            ? AccessValue.FromNull(keyColumn.DataType).WithColumnName(keyColumn.ColumnName)
-            : AccessValueFieldFactory.Create(field);
     }
 }

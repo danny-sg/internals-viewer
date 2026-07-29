@@ -74,12 +74,14 @@ public static class PredicateWriter
 
         Space(tokens);
 
-        tokens.Add(new PredicateToken(PredicateTokenKind.Operator, comparison switch
+        var description = comparison switch
         {
             < 0 => "<",
             0 => "=",
             > 0 => ">"
-        }));
+        };
+
+        tokens.Add(new PredicateToken(PredicateTokenType.Operator, description));
 
         Space(tokens);
 
@@ -124,7 +126,7 @@ public static class PredicateWriter
             _ => "<"
         };
 
-        tokens.Add(new PredicateToken(PredicateTokenKind.Operator, symbol));
+        tokens.Add(new PredicateToken(PredicateTokenType.Operator, symbol));
 
         Space(tokens);
 
@@ -148,7 +150,7 @@ public static class PredicateWriter
     {
         if (bounds is { HasStart: false, HasEnd: false })
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "ALL"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "ALL"));
 
             return;
         }
@@ -177,7 +179,7 @@ public static class PredicateWriter
             {
                 Space(tokens);
 
-                tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "AND"));
+                tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "AND"));
 
                 Space(tokens);
             }
@@ -200,39 +202,39 @@ public static class PredicateWriter
 
         if (isComposite)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, "("));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
         }
 
         for (var index = 0; index < key.Count; index++)
         {
             if (index > 0)
             {
-                tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ","));
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
                 Space(tokens);
             }
 
-            tokens.Add(new PredicateToken(PredicateTokenKind.Column, KeyColumnName(key[index], index)));
+            tokens.Add(new PredicateToken(PredicateTokenType.Column, KeyColumnName(key[index], index)));
         }
 
         if (isComposite)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ")"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
         }
 
         Space(tokens);
-        tokens.Add(new PredicateToken(PredicateTokenKind.Operator, comparison));
+        tokens.Add(new PredicateToken(PredicateTokenType.Operator, comparison));
         Space(tokens);
 
         if (isComposite)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, "("));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
         }
 
         for (var index = 0; index < key.Count; index++)
         {
             if (index > 0)
             {
-                tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ","));
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
                 Space(tokens);
             }
 
@@ -241,7 +243,7 @@ public static class PredicateWriter
 
         if (isComposite)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ")"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
         }
     }
 
@@ -256,14 +258,14 @@ public static class PredicateWriter
 
         if (isComposite)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, "("));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
         }
 
         for (var index = 0; index < length; index++)
         {
             if (index > 0)
             {
-                tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ","));
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
                 Space(tokens);
             }
 
@@ -272,7 +274,7 @@ public static class PredicateWriter
 
         if (isComposite)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ")"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
         }
     }
 
@@ -286,7 +288,7 @@ public static class PredicateWriter
         switch (predicate)
         {
             case AccessPredicate.True:
-                tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "TRUE"));
+                tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "TRUE"));
                 break;
 
             case AccessPredicate.Comparison comparison:
@@ -302,7 +304,7 @@ public static class PredicateWriter
                 break;
 
             case AccessPredicate.Not not:
-                tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "NOT"));
+                tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "NOT"));
                 Space(tokens);
                 WritePredicate(tokens, not.Predicate, true);
                 break;
@@ -310,7 +312,7 @@ public static class PredicateWriter
             case AccessPredicate.IsNull isNull:
                 WriteExpression(tokens, isNull.Expression);
                 Space(tokens);
-                tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "IS NULL"));
+                tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "IS NULL"));
                 break;
 
             case AccessPredicate.In inList:
@@ -322,16 +324,16 @@ public static class PredicateWriter
 
                 Space(tokens);
                 
-                tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "LIKE"));
+                tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "LIKE"));
                 
                 Space(tokens);
                 
-                tokens.Add(new PredicateToken(PredicateTokenKind.Literal, $"'{like.Pattern.Replace("'", "''")}'"));
+                tokens.Add(new PredicateToken(PredicateTokenType.Literal, $"'{like.Pattern.Replace("'", "''")}'"));
                 
                 break;
 
             default:
-                tokens.Add(new PredicateToken(PredicateTokenKind.Unknown,
+                tokens.Add(new PredicateToken(PredicateTokenType.Unknown,
                                               "<unsupported>",
                                               predicate.GetType().Name));
                 break;
@@ -345,7 +347,7 @@ public static class PredicateWriter
     {
         if (predicates.IsDefaultOrEmpty)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "TRUE"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "TRUE"));
 
             return;
         }
@@ -359,7 +361,7 @@ public static class PredicateWriter
 
         if (bracket)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, "("));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
         }
 
         for (var index = 0; index < predicates.Length; index++)
@@ -368,7 +370,7 @@ public static class PredicateWriter
             {
                 Space(tokens);
 
-                tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, keyword));
+                tokens.Add(new PredicateToken(PredicateTokenType.Keyword, keyword));
                 
                 Space(tokens);
             }
@@ -378,7 +380,7 @@ public static class PredicateWriter
 
         if (bracket)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ")"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
         }
     }
 
@@ -389,7 +391,7 @@ public static class PredicateWriter
 
         Space(tokens);
         
-        tokens.Add(new PredicateToken(PredicateTokenKind.Operator, Symbol(comparison.Operator)));
+        tokens.Add(new PredicateToken(PredicateTokenType.Operator, Symbol(comparison.Operator)));
         
         Space(tokens);
         
@@ -402,11 +404,11 @@ public static class PredicateWriter
 
         Space(tokens);
         
-        tokens.Add(new PredicateToken(PredicateTokenKind.Keyword, "IN"));
+        tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "IN"));
         
         Space(tokens);
         
-        tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, "("));
+        tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
 
         if (!inList.Values.IsDefaultOrEmpty)
         {
@@ -414,7 +416,7 @@ public static class PredicateWriter
             {
                 if (index > 0)
                 {
-                    tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ","));
+                    tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
                     Space(tokens);
                 }
 
@@ -422,7 +424,7 @@ public static class PredicateWriter
             }
         }
 
-        tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ")"));
+        tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
     }
 
     private static void WriteExpression(ImmutableArray<PredicateToken>.Builder tokens, AccessExpression expression)
@@ -430,7 +432,7 @@ public static class PredicateWriter
         switch (expression)
         {
             case AccessExpression.Column column:
-                tokens.Add(new PredicateToken(PredicateTokenKind.Column,
+                tokens.Add(new PredicateToken(PredicateTokenType.Column,
                                               column.Name,
                                               $"Ordinal {column.Ordinal}"));
                 break;
@@ -440,7 +442,7 @@ public static class PredicateWriter
                 break;
 
             default:
-                tokens.Add(new PredicateToken(PredicateTokenKind.Unknown,
+                tokens.Add(new PredicateToken(PredicateTokenType.Unknown,
                                               "<unsupported>",
                                               expression.GetType().Name));
                 break;
@@ -463,6 +465,6 @@ public static class PredicateWriter
 
     private static void Space(ImmutableArray<PredicateToken>.Builder tokens)
     {
-        tokens.Add(new PredicateToken(PredicateTokenKind.Space, " "));
+        tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
     }
 }

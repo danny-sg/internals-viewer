@@ -19,15 +19,24 @@ public static class PredicateEvaluator
     {
         return predicate switch
         {
-            AccessPredicate.True => true,
-            AccessPredicate.Comparison comparison => EvaluateComparison(comparison, row),
-            AccessPredicate.And and => EvaluateAnd(and, row),
-            AccessPredicate.Or or => EvaluateOr(or, row),
-            AccessPredicate.Not not => Negate(Evaluate(not.Predicate, row)),
-            AccessPredicate.IsNull isNull => Resolve(isNull.Expression, row).IsNull,
-            AccessPredicate.In inPredicate => EvaluateIn(inPredicate, row),
-            AccessPredicate.Like like => EvaluateLike(like, row),
-            _ => throw new NotSupportedException($"Predicate {predicate.GetType().Name} is not supported.")
+            AccessPredicate.True 
+                => true,
+            AccessPredicate.Comparison comparison 
+                => EvaluateComparison(comparison, row),
+            AccessPredicate.And and 
+                => EvaluateAnd(and, row),
+            AccessPredicate.Or or 
+                => EvaluateOr(or, row),
+            AccessPredicate.Not not 
+                => Negate(Evaluate(not.Predicate, row)),
+            AccessPredicate.IsNull isNull 
+                => Resolve(isNull.Expression, row).IsNull,
+            AccessPredicate.In inPredicate 
+                => EvaluateIn(inPredicate, row),
+            AccessPredicate.Like like 
+                => EvaluateLike(like, row),
+            _ => 
+                throw new NotSupportedException($"Predicate {predicate.GetType().Name} is not supported.")
         };
     }
 
@@ -185,7 +194,7 @@ public static class PredicateEvaluator
 
     private static string? ToText(in AccessValue value)
     {
-        if (value.Kind != AccessValueKind.Bytes)
+        if (value.Type != AccessValueType.Bytes)
         {
             return null;
         }

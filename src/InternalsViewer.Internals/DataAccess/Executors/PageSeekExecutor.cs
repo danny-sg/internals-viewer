@@ -9,30 +9,28 @@ namespace InternalsViewer.Internals.DataAccess.Executors;
 /// <summary>
 /// Executes a seek against a single page, locating an entry point then walking the range
 /// </summary>
-public sealed class PageSeekExecutor(IRowBinder rowBinder)
+public static class PageSeekExecutor
 {
-    private IRowBinder RowBinder { get; } = rowBinder;
-
-    public IEnumerable<AccessStep> Execute(IIndexAccessPage page,
-                                           SeekBounds bounds,
-                                           ScanDirection direction,
-                                           AccessPredicate? residual = null,
-                                           long? rowGoal = null,
-                                           bool isContinuation = false,
-                                           AccessCounters counters = default,
-                                           Action<AccessCounters>? onCountersChanged = null)
+    public static IEnumerable<AccessStep> Execute(IIndexPageAccessor page,
+                                                  SeekBounds bounds,
+                                                  ScanDirection direction,
+                                                  AccessPredicate? residual = null,
+                                                  long? rowGoal = null,
+                                                  bool isContinuation = false,
+                                                  AccessCounters counters = default,
+                                                  Action<AccessCounters>? onCountersChanged = null)
     {
         return Walk(page, bounds, direction, residual, rowGoal, isContinuation, counters, onCountersChanged);
     }
 
-    private IEnumerable<AccessStep> Walk(IIndexAccessPage page,
-                                         SeekBounds bounds,
-                                         ScanDirection direction,
-                                         AccessPredicate? residual,
-                                         long? rowGoal,
-                                         bool isContinuation,
-                                         AccessCounters totals,
-                                         Action<AccessCounters>? onCountersChanged)
+    private static IEnumerable<AccessStep> Walk(IIndexPageAccessor page,
+                                                SeekBounds bounds,
+                                                ScanDirection direction,
+                                                AccessPredicate? residual,
+                                                long? rowGoal,
+                                                bool isContinuation,
+                                                AccessCounters totals,
+                                                Action<AccessCounters>? onCountersChanged)
     {
         var forward = direction == ScanDirection.Forward;
 
@@ -206,7 +204,7 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
         return bounds.CompareWidth == int.MaxValue ? target.Count : bounds.CompareWidth;
     }
 
-    private static bool WithinTrailingBound(IIndexAccessPage page,
+    private static bool WithinTrailingBound(IIndexPageAccessor page,
                                             int slot,
                                             SeekBounds bounds,
                                             bool forward,
@@ -239,13 +237,13 @@ public sealed class PageSeekExecutor(IRowBinder rowBinder)
         return forward ? comparison < 0 : comparison > 0;
     }
 
-    private bool? EvaluateResidual(IAccessPage page, int slot, AccessPredicate? residual)
+    private static bool? EvaluateResidual(IIndexPageAccessor page, int slot, AccessPredicate? residual)
     {
         if (residual is null or AccessPredicate.True)
         {
             return true;
         }
 
-        return PredicateEvaluator.Evaluate(residual, RowBinder.Bind(page, slot));
+        return PredicateEvaluator.Evaluate(residual, page.BindRow(slot));
     }
 }

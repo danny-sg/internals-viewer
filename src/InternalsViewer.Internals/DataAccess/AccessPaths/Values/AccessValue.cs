@@ -8,17 +8,17 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 /// </summary>
 public readonly struct AccessValue : IEquatable<AccessValue>
 {
-    public static readonly AccessValue Null = new(SqlDbType.Variant, AccessValueKind.Null, 0, 0, default, null);
+    public static readonly AccessValue Null = new(SqlDbType.Variant, AccessValueType.Null, 0, 0, default, null);
 
     private AccessValue(SqlDbType dataType,
-                        AccessValueKind kind,
+                        AccessValueType type,
                         long numeric,
                         double real,
                         ReadOnlyMemory<byte> data,
                         string? columnName)
     {
         DataType = dataType;
-        Kind = kind;
+        Type = type;
         Numeric = numeric;
         Real = real;
         Data = data;
@@ -27,7 +27,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
 
     public SqlDbType DataType { get; }
 
-    public AccessValueKind Kind { get; }
+    public AccessValueType Type { get; }
 
     public long Numeric { get; }
 
@@ -44,7 +44,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </remarks>
     public string? ColumnName { get; }
 
-    public bool IsNull => Kind == AccessValueKind.Null;
+    public bool IsNull => Type == AccessValueType.Null;
 
     public static bool operator ==(AccessValue left, AccessValue right) => left.Equals(right);
 
@@ -55,7 +55,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public static AccessValue FromNull(SqlDbType dataType)
     {
-        return new AccessValue(dataType, AccessValueKind.Null, 0, 0, default, null);
+        return new AccessValue(dataType, AccessValueType.Null, 0, 0, default, null);
     }
 
     /// <summary>
@@ -63,7 +63,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public static AccessValue FromInteger(SqlDbType dataType, long value)
     {
-        return new AccessValue(dataType, AccessValueKind.Integer, value, 0, default, null);
+        return new AccessValue(dataType, AccessValueType.Integer, value, 0, default, null);
     }
 
     /// <summary>
@@ -71,7 +71,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public static AccessValue FromReal(SqlDbType dataType, double value)
     {
-        return new AccessValue(dataType, AccessValueKind.Real, 0, value, default, null);
+        return new AccessValue(dataType, AccessValueType.Real, 0, value, default, null);
     }
 
     /// <summary>
@@ -88,7 +88,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
             BitConverter.TryWriteBytes(data.AsSpan(index * sizeof(int)), bits[index]);
         }
 
-        return new AccessValue(dataType, AccessValueKind.Decimal, 0, 0, data, null);
+        return new AccessValue(dataType, AccessValueType.Decimal, 0, 0, data, null);
     }
 
     /// <summary>
@@ -96,7 +96,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public static AccessValue FromBytes(SqlDbType dataType, ReadOnlyMemory<byte> value)
     {
-        return new AccessValue(dataType, AccessValueKind.Bytes, 0, 0, value, null);
+        return new AccessValue(dataType, AccessValueType.Bytes, 0, 0, value, null);
     }
 
     /// <summary>
@@ -104,7 +104,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public AccessValue WithColumnName(string? columnName)
     {
-        return new AccessValue(DataType, Kind, Numeric, Real, Data, columnName);
+        return new AccessValue(DataType, Type, Numeric, Real, Data, columnName);
     }
 
     /// <summary>
@@ -112,9 +112,9 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// </summary>
     public decimal ToDecimal()
     {
-        if (Kind != AccessValueKind.Decimal)
+        if (Type != AccessValueType.Decimal)
         {
-            throw new InvalidOperationException($"Value of kind {Kind} is not an exact numeric.");
+            throw new InvalidOperationException($"Value of type {Type} is not an exact numeric.");
         }
 
         var span = Data.Span;
@@ -142,12 +142,12 @@ public readonly struct AccessValue : IEquatable<AccessValue>
 
     public override int GetHashCode()
     {
-        return Kind switch
+        return Type switch
         {
-            AccessValueKind.Null => 0,
-            AccessValueKind.Integer
-                or AccessValueKind.Real
-                or AccessValueKind.Decimal 
+            AccessValueType.Null => 0,
+            AccessValueType.Integer
+                or AccessValueType.Real
+                or AccessValueType.Decimal 
                 => GetNumericHashCode(),
             _ => GetBytesHashCode()
         };
@@ -155,15 +155,15 @@ public readonly struct AccessValue : IEquatable<AccessValue>
 
     public override string ToString()
     {
-        return Kind switch
+        return Type switch
         {
-            AccessValueKind.Null 
+            AccessValueType.Null 
                 => "NULL",
-            AccessValueKind.Integer 
+            AccessValueType.Integer 
                 => Numeric.ToString(),
-            AccessValueKind.Real 
+            AccessValueType.Real 
                 => Real.ToString(CultureInfo.InvariantCulture),
-            AccessValueKind.Decimal 
+            AccessValueType.Decimal 
                 => ToDecimal().ToString(CultureInfo.InvariantCulture),
             _ => Convert.ToHexString(Data.Span)
         };
@@ -175,15 +175,15 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// <remarks>
     /// Integer, real and exact numeric values compare equal across kinds, so they must hash
     /// identically. Values are narrowed to <see cref="double"/> because it is the only one of the
-    /// three that every numeric kind converts to without overflowing.
+    /// three that every numeric type converts to without overflowing.
     /// </remarks>
     private int GetNumericHashCode()
     {
-        double value = Kind switch
+        double value = Type switch
         {
-            AccessValueKind.Integer 
+            AccessValueType.Integer 
                 => Numeric,
-            AccessValueKind.Real 
+            AccessValueType.Real 
                 => Real,
             _ => (double)ToDecimal()
         };

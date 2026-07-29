@@ -1,6 +1,5 @@
 ﻿using System.Threading;
 using InternalsViewer.Internals.DataAccess.AccessPaths;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Binding;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
@@ -54,7 +53,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
     private long? RowGoal { get; set; }
 
-    private IIndexAccessPage CurrentPage { get; set; } = null!;
+    private IIndexPageAccessor CurrentPage { get; set; } = null!;
 
     private IEnumerator<AccessStep> CurrentPageSteps { get; set; } = null!;
 
@@ -176,17 +175,15 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
         CurrentPage = page switch
         {
             IndexPage indexPage
-                => new IndexAccessPage(indexPage, RecordService, IndexStructure),
+                => new IndexPageAccessor(indexPage, RecordService, IndexStructure),
             DataPage dataPage
-                => new ClusteredLeafAccessPage(dataPage, RecordService, IndexStructure),
+                => new ClusteredLeafPageAccessor(dataPage, RecordService, IndexStructure),
             _ =>
                 throw new InvalidOperationException($"Unexpected page type {page.GetType()} at {pageAddress}")
         };
 
-        var executor = new PageSeekExecutor(new RecordRowBinder());
-
-        CurrentPageSteps = executor.Execute(CurrentPage, Bounds, Direction, Residual, RowGoal, isContinuation, counters: Counters)
-                                   .GetEnumerator();
+        CurrentPageSteps = PageSeekExecutor.Execute(CurrentPage, Bounds, Direction, Residual, RowGoal, isContinuation, counters: Counters)
+                                           .GetEnumerator();
     }
 
     private static long? GetRowGoal(IndexStructure indexStructure, SeekBounds bounds)

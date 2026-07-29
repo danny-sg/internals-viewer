@@ -1,5 +1,7 @@
+using InternalsViewer.Internals.DataAccess.AccessPaths.Binding;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Internals.Interfaces.DataAccess;
 
@@ -10,9 +12,31 @@ namespace InternalsViewer.Internals.Interfaces.DataAccess;
 /// Implemented by index pages at any level, including clustered index leaf pages. Key ordering is
 /// intrinsic to a B-tree page, so a page either implements this contract or it does not - there is
 /// no page that is conditionally keyed.
+///
+/// Moving between pages is the responsibility of the caller, so this contract describes one page in isolation.
 /// </remarks>
-public interface IIndexAccessPage : IAccessPage
+public interface IIndexPageAccessor
 {
+    PageAddress PageAddress { get; }
+
+    /// <summary>
+    /// Index level, where zero is the leaf. A heap data page is always level zero
+    /// </summary>
+    byte Level { get; }
+
+    bool IsLeaf { get; }
+
+    bool IsRoot { get; }
+
+    int SlotCount { get; }
+
+    /// <summary>
+    /// Gets the underlying record for a slot, used when evaluating residual predicates
+    /// </summary>
+    IRecord GetRecord(int slot);
+
+    IRowValueSource BindRow(int slot) => new RecordRowValueSource(GetRecord(slot));
+
     /// <summary>
     /// Gets the key for a slot
     /// </summary>

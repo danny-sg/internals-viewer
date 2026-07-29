@@ -11,7 +11,7 @@ public class ConstValueParserTests
     [InlineData("NULL")]
     public void Unparseable_Or_Null_Literals_Become_Null(string literal)
     {
-        Assert.Equal(AccessValueKind.Null, ConstValueParser.Parse(literal).Kind);
+        Assert.Equal(AccessValueType.Null, ConstValueParser.Parse(literal).Type);
     }
 
     [Fact]
@@ -19,15 +19,15 @@ public class ConstValueParserTests
     {
         var value = ConstValueParser.Parse("(42)");
 
-        Assert.Equal(AccessValueKind.Integer, value.Kind);
+        Assert.Equal(AccessValueType.Integer, value.Type);
         Assert.Equal(42, value.Numeric);
     }
 
     [Fact]
     public void Empty_Literal_Becomes_Null()
     {
-        Assert.Equal(AccessValueKind.Null, ConstValueParser.Parse(null).Kind);
-        Assert.Equal(AccessValueKind.Null, ConstValueParser.Parse("  ").Kind);
+        Assert.Equal(AccessValueType.Null, ConstValueParser.Parse(null).Type);
+        Assert.Equal(AccessValueType.Null, ConstValueParser.Parse("  ").Type);
     }
 
     [Theory]
@@ -38,7 +38,7 @@ public class ConstValueParserTests
     {
         var value = ConstValueParser.Parse(literal);
 
-        Assert.Equal(AccessValueKind.Integer, value.Kind);
+        Assert.Equal(AccessValueType.Integer, value.Type);
         Assert.Equal(expected, value.Numeric);
     }
 
@@ -47,7 +47,7 @@ public class ConstValueParserTests
     {
         var value = ConstValueParser.Parse("19.99");
 
-        Assert.Equal(AccessValueKind.Decimal, value.Kind);
+        Assert.Equal(AccessValueType.Decimal, value.Type);
         Assert.Equal(19.99m, value.ToDecimal());
     }
 
@@ -56,7 +56,7 @@ public class ConstValueParserTests
     {
         var value = ConstValueParser.Parse("1.5e3");
 
-        Assert.Equal(AccessValueKind.Real, value.Kind);
+        Assert.Equal(AccessValueType.Real, value.Type);
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class ConstValueParserTests
     {
         var value = ConstValueParser.Parse("'Sales'");
 
-        Assert.Equal(AccessValueKind.Bytes, value.Kind);
+        Assert.Equal(AccessValueType.Bytes, value.Type);
         Assert.Equal(SqlDbType.VarChar, value.DataType);
         Assert.Equal("Sales", Encoding.ASCII.GetString(value.Data.ToArray()));
     }
@@ -91,7 +91,7 @@ public class ConstValueParserTests
     {
         var value = ConstValueParser.Parse("''");
 
-        Assert.Equal(AccessValueKind.Bytes, value.Kind);
+        Assert.Equal(AccessValueType.Bytes, value.Type);
         Assert.Empty(value.Data.ToArray());
     }
 
@@ -100,13 +100,13 @@ public class ConstValueParserTests
     {
         var value = ConstValueParser.Parse("0x01FF00");
 
-        Assert.Equal(AccessValueKind.Bytes, value.Kind);
+        Assert.Equal(AccessValueType.Bytes, value.Type);
         Assert.Equal([0x01, 0xFF, 0x00], value.Data.ToArray());
     }
 
     [Fact]
     public void Odd_Length_Binary_Literal_Is_Rejected()
     {
-        Assert.Equal(AccessValueKind.Null, ConstValueParser.Parse("0x1FF").Kind);
+        Assert.Equal(AccessValueType.Null, ConstValueParser.Parse("0x1FF").Type);
     }
 }

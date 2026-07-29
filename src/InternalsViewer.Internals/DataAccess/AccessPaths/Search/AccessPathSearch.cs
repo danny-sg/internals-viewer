@@ -15,7 +15,7 @@ public static class AccessPathSearch
     /// <remarks>
     /// Returns the slot count when no key qualifies.
     /// </remarks>
-    public static (int Slot, ImmutableArray<AccessStep.Probe> Probes) LowerBound(IIndexAccessPage page,
+    public static (int Slot, ImmutableArray<AccessStep.Probe> Probes) LowerBound(IIndexPageAccessor page,
                                                                                  in AccessKey target,
                                                                                  int width)
     {
@@ -25,7 +25,7 @@ public static class AccessPathSearch
     /// <summary>
     /// Finds the first slot whose key is strictly greater than the target
     /// </summary>
-    public static (int Slot, ImmutableArray<AccessStep.Probe> Probes) UpperBound(IIndexAccessPage page,
+    public static (int Slot, ImmutableArray<AccessStep.Probe> Probes) UpperBound(IIndexPageAccessor page,
                                                                                  in AccessKey target,
                                                                                  int width)
     {
@@ -35,7 +35,7 @@ public static class AccessPathSearch
     /// <summary>
     /// Binary Search over page slots
     /// </summary>
-    private static (int Slot, ImmutableArray<AccessStep.Probe> Probes) Search(IIndexAccessPage page,
+    private static (int Slot, ImmutableArray<AccessStep.Probe> Probes) Search(IIndexPageAccessor page,
                                                                               in AccessKey target,
                                                                               int width,
                                                                               bool findFirstGreaterThan)

@@ -7,7 +7,7 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 /// A token carries an optional description so a renderer can offer detail the text alone does not show, such as the plan parameter a
 /// literal was resolved from.
 /// </remarks>
-public readonly record struct PredicateToken(PredicateTokenKind Kind,
+public readonly record struct PredicateToken(PredicateTokenType Type,
                                              string Text,
                                              string? Description = null)
 {

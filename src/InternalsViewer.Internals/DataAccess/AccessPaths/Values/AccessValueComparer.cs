@@ -21,25 +21,25 @@ public static class AccessValueComparer
             };
         }
 
-        if (left.Kind == right.Kind)
+        if (left.Type == right.Type)
         {
-            return CompareSameKind(left, right);
+            return CompareSameType(left, right);
         }
 
-        return CompareMixedKind(left, right);
+        return CompareMixedType(left, right);
     }
 
-    private static int CompareSameKind(in AccessValue left, in AccessValue right)
+    private static int CompareSameType(in AccessValue left, in AccessValue right)
     {
-        switch (left.Kind)
+        switch (left.Type)
         {
-            case AccessValueKind.Integer:
+            case AccessValueType.Integer:
                 return left.Numeric.CompareTo(right.Numeric);
 
-            case AccessValueKind.Real:
+            case AccessValueType.Real:
                 return left.Real.CompareTo(right.Real);
 
-            case AccessValueKind.Decimal:
+            case AccessValueType.Decimal:
                 return left.ToDecimal().CompareTo(right.ToDecimal());
 
             default:
@@ -47,11 +47,11 @@ public static class AccessValueComparer
         }
     }
 
-    private static int CompareMixedKind(in AccessValue left, in AccessValue right)
+    private static int CompareMixedType(in AccessValue left, in AccessValue right)
     {
-        if (IsNumeric(left.Kind) && IsNumeric(right.Kind))
+        if (IsNumeric(left.Type) && IsNumeric(right.Type))
         {
-            if (left.Kind == AccessValueKind.Decimal || right.Kind == AccessValueKind.Decimal)
+            if (left.Type == AccessValueType.Decimal || right.Type == AccessValueType.Decimal)
             {
                 return ToDecimalValue(left).CompareTo(ToDecimalValue(right));
             }
@@ -60,30 +60,35 @@ public static class AccessValueComparer
         }
 
         throw new InvalidOperationException(
-            $"Cannot compare a value of kind {left.Kind} with a value of kind {right.Kind}.");
+            $"Cannot compare a value of type {left.Type} with a value of type {right.Type}.");
     }
 
-    private static bool IsNumeric(AccessValueKind kind)
+    private static bool IsNumeric(AccessValueType type)
     {
-        return kind is AccessValueKind.Integer or AccessValueKind.Real or AccessValueKind.Decimal;
+        return type is AccessValueType.Integer or AccessValueType.Real or AccessValueType.Decimal;
     }
 
     private static double ToRealValue(in AccessValue value)
     {
-        return value.Kind switch
+        return value.Type switch
         {
-            AccessValueKind.Integer => value.Numeric,
-            AccessValueKind.Real => value.Real,
-            _ => (double)value.ToDecimal()
+            AccessValueType.Integer 
+                => value.Numeric,
+            AccessValueType.Real 
+                => value.Real,
+            _ => 
+                (double)value.ToDecimal()
         };
     }
 
     private static decimal ToDecimalValue(in AccessValue value)
     {
-        return value.Kind switch
+        return value.Type switch
         {
-            AccessValueKind.Integer => value.Numeric,
-            AccessValueKind.Real => (decimal)value.Real,
+            AccessValueType.Integer 
+                => value.Numeric,
+            AccessValueType.Real 
+                => (decimal)value.Real,
             _ => value.ToDecimal()
         };
     }

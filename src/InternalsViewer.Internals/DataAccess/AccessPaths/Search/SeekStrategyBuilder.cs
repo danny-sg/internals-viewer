@@ -169,28 +169,28 @@ public static class SeekStrategyBuilder
 
         if (isComposite)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, "("));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
         }
 
         for (var index = 0; index < length; index++)
         {
             if (index > 0)
             {
-                tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ","));
-                tokens.Add(new PredicateToken(PredicateTokenKind.Space, " "));
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
+                tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
             }
 
-            tokens.Add(new PredicateToken(PredicateTokenKind.Column, target[index].ColumnName ?? $"Key{index + 1}"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Column, target[index].ColumnName ?? $"Key{index + 1}"));
         }
 
         if (isComposite)
         {
-            tokens.Add(new PredicateToken(PredicateTokenKind.Punctuation, ")"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
         }
 
-        tokens.Add(new PredicateToken(PredicateTokenKind.Space, " "));
-        tokens.Add(new PredicateToken(PredicateTokenKind.Operator, symbol));
-        tokens.Add(new PredicateToken(PredicateTokenKind.Space, " "));
+        tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
+        tokens.Add(new PredicateToken(PredicateTokenType.Operator, symbol));
+        tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
 
         PredicateWriter.WriteKeyValues(tokens, target, length);
 

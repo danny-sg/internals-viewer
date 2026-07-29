@@ -11,11 +11,11 @@ public class AccessCounterUpdaterTests
     {
         var updates = new List<AccessCounters>();
 
-        var executor = new PageScanExecutor(new TestRowBinder());
-
-        executor.Execute(TestIndexPage.Create(1, 2, 3),
-                         onCountersChanged: updates.Add)
-                .ToList();
+        PageSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3),
+                                 SeekBounds.All,
+                                 ScanDirection.Forward,
+                                 onCountersChanged: updates.Add)
+                        .ToList();
 
         Assert.Equal(1, updates[0].PagesRead);
 
@@ -28,11 +28,11 @@ public class AccessCounterUpdaterTests
     {
         var updates = new List<AccessCounters>();
 
-        var executor = new PageScanExecutor(new TestRowBinder());
-
-        executor.Execute(TestIndexPage.Create(1, 2, 3, 4, 5),
-                         onCountersChanged: updates.Add)
-                .ToList();
+        PageSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3, 4, 5),
+                                 SeekBounds.All,
+                                 ScanDirection.Forward,
+                                 onCountersChanged: updates.Add)
+                        .ToList();
 
         for (var index = 1; index < updates.Count; index++)
         {
@@ -46,10 +46,10 @@ public class AccessCounterUpdaterTests
     {
         var called = false;
 
-        var executor = new PageScanExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(TestIndexPage.Create(1, 2),
-                                     onCountersChanged: _ => called = true);
+        var steps = PageSeekExecutor.Execute(TestIndexPage.Create(1, 2),
+                                             SeekBounds.All,
+                                             ScanDirection.Forward,
+                                             onCountersChanged: _ => called = true);
 
         Assert.False(called);
 
@@ -63,11 +63,11 @@ public class AccessCounterUpdaterTests
     {
         var updates = new List<AccessCounters>();
 
-        var executor = new PageScanExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(TestIndexPage.Create(1, 2, 3),
-                                     onCountersChanged: updates.Add)
-                            .ToList();
+        var steps = PageSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3),
+                                             SeekBounds.All,
+                                             ScanDirection.Forward,
+                                             onCountersChanged: updates.Add)
+                                    .ToList();
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
@@ -79,9 +79,11 @@ public class AccessCounterUpdaterTests
     {
         var starting = default(AccessCounters).AddPageRead().AddPageRead();
 
-        var executor = new PageScanExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(TestIndexPage.Create(1), counters: starting).ToList();
+        var steps = PageSeekExecutor.Execute(TestIndexPage.Create(1),
+                                             SeekBounds.All,
+                                             ScanDirection.Forward,
+                                             counters: starting)
+                                    .ToList();
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
@@ -93,9 +95,7 @@ public class AccessCounterUpdaterTests
     {
         var page = new TestIndexPage(new(1, 100), [1, 2, 3, 4], new HashSet<int> { 1, 2 });
 
-        var executor = new PageScanExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(page).ToList();
+        var steps = PageSeekExecutor.Execute(page, SeekBounds.All, ScanDirection.Forward).ToList();
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
@@ -106,9 +106,11 @@ public class AccessCounterUpdaterTests
     [Fact]
     public void Row_Goal_Stops_The_Scan_Early()
     {
-        var executor = new PageScanExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(TestIndexPage.Create(1, 2, 3, 4, 5), rowGoal: 2).ToList();
+        var steps = PageSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3, 4, 5),
+                                             SeekBounds.All,
+                                             ScanDirection.Forward,
+                                             rowGoal: 2)
+                                    .ToList();
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
@@ -122,10 +124,8 @@ public class AccessCounterUpdaterTests
     {
         var page = TestIndexPage.Create(10, 20, 30, 40, 50, 60, 70, 80);
 
-        var executor = new PageSeekExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward)
-                            .ToList();
+        var steps = PageSeekExecutor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward)
+                                    .ToList();
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
@@ -137,12 +137,10 @@ public class AccessCounterUpdaterTests
     {
         var page = TestIndexPage.Create(10, 20, 30, 40, 50);
 
-        var executor = new PageSeekExecutor(new TestRowBinder());
-
-        var steps = executor.Execute(page,
-                                     SeekBounds.Between(TestKey.Of(20), TestKey.Of(30)),
-                                     ScanDirection.Forward)
-                            .ToList();
+        var steps = PageSeekExecutor.Execute(page,
+                                             SeekBounds.Between(TestKey.Of(20), TestKey.Of(30)),
+                                             ScanDirection.Forward)
+                                    .ToList();
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 

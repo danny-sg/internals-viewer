@@ -137,7 +137,6 @@
 
             <index:IndexControl x:Name="IndexControl"
                                 Grid.Column="0"
-                                
                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                 Visibility="{x:Bind ViewModel.IsInitialized,
                                                 Mode=OneWay,
@@ -170,7 +169,6 @@
             <Grid Grid.Column="2"
                   Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  
                   BorderThickness="1,0,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -250,7 +248,7 @@
                                                 CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
                 <controls:GridSplitter Grid.Row="2"
                                        Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
-                                               Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                                       Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                        HorizontalAlignment="Stretch"
                                        VerticalAlignment="Stretch"
                                        ResizeBehavior="PreviousAndNext"
@@ -265,7 +263,7 @@
                 <TabView Grid.Row="3"
                          VerticalAlignment="Stretch"
                          Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
-                                 Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                         Converter={StaticResource InverseBoolToVisibilityConverter}}"
                          IsAddTabButtonVisible="False"
                          CanReorderTabs="False"
                          TabWidthMode="SizeToContent"

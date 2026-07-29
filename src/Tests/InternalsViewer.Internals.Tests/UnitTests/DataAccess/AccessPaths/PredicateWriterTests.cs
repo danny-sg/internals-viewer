@@ -27,7 +27,7 @@ public class PredicateWriterTests
                                                        Constant(1));
 
         var column = PredicateWriter.Write(predicate)
-                                    .First(t => t.Kind == PredicateTokenKind.Column);
+                                    .First(t => t.Type == PredicateTokenType.Column);
 
         Assert.Equal("Ordinal 3", column.Description);
     }

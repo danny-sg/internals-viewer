@@ -18,7 +18,7 @@ internal sealed class TestIndexPage(PageAddress pageAddress,
                                     IReadOnlyList<int> keys,
                                     ISet<int>? ghostSlots = null,
                                     byte level = 0)
-    : IIndexAccessPage
+    : IIndexPageAccessor
 {
     private IReadOnlyList<int> Keys { get; } = keys;
 
@@ -72,6 +72,11 @@ internal sealed class TestIndexPage(PageAddress pageAddress,
     {
         return new TestRecord(slot, GhostSlots.Contains(slot), Keys[slot]);
     }
+
+    public IRowValueSource BindRow(int slot)
+    {
+        return new TestRowValueSource(Keys[slot]);
+    }
 }
 
 /// <summary>
@@ -92,22 +97,6 @@ internal sealed class TestRecord(int slot, bool isGhost, int key) : IRecord
     public int Key { get; } = key;
 
     public List<DataStructureItem> MarkItems { get; } = [];
-}
-
-/// <summary>
-/// Binds the single integer column of a <see cref="TestRecord"/>
-/// </summary>
-internal sealed class TestRowBinder : IRowBinder
-{
-    public IRowValueSource Bind(IAccessPage page, int slot)
-    {
-        return Bind(page.GetRecord(slot));
-    }
-
-    public IRowValueSource Bind(IRecord record)
-    {
-        return new TestRowValueSource(((TestRecord)record).Key);
-    }
 }
 
 internal sealed class TestRowValueSource(int key) : IRowValueSource

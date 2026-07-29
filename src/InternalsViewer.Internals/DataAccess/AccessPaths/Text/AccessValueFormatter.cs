@@ -21,17 +21,21 @@ public static class AccessValueFormatter
     {
         if (value.IsNull)
         {
-            return new PredicateToken(PredicateTokenKind.Null, "NULL");
+            return new PredicateToken(PredicateTokenType.Null, "NULL");
         }
 
-        return value.Kind switch
+        return value.Type switch
         {
-            AccessValueKind.Integer => new PredicateToken(PredicateTokenKind.Number, FormatInteger(value)),
-            AccessValueKind.Real => new PredicateToken(PredicateTokenKind.Number,
-                                                       value.Real.ToString("R", CultureInfo.InvariantCulture)),
-            AccessValueKind.Decimal => new PredicateToken(PredicateTokenKind.Number,
-                                                          value.ToDecimal().ToString(CultureInfo.InvariantCulture)),
-            _ => new PredicateToken(PredicateTokenKind.Literal, FormatBytes(value))
+            AccessValueType.Integer 
+                => new PredicateToken(PredicateTokenType.Number, FormatInteger(value)),
+            AccessValueType.Real 
+                => new PredicateToken(PredicateTokenType.Number,
+                                      value.Real.ToString("R", CultureInfo.InvariantCulture)),
+            AccessValueType.Decimal 
+                => new PredicateToken(PredicateTokenType.Number,
+                                      value.ToDecimal().ToString(CultureInfo.InvariantCulture)),
+            _ => 
+                new PredicateToken(PredicateTokenType.Literal, FormatBytes(value))
         };
     }
 

@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.DataAccess;
@@ -13,11 +12,11 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths;
 /// Adapts a decoded <see cref="IndexPage"/> and its records to the seek executor's page contract
 /// </summary>
 /// <remarks>
-/// The executor operates purely on <see cref="IIndexAccessPage"/>/<see cref="IAccessPage"/>, so this
+/// The executor operates purely on <see cref="IIndexPageAccessor"/>, so this
 /// adapter is the only place that understands how key columns map onto decoded record fields.
 /// </remarks>
-public sealed class IndexAccessPage(IndexPage page, IRecordService recordService, IndexStructure indexStructure)
-    : IIndexAccessPage
+public sealed class IndexPageAccessor(IndexPage page, IRecordService recordService, IndexStructure indexStructure)
+    : IIndexPageAccessor
 {
     private readonly IIndexRecord?[] _records = new IIndexRecord?[page.OffsetTable.Length];
 
@@ -37,16 +36,7 @@ public sealed class IndexAccessPage(IndexPage page, IRecordService recordService
 
     private IIndexRecord GetIndexRecord(int slot) => _records[slot] ??= recordService.GetIndexRecord(page, slot, indexStructure);
 
-    public AccessKey GetKey(int slot)
-    {
-        var record = GetIndexRecord(slot);
-
-        var values = indexStructure.IndexKeyColumns
-                                    .Select(keyColumn => CreateValue(record, keyColumn))
-                                    .ToArray();
-
-        return AccessKey.Create(values);
-    }
+    public AccessKey GetKey(int slot) => AccessKeyReader.GetKey(GetIndexRecord(slot), indexStructure);
 
     public int CompareKeyPrefix(int slot, in AccessKey target, int width)
     {
@@ -63,14 +53,5 @@ public sealed class IndexAccessPage(IndexPage page, IRecordService recordService
         }
 
         return GetIndexRecord(slot).DownPagePointer;
-    }
-
-    private static AccessValue CreateValue(IIndexRecord record, IndexColumnStructure keyColumn)
-    {
-        var field = record.Fields.FirstOrDefault(f => f.ColumnStructure.ColumnId == keyColumn.ColumnId);
-
-        return field is null
-            ? AccessValue.FromNull(keyColumn.DataType).WithColumnName(keyColumn.ColumnName)
-            : AccessValueFieldFactory.Create(field);
     }
 }
