@@ -27,27 +27,27 @@ public sealed partial class QueryPlanTabView : UserControl
         }
     }
 
-    private bool _isDetailPaneVisible;
+    private bool _isPropertiesPaneVisible;
 
-    public bool IsDetailPaneVisible
+    public bool IsPropertiesPaneVisible
     {
-        get => _isDetailPaneVisible;
+        get => _isPropertiesPaneVisible;
         set
         {
-            _isDetailPaneVisible = value;
+            _isPropertiesPaneVisible = value;
 
             Bindings.Update();
         }
     }
 
     public GridLength BodyColumnWidth
-        => IsDetailPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
+        => IsPropertiesPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
 
     public GridLength DetailColumnWidth
-        => IsDetailPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+        => IsPropertiesPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
 
     public Visibility DetailSplitterVisibility
-        => IsDetailPaneVisible ? Visibility.Visible : Visibility.Collapsed;
+        => IsPropertiesPaneVisible ? Visibility.Visible : Visibility.Collapsed;
 
     public QueryPlanTabView()
     {
@@ -146,6 +146,9 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;
             planControl.IndexOpenRequested += OnPlanIndexOpenRequested;
 
+            planControl.PropertiesOpenRequested -= OnPropertiesOpenRequested;
+            planControl.PropertiesOpenRequested += OnPropertiesOpenRequested;
+
             planControl.NodeSelected -= OnPlanNodeSelected;
             planControl.NodeSelected += OnPlanNodeSelected;
         }
@@ -153,10 +156,16 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void CloseDetailPane()
     {
-        IsDetailPaneVisible = false;
+        IsPropertiesPaneVisible = false;
     }
 
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);
+
+    private void OnPropertiesOpenRequested(object? sender, PlanNode node)
+    {
+        OnPlanNodeSelected(sender, node);
+        IsPropertiesPaneVisible = true;
+    }
 
     /// <summary>
     /// Routes a click on a plan node through the same selection every other view goes through

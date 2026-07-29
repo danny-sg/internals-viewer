@@ -91,9 +91,19 @@ public static class ExecutionPlanParser
 
         node.CountersByThread = ExtractThreadCounters(element);
 
+        node.IoStats = ParseIoStats(element);
+
+        ParseRowCounts(element, node);
+
         ExtractObjectInfo(element, node);
 
         node.Outputs = ExtractTables(element);
+
+        node.OutputColumns = ParseOutputColumns(element);
+        node.DefinedValues = ParseDefinedValues(element);
+        node.SortColumns = ParseSortColumns(element);
+        node.MergeInfo = ParseMergeInfo(element);
+        node.GroupByColumns = ParseGroupBy(element);
 
         var children = GetChildRelationalOperators(element);
 
@@ -115,6 +125,10 @@ public static class ExecutionPlanParser
             {
                 node.PhysicalOperator = "Key Lookup";
             }
+        }
+        else if (string.Equals(node.PhysicalOperator, "Filter", StringComparison.OrdinalIgnoreCase))
+        {
+            node.PredicateInfo = ParsePredicateInfo(element, parameters);
         }
 
         foreach (var child in children)
@@ -206,6 +220,54 @@ public static class ExecutionPlanParser
         return counters;
     }
 
+    private static void ParseRowCounts(XElement relOp, PlanNode node)
+    {
+        var runtime = relOp.Elements().FirstOrDefault(e => e.Name.LocalName == "RunTimeInformation");
+
+        if (runtime == null)
+        {
+            return;
+        }
+
+        var counters = runtime.Elements().Where(e => e.Name.LocalName == "RunTimeCountersPerThread").ToList();
+
+        node.RowsOutput = counters.Sum(c => GetLongAttribute(c, "ActualRows") ?? 0);
+
+        node.RowsRead = counters.Any(c => c.Attribute("ActualRowsRead") is not null)
+            ? counters.Sum(c => GetLongAttribute(c, "ActualRowsRead") ?? 0)
+            : null;
+    }
+
+    private static PlanIoStatistics? ParseIoStats(XElement relOp)
+    {
+        var runtime = relOp.Elements().FirstOrDefault(e => e.Name.LocalName == "RunTimeInformation");
+
+        if (runtime == null)
+        {
+            return null;
+        }
+
+        var counters = runtime.Elements().Where(e => e.Name.LocalName == "RunTimeCountersPerThread").ToList();
+
+        if (!counters.Any(c => c.Attribute("ActualLogicalReads") is not null))
+        {
+            return null;
+        }
+
+        return new PlanIoStatistics
+        {
+            LogicalReads = counters.Sum(c => GetLongAttribute(c, "ActualLogicalReads") ?? 0),
+            PhysicalReads = counters.Sum(c => GetLongAttribute(c, "ActualPhysicalReads") ?? 0),
+            ReadAheads = counters.Sum(c => GetLongAttribute(c, "ActualReadAheads") ?? 0),
+            Scans = counters.Sum(c => GetLongAttribute(c, "ActualScans") ?? 0),
+            Rebinds = counters.Sum(c => GetLongAttribute(c, "ActualRebinds") ?? 0),
+            Rewinds = counters.Sum(c => GetLongAttribute(c, "ActualRewinds") ?? 0),
+            LobLogicalReads = counters.Sum(c => GetLongAttribute(c, "ActualLobLogicalReads") ?? 0),
+            LobPhysicalReads = counters.Sum(c => GetLongAttribute(c, "ActualLobPhysicalReads") ?? 0),
+            LobReadAheads = counters.Sum(c => GetLongAttribute(c, "ActualLobReadAheads") ?? 0)
+        };
+    }
+
     private static int GetIntAttribute(XElement e, string name)
         => (int?)e.Attribute(name) ?? 0;
 
@@ -294,7 +356,7 @@ public static class ExecutionPlanParser
                                                     ColumnOrdinalResolver? resolveOrdinal = null)
     {
         var scanElement = element.Elements()
-                                 .FirstOrDefault(e => e.Name.LocalName is "IndexScan" or "TableScan");
+                                 .FirstOrDefault(e => e.Name.LocalName is "IndexScan" or "TableScan" or "Filter");
 
         var seekPredicates = scanElement?
             .Elements()
@@ -322,7 +384,7 @@ public static class ExecutionPlanParser
 
     private static ScanInfo ParseScanInfo(XElement scanElement)
     {
-        var indexScan = scanElement.Elements().FirstOrDefault(e => e.Name.LocalName == "IndexScan");
+        var indexScan = scanElement.Elements().FirstOrDefault(e => e.Name.LocalName is "IndexScan" or "TableScan");
 
         var scanInfo = new ScanInfo();
 
@@ -330,6 +392,9 @@ public static class ExecutionPlanParser
         {
             scanInfo.IsOutputOrdered = (bool?)indexScan.Attribute("Ordered");
             scanInfo.IsLookup = (bool?)indexScan.Attribute("Lookup") ?? false;
+            scanInfo.IsForcedIndex = (bool?)indexScan.Attribute("ForcedIndex") ?? false;
+            scanInfo.IsForceSeek = (bool?)indexScan.Attribute("ForceSeek") ?? false;
+            scanInfo.IsForceScan = (bool?)indexScan.Attribute("ForceScan") ?? false;
         }
 
         var scanDirection = indexScan?.Attribute("ScanDirection");
@@ -340,6 +405,109 @@ public static class ExecutionPlanParser
         }
 
         return scanInfo;
+    }
+
+    private static List<ColumnReference> ParseOutputColumns(XElement element)
+    {
+        var outputList = element.Elements().FirstOrDefault(e => e.Name.LocalName == "OutputList");
+
+        return outputList is null ? [] : ParseKeys(outputList);
+    }
+
+    private static List<DefinedValueInfo> ParseDefinedValues(XElement element)
+    {
+        var definedValues = element.Elements().FirstOrDefault(e => e.Name.LocalName == "DefinedValues");
+
+        if (definedValues is null)
+        {
+            return [];
+        }
+
+        var result = new List<DefinedValueInfo>();
+
+        foreach (var definedValue in definedValues.Elements().Where(e => e.Name.LocalName == "DefinedValue"))
+        {
+            var column = definedValue.Elements().FirstOrDefault(e => e.Name.LocalName == "ColumnReference");
+
+            if (column is null)
+            {
+                continue;
+            }
+
+            var expression = definedValue.Elements()
+                                         .FirstOrDefault(e => e.Name.LocalName == "ScalarOperator")?
+                                         .Attribute("ScalarString")?.Value;
+
+            result.Add(new DefinedValueInfo(ParseKeys(definedValue)[0], expression));
+        }
+
+        return result;
+    }
+
+    private static List<SortColumnInfo> ParseSortColumns(XElement element)
+    {
+        var orderBy = element.Elements()
+                             .FirstOrDefault(e => e.Name.LocalName is "Sort" or "TopSort")?
+                             .Elements()
+                             .FirstOrDefault(e => e.Name.LocalName == "OrderBy");
+
+        if (orderBy is null)
+        {
+            return [];
+        }
+
+        var result = new List<SortColumnInfo>();
+
+        foreach (var orderByColumn in orderBy.Elements().Where(e => e.Name.LocalName == "OrderByColumn"))
+        {
+            var columns = ParseKeys(orderByColumn);
+
+            if (columns.Count == 0)
+            {
+                continue;
+            }
+
+            var ascending = orderByColumn.Attribute("Ascending") is not { } attribute || IsTrue(attribute);
+
+            result.Add(new SortColumnInfo(columns[0], ascending));
+        }
+
+        return result;
+    }
+
+    private static MergeInfo? ParseMergeInfo(XElement element)
+    {
+        var merge = element.Elements().FirstOrDefault(e => e.Name.LocalName == "Merge");
+
+        if (merge is null)
+        {
+            return null;
+        }
+
+        var outer = merge.Elements().FirstOrDefault(e => e.Name.LocalName == "OuterSideJoinColumns");
+
+        var inner = merge.Elements().FirstOrDefault(e => e.Name.LocalName == "InnerSideJoinColumns");
+
+        if (outer is null && inner is null)
+        {
+            return null;
+        }
+
+        return new MergeInfo
+        {
+            OuterKeys = outer is null ? [] : ParseKeys(outer),
+            InnerKeys = inner is null ? [] : ParseKeys(inner)
+        };
+    }
+
+    private static List<ColumnReference> ParseGroupBy(XElement element)
+    {
+        var groupBy = element.Elements()
+                             .FirstOrDefault(e => e.Name.LocalName == "StreamAggregate")?
+                             .Elements()
+                             .FirstOrDefault(e => e.Name.LocalName == "GroupBy");
+
+        return groupBy is null ? [] : ParseKeys(groupBy);
     }
 
     private static List<ColumnReference> ParseKeys(XElement parent)

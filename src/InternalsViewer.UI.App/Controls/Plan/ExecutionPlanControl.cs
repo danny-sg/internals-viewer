@@ -181,19 +181,21 @@ public sealed class ExecutionPlanControl : Canvas
     /// <summary>Raised when "Open Index" is chosen on a data-access node that runs against a named index.</summary>
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
+    public event EventHandler<PlanNode>? PropertiesOpenRequested;
+
     private static void OnPlanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).Rebuild();
 
     private void Rebuild()
     {
         StopAllFlows();
-        
+
         Children.Clear();
 
         _connectorByProducer.Clear();
         _arrowByProducer.Clear();
         _secondaryArrowByProducer.Clear();
-        
+
         _selectedControl = null;
 
         if (Plan is null || Plan.Root.Count == 0)
@@ -222,10 +224,10 @@ public sealed class ExecutionPlanControl : Canvas
         {
             foreach (var child in node.Children)
             {
-                var (connector, arrow) = DrawConnector(point, 
-                                                       positions[child], 
+                var (connector, arrow) = DrawConnector(point,
+                                                       positions[child],
                                                        RelativeCost(child, totalCost),
-                                                       node, 
+                                                       node,
                                                        child);
 
                 _connectorByProducer[child] = connector;
@@ -247,7 +249,7 @@ public sealed class ExecutionPlanControl : Canvas
         SelectByNode(SelectedNode);
 
         UpdateActiveHighlights();
-        
+
         UpdateFlows();
     }
 
@@ -467,29 +469,37 @@ public sealed class ExecutionPlanControl : Canvas
     {
         var nodeControl = FindAncestor<PlanNodeControl>(e.OriginalSource as DependencyObject);
 
-        // Only data-access operators (scan/seek/lookup) that run against a named index get the item.
-        if (nodeControl?.Node is not { } node ||
-            string.IsNullOrEmpty(node.Index) ||
-            OperatorClassifier.GetCategory(node) != OperatorCategory.DataAccess)
+        if (nodeControl?.Node is { } node)
         {
-            return;
-        }
+            var flyout = new MenuFlyout();
 
-        var flyout = new MenuFlyout();
-        var openIndex = new MenuFlyoutItem { Text = $"Open Index: {node.Index}" };
-        openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(this, node);
-        flyout.Items.Add(openIndex);
+            if (!string.IsNullOrEmpty(node.Index) &&
+                OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
+            {
+                var openIndex = new MenuFlyoutItem { Text = $"Open Index: {node.Index}" };
 
-        if (e.TryGetPosition(this, out var position))
-        {
-            flyout.ShowAt(this, new FlyoutShowOptions { Position = position });
-        }
-        else
-        {
-            flyout.ShowAt(nodeControl);
-        }
+                openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(this, node);
 
-        e.Handled = true;
+                flyout.Items.Add(openIndex);
+            }
+
+            var openProperties = new MenuFlyoutItem { Text = $"Properties" };
+
+            openProperties.Click += (_, _) => PropertiesOpenRequested?.Invoke(this, node);
+
+            flyout.Items.Add(openProperties);
+
+            if (e.TryGetPosition(this, out var position))
+            {
+                flyout.ShowAt(this, new FlyoutShowOptions { Position = position });
+            }
+            else
+            {
+                flyout.ShowAt(nodeControl);
+            }
+
+            e.Handled = true;
+        }
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)

@@ -30,6 +30,22 @@ public sealed class PlanNode
 
     public PredicateInfo? PredicateInfo { get; set; }
 
+    public List<ColumnReference> OutputColumns { get; set; } = [];
+
+    public List<DefinedValueInfo> DefinedValues { get; set; } = [];
+
+    public List<SortColumnInfo> SortColumns { get; set; } = [];
+
+    public MergeInfo? MergeInfo { get; set; }
+
+    public List<ColumnReference> GroupByColumns { get; set; } = [];
+
+    public PlanIoStatistics? IoStats { get; set; }
+
+    public long RowsOutput { get; set; }
+
+    public long? RowsRead { get; set; }
+
     public HashSet<string> Outputs { get; set; } = [];
 
     public Dictionary<int, ThreadRuntime> CountersByThread { get; set; } = new();
