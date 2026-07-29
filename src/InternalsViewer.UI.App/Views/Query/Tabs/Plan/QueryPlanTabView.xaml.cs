@@ -27,6 +27,28 @@ public sealed partial class QueryPlanTabView : UserControl
         }
     }
 
+    private bool _isDetailPaneVisible;
+
+    public bool IsDetailPaneVisible
+    {
+        get => _isDetailPaneVisible;
+        set
+        {
+            _isDetailPaneVisible = value;
+
+            Bindings.Update();
+        }
+    }
+
+    public GridLength BodyColumnWidth
+        => IsDetailPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
+
+    public GridLength DetailColumnWidth
+        => IsDetailPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility DetailSplitterVisibility
+        => IsDetailPaneVisible ? Visibility.Visible : Visibility.Collapsed;
+
     public QueryPlanTabView()
     {
         InitializeComponent();
@@ -127,6 +149,11 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.NodeSelected -= OnPlanNodeSelected;
             planControl.NodeSelected += OnPlanNodeSelected;
         }
+    }
+
+    private void CloseDetailPane()
+    {
+        IsDetailPaneVisible = false;
     }
 
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);

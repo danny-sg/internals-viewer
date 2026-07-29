@@ -47,12 +47,107 @@ public static class PredicateEvaluator
     {
         return expression switch
         {
-            AccessExpression.Constant constant 
+            AccessExpression.Constant constant
                 => constant.Value,
             AccessExpression.Column column
                 => row.GetValue(column.Ordinal, column.Name),
+            AccessExpression.Arithmetic arithmetic
+                => ResolveArithmetic(arithmetic, row),
             _ => throw new NotSupportedException(
                 $"Expression {expression.GetType().Name} is not supported.")
+        };
+    }
+
+    private static AccessValue ResolveArithmetic(AccessExpression.Arithmetic arithmetic, IRowValueSource row)
+    {
+        var left = Resolve(arithmetic.Left, row);
+        var right = Resolve(arithmetic.Right, row);
+
+        if (left.IsNull || right.IsNull)
+        {
+            return AccessValue.Null;
+        }
+
+        if (left.Type == AccessValueType.Real || right.Type == AccessValueType.Real)
+        {
+            var result = ApplyReal(arithmetic.Operator, ToReal(left), ToReal(right));
+
+            return result is null ? AccessValue.Null : AccessValue.FromReal(SqlDbType.Float, result.Value);
+        }
+
+        if (left.Type == AccessValueType.Decimal || right.Type == AccessValueType.Decimal)
+        {
+            var result = ApplyDecimal(arithmetic.Operator, ToDecimal(left), ToDecimal(right));
+
+            return result is null ? AccessValue.Null : AccessValue.FromDecimal(SqlDbType.Decimal, result.Value);
+        }
+
+        if (left.Type == AccessValueType.Integer && right.Type == AccessValueType.Integer)
+        {
+            var result = ApplyInteger(arithmetic.Operator, left.Numeric, right.Numeric);
+
+            return result is null ? AccessValue.Null : AccessValue.FromInteger(SqlDbType.BigInt, result.Value);
+        }
+
+        return AccessValue.Null;
+    }
+
+    private static long? ApplyInteger(ArithmeticOperator op, long left, long right)
+    {
+        return op switch
+        {
+            ArithmeticOperator.Add => left + right,
+            ArithmeticOperator.Subtract => left - right,
+            ArithmeticOperator.Multiply => left * right,
+            ArithmeticOperator.Divide => right == 0 ? null : left / right,
+            ArithmeticOperator.Modulo => right == 0 ? null : left % right,
+            _ => null
+        };
+    }
+
+    private static decimal? ApplyDecimal(ArithmeticOperator op, decimal left, decimal right)
+    {
+        return op switch
+        {
+            ArithmeticOperator.Add => left + right,
+            ArithmeticOperator.Subtract => left - right,
+            ArithmeticOperator.Multiply => left * right,
+            ArithmeticOperator.Divide => right == 0 ? null : left / right,
+            ArithmeticOperator.Modulo => right == 0 ? null : left % right,
+            _ => null
+        };
+    }
+
+    private static double? ApplyReal(ArithmeticOperator op, double left, double right)
+    {
+        return op switch
+        {
+            ArithmeticOperator.Add => left + right,
+            ArithmeticOperator.Subtract => left - right,
+            ArithmeticOperator.Multiply => left * right,
+            ArithmeticOperator.Divide => right == 0 ? null : left / right,
+            ArithmeticOperator.Modulo => right == 0 ? null : left % right,
+            _ => null
+        };
+    }
+
+    private static double ToReal(in AccessValue value)
+    {
+        return value.Type switch
+        {
+            AccessValueType.Integer => value.Numeric,
+            AccessValueType.Real => value.Real,
+            _ => (double)value.ToDecimal()
+        };
+    }
+
+    private static decimal ToDecimal(in AccessValue value)
+    {
+        return value.Type switch
+        {
+            AccessValueType.Integer => value.Numeric,
+            AccessValueType.Real => (decimal)value.Real,
+            _ => value.ToDecimal()
         };
     }
 

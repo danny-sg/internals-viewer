@@ -69,8 +69,8 @@
             <index:IndexControl x:Name="IndexControl"
                                 Grid.Column="0"
                                 Visibility="{x:Bind ViewModel.IsInitialized,
-                                                Mode=OneWay, 
-                                                Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    Mode=OneWay, 
+                                                    Converter={StaticResource BoolToVisibilityConverter}}"
                                 Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
                                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
                                 IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
@@ -84,7 +84,7 @@
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Stretch"
                                     x:Name="IndexGridSplitter"
-                                    ResizeBehavior="CurrentAndNext"
+                                    ResizeBehavior="PreviousAndNext"
                                     ResizeDirection="Columns"
                                     Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"
                                     Background="{ThemeResource ControlStrokeColorDefaultBrush}">

@@ -47,11 +47,19 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
     private SeekBounds Bounds { get; set; } = SeekBounds.All;
 
+    private IReadOnlyList<SeekBounds> Ranges { get; set; } = [];
+
+    private int RangeIndex { get; set; }
+
+    private PageAddress RootPage { get; set; }
+
     private ScanDirection Direction { get; set; } = ScanDirection.Forward;
 
     private AccessPredicate? Residual { get; set; }
 
     private long? RowGoal { get; set; }
+
+    private long? PlanRowGoal { get; set; }
 
     private IIndexPageAccessor CurrentPage { get; set; } = null!;
 
@@ -64,16 +72,23 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
     public async Task StartAsync(DatabaseSource database,
                                  long allocationUnitId,
                                  PageAddress rootPageAddress,
-                                 SeekBounds bounds,
+                                 IReadOnlyList<SeekBounds> ranges,
                                  AccessPredicate? residual,
                                  ScanDirection direction,
                                  CancellationToken cancellationToken,
-                                 long? rowGoal = null)
+                                 long? rowGoal = null,
+                                 bool hasUntranslatedResidual = false)
     {
+        var bounds = ranges.Count > 0 ? ranges[0] : SeekBounds.All;
+
         Database = database;
         IndexStructure = IndexStructureProvider.GetIndexStructure(database, allocationUnitId);
+        Ranges = ranges;
+        RangeIndex = 0;
+        RootPage = rootPageAddress;
         Bounds = bounds;
         Residual = residual;
+        PlanRowGoal = rowGoal;
 
         var uniqueGoal = GetRowGoal(IndexStructure, bounds);
 
@@ -98,9 +113,16 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
             RowGoal = null;
         }
 
-        Strategy = SeekStrategyBuilder.Build(IndexStructure, bounds, direction, RowGoal, residual, rowGoalReason);
+        Strategy = SeekStrategyBuilder.Build(IndexStructure,
+                                             bounds,
+                                             direction,
+                                             RowGoal,
+                                             residual,
+                                             rowGoalReason,
+                                             Ranges,
+                                             hasUntranslatedResidual);
         Direction = direction;
-        Counters = default;
+        Counters = default(AccessCounters).AddRangeSeek();
         IsComplete = false;
 
         TakenSteps.Clear();
@@ -160,12 +182,62 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
             }
         }
 
+        if (step is AccessStep.Stopped(var reason) && HasNextRange(reason))
+        {
+            return await ReseekAsync(cancellationToken);
+        }
+
         if (step is AccessStep.Stopped)
         {
             IsComplete = true;
         }
 
         return step;
+    }
+
+    private bool HasNextRange(StopReason reason)
+    {
+        if (RangeIndex + 1 >= Ranges.Count)
+        {
+            return false;
+        }
+
+        return reason == StopReason.RangeEnded
+               || reason == StopReason.PageExhausted
+               || (reason == StopReason.RowGoalMet && RowGoal != PlanRowGoal);
+    }
+
+    private async Task<AccessStep> ReseekAsync(CancellationToken cancellationToken)
+    {
+        RangeIndex++;
+        Bounds = Ranges[RangeIndex];
+
+        var uniqueGoal = GetRowGoal(IndexStructure, Bounds);
+
+        if (uniqueGoal is not null)
+        {
+            var target = Counters.RowsOutput + uniqueGoal.Value;
+
+            RowGoal = PlanRowGoal is { } plan && plan < target ? plan : target;
+        }
+        else
+        {
+            RowGoal = PlanRowGoal;
+        }
+
+        Counters = Counters.AddRangeSeek();
+
+        var reseek = new AccessStep.Reseek(RangeIndex + 1, Ranges.Count)
+        {
+            Bounds = Bounds,
+            Counters = Counters
+        };
+
+        TakenSteps.Add(reseek);
+
+        await LoadPageAsync(RootPage, cancellationToken);
+
+        return reseek;
     }
 
     private async Task LoadPageAsync(PageAddress pageAddress, CancellationToken cancellationToken, bool isContinuation = false)

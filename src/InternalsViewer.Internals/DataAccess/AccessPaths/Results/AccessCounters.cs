@@ -40,6 +40,8 @@ public readonly record struct AccessCounters
     /// </summary>
     public long LeafLinksFollowed { get; init; }
 
+    public long RangeSeeks { get; init; }
+
     public AccessCounters AddPageRead()
     {
         return this with { PagesRead = PagesRead + 1 };
@@ -68,5 +70,10 @@ public readonly record struct AccessCounters
     public AccessCounters AddLeafLinkFollowed()
     {
         return this with { LeafLinksFollowed = LeafLinksFollowed + 1 };
+    }
+
+    public AccessCounters AddRangeSeek()
+    {
+        return this with { RangeSeeks = RangeSeeks + 1 };
     }
 }

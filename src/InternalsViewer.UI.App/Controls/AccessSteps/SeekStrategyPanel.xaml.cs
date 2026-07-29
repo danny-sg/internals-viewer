@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
@@ -38,7 +39,7 @@ public sealed partial class SeekStrategyPanel : UserControl
 
     private readonly List<(SeekPhase Phase, Grid Row)> _phaseRows = [];
 
-    private readonly List<(TextBlock Value, Func<AccessCounters, long> Get)> _counterValues = [];
+    private readonly List<(TextBlock Value, Func<AccessCounters, string> Get)> _counterValues = [];
 
     public SeekStrategy? Strategy
     {
@@ -111,21 +112,19 @@ public sealed partial class SeekStrategyPanel : UserControl
 
             paragraph.Inlines.Add(new Run { Text = phase.Lead });
 
+            if (!phase.LeadCondition.IsDefaultOrEmpty)
+            {
+                paragraph.Inlines.Add(ConditionInline(phase.LeadCondition));
+            }
+
+            if (phase.Middle.Length > 0)
+            {
+                paragraph.Inlines.Add(new Run { Text = phase.Middle });
+            }
+
             if (!phase.Condition.IsDefaultOrEmpty)
             {
-                paragraph.Inlines.Add(new InlineUIContainer
-                {
-                    Child = new Border
-                    {
-                        Margin = new Thickness(2, 0, 2, -3),
-                        Child = new PredicateTextBox
-                        {
-                            Text = new PredicateText(phase.Condition),
-                            TextPadding = new Thickness(0),
-                            HasBackground = false
-                        }
-                    }
-                });
+                paragraph.Inlines.Add(ConditionInline(phase.Condition));
             }
 
             if (phase.Trail.Length > 0)
@@ -181,9 +180,27 @@ public sealed partial class SeekStrategyPanel : UserControl
                     HasBackground = false
                 }, dimTitle: true));
             }
+            else if (Strategy.HasUntranslatedResidual)
+            {
+                PhasesPanel.Children.Add(TitledRow("Residual", 110, new TextBlock
+                {
+                    Text = "Not translatable — rows are not filtered",
+                    FontSize = 12,
+                    FontStyle = Windows.UI.Text.FontStyle.Italic,
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.8
+                }, dimTitle: true));
+            }
         }
 
         PhasesPanel.Children.Add(SectionHeader("Counters", topMargin: 12));
+
+        if (Strategy.RangeCount > 1)
+        {
+            var rangeCount = Strategy.RangeCount;
+
+            AddCounterRow("Range Seeks", c => $"{c.RangeSeeks:N0}/{rangeCount:N0}");
+        }
 
         AddCounterRow("Pages Read", c => c.PagesRead);
         AddCounterRow("Comparisons", c => c.Comparisons);
@@ -197,7 +214,29 @@ public sealed partial class SeekStrategyPanel : UserControl
         ApplyCurrentPhase();
     }
 
+    private static InlineUIContainer ConditionInline(ImmutableArray<PredicateToken> tokens)
+    {
+        return new InlineUIContainer
+        {
+            Child = new Border
+            {
+                Margin = new Thickness(2, 0, 2, -3),
+                Child = new PredicateTextBox
+                {
+                    Text = new PredicateText(tokens),
+                    TextPadding = new Thickness(0),
+                    HasBackground = false
+                }
+            }
+        };
+    }
+
     private void AddCounterRow(string label, Func<AccessCounters, long> get)
+    {
+        AddCounterRow(label, c => get(c).ToString("N0"));
+    }
+
+    private void AddCounterRow(string label, Func<AccessCounters, string> get)
     {
         var value = new TextBlock { FontSize = 12 };
 
@@ -210,7 +249,7 @@ public sealed partial class SeekStrategyPanel : UserControl
     {
         foreach (var (value, get) in _counterValues)
         {
-            value.Text = get(Counters).ToString("N0");
+            value.Text = get(Counters);
         }
     }
 

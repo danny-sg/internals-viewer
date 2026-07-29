@@ -1,5 +1,6 @@
 using System.Data;
 using System.Globalization;
+using System.Runtime.InteropServices;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 
@@ -194,6 +195,26 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     private int GetBytesHashCode()
     {
         HashCode hash = default;
+
+        if (AccessValueComparer.IsCharacterType(DataType))
+        {
+            if (AccessValueComparer.IsWideCharacterType(DataType))
+            {
+                foreach (var character in MemoryMarshal.Cast<byte, char>(Data.Span))
+                {
+                    hash.Add(char.ToUpperInvariant(character));
+                }
+            }
+            else
+            {
+                foreach (var value in Data.Span)
+                {
+                    hash.Add(char.ToUpperInvariant((char)value));
+                }
+            }
+
+            return hash.ToHashCode();
+        }
 
         hash.AddBytes(Data.Span);
 

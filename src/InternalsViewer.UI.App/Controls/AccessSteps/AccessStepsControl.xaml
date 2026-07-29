@@ -213,6 +213,24 @@
                 </Grid>
             </DataTemplate>
 
+            <DataTemplate x:Key="ReseekTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Reseek" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <StackPanel Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Range" Style="{StaticResource StepPropertyStyle}" />
+                                <TextBlock Text="{Binding RangeNumber}" Style="{StaticResource StepValueStyle}" />
+                                <TextBlock Text="of" Style="{StaticResource StepPropertyStyle}" />
+                                <TextBlock Text="{Binding RangeCount}" Style="{StaticResource StepValueStyle}" />
+                            </StackPanel>
+                            <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                                                         Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
             <DataTemplate x:Key="StoppedTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
@@ -248,6 +266,7 @@
                 RowTemplate="{StaticResource RowTemplate}"
                 RangeEndTemplate="{StaticResource RangeEndTemplate}"
                 LeafLinkTemplate="{StaticResource LeafLinkTemplate}"
+                ReseekTemplate="{StaticResource ReseekTemplate}"
                 StoppedTemplate="{StaticResource StoppedTemplate}"
                 TruncatedTemplate="{StaticResource TruncatedTemplate}"
                 DefaultTemplate="{StaticResource DefaultTemplate}" />

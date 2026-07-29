@@ -59,6 +59,18 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
+    public int? SelectedSlot
+    {
+        get => (int?)GetValue(SelectedSlotProperty);
+        set => SetValue(SelectedSlotProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedSlotProperty
+        = DependencyProperty.Register(nameof(SelectedSlot),
+            typeof(int?),
+            typeof(IndexControl),
+            new PropertyMetadata(null, OnPropertyChanged));
+
     public float? ZoomToSelectedPageAddress
     {
         get => (float?)GetValue(ZoomToSelectedPageAddressProperty);
@@ -109,6 +121,19 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(Windows.UI.Color),
                                       typeof(IndexControl),
                                       new PropertyMetadata(Microsoft.UI.Colors.Navy, OnPropertyChanged));
+
+
+    public Windows.UI.Color SelectedSlotColour
+    {
+        get => (Windows.UI.Color)GetValue(SelectedSlotColourProperty);
+        set => SetValue(SelectedSlotColourProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedSlotColourProperty
+        = DependencyProperty.Register(nameof(SelectedSlotColour),
+            typeof(Windows.UI.Color),
+            typeof(IndexControl),
+            new PropertyMetadata(Microsoft.UI.Colors.Red, OnPropertyChanged));
 
     public Windows.UI.Color SelectedBackgroundColour
     {
@@ -189,6 +214,7 @@ public sealed partial class IndexControl : IDisposable
     private float PageHeight => 30 * _zoom;
     private float HorizontalMargin => 20 * _zoom;
     private float VerticalMargin => 60 * _zoom;
+    private float LevelMargin => 90 * _zoom;
 
     public List<IndexNode> Nodes
     {
@@ -205,6 +231,7 @@ public sealed partial class IndexControl : IDisposable
     private readonly SKPaint _indexPagePaint;
     private readonly SKPaint _linePaint;
     private readonly SKPaint _detailTextPaint;
+    private readonly SKPaint _slotPaint;
 
     private readonly SKFont _detailFont = new(SKTypeface.Default, 10f);
     private readonly SKFont _detailBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold), 10f);
@@ -214,7 +241,6 @@ public sealed partial class IndexControl : IDisposable
     private readonly SKColor _lineColour = SKColors.DarkGray;
     private readonly SKColor _miniColour = SKColors.LightGray;
 
-    private SKColor _selectedBackgroundColour = SKColors.White;
     private SKColor _singleSelectedColour = SKColors.Navy;
     private SKColor _rangeSelectedColour = SKColors.Navy;
 
@@ -300,6 +326,15 @@ public sealed partial class IndexControl : IDisposable
             Style = SKPaintStyle.Fill,
             Color = SKColors.Navy,
             IsAntialias = true
+        };
+
+        _slotPaint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            Color = SelectedSlotColour.ToSKColor(),
+            IsAntialias = false,
+            StrokeWidth = 1f,
+            StrokeCap = SKStrokeCap.Square
         };
     }
 
@@ -414,7 +449,6 @@ public sealed partial class IndexControl : IDisposable
 
         e.Surface.Canvas.Clear(SKColors.Transparent);
 
-        _selectedBackgroundColour = SelectedBackgroundColour.ToSKColor();
         _singleSelectedColour = SingleSelectedColour.ToSkColor();
         _rangeSelectedColour = RangeSelectedColour.ToSkColor();
 
@@ -429,21 +463,10 @@ public sealed partial class IndexControl : IDisposable
         }
     }
 
-    /// <summary>
-    /// Maps every page whose span is currently active (StartUs &lt;= playhead &lt;= EndUs) to that span's
-    /// own colour (falling back to <paramref name="defaultColour"/> when a span has none), into
-    /// <paramref name="into"/>. Spans are sorted ascending by StartUs, so this only walks the prefix
-    /// that's started, breaking as soon as a span hasn't started yet - same bounded walk as
-    /// AllocationControl.DrawPageSpans. A read's EndUs is effectively "forever" (the query's end), so it
-    /// stays active for the rest of playback once reached; a latch's EndUs is its own hold end, so it
-    /// drops back out again once the playhead moves past it. Where a page has more than one active span
-    /// (e.g. a read still in scope and a fresh latch on top), the later one in the list wins, since it's
-    /// the more recent/specific event.
-    /// </summary>
     private static void CollectActiveSpanColours(IReadOnlyList<PageSpan>? spans,
-                                                  long playhead,
-                                                  SKColor defaultColour,
-                                                  Dictionary<PageAddress, SKColor> into)
+                                                 long playhead,
+                                                 SKColor defaultColour,
+                                                 Dictionary<PageAddress, SKColor> into)
     {
         if (spans is null)
         {
@@ -472,7 +495,7 @@ public sealed partial class IndexControl : IDisposable
         => (PageWidth + HorizontalMargin) * n;
 
     private float GetNodeY(int level, int row)
-        => PageHeight + VerticalMargin * level + (PageHeight + VerticalMargin * row);
+        => PageHeight + LevelMargin * level + (PageHeight + VerticalMargin * row);
 
     private float GetMaxNodeY()
     {
@@ -574,8 +597,6 @@ public sealed partial class IndexControl : IDisposable
     {
         var isFirstLevel = Nodes.Max(n => n.Level) == level;
 
-        // Leaf pages stack this many rows per column before wrapping to the next column; higher = more rows and fewer
-        // (wider) columns.
         const int leafPagesPerColumn = 20;
 
         var verticalNodeCount = isFirstLevel ? leafPagesPerColumn : 1;
@@ -589,22 +610,25 @@ public sealed partial class IndexControl : IDisposable
 
         foreach (var node in levelNodes)
         {
-            if (previousNode != null && previousNode.Parent != node.Parent)
+            if (previousNode != null)
             {
-                // Start a new column, leaving a gap of a column as the parent node has changed
-                row = 1;
-                column += 2;
-            }
-            else if (row % verticalNodeCount == 0)
-            {
-                // Start a new column
-                row = 1;
-                column++;
-            }
-            else
-            {
-                // Move to the next row
-                row++;
+                if (previousNode.Parent != node.Parent)
+                {
+                    // Start a new column, leaving a gap of a column as the parent node has changed
+                    row = 1;
+                    column += 2;
+                }
+                else if (row % verticalNodeCount == 0)
+                {
+                    // Start a new column
+                    row = 1;
+                    column++;
+                }
+                else
+                {
+                    // Move to the next row
+                    row++;
+                }
             }
 
             _nodePositions.Add(new IndexTreeNode(node, row, column));
@@ -676,7 +700,6 @@ public sealed partial class IndexControl : IDisposable
         // Snapshot the dependency-property reads once per level instead of per node.
         var selectedAddress = SelectedPageAddress;
         var highlightedAddresses = HighlightedPageAddresses;
-        var hoverNode = HoverNode;
 
         var miniMode = _zoom < ZoomMiniMode;
         var maxiMode = _zoom > ZoomMaxiMode;
@@ -685,7 +708,7 @@ public sealed partial class IndexControl : IDisposable
 
         var verticalMargin = VerticalMargin;
 
-        var levelBaseY = PageHeight + (verticalMargin * level) + PageHeight;
+        var levelBaseY = PageHeight + (LevelMargin * level) + PageHeight;
 
         var minColumn = (int)Math.Floor((clip.Left + xScrollOffset - startX) / stride) + 1;
         var maxColumn = (int)Math.Ceiling((clip.Right + xScrollOffset - startX) / stride) + 1;
@@ -765,6 +788,11 @@ public sealed partial class IndexControl : IDisposable
                         }
                     }
                 }
+
+                if (SelectedPageAddress == node.Node.PageAddress && SelectedSlot != null)
+                {
+                    DrawSelectedSlot(canvas, node.Node, renderX, renderY, 1);
+                }
             }
 
             if (!miniMode)
@@ -776,10 +804,21 @@ public sealed partial class IndexControl : IDisposable
                           renderY, 
                           renderNextLevelStartX, 
                           yScrollOffset, 
-                          false, 
+                          node.Node.Parent == selectedAddress, 
                           false);
             }
         }
+    }
+
+    private void DrawSelectedSlot(SKCanvas canvas, IndexNode nodeNode, float renderX, float renderY, int borderWidth)
+    {
+        var height = Math.Max(PageHeight / nodeNode.SlotCount, 2F);
+
+        var y = renderY + ((PageHeight / nodeNode.SlotCount) * SelectedSlot ?? 0);
+
+        _slotPaint.StrokeWidth = height;
+
+        canvas.DrawLine(renderX + borderWidth, y, renderX + borderWidth + PageWidth - (borderWidth * 2), y, _slotPaint);
     }
 
     private static int FindFirstColumnIndex(List<IndexTreeNode> levelNodes, int minColumn)
@@ -847,7 +886,7 @@ public sealed partial class IndexControl : IDisposable
             return;
         }
 
-        var parentX = nextLevelStartX + GetNodeX(parentOrdinal);
+        var parentX = nextLevelStartX + GetNodeX(parentOrdinal - 1);
 
         var y1Line1 = (float)Math.Floor(y + PageHeight / 2);
 
@@ -855,7 +894,7 @@ public sealed partial class IndexControl : IDisposable
 
         var y2Line2 = (float)Math.Floor(GetNodeY(node.Level - 1, 0)
                                         + PageHeight
-                                        + (VerticalMargin / 4f)
+                                        + ((LevelMargin - PageHeight) / 2f)
                                         - yScrollOffset);
 
         var x2Line3 = (float)Math.Floor(parentX + (PageWidth / 2));
@@ -893,16 +932,13 @@ public sealed partial class IndexControl : IDisposable
         {
             // Draw selected background
             _indexPagePaint.Style = SKPaintStyle.Fill;
-            _indexPagePaint.Color = _selectedBackgroundColour;
+            _indexPagePaint.Color = _singleSelectedColour;
 
             canvas.DrawRect(indexPageRect, _indexPagePaint);
         }
 
         _indexPagePaint.Style = SKPaintStyle.Stroke;
 
-        // The single (active) page wins, then a hover highlight, then whichever span (read or latch) is
-        // currently active - its own colour already tells read from latch, so there's no priority to
-        // pick between them here.
         if (isSelected)
         {
             _indexPagePaint.Color = _singleSelectedColour;
@@ -1426,16 +1462,35 @@ public sealed partial class IndexControl : IDisposable
             return null;
         }
 
-        var band = (int)Math.Floor(worldY / verticalMargin);
+        int level;
+        int row;
 
-        if (worldY - (band * verticalMargin) > pageHeight)
+        var levelBand = (int)Math.Floor(worldY / LevelMargin);
+
+        if (levelBand < _levelCount)
         {
-            return null;
+            if (worldY - (levelBand * LevelMargin) > pageHeight)
+            {
+                return null;
+            }
+
+            level = levelBand;
+            row = 1;
         }
+        else
+        {
+            var leafY = worldY - (LevelMargin * _levelCount);
 
-        var level = Math.Min(band, _levelCount);
+            var rowBand = (int)Math.Floor(leafY / verticalMargin);
 
-        var row = (band - level) + 1;
+            if (leafY - (rowBand * verticalMargin) > pageHeight)
+            {
+                return null;
+            }
+
+            level = _levelCount;
+            row = rowBand + 1;
+        }
 
         var worldX = x + xScrollOffset - GetLevelStartX(level);
 
@@ -1480,6 +1535,7 @@ public sealed partial class IndexControl : IDisposable
         _detailTextPaint.Dispose();
         _detailFont.Dispose();
         _detailBoldFont.Dispose();
+        _slotPaint.Dispose();
 
         Loaded -= IndexControl_OnLoaded;
 

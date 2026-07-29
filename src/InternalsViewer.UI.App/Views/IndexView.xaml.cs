@@ -25,6 +25,8 @@ public sealed partial class IndexView: IDisposable
     {
         InitializeComponent();
 
+        DataContextChanged += (_, _) => Bindings.Update();
+
         SizeChanged += IndexView_SizeChanged;
         PointerWheelChanged += IndexView_PointerWheelChanged;
         Loaded += UserControl_Loaded;

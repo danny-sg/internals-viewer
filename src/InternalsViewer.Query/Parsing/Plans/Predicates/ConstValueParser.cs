@@ -68,7 +68,7 @@ public static class ConstValueParser
 
         var dataType = isUnicode ? SqlDbType.NVarChar : SqlDbType.VarChar;
 
-        var bytes = isUnicode ? Encoding.Unicode.GetBytes(inner) : Encoding.ASCII.GetBytes(inner);
+        var bytes = isUnicode ? Encoding.Unicode.GetBytes(inner) : Encoding.Latin1.GetBytes(inner);
 
         value = AccessValue.FromBytes(dataType, bytes);
 

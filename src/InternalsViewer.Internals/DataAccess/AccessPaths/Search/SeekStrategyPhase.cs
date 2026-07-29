@@ -12,6 +12,10 @@ public sealed record SeekStrategyPhase
 
     public string Lead { get; init; } = string.Empty;
 
+    public ImmutableArray<PredicateToken> LeadCondition { get; init; } = [];
+
+    public string Middle { get; init; } = string.Empty;
+
     public ImmutableArray<PredicateToken> Condition { get; init; } = [];
 
     public string Trail { get; init; } = string.Empty;

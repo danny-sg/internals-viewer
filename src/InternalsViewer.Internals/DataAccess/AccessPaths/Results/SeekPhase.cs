@@ -2,8 +2,9 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 
 public enum SeekPhase
 {
-    Descent, 
-    Position, 
-    Walk, 
+    Ranges,
+    Descent,
+    Position,
+    Walk,
     Complete
 }

@@ -8,6 +8,7 @@ using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Input;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
@@ -25,6 +26,9 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
     public string RunLabel(bool isRunning) => isRunning ? "Stop" : "Run";
 
     public string RunGlyph(bool isRunning) => isRunning ? "" : "";
+
+    public Visibility EmptyStepsVisibility(int stepCount, bool isRunningToEnd) =>
+        stepCount == 0 && !isRunningToEnd ? Visibility.Visible : Visibility.Collapsed;
 
     public QueryIndexTabView()
     {
@@ -114,15 +118,12 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
             await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
         }
     }
+    #pragma warning restore VSTHRD100
 
     private void CloseDetailPane()
     {
-        if (ViewModel is not null)
-        {
-            ViewModel.IsDetailPaneVisible = false;
-        }
+        ViewModel?.IsDetailPaneVisible = false;
     }
-    #pragma warning restore VSTHRD100
 
     public void Dispose()
     {

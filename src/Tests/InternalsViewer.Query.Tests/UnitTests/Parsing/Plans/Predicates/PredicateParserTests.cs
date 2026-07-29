@@ -191,6 +191,60 @@ public class PredicateParserTests
         Assert.Equal("Sales%", like.Pattern);
     }
 
+    [Fact]
+    public void Modulo_Comparison_Is_Parsed()
+    {
+        var arithmetic = $"""
+                          <ScalarOperator><Arithmetic Operation="MOD">{Identifier("Id")}{Const("(2)")}</Arithmetic></ScalarOperator>
+                          """;
+
+        var comparison = Assert.IsType<AccessPredicate.Comparison>(Parse(Compare("EQ", arithmetic, Const("(0)"))));
+
+        var expression = Assert.IsType<AccessExpression.Arithmetic>(comparison.Left);
+
+        Assert.Equal(ArithmeticOperator.Modulo, expression.Operator);
+        Assert.Equal("Id", Assert.IsType<AccessExpression.Column>(expression.Left).Name);
+        Assert.Equal(2, Assert.IsType<AccessExpression.Constant>(expression.Right).Value.Numeric);
+    }
+
+    [Fact]
+    public void Like_And_Modulo_Conjunction_Is_Parsed()
+    {
+        var like = $"""
+                    <ScalarOperator>
+                      <Intrinsic FunctionName="like">
+                        {Identifier("TextField")}
+                        {Const("'Clustered table row 10%'")}
+                      </Intrinsic>
+                    </ScalarOperator>
+                    """;
+
+        var arithmetic = $"""
+                          <ScalarOperator><Arithmetic Operation="MOD">{Identifier("Id")}{Const("(2)")}</Arithmetic></ScalarOperator>
+                          """;
+
+        var xml = Logical("AND", like, Compare("EQ", arithmetic, Const("(0)")));
+
+        var and = Assert.IsType<AccessPredicate.And>(Parse(xml));
+
+        Assert.Equal(2, and.Predicates.Length);
+        Assert.IsType<AccessPredicate.Like>(and.Predicates[0]);
+
+        var comparison = Assert.IsType<AccessPredicate.Comparison>(and.Predicates[1]);
+
+        Assert.IsType<AccessExpression.Arithmetic>(comparison.Left);
+    }
+
+    [Fact]
+    public void Unknown_Arithmetic_Operation_Is_Not_Translated()
+    {
+        var arithmetic = $"""
+                          <ScalarOperator><Arithmetic Operation="BIT_AND">{Identifier("Id")}{Const("(2)")}</Arithmetic></ScalarOperator>
+                          """;
+
+        Assert.Null(Parse(Compare("EQ", arithmetic, Const("(0)"))));
+    }
+
     private static AccessPredicate? Parse(string xml)
     {
         return new PredicateParser(_ => 0).Parse(XElement.Parse(xml));

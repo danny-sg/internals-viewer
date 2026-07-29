@@ -15,6 +15,7 @@ public sealed class AccessStepToPredicateTextConverter : IValueConverter
             AccessStep.ProbeStart probeStart => PredicateText.From(probeStart),
             AccessStep.ProbeResult probeResult => PredicateText.From(probeResult),
             AccessStep.RangeEnd rangeEnd => PredicateText.From(rangeEnd),
+            AccessStep.Reseek reseek => PredicateText.From(reseek.Bounds),
             _ => PredicateText.Empty
         };
     }

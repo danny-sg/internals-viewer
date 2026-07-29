@@ -44,8 +44,46 @@ public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal =
         {
             ShowplanNames.Const => ParseConstant(content),
             ShowplanNames.Identifier => ParseIdentifier(content),
+            ShowplanNames.Arithmetic => ParseArithmetic(content),
             _ => null
         };
+    }
+
+    private AccessExpression? ParseArithmetic(XElement element)
+    {
+        var operation = element.Attribute(ShowplanNames.Operation)?.Value switch
+        {
+            "ADD" => ArithmeticOperator.Add,
+            "SUB" => ArithmeticOperator.Subtract,
+            "MULT" => ArithmeticOperator.Multiply,
+            "DIV" => ArithmeticOperator.Divide,
+            "MOD" => ArithmeticOperator.Modulo,
+            _ => (ArithmeticOperator?)null
+        };
+
+        if (operation is null)
+        {
+            return null;
+        }
+
+        var operands = element.Elements()
+                              .Where(e => e.Name.LocalName == ShowplanNames.ScalarOperator)
+                              .ToList();
+
+        if (operands.Count != 2)
+        {
+            return null;
+        }
+
+        var left = Parse(operands[0]);
+        var right = Parse(operands[1]);
+
+        if (left is null || right is null)
+        {
+            return null;
+        }
+
+        return new AccessExpression.Arithmetic(operation.Value, left, right);
     }
 
     /// <summary>

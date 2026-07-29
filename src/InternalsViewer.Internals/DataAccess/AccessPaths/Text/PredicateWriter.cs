@@ -441,6 +441,14 @@ public static class PredicateWriter
                 tokens.Add(AccessValueFormatter.Format(constant.Value));
                 break;
 
+            case AccessExpression.Arithmetic arithmetic:
+                WriteExpression(tokens, arithmetic.Left);
+                Space(tokens);
+                tokens.Add(new PredicateToken(PredicateTokenType.Operator, ArithmeticSymbol(arithmetic.Operator)));
+                Space(tokens);
+                WriteExpression(tokens, arithmetic.Right);
+                break;
+
             default:
                 tokens.Add(new PredicateToken(PredicateTokenType.Unknown,
                                               "<unsupported>",
@@ -459,6 +467,19 @@ public static class PredicateWriter
             ComparisonOperator.LessThanOrEqual => "<=",
             ComparisonOperator.GreaterThan => ">",
             ComparisonOperator.GreaterThanOrEqual => ">=",
+            _ => "?"
+        };
+    }
+
+    private static string ArithmeticSymbol(ArithmeticOperator op)
+    {
+        return op switch
+        {
+            ArithmeticOperator.Add => "+",
+            ArithmeticOperator.Subtract => "-",
+            ArithmeticOperator.Multiply => "*",
+            ArithmeticOperator.Divide => "/",
+            ArithmeticOperator.Modulo => "%",
             _ => "?"
         };
     }

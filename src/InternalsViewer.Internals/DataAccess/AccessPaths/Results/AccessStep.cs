@@ -98,6 +98,11 @@ public abstract record AccessStep(SeekPhase SeekPhase)
         public ScanDirection Direction { get; init; }
     }
 
+    public sealed record Reseek(int RangeNumber, int RangeCount) : AccessStep(SeekPhase.Descent)
+    {
+        public SeekBounds Bounds { get; init; } = SeekBounds.All;
+    }
+
     /// <summary>
     /// The access path stopped producing rows
     /// </summary>

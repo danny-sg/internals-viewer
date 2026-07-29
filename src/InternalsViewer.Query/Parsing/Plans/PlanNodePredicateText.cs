@@ -42,6 +42,8 @@ public static class PlanNodePredicateText
 
         var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
 
+        var isCompound = info.SeekBounds.Length > 1;
+
         foreach (var bounds in info.SeekBounds)
         {
             if (tokens.Count > 0)
@@ -51,7 +53,17 @@ public static class PlanNodePredicateText
                 tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
             }
 
+            if (isCompound)
+            {
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
+            }
+
             tokens.AddRange(PredicateWriter.Write(bounds));
+
+            if (isCompound)
+            {
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
+            }
         }
 
         return new PredicateText(tokens.ToImmutable());
@@ -65,5 +77,28 @@ public static class PlanNodePredicateText
         return node.PredicateInfo?.Residual is { } residual
             ? PredicateText.From(residual)
             : PredicateText.Empty;
+    }
+
+    public static bool HasRedundantResidual(this PlanNode node)
+    {
+        if (node.PredicateInfo is not { HasSeekBounds: true, Residual: not null })
+        {
+            return false;
+        }
+
+        var seek = Normalize(node.GetSeekText());
+
+        var residual = Normalize(node.GetResidualText());
+
+        return seek.Length > 0 && seek == residual;
+    }
+
+    private static string Normalize(PredicateText text)
+    {
+        return PredicateWriter.ToText(text.Tokens)
+                   .Replace("(", string.Empty)
+                   .Replace(")", string.Empty)
+                   .Replace("  ", " ")
+                   .Trim();
     }
 }

@@ -73,7 +73,7 @@ public static class AccessValueFormatter
             case SqlDbType.Char:
             case SqlDbType.VarChar:
             case SqlDbType.Text:
-                return Quote(Encoding.ASCII.GetString(span), false);
+                return Quote(Encoding.Latin1.GetString(span), false);
 
             case SqlDbType.NChar:
             case SqlDbType.NVarChar:

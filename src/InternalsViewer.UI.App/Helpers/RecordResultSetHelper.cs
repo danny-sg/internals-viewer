@@ -21,7 +21,6 @@ internal static class RecordResultSetHelper
         var template = records.MaxBy(r => r.Fields.Count)!;
 
         int? ridColumn = null;
-        int? downPagePointerColumn;
 
         var columns = template.Fields
                               .Select((f, index) =>

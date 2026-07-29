@@ -83,6 +83,7 @@ public sealed class IndexService(ILogger<IndexService> logger)
                 node.PreviousPage = page.PreviousPage;
                 node.NextPage = page.NextPage;
                 node.IndexLevel = page.IndexLevel;
+                node.SlotCount = page.SlotCount;
 
                 foreach (var childAddress in page.DownPointers)
                 {
@@ -208,18 +209,18 @@ public sealed class IndexService(ILogger<IndexService> logger)
 
         var nextPage = PageAddressParser.Parse(page, PageHeaderParser.NextPageOffset);
 
-        // Only index pages above the leaf (Level >= 1) point down to child pages
-        var downPointers = pageType == PageType.Index && level >= 1
-                           ? GetDownPointers(page)
-                           : EmptyDownPointers;
-
-        return new LoadedPage(pageType, previousPage, nextPage, level, downPointers);
-    }
-
-    private static List<PageAddress> GetDownPointers(ReadOnlySpan<byte> page)
-    {
         var slotCount = BinaryPrimitives.ReadUInt16LittleEndian(page[PageHeaderParser.SlotCountOffset..]);
 
+        // Only index pages above the leaf (Level >= 1) point down to child pages
+        var downPointers = pageType == PageType.Index && level >= 1
+                           ? GetDownPointers(page, slotCount)
+                           : EmptyDownPointers;
+
+        return new LoadedPage(pageType, previousPage, nextPage, level, slotCount, downPointers);
+    }
+
+    private static List<PageAddress> GetDownPointers(ReadOnlySpan<byte> page, ushort slotCount)
+    {
         var fixedLengthSize = BinaryPrimitives.ReadUInt16LittleEndian(page[PageHeaderParser.FixedLengthOffset..]);
 
         var downPointers = new List<PageAddress>(slotCount);
@@ -342,5 +343,6 @@ public sealed class IndexService(ILogger<IndexService> logger)
                                               PageAddress PreviousPage,
                                               PageAddress NextPage,
                                               byte IndexLevel,
+                                              ushort SlotCount,
                                               List<PageAddress> DownPointers);
 }

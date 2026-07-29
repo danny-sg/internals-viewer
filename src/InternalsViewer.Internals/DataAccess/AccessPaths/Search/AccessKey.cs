@@ -49,6 +49,36 @@ public readonly record struct AccessKey(ImmutableArray<AccessValue> Values)
         return 0;
     }
 
+    public bool Equals(AccessKey other)
+    {
+        if (Count != other.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < Count; index++)
+        {
+            if (!Values[index].Equals(other.Values[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+
+        for (var index = 0; index < Count; index++)
+        {
+            hash.Add(Values[index]);
+        }
+
+        return hash.ToHashCode();
+    }
+
     public override string ToString()
     {
         return IsUnbounded ? "*" : string.Join(", ", Values);

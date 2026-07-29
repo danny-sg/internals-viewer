@@ -22,6 +22,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate LeafLinkTemplate { get; set; } = null!;
 
+    public DataTemplate ReseekTemplate { get; set; } = null!;
+
     public DataTemplate StoppedTemplate { get; set; } = null!;
 
     public DataTemplate TruncatedTemplate { get; set; } = null!;
@@ -40,6 +42,7 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Row => RowTemplate,
             AccessStep.RangeEnd => RangeEndTemplate,
             AccessStep.LeafLink => LeafLinkTemplate,
+            AccessStep.Reseek => ReseekTemplate,
             AccessStep.Stopped => StoppedTemplate,
             AccessStep.Truncated => TruncatedTemplate,
             _ => DefaultTemplate

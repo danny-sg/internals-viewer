@@ -1,3 +1,8 @@
+using System.Data;
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Text;
+
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 
 /// <summary>
@@ -43,8 +48,39 @@ public static class AccessValueComparer
                 return left.ToDecimal().CompareTo(right.ToDecimal());
 
             default:
+                if (IsCharacterType(left.DataType) && IsCharacterType(right.DataType))
+                {
+                    return CompareText(left, right);
+                }
+
                 return left.Data.Span.SequenceCompareTo(right.Data.Span);
         }
+    }
+
+    private static readonly CompareInfo TextComparer = CultureInfo.InvariantCulture.CompareInfo;
+
+    private static int CompareText(in AccessValue left, in AccessValue right)
+    {
+        var leftChars = IsWideCharacterType(left.DataType)
+            ? MemoryMarshal.Cast<byte, char>(left.Data.Span)
+            : Encoding.Latin1.GetString(left.Data.Span).AsSpan();
+
+        var rightChars = IsWideCharacterType(right.DataType)
+            ? MemoryMarshal.Cast<byte, char>(right.Data.Span)
+            : Encoding.Latin1.GetString(right.Data.Span).AsSpan();
+
+        return TextComparer.Compare(leftChars, rightChars, CompareOptions.IgnoreCase);
+    }
+
+    internal static bool IsCharacterType(SqlDbType dataType)
+    {
+        return dataType is SqlDbType.Char or SqlDbType.VarChar or SqlDbType.Text
+                        or SqlDbType.NChar or SqlDbType.NVarChar or SqlDbType.NText;
+    }
+
+    internal static bool IsWideCharacterType(SqlDbType dataType)
+    {
+        return dataType is SqlDbType.NChar or SqlDbType.NVarChar or SqlDbType.NText;
     }
 
     private static int CompareMixedType(in AccessValue left, in AccessValue right)

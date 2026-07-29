@@ -283,7 +283,21 @@ public static class ReaderGrouper
 
         var end = group.Max(m => m.TimeUs + m.DurationUs);
 
-        return latch.TimeUs >= start && latch.TimeUs <= end + CachedFoldToleranceUs ? spine : null;
+        if (latch.TimeUs < start)
+        {
+            return null;
+        }
+
+        if (latch.TimeUs <= end)
+        {
+            return spine;
+        }
+
+        var hasCachedAcquire = group.Any(m => m is LatchEvent member
+                                              && IsCachedBufferAcquire(member)
+                                              && member.PageAddress == page);
+
+        return !hasCachedAcquire && latch.TimeUs <= end + CachedFoldToleranceUs ? spine : null;
     }
 
     private const long UnmeasuredReadUs = 1_000;

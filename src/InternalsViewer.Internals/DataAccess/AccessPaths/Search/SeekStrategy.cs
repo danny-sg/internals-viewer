@@ -16,4 +16,8 @@ public sealed record SeekStrategy
     public ScanDirection Direction { get; init; }
 
     public AccessPredicate? Residual { get; init; }
+
+    public bool HasUntranslatedResidual { get; init; }
+
+    public int RangeCount { get; init; }
 }

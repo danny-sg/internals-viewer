@@ -13,7 +13,9 @@ public static class SeekStrategyBuilder
                                      ScanDirection direction,
                                      long? rowGoal,
                                      AccessPredicate? residual = null,
-                                     string? rowGoalReason = null)
+                                     string? rowGoalReason = null,
+                                     IReadOnlyList<SeekBounds>? ranges = null,
+                                     bool hasUntranslatedResidual = false)
     {
         var forward = direction == ScanDirection.Forward;
 
@@ -23,12 +25,21 @@ public static class SeekStrategyBuilder
         var exitTarget = forward ? bounds.EndValue : bounds.StartValue;
         var exitInclusive = forward ? bounds.IsEndInclusive : bounds.IsStartInclusive;
 
+        var hasResidual = residual is not null and not AccessPredicate.True;
+
+        var rangeCount = ranges?.Count ?? 1;
+
         var phases = ImmutableArray.CreateBuilder<SeekStrategyPhase>();
+
+        if (ranges is { Count: > 1 })
+        {
+            phases.Add(BuildRanges(ranges));
+        }
 
         phases.Add(BuildDescent(bounds, entryTarget, entryInclusive, forward));
         phases.Add(BuildPosition(bounds, entryTarget, entryInclusive, forward));
-        phases.Add(BuildWalk(bounds, exitTarget, exitInclusive, forward));
-        phases.Add(BuildComplete(exitTarget, rowGoal));
+        phases.Add(BuildWalk(bounds, exitTarget, exitInclusive, forward, hasResidual ? residual : null));
+        phases.Add(BuildComplete(exitTarget, rowGoal, rangeCount));
 
         rowGoalReason ??= rowGoal == 1
             ? "The index is unique and the seek fixes every key column with an equality, so at most one row can match. " +
@@ -42,7 +53,39 @@ public static class SeekStrategyBuilder
             RowGoalReason = rowGoalReason,
             Bounds = bounds,
             Direction = direction,
-            Residual = residual is AccessPredicate.True ? null : residual
+            Residual = residual is AccessPredicate.True ? null : residual,
+            HasUntranslatedResidual = hasUntranslatedResidual,
+            RangeCount = rangeCount
+        };
+    }
+
+    private static SeekStrategyPhase BuildRanges(IReadOnlyList<SeekBounds> ranges)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        for (var index = 0; index < ranges.Count; index++)
+        {
+            if (index > 0)
+            {
+                tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
+                tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "OR"));
+                tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
+            }
+
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
+
+            tokens.AddRange(PredicateWriter.Write(ranges[index]));
+
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
+        }
+
+        return new SeekStrategyPhase
+        {
+            Phase = SeekPhase.Ranges,
+            Title = "Ranges",
+            Lead = $"The seek makes {ranges.Count} passes, one per range: ",
+            Condition = tokens.ToImmutable(),
+            Trail = ". Each pass repeats the steps below with its own range"
         };
     }
 
@@ -103,8 +146,14 @@ public static class SeekStrategyBuilder
         };
     }
 
-    private static SeekStrategyPhase BuildWalk(SeekBounds bounds, in AccessKey target, bool inclusive, bool forward)
+    private static SeekStrategyPhase BuildWalk(SeekBounds bounds, in AccessKey target, bool inclusive, bool forward, AccessPredicate? residual)
     {
+        var output = residual is not null
+            ? "outputting rows that pass the residual predicate "
+            : "outputting matching rows";
+
+        ImmutableArray<PredicateToken> residualTokens = residual is null ? [] : PredicateWriter.Write(residual);
+
         if (target.IsUnbounded)
         {
             return new SeekStrategyPhase
@@ -112,8 +161,10 @@ public static class SeekStrategyBuilder
                 Phase = SeekPhase.Walk,
                 Title = "Walk",
                 Lead = forward
-                    ? "Read forward to the end of the index, outputting matching rows and following leaf page links"
-                    : "Read backward to the start of the index, outputting matching rows"
+                    ? $"Read forward to the end of the index, {output}"
+                    : $"Read backward to the start of the index, {output}",
+                LeadCondition = residualTokens,
+                Middle = forward ? " and following leaf page links" : string.Empty
             };
         }
 
@@ -126,8 +177,10 @@ public static class SeekStrategyBuilder
             Phase = SeekPhase.Walk,
             Title = "Walk",
             Lead = forward
-                ? "Read forward, outputting matching rows, until a row with "
-                : "Read backward, outputting matching rows, until a row with ",
+                ? $"Read forward, {output}"
+                : $"Read backward, {output}",
+            LeadCondition = residualTokens,
+            Middle = ", until a row with ",
             Condition = Comparison(symbol, target, GetWidth(bounds, target)),
             Trail = forward
                 ? " ends the range, following leaf page links across pages"
@@ -135,7 +188,7 @@ public static class SeekStrategyBuilder
         };
     }
 
-    private static SeekStrategyPhase BuildComplete(in AccessKey exitTarget, long? rowGoal)
+    private static SeekStrategyPhase BuildComplete(in AccessKey exitTarget, long? rowGoal, int rangeCount)
     {
         var lead = rowGoal switch
         {
@@ -143,7 +196,9 @@ public static class SeekStrategyBuilder
             not null => $"Stop after {rowGoal:N0} matching rows (row goal {rowGoal:N0})",
             _ => exitTarget.IsUnbounded
                 ? "Stop at the end of the index"
-                : "Stop when a key leaves the range"
+                : rangeCount > 1
+                    ? $"Stop when a key leaves the range, then seek again from the root for the next of the {rangeCount} ranges"
+                    : "Stop when a key leaves the range"
         };
 
         return new SeekStrategyPhase

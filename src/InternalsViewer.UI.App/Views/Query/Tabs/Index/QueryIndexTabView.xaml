@@ -149,16 +149,17 @@
                                 PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
                                 SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=OneWay}"
                                 VerticalAlignment="Stretch"
-                                HorizontalAlignment="Stretch" />
+                                HorizontalAlignment="Stretch" 
+                                SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"/>
 
             <controls:GridSplitter Grid.Column="1"
-                                    Width="4"
-                                    HorizontalAlignment="Stretch"
-                                    VerticalAlignment="Stretch"
-                                    ResizeBehavior="PreviousAndNext"
-                                    ResizeDirection="Columns"
-                                    Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"
-                                    Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                                   Width="4"
+                                   HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Stretch"
+                                   ResizeBehavior="PreviousAndNext"
+                                   ResizeDirection="Columns"
+                                   Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"
+                                   Background="{ThemeResource ControlStrokeColorDefaultBrush}">
                 <controls:GridSplitter.Template>
                     <ControlTemplate TargetType="controls:GridSplitter">
                         <Grid Background="{TemplateBinding Background}" />
@@ -207,7 +208,7 @@
                             </AppBarButton.Icon>
                         </AppBarButton>
 
-                        <AppBarButton Label="End" Command="{x:Bind ViewModel.RunToEndCommand}">
+                        <AppBarButton Label="Run to End" Command="{x:Bind ViewModel.RunToEndCommand}">
                             <AppBarButton.Icon>
                                 <FontIcon Glyph="&#xE893;" />
                             </AppBarButton.Icon>
@@ -219,25 +220,15 @@
                             </AppBarButton.Icon>
                         </AppBarButton>
                     </CommandBar>
-                    <CommandBar Grid.Column="1"
-                                IsOpen="False"
-                                DefaultLabelPosition="Right"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Left"
-                                VerticalContentAlignment="Top"
-                                MinHeight="0"
-                                OverflowButtonVisibility="Collapsed"
-                                BorderThickness="0,0,0,1"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                Background="{ThemeResource CommandBarBackground}">
-                        <AppBarButton Click="{x:Bind CloseDetailPane}"
-                                      Background="Transparent"
-                                      BorderThickness="0"
-                                      FontSize="10"
-                                      VerticalAlignment="Center">
-                            <FontIcon Glyph="&#xE711;" />
-                        </AppBarButton>
-                    </CommandBar>
+
+                    <Button Grid.Column="1"
+                                Click="{x:Bind CloseDetailPane}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0,0,16,0"
+                                VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE711;" FontSize="12" />
+                    </Button>
                 </Grid>
 
                 <accessSteps:AccessStepsControl Grid.Row="1"
@@ -246,6 +237,13 @@
                                                         Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                                 StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}"
                                                 CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
+                <TextBlock Grid.Row="1"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Visibility="{x:Bind EmptyStepsVisibility(ViewModel.StepHistory.Count, ViewModel.IsRunningToEnd), Mode=OneWay}"
+                           Text="Select Run/Step/Run to end to start trace" />
+
                 <controls:GridSplitter Grid.Row="2"
                                        Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
                                        Converter={StaticResource InverseBoolToVisibilityConverter}}"
@@ -275,7 +273,7 @@
                                               SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
                                               BorderThickness="0" />
                         </TabViewItem>
-               
+
                         <TabViewItem Header="Results" IsClosable="False">
                             <index:RecordGrid x:Name="ResultsGrid"
                                               HideSlotColumn="True"

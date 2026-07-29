@@ -351,16 +351,19 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         ClearStepState();
 
-        var bounds = predicateInfo.HasSeekBounds ? predicateInfo.SeekBounds[0] : SeekBounds.All;
+        IReadOnlyList<SeekBounds> ranges = predicateInfo.HasSeekBounds ? predicateInfo.SeekBounds : [SeekBounds.All];
+
+        var residual = PlanNode.HasRedundantResidual() ? null : predicateInfo.Residual;
 
         await Task.Run(() => IndexStepService.StartAsync(Database,
                                                          AllocationUnit.AllocationUnitId,
                                                          RootPage,
-                                                         bounds,
-                                                         predicateInfo.Residual,
+                                                         ranges,
+                                                         residual,
                                                          ScanDirection.Forward,
                                                          CancellationToken,
-                                                         predicateInfo.RowGoal),
+                                                         predicateInfo.RowGoal,
+                                                         predicateInfo.HasUntranslatedPredicate),
                        CancellationToken);
 
         Strategy = IndexStepService.Strategy;
@@ -474,7 +477,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         if (_batchedSteps.Count > 0)
         {
-            var chronological = Enumerable.Reverse(StepHistory).Concat(_batchedSteps).ToList();
+            var chronological = StepHistory.Reverse().Concat(_batchedSteps).ToList();
 
             List<AccessStep> kept;
 

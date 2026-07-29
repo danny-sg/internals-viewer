@@ -16,4 +16,6 @@ public abstract record AccessExpression
     /// A literal value
     /// </summary>
     public sealed record Constant(AccessValue Value) : AccessExpression;
+
+    public sealed record Arithmetic(ArithmeticOperator Operator, AccessExpression Left, AccessExpression Right) : AccessExpression;
 }

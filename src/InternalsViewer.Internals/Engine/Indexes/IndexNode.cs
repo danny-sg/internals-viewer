@@ -18,6 +18,8 @@ public sealed class IndexNode(PageAddress pageAddress)
     public byte Level { get; set; }
 
     public ushort Ordinal { get; set; }
-    
+
     public byte IndexLevel { get; set; }
+
+    public ushort SlotCount { get; set; }
 }
