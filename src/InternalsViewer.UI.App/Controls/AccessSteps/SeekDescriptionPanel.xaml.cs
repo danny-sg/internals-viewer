@@ -88,6 +88,21 @@ public sealed partial class SeekDescriptionPanel : UserControl
             AddTextRow("Ordered", isOrdered ? "True" : "False");
         }
 
+        if (Strategy?.KeyColumns is { Count: > 0 } keyColumns)
+        {
+            AddTextRow("Key Columns", string.Join(", ", keyColumns));
+        }
+
+        if (Strategy?.IsUnique is { } isUnique)
+        {
+            AddTextRow("Unique", isUnique ? "True" : "False");
+        }
+
+        if (Strategy?.RowGoal is { } rowGoal)
+        {
+            AddTextRow("Row Goal", $"{rowGoal:N0}");
+        }
+
         if (Strategy?.Bounds is null)
         {
             return;

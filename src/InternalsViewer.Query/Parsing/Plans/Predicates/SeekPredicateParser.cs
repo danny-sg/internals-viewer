@@ -53,6 +53,11 @@ public sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = 
         var startRange = GetChild(seekKeys, ShowplanNames.StartRange);
         var endRange = GetChild(seekKeys, ShowplanNames.EndRange);
 
+        if (GetScanType(startRange) is "LE" or "LT" || GetScanType(endRange) is "GE" or "GT")
+        {
+            (startRange, endRange) = (endRange, startRange);
+        }
+
         var startValues = ReadKeyValues(startRange);
         var endValues = ReadKeyValues(endRange);
 
@@ -123,9 +128,9 @@ public sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = 
         return values.ToImmutable();
     }
 
-    private static string? GetScanType(XElement boundary)
+    private static string? GetScanType(XElement? boundary)
     {
-        return boundary.Attribute(ShowplanNames.ScanType)?.Value;
+        return boundary?.Attribute(ShowplanNames.ScanType)?.Value;
     }
 
     private static XElement? GetChild(XElement parent, string localName)

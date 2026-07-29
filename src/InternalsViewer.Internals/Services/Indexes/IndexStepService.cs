@@ -18,11 +18,6 @@ namespace InternalsViewer.Internals.Services.Indexes;
 /// <summary>
 /// Drives a seek across page boundaries, loading pages as the walk descends or follows leaf links
 /// </summary>
-/// <remarks>
-/// <see cref="PageSeekExecutor"/> only understands a single already-loaded page, and page loading is
-/// asynchronous, so this service owns the async orchestration that a synchronous
-/// <see cref="AccessPathStepper"/> cannot provide on its own.
-/// </remarks>
 public sealed class IndexStepService(IPageService pageService, IRecordService recordService)
 {
     private readonly byte[] _pageBuffer = new byte[PageData.Size];
@@ -79,10 +74,16 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
                                  long? rowGoal = null,
                                  bool hasUntranslatedResidual = false)
     {
-        var bounds = ranges.Count > 0 ? ranges[0] : SeekBounds.All;
-
         Database = database;
         IndexStructure = IndexStructureProvider.GetIndexStructure(database, allocationUnitId);
+
+        if (IndexStructure.IndexKeyColumns.Count > 0 && IndexStructure.IndexKeyColumns[0].IsDescending)
+        {
+            ranges = [.. ranges.Select(r => r.Reversed())];
+        }
+
+        var bounds = ranges.Count > 0 ? ranges[0] : SeekBounds.All;
+
         Ranges = ranges;
         RangeIndex = 0;
         RootPage = rootPageAddress;
@@ -156,11 +157,9 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
             return step;
         }
 
-        if (step is AccessStep.Stopped(StopReason.PageExhausted) &&
-            CurrentPage.IsLeaf &&
-            Direction == ScanDirection.Forward)
+        if (step is AccessStep.Stopped(StopReason.PageExhausted) && CurrentPage.IsLeaf)
         {
-            var nextPage = CurrentPage.NextPage;
+            var nextPage = Direction == ScanDirection.Forward ? CurrentPage.NextPage : CurrentPage.PreviousPage;
 
             if (nextPage != PageAddress.Empty)
             {

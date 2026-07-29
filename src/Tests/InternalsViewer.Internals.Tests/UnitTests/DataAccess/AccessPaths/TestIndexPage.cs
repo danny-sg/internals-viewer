@@ -36,6 +36,8 @@ internal sealed class TestIndexPage(PageAddress pageAddress,
 
     public PageAddress NextPage { get; set; } = PageAddress.Empty;
 
+    public PageAddress PreviousPage { get; set; } = PageAddress.Empty;
+
     /// <summary>
     /// Number of times a key comparison was requested, used to verify counter totals
     /// </summary>

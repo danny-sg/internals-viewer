@@ -22,4 +22,8 @@ public sealed record SeekStrategy
     public int RangeCount { get; init; }
 
     public IReadOnlyList<SeekBounds> Ranges { get; init; } = [];
+
+    public IReadOnlyList<string> KeyColumns { get; init; } = [];
+
+    public bool? IsUnique { get; init; }
 }

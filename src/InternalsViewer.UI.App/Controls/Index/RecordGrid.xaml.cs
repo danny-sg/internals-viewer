@@ -134,7 +134,7 @@ public sealed partial class RecordGrid : IDisposable
 
         var converter = new RecordValueConverter();
 
-        if (Records.Any())
+        if (Records?.Any() == true)
         {
             var record = Records.First();
 
@@ -150,7 +150,7 @@ public sealed partial class RecordGrid : IDisposable
             }
         }
 
-        if (Records.Any(r => r.DownPagePointer != PageAddress.Empty))
+        if (Records?.Any(r => r.DownPagePointer != PageAddress.Empty) == true)
         {
             var column = new PageAddressLinkButtonColumn<IndexRecordModel>
             {
@@ -164,7 +164,7 @@ public sealed partial class RecordGrid : IDisposable
             DataGrid.Columns.Add(column);
         }
 
-        if (Records.Any(r => r.RowIdentifier != null && r.RowIdentifier != RowIdentifier.Empty))
+        if (Records?.Any(r => r.RowIdentifier != null && r.RowIdentifier != RowIdentifier.Empty) == true)
         {
             var column = new DataGridTextColumn
             {

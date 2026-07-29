@@ -21,6 +21,27 @@ internal static class AccessKeyReader
         return AccessKey.Create(values);
     }
 
+    public static int ComparePrefix(in AccessKey key, in AccessKey target, int width, IndexStructure indexStructure)
+    {
+        var length = Math.Min(width, Math.Min(key.Count, target.Count));
+
+        var keyColumns = indexStructure.IndexKeyColumns;
+
+        for (var index = 0; index < length; index++)
+        {
+            var result = AccessValueComparer.Compare(key[index], target[index]);
+
+            if (result != 0)
+            {
+                var isDescending = index < keyColumns.Count && keyColumns[index].IsDescending;
+
+                return isDescending ? -result : result;
+            }
+        }
+
+        return 0;
+    }
+
     private static AccessValue CreateValue(IRecord record, IndexColumnStructure keyColumn)
     {
         foreach (var field in record.Fields)

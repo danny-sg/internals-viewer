@@ -51,13 +51,7 @@
                 </StackPanel>
             </AppBarElementContainer>
 
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <ToggleButton Margin="12,0,12,0"
-                              IsChecked="{x:Bind ViewModel.IsDetailPaneVisible, Mode=TwoWay}"
-                              BorderThickness="0">
-                    <TextBlock Text="Trace" VerticalAlignment="Center" />
-                </ToggleButton>
-            </AppBarElementContainer>
+ 
             <AppBarSeparator />
             <AppBarElementContainer>
                 <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
@@ -76,15 +70,24 @@
                     BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                     Background="Transparent"
                     BorderThickness="0,0,0,1">
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ToggleButton Margin="12,0,0,0"
+                              IsChecked="{x:Bind ViewModel.IsDetailPaneVisible, Mode=TwoWay}"
+                              BorderThickness="0">
+                    <TextBlock Text="Trace" VerticalAlignment="Center" />
+                </ToggleButton>
+            </AppBarElementContainer>
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ToggleButton Margin="4,0,12,0"
+                              IsChecked="{x:Bind ViewModel.IsIndexDetailsVisible, Mode=TwoWay}"
+                              BorderThickness="0">
+                    <TextBlock Text="Details" VerticalAlignment="Center" />
+                </ToggleButton>
+            </AppBarElementContainer>
             <CommandBar.SecondaryCommands>
-
                 <AppBarToggleButton
                         Label="Zoom to fit"
                         IsChecked="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}" />
-                <AppBarToggleButton
-                        Label="Details"
-                        IsChecked="{x:Bind ViewModel.IsDetailPaneVisible, Mode=TwoWay}" />
-
             </CommandBar.SecondaryCommands>
         </CommandBar>
 
@@ -165,12 +168,12 @@
                   BorderThickness="1,0,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="{x:Bind ViewModel.TraceRowHeight, Mode=OneWay}" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="{x:Bind ViewModel.IndexDetailsRowHeight, Mode=OneWay}" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Grid>
+                <Grid Visibility="{x:Bind ViewModel.TraceSectionVisibility, Mode=OneWay}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -187,7 +190,6 @@
                                 BorderThickness="0,0,0,1"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                 Background="{ThemeResource CommandBarBackground}">
-
                         <AppBarButton Label="{x:Bind RunLabel(ViewModel.IsRunning), Mode=OneWay}"
                                       Command="{x:Bind ViewModel.RunCommand}">
                             <AppBarButton.Icon>
@@ -238,8 +240,7 @@
                            Text="Select Run/Step/Run to end to start trace" />
 
                 <controls:GridSplitter Grid.Row="2"
-                                       Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
-                                       Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                                       Visibility="{x:Bind TraceSplitterVisibility(ViewModel.IsRunningToEnd, ViewModel.IsDetailPaneVisible, ViewModel.IsIndexDetailsVisible), Mode=OneWay}"
                                        HorizontalAlignment="Stretch"
                                        VerticalAlignment="Stretch"
                                        ResizeBehavior="PreviousAndNext"
@@ -253,13 +254,20 @@
                 </controls:GridSplitter>
                 <TabView Grid.Row="3"
                          VerticalAlignment="Stretch"
-                         Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
-                         Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                         Visibility="{x:Bind TraceDetailVisibility(ViewModel.IsRunningToEnd, ViewModel.IsIndexDetailsVisible), Mode=OneWay}"
                          IsAddTabButtonVisible="False"
                          CanReorderTabs="False"
                          TabWidthMode="SizeToContent"
                          CanDragTabs="False">
                     <TabView.TabItems>
+                        <TabViewItem Header="Description" IsClosable="False">
+                            <accessSteps:SeekDescriptionPanel FontSize="12"
+                                                              Strategy="{x:Bind ViewModel.SeekDescription, Mode=OneWay}"
+                                                              PhysicalOperator="{x:Bind ViewModel.PlanNode.PhysicalOperator, Mode=OneWay}"
+                                                              LogicalOperator="{x:Bind ViewModel.PlanNode.LogicalOperator, Mode=OneWay}"
+                                                              IsOrdered="{x:Bind ViewModel.PlanNode.ScanInfo.IsOutputOrdered, Mode=OneWay}"
+                                                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"/>
+                        </TabViewItem>
                         <TabViewItem Header="Page Data" IsClosable="False">
                             <index:RecordGrid x:Name="RecordGrid"
                                               Records="{x:Bind ViewModel.Records, Mode=OneWay}"
@@ -281,17 +289,10 @@
                                                            Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"
                                                            IsWalkActive="{x:Bind ViewModel.IsWalkInProgress, Mode=OneWay}" />
                         </TabViewItem>
-                        <TabViewItem Header="Description" IsClosable="False">
-                            <accessSteps:SeekDescriptionPanel FontSize="12"
-                                                              Strategy="{x:Bind ViewModel.SeekDescription, Mode=OneWay}"
-                                                              PhysicalOperator="{x:Bind ViewModel.PlanNode.PhysicalOperator, Mode=OneWay}"
-                                                              LogicalOperator="{x:Bind ViewModel.PlanNode.LogicalOperator, Mode=OneWay}"
-                                                              IsOrdered="{x:Bind ViewModel.PlanNode.ScanInfo.IsOutputOrdered, Mode=OneWay}"
-                                                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"/>
-                        </TabViewItem>
+           
                     </TabView.TabItems>
                 </TabView>
-                <StackPanel Grid.Row="2"
+                <StackPanel Grid.Row="3"
                             Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"

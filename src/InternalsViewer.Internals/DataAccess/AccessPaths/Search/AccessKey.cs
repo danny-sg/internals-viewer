@@ -69,7 +69,7 @@ public readonly record struct AccessKey(ImmutableArray<AccessValue> Values)
 
     public override int GetHashCode()
     {
-        var hash = new HashCode();
+        var hash = default(HashCode);
 
         for (var index = 0; index < Count; index++)
         {

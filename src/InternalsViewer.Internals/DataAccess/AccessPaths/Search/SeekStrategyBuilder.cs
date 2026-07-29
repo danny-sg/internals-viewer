@@ -56,8 +56,15 @@ public static class SeekStrategyBuilder
             Residual = residual is AccessPredicate.True ? null : residual,
             HasUntranslatedResidual = hasUntranslatedResidual,
             RangeCount = rangeCount,
-            Ranges = ranges ?? [bounds]
+            Ranges = ranges ?? [bounds],
+            KeyColumns = GetKeyColumns(indexStructure),
+            IsUnique = indexStructure.IsUnique
         };
+    }
+
+    public static IReadOnlyList<string> GetKeyColumns(IndexStructure indexStructure)
+    {
+        return [.. indexStructure.IndexKeyColumns.Select(k => k.IsDescending ? $"{k.ColumnName} DESC" : k.ColumnName)];
     }
 
     private static SeekStrategyPhase BuildRanges(IReadOnlyList<SeekBounds> ranges)

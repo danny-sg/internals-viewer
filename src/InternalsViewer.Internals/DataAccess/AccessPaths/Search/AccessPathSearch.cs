@@ -33,7 +33,7 @@ public static class AccessPathSearch
     }
 
     /// <summary>
-    /// Binary Search over page slots
+    /// Binary Search over page slots to find a specific target key
     /// </summary>
     private static (int Slot, ImmutableArray<AccessStep.Probe> Probes) Search(IIndexPageAccessor page,
                                                                               in AccessKey target,

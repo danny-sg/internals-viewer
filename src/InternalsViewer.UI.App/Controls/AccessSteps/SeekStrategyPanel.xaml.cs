@@ -98,8 +98,6 @@ public sealed partial class SeekStrategyPanel : UserControl
             return;
         }
 
-        PhasesPanel.Children.Add(SeekPanelRows.SectionHeader("Strategy", topMargin: 0));
-
         foreach (var phase in Strategy.Phases)
         {
             var content = new RichTextBlock

@@ -11,6 +11,7 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
+using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Controls.Plan;
@@ -100,7 +101,13 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         ? "Loading Index..."
         : $"Loading {AllocationUnit.IndexName}...";
 
-    partial void OnAllocationUnitChanged(AllocationUnit? value) => OnPropertyChanged(nameof(LoadingText));
+    partial void OnAllocationUnitChanged(AllocationUnit? value)
+    {
+        TotalPageCount = value?.UsedPages ?? 0;
+
+        OnPropertyChanged(nameof(LoadingText));
+        OnPropertyChanged(nameof(SeekDescription));
+    }
 
     partial void OnLoadedPageCountChanged(int value) => OnPropertyChanged(nameof(ProgressText));
 
@@ -126,16 +133,50 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [NotifyPropertyChangedFor(nameof(BodyColumnWidth))]
     [NotifyPropertyChangedFor(nameof(DetailColumnWidth))]
     [NotifyPropertyChangedFor(nameof(DetailSplitterVisibility))]
+    [NotifyPropertyChangedFor(nameof(TraceRowHeight))]
+    [NotifyPropertyChangedFor(nameof(TraceSectionVisibility))]
     private bool _isDetailPaneVisible;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BodyColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(DetailColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(DetailSplitterVisibility))]
+    [NotifyPropertyChangedFor(nameof(IndexDetailsRowHeight))]
+    private bool _isIndexDetailsVisible;
+
+    private bool _isDetailsLinkPending = true;
+
+    partial void OnIsDetailPaneVisibleChanged(bool value)
+    {
+        if (value && _isDetailsLinkPending)
+        {
+            _isDetailsLinkPending = false;
+
+            IsIndexDetailsVisible = true;
+        }
+    }
+
+    partial void OnIsIndexDetailsVisibleChanged(bool value) => _isDetailsLinkPending = false;
+
+    public bool IsRightPaneVisible => IsDetailPaneVisible || IsIndexDetailsVisible;
+
     public GridLength BodyColumnWidth
-        => IsDetailPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
+        => IsRightPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
 
     public GridLength DetailColumnWidth
-        => IsDetailPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+        => IsRightPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
 
     public Visibility DetailSplitterVisibility
+        => IsRightPaneVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    public GridLength TraceRowHeight
+        => IsDetailPaneVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility TraceSectionVisibility
         => IsDetailPaneVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    public GridLength IndexDetailsRowHeight
+        => IsIndexDetailsVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
     [ObservableProperty]
     private ObservableCollection<IndexRecordModel> _records = [];
@@ -230,6 +271,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         OnPropertyChanged(nameof(SeekDescription));
     }
 
+    private ScanDirection ScanDirection
+        => PlanNode?.ScanInfo?.IsForward == false ? ScanDirection.Backward : ScanDirection.Forward;
+
     public SeekStrategy? SeekDescription
     {
         get
@@ -241,16 +285,23 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
             IReadOnlyList<SeekBounds> ranges = predicateInfo.HasSeekBounds ? predicateInfo.SeekBounds : [SeekBounds.All];
 
-            var residual = PlanNode.HasRedundantResidual() ? null : predicateInfo.Residual;
+            var residual = predicateInfo.Residual;
+
+            var indexStructure = AllocationUnit is null
+                ? null
+                : IndexStructureProvider.GetIndexStructure(Database, AllocationUnit.AllocationUnitId);
 
             return new SeekStrategy
             {
                 Bounds = ranges[0],
                 Ranges = ranges,
                 RangeCount = ranges.Count,
-                Direction = ScanDirection.Forward,
+                Direction = ScanDirection,
                 Residual = residual is AccessPredicate.True ? null : residual,
-                HasUntranslatedResidual = predicateInfo.HasUntranslatedPredicate
+                HasUntranslatedResidual = predicateInfo.HasUntranslatedPredicate,
+                RowGoal = predicateInfo.RowGoal,
+                KeyColumns = indexStructure is null ? [] : SeekStrategyBuilder.GetKeyColumns(indexStructure),
+                IsUnique = indexStructure?.IsUnique
             };
         }
     }
@@ -268,6 +319,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         LoadedPageCount = 0;
 
+        IndexService.ProgressReportInterval = TotalPageCount > 100_000 ? 4096 : 1;
+
+        OnPropertyChanged(nameof(IsProgressVisible));
+
         var progress = new Progress<int>(count => LoadedPageCount = count);
 
         // Worker thread
@@ -277,8 +332,6 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 {
                     IsInitialized = false;
                 });
-
-                IndexService.ProgressReportInterval = TotalPageCount > 100_000 ? 4096 : 1;
 
                 Logger.LogDebug("Getting nodes for index from root node: {RootPage}", RootPage);
 
@@ -396,7 +449,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                                                          RootPage,
                                                          ranges,
                                                          residual,
-                                                         ScanDirection.Forward,
+                                                         ScanDirection,
                                                          CancellationToken,
                                                          predicateInfo.RowGoal,
                                                          predicateInfo.HasUntranslatedPredicate),

@@ -9,11 +9,8 @@ namespace InternalsViewer.Internals.Interfaces.DataAccess;
 /// A page belonging to an index, where slots are ordered by key
 /// </summary>
 /// <remarks>
-/// Implemented by index pages at any level, including clustered index leaf pages. Key ordering is
-/// intrinsic to a B-tree page, so a page either implements this contract or it does not - there is
-/// no page that is conditionally keyed.
-///
-/// Moving between pages is the responsibility of the caller, so this contract describes one page in isolation.
+/// Implemented by index pages at any level, including clustered index leaf pages. Key ordering is intrinsic to a B-tree page, so a page
+/// either implements this contract or it does not - there is no page that is conditionally keyed.
 /// </remarks>
 public interface IIndexPageAccessor
 {
@@ -29,6 +26,13 @@ public interface IIndexPageAccessor
     bool IsRoot { get; }
 
     int SlotCount { get; }
+
+    /// <summary>
+    /// The next page at the leaf level, following the page's linked list
+    /// </summary>
+    PageAddress NextPage { get; }
+
+    PageAddress PreviousPage { get; }
 
     /// <summary>
     /// Gets the underlying record for a slot, used when evaluating residual predicates
@@ -52,9 +56,4 @@ public interface IIndexPageAccessor
     /// </summary>
     /// <exception cref="System.NotSupportedException">The page is a leaf</exception>
     PageAddress GetChildPage(int slot);
-
-    /// <summary>
-    /// The next page at the leaf level, following the page's linked list
-    /// </summary>
-    PageAddress NextPage { get; }
 }

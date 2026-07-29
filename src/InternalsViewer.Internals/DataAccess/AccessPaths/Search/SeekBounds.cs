@@ -31,6 +31,18 @@ public sealed record SeekBounds
 
     public bool HasEnd => !EndValue.IsUnbounded;
 
+    public SeekBounds Reversed()
+    {
+        return new SeekBounds
+        {
+            StartValue = EndValue,
+            IsStartInclusive = IsEndInclusive,
+            EndValue = StartValue,
+            IsEndInclusive = IsStartInclusive,
+            CompareWidth = CompareWidth
+        };
+    }
+
     /// <summary>
     /// Creates a range matching a single key value
     /// </summary>

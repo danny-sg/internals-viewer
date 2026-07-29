@@ -10,14 +10,8 @@ using InternalsViewer.Internals.Providers.Metadata;
 namespace InternalsViewer.Internals.DataAccess.AccessPaths;
 
 /// <summary>
-/// Adapts a decoded clustered index leaf <see cref="DataPage"/> and its records to the seek executor's
-/// page contract
+/// Adapts a decoded clustered index leaf <see cref="DataPage"/> and its records to the seek executor page contract
 /// </summary>
-/// <remarks>
-/// A clustered index's leaf level is the table's data pages rather than index pages, but the key
-/// columns are still described by the clustered index's <see cref="IndexStructure"/>, so this adapter
-/// mirrors <see cref="IndexPageAccessor"/> while treating the page as always being the leaf.
-/// </remarks>
 public sealed class ClusteredLeafPageAccessor(DataPage page, IRecordService recordService, IndexStructure indexStructure)
     : IIndexPageAccessor
 {
@@ -29,6 +23,8 @@ public sealed class ClusteredLeafPageAccessor(DataPage page, IRecordService reco
     public PageAddress PageAddress => page.PageHeader.PageAddress;
 
     public PageAddress NextPage => page.PageHeader.NextPage;
+
+    public PageAddress PreviousPage => page.PageHeader.PreviousPage;
 
     public byte Level => 0;
 
@@ -46,7 +42,7 @@ public sealed class ClusteredLeafPageAccessor(DataPage page, IRecordService reco
     {
         var key = GetKey(slot);
 
-        return key.ComparePrefix(target, width);
+        return AccessKeyReader.ComparePrefix(key, target, width, indexStructure);
     }
 
     public PageAddress GetChildPage(int slot)

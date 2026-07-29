@@ -106,7 +106,7 @@ public static class IndexStructureProvider
 
         if (structure.IndexType == IndexType.Clustered)
         {
-            structure.Columns = GetClusteredIndexColumns(structure);
+            structure.Columns = GetClusteredIndexColumns(structure, metadata);
         }
         else
         {
@@ -127,12 +127,17 @@ public static class IndexStructureProvider
     /// The b-tree structure is defined in node offset, the data structure is defined in leaf offset although this is not relevant to 
     /// indexes as the data will be on data pages rather than index pages.
     /// </remarks>
-    private static List<IndexColumnStructure> GetClusteredIndexColumns(IndexStructure structure)
+    private static List<IndexColumnStructure> GetClusteredIndexColumns(IndexStructure structure, InternalMetadata metadata)
     {
         if (structure.TableStructure == null)
         {
             return [];
         }
+
+        var descendingColumnIds = metadata.IndexColumns[(structure.ObjectId, structure.IndexId)]
+                                          .Where(c => Convert.ToBoolean(c.Status & 0x4))
+                                          .Select(c => c.ColumnId)
+                                          .ToHashSet();
 
         return
         [
@@ -157,7 +162,8 @@ public static class IndexStructureProvider
                     IsIncludeColumn = false,
                     IndexColumnId = 0,
                     IsKey = s.IsKey,
-                    IsIndexKey = s.IsKey
+                    IsIndexKey = s.IsKey,
+                    IsDescending = descendingColumnIds.Contains(s.ColumnId)
                 })
         ];
     }
@@ -281,7 +287,8 @@ public static class IndexStructureProvider
             IndexColumnId = indexColumn?.IndexColumnId ?? 0,
             IsKey = isKey,
             IsIndexKey = indexColumn?.KeyOrdinal > 0,
-            IsRowIdentifier = isRowIdentifier
+            IsRowIdentifier = isRowIdentifier,
+            IsDescending = Convert.ToBoolean(indexColumn?.Status & 0x4)
         };
 
         return columnStructure;
