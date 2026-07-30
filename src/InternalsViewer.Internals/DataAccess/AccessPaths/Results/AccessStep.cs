@@ -112,6 +112,16 @@ public abstract record AccessStep(SeekPhase SeekPhase)
         public SeekBounds Bounds { get; init; } = SeekBounds.All;
     }
 
+    public sealed record IamRead(PageAddress PageAddress, int ExtentCount, int SinglePageCount) : AccessStep(SeekPhase.Allocation);
+
+    public sealed record IamLink(PageAddress FromPage, PageAddress ToPage) : AccessStep(SeekPhase.Allocation);
+
+    public sealed record PfsRead(PageAddress PageAddress, int IntervalStartPage) : AccessStep(SeekPhase.Allocation);
+
+    public sealed record ExtentStart(PageAddress FirstPage, int ExtentIndex) : AccessStep(SeekPhase.Allocation);
+
+    public sealed record PageSkipped(PageAddress PageAddress, PageSkipReason Reason) : AccessStep(SeekPhase.Allocation);
+
     /// <summary>
     /// The access path stopped producing rows
     /// </summary>

@@ -118,7 +118,8 @@
                 <plan:PlanNodePropertiesView Grid.Row="1"
                                              Node="{x:Bind ViewModel.SelectedPlanNode, Mode=OneWay}"
                                              EventStatistics="{x:Bind ViewModel.SelectedPlanNodeEventStatistics, Mode=OneWay}"
-                                             Expressions="{x:Bind ViewModel.SelectedPlanExpressions, Mode=OneWay}" />
+                                             Expressions="{x:Bind ViewModel.SelectedPlanExpressions, Mode=OneWay}"
+                                             ScanMode="{x:Bind ViewModel.SelectedPlanNodeScanMode, Mode=OneWay}" />
             </Grid>
         </Grid>
     </Grid>

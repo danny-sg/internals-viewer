@@ -333,7 +333,28 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeEventStatistics))]
     [NotifyPropertyChangedFor(nameof(SelectedPlanExpressions))]
+    [NotifyPropertyChangedFor(nameof(SelectedPlanNodeScanMode))]
     private PlanNode? _selectedPlanNode;
+
+    public ScanModeResult? SelectedPlanNodeScanMode
+    {
+        get
+        {
+            if (SelectedPlanNode is not { } node || node.ScanInfo is null || string.IsNullOrEmpty(node.Table))
+            {
+                return null;
+            }
+
+            var allocationUnit = Database.AllocationUnits
+                                         .Values
+                                         .FirstOrDefault(a => NameMatches(a.IndexName, node.Index ?? string.Empty)
+                                                              && NameMatches(a.TableName, node.Table)
+                                                              && (string.IsNullOrEmpty(node.Schema) || NameMatches(a.SchemaName, node.Schema))
+                                                              && a.AllocationUnitType == AllocationUnitType.InRowData);
+
+            return ScanModeDetector.Detect(node, allocationUnit, Events);
+        }
+    }
 
     public ExpressionCatalog? SelectedPlanExpressions
     {
@@ -585,8 +606,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             var viewModel = existing.Content as IndexTabViewModel;
 
-            viewModel?.PlanNode = node;
-            viewModel?.QueryTime = Events.FirstOrDefault()?.Timestamp;
+            if (viewModel is not null)
+            {
+                viewModel.PlanNode = node;
+                viewModel.QueryTime = Events.FirstOrDefault()?.Timestamp;
+                viewModel.ScanMode = node is null ? null : ScanModeDetector.Detect(node, viewModel.AllocationUnit, Events);
+            }
 
             Layout.Show(existing);
 
@@ -613,6 +638,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         indexViewModel.AllocationUnit = allocationUnit;
         indexViewModel.PlanNode = node;
         indexViewModel.QueryTime = Events.FirstOrDefault()?.Timestamp;
+        indexViewModel.ScanMode = node is null ? null : ScanModeDetector.Detect(node, allocationUnit, Events);
 
         var document = new DocumentViewModel(title: $"Index: {index}",
                                              content: indexViewModel,
@@ -1162,6 +1188,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             indexViewModel.ResetStep();
             indexViewModel.PlanNode = null;
             indexViewModel.QueryTime = null;
+            indexViewModel.ScanMode = null;
             indexViewModel.SelectedPageAddress = null;
             indexViewModel.PageSpans = [];
         }

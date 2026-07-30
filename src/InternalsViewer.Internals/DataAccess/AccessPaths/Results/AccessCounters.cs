@@ -42,6 +42,14 @@ public readonly record struct AccessCounters
 
     public long RangeSeeks { get; init; }
 
+    public long IamPagesRead { get; init; }
+
+    public long PfsPagesRead { get; init; }
+
+    public long ExtentsVisited { get; init; }
+
+    public long PagesSkipped { get; init; }
+
     public AccessCounters AddPageRead()
     {
         return this with { PagesRead = PagesRead + 1 };
@@ -75,5 +83,25 @@ public readonly record struct AccessCounters
     public AccessCounters AddRangeSeek()
     {
         return this with { RangeSeeks = RangeSeeks + 1 };
+    }
+
+    public AccessCounters AddIamPageRead()
+    {
+        return this with { IamPagesRead = IamPagesRead + 1 };
+    }
+
+    public AccessCounters AddPfsPageRead()
+    {
+        return this with { PfsPagesRead = PfsPagesRead + 1 };
+    }
+
+    public AccessCounters AddExtentVisited()
+    {
+        return this with { ExtentsVisited = ExtentsVisited + 1 };
+    }
+
+    public AccessCounters AddPageSkipped()
+    {
+        return this with { PagesSkipped = PagesSkipped + 1 };
     }
 }

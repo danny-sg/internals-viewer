@@ -13,6 +13,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Services.Indexes;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Models.Index;
@@ -212,6 +213,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private PlanNode? _planNode;
 
     public DateTime? QueryTime { get; set; }
+
+    public ScanModeResult? ScanMode { get; set; }
 
     public event EventHandler<PageNavigatedEventArgs>? PageNavigated;
 

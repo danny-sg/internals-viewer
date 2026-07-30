@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -44,6 +45,18 @@ public sealed partial class PlanNodePropertiesView : UserControl
         set => SetValue(ExpressionsProperty, value);
     }
 
+    public static readonly DependencyProperty ScanModeProperty =
+        DependencyProperty.Register(nameof(ScanMode),
+                                    typeof(ScanModeResult),
+                                    typeof(PlanNodePropertiesView),
+                                    new PropertyMetadata(null, OnNodeChanged));
+
+    public ScanModeResult? ScanMode
+    {
+        get => (ScanModeResult?)GetValue(ScanModeProperty);
+        set => SetValue(ScanModeProperty, value);
+    }
+
     public PlanNodePropertiesView()
     {
         InitializeComponent();
@@ -65,7 +78,7 @@ public sealed partial class PlanNodePropertiesView : UserControl
             return;
         }
 
-        foreach (var property in PlanNodePropertyBuilder.Build(Node, EventStatistics, Expressions))
+        foreach (var property in PlanNodePropertyBuilder.Build(Node, EventStatistics, Expressions, ScanMode))
         {
             TreeView.RootNodes.Add(ToTreeNode(property, 0));
         }

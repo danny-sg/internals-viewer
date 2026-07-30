@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Models;
 
@@ -11,7 +12,8 @@ public static class PlanNodePropertyBuilder
 {
     public static List<PlanNodeProperty> Build(PlanNode node,
                                                EventIoStatistics? eventStatistics = null,
-                                               ExpressionCatalog? expressions = null)
+                                               ExpressionCatalog? expressions = null,
+                                               ScanModeResult? scanMode = null)
     {
         var result = new List<PlanNodeProperty>();
 
@@ -56,6 +58,18 @@ public static class PlanNodePropertyBuilder
                 }
 
                 storageGroup.Children.Add(new PlanNodeProperty("Direction", scanInfo.IsForward == false ? "Backward" : "Forward"));
+
+                if (scanMode is { } mode)
+                {
+                    var modeText = mode.Mode switch
+                    {
+                        ScanMode.AllocationOrdered => "Allocation Order",
+                        ScanMode.LeafChain => "Leaf Chain",
+                        _ => "Unknown"
+                    };
+
+                    storageGroup.Children.Add(new PlanNodeProperty("Scan Mode", $"{modeText} — {mode.Evidence}"));
+                }
 
                 if (scanInfo.IsLookup)
                 {
