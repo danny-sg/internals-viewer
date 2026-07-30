@@ -148,7 +148,7 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
         var keys = string.Join(", ", OuterColumns.Zip(InnerColumns, (o, i) => $"{o} = {i}"));
 
-        yield return Stamp(new AccessStep.JoinStart($"Merge join on {keys} — reading the first outer row"), JoinSource);
+        yield return Stamp(new AccessStep.JoinStart($"Merge join on {keys}. Reading the first outer row"), JoinSource);
 
         await foreach (var step in outer.AdvanceAsync().WithCancellation(CurrentToken))
         {
@@ -172,7 +172,7 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
             if (comparison < 0)
             {
-                yield return Stamp(Compare(outerKey, innerKey, comparison, "Outer key is behind — advance outer"), JoinSource);
+                yield return Stamp(Compare(outerKey, innerKey, comparison, "Outer key is behind: advance outer"), JoinSource);
 
                 await foreach (var step in outer.AdvanceAsync())
                 {
@@ -184,9 +184,9 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
             if (comparison > 0)
             {
-                yield return Stamp(Compare(outerKey, innerKey, comparison, "Inner key is behind — advance inner"), JoinSource);
+                yield return Stamp(Compare(outerKey, innerKey, comparison, "Inner key is behind: advance inner"), JoinSource);
 
-                await foreach (var step in inner.AdvanceAsync())
+                await foreach (var step in inner.AdvanceAsync().WithCancellation(CurrentToken))
                 {
                     yield return step;
                 }
@@ -194,7 +194,7 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
                 continue;
             }
 
-            yield return Stamp(Compare(outerKey, innerKey, comparison, "Keys match — collect the inner group"), JoinSource);
+            yield return Stamp(Compare(outerKey, innerKey, comparison, "Keys match: collect the inner group"), JoinSource);
 
             var group = new List<IRecord>();
 
@@ -204,7 +204,7 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
             {
                 group.Add(groupRecord);
 
-                await foreach (var step in inner.AdvanceAsync())
+                await foreach (var step in inner.AdvanceAsync().WithCancellation(CurrentToken))
                 {
                     yield return step;
                 }

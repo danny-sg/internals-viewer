@@ -106,7 +106,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
             var bindings = string.Join(", ", InnerInput.Bindings.Select(b => $"{b.SeekColumn} = {b.OuterColumn}"));
 
-            var start = new AccessStep.JoinStart($"Nested loops — each outer row binds {bindings} for the inner seek")
+            var start = new AccessStep.JoinStart($"Nested loops: each outer row binds {bindings} for the inner seek")
             {
                 Source = JoinSource
             };
