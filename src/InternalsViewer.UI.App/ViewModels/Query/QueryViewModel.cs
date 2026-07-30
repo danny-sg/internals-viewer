@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
+using InternalsViewer.Internals.Services.Allocations;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -52,7 +53,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           IndexTabViewModelFactory indexTabViewModelFactory,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
-                                          IBufferPoolInfoProvider bufferPoolInfoProvider)
+                                          IBufferPoolInfoProvider bufferPoolInfoProvider,
+                                          AllocationStepService allocationStepService)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -62,6 +64,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  pageTabViewModelFactory,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
+                                                                 allocationStepService,
                                                                  database);
 }
 
@@ -345,15 +348,57 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 return null;
             }
 
-            var allocationUnit = Database.AllocationUnits
-                                         .Values
-                                         .FirstOrDefault(a => NameMatches(a.IndexName, node.Index ?? string.Empty)
-                                                              && NameMatches(a.TableName, node.Table)
-                                                              && (string.IsNullOrEmpty(node.Schema) || NameMatches(a.SchemaName, node.Schema))
-                                                              && a.AllocationUnitType == AllocationUnitType.InRowData);
-
-            return ScanModeDetector.Detect(node, allocationUnit, Events);
+            return ScanModeDetector.Detect(node, FindAllocationUnit(node), Events);
         }
+    }
+
+    public AllocationTraceViewModel AllocationTrace { get; }
+
+    private Internals.Engine.Database.AllocationUnit? FindAllocationUnit(PlanNode node)
+    {
+        if (string.IsNullOrEmpty(node.Table))
+        {
+            return null;
+        }
+
+        return Database.AllocationUnits
+                       .Values
+                       .FirstOrDefault(a => NameMatches(a.IndexName, node.Index ?? string.Empty)
+                                            && NameMatches(a.TableName, node.Table)
+                                            && (string.IsNullOrEmpty(node.Schema) || NameMatches(a.SchemaName, node.Schema))
+                                            && a.AllocationUnitType == AllocationUnitType.InRowData);
+    }
+
+    public void OpenAllocations(PlanNodeIdentifier identifier)
+    {
+        if (ResolvePlanNode(identifier) is { } node)
+        {
+            OpenAllocations(node);
+        }
+    }
+
+    public void OpenAllocations(PlanNode node)
+    {
+        var allocationUnit = FindAllocationUnit(node);
+
+        if (allocationUnit is null)
+        {
+            Logger.LogWarning("Allocation unit not found: {Schema}.{Table}.{Index}", node.Schema, node.Table, node.Index);
+
+            return;
+        }
+
+        AllocationTrace.Prepare(Database,
+                                allocationUnit,
+                                node,
+                                Events.FirstOrDefault()?.Timestamp,
+                                ScanModeDetector.Detect(node, allocationUnit, Events));
+
+        AllocationTrace.IsTraceVisible = true;
+
+        SelectedPlanNode = node;
+
+        Layout.ShowAllocations();
     }
 
     public ExpressionCatalog? SelectedPlanExpressions
@@ -957,11 +1002,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           PageTabViewModelFactory pageTabViewModelFactory,
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
+                          AllocationStepService allocationStepService,
                           DatabaseSource database)
     {
         Logger = logger;
         QueryRunner = queryRunner;
         BufferPoolInfoProvider = bufferPoolInfoProvider;
+        AllocationTrace = new AllocationTraceViewModel(allocationStepService);
+        AllocationTrace.PageNavigated += OnIndexPageNavigated;
         Database = database;
         _settingsService = settingsService;
         _settingsViewModel = settingsViewModel;
@@ -1192,6 +1240,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             indexViewModel.SelectedPageAddress = null;
             indexViewModel.PageSpans = [];
         }
+
+        AllocationTrace.Clear();
 
         _pageSpans = [];
 

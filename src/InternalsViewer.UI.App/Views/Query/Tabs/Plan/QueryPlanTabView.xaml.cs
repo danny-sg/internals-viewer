@@ -150,6 +150,9 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;
             planControl.IndexOpenRequested += OnPlanIndexOpenRequested;
 
+            planControl.AllocationsOpenRequested -= OnPlanAllocationsOpenRequested;
+            planControl.AllocationsOpenRequested += OnPlanAllocationsOpenRequested;
+
             planControl.PropertiesOpenRequested -= OnPropertiesOpenRequested;
             planControl.PropertiesOpenRequested += OnPropertiesOpenRequested;
 
@@ -164,6 +167,8 @@ public sealed partial class QueryPlanTabView : UserControl
     }
 
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);
+
+    private void OnPlanAllocationsOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenAllocations(node);
 
     private void OnPropertiesOpenRequested(object? sender, PlanNode node)
     {

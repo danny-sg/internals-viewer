@@ -68,7 +68,7 @@ public static class PlanNodePropertyBuilder
                         _ => "Unknown"
                     };
 
-                    storageGroup.Children.Add(new PlanNodeProperty("Scan Mode", $"{modeText} — {mode.Evidence}"));
+                    storageGroup.Children.Add(new PlanNodeProperty("Scan Mode", modeText) { Tooltip = mode.Evidence });
                 }
 
                 if (scanInfo.IsLookup)

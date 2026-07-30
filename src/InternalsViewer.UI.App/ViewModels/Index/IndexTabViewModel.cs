@@ -246,9 +246,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private bool _isRunningToEnd;
 
     [ObservableProperty]
-    private SeekStrategy? _strategy;
+    private AccessStrategy? _strategy;
 
-    public SeekPhase? CurrentPhase => CurrentStep?.SeekPhase;
+    public AccessPhase? CurrentPhase => CurrentStep?.AccessPhase;
 
     public AccessCounters CurrentCounters => CurrentStep?.Counters ?? default;
 
@@ -279,7 +279,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private ScanDirection ScanDirection
         => PlanNode?.ScanInfo?.IsForward == false ? ScanDirection.Backward : ScanDirection.Forward;
 
-    public SeekStrategy? SeekDescription
+    public AccessStrategy? SeekDescription
     {
         get
         {
@@ -296,7 +296,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 ? null
                 : IndexStructureProvider.GetIndexStructure(Database, AllocationUnit.AllocationUnitId);
 
-            return new SeekStrategy
+            return new AccessStrategy
             {
                 Bounds = ranges[0],
                 Ranges = ranges,
@@ -305,7 +305,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 Residual = residual is AccessPredicate.True ? null : residual,
                 HasUntranslatedResidual = predicateInfo.HasUntranslatedPredicate,
                 RowGoal = predicateInfo.RowGoal,
-                KeyColumns = indexStructure is null ? [] : SeekStrategyBuilder.GetKeyColumns(indexStructure),
+                KeyColumns = indexStructure is null ? [] : AccessStrategyBuilder.GetKeyColumns(indexStructure),
                 IsUnique = indexStructure?.IsUnique
             };
         }

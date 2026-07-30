@@ -11,45 +11,45 @@ using Microsoft.UI.Xaml.Documents;
 
 namespace InternalsViewer.UI.App.Controls.AccessSteps;
 
-public sealed partial class SeekStrategyPanel : UserControl
+public sealed partial class AccessStrategyPanel : UserControl
 {
     public static readonly DependencyProperty StrategyProperty =
         DependencyProperty.Register(nameof(Strategy),
-                                    typeof(SeekStrategy),
-                                    typeof(SeekStrategyPanel),
+                                    typeof(AccessStrategy),
+                                    typeof(AccessStrategyPanel),
                                     new PropertyMetadata(null, OnStrategyChanged));
 
     public static readonly DependencyProperty CurrentPhaseProperty =
         DependencyProperty.Register(nameof(CurrentPhase),
-                                    typeof(SeekPhase?),
-                                    typeof(SeekStrategyPanel),
+                                    typeof(AccessPhase?),
+                                    typeof(AccessStrategyPanel),
                                     new PropertyMetadata(null, OnCurrentPhaseChanged));
 
     public static readonly DependencyProperty CountersProperty =
         DependencyProperty.Register(nameof(Counters),
                                     typeof(AccessCounters),
-                                    typeof(SeekStrategyPanel),
+                                    typeof(AccessStrategyPanel),
                                     new PropertyMetadata(default(AccessCounters), OnCountersChanged));
 
     public static readonly DependencyProperty IsWalkActiveProperty =
         DependencyProperty.Register(nameof(IsWalkActive),
                                     typeof(bool),
-                                    typeof(SeekStrategyPanel),
+                                    typeof(AccessStrategyPanel),
                                     new PropertyMetadata(false, OnCurrentPhaseChanged));
 
-    private readonly List<(SeekPhase Phase, Grid Row)> _phaseRows = [];
+    private readonly List<(AccessPhase Phase, Grid Row)> _phaseRows = [];
 
     private readonly List<(TextBlock Value, Func<AccessCounters, string> Get)> _counterValues = [];
 
-    public SeekStrategy? Strategy
+    public AccessStrategy? Strategy
     {
-        get => (SeekStrategy?)GetValue(StrategyProperty);
+        get => (AccessStrategy?)GetValue(StrategyProperty);
         set => SetValue(StrategyProperty, value);
     }
 
-    public SeekPhase? CurrentPhase
+    public AccessPhase? CurrentPhase
     {
-        get => (SeekPhase?)GetValue(CurrentPhaseProperty);
+        get => (AccessPhase?)GetValue(CurrentPhaseProperty);
         set => SetValue(CurrentPhaseProperty, value);
     }
 
@@ -65,24 +65,24 @@ public sealed partial class SeekStrategyPanel : UserControl
         set => SetValue(IsWalkActiveProperty, value);
     }
 
-    public SeekStrategyPanel()
+    public AccessStrategyPanel()
     {
         InitializeComponent();
     }
 
     private static void OnStrategyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((SeekStrategyPanel)d).Rebuild();
+        ((AccessStrategyPanel)d).Rebuild();
     }
 
     private static void OnCurrentPhaseChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((SeekStrategyPanel)d).ApplyCurrentPhase();
+        ((AccessStrategyPanel)d).ApplyCurrentPhase();
     }
 
     private static void OnCountersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((SeekStrategyPanel)d).ApplyCounters();
+        ((AccessStrategyPanel)d).ApplyCounters();
     }
 
     private void Rebuild()

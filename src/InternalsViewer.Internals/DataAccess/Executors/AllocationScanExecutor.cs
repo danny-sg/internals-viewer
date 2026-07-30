@@ -12,9 +12,10 @@ public static class AllocationScanExecutor
                                                   long? rowGoal = null,
                                                   AccessCounters counters = default,
                                                   Action<AccessCounters>? onCountersChanged = null,
-                                                  EvaluationContext? evaluationContext = null)
+                                                  EvaluationContext? evaluationContext = null,
+                                                  bool isHeap = false)
     {
-        return Walk(page, residual, rowGoal, counters, onCountersChanged, evaluationContext ?? EvaluationContext.Now);
+        return Walk(page, residual, rowGoal, counters, onCountersChanged, evaluationContext ?? EvaluationContext.Now, isHeap);
     }
 
     private static IEnumerable<AccessStep> Walk(IRowPageAccessor page,
@@ -22,7 +23,8 @@ public static class AllocationScanExecutor
                                                 long? rowGoal,
                                                 AccessCounters totals,
                                                 Action<AccessCounters>? onCountersChanged,
-                                                EvaluationContext evaluationContext)
+                                                EvaluationContext evaluationContext,
+                                                bool isHeap)
     {
         var hasResidual = residual is not (null or AccessPredicate.True);
 
@@ -30,6 +32,7 @@ public static class AllocationScanExecutor
 
         yield return new AccessStep.ReadPage(page.PageAddress, page.Level, false, page.IsLeaf, page.SlotCount)
         {
+            IsHeap = isHeap,
             Counters = totals
         };
 
@@ -39,7 +42,7 @@ public static class AllocationScanExecutor
             {
                 totals = Publish(totals.AddGhostSkipped(), onCountersChanged);
 
-                yield return new AccessStep.Row(slot, RowOutcome.Ghost) { HasResidual = hasResidual, Counters = totals };
+                yield return new AccessStep.Row(slot, RowOutcome.Ghost) { HasResidual = hasResidual, HasRange = false, Counters = totals };
 
                 continue;
             }
@@ -61,6 +64,7 @@ public static class AllocationScanExecutor
             yield return new AccessStep.Row(slot, outcome)
             {
                 HasResidual = hasResidual,
+                HasRange = false,
                 EmittedRecord = outcome == RowOutcome.Match ? RecordSnapshot.Detach(page.GetRecord(slot)) : null,
                 Counters = totals
             };

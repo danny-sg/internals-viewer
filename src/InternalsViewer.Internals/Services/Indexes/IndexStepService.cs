@@ -30,7 +30,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
     public PageAddress? CurrentPageAddress => CurrentPage?.PageAddress;
 
-    public SeekStrategy? Strategy { get; private set; }
+    public AccessStrategy? Strategy { get; private set; }
 
     private IPageService PageService { get; } = pageService;
 
@@ -118,7 +118,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
             RowGoal = null;
         }
 
-        Strategy = SeekStrategyBuilder.Build(IndexStructure,
+        Strategy = AccessStrategyBuilder.Build(IndexStructure,
                                              bounds,
                                              direction,
                                              RowGoal,
@@ -257,7 +257,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
                 throw new InvalidOperationException($"Unexpected page type {page.GetType()} at {pageAddress}")
         };
 
-        CurrentPageSteps = PageSeekExecutor.Execute(CurrentPage, 
+        CurrentPageSteps = IndexSeekExecutor.Execute(CurrentPage, 
                                                     Bounds, 
                                                     Direction, 
                                                     Residual, 

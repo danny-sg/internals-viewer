@@ -9,7 +9,7 @@ using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.DataAccess.AccessPaths;
 
-public class PageSeekExecutorTests
+public class IndexSeekExecutorTests
 {
     [Fact]
     public void Seek_Enters_Leaf_At_First_Slot_Greater_Or_Equal_To_Target()
@@ -166,7 +166,7 @@ public class PageSeekExecutorTests
 
         var bounds = SeekBounds.Between(TestKey.Of(50), TestKey.Of(75));
 
-        var steps = PageSeekExecutor.Execute(page, bounds, ScanDirection.Forward, isContinuation: true).ToList();
+        var steps = IndexSeekExecutor.Execute(page, bounds, ScanDirection.Forward, isContinuation: true).ToList();
 
         Assert.DoesNotContain(steps, s => s is AccessStep.ProbeStart or AccessStep.Probe or AccessStep.ProbeResult);
 
@@ -194,7 +194,7 @@ public class PageSeekExecutorTests
             ComparisonOperator.GreaterThanOrEqual,
             new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 20)));
 
-        var steps = PageSeekExecutor.Execute(page, SeekBounds.All, ScanDirection.Forward, residual).ToList();
+        var steps = IndexSeekExecutor.Execute(page, SeekBounds.All, ScanDirection.Forward, residual).ToList();
 
         var rows = steps.OfType<AccessStep.Row>().ToList();
 
@@ -214,7 +214,7 @@ public class PageSeekExecutorTests
     {
         var page = TestIndexPage.Create(10, 20, 30, 40, 50);
 
-        var steps = PageSeekExecutor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward, rowGoal: 1).ToList();
+        var steps = IndexSeekExecutor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward, rowGoal: 1).ToList();
 
         Assert.Equal(StopReason.RowGoalMet, steps.OfType<AccessStep.Stopped>().Single().Reason);
         Assert.DoesNotContain(steps, s => s is AccessStep.RangeEnd);
@@ -290,6 +290,6 @@ public class PageSeekExecutorTests
 
     private static List<AccessStep> Execute(TestIndexPage page, SeekBounds bounds, ScanDirection direction)
     {
-        return [.. PageSeekExecutor.Execute(page, bounds, direction)];
+        return [.. IndexSeekExecutor.Execute(page, bounds, direction)];
     }
 }

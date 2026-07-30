@@ -20,6 +20,8 @@ public enum StopReason
     /// </summary>
     IndexExhausted,
 
+    AllocationExhausted,
+
     /// <summary>
     /// The end of the page was reached and the access path is limited to a single page
     /// </summary>

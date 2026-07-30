@@ -194,6 +194,15 @@ public sealed partial class EventTimelineControl
             flyout.Items.Add(openIndex);
         }
 
+        if (op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 })
+        {
+            var openAllocations = new MenuFlyoutItem { Text = "Open Allocations" };
+
+            openAllocations.Click += (_, _) => AllocationsOpenRequested?.Invoke(op);
+
+            flyout.Items.Add(openAllocations);
+        }
+
         flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
 
         e.Handled = true;

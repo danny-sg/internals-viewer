@@ -102,6 +102,7 @@
                            FontFamily="{x:Bind ((models:PlanNodeProperty)Content).IsValueMonospace, Converter={StaticResource BoolToFontFamilyConverter}}"
                            Foreground="{x:Bind ((models:PlanNodeProperty)Content), Converter={StaticResource PlanPropertyBrushConverter}}"
                            VerticalAlignment="Center"
+                           ToolTipService.ToolTip="{x:Bind ((models:PlanNodeProperty)Content).Tooltip}"
                            TextWrapping="Wrap" />
             </controls:DataRow>
         </DataTemplate>

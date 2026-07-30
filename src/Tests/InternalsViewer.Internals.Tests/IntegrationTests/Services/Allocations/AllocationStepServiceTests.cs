@@ -41,9 +41,16 @@ public class AllocationStepServiceTests(ITestOutputHelper testOutput)
         Assert.Contains(steps, s => s is AccessStep.PfsRead);
         Assert.Contains(steps, s => s is AccessStep.ExtentStart);
 
+        var pfsChecks = steps.Count(s => s is AccessStep.PfsCheck);
+
+        var pagesVisited = steps.Count(s => s is AccessStep.ReadPage)
+                           + steps.Count(s => s is AccessStep.PageSkipped { Reason: PageSkipReason.NotAllocated });
+
+        Assert.Equal(pagesVisited, pfsChecks);
+
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
-        Assert.Equal(StopReason.IndexExhausted, stopped.Reason);
+        Assert.Equal(StopReason.AllocationExhausted, stopped.Reason);
         Assert.Equal(NumberTableRowCount, stopped.Counters.RowsOutput);
         Assert.Equal(1, stopped.Counters.IamPagesRead);
         Assert.True(stopped.Counters.PfsPagesRead > 0);
@@ -66,6 +73,16 @@ public class AllocationStepServiceTests(ITestOutputHelper testOutput)
 
         Assert.Contains(skipped, s => s.Reason == PageSkipReason.IndexPage);
         Assert.Equal(skipped.Count, steps[^1].Counters.PagesSkipped);
+
+        foreach (var skip in skipped.Where(s => s.Reason == PageSkipReason.IndexPage))
+        {
+            var previous = steps[steps.IndexOf(skip) - 1];
+
+            var read = Assert.IsType<AccessStep.ReadPage>(previous);
+
+            Assert.Equal(skip.PageAddress, read.PageAddress);
+            Assert.True(read.Level > 0);
+        }
     }
 
     [RequiresFileFact(MdfPath)]

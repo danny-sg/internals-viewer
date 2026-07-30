@@ -9,7 +9,7 @@ namespace InternalsViewer.Internals.DataAccess.Executors;
 /// <summary>
 /// Executes a seek against a single page, locating an entry point then walking the range
 /// </summary>
-public static class PageSeekExecutor
+public static class IndexSeekExecutor
 {
     public static IEnumerable<AccessStep> Execute(IIndexPageAccessor page,
                                                   SeekBounds bounds,

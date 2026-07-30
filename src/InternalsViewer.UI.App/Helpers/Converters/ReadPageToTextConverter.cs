@@ -13,6 +13,11 @@ public sealed class ReadPageToTextConverter : IValueConverter
             return string.Empty;
         }
 
+        if (readPage.IsHeap)
+        {
+            return "(Heap)";
+        }
+
         return (readPage.IsRoot, readPage.IsLeaf) switch
         {
             (true, true) => "(Root, Leaf)",

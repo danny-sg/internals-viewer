@@ -6,16 +6,16 @@ using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 
-public static class SeekStrategyBuilder
+public static class AccessStrategyBuilder
 {
-    public static SeekStrategy Build(IndexStructure indexStructure,
-                                     SeekBounds bounds,
-                                     ScanDirection direction,
-                                     long? rowGoal,
-                                     AccessPredicate? residual = null,
-                                     string? rowGoalReason = null,
-                                     IReadOnlyList<SeekBounds>? ranges = null,
-                                     bool hasUntranslatedResidual = false)
+    public static AccessStrategy Build(IndexStructure indexStructure,
+                                       SeekBounds bounds,
+                                       ScanDirection direction,
+                                       long? rowGoal,
+                                       AccessPredicate? residual = null,
+                                       string? rowGoalReason = null,
+                                       IReadOnlyList<SeekBounds>? ranges = null,
+                                       bool hasUntranslatedResidual = false)
     {
         var forward = direction == ScanDirection.Forward;
 
@@ -29,7 +29,7 @@ public static class SeekStrategyBuilder
 
         var rangeCount = ranges?.Count ?? 1;
 
-        var phases = ImmutableArray.CreateBuilder<SeekStrategyPhase>();
+        var phases = ImmutableArray.CreateBuilder<AccessStrategyPhase>();
 
         if (ranges is { Count: > 1 })
         {
@@ -46,7 +46,7 @@ public static class SeekStrategyBuilder
               "The walk stops after the first match instead of reading on to check."
             : null;
 
-        return new SeekStrategy
+        return new AccessStrategy
         {
             Phases = phases.ToImmutable(),
             RowGoal = rowGoal,
@@ -62,12 +62,71 @@ public static class SeekStrategyBuilder
         };
     }
 
+    public static AccessStrategy BuildAllocationScan(AccessPredicate? residual,
+                                                     long? rowGoal,
+                                                     string? rowGoalReason = null,
+                                                     bool hasUntranslatedResidual = false)
+    {
+        var hasResidual = residual is not null and not AccessPredicate.True;
+
+        var phases = ImmutableArray.CreateBuilder<AccessStrategyPhase>();
+
+        phases.Add(new AccessStrategyPhase
+        {
+            Phase = AccessPhase.Allocation,
+            Title = "IAM",
+            Lead = "Read the first IAM page for the allocation unit. Each IAM page maps which extents in a 4GB interval of one file " +
+                   "belong to the allocation unit, with eight single page slots for pages allocated from mixed extents"
+        });
+
+        phases.Add(new AccessStrategyPhase
+        {
+            Phase = AccessPhase.Allocation,
+            Title = "Allocation",
+            Lead = "Visit the single page slots, then each allocated extent in page number order. The PFS byte for a page is checked " +
+                   "before the page is read, skipping pages that sit in an allocated extent but are not themselves in use. Index and " +
+                   "IAM pages sharing the allocation unit's extents are identified by their page header and skipped"
+        });
+
+        phases.Add(new AccessStrategyPhase
+        {
+            Phase = AccessPhase.Walk,
+            Title = "Walk",
+            Lead = hasResidual
+                ? "Read every row on each data page, emitting rows where "
+                : "Read every row on each data page, emitting all rows",
+            Condition = hasResidual ? PredicateWriter.Write(residual!) : []
+        });
+
+        phases.Add(new AccessStrategyPhase
+        {
+            Phase = AccessPhase.Complete,
+            Title = "Complete",
+            Lead = rowGoal is { } goal
+                ? $"The scan ends when {goal:N0} rows have been output or the end of the IAM chain is reached"
+                : "The scan ends when the end of the IAM chain is reached, following the chain across intervals and files"
+        });
+
+        return new AccessStrategy
+        {
+            Phases = phases.ToImmutable(),
+            RowGoal = rowGoal,
+            RowGoalReason = rowGoalReason,
+            Bounds = SeekBounds.All,
+            Direction = ScanDirection.Forward,
+            Residual = residual is AccessPredicate.True ? null : residual,
+            HasUntranslatedResidual = hasUntranslatedResidual,
+            RangeCount = 1,
+            Ranges = [SeekBounds.All]
+        };
+    }
+
     public static IReadOnlyList<string> GetKeyColumns(IndexStructure indexStructure)
     {
         return [.. indexStructure.IndexKeyColumns.Select(k => k.IsDescending ? $"{k.ColumnName} DESC" : k.ColumnName)];
     }
 
-    private static SeekStrategyPhase BuildRanges(IReadOnlyList<SeekBounds> ranges)
+    private static AccessStrategyPhase BuildRanges(IReadOnlyList<SeekBounds> ranges)
     {
         var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
 
@@ -87,9 +146,9 @@ public static class SeekStrategyBuilder
             tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
         }
 
-        return new SeekStrategyPhase
+        return new AccessStrategyPhase
         {
-            Phase = SeekPhase.Ranges,
+            Phase = AccessPhase.Ranges,
             Title = "Ranges",
             Lead = $"The seek makes {ranges.Count} passes, one per range: ",
             Condition = tokens.ToImmutable(),
@@ -97,13 +156,13 @@ public static class SeekStrategyBuilder
         };
     }
 
-    private static SeekStrategyPhase BuildDescent(SeekBounds bounds, in AccessKey target, bool inclusive, bool forward)
+    private static AccessStrategyPhase BuildDescent(SeekBounds bounds, in AccessKey target, bool inclusive, bool forward)
     {
         if (target.IsUnbounded)
         {
-            return new SeekStrategyPhase
+            return new AccessStrategyPhase
             {
-                Phase = SeekPhase.Descent,
+                Phase = AccessPhase.Descent,
                 Title = "Descent",
                 Lead = forward
                     ? "From the root, follow the first down page pointer on each level down to the leaf"
@@ -115,9 +174,9 @@ public static class SeekStrategyBuilder
             ? (inclusive ? "<" : "<=")
             : (inclusive ? "<=" : "<");
 
-        return new SeekStrategyPhase
+        return new AccessStrategyPhase
         {
-            Phase = SeekPhase.Descent,
+            Phase = AccessPhase.Descent,
             Title = "Descent",
             Lead = "From the root, binary search for the child with the highest separator where ",
             Condition = Comparison(symbol, target, GetWidth(bounds, target)),
@@ -125,13 +184,13 @@ public static class SeekStrategyBuilder
         };
     }
 
-    private static SeekStrategyPhase BuildPosition(SeekBounds bounds, in AccessKey target, bool inclusive, bool forward)
+    private static AccessStrategyPhase BuildPosition(SeekBounds bounds, in AccessKey target, bool inclusive, bool forward)
     {
         if (target.IsUnbounded)
         {
-            return new SeekStrategyPhase
+            return new AccessStrategyPhase
             {
-                Phase = SeekPhase.Position,
+                Phase = AccessPhase.Position,
                 Title = "Position",
                 Lead = forward
                     ? "Start at the first slot on the leaf page"
@@ -143,9 +202,9 @@ public static class SeekStrategyBuilder
             ? (inclusive ? ">=" : ">")
             : (inclusive ? "<=" : "<");
 
-        return new SeekStrategyPhase
+        return new AccessStrategyPhase
         {
-            Phase = SeekPhase.Position,
+            Phase = AccessPhase.Position,
             Title = "Position",
             Lead = forward
                 ? "Binary search the leaf page for the lowest key where "
@@ -154,7 +213,7 @@ public static class SeekStrategyBuilder
         };
     }
 
-    private static SeekStrategyPhase BuildWalk(SeekBounds bounds, in AccessKey target, bool inclusive, bool forward, AccessPredicate? residual)
+    private static AccessStrategyPhase BuildWalk(SeekBounds bounds, in AccessKey target, bool inclusive, bool forward, AccessPredicate? residual)
     {
         var output = residual is not null
             ? "outputting rows that pass the residual predicate "
@@ -164,9 +223,9 @@ public static class SeekStrategyBuilder
 
         if (target.IsUnbounded)
         {
-            return new SeekStrategyPhase
+            return new AccessStrategyPhase
             {
-                Phase = SeekPhase.Walk,
+                Phase = AccessPhase.Walk,
                 Title = "Walk",
                 Lead = forward
                     ? $"Read forward to the end of the index, {output}"
@@ -180,9 +239,9 @@ public static class SeekStrategyBuilder
             ? (inclusive ? ">" : ">=")
             : (inclusive ? "<" : "<=");
 
-        return new SeekStrategyPhase
+        return new AccessStrategyPhase
         {
-            Phase = SeekPhase.Walk,
+            Phase = AccessPhase.Walk,
             Title = "Walk",
             Lead = forward
                 ? $"Read forward, {output}"
@@ -196,7 +255,7 @@ public static class SeekStrategyBuilder
         };
     }
 
-    private static SeekStrategyPhase BuildComplete(in AccessKey exitTarget, long? rowGoal, int rangeCount)
+    private static AccessStrategyPhase BuildComplete(in AccessKey exitTarget, long? rowGoal, int rangeCount)
     {
         var lead = rowGoal switch
         {
@@ -209,9 +268,9 @@ public static class SeekStrategyBuilder
                     : "Stop when a key leaves the range"
         };
 
-        return new SeekStrategyPhase
+        return new AccessStrategyPhase
         {
-            Phase = SeekPhase.Complete,
+            Phase = AccessPhase.Complete,
             Title = "Complete",
             Lead = lead
         };

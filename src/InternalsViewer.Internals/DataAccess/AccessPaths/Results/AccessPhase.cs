@@ -1,6 +1,6 @@
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 
-public enum SeekPhase
+public enum AccessPhase
 {
     Ranges,
     Allocation,

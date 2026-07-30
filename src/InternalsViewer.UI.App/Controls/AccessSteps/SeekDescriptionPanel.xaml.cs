@@ -13,7 +13,7 @@ public sealed partial class SeekDescriptionPanel : UserControl
 {
     public static readonly DependencyProperty StrategyProperty =
         DependencyProperty.Register(nameof(Strategy),
-                                    typeof(SeekStrategy),
+                                    typeof(AccessStrategy),
                                     typeof(SeekDescriptionPanel),
                                     new PropertyMetadata(null, OnStrategyChanged));
 
@@ -35,9 +35,9 @@ public sealed partial class SeekDescriptionPanel : UserControl
                                     typeof(SeekDescriptionPanel),
                                     new PropertyMetadata(null, OnStrategyChanged));
 
-    public SeekStrategy? Strategy
+    public AccessStrategy? Strategy
     {
-        get => (SeekStrategy?)GetValue(StrategyProperty);
+        get => (AccessStrategy?)GetValue(StrategyProperty);
         set => SetValue(StrategyProperty, value);
     }
 

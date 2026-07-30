@@ -7,12 +7,12 @@ using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.DataAccess.AccessPaths;
 
-public class SeekStrategyBuilderTests
+public class AccessStrategyBuilderTests
 {
     [Fact]
     public void Unique_Equality_Explains_The_Row_Goal()
     {
-        var strategy = SeekStrategyBuilder.Build(UniqueIndex(), SeekBounds.Equality(TestKey.Of([5000], "Id")), ScanDirection.Forward, 1);
+        var strategy = AccessStrategyBuilder.Build(UniqueIndex(), SeekBounds.Equality(TestKey.Of([5000], "Id")), ScanDirection.Forward, 1);
 
         Assert.Equal(1, strategy.RowGoal);
         Assert.NotNull(strategy.RowGoalReason);
@@ -30,7 +30,7 @@ public class SeekStrategyBuilderTests
     {
         var bounds = SeekBounds.Between(TestKey.Of([100], "Id"), TestKey.Of([500], "Id"), false, false);
 
-        var strategy = SeekStrategyBuilder.Build(UniqueIndex(), bounds, ScanDirection.Forward, null);
+        var strategy = AccessStrategyBuilder.Build(UniqueIndex(), bounds, ScanDirection.Forward, null);
 
         Assert.Null(strategy.RowGoalReason);
 
@@ -53,7 +53,7 @@ public class SeekStrategyBuilderTests
             CompareWidth = 1
         };
 
-        var strategy = SeekStrategyBuilder.Build(UniqueIndex(), bounds, ScanDirection.Forward, null);
+        var strategy = AccessStrategyBuilder.Build(UniqueIndex(), bounds, ScanDirection.Forward, null);
 
         Assert.True(strategy.Phases[0].Condition.IsDefaultOrEmpty);
         Assert.Contains("first down page pointer", strategy.Phases[0].Lead);
@@ -65,7 +65,7 @@ public class SeekStrategyBuilderTests
     {
         var residual = new AccessPredicate.Like(new AccessExpression.Column(-1, "TextField"), "%Test%");
 
-        var strategy = SeekStrategyBuilder.Build(UniqueIndex(), SeekBounds.All, ScanDirection.Forward, null, residual);
+        var strategy = AccessStrategyBuilder.Build(UniqueIndex(), SeekBounds.All, ScanDirection.Forward, null, residual);
 
         Assert.Contains("first down page pointer", strategy.Phases[0].Lead);
         Assert.Contains("first slot", strategy.Phases[1].Lead);
@@ -75,7 +75,7 @@ public class SeekStrategyBuilderTests
         Assert.Same(residual, strategy.Residual);
     }
 
-    private static string Text(SeekStrategyPhase phase)
+    private static string Text(AccessStrategyPhase phase)
     {
         return PredicateWriter.ToText(phase.Condition);
     }

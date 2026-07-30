@@ -282,7 +282,7 @@
                                               BorderThickness="0" />
                         </TabViewItem>
                         <TabViewItem Header="Strategy" IsClosable="False">
-                            <accessSteps:SeekStrategyPanel FontSize="12" 
+                            <accessSteps:AccessStrategyPanel FontSize="12" 
                                                            Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                                            Strategy="{x:Bind ViewModel.Strategy, Mode=OneWay}"
                                                            CurrentPhase="{x:Bind ViewModel.CurrentPhase, Mode=OneWay}"

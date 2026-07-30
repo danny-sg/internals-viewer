@@ -2,9 +2,12 @@ using System.Threading;
 using InternalsViewer.Internals.DataAccess.AccessPaths;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.DataAccess.Executors;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.DataAccess;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
@@ -23,6 +26,10 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
 
     private int _slotIndex;
 
+    private bool _visitedSlot;
+
+    private bool _visitedExtent;
+
     private int _extentIndex;
 
     private int _pageInExtent;
@@ -38,6 +45,8 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
     public bool IsComplete { get; private set; }
 
     public PageAddress? CurrentPageAddress => CurrentPage?.PageAddress;
+
+    public AccessStrategy? Strategy { get; private set; }
 
     private IPageService PageService { get; } = pageService;
 
@@ -66,12 +75,20 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
                                  AccessPredicate? residual,
                                  CancellationToken cancellationToken,
                                  long? rowGoal = null,
-                                 EvaluationContext? evaluationContext = null)
+                                 EvaluationContext? evaluationContext = null,
+                                 bool hasUntranslatedResidual = false)
     {
         Database = database;
         Residual = residual;
         RowGoal = rowGoal;
         EvaluationContext = evaluationContext ?? EvaluationContext.Now;
+
+        var rowGoalReason = rowGoal is { } goal
+            ? $"A TOP above this operator stops requesting rows once {goal:N0} have been returned, " +
+              "so the scan ends after that many rows have been output."
+            : null;
+
+        Strategy = AccessStrategyBuilder.BuildAllocationScan(residual, rowGoal, rowGoalReason, hasUntranslatedResidual);
 
         Counters = default;
         IsComplete = false;
@@ -147,7 +164,26 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
                 continue;
             }
 
+            _visitedSlot = true;
+
+            _pending.Enqueue(new AccessStep.Advance($"Single page slot {_slotIndex - 1}, allocated from a mixed extent")
+            {
+                Counters = Counters
+            });
+
             await VisitPageAsync(slot, cancellationToken);
+
+            return;
+        }
+
+        if (_visitedSlot)
+        {
+            _visitedSlot = false;
+
+            _pending.Enqueue(new AccessStep.Advance("Single page slots complete, moving to the allocated extents")
+            {
+                Counters = Counters
+            });
 
             return;
         }
@@ -165,6 +201,16 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
 
                 _pageInExtent = 0;
 
+                if (_visitedExtent)
+                {
+                    _pending.Enqueue(new AccessStep.Advance("Extent complete, moving to the next allocated extent")
+                    {
+                        Counters = Counters
+                    });
+                }
+
+                _visitedExtent = true;
+
                 Counters = Counters.AddExtentVisited();
 
                 _pending.Enqueue(new AccessStep.ExtentStart(GetExtentPage(iam, _extentIndex, 0), _extentIndex)
@@ -178,6 +224,14 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
             if (_pageInExtent < 8)
             {
                 var address = GetExtentPage(iam, _extentIndex, _pageInExtent);
+
+                if (_pageInExtent > 0)
+                {
+                    _pending.Enqueue(new AccessStep.Advance($"Next page in extent ({_pageInExtent + 1} of 8)")
+                    {
+                        Counters = Counters
+                    });
+                }
 
                 _pageInExtent++;
 
@@ -194,7 +248,7 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
 
         if (next == PageAddress.Empty)
         {
-            _pending.Enqueue(new AccessStep.Stopped(StopReason.IndexExhausted) { Counters = Counters });
+            _pending.Enqueue(new AccessStep.Stopped(StopReason.AllocationExhausted) { Counters = Counters });
 
             return;
         }
@@ -223,7 +277,15 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
             });
         }
 
-        if (Database.Pfs.TryGetValue(address.FileId, out var pfs) && !pfs.GetPageStatus(address.PageId).IsAllocated)
+        var status = Database.Pfs.TryGetValue(address.FileId, out var pfs) ? pfs.GetPageStatus(address.PageId) : PfsByte.Unknown;
+
+        _pending.Enqueue(new AccessStep.PfsCheck(address, status.IsAllocated)
+        {
+            Status = status.ToString().Replace("PFS Status: ", string.Empty),
+            Counters = Counters
+        });
+
+        if (!status.IsAllocated)
         {
             Skip(address, PageSkipReason.NotAllocated);
 
@@ -241,20 +303,21 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
                                                                   Residual,
                                                                   RowGoal,
                                                                   Counters,
-                                                                  evaluationContext: EvaluationContext)
+                                                                  evaluationContext: EvaluationContext,
+                                                                  isHeap: dataPage.AllocationUnit.IndexType == IndexType.Heap)
                                                          .GetEnumerator();
                 break;
 
             case IndexPage:
-                Skip(address, PageSkipReason.IndexPage);
+                ReadThenSkip(page, PageSkipReason.IndexPage);
                 break;
 
             case IamPage:
-                Skip(address, PageSkipReason.IamPage);
+                ReadThenSkip(page, PageSkipReason.IamPage);
                 break;
 
             default:
-                Skip(address, PageSkipReason.Other);
+                ReadThenSkip(page, PageSkipReason.Other);
                 break;
         }
     }
@@ -264,6 +327,20 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
         Counters = Counters.AddPageSkipped();
 
         _pending.Enqueue(new AccessStep.PageSkipped(address, reason) { Counters = Counters });
+    }
+
+    private void ReadThenSkip(Page page, PageSkipReason reason)
+    {
+        Counters = Counters.AddPageRead();
+
+        var header = page.PageHeader;
+
+        _pending.Enqueue(new AccessStep.ReadPage(header.PageAddress, (byte)header.Level, false, header.Level == 0, header.SlotCount)
+        {
+            Counters = Counters
+        });
+
+        Skip(header.PageAddress, reason);
     }
 
     private async Task LoadIamAsync(PageAddress address, CancellationToken cancellationToken)
@@ -278,6 +355,8 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
         CurrentIam = iam;
 
         _slotIndex = 0;
+        _visitedSlot = false;
+        _visitedExtent = false;
         _extentIndex = 0;
         _pageInExtent = -1;
 

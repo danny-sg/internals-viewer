@@ -25,6 +25,8 @@
             <converters:RowEmitToVisibilityConverter x:Key="RowEmitToVisibilityConverter" />
             <converters:RowEmitTextConverter x:Key="RowEmitTextConverter" />
             <converters:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
+            <converters:PfsAllocatedToTextConverter x:Key="PfsAllocatedToTextConverter" />
+            <converters:PfsAllocatedToBrushConverter x:Key="PfsAllocatedToBrushConverter" />
 
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
@@ -277,6 +279,88 @@
                 </Grid>
             </DataTemplate>
 
+            <DataTemplate x:Key="IamReadTemplate" >
+                <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
+                        <TextBlock Text="Read IAM" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Extents" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding ExtentCount}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Single Pages" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding SinglePageCount}" Style="{StaticResource StepValueStyle}" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="IamLinkTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="IAM Link" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="From" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding FromPage}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="to" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding ToPage}" Style="{StaticResource StepValueStyle}" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="PfsReadTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Read PFS" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Interval Start Page" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding IntervalStartPage}" Style="{StaticResource StepValueStyle}" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="PfsCheckTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="PFS Check" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="{Binding IsAllocated, Converter={StaticResource PfsAllocatedToTextConverter}}"
+                                   Foreground="{Binding IsAllocated, Converter={StaticResource PfsAllocatedToBrushConverter}}"
+                                   Style="{StaticResource StepValueStyle}"
+                                   Margin="8,0,0,0" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="AdvanceTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Advance" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="{Binding Description}" Style="{StaticResource StepValueStyle}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ExtentStartTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Extent" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="First Page" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding FirstPage}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Extent Index" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding ExtentIndex}" Style="{StaticResource StepValueStyle}" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="PageSkippedTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Skip Page" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="{Binding Reason, Converter={StaticResource EnumToTextConverter}}"
+                                   Style="{StaticResource StepValueStyle}"
+                                   Margin="8,0,0,0" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
             <DataTemplate x:Key="DefaultTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <TextBlock Text="{Binding}" Style="{StaticResource StepValueStyle}" />
@@ -297,6 +381,13 @@
                 ReseekTemplate="{StaticResource ReseekTemplate}"
                 StoppedTemplate="{StaticResource StoppedTemplate}"
                 TruncatedTemplate="{StaticResource TruncatedTemplate}"
+                IamReadTemplate="{StaticResource IamReadTemplate}"
+                IamLinkTemplate="{StaticResource IamLinkTemplate}"
+                PfsReadTemplate="{StaticResource PfsReadTemplate}"
+                PfsCheckTemplate="{StaticResource PfsCheckTemplate}"
+                AdvanceTemplate="{StaticResource AdvanceTemplate}"
+                ExtentStartTemplate="{StaticResource ExtentStartTemplate}"
+                PageSkippedTemplate="{StaticResource PageSkippedTemplate}"
                 DefaultTemplate="{StaticResource DefaultTemplate}" />
         </ResourceDictionary>
     </UserControl.Resources>

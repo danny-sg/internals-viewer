@@ -23,5 +23,7 @@ public sealed record PlanNodeProperty(string Name, string Value)
 
     public bool IsValueError { get; init; }
 
+    public string? Tooltip { get; init; }
+
     public int Depth { get; init; }
 }

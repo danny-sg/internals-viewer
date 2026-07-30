@@ -4,9 +4,9 @@ using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 
-public sealed record SeekStrategyPhase
+public sealed record AccessStrategyPhase
 {
-    public SeekPhase Phase { get; init; }
+    public AccessPhase Phase { get; init; }
 
     public string Title { get; init; } = string.Empty;
 

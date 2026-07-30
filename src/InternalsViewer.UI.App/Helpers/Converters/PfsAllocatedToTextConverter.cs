@@ -1,18 +1,13 @@
 using System;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;
 
-public sealed class RowEmitTextConverter : IValueConverter
+public sealed class PfsAllocatedToTextConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, string language)
     {
-        return value switch
-        {
-            AccessStep.RowRun run => $"→ Emit {run.EmitCount:N0} rows",
-            _ => "→ Emit row"
-        };
+        return value is true ? "Allocated" : "Not Allocated";
     }
 
     public object? ConvertBack(object? value, Type targetType, object parameter, string language)

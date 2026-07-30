@@ -30,6 +30,20 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate TruncatedTemplate { get; set; } = null!;
 
+    public DataTemplate IamReadTemplate { get; set; } = null!;
+
+    public DataTemplate IamLinkTemplate { get; set; } = null!;
+
+    public DataTemplate PfsReadTemplate { get; set; } = null!;
+
+    public DataTemplate PfsCheckTemplate { get; set; } = null!;
+
+    public DataTemplate AdvanceTemplate { get; set; } = null!;
+
+    public DataTemplate ExtentStartTemplate { get; set; } = null!;
+
+    public DataTemplate PageSkippedTemplate { get; set; } = null!;
+
     public DataTemplate DefaultTemplate { get; set; } = null!;
 
     protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
@@ -48,6 +62,13 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Reseek => ReseekTemplate,
             AccessStep.Stopped => StoppedTemplate,
             AccessStep.Truncated => TruncatedTemplate,
+            AccessStep.IamRead => IamReadTemplate,
+            AccessStep.IamLink => IamLinkTemplate,
+            AccessStep.PfsRead => PfsReadTemplate,
+            AccessStep.PfsCheck => PfsCheckTemplate,
+            AccessStep.Advance => AdvanceTemplate,
+            AccessStep.ExtentStart => ExtentStartTemplate,
+            AccessStep.PageSkipped => PageSkippedTemplate,
             _ => DefaultTemplate
         };
     }

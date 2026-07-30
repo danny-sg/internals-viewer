@@ -181,6 +181,8 @@ public sealed class ExecutionPlanControl : Canvas
     /// <summary>Raised when "Open Index" is chosen on a data-access node that runs against a named index.</summary>
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
+    public event EventHandler<PlanNode>? AllocationsOpenRequested;
+
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
 
     private static void OnPlanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -481,6 +483,16 @@ public sealed class ExecutionPlanControl : Canvas
                 openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(this, node);
 
                 flyout.Items.Add(openIndex);
+            }
+
+            if (!string.IsNullOrEmpty(node.Table) &&
+                OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
+            {
+                var openAllocations = new MenuFlyoutItem { Text = "Open Allocations" };
+
+                openAllocations.Click += (_, _) => AllocationsOpenRequested?.Invoke(this, node);
+
+                flyout.Items.Add(openAllocations);
             }
 
             var openProperties = new MenuFlyoutItem { Text = $"Properties" };

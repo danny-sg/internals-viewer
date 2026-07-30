@@ -11,7 +11,7 @@ public class AccessCounterUpdaterTests
     {
         var updates = new List<AccessCounters>();
 
-        PageSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3),
+        IndexSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3),
                                  SeekBounds.All,
                                  ScanDirection.Forward,
                                  onCountersChanged: updates.Add)
@@ -28,7 +28,7 @@ public class AccessCounterUpdaterTests
     {
         var updates = new List<AccessCounters>();
 
-        PageSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3, 4, 5),
+        IndexSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3, 4, 5),
                                  SeekBounds.All,
                                  ScanDirection.Forward,
                                  onCountersChanged: updates.Add)
@@ -46,7 +46,7 @@ public class AccessCounterUpdaterTests
     {
         var called = false;
 
-        var steps = PageSeekExecutor.Execute(TestIndexPage.Create(1, 2),
+        var steps = IndexSeekExecutor.Execute(TestIndexPage.Create(1, 2),
                                              SeekBounds.All,
                                              ScanDirection.Forward,
                                              onCountersChanged: _ => called = true);
@@ -63,7 +63,7 @@ public class AccessCounterUpdaterTests
     {
         var updates = new List<AccessCounters>();
 
-        var steps = PageSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3),
+        var steps = IndexSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3),
                                              SeekBounds.All,
                                              ScanDirection.Forward,
                                              onCountersChanged: updates.Add)
@@ -79,7 +79,7 @@ public class AccessCounterUpdaterTests
     {
         var starting = default(AccessCounters).AddPageRead().AddPageRead();
 
-        var steps = PageSeekExecutor.Execute(TestIndexPage.Create(1),
+        var steps = IndexSeekExecutor.Execute(TestIndexPage.Create(1),
                                              SeekBounds.All,
                                              ScanDirection.Forward,
                                              counters: starting)
@@ -95,7 +95,7 @@ public class AccessCounterUpdaterTests
     {
         var page = new TestIndexPage(new(1, 100), [1, 2, 3, 4], new HashSet<int> { 1, 2 });
 
-        var steps = PageSeekExecutor.Execute(page, SeekBounds.All, ScanDirection.Forward).ToList();
+        var steps = IndexSeekExecutor.Execute(page, SeekBounds.All, ScanDirection.Forward).ToList();
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
@@ -106,7 +106,7 @@ public class AccessCounterUpdaterTests
     [Fact]
     public void Row_Goal_Stops_The_Scan_Early()
     {
-        var steps = PageSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3, 4, 5),
+        var steps = IndexSeekExecutor.Execute(TestIndexPage.Create(1, 2, 3, 4, 5),
                                              SeekBounds.All,
                                              ScanDirection.Forward,
                                              rowGoal: 2)
@@ -124,7 +124,7 @@ public class AccessCounterUpdaterTests
     {
         var page = TestIndexPage.Create(10, 20, 30, 40, 50, 60, 70, 80);
 
-        var steps = PageSeekExecutor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward)
+        var steps = IndexSeekExecutor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward)
                                     .ToList();
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
@@ -137,7 +137,7 @@ public class AccessCounterUpdaterTests
     {
         var page = TestIndexPage.Create(10, 20, 30, 40, 50);
 
-        var steps = PageSeekExecutor.Execute(page,
+        var steps = IndexSeekExecutor.Execute(page,
                                              SeekBounds.Between(TestKey.Of(20), TestKey.Of(30)),
                                              ScanDirection.Forward)
                                     .ToList();

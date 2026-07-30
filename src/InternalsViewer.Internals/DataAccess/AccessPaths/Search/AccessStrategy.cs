@@ -3,9 +3,9 @@ using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 
-public sealed record SeekStrategy
+public sealed record AccessStrategy
 {
-    public ImmutableArray<SeekStrategyPhase> Phases { get; init; } = [];
+    public ImmutableArray<AccessStrategyPhase> Phases { get; init; } = [];
 
     public long? RowGoal { get; init; }
 
