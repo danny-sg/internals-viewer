@@ -28,8 +28,7 @@ public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal =
     private Func<XElement?, AccessPredicate?> ResolvePredicate { get; } = resolvePredicate ?? (_ => null);
 
     /// <summary>
-    /// Parses a scalar expression, returning null when the expression is not one the access path
-    /// model can represent
+    /// Parses a scalar expression
     /// </summary>
     /// <remarks>
     /// An unrepresentable expression is not an error. A predicate containing one is treated as unknown rather than being dropped, so the
@@ -51,8 +50,41 @@ public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal =
             ShowplanNames.Arithmetic => ParseArithmetic(content),
             ShowplanNames.Intrinsic => ParseFunction(content),
             ShowplanNames.If => ParseIf(content),
+            ShowplanNames.Aggregate => ParseAggregate(content),
             _ => null
         };
+    }
+
+    private AccessExpression? ParseAggregate(XElement element)
+    {
+        var name = element.Attribute(ShowplanNames.AggType)?.Value;
+
+        if (name is null)
+        {
+            return null;
+        }
+
+        var isDistinct = element.Attribute(ShowplanNames.Distinct)?.Value is "1" or "true";
+
+        var operands = element.Elements()
+                              .Where(e => e.Name.LocalName == ShowplanNames.ScalarOperator)
+                              .ToList();
+
+        var arguments = ImmutableArray.CreateBuilder<AccessExpression>(operands.Count);
+
+        foreach (var operand in operands)
+        {
+            var argument = Parse(operand);
+
+            if (argument is null)
+            {
+                return null;
+            }
+
+            arguments.Add(argument);
+        }
+
+        return new AccessExpression.Aggregate(name.ToUpperInvariant(), isDistinct, arguments.MoveToImmutable());
     }
 
     private AccessExpression? ParseFunction(XElement element)
@@ -176,8 +208,7 @@ public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal =
     /// </remarks>
     internal static XElement? GetContent(XElement? element)
     {
-        while (element is not null &&
-               element.Name.LocalName is ShowplanNames.ScalarOperator or ShowplanNames.Convert)
+        while (element?.Name.LocalName is ShowplanNames.ScalarOperator or ShowplanNames.Convert)
         {
             element = element.Elements().FirstOrDefault();
         }

@@ -21,6 +21,7 @@ internal static class ShowplanNames
     public const string Condition = "Condition";
     public const string Then = "Then";
     public const string Else = "Else";
+    public const string Aggregate = "Aggregate";
     public const string Convert = "Convert";
     public const string ParameterList = "ParameterList";
     public const string ScalarExpressionList = "ScalarExpressionList";
@@ -45,4 +46,6 @@ internal static class ShowplanNames
     public const string ScanType = "ScanType";
     public const string Column = "Column";
     public const string FunctionName = "FunctionName";
+    public const string AggType = "AggType";
+    public const string Distinct = "Distinct";
 }

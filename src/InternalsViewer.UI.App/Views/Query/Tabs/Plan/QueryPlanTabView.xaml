@@ -117,7 +117,8 @@
                 </Grid>
                 <plan:PlanNodePropertiesView Grid.Row="1"
                                              Node="{x:Bind ViewModel.SelectedPlanNode, Mode=OneWay}"
-                                             EventStatistics="{x:Bind ViewModel.SelectedPlanNodeEventStatistics, Mode=OneWay}" />
+                                             EventStatistics="{x:Bind ViewModel.SelectedPlanNodeEventStatistics, Mode=OneWay}"
+                                             Expressions="{x:Bind ViewModel.SelectedPlanExpressions, Mode=OneWay}" />
             </Grid>
         </Grid>
     </Grid>

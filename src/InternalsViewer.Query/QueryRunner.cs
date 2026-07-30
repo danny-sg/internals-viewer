@@ -210,7 +210,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             if (cropStart is { } trimStart && cropEnd is { } trimEnd)
             {
-                events = events.Where(e => e.TimeUs <= trimEnd && e.TimeUs + e.DurationUs >= trimStart).ToList();
+                events = [.. events.Where(e => e.TimeUs <= trimEnd && e.TimeUs + e.DurationUs >= trimStart)];
             }
         }
         catch (OperationCanceledException)
@@ -254,6 +254,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             PageSplitEventMatcher.Match(events, logRecords);
         }
+
+        ExpressionCatalog.Populate(executionPlans, resultSets);
 
         return new QueryResult
         {

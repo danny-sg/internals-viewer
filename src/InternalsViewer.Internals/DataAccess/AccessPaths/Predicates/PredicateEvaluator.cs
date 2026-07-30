@@ -62,6 +62,8 @@ public static class PredicateEvaluator
                 => Evaluate(conditional.Condition, row, context) == true
                     ? Resolve(conditional.Then, row, context)
                     : Resolve(conditional.Else, row, context),
+            AccessExpression.Aggregate
+                => AccessValue.Null,
             _ => throw new NotSupportedException(
                 $"Expression {expression.GetType().Name} is not supported.")
         };

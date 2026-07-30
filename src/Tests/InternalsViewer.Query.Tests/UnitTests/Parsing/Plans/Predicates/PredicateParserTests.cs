@@ -317,6 +317,29 @@ public class PredicateParserTests
         Assert.Null(Parse(Compare("EQ", conditional, Const("(10)"))));
     }
 
+    [Fact]
+    public void Aggregate_Is_Parsed_As_An_Expression()
+    {
+        var xml = $"""<ScalarOperator><Aggregate AggType="SUM" Distinct="false">{Identifier("Amount")}</Aggregate></ScalarOperator>""";
+
+        var aggregate = Assert.IsType<AccessExpression.Aggregate>(new PredicateParser(_ => 0).ParseExpression(XElement.Parse(xml)));
+
+        Assert.Equal("SUM", aggregate.Name);
+        Assert.False(aggregate.IsDistinct);
+        Assert.Equal("Amount", Assert.IsType<AccessExpression.Column>(aggregate.Arguments[0]).Name);
+    }
+
+    [Fact]
+    public void Count_Star_Aggregate_Has_No_Arguments()
+    {
+        var xml = """<ScalarOperator><Aggregate AggType="countstar" Distinct="false" /></ScalarOperator>""";
+
+        var aggregate = Assert.IsType<AccessExpression.Aggregate>(new PredicateParser(_ => 0).ParseExpression(XElement.Parse(xml)));
+
+        Assert.Equal("COUNTSTAR", aggregate.Name);
+        Assert.Empty(aggregate.Arguments);
+    }
+
     private static AccessPredicate? Parse(string xml)
     {
         return new PredicateParser(_ => 0).Parse(XElement.Parse(xml));

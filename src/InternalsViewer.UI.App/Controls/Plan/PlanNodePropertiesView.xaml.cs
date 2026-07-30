@@ -32,6 +32,18 @@ public sealed partial class PlanNodePropertiesView : UserControl
         set => SetValue(EventStatisticsProperty, value);
     }
 
+    public static readonly DependencyProperty ExpressionsProperty =
+        DependencyProperty.Register(nameof(Expressions),
+                                    typeof(ExpressionCatalog),
+                                    typeof(PlanNodePropertiesView),
+                                    new PropertyMetadata(null, OnNodeChanged));
+
+    public ExpressionCatalog? Expressions
+    {
+        get => (ExpressionCatalog?)GetValue(ExpressionsProperty);
+        set => SetValue(ExpressionsProperty, value);
+    }
+
     public PlanNodePropertiesView()
     {
         InitializeComponent();
@@ -53,7 +65,7 @@ public sealed partial class PlanNodePropertiesView : UserControl
             return;
         }
 
-        foreach (var property in PlanNodePropertyBuilder.Build(Node, EventStatistics))
+        foreach (var property in PlanNodePropertyBuilder.Build(Node, EventStatistics, Expressions))
         {
             TreeView.RootNodes.Add(ToTreeNode(property, 0));
         }

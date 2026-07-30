@@ -45,4 +45,30 @@ public abstract record AccessExpression
     }
 
     public sealed record Conditional(AccessPredicate Condition, AccessExpression Then, AccessExpression Else) : AccessExpression;
+
+    public sealed record Aggregate(string Name, bool IsDistinct, ImmutableArray<AccessExpression> Arguments) : AccessExpression
+    {
+        public bool Equals(Aggregate? other)
+        {
+            return other is not null
+                   && string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase)
+                   && IsDistinct == other.IsDistinct
+                   && Arguments.SequenceEqual(other.Arguments);
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+
+            hash.Add(Name, StringComparer.OrdinalIgnoreCase);
+            hash.Add(IsDistinct);
+
+            foreach (var argument in Arguments)
+            {
+                hash.Add(argument);
+            }
+
+            return hash.ToHashCode();
+        }
+    }
 }

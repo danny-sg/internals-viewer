@@ -332,7 +332,25 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeEventStatistics))]
+    [NotifyPropertyChangedFor(nameof(SelectedPlanExpressions))]
     private PlanNode? _selectedPlanNode;
+
+    public ExpressionCatalog? SelectedPlanExpressions
+    {
+        get
+        {
+            if (SelectedPlanNode is not { } node)
+            {
+                return null;
+            }
+
+            var plan = ExecutionPlans.FirstOrDefault(p => p.NodesById.TryGetValue(node.NodeId, out var candidate)
+                                                          && ReferenceEquals(candidate, node))
+                       ?? ExecutionPlans.FirstOrDefault();
+
+            return plan?.Expressions;
+        }
+    }
 
     /// <summary>
     /// Read activity captured for the selected operator, aggregated from its linked read events

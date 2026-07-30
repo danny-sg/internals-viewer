@@ -9,7 +9,9 @@ namespace InternalsViewer.UI.App.Helpers;
 
 public static class PlanNodePropertyBuilder
 {
-    public static List<PlanNodeProperty> Build(PlanNode node, EventIoStatistics? eventStatistics = null)
+    public static List<PlanNodeProperty> Build(PlanNode node,
+                                               EventIoStatistics? eventStatistics = null,
+                                               ExpressionCatalog? expressions = null)
     {
         var result = new List<PlanNodeProperty>();
 
@@ -100,11 +102,11 @@ public static class PlanNodePropertyBuilder
 
                 for (var index = 0; index < predicateInfo.SeekBounds.Length; index++)
                 {
-                    var bounds = predicateInfo.SeekBounds[index];
+                    var text = Expand(PredicateText.From(predicateInfo.SeekBounds[index]), expressions);
 
-                    ranges.Children.Add(new PlanNodeProperty($"Range {index + 1}", PredicateWriter.ToText(PredicateWriter.Write(bounds)))
+                    ranges.Children.Add(new PlanNodeProperty($"Range {index + 1}", text.ToString())
                     {
-                        Predicate = PredicateText.From(bounds)
+                        Predicate = text
                     });
                 }
 
@@ -113,9 +115,11 @@ public static class PlanNodePropertyBuilder
 
             if (predicateInfo.Residual is { } residual)
             {
-                predicateGroup.Children.Add(new PlanNodeProperty("Predicate", PredicateWriter.ToText(PredicateWriter.Write(residual)))
+                var text = Expand(PredicateText.From(residual), expressions);
+
+                predicateGroup.Children.Add(new PlanNodeProperty("Predicate", text.ToString())
                 {
-                    Predicate = PredicateText.From(residual)
+                    Predicate = text
                 });
             }
             else if (predicateInfo.HasUntranslatedPredicate)
@@ -140,7 +144,8 @@ public static class PlanNodePropertyBuilder
 
             foreach (var sortColumn in node.SortColumns)
             {
-                sortGroup.Children.Add(new PlanNodeProperty(ColumnName(sortColumn.Column), sortColumn.Ascending ? "Ascending" : "Descending")
+                sortGroup.Children.Add(new PlanNodeProperty(ColumnName(sortColumn.Column, expressions),
+                                                            sortColumn.Ascending ? "Ascending" : "Descending")
                 {
                     IsNameMonospace = true
                 });
@@ -155,12 +160,12 @@ public static class PlanNodePropertyBuilder
 
             if (mergeInfo.OuterKeys.Count > 0)
             {
-                mergeGroup.Children.Add(new PlanNodeProperty("Outer Keys", ColumnList(mergeInfo.OuterKeys)) { IsValueMonospace = true });
+                mergeGroup.Children.Add(new PlanNodeProperty("Outer Keys", ColumnList(mergeInfo.OuterKeys, expressions)) { IsValueMonospace = true });
             }
 
             if (mergeInfo.InnerKeys.Count > 0)
             {
-                mergeGroup.Children.Add(new PlanNodeProperty("Inner Keys", ColumnList(mergeInfo.InnerKeys)) { IsValueMonospace = true });
+                mergeGroup.Children.Add(new PlanNodeProperty("Inner Keys", ColumnList(mergeInfo.InnerKeys, expressions)) { IsValueMonospace = true });
             }
 
             if (mergeGroup.Children.Count > 0)
@@ -173,7 +178,7 @@ public static class PlanNodePropertyBuilder
         {
             var aggregateGroup = new PlanNodeProperty("Aggregate", string.Empty);
 
-            aggregateGroup.Children.Add(new PlanNodeProperty("Group By", ColumnList(node.GroupByColumns)) { IsValueMonospace = true });
+            aggregateGroup.Children.Add(new PlanNodeProperty("Group By", ColumnList(node.GroupByColumns, expressions)) { IsValueMonospace = true });
 
             result.Add(aggregateGroup);
         }
@@ -184,12 +189,12 @@ public static class PlanNodePropertyBuilder
 
             if (hashInfo.BuildKeys.Count > 0)
             {
-                hashGroup.Children.Add(new PlanNodeProperty("Build Keys", ColumnList(hashInfo.BuildKeys)) { IsValueMonospace = true });
+                hashGroup.Children.Add(new PlanNodeProperty("Build Keys", ColumnList(hashInfo.BuildKeys, expressions)) { IsValueMonospace = true });
             }
 
             if (hashInfo.ProbeKeys.Count > 0)
             {
-                hashGroup.Children.Add(new PlanNodeProperty("Probe Keys", ColumnList(hashInfo.ProbeKeys)) { IsValueMonospace = true });
+                hashGroup.Children.Add(new PlanNodeProperty("Probe Keys", ColumnList(hashInfo.ProbeKeys, expressions)) { IsValueMonospace = true });
             }
 
             if (hashGroup.Children.Count > 0)
@@ -240,9 +245,17 @@ public static class PlanNodePropertyBuilder
 
             foreach (var definedValue in node.DefinedValues)
             {
-                var name = string.Join(", ", definedValue.Columns.Select(ColumnName));
+                var definition = definedValue.Columns.Count == 1
+                    ? expressions?.Find(definedValue.Columns[0].Column)
+                    : null;
 
-                definedGroup.Children.Add(new PlanNodeProperty(name, definedValue.Expression ?? string.Empty)
+                var name = definition?.Alias ?? string.Join(", ", definedValue.Columns.Select(ColumnName));
+
+                var value = (definition is null ? null : expressions?.GetExpandedText(definition))
+                            ?? definedValue.Expression
+                            ?? string.Empty;
+
+                definedGroup.Children.Add(new PlanNodeProperty(name, value)
                 {
                     IsNameMonospace = true,
                     IsValueMonospace = true
@@ -256,11 +269,16 @@ public static class PlanNodePropertyBuilder
         {
             result.Add(new PlanNodeProperty("Output Columns", string.Empty)
             {
-                Items = [.. node.OutputColumns.Select(ColumnName)]
+                Items = [.. node.OutputColumns.Select(c => ColumnName(c, expressions))]
             });
         }
 
         return result;
+    }
+
+    private static PredicateText Expand(PredicateText text, ExpressionCatalog? expressions)
+    {
+        return expressions is null ? text : expressions.Expand(text);
     }
 
     private static PlanNodeProperty BoolProperty(string name, bool value)
@@ -274,11 +292,21 @@ public static class PlanNodePropertyBuilder
 
     private static string ColumnName(ColumnReference column)
     {
+        return ColumnName(column, null);
+    }
+
+    private static string ColumnName(ColumnReference column, ExpressionCatalog? expressions)
+    {
         var table = column.Table.Trim('[', ']');
 
         var name = column.Column.Trim('[', ']');
 
-        return table.Length == 0 ? name : $"{table}.{name}";
+        if (table.Length > 0)
+        {
+            return $"{table}.{name}";
+        }
+
+        return expressions?.GetDisplayText(name) ?? name;
     }
 
     private static string ObjectName(PlanNode node)
@@ -288,15 +316,8 @@ public static class PlanNodePropertyBuilder
         return string.IsNullOrEmpty(node.Index) ? name ?? string.Empty : $"{name}.{node.Index}";
     }
 
-    private static string ColumnList(IEnumerable<ColumnReference> columns)
+    private static string ColumnList(IEnumerable<ColumnReference> columns, ExpressionCatalog? expressions = null)
     {
-        return string.Join(", ", columns.Select(c =>
-        {
-            var table = c.Table.Trim('[', ']');
-
-            var column = c.Column.Trim('[', ']');
-
-            return table.Length == 0 ? column : $"{table}.{column}";
-        }));
+        return string.Join(", ", columns.Select(c => ColumnName(c, expressions)));
     }
 }

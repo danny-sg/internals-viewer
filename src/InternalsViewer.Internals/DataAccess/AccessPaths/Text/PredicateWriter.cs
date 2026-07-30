@@ -39,6 +39,15 @@ public static class PredicateWriter
         return tokens.ToImmutable();
     }
 
+    public static ImmutableArray<PredicateToken> Write(AccessExpression expression)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        WriteExpression(tokens, expression);
+
+        return tokens.ToImmutable();
+    }
+
     public static ImmutableArray<PredicateToken> Write(AccessStep.Probe probe)
     {
         var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
@@ -457,6 +466,10 @@ public static class PredicateWriter
                 WriteConditional(tokens, conditional);
                 break;
 
+            case AccessExpression.Aggregate aggregate:
+                WriteAggregate(tokens, aggregate);
+                break;
+
             default:
                 tokens.Add(new PredicateToken(PredicateTokenType.Unknown,
                                               "<unsupported>",
@@ -479,6 +492,41 @@ public static class PredicateWriter
             }
 
             WriteExpression(tokens, function.Arguments[index]);
+        }
+
+        tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
+    }
+
+    private static void WriteAggregate(ImmutableArray<PredicateToken>.Builder tokens, AccessExpression.Aggregate aggregate)
+    {
+        if (aggregate.Name.Equals("COUNTSTAR", StringComparison.OrdinalIgnoreCase))
+        {
+            tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "COUNT"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
+            tokens.Add(new PredicateToken(PredicateTokenType.Operator, "*"));
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
+
+            return;
+        }
+
+        tokens.Add(new PredicateToken(PredicateTokenType.Keyword, aggregate.Name));
+        tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
+
+        if (aggregate.IsDistinct)
+        {
+            tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "DISTINCT"));
+            Space(tokens);
+        }
+
+        for (var index = 0; index < aggregate.Arguments.Length; index++)
+        {
+            if (index > 0)
+            {
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
+                Space(tokens);
+            }
+
+            WriteExpression(tokens, aggregate.Arguments[index]);
         }
 
         tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));

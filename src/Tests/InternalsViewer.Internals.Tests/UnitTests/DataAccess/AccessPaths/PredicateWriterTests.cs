@@ -233,6 +233,22 @@ public class PredicateWriterTests
         Assert.Equal("CASE WHEN A = 1 THEN 10 WHEN B = 2 THEN 20 ELSE 30 END = 10", Text(predicate));
     }
 
+    [Fact]
+    public void Count_Star_Aggregate_Is_Written()
+    {
+        var aggregate = new AccessExpression.Aggregate("COUNTSTAR", false, []);
+
+        Assert.Equal("COUNT(*)", PredicateWriter.ToText(PredicateWriter.Write(aggregate)));
+    }
+
+    [Fact]
+    public void Distinct_Aggregate_Is_Written_With_Its_Argument()
+    {
+        var aggregate = new AccessExpression.Aggregate("SUM", true, [Column(0, "Amount")]);
+
+        Assert.Equal("SUM(DISTINCT Amount)", PredicateWriter.ToText(PredicateWriter.Write(aggregate)));
+    }
+
     private static AccessExpression Column(int ordinal, string name)
     {
         return new AccessExpression.Column(ordinal, name);

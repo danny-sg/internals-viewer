@@ -12,4 +12,6 @@ public sealed class ExecutionPlan(short planHandleId)
     public Dictionary<int, PlanNode> NodesById { get; set; } = new();
 
     public bool IsInternalPlan { get; set; }
+
+    public ExpressionCatalog? Expressions { get; set; }
 }
