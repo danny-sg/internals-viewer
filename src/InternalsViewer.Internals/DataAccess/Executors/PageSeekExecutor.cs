@@ -23,6 +23,105 @@ public static class PageSeekExecutor
         return Walk(page, bounds, direction, residual, rowGoal, isContinuation, counters, onCountersChanged);
     }
 
+    /// <summary>
+    /// Page Seek tree walk to seek in index/b-tree
+    /// </summary>
+    /// <remarks>
+    /// The walk is an IEnumerable that yields AccessStep results is it steps through the page.
+    ///
+    /// 
+    ///                                   Read page, emit AccessStep.ReadPage
+    ///                                                    |
+    ///                                                    v
+    ///                                          isContinuation == true? --------------------------------+
+    ///                                                 |                                                |
+    ///                                                 No                                              Yes
+    ///                                                 |                                                |
+    ///                                                 v                                                |
+    ///                        Determine seek target / bound from SeekBounds + direction                 |
+    ///                            (forward -> StartValue, backward -> EndValue)                         |
+    ///                                                 |                                                |
+    ///                                                 v                                                |
+    ///                              emit AccessStep.ProbeStart(rule, target, width)                     |
+    ///                                                 |                                                |
+    ///                                                 v                                                |
+    ///                    +---------------- target unbounded? -------------------+                      |
+    ///                    |                                                      |                      |
+    ///                   No                                                     Yes                     |
+    ///                    |                                                      |                      |
+    ///                    v                                                      |                      |
+    ///    AccessPathSearch.LowerBound / UpperBound                               |                      |
+    ///         -> binary search on page                                          |                      |
+    ///         -> emit Probe steps                                               |                      |
+    ///         -> accumulate comparisons                                         |                      |
+    ///                    |                                                      |                      |
+    ///                    v                                                      |                      |
+    ///   compute entry cursor from bound                                         |                      |
+    ///                   |                                                       |                      |
+    ///                   +-------------------------------------------------------+                      |
+    ///                                               |                                                  |
+    ///                                               v                                                  |
+    ///                                       emit AccessStep.ProbeResult                                |
+    ///                                               |                                                  |
+    ///                                               v                                                  |
+    ///                                          page.IsLeaf? --------------------------+                |
+    ///                                               |                                 |                |
+    ///                                 No (root/intermediate page)                    Yes               |
+    ///                                               |                                 |                |
+    ///                                               v                                 |                |
+    ///                        +---- slot cursor out of range? -------+                 |                |
+    ///                        |                                      |                 |                |
+    ///                       Yes                                    No                 |                |
+    ///                        |                                      |                 |                |
+    ///                        v                                      v                 |                |
+    ///               Stopped (PageExhausted)              emit AccessStep.Descend      |                |
+    ///                   [yield break]                        [yield break]            |                |
+    ///                                                 caller recurses on child page   |                |
+    ///                                                                                 |                |
+    ///                                                                                 +----------------+
+    ///                                                                                         |
+    ///                                                                                         v
+    ///                                  +-----------------------------------------------------------------------------+
+    ///                                  |                       Row-scanning loop (leaf page only)                    |
+    ///                                  +-----------------------------------------------------------------------------+
+    ///                                                                  |
+    ///                                                                  v
+    ///                      ----------------------->cursor within slot range (forward/backward)? -----------------------+
+    ///                      |                                           |                                               |
+    ///                      |                                          Yes                                              No
+    ///                      |                                           |                                               |
+    ///                      |                                           v                                               v
+    ///                      |                               record is ghost? --------------+                  Stopped (PageExhausted)
+    ///                      |                                    |                         |                       [yield break]
+    ///                      |                                   Yes                        No
+    ///                      |                                    |                         |
+    ///                      |                                    v                         v
+    ///                      |                         emit Row(Ghost)      within trailing bound (RangeEnd check)?
+    ///                      |                         advance slot cursor                  |
+    ///                      |                              |                +--------------+-----------------+
+    ///                      |                              |               No                                Yes
+    ///                      |                              |                |                                 |
+    ///                      |                              |                v                                 v
+    ///                      |                              |   Emit RangeEnd +evaluate                 residual predicate
+    ///                      |                              |    Stopped (RangeEnded)                          |
+    ///                      |                              |        [yield break]                             v
+    ///                      |                              |                                   emit Row(Match/NoMatch/Unknown)
+    ///                      |                              |                                              |
+    ///                      |                              |                                              v
+    ///                      |                              |                                      rowGoal reached
+    ///                      |                              |                                       (Match count)? -------------+
+    ///                      |                              |                                         |                         |
+    ///                      |                              |                                        No                        Yes
+    ///                      |                              |                                         |                         |
+    ///                      |                              |                                         v                         v
+    ///                      |                              |                                 advance slot cursor      Stopped (RowGoalMet)
+    ///                      |                              |                                      (+1 / -1)               [yield break]
+    ///                      |                              |                                          |
+    ///                      |                              +------------------------------------------+
+    ///                      |                                                  |
+    ///                      |                                                  v
+    ///                      +------------------------------ loop back to 'slot cursor within slot range?'
+    /// </remarks>
     private static IEnumerable<AccessStep> Walk(IIndexPageAccessor page,
                                                 SeekBounds bounds,
                                                 ScanDirection direction,
@@ -61,10 +160,10 @@ public static class PageSeekExecutor
                 width = GetWidth(bounds, target);
 
                 rule = forward
-                    ? page.IsLeaf
-                        ? (inclusive ? SeekRule.LowestGreaterOrEqual : SeekRule.LowestGreater)
-                        : (inclusive ? SeekRule.HighestLess : SeekRule.HighestLessOrEqual)
-                    : (inclusive ? SeekRule.HighestLessOrEqual : SeekRule.HighestLess);
+                       ? page.IsLeaf
+                           ? (inclusive ? SeekRule.LowestGreaterOrEqual : SeekRule.LowestGreater)
+                           : (inclusive ? SeekRule.HighestLess : SeekRule.HighestLessOrEqual)
+                       : (inclusive ? SeekRule.HighestLessOrEqual : SeekRule.HighestLess);
             }
 
             yield return new AccessStep.ProbeStart(page.SlotCount)
