@@ -16,7 +16,7 @@ FROM   dbo.ClusteredTable
 SELECT Id
       ,TextField
 FROM   dbo.ClusteredTable
-WHERE  TextField LIKE 'This is row 123%'
+WHERE  TextField LIKE 'This is row 123%' OR Id = 1000
 GO
 
 -- Index scan

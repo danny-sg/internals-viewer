@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -17,6 +11,12 @@ using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace InternalsViewer.UI.App.ViewModels.Index;
 
@@ -72,6 +72,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private long _totalPageCount;
 
+    [ObservableProperty]
+    private AllocationUnit? _allocationUnit;
+
     public string ProgressText => TotalPageCount > 0
         ? $"{LoadedPageCount:N0} / {TotalPageCount:N0} pages"
         : $"{LoadedPageCount:N0} pages";
@@ -80,11 +83,16 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     public double ProgressMaximum => TotalPageCount;
 
-    public string LoadingText => string.IsNullOrEmpty(IndexName)
+    public string LoadingText => string.IsNullOrEmpty(AllocationUnit?.IndexName)
         ? "Loading Index..."
-        : $"Loading {IndexName}...";
+        : $"Loading {AllocationUnit.IndexName}...";
 
-    partial void OnIndexNameChanged(string value) => OnPropertyChanged(nameof(LoadingText));
+    partial void OnAllocationUnitChanged(AllocationUnit? value)
+    {
+        TotalPageCount = value?.UsedPages ?? 0;
+
+        OnPropertyChanged(nameof(LoadingText));
+    }
 
     partial void OnLoadedPageCountChanged(int value) => OnPropertyChanged(nameof(ProgressText));
 
@@ -101,28 +109,47 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private const int RecordsSpinnerDelayMs = 100;
 
     [ObservableProperty]
-    private string _objectName = string.Empty;
-
-    [ObservableProperty]
-    private int _objectId;
-
-    [ObservableProperty]
-    private int _indexId;
-
-    [ObservableProperty]
-    private string _indexName = string.Empty;
-
-    [ObservableProperty]
     private string _objectIndexType = string.Empty;
-
-    [ObservableProperty]
-    private string _indexType = string.Empty;
-
+    
     [ObservableProperty]
     private bool _isTooltipEnabled;
 
     [ObservableProperty]
-    private Visibility _indexDetailVisibility = Visibility.Collapsed;
+    [NotifyPropertyChangedFor(nameof(BodyColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(DetailColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(DetailSplitterVisibility))]
+    private bool _isDetailPaneVisible;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BodyColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(DetailColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(DetailSplitterVisibility))]
+    private bool _isIndexDetailsVisible;
+
+    private bool _isDetailsLinkPending = true;
+
+    partial void OnIsDetailPaneVisibleChanged(bool value)
+    {
+        if (value && _isDetailsLinkPending)
+        {
+            _isDetailsLinkPending = false;
+
+            IsIndexDetailsVisible = true;
+        }
+    }
+
+    partial void OnIsIndexDetailsVisibleChanged(bool value) => _isDetailsLinkPending = false;
+
+    public bool IsRightPaneVisible => IsDetailPaneVisible || IsIndexDetailsVisible;
+
+    public GridLength BodyColumnWidth
+        => IsRightPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
+
+    public GridLength DetailColumnWidth
+        => IsRightPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility DetailSplitterVisibility
+        => IsRightPaneVisible ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     private ObservableCollection<IndexRecordModel> _records = [];
@@ -146,6 +173,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private int? _selectedLevel;
 
     [ObservableProperty]
+    private int? _selectedSlot;
+
+    [ObservableProperty]
     private ObservableCollection<PageAddress> _highlightedPages = [];
 
     [RelayCommand]
@@ -154,6 +184,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         Logger.LogDebug("Refreshing Index Tab");
 
         LoadedPageCount = 0;
+
+        IndexService.ProgressReportInterval = TotalPageCount > 100_000 ? 4096 : 1;
+
+        OnPropertyChanged(nameof(IsProgressVisible));
 
         var progress = new Progress<int>(count => LoadedPageCount = count);
 
@@ -164,8 +198,6 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                 {
                     IsInitialized = false;
                 });
-
-                IndexService.ProgressReportInterval = TotalPageCount > 100_000 ? 4096 : 1;
 
                 Logger.LogDebug("Getting nodes for index from root node: {RootPage}", RootPage);
 
@@ -195,7 +227,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             // Update via UI thread
             DispatcherQueue.TryEnqueue(() =>
             {
-                IndexDetailVisibility = Visibility.Collapsed;
+                IsDetailPaneVisible = false;
 
                 SelectedLevel = null;
                 SelectedNextPage = null;
@@ -211,7 +243,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         SelectedPageAddress = pageAddress;
 
-        IndexDetailVisibility = Visibility.Visible;
+        IsDetailPaneVisible = true;
 
         using var spinnerDelay = new CancellationTokenSource();
 
@@ -226,7 +258,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             {
                 Logger.LogDebug("Loading Page: {PageAddress}", pageAddress);
 
-                page = await PageService.GetPage(Database, pageAddress, CancellationToken);
+                page = await PageService.GetPage(Database, pageAddress, CancellationToken, false);
 
                 if (page is IndexPage indexPage)
                 {
@@ -253,7 +285,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         IsRecordsLoading = false;
 
-        IndexDetailVisibility = Visibility.Visible;
+        IsDetailPaneVisible = true;
     }
 
     private async Task ShowRecordsSpinnerAfterDelay(CancellationToken token)
@@ -276,31 +308,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     partial void OnRootPageChanged(PageAddress value)
     {
         var allocationUnit = Database.AllocationUnits.Values.FirstOrDefault(a => a.RootPage == value);
+        
+        AllocationUnit = allocationUnit;
 
-        if (allocationUnit != null)
-        {
-            SetAllocationUnitDescription(allocationUnit);
-        }
-    }
-
-    private void SetAllocationUnitDescription(AllocationUnit allocationUnit)
-    {
-        TotalPageCount = allocationUnit.UsedPages;
-
-        ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}";
-        ObjectId = allocationUnit.ObjectId;
-
-        IndexName = allocationUnit.IndexName;
-        IndexId = allocationUnit.IndexId;
-
-        IndexType = allocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
-            ? "Non-Clustered"
-            : string.Empty;
-        ObjectIndexType = allocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
-            ? "Clustered"
-            : "Heap";
-
-        Name = "Index: " + IndexName;
+        Name = "Index: " + AllocationUnit?.IndexName;
     }
 
     private static List<IndexRecordModel> GetIndexRecordModels(IEnumerable<IIndexRecord> source)

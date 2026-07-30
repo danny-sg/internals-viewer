@@ -25,6 +25,8 @@ public sealed partial class IndexView: IDisposable
     {
         InitializeComponent();
 
+        DataContextChanged += (_, _) => Bindings.Update();
+
         SizeChanged += IndexView_SizeChanged;
         PointerWheelChanged += IndexView_PointerWheelChanged;
         Loaded += UserControl_Loaded;
@@ -163,8 +165,13 @@ public sealed partial class IndexView: IDisposable
     {
         var maxWidth = e.NewSize.Width / 2;
 
-        ContainerGrid.ColumnDefinitions[1].MaxWidth = maxWidth;
+        ContainerGrid.ColumnDefinitions[2].MaxWidth = maxWidth;
         IndexGrid.MaxWidth = maxWidth;
+    }
+
+    private void CloseDetailPane()
+    {
+        ViewModel.IsDetailPaneVisible = false;
     }
 
     public void Dispose()

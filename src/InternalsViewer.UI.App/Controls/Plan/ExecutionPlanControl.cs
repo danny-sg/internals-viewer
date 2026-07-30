@@ -1,22 +1,25 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Windows.Foundation;
-using Windows.UI;
+using System;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Joins;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI;
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
-using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Parsing.Plans;
+using Microsoft.UI;
+using Windows.Foundation;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 
@@ -84,6 +87,7 @@ public sealed class ExecutionPlanControl : Canvas
         PointerReleased += OnPointerReleased;
         PointerCaptureLost += OnPointerCaptureLost;
         ContextRequested += OnContextRequested;
+        DoubleTapped += OnDoubleTapped;
     }
 
     public ExecutionPlan? Plan
@@ -181,19 +185,23 @@ public sealed class ExecutionPlanControl : Canvas
     /// <summary>Raised when "Open Index" is chosen on a data-access node that runs against a named index.</summary>
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
+    public event EventHandler<PlanNode>? TraceOpenRequested;
+
+    public event EventHandler<PlanNode>? PropertiesOpenRequested;
+
     private static void OnPlanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).Rebuild();
 
     private void Rebuild()
     {
         StopAllFlows();
-        
+
         Children.Clear();
 
         _connectorByProducer.Clear();
         _arrowByProducer.Clear();
         _secondaryArrowByProducer.Clear();
-        
+
         _selectedControl = null;
 
         if (Plan is null || Plan.Root.Count == 0)
@@ -222,10 +230,10 @@ public sealed class ExecutionPlanControl : Canvas
         {
             foreach (var child in node.Children)
             {
-                var (connector, arrow) = DrawConnector(point, 
-                                                       positions[child], 
+                var (connector, arrow) = DrawConnector(point,
+                                                       positions[child],
                                                        RelativeCost(child, totalCost),
-                                                       node, 
+                                                       node,
                                                        child);
 
                 _connectorByProducer[child] = connector;
@@ -247,7 +255,7 @@ public sealed class ExecutionPlanControl : Canvas
         SelectByNode(SelectedNode);
 
         UpdateActiveHighlights();
-        
+
         UpdateFlows();
     }
 
@@ -463,33 +471,68 @@ public sealed class ExecutionPlanControl : Canvas
         BeginPan(e);
     }
 
+    private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        var nodeControl = FindAncestor<PlanNodeControl>(e.OriginalSource as DependencyObject);
+
+        if (nodeControl?.Node is { } node)
+        {
+            Select(nodeControl);
+
+            PropertiesOpenRequested?.Invoke(this, node);
+
+            e.Handled = true;
+        }
+    }
+
     private void OnContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
         var nodeControl = FindAncestor<PlanNodeControl>(e.OriginalSource as DependencyObject);
 
-        // Only data-access operators (scan/seek/lookup) that run against a named index get the item.
-        if (nodeControl?.Node is not { } node ||
-            string.IsNullOrEmpty(node.Index) ||
-            OperatorClassifier.GetCategory(node) != OperatorCategory.DataAccess)
+        if (nodeControl?.Node is { } node)
         {
-            return;
-        }
+            var flyout = new MenuFlyout();
 
-        var flyout = new MenuFlyout();
-        var openIndex = new MenuFlyoutItem { Text = $"Open Index: {node.Index}" };
-        openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(this, node);
-        flyout.Items.Add(openIndex);
+            if (!string.IsNullOrEmpty(node.Index) &&
+                OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
+            {
+                var openIndex = new MenuFlyoutItem { Text = $"Open Index: {node.Index}" };
 
-        if (e.TryGetPosition(this, out var position))
-        {
-            flyout.ShowAt(this, new FlyoutShowOptions { Position = position });
-        }
-        else
-        {
-            flyout.ShowAt(nodeControl);
-        }
+                openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(this, node);
 
-        e.Handled = true;
+                flyout.Items.Add(openIndex);
+            }
+
+            var canTrace = (!string.IsNullOrEmpty(node.Table) && OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
+                           || CorrelatedJoinResolver.Resolve(node) is not null
+                           || MergeJoinResolver.Resolve(node) is not null;
+
+            if (canTrace)
+            {
+                var openTrace = new MenuFlyoutItem { Text = "Trace" };
+
+                openTrace.Click += (_, _) => TraceOpenRequested?.Invoke(this, node);
+
+                flyout.Items.Add(openTrace);
+            }
+
+            var openProperties = new MenuFlyoutItem { Text = $"Properties" };
+
+            openProperties.Click += (_, _) => PropertiesOpenRequested?.Invoke(this, node);
+
+            flyout.Items.Add(openProperties);
+
+            if (e.TryGetPosition(this, out var position))
+            {
+                flyout.ShowAt(this, new FlyoutShowOptions { Position = position });
+            }
+            else
+            {
+                flyout.ShowAt(nodeControl);
+            }
+
+            e.Handled = true;
+        }
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)

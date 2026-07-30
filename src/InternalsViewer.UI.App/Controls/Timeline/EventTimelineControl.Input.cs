@@ -1,9 +1,9 @@
 using System;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Parsing.Plans;
-using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Operators;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
@@ -171,19 +171,42 @@ public sealed partial class EventTimelineControl
 
         var hit = HitTestRegion(position.X, position.Y);
 
-        // Only data-access operators (scan/seek/lookup) that run against a named index get the item
-        if (hit?.Event is not ExecutionOperatorEvent { Category: OperatorCategory.DataAccess, IndexName.Length: > 0 } op)
+        if (hit?.Event is not ExecutionOperatorEvent op || op.PlanNodeIdentifier is null)
         {
             return;
         }
 
         var flyout = new MenuFlyout();
 
-        var openIndex = new MenuFlyoutItem { Text = $"Open Index: {op.IndexName}" };
+        var openPlan = new MenuFlyoutItem { Text = "Execution Plan" };
 
-        openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(op);
+        openPlan.Click += (_, _) => ExecutionPlanRequested?.Invoke(op);
 
-        flyout.Items.Add(openIndex);
+        flyout.Items.Add(openPlan);
+
+        // Only data-access operators (scan/seek/lookup) that run against a named index get the item
+        if (op is { Category: OperatorCategory.DataAccess, IndexName.Length: > 0 })
+        {
+            var openIndex = new MenuFlyoutItem { Text = $"Open Index: {op.IndexName}" };
+
+            openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(op);
+
+            flyout.Items.Add(openIndex);
+        }
+
+        var canTrace = op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 }
+                       || (op.Category == OperatorCategory.Join
+                           && (op.Name.Contains("Nested Loops", StringComparison.OrdinalIgnoreCase)
+                               || op.Name.Contains("Merge Join", StringComparison.OrdinalIgnoreCase)));
+
+        if (canTrace)
+        {
+            var openTrace = new MenuFlyoutItem { Text = "Trace" };
+
+            openTrace.Click += (_, _) => TraceOpenRequested?.Invoke(op);
+
+            flyout.Items.Add(openTrace);
+        }
 
         flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
 

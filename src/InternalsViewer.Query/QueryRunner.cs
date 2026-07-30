@@ -1,29 +1,23 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+using System.Diagnostics;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Splits;
 using InternalsViewer.Query.Events.Transactions;
+using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Parsing;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
-using InternalsViewer.TransactionLog;
 using InternalsViewer.TransactionLog.LogRecords;
+using InternalsViewer.TransactionLog;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace InternalsViewer.Query;
-
-public sealed record ExecuteSqlPayload(string SqlText,
-                                       QueryOptions QueryOptions,
-                                       StatementType StatementType,
-                                       TrackedSelectionRange? TrackedSelection);
-
-public sealed record TrackedSelectionRange(int Start, int End);
 
 public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                 EventReader eventReader,
@@ -217,7 +211,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             if (cropStart is { } trimStart && cropEnd is { } trimEnd)
             {
-                events = events.Where(e => e.TimeUs <= trimEnd && e.TimeUs + e.DurationUs >= trimStart).ToList();
+                events = [.. events.Where(e => e.TimeUs <= trimEnd && e.TimeUs + e.DurationUs >= trimStart)];
             }
         }
         catch (OperationCanceledException)
@@ -261,6 +255,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             PageSplitEventMatcher.Match(events, logRecords);
         }
+
+        ExpressionCatalog.Populate(executionPlans, resultSets);
 
         return new QueryResult
         {

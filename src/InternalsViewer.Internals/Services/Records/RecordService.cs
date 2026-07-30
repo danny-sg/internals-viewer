@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Records;
+using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Services.Loaders.Records;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
@@ -73,6 +74,42 @@ public sealed class RecordService(FixedVarIndexRecordLoader fixedVarIndexRecordL
         }
 
         return GetFixedVarIndexRecords(page);
+    }
+
+    public IRecord GetDataRecord(DataPage page, int slot, TableStructure structure)
+    {
+        var isCompressed = page.AllocationUnit.CompressionType != CompressionType.None;
+
+        if (isCompressed)
+        {
+            var compressedRecord = CdDataRecordLoader.Load(page, page.OffsetTable[slot], structure);
+
+            compressedRecord.Slot = slot;
+
+            return compressedRecord;
+        }
+
+        var record = FixedVarDataRecordLoader.Load(page, page.OffsetTable[slot], structure);
+
+        record.Slot = slot;
+
+        return record;
+    }
+
+    public IIndexRecord GetIndexRecord(IndexPage page, int slot, IndexStructure structure)
+    {
+        var isCompressed = page.AllocationUnit.CompressionType != CompressionType.None;
+
+        if (isCompressed)
+        {
+            var record = CdIndexRecordLoader.Load(page, page.OffsetTable[slot], structure);
+
+            record.Slot = slot;
+
+            return record;
+        }
+
+        return FixedVarIndexRecordLoader.Load(page, page.OffsetTable[slot], slot, structure);
     }
 
     private IEnumerable<IRecord> GetLobRecords(LobPage page)

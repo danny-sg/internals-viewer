@@ -24,6 +24,20 @@ public sealed class FixedVarRecordField(ColumnStructure columnStructure) : Recor
                                                                    ColumnStructure.Scale,
                                                                    ColumnStructure.BitPosition);
 
+    public override T? GetValue<T>()
+        where T : default
+    {
+        if (IsNull || BlobInlineRoot != null || Data.IsEmpty)
+        {
+            return default;
+        }
+
+        return DataConverter.GetValue<T>(Data.Span,
+                                         ColumnStructure.DataType,
+                                         ColumnStructure.Precision,
+                                         ColumnStructure.Scale);
+    }
+
     public override string ToString()
     {
         return string.Format("  Offset: {0, -4} Leaf Offset: {1, -4} Length: {2, -4} Field: {3, -30} Data type: {4, -10} Value: {5}",

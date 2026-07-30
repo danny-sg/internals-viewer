@@ -1,8 +1,8 @@
-using System;
 using System.ComponentModel;
-using InternalsViewer.Query.Events;
+using System;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 
@@ -28,6 +28,8 @@ public sealed partial class QueryView : Page, IDisposable
         EventTimeline.EventSelected += OnTimelineEventSelected;
         EventTimeline.EventDoubleClicked += OnTimelineEventDoubleClicked;
         EventTimeline.IndexOpenRequested += OnTimelineIndexOpenRequested;
+        EventTimeline.ExecutionPlanRequested += OnTimelineExecutionPlanRequested;
+        EventTimeline.TraceOpenRequested += OnTimelineTraceOpenRequested;
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
         Unloaded += OnUnloaded;
@@ -41,11 +43,14 @@ public sealed partial class QueryView : Page, IDisposable
         EventTimeline.EventSelected -= OnTimelineEventSelected;
         EventTimeline.EventDoubleClicked -= OnTimelineEventDoubleClicked;
         EventTimeline.IndexOpenRequested -= OnTimelineIndexOpenRequested;
+        EventTimeline.ExecutionPlanRequested -= OnTimelineExecutionPlanRequested;
+        EventTimeline.TraceOpenRequested -= OnTimelineTraceOpenRequested;
         EventTimeline.PlayStateChanged -= OnPlayStateChanged;
 
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.Layout.PropertyChanged -= OnLayoutPropertyChanged;
+            _subscribedViewModel.PlayheadMoveRequested -= OnPlayheadMoveRequested;
             _subscribedViewModel = null;
         }
 
@@ -59,6 +64,7 @@ public sealed partial class QueryView : Page, IDisposable
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.Layout.PropertyChanged -= OnLayoutPropertyChanged;
+            _subscribedViewModel.PlayheadMoveRequested -= OnPlayheadMoveRequested;
             _subscribedViewModel = null;
         }
 
@@ -79,6 +85,7 @@ public sealed partial class QueryView : Page, IDisposable
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.Layout.PropertyChanged -= OnLayoutPropertyChanged;
+            _subscribedViewModel.PlayheadMoveRequested -= OnPlayheadMoveRequested;
         }
 
         _subscribedViewModel = args.NewValue as QueryViewModel;
@@ -86,6 +93,7 @@ public sealed partial class QueryView : Page, IDisposable
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.Layout.PropertyChanged += OnLayoutPropertyChanged;
+            _subscribedViewModel.PlayheadMoveRequested += OnPlayheadMoveRequested;
             ApplyRowVisibility();
         }
     }
@@ -148,6 +156,19 @@ public sealed partial class QueryView : Page, IDisposable
         ViewModel.SetPlayheadTime(timeUs);
     }
 
+    private void OnPlayheadMoveRequested(long timeUs)
+    {
+        EventTimeline.MovePlayheadTo(timeUs);
+    }
+
+    private void OnTimelineExecutionPlanRequested(ExecutionOperatorEvent op)
+    {
+        if (op.PlanNodeIdentifier is { } identifier)
+        {
+            ViewModel.OpenExecutionPlan(identifier);
+        }
+    }
+
     private void OnTimelinePlanNodeSelected(PlanNodeIdentifier identifier)
     {
         ViewModel.SelectPlanNode(identifier);
@@ -166,5 +187,13 @@ public sealed partial class QueryView : Page, IDisposable
     private void OnTimelineIndexOpenRequested(ExecutionOperatorEvent op)
     {
         ViewModel.OpenIndex(op);
+    }
+
+    private void OnTimelineTraceOpenRequested(ExecutionOperatorEvent op)
+    {
+        if (op.PlanNodeIdentifier is { } identifier)
+        {
+            ViewModel.OpenTrace(identifier);
+        }
     }
 }

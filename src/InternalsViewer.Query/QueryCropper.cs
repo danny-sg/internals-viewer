@@ -1,8 +1,8 @@
-﻿using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query;
 

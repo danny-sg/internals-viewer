@@ -1,6 +1,7 @@
 ﻿using System;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Connection.BackupFile.Connection;
+using InternalsViewer.Execution;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Services.Logging;
@@ -69,6 +70,7 @@ public partial class App
             services.AddSingleton<ILoggerProvider, AppLogLoggerProvider>();
 
             services.RegisterServices();
+            services.RegisterExecutionServices();
 
             services.AddTransient<IConnectionTypeFactory, BackupConnectionFactory>();
 
@@ -78,6 +80,7 @@ public partial class App
             services.AddTransient<DatabaseTabViewModelFactory>();
             services.AddTransient<PageTabViewModelFactory>();
             services.AddTransient<IndexTabViewModelFactory>();
+            services.AddTransient<TraceTabViewModelFactory>();
             services.AddTransient<QueryViewModelFactory>();
 
             services.AddTransient<QueryRunner>();

@@ -10,6 +10,12 @@ public class CdRecord(CompressionInfo compressionInfo) : Record
 {
     public CompressedRecordType RecordType { get; set; }
 
+    /// <inheritdoc />
+    public override bool IsGhost => RecordType is CompressedRecordType.GhostEmpty
+                                              or CompressedRecordType.GhostData
+                                              or CompressedRecordType.GhostForwarded
+                                              or CompressedRecordType.GhostIndex;
+
     public RowIdentifier? RowIdentifier { get; set; }
 
     [DataStructureItem(ItemType.ColumnDescriptors)]

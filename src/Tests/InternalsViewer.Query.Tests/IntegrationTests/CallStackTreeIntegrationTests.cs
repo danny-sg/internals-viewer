@@ -243,19 +243,13 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
     }
 
     [Fact]
-    public async Task List_CQ_Symbols_For_Mapping()
+    public async Task List_Symbols_For_Mapping()
     {
+        var prefix = "Page";
+
         var result = await RunQuery("SELECT TOP 10 * FROM dbo.ClusteredTable");
 
-        // The CQScan* iterators live in sqlmin.pdb, the compile classes in sqllang.pdb, etc. — so enumerate every
-        // distinct module PDB the stacks touched, using the exact guid/age the engine loaded.
-        var pdbs = result.CallStackTree?
-            .Nodes()
-            .Select(n => n.Frame)
-            .Where(f => f is { Pdb.Length: > 0 })
-            .Select(f => (f!.Pdb, f.Guid, f.Age))
-            .Distinct()
-            .ToList() ?? [];
+        var pdbs = GetPdbPaths(result.CallStackTree);
 
         if (pdbs.Count == 0)
         {
@@ -266,20 +260,11 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 
         var classesByModule = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
 
-        foreach (var (pdb, guid, age) in pdbs)
+        foreach (var (pdb, pdbPath) in pdbs)
         {
-            // Same layout the resolver downloads to: <symbols>\<pdb>\<GUID><AGE>\<pdb>.
-            var identifier = $"{guid.Replace("-", string.Empty)}{age}".ToUpperInvariant();
-            var pdbPath = Path.Combine(@"C:\Symbols", pdb, identifier, pdb);
-
-            if (!File.Exists(pdbPath))
-            {
-                continue;
-            }
-
             using var resolver = new Query.CallStack.Dia.DiaResolver(pdbPath);
 
-            var classes = resolver.EnumerateSymbols("CQScan")
+            var classes = resolver.EnumerateSymbols(prefix)
                 // The class (the part before ::) is what the operator map keys on; drop RTTI and template noise.
                 .Select(s => s.Split("::", 2)[0])
                 .Where(s => !s.Contains('`') && !s.Contains('<'))
@@ -290,7 +275,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
             classesByModule[pdb] = classes;
         }
 
-        var outputPath = Path.Combine(Path.GetTempPath(), "cq-symbols.txt");
+        var outputPath = Path.Combine(Path.GetTempPath(), $"{prefix}-symbols.txt");
 
         using (var writer = new StreamWriter(outputPath))
         {
@@ -312,9 +297,9 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 
         foreach (var (pdb, classes) in classesByModule)
         {
-            var scan = classes.Where(c => c.StartsWith("CQ", StringComparison.Ordinal)).ToList();
+            var scan = classes.Where(c => c.StartsWith(prefix, StringComparison.Ordinal)).ToList();
 
-            TestOutputHelper.WriteLine($"{pdb}: {classes.Count} CQ* classes, {scan.Count} CQScan*");
+            TestOutputHelper.WriteLine($"{pdb}: {classes.Count} {prefix}* classes, {scan.Count} {prefix}Scan*");
 
             if (pdb != "qds.pdb")
             {
@@ -324,6 +309,180 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// List every method/function declared on a single class (defaults to Page)
+    /// </summary>
+    [Fact]
+    public async Task List_Methods_For_Class()
+    {
+        var className = "Page";
+
+        var result = await RunQuery("SELECT TOP 10 * FROM dbo.ClusteredTable");
+
+        var pdbs = GetPdbPaths(result.CallStackTree);
+
+        if (pdbs.Count == 0)
+        {
+            TestOutputHelper.WriteLine("No frames captured (is C:\\Symbols available and call stacks on?)");
+
+            return;
+        }
+
+        var methodsByModule = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (var (pdb, pdbPath) in pdbs)
+        {
+            using var resolver = new Query.CallStack.Dia.DiaResolver(pdbPath);
+
+            var methods = resolver.EnumerateSymbols(className)
+                .Where(s => s.StartsWith($"{className}::", StringComparison.Ordinal))
+                .Select(s => s[(className.Length + 2)..])
+                .Where(s => !s.Contains('`'))
+                .Distinct()
+                .OrderBy(s => s, StringComparer.Ordinal)
+                .ToList();
+
+            if (methods.Count > 0)
+            {
+                methodsByModule[pdb] = methods;
+            }
+        }
+
+        var outputPath = Path.Combine(Path.GetTempPath(), $"{className}-methods.txt");
+
+        using (var writer = new StreamWriter(outputPath))
+        {
+            foreach (var (pdb, methods) in methodsByModule)
+            {
+                writer.WriteLine($"# {pdb} ({methods.Count})");
+
+                foreach (var name in methods)
+                {
+                    writer.WriteLine($"{className}::{name}");
+                }
+
+                writer.WriteLine();
+            }
+        }
+
+        TestOutputHelper.WriteLine($"Modules with {className}:: methods: {methodsByModule.Count}   -> {outputPath}");
+        TestOutputHelper.WriteLine("");
+
+        foreach (var (pdb, methods) in methodsByModule)
+        {
+            TestOutputHelper.WriteLine($"{pdb}: {methods.Count} methods");
+
+            foreach (var name in methods)
+            {
+                TestOutputHelper.WriteLine($"    {className}::{name}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// List every function or member method whose name starts with a given fragment
+    /// </summary>
+    [Fact]
+    public async Task List_Methods_Starting_With()
+    {
+        var fragment = "regress";
+
+        var result = await RunQuery("SELECT TOP 10 * FROM dbo.ClusteredTable");
+
+        var pdbs = GetPdbPaths(result.CallStackTree);
+
+        if (pdbs.Count == 0)
+        {
+            TestOutputHelper.WriteLine("No frames captured (is C:\\Symbols available and call stacks on?)");
+
+            return;
+        }
+
+        var matchesByModule = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (var (pdb, pdbPath) in pdbs)
+        {
+            using var resolver = new Query.CallStack.Dia.DiaResolver(pdbPath);
+
+            // Empty prefix enumerates everything; the method name is the last :: separated segment.
+            var matches = resolver.EnumerateSymbols(string.Empty)
+                .Where(s => !s.Contains('`'))
+                .Where(s =>
+                {
+                    var separator = s.LastIndexOf("::", StringComparison.Ordinal);
+                    var method = separator < 0 ? s : s[(separator + 2)..];
+
+                    return method.Contains(fragment, StringComparison.OrdinalIgnoreCase);
+                })
+                .Distinct()
+                .OrderBy(s => s, StringComparer.Ordinal)
+                .ToList();
+
+            if (matches.Count > 0)
+            {
+                matchesByModule[pdb] = matches;
+            }
+        }
+
+        var outputPath = Path.Combine(Path.GetTempPath(), $"{fragment}-methods.txt");
+
+        using (var writer = new StreamWriter(outputPath))
+        {
+            foreach (var (pdb, matches) in matchesByModule)
+            {
+                writer.WriteLine($"# {pdb} ({matches.Count})");
+
+                foreach (var name in matches)
+                {
+                    writer.WriteLine(name);
+                }
+
+                writer.WriteLine();
+            }
+        }
+
+        TestOutputHelper.WriteLine($"Modules with {fragment}* methods: {matchesByModule.Count}   -> {outputPath}");
+
+        foreach (var (pdb, matches) in matchesByModule)
+        {
+            TestOutputHelper.WriteLine($"{pdb}: {matches.Count}");
+
+            foreach (var name in matches.Take(200))
+            {
+                TestOutputHelper.WriteLine($"    {name}");
+            }
+        }
+    }
+
+    private static List<(string Pdb, string Path)> GetPdbPaths(CallStackTree? tree)
+    {
+        // The CQScan* iterators live in sqlmin.pdb, the compile classes in sqllang.pdb, etc. — so enumerate every
+        // distinct module PDB the stacks touched, using the exact guid/age the engine loaded.
+        var modules = tree?
+            .Nodes()
+            .Select(n => n.Frame)
+            .Where(f => f is { Pdb.Length: > 0 })
+            .Select(f => (f!.Pdb, f.Guid, f.Age))
+            .Distinct()
+            .ToList() ?? [];
+
+        var paths = new List<(string Pdb, string Path)>();
+
+        foreach (var (pdb, guid, age) in modules)
+        {
+            // Same layout the resolver downloads to: <symbols>\<pdb>\<GUID><AGE>\<pdb>.
+            var identifier = $"{guid.Replace("-", string.Empty)}{age}".ToUpperInvariant();
+            var pdbPath = Path.Combine(@"C:\Symbols", pdb, identifier, pdb);
+
+            if (File.Exists(pdbPath))
+            {
+                paths.Add((pdb, pdbPath));
+            }
+        }
+
+        return paths;
     }
 
     private async Task DumpTree(string sql)

@@ -27,4 +27,22 @@ public abstract class RecordField(ColumnStructure columnStructure) : Field
     /// String representation of the field value
     /// </summary>
     public abstract string Value { get; }
+
+    /// <summary>
+    /// Indicates the field holds a NULL rather than an empty value
+    /// </summary>
+    /// <remarks>
+    /// Set when the record is loaded. An empty <see cref="Data"/> is not enough on its own to
+    /// identify a NULL, as a zero length string is also stored with no data.
+    /// </remarks>
+    public bool IsNull { get; set; }
+
+    /// <summary>
+    /// Typed representation of the field value
+    /// </summary>
+    /// <remarks>
+    /// The typed counterpart of <see cref="Value"/>. Each record format stores values differently,
+    /// so the decoding is left to the derived field.
+    /// </remarks>
+    public abstract T? GetValue<T>();
 }

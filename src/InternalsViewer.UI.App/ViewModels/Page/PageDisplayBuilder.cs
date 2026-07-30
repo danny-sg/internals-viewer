@@ -70,7 +70,7 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
 
                 display = display with
                 {
-                    ObjectDescription = BuildObjectDescription(allocationUnitPage.AllocationUnit),
+                    AllocationUnit = allocationUnitPage.AllocationUnit,
                     Records = records,
                     RecordsResultSet = RecordResultSetHelper.ToResultSet(records),
                     IsAllocationsTabVisible = false,
@@ -88,7 +88,7 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
 
                 display = display with
                 {
-                    ObjectDescription = BuildObjectDescription(iamPage.AllocationUnit),
+                    AllocationUnit = iamPage.AllocationUnit,
                     AllocationLayer = BuildIamLayer(iamPage),
                     // IAMs are not necessarily in the same file as where they are tracking. The Start Page file determines the file
                     AllocationFileId = iamPage.StartPage.FileId,
@@ -122,7 +122,7 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
                 };
                 break;
             default:
-                display = display with { ObjectDescription = PageObjectDescription.Empty };
+                display = display with { AllocationUnit = null };
                 break;
         }
 
@@ -153,25 +153,6 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
         return layer;
     }
 
-    private static PageObjectDescription BuildObjectDescription(AllocationUnit allocationUnit)
-    {
-        return new PageObjectDescription
-        {
-            ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}",
-            ObjectId = allocationUnit.ObjectId,
-
-            IndexName = allocationUnit.IndexName,
-            IndexId = allocationUnit.IndexId,
-
-            IndexType = allocationUnit.IndexType == Internals.Engine.Database.Enums.IndexType.NonClustered
-                                                             ? "Non-Clustered"
-                                                             : string.Empty,
-            ObjectIndexType = allocationUnit.ParentIndexType == Internals.Engine.Database.Enums.IndexType.Clustered
-                                                             ? "Clustered"
-                                                             : "Heap"
-        };
-    }
-
     private List<IRecord> LoadRecords(AllocationUnitPage target)
     {
         Logger.LogDebug("Loading Records");
@@ -193,26 +174,9 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
     }
 }
 
-internal sealed record PageObjectDescription
-{
-    public static readonly PageObjectDescription Empty = new();
-
-    public string ObjectName { get; init; } = string.Empty;
-
-    public string IndexName { get; init; } = string.Empty;
-
-    public string IndexType { get; init; } = string.Empty;
-
-    public string ObjectIndexType { get; init; } = string.Empty;
-
-    public int? ObjectId { get; init; }
-
-    public int? IndexId { get; init; }
-}
-
 internal sealed record PageDisplay(Internals.Engine.Pages.Page Page, List<PageSlot> Slots, short? Slot)
 {
-    public PageObjectDescription? ObjectDescription { get; init; }
+    public AllocationUnit? AllocationUnit { get; init; }
 
     public List<IRecord>? Records { get; init; }
 

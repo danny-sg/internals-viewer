@@ -15,6 +15,11 @@ public abstract class FixedVarRecord : Record
 
     public RecordType RecordType { get; set; }
 
+    /// <inheritdoc />
+    public override bool IsGhost => RecordType is RecordType.GhostIndex
+                                              or RecordType.GhostData
+                                              or RecordType.GhostRecordVersion;
+
     [DataStructureItem(ItemType.ColumnCountOffset)]
     public short ColumnCountOffset { get; set; }
 

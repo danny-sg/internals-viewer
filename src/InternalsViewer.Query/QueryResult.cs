@@ -1,6 +1,6 @@
-﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
 using InternalsViewer.TransactionLog.LogRecords;
 

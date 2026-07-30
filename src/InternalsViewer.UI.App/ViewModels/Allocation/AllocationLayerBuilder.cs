@@ -61,14 +61,25 @@ internal static class AllocationLayerBuilder
                 layers.Add(layer);
             }
 
-            layers.Last().AllocationChains.Add(allocationUnit.IamChain);
+            var lastLayer = layers.Last();
 
-            layers.Last()
-                  .SinglePages
-                  .AddRange(allocationUnit.IamChain
-                                          .Pages
-                                          .SelectMany(s => s.SinglePageSlots)
-                                          .Where(s => s != PageAddress.Empty));
+            lastLayer.AllocationChains.Add(allocationUnit.IamChain);
+
+            foreach (var page in allocationUnit.IamChain.Pages)
+            {
+                foreach (var slot in page.SinglePageSlots)
+                {
+                    if (slot != PageAddress.Empty)
+                    {
+                        lastLayer.SinglePages.Add(slot);
+                    }
+                }
+
+                if (page.PageAddress != PageAddress.Empty)
+                {
+                    lastLayer.SinglePages.Add(page.PageAddress);
+                }
+            }
         }
 
         var systemLayer = new AllocationLayer
@@ -85,11 +96,21 @@ internal static class AllocationLayerBuilder
         {
             systemLayer.AllocationChains.Add(systemAllocationUnit.IamChain);
 
-            systemLayer.SinglePages
-                       .AddRange(systemAllocationUnit.IamChain
-                                                     .Pages
-                                                     .SelectMany(s => s.SinglePageSlots)
-                                                     .Where(s => s != PageAddress.Empty));
+            foreach (var page in systemAllocationUnit.IamChain.Pages)
+            {
+                foreach (var slot in page.SinglePageSlots)
+                {
+                    if (slot != PageAddress.Empty)
+                    {
+                        systemLayer.SinglePages.Add(slot);
+                    }
+                }
+
+                if (page.PageAddress != PageAddress.Empty)
+                {
+                    systemLayer.SinglePages.Add(page.PageAddress);
+                }
+            }
 
             systemLayer.TotalPages += systemAllocationUnit.TotalPages;
         }
@@ -179,6 +200,52 @@ internal static class AllocationLayerBuilder
         layer.AllocationChains = [map];
 
         return layer;
+    }
+
+    public static Color GetObjectColour(DatabaseSource database, AllocationUnit allocationUnit, bool separateIndexes = true)
+    {
+        if (allocationUnit.IsSystem)
+        {
+            return Color.FromArgb(255, 190, 190, 205);
+        }
+
+        var targetName = GetCurrentObjectName(allocationUnit, separateIndexes);
+
+        var names = database.AllocationUnits
+                            .Values
+                            .OrderBy(o => o.TableName)
+                            .ThenBy(o => o.IndexName)
+                            .ThenBy(o => o.AllocationUnitType == AllocationUnitType.InRowData ? 1 : 2)
+                            .Where(o => !o.IsSystem)
+                            .Select(o => GetCurrentObjectName(o, separateIndexes))
+                            .ToList();
+
+        var colourSlotCount = names.Distinct().Count();
+
+        var colourIndex = 0;
+
+        string? previous = null;
+
+        foreach (var name in names)
+        {
+            if (name == previous)
+            {
+                continue;
+            }
+
+            if (name == targetName)
+            {
+                break;
+            }
+
+            colourIndex++;
+
+            previous = name;
+        }
+
+        var hue = colourIndex * HueWheel / Math.Max(colourSlotCount, 1) % HueWheel;
+
+        return ColourHelpers.HsvToColor(hue, UserSaturation, UserValue);
     }
 
     private static Color GetLayerColour(AllocationUnit allocationUnit,

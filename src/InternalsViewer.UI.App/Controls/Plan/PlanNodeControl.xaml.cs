@@ -1,15 +1,16 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using Windows.UI;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
+using Microsoft.UI;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 

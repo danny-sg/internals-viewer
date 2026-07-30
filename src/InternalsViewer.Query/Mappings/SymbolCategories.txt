@@ -122,6 +122,7 @@ sqlmin|Rowset*|*|RowAccess
 *|FixPage*|*|PageAccess
 *|Page*|*|PageAccess
 *|HeapPageManager*|*|PageAccess
+*|*|FixPage*|PageAccess
 
 *|Latch*|*|Latching
 
@@ -135,6 +136,7 @@ sqlmin|Rowset*|*|RowAccess
 *|AutoLockedHoBt*|*|Locking
 *|AcquireLock*|*|Locking
 *|SMD*|*|Locking
+*|HeapFragment|Lock*|Locking
 
 *|WaitableBase*|*|Scheduling
 *|SOSHost_EventAuto*|*|Scheduling
@@ -373,6 +375,7 @@ sqlmin|AllocScan|*|PageAccess
 
 *|*|Publish*|XEventInfrastructure
 *|*|PublishWaitStatsXEvents*|XEventInfrastructure
+*|*|*ProduceExtendedEvent*|XEventInfrastructure
 
 *|*|process_request*|QueryExecution
 *|*|process_commands*|QueryExecution

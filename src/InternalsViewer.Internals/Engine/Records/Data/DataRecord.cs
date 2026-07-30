@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Annotations;
-using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 
@@ -16,25 +15,4 @@ public sealed class DataRecord : FixedVarRecord
     public RowIdentifier? ForwardingStub { get; set; }
 
     public RowIdentifier? RowIdentifier { get; set; }
-
-    public T? GetValue<T>(string columnName)
-    {
-        var field = Fields.FirstOrDefault(
-            f => string.Equals(f.Name, columnName, StringComparison.CurrentCultureIgnoreCase));
-
-        if (field == null)
-        {
-            throw new ArgumentException($"Column {columnName} not found");
-        }
-
-        if (field.Data.IsEmpty)
-        {
-            return default;
-        }
-
-        return DataConverter.GetValue<T>(field.Data.Span,
-                                         field.ColumnStructure.DataType,
-                                         field.ColumnStructure.Precision,
-                                         field.ColumnStructure.Scale);
-    }
 }

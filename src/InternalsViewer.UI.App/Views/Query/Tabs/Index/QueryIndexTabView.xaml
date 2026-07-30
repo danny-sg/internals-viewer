@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Index.QueryIndexTabView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
+    xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
+    xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" IsInverse="True" />
+    </UserControl.Resources>
+    <Grid VerticalAlignment="Stretch"
+          HorizontalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!--Top Command Bar-->
+        <CommandBar Grid.Row="0"
+                    IsOpen="False"
+                    Padding="8,0,0,0"
+                    DefaultLabelPosition="Right"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    VerticalContentAlignment="Top"
+                    MinHeight="0"
+                    OverflowButtonVisibility="Collapsed"
+                    BorderThickness="0,0,0,1" 
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="Transparent">
+            <AppBarElementContainer>
+                <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
+                                                          IsIndex="True" />
+            </AppBarElementContainer>
+        </CommandBar>
+
+        <CommandBar Grid.Row="0"
+                    Grid.Column="1"
+                    IsOpen="False"
+                    VerticalAlignment="Center"
+                    DefaultLabelPosition="Right"
+                    HorizontalAlignment="Right"
+                    VerticalContentAlignment="Top"
+                    MinHeight="0"
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                    Background="Transparent"
+                    BorderThickness="0,0,0,1">
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ToggleButton Margin="4,0,12,0"
+                              IsChecked="{x:Bind ViewModel.IsIndexDetailsVisible, Mode=TwoWay}"
+                              BorderThickness="0">
+                    <TextBlock Text="Details" VerticalAlignment="Center" />
+                </ToggleButton>
+            </AppBarElementContainer>
+            <CommandBar.SecondaryCommands>
+                <AppBarToggleButton
+                        Label="Zoom to fit"
+                        IsChecked="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}" />
+            </CommandBar.SecondaryCommands>
+        </CommandBar>
+
+        <Grid Name="BodyGrid" 
+              
+              Grid.Row="1" 
+              Grid.Column="0" 
+              Grid.ColumnSpan="2" >
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{x:Bind ViewModel.BodyColumnWidth, Mode=OneWay}" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="{x:Bind ViewModel.DetailColumnWidth, Mode=OneWay}" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Padding="10"
+                        Grid.Column="0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Orientation="Vertical"
+                        Visibility="{x:Bind ViewModel.IsInitialized,
+                                Mode=OneWay,
+                                Converter={StaticResource BoolToVisibilityConverter},
+                                ConverterParameter=True}">
+                <TextBlock HorizontalAlignment="Center"
+                           Text="{x:Bind ViewModel.LoadingText, Mode=OneWay}"/>
+                <ProgressBar Width="300"
+                             Margin="0,10,0,0"
+                             Visibility="{x:Bind ViewModel.IsProgressVisible,
+                                    Mode=OneWay,
+                                    Converter={StaticResource BoolToVisibilityConverter}}"
+                             Maximum="{x:Bind ViewModel.ProgressMaximum, Mode=OneWay}"
+                             Value="{x:Bind ViewModel.LoadedPageCount, Mode=OneWay}"/>
+                <TextBlock Margin="0,10,0,0"
+                           HorizontalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Visibility="{x:Bind ViewModel.IsProgressVisible,
+                                    Mode=OneWay,
+                                    Converter={StaticResource BoolToVisibilityConverter}}"
+                           Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}"/>
+            </StackPanel>
+
+            <!--Index View-->
+            <index:IndexControl x:Name="IndexControl"
+                                Grid.Column="0"
+                                SelectChildPath="False"
+                                Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                Visibility="{x:Bind ViewModel.IsInitialized,
+                                                Mode=OneWay,
+                                                Converter={StaticResource BoolToVisibilityConverter}}"
+                                Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
+                                Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
+                                IsZoomToFit="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}"
+                                IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
+                                PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
+                                PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
+                                SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
+                                VerticalAlignment="Stretch"
+                                HorizontalAlignment="Stretch" 
+                                SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"/>
+
+            <controls:GridSplitter Grid.Column="1"
+                                   Width="4"
+                                   HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Stretch"
+                                   ResizeBehavior="PreviousAndNext"
+                                   ResizeDirection="Columns"
+                                   Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"
+                                   Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <controls:GridSplitter.Template>
+                    <ControlTemplate TargetType="controls:GridSplitter">
+                        <Grid Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </controls:GridSplitter.Template>
+            </controls:GridSplitter>
+
+            <Grid Grid.Column="2"
+                  Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1,0,0,0">
+                <TabView VerticalAlignment="Stretch"
+                         IsAddTabButtonVisible="False"
+                         CanReorderTabs="False"
+                         TabWidthMode="SizeToContent"
+                         CanDragTabs="False">
+                    <TabView.TabItems>
+                        <TabViewItem Header="Page Data" IsClosable="False">
+                            <index:RecordGrid x:Name="RecordGrid"
+                                              Records="{x:Bind ViewModel.Records, Mode=OneWay}"
+                                              SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
+                                              BorderThickness="0" />
+                        </TabViewItem>
+                    </TabView.TabItems>
+                </TabView>
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Visibility="{x:Bind ViewModel.IsRecordsLoading,
+                                    Mode=OneWay,
+                                    Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ProgressRing IsActive="{x:Bind ViewModel.IsRecordsLoading, Mode=OneWay}" />
+                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center">Loading...</TextBlock>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

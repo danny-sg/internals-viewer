@@ -6,7 +6,6 @@ using System.Text;
 using Windows.Foundation;
 using Windows.UI.Text;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI;

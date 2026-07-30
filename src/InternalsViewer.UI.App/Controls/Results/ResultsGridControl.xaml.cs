@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Query.Results;
-using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Controls.Allocation;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -10,6 +10,8 @@ namespace InternalsViewer.UI.App.Controls.Results;
 
 public sealed partial class ResultsGridControl : UserControl
 {
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
+
     public static readonly DependencyProperty ResultSetProperty =
         DependencyProperty.Register(
             nameof(ResultSet),
@@ -72,12 +74,16 @@ public sealed partial class ResultsGridControl : UserControl
 
         foreach (var column in columns)
         {
-            ResultsDataGrid.Columns.Add(new ResultCellColumn(column.Ordinal)
+            var resultCellColumn = new ResultCellColumn(column.Ordinal)
             {
                 Header = column.Name,
                 BackgroundColour = column.BackgroundColour,
-                Width = GetColumnWidth(column)
-            });
+                Width = GetColumnWidth(column),
+                Alignment = column.Alignment,
+                PageClicked = OnPageClicked
+            };
+
+            ResultsDataGrid.Columns.Add(resultCellColumn);
         }
 
         ResultsDataGrid.ItemsSource = rows;
@@ -134,6 +140,11 @@ public sealed partial class ResultsGridControl : UserControl
             _ => 140
         };
 
-        return new DataGridLength(Math.Max(width, column.Name.Length * 7 + 24));
+        return new DataGridLength(column.Width ?? Math.Max(width, column.Name.Length * 7 + 24));
+    }
+
+    private void OnPageClicked(PageAddressEventArgs e)
+    {
+        PageClicked?.Invoke(this, e);
     }
 }

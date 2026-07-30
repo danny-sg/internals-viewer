@@ -236,17 +236,3 @@ public enum SymbolCategory : byte
         ForegroundColor = "#8E44AD")]
     Xml
 }
-
-public static class CategoryEnumExtensions
-{
-    public static CategoryAttribute? GetCategoryMetadata(this Enum value)
-    {
-        var member = value.GetType()
-                          .GetMember(value.ToString())
-                          .FirstOrDefault();
-
-        return member?.GetCustomAttributes(typeof(CategoryAttribute), false)
-                      .Cast<CategoryAttribute>()
-                      .FirstOrDefault();
-    }
-}

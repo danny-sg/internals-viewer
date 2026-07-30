@@ -160,6 +160,30 @@ public sealed partial class AllocationControl : IDisposable
         control.Refresh();
     }
 
+    public RowIdentifier? SelectedRowIdentifier
+    {
+        get => (RowIdentifier?)GetValue(SelectedRowIdentifierProperty);
+        set => SetValue(SelectedRowIdentifierProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedRowIdentifierProperty
+        = DependencyProperty.Register(nameof(SelectedRowIdentifier),
+                                      typeof(RowIdentifier),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
+
+    public int SelectedRowSlotCount
+    {
+        get => (int)GetValue(SelectedRowSlotCountProperty);
+        set => SetValue(SelectedRowSlotCountProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedRowSlotCountProperty
+        = DependencyProperty.Register(nameof(SelectedRowSlotCount),
+                                      typeof(int),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(0, OnPropertyChanged));
+
     public PfsChain PfsChain
     {
         get => (PfsChain)GetValue(PfsChainProperty);
@@ -557,6 +581,41 @@ public sealed partial class AllocationControl : IDisposable
         DrawPageMarkerActivity(canvas, renderLayout);
 
         DrawBorders(canvas, renderLayout);
+
+        DrawSelectedRow(canvas, renderLayout);
+    }
+
+    private void DrawSelectedRow(SKCanvas canvas, ExtentLayout layout)
+    {
+        if (SelectedRowIdentifier is not { } row
+            || row.PageAddress.FileId != FileId
+            || SelectedRowSlotCount <= 0
+            || layout.HorizontalCount <= 0)
+        {
+            return;
+        }
+
+        var pageId = row.PageAddress.PageId - ScrollPosition * 8;
+
+        if (pageId < 0)
+        {
+            return;
+        }
+
+        var rect = GetPagePosition(pageId, layout);
+
+        if (rect.IsEmpty)
+        {
+            return;
+        }
+
+        var rowHeight = Math.Max(1F, rect.Height / SelectedRowSlotCount);
+
+        var top = rect.Top + Math.Min(row.SlotId, SelectedRowSlotCount - 1) * rect.Height / SelectedRowSlotCount;
+
+        using var paint = new SKPaint { Color = SKColors.Red, Style = SKPaintStyle.Fill };
+
+        canvas.DrawRect(new SKRect(rect.Left, top, rect.Right, top + rowHeight), paint);
     }
 
     private SKPicture RecordStaticLayer(AllocationRenderer renderer, ExtentLayout layout, int width, int height)

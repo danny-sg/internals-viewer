@@ -63,8 +63,7 @@ public static class DockLayoutSerializer
                 return null;
             }
 
-            group.SelectedDocument = (node.Selected is not null ? resolve(node.Selected) : null)
-                                     ?? group.Documents.FirstOrDefault();
+            group.SelectedDocument = group.Documents.FirstOrDefault();
 
             return group;
         }

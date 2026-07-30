@@ -25,4 +25,13 @@ public interface IRecord : IDataStructure
     public List<RecordField> Fields { get; }
 
     public short ColumnCount { get; }
+
+    /// <summary>
+    /// Indicates the record is marked for deletion but has not yet been removed
+    /// </summary>
+    /// <remarks>
+    /// The record type is format specific, so each record format decides which of its types are
+    /// ghosts.
+    /// </remarks>
+    public bool IsGhost { get; }
 }

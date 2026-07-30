@@ -43,32 +43,32 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     {
         _documentsByKey = new Dictionary<string, DocumentViewModel>
         {
-            [SqlKey] = DocumentViewModel.Create<SqlDocumentView>("SQL",
+            [SqlKey] = DocumentViewModel.Create<QuerySqlTabView>("SQL",
                                                                  content,
                                                                  keepAlive: true,
                                                                  key: SqlKey),
 
-            [AllocationsKey] = DocumentViewModel.Create<AllocationDocumentView>("Allocations",
+            [AllocationsKey] = DocumentViewModel.Create<QueryAllocationTabView>("Allocations",
                                                                                 content,
                                                                                 keepAlive: true,
                                                                                 key: AllocationsKey),
 
-            [PlanKey] = DocumentViewModel.Create<PlanDocumentView>("Execution Plan",
+            [PlanKey] = DocumentViewModel.Create<QueryPlanTabView>("Execution Plan",
                                                                    content,
                                                                    keepAlive: true,
                                                                    key: PlanKey),
 
-            [EventsKey] = DocumentViewModel.Create<EventsDocumentView>("Events",
+            [EventsKey] = DocumentViewModel.Create<QueryEventsTabView>("Events",
                                                                        content,
                                                                        keepAlive: true,
                                                                        key: EventsKey),
 
-            [CallstackKey] = DocumentViewModel.Create<CallstackDocumentView>("Call Stack",
+            [CallstackKey] = DocumentViewModel.Create<QueryCallStackTabView>("Call Stack",
                                                                              content,
                                                                              keepAlive: true,
                                                                              key: CallstackKey),
 
-            [InstructionsKey] = DocumentViewModel.Create<InstructionsDocumentView>("Instructions",
+            [InstructionsKey] = DocumentViewModel.Create<QueryInstructionsTabView>("Instructions",
                                                                                    content,
                                                                                    keepAlive: true,
                                                                                    key: InstructionsKey)
@@ -182,6 +182,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     /// Show a document in the dock, creating or focusing its tab
     /// </summary>
     public void Show(DocumentViewModel document) => Dock.Show(document);
+
+    public void ShowExecutionPlan()
+    {
+        IsExecutionPlanVisible = true;
+
+        Show(_documentsByKey[PlanKey]);
+    }
 
     /// <summary>
     /// Whether the keyed document is currently present in the dock

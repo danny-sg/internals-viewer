@@ -1,0 +1,34 @@
+using System.Collections.Immutable;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Internals.Engine.Address;
+
+namespace InternalsViewer.Execution.AccessPaths.Search;
+
+public sealed record AccessStrategy
+{
+    public ImmutableArray<AccessStrategyPhase> Phases { get; init; } = [];
+
+    public long? RowGoal { get; init; }
+
+    public string? RowGoalReason { get; init; }
+
+    public SeekBounds? Bounds { get; init; }
+
+    public ScanDirection Direction { get; init; }
+
+    public AccessPredicate? Residual { get; init; }
+
+    public bool HasUntranslatedResidual { get; init; }
+
+    public int RangeCount { get; init; }
+
+    public IReadOnlyList<SeekBounds> Ranges { get; init; } = [];
+
+    public IReadOnlyList<string> KeyColumns { get; init; } = [];
+
+    public bool? IsUnique { get; init; }
+
+    public PageAddress? EntryPoint { get; init; }
+
+    public string? EntryPointSource { get; init; }
+}

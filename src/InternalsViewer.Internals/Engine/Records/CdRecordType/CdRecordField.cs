@@ -8,8 +8,6 @@ namespace InternalsViewer.Internals.Engine.Records.CdRecordType;
 internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord parentRecord)
     : RecordField(columnStructure)
 {
-    public bool IsNull { get; set; }
-
     public int Cluster { get; set; }
 
     public int AnchorLength { get; set; }
@@ -38,13 +36,61 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
                 return GetValueWithAnchor();
             }
 
-            return CompressedDataConverter.CompressedBinaryToBinary(Data.Span,
+            return CompressedDataConverter.CompressedBinaryToString(Data.Span,
                                                                     ColumnStructure.DataType,
                                                                     ColumnStructure.Precision,
                                                                     ColumnStructure.Scale);
         }
-    }   
-    
+    }
+
+    public override T? GetValue<T>()
+        where T : default
+    {
+        if (IsNull)
+        {
+            return default;
+        }
+
+        var source = DecompressData();
+
+        if (source.IsEmpty)
+        {
+            return default;
+        }
+
+        var (expanded, dataType) = CompressedDataConverter.Expand(source.Span, ColumnStructure.DataType);
+
+        return DataConverter.GetValue<T>(expanded,
+                                         dataType,
+                                         ColumnStructure.Precision,
+                                         ColumnStructure.Scale);
+    }
+
+    private ReadOnlyMemory<byte> DecompressData()
+    {
+        if (IsPageSymbol)
+        {
+            var dictionaryEntry = CompressedDataConverter.DecodeInternalInt(Data.ToArray(), 0);
+
+            ReadOnlyMemory<byte> dictionaryValue =
+                Record.CompressionInfo.CompressionDictionary?.DictionaryEntries[dictionaryEntry].Data ?? [];
+
+            if (AnchorField is not null && Data is { IsEmpty: false, Length: > 0 })
+            {
+                return ExpandAnchor(dictionaryValue.Span);
+            }
+
+            return dictionaryValue;
+        }
+
+        if (AnchorField is { IsNull: false, Data.IsEmpty: false })
+        {
+            return Data.IsEmpty ? AnchorField.Data : ExpandAnchor(Data.Span);
+        }
+
+        return Data;
+    }
+
     /// <summary>
     /// Uses the anchor field to expand the compressed data
     /// </summary>
@@ -83,13 +129,13 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
         {
             var compositeData = ExpandAnchor(Data.Span);
 
-            return CompressedDataConverter.CompressedBinaryToBinary(compositeData,
+            return CompressedDataConverter.CompressedBinaryToString(compositeData,
                                                                     ColumnStructure.DataType,
                                                                     ColumnStructure.Precision,
                                                                     ColumnStructure.Scale);
         }
 
-        return CompressedDataConverter.CompressedBinaryToBinary(AnchorField!.Data.Span,
+        return CompressedDataConverter.CompressedBinaryToString(AnchorField!.Data.Span,
                                                                 ColumnStructure.DataType,
                                                                 ColumnStructure.Precision,
                                                                 ColumnStructure.Scale);
@@ -107,19 +153,19 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
         {
             var compositeData = ExpandAnchor(dictionaryValue);
 
-            value = CompressedDataConverter.CompressedBinaryToBinary(compositeData,
+            value = CompressedDataConverter.CompressedBinaryToString(compositeData,
                                                                      ColumnStructure.DataType,
                                                                      ColumnStructure.Precision,
                                                                      ColumnStructure.Scale);
         }
         else
         {
-            value = CompressedDataConverter.CompressedBinaryToBinary(dictionaryValue,
+            value = CompressedDataConverter.CompressedBinaryToString(dictionaryValue,
                                                                      ColumnStructure.DataType,
                                                                      ColumnStructure.Precision,
                                                                      ColumnStructure.Scale);
         }
-        
+
         return value;
     }
 }

@@ -9,6 +9,11 @@ public interface IPageService
 {
     Task<Page> GetPage(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken, bool isMarkEnabled = true);
 
+    Task<Page> GetPage(DatabaseSource database,
+                       PageAddress pageAddress, 
+                       byte[] buffer, 
+                       CancellationToken cancellationToken);
+
     Task<T> GetPage<T>(DatabaseSource database, PageAddress pageAddress, CancellationToken cancellationToken, bool isMarkEnabled = true)
         where T : Page;
 

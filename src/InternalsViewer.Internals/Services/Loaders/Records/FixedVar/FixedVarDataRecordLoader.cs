@@ -256,7 +256,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
 
     private static FixedVarRecordField LoadNullField(ColumnStructure column, bool isMarkEnabled)
     {
-        var nullField = new FixedVarRecordField(column) { IsMarkEnabled = isMarkEnabled };
+        var nullField = new FixedVarRecordField(column) { IsMarkEnabled = isMarkEnabled, IsNull = true };
 
         nullField.MarkProperty(nameof(FixedVarRecordField.Value));
 

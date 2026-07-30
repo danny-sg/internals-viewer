@@ -1,9 +1,9 @@
-using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.Events;
+using System;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
 

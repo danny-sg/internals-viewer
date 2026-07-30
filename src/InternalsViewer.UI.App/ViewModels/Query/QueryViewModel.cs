@@ -1,13 +1,16 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
+using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
 using InternalsViewer.UI.App.Messages;
@@ -34,10 +37,15 @@ using InternalsViewer.Query.CallStack.Categories;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
-using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Settings;
+using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
+using QueryIndexTabView = InternalsViewer.UI.App.Views.Query.Tabs.Index.QueryIndexTabView;
+using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Plans.Joins;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -48,7 +56,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           IndexTabViewModelFactory indexTabViewModelFactory,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
-                                          IBufferPoolInfoProvider bufferPoolInfoProvider)
+                                          IBufferPoolInfoProvider bufferPoolInfoProvider,
+                                          TraceTabViewModelFactory traceTabViewModelFactory)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -58,6 +67,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  pageTabViewModelFactory,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
+                                                                 traceTabViewModelFactory,
                                                                  database);
 }
 
@@ -172,7 +182,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<QueryResultSet> _resultSets = [];
 
     public QueryResultSet? ActiveResultSet => ResultSets.Count > 0 ? ResultSets[0] : null;
-    
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CallStackRoots))]
     private CallStackTree? _callStack;
@@ -225,6 +235,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         PruneClosedIndexes();
 
         PruneClosedPages();
+
+        PruneClosedTraces();
 
         ScheduleSaveLayout();
     }
@@ -287,7 +299,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            // Return without touching anything if the saved dock tree can't be rebuilt
             if (!Layout.RestoreRoot(dto.Root))
             {
                 return;
@@ -296,8 +307,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             Layout.IsTimelineVisible = dto.TimelineVisible;
 
             var lockCategories = dto.LockModeCategories is { } categories
-                ? [.. categories.Where(c => c != LockModeCategory.None)]
-                : dto.IncludeLock ? EventOptions.DefaultLockModeCategories() : [];
+                                 ? [.. categories.Where(c => c != LockModeCategory.None)]
+                                 : dto.IncludeLock ? EventOptions.DefaultLockModeCategories() : [];
 
             QueryOptions.Restore(dto.CropToQuery,
                                  dto.IncludeSystemObjects,
@@ -328,7 +339,318 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private ObservableCollection<ExecutionPlan> _executionPlans = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedPlanNodeEventStatistics))]
+    [NotifyPropertyChangedFor(nameof(SelectedPlanExpressions))]
+    [NotifyPropertyChangedFor(nameof(SelectedPlanNodeScanMode))]
     private PlanNode? _selectedPlanNode;
+
+    public ScanModeResult? SelectedPlanNodeScanMode
+    {
+        get
+        {
+            if (SelectedPlanNode is not { } node || node.ScanInfo is null || string.IsNullOrEmpty(node.Table))
+            {
+                return null;
+            }
+
+            return ScanModeDetector.Detect(node, FindAllocationUnit(node), Events);
+        }
+    }
+
+    private readonly TraceTabViewModelFactory _traceTabViewModelFactory;
+
+    private readonly Dictionary<string, TraceTabViewModel> _openTraces = new();
+
+    private Internals.Engine.Database.AllocationUnit? FindAllocationUnit(PlanNode node)
+    {
+        if (string.IsNullOrEmpty(node.Table))
+        {
+            return null;
+        }
+
+        return Database.AllocationUnits
+                       .Values
+                       .FirstOrDefault(a => NameMatches(a.IndexName, node.Index ?? string.Empty)
+                                            && NameMatches(a.TableName, node.Table)
+                                            && (string.IsNullOrEmpty(node.Schema) || NameMatches(a.SchemaName, node.Schema))
+                                            && a.AllocationUnitType == AllocationUnitType.InRowData);
+    }
+
+    public void OpenTrace(PlanNodeIdentifier identifier)
+    {
+        if (ResolvePlanNode(identifier) is { } node)
+        {
+            OpenTrace(node);
+        }
+    }
+
+    public void OpenTrace(PlanNode node)
+    {
+        if (ResolveCorrelatedJoin(node) is { } join)
+        {
+            OpenKeyLookupTrace(join);
+
+            return;
+        }
+
+        if (MergeJoinResolver.Resolve(node) is { } mergeJoin)
+        {
+            OpenMergeJoinTrace(mergeJoin);
+
+            return;
+        }
+
+        if (OperatorClassifier.IsNestedLoop(node) || OperatorClassifier.IsMergeJoin(node))
+        {
+            return;
+        }
+
+        var allocationUnit = FindAllocationUnit(node);
+
+        if (allocationUnit is null)
+        {
+            Logger.LogWarning("Allocation unit not found: {Schema}.{Table}.{Index}", node.Schema, node.Table, node.Index);
+
+            return;
+        }
+
+        var key = $"Trace:{allocationUnit.SchemaName}.{allocationUnit.TableName}.{allocationUnit.IndexName}:{node.NodeId}";
+
+        var scanMode = ScanModeDetector.Detect(node, allocationUnit, Events);
+
+        var kind = allocationUnit.IndexId == 0 || scanMode?.Mode == ScanMode.AllocationOrdered
+            ? TraceKind.Allocation
+            : TraceKind.Index;
+
+        if (Layout.TryGetDocument(key, out var existing))
+        {
+            if (existing.Content is TraceTabViewModel { } current && current.Kind == kind)
+            {
+                Layout.Show(existing);
+
+                return;
+            }
+
+            if (existing.Content is TraceTabViewModel stale)
+            {
+                stale.PageNavigated -= OnIndexPageNavigated;
+            }
+
+            _openTraces.Remove(key);
+
+            Layout.RemoveDocument(key, out _);
+        }
+
+        var traceViewModel = _traceTabViewModelFactory.Create(kind,
+                                                              Database,
+                                                              allocationUnit,
+                                                              node,
+                                                              Events.FirstOrDefault()?.Timestamp,
+                                                              scanMode);
+
+        traceViewModel.PageNavigated += OnIndexPageNavigated;
+
+        var objectName = string.IsNullOrEmpty(allocationUnit.IndexName) ? allocationUnit.TableName : allocationUnit.IndexName;
+
+        var document = new DocumentViewModel(title: $"Trace: {objectName}",
+                                             content: traceViewModel,
+                                             viewFactory: static () => new TraceTabView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false);
+
+        Layout.RegisterDocument(key, document);
+
+        _openTraces[key] = traceViewModel;
+
+        Layout.Show(document);
+    }
+
+    private CorrelatedJoin? ResolveCorrelatedJoin(PlanNode node)
+    {
+        if (OperatorClassifier.IsNestedLoop(node))
+        {
+            return CorrelatedJoinResolver.Resolve(node);
+        }
+
+        if (node.ScanInfo?.IsLookup != true || node.PredicateInfo?.IsCorrelatedSeek != true)
+        {
+            return null;
+        }
+
+        var plan = ExecutionPlans.FirstOrDefault(p => p.NodesById.TryGetValue(node.NodeId, out var candidate)
+                                                      && ReferenceEquals(candidate, node));
+
+        return plan?.Root
+                   .Select(root => CorrelatedJoinResolver.ResolveFromInner(root, node))
+                   .FirstOrDefault(j => j is not null);
+    }
+
+    private void OpenKeyLookupTrace(CorrelatedJoin join)
+    {
+        var outerUnit = FindAllocationUnit(join.Outer);
+
+        var innerUnit = FindAllocationUnit(join.Inner);
+
+        if (outerUnit is null || innerUnit is null)
+        {
+            Logger.LogWarning("Allocation unit not found for key lookup: outer {Outer}, inner {Inner}",
+                              join.Outer.Index,
+                              join.Inner.Index);
+
+            return;
+        }
+
+        var key = $"Trace:{outerUnit.SchemaName}.{outerUnit.TableName}.{outerUnit.IndexName}+{innerUnit.IndexName}:{join.Join.NodeId}";
+
+        if (Layout.TryGetDocument(key, out var existing))
+        {
+            if (existing.Content is TraceTabViewModel { Kind: TraceKind.KeyLookup })
+            {
+                Layout.Show(existing);
+
+                return;
+            }
+
+            if (existing.Content is TraceTabViewModel stale)
+            {
+                stale.PageNavigated -= OnIndexPageNavigated;
+            }
+
+            _openTraces.Remove(key);
+
+            Layout.RemoveDocument(key, out _);
+        }
+
+        var traceViewModel = _traceTabViewModelFactory.CreateKeyLookup(Database,
+                                                                       outerUnit,
+                                                                       innerUnit,
+                                                                       join.Join,
+                                                                       Events.FirstOrDefault()?.Timestamp);
+
+        traceViewModel.PageNavigated += OnIndexPageNavigated;
+
+        var document = new DocumentViewModel(title: $"Trace: {innerUnit.TableName} Lookup",
+                                             content: traceViewModel,
+                                             viewFactory: static () => new TraceTabView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false);
+
+        Layout.RegisterDocument(key, document);
+
+        _openTraces[key] = traceViewModel;
+
+        Layout.Show(document);
+    }
+
+    private void OpenMergeJoinTrace(MergeJoin join)
+    {
+        var outerUnit = FindAllocationUnit(join.Outer);
+
+        var innerUnit = FindAllocationUnit(join.Inner);
+
+        if (outerUnit is null || innerUnit is null)
+        {
+            Logger.LogWarning("Allocation unit not found for merge join: outer {Outer}, inner {Inner}",
+                              join.Outer.Index,
+                              join.Inner.Index);
+
+            return;
+        }
+
+        var key = $"Trace:{outerUnit.SchemaName}.{outerUnit.TableName}.{outerUnit.IndexName}~{innerUnit.TableName}.{innerUnit.IndexName}:{join.Join.NodeId}";
+
+        if (Layout.TryGetDocument(key, out var existing))
+        {
+            if (existing.Content is TraceTabViewModel { Kind: TraceKind.MergeJoin })
+            {
+                Layout.Show(existing);
+
+                return;
+            }
+
+            if (existing.Content is TraceTabViewModel stale)
+            {
+                stale.PageNavigated -= OnIndexPageNavigated;
+            }
+
+            _openTraces.Remove(key);
+
+            Layout.RemoveDocument(key, out _);
+        }
+
+        var traceViewModel = _traceTabViewModelFactory.CreateMergeJoin(Database,
+                                                                       outerUnit,
+                                                                       innerUnit,
+                                                                       join.Join,
+                                                                       Events.FirstOrDefault()?.Timestamp);
+
+        traceViewModel.PageNavigated += OnIndexPageNavigated;
+
+        var document = new DocumentViewModel(title: $"Trace: Merge {outerUnit.TableName}/{innerUnit.TableName}",
+                                             content: traceViewModel,
+                                             viewFactory: static () => new TraceTabView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false);
+
+        Layout.RegisterDocument(key, document);
+
+        _openTraces[key] = traceViewModel;
+
+        Layout.Show(document);
+    }
+
+    public ExpressionCatalog? SelectedPlanExpressions
+    {
+        get
+        {
+            if (SelectedPlanNode is not { } node)
+            {
+                return null;
+            }
+
+            var plan = ExecutionPlans.FirstOrDefault(p => p.NodesById.TryGetValue(node.NodeId, out var candidate)
+                                                          && ReferenceEquals(candidate, node))
+                       ?? ExecutionPlans.FirstOrDefault();
+
+            return plan?.Expressions;
+        }
+    }
+
+    /// <summary>
+    /// Read activity captured for the selected operator, aggregated from its linked read events
+    /// </summary>
+    public EventIoStatistics? SelectedPlanNodeEventStatistics
+    {
+        get
+        {
+            if (SelectedPlanNode is not { } node)
+            {
+                return null;
+            }
+
+            var reads = Events.OfType<ReadEventGroup>()
+                              .Where(e => e.PlanNodeIdentifier?.NodeId == node.NodeId)
+                              .ToList();
+
+            if (reads.Count == 0)
+            {
+                return null;
+            }
+
+            var physicalReads = reads.Count(r => r.ReadType == ReadType.NonCached);
+
+            var readAheads = reads.Where(r => r.ReadType == ReadType.NonCached && r.Pages.Count > 1)
+                                  .Sum(r => (long)r.Pages.Count);
+
+            return new EventIoStatistics(reads.Count, physicalReads, readAheads);
+        }
+    }
 
     [ObservableProperty]
     private IReadOnlyList<PlanNode> _activePlanNodes = [];
@@ -466,10 +788,53 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
+    [ObservableProperty]
+    private bool _isPlanPropertiesVisible;
+
+    public void OpenExecutionPlan(PlanNodeIdentifier identifier)
+    {
+        Layout.ShowExecutionPlan();
+
+        SelectPlanNode(identifier);
+
+        IsPlanPropertiesVisible = true;
+    }
+
     private readonly Dictionary<string, IndexTabViewModel> _openIndexes = new();
 
+
+    [RelayCommand]
+    public void OpenIndexes()
+    {
+        foreach (var op in ExecutionPlans.SelectMany(e => e.NodesById.Values)
+                                         .Where(v => !string.IsNullOrEmpty(v.Index) && 
+                                                     v.PhysicalOperator is "Index Seek" 
+                                                         or "Index Scan"
+                                                         or "Clustered Index Seek" 
+                                                         or "Clustered Index Scan"
+                                                         or "Key Lookup (Clustered)" 
+                                                         or "RID Lookup"))
+        {
+            OpenIndex(op);
+        }
+    }
+
     public void OpenIndex(ExecutionOperatorEvent op)
-        => OpenIndex(op.SchemaName, op.TableName, op.IndexName);
+    {
+        if (op.PlanNodeIdentifier is not null)
+        {
+            var planNode = ResolvePlanNode(op.PlanNodeIdentifier);
+
+            if (planNode is not null)
+            {
+                OpenIndex(planNode);
+
+                return;
+            }
+        }
+
+        OpenIndex(op.SchemaName, op.TableName, op.IndexName);
+    }
 
     public void OpenIndex(PlanNode node)
         => OpenIndex(node.Schema, node.Table, node.Index);
@@ -489,6 +854,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         if (Layout.TryGetDocument(key, out var existing))
         {
             Layout.Show(existing);
+
             return;
         }
 
@@ -509,17 +875,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var indexViewModel = _indexTabViewModelFactory.Create(Database);
 
         indexViewModel.RootPage = allocationUnit.RootPage;
+        indexViewModel.AllocationUnit = allocationUnit;
 
         var document = new DocumentViewModel(title: $"Index: {index}",
                                              content: indexViewModel,
-                                             viewFactory: static () => new IndexDocumentView(),
+                                             viewFactory: static () => new QueryIndexTabView(),
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
                                              persist: false);
 
         Layout.RegisterDocument(key, document);
+
         _openIndexes[key] = indexViewModel;
+
 
         Layout.Show(document);
 
@@ -536,11 +905,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// </summary>
     public List<PageLogRecord> GetPageLogRecords(PageAddress pageAddress)
     {
-        return Events.OfType<TransactionLogEvent>()
-                     .Where(logEvent => logEvent.PageAddress == pageAddress)
-                     .Select(logEvent => logEvent.LogRecord)
-                     .OfType<PageLogRecord>()
-                     .ToList();
+        return
+        [
+            .. Events.OfType<TransactionLogEvent>()
+                .Where(logEvent => logEvent.PageAddress == pageAddress)
+                .Select(logEvent => logEvent.LogRecord)
+                .OfType<PageLogRecord>()
+        ];
     }
 
     /// <summary>
@@ -583,7 +954,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var document = new DocumentViewModel(title: $"Page {pageAddress}",
                                              content: pageViewModel,
-                                             viewFactory: static () => new PageDocumentView(),
+                                             viewFactory: static () => new QueryPageTabView(),
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
@@ -656,6 +1027,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         foreach (var key in closed)
         {
+
             _openIndexes.Remove(key);
 
             if (Layout.RemoveDocument(key, out var document))
@@ -665,38 +1037,196 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    // Per-index-root spans, built once whenever the event set (re)builds - see RefreshIndexPageSpans -
-    // rather than rescanned per playhead tick. Same shape and colouring as the allocation map's own
-    // "Events" overlay: each span already carries its own DisplayColour and lifetime (EndUs = the query's
-    // end for a read, so it stays once hit; EndUs = the hold end for a latch, so it flashes), so
-    // IndexControl just draws whichever span is active - it has no read/latch distinction of its own.
-    private readonly Dictionary<PageAddress, IReadOnlyList<PageSpan>> _indexPageSpansByRoot = new();
+    private void PruneClosedTraces()
+    {
+        if (_openTraces.Count == 0)
+        {
+            return;
+        }
 
-    // Reads only, kept separately (without colour) purely so SyncIndexPage can binary-search for the
-    // active page - a latch doesn't count as "the page being read".
-    private readonly Dictionary<PageAddress, IReadOnlyList<PageSpan>> _indexReadSpansByRoot = new();
+        var closed = _openTraces.Keys
+            .Where(k => !Layout.IsShown(k))
+            .ToList();
+
+        foreach (var key in closed)
+        {
+            _openTraces[key].PageNavigated -= OnIndexPageNavigated;
+
+            _openTraces.Remove(key);
+
+            if (Layout.RemoveDocument(key, out var document))
+            {
+                document.DisposeView();
+            }
+        }
+    }
+
+    private void RefreshTraceDocuments()
+    {
+        foreach (var (key, viewModel) in _openTraces.ToList())
+        {
+            var node = FindTraceOperator(viewModel);
+
+            if (node is not null && viewModel.Kind is TraceKind.KeyLookup or TraceKind.MergeJoin)
+            {
+                viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, null);
+
+                continue;
+            }
+
+            if (node is not null)
+            {
+                var allocationUnit = viewModel.AllocationUnit;
+
+                var scanMode = ScanModeDetector.Detect(node, allocationUnit, Events);
+
+                var kind = allocationUnit.IndexId == 0 || scanMode?.Mode == ScanMode.AllocationOrdered
+                    ? TraceKind.Allocation
+                    : TraceKind.Index;
+
+                if (kind == viewModel.Kind)
+                {
+                    viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, scanMode);
+
+                    continue;
+                }
+            }
+
+            viewModel.PageNavigated -= OnIndexPageNavigated;
+
+            _openTraces.Remove(key);
+
+            if (Layout.RemoveDocument(key, out var document))
+            {
+                document.DisposeView();
+            }
+        }
+    }
+
+    private PlanNode? FindTraceOperator(TraceTabViewModel viewModel)
+    {
+        if (viewModel.Kind is TraceKind.KeyLookup or TraceKind.MergeJoin)
+        {
+            var outerUnit = viewModel.Visuals[0].AllocationUnit;
+
+            var innerUnit = viewModel.Visuals[1].AllocationUnit;
+
+            var joins = ExecutionPlans.Where(p => !p.IsInternalPlan)
+                                      .SelectMany(p => p.NodesById.Values)
+                                      .Where(n => ResolveJoinSides(viewModel.Kind, n) is { } sides
+                                                  && MatchesUnit(sides.Outer, outerUnit)
+                                                  && MatchesUnit(sides.Inner, innerUnit))
+                                      .ToList();
+
+            return joins.FirstOrDefault(n => n.NodeId == viewModel.PlanNode?.NodeId) ?? joins.FirstOrDefault();
+        }
+
+        var unit = viewModel.AllocationUnit;
+
+        var candidates = ExecutionPlans.Where(p => !p.IsInternalPlan)
+                                       .SelectMany(p => p.NodesById.Values)
+                                       .Where(n => n.ScanInfo is not null && MatchesUnit(n, unit))
+                                       .ToList();
+
+        return candidates.FirstOrDefault(n => n.NodeId == viewModel.PlanNode?.NodeId) ?? candidates.FirstOrDefault();
+    }
+
+    private static bool MatchesUnit(PlanNode node, Internals.Engine.Database.AllocationUnit unit)
+    {
+        return NameMatches(node.Table, unit.TableName)
+               && NameMatches(node.Index ?? string.Empty, unit.IndexName)
+               && (string.IsNullOrEmpty(node.Schema) || NameMatches(node.Schema, unit.SchemaName));
+    }
+
+    private static (PlanNode Outer, PlanNode Inner)? ResolveJoinSides(TraceKind kind, PlanNode node)
+    {
+        if (kind == TraceKind.KeyLookup)
+        {
+            return CorrelatedJoinResolver.Resolve(node) is { } correlated ? (correlated.Outer, correlated.Inner) : null;
+        }
+
+        return MergeJoinResolver.Resolve(node) is { } merge ? (merge.Outer, merge.Inner) : null;
+    }
+
+    public event Action<long>? PlayheadMoveRequested;
+
+    private void OnIndexPageNavigated(object? sender, PageNavigatedEventArgs e)
+    {
+        var readEndUs = GetReadEndUs(e.PageAddress, e.IsReset ? null : PlayheadTimeUs, e.Selection);
+
+        if (readEndUs is not null)
+        {
+            SetPlayheadTime(readEndUs.Value);
+
+            PlayheadMoveRequested?.Invoke(readEndUs.Value);
+        }
+    }
+
+    private long? GetReadEndUs(PageAddress pageAddress, long? afterUs, PageReadSelection selection = PageReadSelection.Next)
+    {
+        long? first = null;
+        long? last = null;
+        long? next = null;
+
+        void Consider(long endUs)
+        {
+            if (first is null || endUs < first)
+            {
+                first = endUs;
+            }
+
+            if (last is null || endUs > last)
+            {
+                last = endUs;
+            }
+
+            if (afterUs is { } after && endUs > after && (next is null || endUs < next))
+            {
+                next = endUs;
+            }
+        }
+
+        foreach (var engineEvent in Events)
+        {
+            if (engineEvent is not ReadEventGroup group)
+            {
+                continue;
+            }
+
+            if (group.ReadType == ReadType.Cached)
+            {
+                foreach (var latch in group.Events.OfType<LatchEvent>())
+                {
+                    if (latch.PageAddress == pageAddress)
+                    {
+                        Consider(latch.TimeUs + latch.DurationUs);
+                    }
+                }
+            }
+            else if (group.Pages.Contains(pageAddress))
+            {
+                Consider(group.TimeUs + group.DurationUs);
+            }
+        }
+
+        return selection switch
+        {
+            PageReadSelection.First => first,
+            PageReadSelection.Last => last,
+            _ => next ?? first
+        };
+    }
+
+    private List<PageSpan> _pageSpans = [];
 
     /// <summary>
-    /// Rebuilds <see cref="_indexPageSpansByRoot"/>/<see cref="_indexReadSpansByRoot"/> from the current
-    /// event set and pushes them into every open index tab. Called whenever the event set changes (see
-    /// <see cref="RefreshLayers"/>) - not per playhead tick, since none of this depends on the playhead.
+    /// Rebuilds <see cref="_pageSpans"/> from the current event set and pushes the spans relevant to
+    /// each open index tab. Called whenever the event set changes (see <see cref="RefreshLayers"/>) -
+    /// not per playhead tick, since none of this depends on the playhead.
     /// </summary>
     private void RefreshIndexPageSpans(List<EngineEvent> engineEvents, EventColourProvider colours)
     {
-        var (allSpans, readSpans) = new PageSpanBuilder().GetIndexPageSpans(engineEvents, colours, Database);
-
-        _indexPageSpansByRoot.Clear();
-        _indexReadSpansByRoot.Clear();
-
-        foreach (var (root, spans) in allSpans)
-        {
-            _indexPageSpansByRoot[root] = [.. spans.OrderBy(s => s.StartUs)];
-        }
-
-        foreach (var (root, spans) in readSpans)
-        {
-            _indexReadSpansByRoot[root] = [.. spans.OrderBy(s => s.StartUs)];
-        }
+        _pageSpans = PageSpanBuilder.GetEventsPageSpans(engineEvents, colours, StartOffset, EndOffset, Database);
 
         foreach (var viewModel in _openIndexes.Values)
         {
@@ -708,17 +1238,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void ApplyIndexPageSpans(IndexTabViewModel viewModel)
     {
-        viewModel.PageSpans = _indexPageSpansByRoot.TryGetValue(viewModel.RootPage, out var spans)
-            ? spans
-            : [];
+        viewModel.PageSpans = [.. _pageSpans.Where(s => IsInIndex(s.Address, viewModel.RootPage))];
     }
 
-    /// <summary>
-    /// Updates each open index tab's active page (the latest read at or before the playhead) and current
-    /// playhead position. The range/flash highlighting itself is computed by IndexControl straight from
-    /// the (already time-sorted) spans pushed by RefreshIndexPageSpans, so this only needs to resolve the
-    /// single "active" page via binary search - no per-tick event scan.
-    /// </summary>
+    private bool IsInIndex(PageAddress page, PageAddress rootPage) =>
+        Database.FindPageAllocationUnit(page)?.RootPage == rootPage;
+
     private void SyncIndexPage(long playheadUs)
     {
         if (_openIndexes.Count == 0)
@@ -730,7 +1255,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             viewModel.PlayheadTimeUs = playheadUs;
 
-            if (!_indexReadSpansByRoot.TryGetValue(viewModel.RootPage, out var spans) || spans.Count == 0)
+            var spans = viewModel.PageSpans;
+
+            if (spans.Count == 0)
             {
                 viewModel.SelectedPageAddress = null;
                 continue;
@@ -742,7 +1269,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    /// <summary>The index of the first span whose StartUs is &gt; <paramref name="value"/>.</summary>
     private static int UpperBoundByStartUs(IReadOnlyList<PageSpan> spans, long value)
     {
         var lo = 0;
@@ -783,8 +1309,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           PageTabViewModelFactory pageTabViewModelFactory,
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
+                          TraceTabViewModelFactory traceTabViewModelFactory,
                           DatabaseSource database)
     {
+        _traceTabViewModelFactory = traceTabViewModelFactory;
         Logger = logger;
         QueryRunner = queryRunner;
         BufferPoolInfoProvider = bufferPoolInfoProvider;
@@ -798,9 +1326,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Name = $"{Database.Name}: Query";
 
-        DatabaseFiles = database.Files
-                                .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
-                                .ToArray();
+        DatabaseFiles =
+        [
+            .. database.Files
+                .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
+        ];
 
         ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, 20);
 
@@ -814,11 +1344,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         PfsChain = Database.Pfs[1];
 
-        _systemObjectIds = database.AllocationUnits
-                                   .Values
-                                   .Where(u => u.IsSystem)
-                                   .Select(u => u.ObjectId)
-                                   .ToHashSet();
+        _systemObjectIds =
+        [
+            .. database.AllocationUnits
+                       .Values
+                       .Where(u => u.IsSystem)
+                       .Select(u => u.ObjectId)
+        ];
 
         QueryOptions.FilterChanged += RefreshFilteredEvents;
 
@@ -873,7 +1405,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         else
         {
             layer.Opacity = 0;
-            AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+            AllocationLayers = [.. AllocationLayers];
         }
     }
 
@@ -888,12 +1420,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                                                  ? message
                                                                  : Message + Environment.NewLine + message);
 
-        // The menu-driven options (crop, system objects, lock categories, waits/latches/memory/callstack) already live
-        // on this instance; only the run-time trace settings are layered on here.
         var eventOptions = QueryOptions.Options;
 
-        // When a custom trace directory is configured, SQL Server writes the .xel there — ensure its service account can
-        // (grant on use). Null falls back to the SQL Server log directory.
         var traceDirectory = _settingsViewModel.ActiveTraceDirectory;
 
         eventOptions.TraceDirectory = traceDirectory;
@@ -956,6 +1484,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
 
+            RefreshTraceDocuments();
+
             ResultSets = results.ResultSets;
 
             ShowResultTabsForFirstRun();
@@ -1015,8 +1545,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             indexViewModel.PageSpans = [];
         }
 
-        _indexPageSpansByRoot.Clear();
-        _indexReadSpansByRoot.Clear();
+        _pageSpans = [];
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
         AllocationBorders = [];
@@ -1111,7 +1640,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                     layer.Opacity = 80;
                     layer.SinglePages = [.. bufferPoolPages.Dirty, .. bufferPoolPages.Clean];
 
-                    AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+                    AllocationLayers = [.. AllocationLayers];
                 }
             });
         }
@@ -1152,9 +1681,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _openIndexes.Clear();
 
-        _indexPageSpansByRoot.Clear();
-        
-        _indexReadSpansByRoot.Clear();
+        _pageSpans = [];
 
         Layout.Dispose();
 

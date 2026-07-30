@@ -1,15 +1,15 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Memory;
-using InternalsViewer.Query.Events.Parsers;
 using InternalsViewer.Query.Events.Parsers.Xml;
+using InternalsViewer.Query.Events.Parsers;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.TransactionLog;
 
 namespace InternalsViewer.Query.Tests;

@@ -1,8 +1,9 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans;
 
 namespace InternalsViewer.Query.Tests;
 
