@@ -20,6 +20,8 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     public const int InnerSource = 1;
 
+    public const int JoinSource = -1;
+
     public IReadOnlyList<AccessStep> History => TakenSteps;
 
     public AccessStep? Current => TakenSteps.Count == 0 ? null : TakenSteps[^1];
@@ -48,6 +50,8 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     private bool IsInnerActive { get; set; }
 
+    private bool PendingStart { get; set; }
+
     private IRecord? PendingOuterRecord { get; set; }
 
     private AccessCounters OuterCounters { get; set; }
@@ -67,6 +71,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
         EvaluationContext = evaluationContext;
 
         IsInnerActive = false;
+        PendingStart = true;
         PendingOuterRecord = null;
         OuterCounters = default;
         CompletedInnerCounters = default;
@@ -93,6 +98,22 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
         if (IsComplete)
         {
             return null;
+        }
+
+        if (PendingStart)
+        {
+            PendingStart = false;
+
+            var bindings = string.Join(", ", InnerInput.Bindings.Select(b => $"{b.SeekColumn} = {b.OuterColumn}"));
+
+            var start = new AccessStep.JoinStart($"Nested loops — each outer row binds {bindings} for the inner seek")
+            {
+                Source = JoinSource
+            };
+
+            TakenSteps.Add(start);
+
+            return start;
         }
 
         if (PendingOuterRecord is { } record)

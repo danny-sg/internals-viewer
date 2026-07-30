@@ -146,10 +146,16 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
         var inner = new SideCursor(InnerService, InnerSource, this);
 
+        var keys = string.Join(", ", OuterColumns.Zip(InnerColumns, (o, i) => $"{o} = {i}"));
+
+        yield return Stamp(new AccessStep.JoinStart($"Merge join on {keys} — reading the first outer row"), JoinSource);
+
         await foreach (var step in outer.AdvanceAsync().WithCancellation(CurrentToken))
         {
             yield return step;
         }
+
+        yield return Stamp(new AccessStep.JoinStart("Reading the first inner row"), JoinSource);
 
         await foreach (var step in inner.AdvanceAsync().WithCancellation(CurrentToken))
         {

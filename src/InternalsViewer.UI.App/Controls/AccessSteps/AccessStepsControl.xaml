@@ -353,6 +353,15 @@
                 </Grid>
             </DataTemplate>
 
+            <DataTemplate x:Key="JoinStartTemplate" >
+                <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
+                        <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <TextBlock Text="{Binding Description}" Style="{StaticResource StepValueStyle}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
             <DataTemplate x:Key="MergeCompareTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
@@ -513,6 +522,7 @@
                 LeafLinkTemplate="{StaticResource LeafLinkTemplate}"
                 ReseekTemplate="{StaticResource ReseekTemplate}"
                 RebindTemplate="{StaticResource RebindTemplate}"
+                JoinStartTemplate="{StaticResource JoinStartTemplate}"
                 MergeCompareTemplate="{StaticResource MergeCompareTemplate}"
                 JoinEmitTemplate="{StaticResource JoinEmitTemplate}"
                 StoppedTemplate="{StaticResource StoppedTemplate}"

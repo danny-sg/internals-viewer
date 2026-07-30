@@ -135,6 +135,11 @@ public abstract record AccessStep(AccessPhase AccessPhase)
     public sealed record Rebind(int RebindNumber, AccessKey Key) : AccessStep(AccessPhase.Descent);
 
     /// <summary>
+    /// A join announced what it is about to do, narrating the start of a composed access path
+    /// </summary>
+    public sealed record JoinStart(string Description) : AccessStep(AccessPhase.Ranges);
+
+    /// <summary>
     /// A merge loop compared the current key on each side and chose which side to advance
     /// </summary>
     public sealed record MergeCompare(int Comparison) : AccessStep(AccessPhase.Walk)

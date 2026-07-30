@@ -29,6 +29,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate RebindTemplate { get; set; } = null!;
 
+    public DataTemplate JoinStartTemplate { get; set; } = null!;
+
     public DataTemplate MergeCompareTemplate { get; set; } = null!;
 
     public DataTemplate JoinEmitTemplate { get; set; } = null!;
@@ -69,6 +71,7 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.LeafLink => LeafLinkTemplate,
             AccessStep.Reseek => ReseekTemplate,
             AccessStep.Rebind => RebindTemplate,
+            AccessStep.JoinStart => JoinStartTemplate,
             AccessStep.MergeCompare => MergeCompareTemplate,
             AccessStep.JoinEmit => JoinEmitTemplate,
             AccessStep.Stopped => StoppedTemplate,
