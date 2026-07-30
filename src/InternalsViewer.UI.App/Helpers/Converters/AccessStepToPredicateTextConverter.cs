@@ -1,5 +1,6 @@
 using System;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
+using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
 using Microsoft.UI.Xaml.Data;
 
@@ -16,6 +17,7 @@ public sealed class AccessStepToPredicateTextConverter : IValueConverter
             AccessStep.ProbeResult probeResult => PredicateText.From(probeResult),
             AccessStep.RangeEnd rangeEnd => PredicateText.From(rangeEnd),
             AccessStep.Reseek reseek => PredicateText.From(reseek.Bounds),
+            AccessStep.Rebind rebind => PredicateText.From(SeekBounds.Equality(rebind.Key)),
             _ => PredicateText.Empty
         };
     }

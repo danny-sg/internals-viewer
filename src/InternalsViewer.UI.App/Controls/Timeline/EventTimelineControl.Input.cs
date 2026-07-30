@@ -194,7 +194,11 @@ public sealed partial class EventTimelineControl
             flyout.Items.Add(openIndex);
         }
 
-        if (op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 })
+        var canTrace = op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 }
+                       || (op.Category == OperatorCategory.Join
+                           && op.Name.Contains("Nested Loops", StringComparison.OrdinalIgnoreCase));
+
+        if (canTrace)
         {
             var openTrace = new MenuFlyoutItem { Text = "Trace" };
 

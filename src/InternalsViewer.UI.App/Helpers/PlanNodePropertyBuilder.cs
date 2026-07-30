@@ -23,6 +23,12 @@ public static class PlanNodePropertyBuilder
         operatorGroup.Children.Add(new PlanNodeProperty("Logical Operator", node.LogicalOperator));
         operatorGroup.Children.Add(new PlanNodeProperty("Node Id", node.NodeId.ToString(CultureInfo.InvariantCulture)));
 
+        if ((OperatorClassifier.IsNestedLoop(node) || OperatorClassifier.IsMergeJoin(node)) && node.Children.Count >= 2)
+        {
+            operatorGroup.Children.Add(new PlanNodeProperty("Outer Input", InputName(node.Children[0])));
+            operatorGroup.Children.Add(new PlanNodeProperty("Inner Input", InputName(node.Children[1])));
+        }
+
         result.Add(operatorGroup);
 
         var optimizerGroup = new PlanNodeProperty("Optimizer", string.Empty);
@@ -341,6 +347,13 @@ public static class PlanNodePropertyBuilder
         }
 
         return expressions?.GetDisplayText(name) ?? name;
+    }
+
+    private static string InputName(PlanNode child)
+    {
+        var objectName = ObjectName(child);
+
+        return objectName.Length == 0 ? child.PhysicalOperator : $"{child.PhysicalOperator} ({objectName})";
     }
 
     private static string ObjectName(PlanNode node)

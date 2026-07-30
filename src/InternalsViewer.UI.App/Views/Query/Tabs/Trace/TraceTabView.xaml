@@ -37,7 +37,7 @@
                            Width="32"
                            Height="32"
                            HorizontalAlignment="Left" />
-                    <TextBlock Text="{x:Bind ViewModel.PlanNode.LogicalOperator, Mode=OneWay}"
+                    <TextBlock Text="{x:Bind ViewModel.PlanNode.PhysicalOperator, Mode=OneWay}"
                                VerticalAlignment="Center"
                                Padding="4,0,8,0" />
                 </StackPanel>

@@ -11,8 +11,8 @@
 
     <StackPanel 
         Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-        <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
-                                                 IsIndex="True" />
+        <!--<allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
+                                                 IsIndex="True" />-->
 
     <accessSteps:SeekDescriptionPanel FontSize="12"
                                       Strategy="{x:Bind ViewModel.SeekDescription, Mode=OneWay}"

@@ -104,4 +104,25 @@ public readonly record struct AccessCounters
     {
         return this with { PagesSkipped = PagesSkipped + 1 };
     }
+
+    /// <summary>
+    /// Combines the totals of two access paths
+    /// </summary>
+    public AccessCounters Add(AccessCounters other)
+    {
+        return new AccessCounters
+        {
+            PagesRead = PagesRead + other.PagesRead,
+            Comparisons = Comparisons + other.Comparisons,
+            RowsRead = RowsRead + other.RowsRead,
+            RowsOutput = RowsOutput + other.RowsOutput,
+            GhostsSkipped = GhostsSkipped + other.GhostsSkipped,
+            LeafLinksFollowed = LeafLinksFollowed + other.LeafLinksFollowed,
+            RangeSeeks = RangeSeeks + other.RangeSeeks,
+            IamPagesRead = IamPagesRead + other.IamPagesRead,
+            PfsPagesRead = PfsPagesRead + other.PfsPagesRead,
+            ExtentsVisited = ExtentsVisited + other.ExtentsVisited,
+            PagesSkipped = PagesSkipped + other.PagesSkipped
+        };
+    }
 }

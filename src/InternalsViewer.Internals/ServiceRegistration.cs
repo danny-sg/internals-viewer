@@ -12,6 +12,7 @@ using InternalsViewer.Internals.Providers.Server;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Allocations;
 using InternalsViewer.Internals.Services.Indexes;
+using InternalsViewer.Internals.Services.Joins;
 using InternalsViewer.Internals.Services.Loaders.Chains;
 using InternalsViewer.Internals.Services.Loaders.Compression;
 using InternalsViewer.Internals.Services.Loaders.Engine;
@@ -64,6 +65,7 @@ public static class ServiceRegistration
         services.AddTransient<IndexService>();
         services.AddTransient<IndexStepService>();
         services.AddTransient<AllocationStepService>();
+        services.AddTransient<NestedLoopsStepService>();
 
         RegisterPageParsers(services);
     }

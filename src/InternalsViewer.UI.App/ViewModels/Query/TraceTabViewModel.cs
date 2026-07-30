@@ -11,27 +11,23 @@ using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Allocation;
-using InternalsViewer.Internals.Engine.Indexes;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Services.Allocations;
 using InternalsViewer.Internals.Services.Indexes;
+using InternalsViewer.Internals.Services.Joins;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Parsing.Plans;
-using System.Drawing;
 using InternalsViewer.UI.App.Models.Index;
-using AllocationBorder = InternalsViewer.UI.App.Models.AllocationBorder;
-using AllocationBorderScope = InternalsViewer.UI.App.Models.AllocationBorderScope;
-using AllocationLayer = InternalsViewer.UI.App.Models.AllocationLayer;
-using TimedRange = InternalsViewer.UI.App.Models.TimedRange;
-using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -39,11 +35,12 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 public enum TraceKind
 {
     Index,
-    Allocation
+    Allocation,
+    KeyLookup
 }
 
-public sealed class TraceTabViewModelFactory(IndexStepService indexStepService,
-                                             AllocationStepService allocationStepService,
+public sealed class TraceTabViewModelFactory(IPageService pageService,
+                                             IRecordService recordService,
                                              IndexService indexService)
 {
     public TraceTabViewModel Create(TraceKind kind,
@@ -53,9 +50,45 @@ public sealed class TraceTabViewModelFactory(IndexStepService indexStepService,
                                     DateTime? queryTime,
                                     ScanModeResult? scanMode)
     {
-        IStepService service = kind == TraceKind.Index ? indexStepService : allocationStepService;
+        IStepService service = kind == TraceKind.Index
+            ? new IndexStepService(pageService, recordService)
+            : new AllocationStepService(pageService, recordService);
 
-        return new TraceTabViewModel(kind, service, indexService, database, allocationUnit, planNode, queryTime, scanMode);
+        var visualKind = kind == TraceKind.Index ? TraceVisualKind.Index : TraceVisualKind.Allocation;
+
+        var visualTitle = kind == TraceKind.Index ? "Index" : "Allocations";
+
+        var visuals = new[] { new TraceVisualViewModel(visualKind, database, allocationUnit, indexService, visualTitle) };
+
+        return new TraceTabViewModel(kind, service, database, allocationUnit, planNode, queryTime, scanMode, visuals);
+    }
+
+    public TraceTabViewModel CreateKeyLookup(DatabaseSource database,
+                                             AllocationUnit outerUnit,
+                                             AllocationUnit innerUnit,
+                                             PlanNode joinNode,
+                                             DateTime? queryTime)
+    {
+        var service = new NestedLoopsStepService(new IndexStepService(pageService, recordService),
+                                                 new IndexStepService(pageService, recordService));
+
+        var visuals = new[]
+        {
+            new TraceVisualViewModel(TraceVisualKind.Index,
+                                     database,
+                                     outerUnit,
+                                     indexService,
+                                     $"Seek: {outerUnit.IndexName}",
+                                     NestedLoopsStepService.OuterSource),
+            new TraceVisualViewModel(TraceVisualKind.Index,
+                                     database,
+                                     innerUnit,
+                                     indexService,
+                                     $"Lookup: {innerUnit.IndexName}",
+                                     NestedLoopsStepService.InnerSource)
+        };
+
+        return new TraceTabViewModel(TraceKind.KeyLookup, service, database, outerUnit, joinNode, queryTime, null, visuals);
     }
 }
 
@@ -67,21 +100,21 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     public TraceTabViewModel(TraceKind kind,
                              IStepService stepService,
-                             IndexService indexService,
                              DatabaseSource database,
                              AllocationUnit allocationUnit,
                              PlanNode? planNode,
                              DateTime? queryTime,
-                             ScanModeResult? scanMode)
+                             ScanModeResult? scanMode,
+                             IReadOnlyList<TraceVisualViewModel> visuals)
     {
         Kind = kind;
         StepService = stepService;
-        IndexService = indexService;
         Database = database;
         AllocationUnit = allocationUnit;
         PlanNode = planNode;
         QueryTime = queryTime;
         ScanMode = scanMode;
+        Visuals = visuals;
 
         Dock = BuildDock();
 
@@ -96,9 +129,13 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private DockLayoutViewModel BuildDock()
     {
-        var visualTitle = Kind == TraceKind.Index ? "Index" : "Allocations";
+        var visualDocuments = Visuals.Select(v => DocumentViewModel.Create<TraceVisualPanelView>(v.Title,
+                                                                                                 v,
+                                                                                                 canClose: false,
+                                                                                                 keepAlive: true,
+                                                                                                 key: $"Visual{v.Source}"))
+                                     .ToArray();
 
-        var visual = DocumentViewModel.Create<TraceVisualPanelView>(visualTitle, this, canClose: false, keepAlive: true, key: "Visual");
         var steps = DocumentViewModel.Create<TraceStepsPanelView>("Trace", this, canClose: false, keepAlive: true, key: "Steps");
         var description = DocumentViewModel.Create<TraceDescriptionPanelView>("Description", this, keepAlive: true, key: "Description");
         var results = DocumentViewModel.Create<TraceResultsPanelView>("Results", this, keepAlive: true, key: "Results");
@@ -110,14 +147,14 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var right = new SplitNode(Orientation.Vertical, new TabGroupNode(steps), details);
 
-        return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, new TabGroupNode(visual), right));
+        return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, new TabGroupNode(visualDocuments), right));
     }
 
     public TraceKind Kind { get; }
 
-    private IStepService StepService { get; }
+    public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
 
-    private IndexService IndexService { get; }
+    private IStepService StepService { get; }
 
     public DatabaseSource Database { get; }
 
@@ -160,6 +197,28 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private AccessStrategy? _strategy;
 
     [ObservableProperty]
+    private AccessStrategy? _innerStrategy;
+
+    public string OuterSectionTitle => Visuals.Count > 0 ? Visuals[0].Title : string.Empty;
+
+    public string InnerSectionTitle => Visuals.Count > 1 ? Visuals[1].Title : string.Empty;
+
+    public Brush? InnerAccentBrush
+    {
+        get
+        {
+            if (Visuals.Count < 2)
+            {
+                return null;
+            }
+
+            var colour = Visuals[1].ObjectColour;
+
+            return new SolidColorBrush(Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B));
+        }
+    }
+
+    [ObservableProperty]
     private bool _isStepping;
 
     [ObservableProperty]
@@ -172,60 +231,15 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private bool _isRunningToEnd;
 
     [ObservableProperty]
-    private List<IndexNode> _nodes = [];
-
-    [ObservableProperty]
-    private bool _isVisualInitialized;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ProgressText))]
-    private int _loadedPageCount;
-
-    [ObservableProperty]
-    private float _zoom = 1;
-
-    [ObservableProperty]
-    private bool _isZoomToFit = true;
-
-    [ObservableProperty]
-    private IReadOnlyList<PageSpan> _pageSpans = [];
-
-    [ObservableProperty]
     private long _playheadTimeUs;
 
-    [ObservableProperty]
-    private PageAddress? _selectedPageAddress;
-
-    [ObservableProperty]
-    private int? _selectedSlot;
-
-    public long TotalPageCount => AllocationUnit.UsedPages;
-
-    public string ProgressText => TotalPageCount > 0 ? $"{LoadedPageCount:N0} of {TotalPageCount:N0} pages" : string.Empty;
-
-    public bool IsProgressVisible => TotalPageCount >= IndexService.ProgressReportInterval;
-
-    public double ProgressMaximum => TotalPageCount;
-
-    [ObservableProperty]
-    private ObservableCollection<AllocationLayer> _allocationLayers = [];
-
-    [ObservableProperty]
-    private IReadOnlyList<AllocationBorder> _traceBorders = [];
-
-    [ObservableProperty]
-    private RowIdentifier? _selectedRowIdentifier;
-
-    [ObservableProperty]
-    private int _selectedRowSlotCount;
-
-    private PageAddress? _currentTracePage;
-
-    private AllocationBorder? _objectBorder;
-
-    private bool _objectBorderVisible;
-
-    private readonly List<PageSpan> _visitedPages = [];
+    partial void OnPlayheadTimeUsChanged(long value)
+    {
+        foreach (var visual in Visuals)
+        {
+            visual.PlayheadTimeUs = value;
+        }
+    }
 
     private DocumentViewModel? _resultsDocument;
 
@@ -274,68 +288,13 @@ public sealed partial class TraceTabViewModel : ObservableObject
         OnPropertyChanged(nameof(ResultsLabel));
     }
 
-    public short VisualFileId
-        => (AllocationUnit.FirstPage != PageAddress.Empty ? AllocationUnit.FirstPage : AllocationUnit.FirstIamPage).FileId;
-
-    public int ExtentCount => Database.GetFilePageCount(VisualFileId) / 8;
-
-    public PfsChain? PfsChain => Database.Pfs.GetValueOrDefault(VisualFileId);
-
-    public async Task LoadVisualAsync()
-    {
-        if (IsVisualInitialized)
-        {
-            return;
-        }
-
-        if (Kind == TraceKind.Allocation)
-        {
-            var layers = await Task.Run(() => AllocationLayerBuilder.GenerateLayers(Database, true, 20));
-
-            var traceName = string.IsNullOrEmpty(AllocationUnit.IndexName)
-                ? $"{AllocationUnit.SchemaName}.{AllocationUnit.TableName}"
-                : $"{AllocationUnit.SchemaName}.{AllocationUnit.TableName}.{AllocationUnit.IndexName}";
-
-            foreach (var layer in layers.Where(l => !l.IsAllocationLayer))
-            {
-                layer.Opacity = layer.Name == traceName ? (byte)80 : (byte)5;
-            }
-
-            AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
-
-            var iamPageIds = AllocationUnit.IamChain
-                                           .Pages
-                                           .Where(p => p.PageAddress.FileId == VisualFileId)
-                                           .Select(p => p.PageAddress.PageId)
-                                           .ToHashSet();
-
-            var ranges = AllocationUnit.IamChain
-                                       .GetAllocatedPageRanges(VisualFileId)
-                                       .Where(r => !(r.From == r.To && iamPageIds.Contains(r.From)))
-                                       .Select(r => new TimedRange(r.From, r.To, 0, long.MaxValue))
-                                       .ToList();
-
-            _objectBorder = new AllocationBorder(AllocationBorderScope.Page, VisualFileId, Color.DimGray, ranges);
-
-            IsVisualInitialized = true;
-
-            return;
-        }
-
-        LoadedPageCount = 0;
-
-        IndexService.ProgressReportInterval = TotalPageCount > 100_000 ? 4096 : 1;
-
-        OnPropertyChanged(nameof(IsProgressVisible));
-
-        var progress = new Progress<int>(count => LoadedPageCount = count);
-
-        Nodes = await Task.Run(() => IndexService.GetNodes(Database, AllocationUnit.RootPage, CancellationToken.None, progress));
-
-        IsVisualInitialized = true;
-    }
-
     public AccessPhase? CurrentPhase => CurrentStep?.AccessPhase;
+
+    public AccessPhase? OuterPhase
+        => CurrentStep is { } step && step.Source == NestedLoopsStepService.OuterSource ? step.AccessPhase : null;
+
+    public AccessPhase? InnerPhase
+        => CurrentStep is { } step && step.Source == NestedLoopsStepService.InnerSource ? step.AccessPhase : null;
 
     public AccessCounters CurrentCounters => CurrentStep?.Counters ?? default;
 
@@ -345,6 +304,36 @@ public sealed partial class TraceTabViewModel : ObservableObject
     {
         get
         {
+            if (Kind == TraceKind.KeyLookup)
+            {
+                if (ResolveJoin() is not { } join)
+                {
+                    return null;
+                }
+
+                var outerPredicate = join.Outer.PredicateInfo;
+
+                var outerUnit = Visuals[0].AllocationUnit;
+
+                var outerStructure = IndexStructureProvider.GetIndexStructure(Database, outerUnit.AllocationUnitId);
+
+                IReadOnlyList<SeekBounds> outerRanges = outerPredicate is { HasSeekBounds: true }
+                                                        ? outerPredicate.SeekBounds
+                                                        : [SeekBounds.All];
+
+                return AccessStrategyBuilder.Build(outerStructure,
+                                                   outerRanges[0],
+                                                   OuterScanDirection(join),
+                                                   outerPredicate?.RowGoal,
+                                                   outerPredicate?.Residual,
+                                                   ranges: outerRanges,
+                                                   hasUntranslatedResidual: outerPredicate?.HasUntranslatedPredicate == true) with
+                {
+                    EntryPoint = outerUnit.RootPage,
+                    EntryPointSource = "sys.sysallocunits.pgroot"
+                };
+            }
+
             var predicateInfo = PlanNode?.PredicateInfo;
 
             if (Kind == TraceKind.Allocation)
@@ -381,9 +370,19 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private ScanDirection ScanDirection
         => PlanNode?.ScanInfo?.IsForward == false ? ScanDirection.Backward : ScanDirection.Forward;
 
+    private CorrelatedJoin? ResolveJoin()
+    {
+        return PlanNode is null ? null : CorrelatedJoinResolver.Resolve(PlanNode);
+    }
+
+    private static ScanDirection OuterScanDirection(CorrelatedJoin join)
+        => join.Outer.ScanInfo?.IsForward == false ? ScanDirection.Backward : ScanDirection.Forward;
+
     partial void OnCurrentStepChanged(AccessStep? value)
     {
         OnPropertyChanged(nameof(CurrentPhase));
+        OnPropertyChanged(nameof(OuterPhase));
+        OnPropertyChanged(nameof(InnerPhase));
         OnPropertyChanged(nameof(CurrentCounters));
     }
 
@@ -433,14 +432,16 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Append(step, StepHistory);
 
-        if (step is AccessStep.Row { EmittedRecord: { } emitted })
+        if (step is AccessStep.Row { EmittedRecord: { } emitted } && IsResultRow(step))
         {
             ResultRecords.Add(ToRecordModel(emitted));
 
             UpdateResultsTitle();
         }
 
-        UpdateVisualPosition(step);
+        UpdateInnerStrategy();
+
+        GetVisual(step.Source)?.Apply(step);
 
         CurrentStep = step;
 
@@ -466,6 +467,19 @@ public sealed partial class TraceTabViewModel : ObservableObject
         {
             IsStepComplete = true;
             IsRunning = false;
+        }
+
+        UpdateActiveVisual(step);
+    }
+
+    private void UpdateActiveVisual(AccessStep? step)
+    {
+        foreach (var visual in Visuals)
+        {
+            visual.IsDimmed = Visuals.Count > 1
+                              && step is not null
+                              && !IsStepComplete
+                              && visual.Source != step.Source;
         }
     }
 
@@ -496,15 +510,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             var results = new ObservableCollection<IndexRecordModel>();
 
-            var visited = new List<PageSpan>();
-
-            PageAddress? lastPage = null;
-
-            PageAddress? lastDataPage = null;
-
-            int? lastSlot = null;
-
-            var lastSlotCount = 0;
+            var replays = new Dictionary<TraceVisualViewModel, TraceVisualReplay>();
 
             await Task.Run(async () =>
             {
@@ -522,33 +528,15 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 {
                     Append(step, steps);
 
-                    if (step is AccessStep.Row { EmittedRecord: { } emitted })
+                    if (step is AccessStep.Row { EmittedRecord: { } emitted } && IsResultRow(step))
                     {
                         results.Add(ToRecordModel(emitted));
                     }
+                }
 
-                    switch (step)
-                    {
-                        case AccessStep.ReadPage read:
-                            visited.Add(new PageSpan(read.PageAddress, 0, long.MaxValue));
-                            lastPage = read.PageAddress;
-                            lastDataPage = read.PageAddress;
-                            lastSlotCount = read.SlotCount;
-                            lastSlot = null;
-                            break;
-
-                        case AccessStep.PageSkipped skipped when Kind == TraceKind.Allocation:
-                            lastPage = skipped.PageAddress;
-                            break;
-
-                        case AccessStep.PfsRead pfsRead when Kind == TraceKind.Allocation:
-                            lastPage = pfsRead.PageAddress;
-                            break;
-
-                        default:
-                            lastSlot = GetStepSlot(step) ?? lastSlot;
-                            break;
-                    }
+                foreach (var visual in Visuals)
+                {
+                    replays[visual] = visual.ComputeReplay(StepService.History);
                 }
             }, CancellationToken.None);
 
@@ -556,31 +544,17 @@ public sealed partial class TraceTabViewModel : ObservableObject
             ResultRecords = results;
 
             UpdateResultsTitle();
+            UpdateInnerStrategy();
 
-            if (Kind == TraceKind.Index)
+            foreach (var visual in Visuals)
             {
-                _visitedPages.Clear();
-                _visitedPages.AddRange(visited);
-
-                PageSpans = [.. _visitedPages];
-                SelectedPageAddress = lastPage;
-                SelectedSlot = lastSlot;
-            }
-            else if (lastPage is { } page)
-            {
-                _objectBorderVisible = true;
-
-                SetTraceBorders(page);
-
-                _currentTracePage = lastDataPage;
-                SelectedRowSlotCount = lastSlotCount;
-                SelectedRowIdentifier = lastDataPage is { } dataPage && lastSlot is { } slot
-                    ? new RowIdentifier(dataPage, (ushort)slot)
-                    : null;
+                visual.ApplyReplay(replays[visual]);
             }
 
             CurrentStep = StepService.Current;
             IsStepComplete = StepService.IsComplete;
+
+            UpdateActiveVisual(CurrentStep);
         }
         finally
         {
@@ -607,106 +581,32 @@ public sealed partial class TraceTabViewModel : ObservableObject
         ResultRecords = [];
         CurrentStep = null;
         Strategy = SeekDescription;
+        InnerStrategy = null;
 
-        _visitedPages.Clear();
-        _currentTracePage = null;
-        _objectBorderVisible = false;
-        PageSpans = [];
-        SelectedPageAddress = null;
-        SelectedSlot = null;
-        SelectedRowIdentifier = null;
-        SelectedRowSlotCount = 0;
-        TraceBorders = [];
+        foreach (var visual in Visuals)
+        {
+            visual.Reset();
+        }
 
         UpdateResultsTitle();
     }
 
-    private static int? GetStepSlot(AccessStep step)
+    private TraceVisualViewModel? GetVisual(int source)
     {
-        return step switch
-        {
-            AccessStep.ReadPage => null,
-            AccessStep.Probe probe => probe.Middle,
-            AccessStep.ProbeResult probeResult => probeResult.Slot,
-            AccessStep.Row row => row.Slot,
-            AccessStep.RowRun run => run.ToSlot,
-            AccessStep.RangeEnd rangeEnd => rangeEnd.Slot,
-            AccessStep.Descend descend => descend.Slot,
-            _ => null
-        };
+        return Visuals.FirstOrDefault(v => v.Source == source);
     }
 
-    private void UpdateVisualPosition(AccessStep step)
+    private bool IsResultRow(AccessStep step)
     {
-        if (Kind == TraceKind.Index)
-        {
-            if (step is AccessStep.ReadPage read)
-            {
-                SelectedPageAddress = read.PageAddress;
-
-                SelectedSlot = null;
-
-                _visitedPages.Add(new PageSpan(read.PageAddress, 0, long.MaxValue));
-
-                PageSpans = [.. _visitedPages];
-            }
-            else
-            {
-                SelectedSlot = GetStepSlot(step) ?? SelectedSlot;
-            }
-
-            return;
-        }
-
-        switch (step)
-        {
-            case AccessStep.ReadPage read:
-                _currentTracePage = read.PageAddress;
-                SelectedRowSlotCount = read.SlotCount;
-                SelectedRowIdentifier = null;
-                break;
-
-            case AccessStep.Row row when _currentTracePage is { } rowPage:
-                SelectedRowIdentifier = new RowIdentifier(rowPage, (ushort)row.Slot);
-                break;
-
-            case AccessStep.RowRun run when _currentTracePage is { } runPage:
-                SelectedRowIdentifier = new RowIdentifier(runPage, (ushort)run.ToSlot);
-                break;
-
-            case AccessStep.IamRead:
-                _objectBorderVisible = true;
-                SelectedRowIdentifier = null;
-                TraceBorders = _objectBorder is { } revealed ? [revealed] : [];
-                break;
-
-            default:
-                SelectedRowIdentifier = null;
-                break;
-        }
-
-        var current = step switch
-        {
-            AccessStep.ReadPage readPage => readPage.PageAddress,
-            AccessStep.PageSkipped skipped => skipped.PageAddress,
-            AccessStep.PfsRead pfsRead => pfsRead.PageAddress,
-            _ => (PageAddress?)null
-        };
-
-        if (current is { } page)
-        {
-            SetTraceBorders(page);
-        }
+        return Kind != TraceKind.KeyLookup || step.Source == NestedLoopsStepService.InnerSource;
     }
 
-    private void SetTraceBorders(PageAddress page)
+    private void UpdateInnerStrategy()
     {
-        var currentBorder = new AllocationBorder(AllocationBorderScope.Page,
-                                                 page.FileId,
-                                                 Color.Red,
-                                                 [new TimedRange(page.PageId, page.PageId, 0, long.MaxValue)]);
-
-        TraceBorders = _objectBorderVisible && _objectBorder is { } border ? [border, currentBorder] : [currentBorder];
+        if (InnerStrategy is null && StepService is NestedLoopsStepService { InnerStrategy: { } inner })
+        {
+            InnerStrategy = inner;
+        }
     }
 
     private async Task StartAsync()
@@ -717,7 +617,46 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var hasUntranslated = predicateInfo?.HasUntranslatedPredicate == true;
 
-        if (Kind == TraceKind.Allocation)
+        if (Kind == TraceKind.KeyLookup)
+        {
+            if (ResolveJoin() is not { } join)
+            {
+                return;
+            }
+
+            var service = (NestedLoopsStepService)StepService;
+
+            var outerPredicate = join.Outer.PredicateInfo;
+
+            var outerUnit = Visuals[0].AllocationUnit;
+
+            var innerUnit = Visuals[1].AllocationUnit;
+
+            IReadOnlyList<SeekBounds> outerRanges = outerPredicate is { HasSeekBounds: true }
+                                                    ? outerPredicate.SeekBounds
+                                                    : [SeekBounds.All];
+
+            var outerInput = new NestedLoopsOuterInput(outerUnit.AllocationUnitId, outerUnit.RootPage, outerRanges)
+            {
+                Residual = join.Outer.HasRedundantResidual() ? null : outerPredicate?.Residual,
+                Direction = OuterScanDirection(join),
+                RowGoal = outerPredicate?.RowGoal,
+                HasUntranslatedResidual = outerPredicate?.HasUntranslatedPredicate == true
+            };
+
+            var bindings = join.Inner.PredicateInfo!.CorrelatedSeekColumns
+                               .Select(c => new CorrelationBinding(c.Column, c.OuterColumn))
+                               .ToList();
+
+            var innerInput = new NestedLoopsInnerInput(innerUnit.AllocationUnitId, innerUnit.RootPage, bindings)
+            {
+                Residual = join.Inner.PredicateInfo?.Residual,
+                RowGoal = 1
+            };
+
+            await Task.Run(() => service.StartAsync(Database, outerInput, innerInput, CancellationToken.None, evaluationContext));
+        }
+        else if (Kind == TraceKind.Allocation)
         {
             var service = (AllocationStepService)StepService;
 
@@ -778,7 +717,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
         {
             var latest = history[0];
 
-            if (latest is AccessStep.Row previous && previous.Outcome == row.Outcome && Math.Abs(row.Slot - previous.Slot) == 1)
+            if (latest is AccessStep.Row previous
+                && previous.Source == row.Source
+                && previous.Outcome == row.Outcome
+                && Math.Abs(row.Slot - previous.Slot) == 1)
             {
                 history[0] = new AccessStep.RowRun(previous.Slot, row.Slot, row.Outcome)
                 {
@@ -786,13 +728,17 @@ public sealed partial class TraceTabViewModel : ObservableObject
                     HasResidual = row.HasResidual,
                     HasRange = row.HasRange,
                     EmitCount = EmitOf(previous) + EmitOf(row),
-                    Counters = row.Counters
+                    Counters = row.Counters,
+                    Source = row.Source
                 };
 
                 return;
             }
 
-            if (latest is AccessStep.RowRun run && run.Outcome == row.Outcome && Math.Abs(row.Slot - run.ToSlot) == 1)
+            if (latest is AccessStep.RowRun run
+                && run.Source == row.Source
+                && run.Outcome == row.Outcome
+                && Math.Abs(row.Slot - run.ToSlot) == 1)
             {
                 history[0] = run with
                 {

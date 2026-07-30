@@ -384,6 +384,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void OpenTrace(PlanNode node)
     {
+        if (ResolveCorrelatedJoin(node) is { } join)
+        {
+            OpenKeyLookupTrace(join);
+
+            return;
+        }
+
+        if (OperatorClassifier.IsNestedLoop(node))
+        {
+            return;
+        }
+
         var allocationUnit = FindAllocationUnit(node);
 
         if (allocationUnit is null)
@@ -432,6 +444,85 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var objectName = string.IsNullOrEmpty(allocationUnit.IndexName) ? allocationUnit.TableName : allocationUnit.IndexName;
 
         var document = new DocumentViewModel(title: $"Trace: {objectName}",
+                                             content: traceViewModel,
+                                             viewFactory: static () => new TraceTabView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false);
+
+        Layout.RegisterDocument(key, document);
+
+        _openTraces[key] = traceViewModel;
+
+        Layout.Show(document);
+    }
+
+    private CorrelatedJoin? ResolveCorrelatedJoin(PlanNode node)
+    {
+        if (OperatorClassifier.IsNestedLoop(node))
+        {
+            return CorrelatedJoinResolver.Resolve(node);
+        }
+
+        if (node.ScanInfo?.IsLookup != true || node.PredicateInfo?.IsCorrelatedSeek != true)
+        {
+            return null;
+        }
+
+        var plan = ExecutionPlans.FirstOrDefault(p => p.NodesById.TryGetValue(node.NodeId, out var candidate)
+                                                      && ReferenceEquals(candidate, node));
+
+        return plan?.Root
+                   .Select(root => CorrelatedJoinResolver.ResolveFromInner(root, node))
+                   .FirstOrDefault(j => j is not null);
+    }
+
+    private void OpenKeyLookupTrace(CorrelatedJoin join)
+    {
+        var outerUnit = FindAllocationUnit(join.Outer);
+
+        var innerUnit = FindAllocationUnit(join.Inner);
+
+        if (outerUnit is null || innerUnit is null)
+        {
+            Logger.LogWarning("Allocation unit not found for key lookup: outer {Outer}, inner {Inner}",
+                              join.Outer.Index,
+                              join.Inner.Index);
+
+            return;
+        }
+
+        var key = $"Trace:{outerUnit.SchemaName}.{outerUnit.TableName}.{outerUnit.IndexName}+{innerUnit.IndexName}:{join.Join.NodeId}";
+
+        if (Layout.TryGetDocument(key, out var existing))
+        {
+            if (existing.Content is TraceTabViewModel { Kind: TraceKind.KeyLookup })
+            {
+                Layout.Show(existing);
+
+                return;
+            }
+
+            if (existing.Content is TraceTabViewModel stale)
+            {
+                stale.PageNavigated -= OnIndexPageNavigated;
+            }
+
+            _openTraces.Remove(key);
+
+            Layout.RemoveDocument(key, out _);
+        }
+
+        var traceViewModel = _traceTabViewModelFactory.CreateKeyLookup(Database,
+                                                                       outerUnit,
+                                                                       innerUnit,
+                                                                       join.Join,
+                                                                       Events.FirstOrDefault()?.Timestamp);
+
+        traceViewModel.PageNavigated += OnIndexPageNavigated;
+
+        var document = new DocumentViewModel(title: $"Trace: {innerUnit.TableName} Lookup",
                                              content: traceViewModel,
                                              viewFactory: static () => new TraceTabView(),
                                              canClose: true,
@@ -908,6 +999,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             var node = FindTraceOperator(viewModel);
 
+            if (node is not null && viewModel.Kind == TraceKind.KeyLookup)
+            {
+                viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, null);
+
+                continue;
+            }
+
             if (node is not null)
             {
                 var allocationUnit = viewModel.AllocationUnit;
@@ -939,17 +1037,37 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private PlanNode? FindTraceOperator(TraceTabViewModel viewModel)
     {
+        if (viewModel.Kind == TraceKind.KeyLookup)
+        {
+            var outerUnit = viewModel.Visuals[0].AllocationUnit;
+
+            var innerUnit = viewModel.Visuals[1].AllocationUnit;
+
+            var joins = ExecutionPlans.Where(p => !p.IsInternalPlan)
+                                      .SelectMany(p => p.NodesById.Values)
+                                      .Where(n => CorrelatedJoinResolver.Resolve(n) is { } join
+                                                  && MatchesUnit(join.Outer, outerUnit)
+                                                  && MatchesUnit(join.Inner, innerUnit))
+                                      .ToList();
+
+            return joins.FirstOrDefault(n => n.NodeId == viewModel.PlanNode?.NodeId) ?? joins.FirstOrDefault();
+        }
+
         var unit = viewModel.AllocationUnit;
 
         var candidates = ExecutionPlans.Where(p => !p.IsInternalPlan)
                                        .SelectMany(p => p.NodesById.Values)
-                                       .Where(n => n.ScanInfo is not null
-                                                   && NameMatches(n.Table, unit.TableName)
-                                                   && NameMatches(n.Index ?? string.Empty, unit.IndexName)
-                                                   && (string.IsNullOrEmpty(n.Schema) || NameMatches(n.Schema, unit.SchemaName)))
+                                       .Where(n => n.ScanInfo is not null && MatchesUnit(n, unit))
                                        .ToList();
 
         return candidates.FirstOrDefault(n => n.NodeId == viewModel.PlanNode?.NodeId) ?? candidates.FirstOrDefault();
+    }
+
+    private static bool MatchesUnit(PlanNode node, Internals.Engine.Database.AllocationUnit unit)
+    {
+        return NameMatches(node.Table, unit.TableName)
+               && NameMatches(node.Index ?? string.Empty, unit.IndexName)
+               && (string.IsNullOrEmpty(node.Schema) || NameMatches(node.Schema, unit.SchemaName));
     }
 
     public event Action<long>? PlayheadMoveRequested;

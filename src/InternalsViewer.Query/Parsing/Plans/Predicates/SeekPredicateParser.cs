@@ -129,7 +129,8 @@ public sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = 
                     var seekColumn = columnNames is not null && index < columnNames.Count ? columnNames[index] : null;
 
                     _correlatedColumns.Add(new CorrelatedSeekColumn(TrimName(seekColumn),
-                                                                    $"{TrimName(outerColumn.Table)}.{TrimName(outerColumn.Column)}"));
+                                                                    TrimName(outerColumn.Table),
+                                                                    TrimName(outerColumn.Column)));
                 }
 
                 return [];

@@ -6,7 +6,7 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 
 public sealed partial class TraceVisualPanelView : UserControl
 {
-    public TraceTabViewModel? ViewModel => DataContext as TraceTabViewModel;
+    public TraceVisualViewModel? ViewModel => DataContext as TraceVisualViewModel;
 
     public TraceVisualPanelView()
     {
@@ -23,12 +23,15 @@ public sealed partial class TraceVisualPanelView : UserControl
         }
     }
 
-    public Visibility IndexVisibility(TraceKind kind, bool isInitialized)
-        => kind == TraceKind.Index && isInitialized ? Visibility.Visible : Visibility.Collapsed;
+    public double DimOpacity(bool isDimmed)
+        => isDimmed ? 0.35 : 1.0;
 
-    public Visibility LoadingVisibility(TraceKind kind, bool isInitialized)
-        => kind == TraceKind.Index && !isInitialized ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility IndexVisibility(TraceVisualKind kind, bool isInitialized)
+        => kind == TraceVisualKind.Index && isInitialized ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility AllocationVisibility(TraceKind kind, bool isInitialized)
-        => kind == TraceKind.Allocation && isInitialized ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility LoadingVisibility(TraceVisualKind kind, bool isInitialized)
+        => kind == TraceVisualKind.Index && !isInitialized ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility AllocationVisibility(TraceVisualKind kind, bool isInitialized)
+        => kind == TraceVisualKind.Allocation && isInitialized ? Visibility.Visible : Visibility.Collapsed;
 }

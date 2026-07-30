@@ -8,10 +8,39 @@
     xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
     mc:Ignorable="d">
 
-    <accessSteps:AccessStrategyPanel FontSize="12"
-                                     Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                                     Strategy="{x:Bind ViewModel.Strategy, Mode=OneWay}"
-                                     CurrentPhase="{x:Bind ViewModel.CurrentPhase, Mode=OneWay}"
-                                     Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"
-                                     IsWalkActive="{x:Bind ViewModel.IsWalkInProgress, Mode=OneWay}" />
+    <StackPanel Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+        <TextBlock Text="{x:Bind ViewModel.OuterSectionTitle, Mode=OneWay}"
+                   FontSize="12"
+                   FontWeight="SemiBold"
+                   Padding="8,8,8,0"
+                   Visibility="{x:Bind SectionHeaderVisibility(ViewModel.Kind), Mode=OneWay}" />
+
+        <accessSteps:AccessStrategyPanel FontSize="12"
+                                         Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                         Strategy="{x:Bind ViewModel.Strategy, Mode=OneWay}"
+                                         CurrentPhase="{x:Bind ViewModel.OuterPhase, Mode=OneWay}"
+                                         Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"
+                                         IsWalkActive="{x:Bind ViewModel.IsWalkInProgress, Mode=OneWay}" />
+
+        <TextBlock Text="{x:Bind ViewModel.InnerSectionTitle, Mode=OneWay}"
+                   FontSize="12"
+                   FontWeight="SemiBold"
+                   Padding="8,8,8,0"
+                   Visibility="{x:Bind SectionHeaderVisibility(ViewModel.Kind), Mode=OneWay}" />
+
+        <TextBlock Text="The seek range is bound from each outer row, so the descent is planned when the first rebind arrives"
+                   FontSize="12"
+                   Opacity="0.7"
+                   Padding="8,4,8,8"
+                   TextWrapping="Wrap"
+                   Visibility="{x:Bind InnerPendingVisibility(ViewModel.Kind, ViewModel.InnerStrategy), Mode=OneWay}" />
+
+        <accessSteps:AccessStrategyPanel FontSize="12"
+                                         Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                         Strategy="{x:Bind ViewModel.InnerStrategy, Mode=OneWay}"
+                                         CurrentPhase="{x:Bind ViewModel.InnerPhase, Mode=OneWay}"
+                                         Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"
+                                         IsWalkActive="{x:Bind ViewModel.IsWalkInProgress, Mode=OneWay}"
+                                         Visibility="{x:Bind InnerStrategyVisibility(ViewModel.InnerStrategy), Mode=OneWay}" />
+    </StackPanel>
 </UserControl>

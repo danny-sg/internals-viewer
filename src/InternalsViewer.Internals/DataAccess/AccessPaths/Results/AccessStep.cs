@@ -15,6 +15,11 @@ public abstract record AccessStep(AccessPhase AccessPhase)
     public AccessCounters Counters { get; init; }
 
     /// <summary>
+    /// Identifies which access path produced the step when paths are composed, 0 for a single path
+    /// </summary>
+    public int Source { get; init; }
+
+    /// <summary>
     /// A page was read and is now being examined
     /// </summary>
     public sealed record ReadPage(PageAddress PageAddress, byte Level, bool IsRoot, bool IsLeaf, int SlotCount)
@@ -118,6 +123,11 @@ public abstract record AccessStep(AccessPhase AccessPhase)
     {
         public SeekBounds Bounds { get; init; } = SeekBounds.All;
     }
+
+    /// <summary>
+    /// A correlated seek value was bound from an outer row and the inner path will descend for it
+    /// </summary>
+    public sealed record Rebind(int RebindNumber, AccessKey Key) : AccessStep(AccessPhase.Descent);
 
     public sealed record IamRead(PageAddress PageAddress, int ExtentCount, int SinglePageCount) : AccessStep(AccessPhase.Allocation);
 

@@ -202,6 +202,52 @@ internal static class AllocationLayerBuilder
         return layer;
     }
 
+    public static Color GetObjectColour(DatabaseSource database, AllocationUnit allocationUnit, bool separateIndexes = true)
+    {
+        if (allocationUnit.IsSystem)
+        {
+            return Color.FromArgb(255, 190, 190, 205);
+        }
+
+        var targetName = GetCurrentObjectName(allocationUnit, separateIndexes);
+
+        var names = database.AllocationUnits
+                            .Values
+                            .OrderBy(o => o.TableName)
+                            .ThenBy(o => o.IndexName)
+                            .ThenBy(o => o.AllocationUnitType == AllocationUnitType.InRowData ? 1 : 2)
+                            .Where(o => !o.IsSystem)
+                            .Select(o => GetCurrentObjectName(o, separateIndexes))
+                            .ToList();
+
+        var colourSlotCount = names.Distinct().Count();
+
+        var colourIndex = 0;
+
+        string? previous = null;
+
+        foreach (var name in names)
+        {
+            if (name == previous)
+            {
+                continue;
+            }
+
+            if (name == targetName)
+            {
+                break;
+            }
+
+            colourIndex++;
+
+            previous = name;
+        }
+
+        var hue = colourIndex * HueWheel / Math.Max(colourSlotCount, 1) % HueWheel;
+
+        return ColourHelpers.HsvToColor(hue, UserSaturation, UserValue);
+    }
+
     private static Color GetLayerColour(AllocationUnit allocationUnit,
                                         int colourSlotCount,
                                         ref int colourIndex)

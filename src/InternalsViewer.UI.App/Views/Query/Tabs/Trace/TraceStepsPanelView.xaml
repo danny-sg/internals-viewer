@@ -23,7 +23,8 @@
                                         Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
                                                 Converter={StaticResource StepsInverseBoolToVisibilityConverter}}"
                                         StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}"
-                                        CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
+                                        CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}"
+                                        InnerAccentBrush="{x:Bind ViewModel.InnerAccentBrush, Mode=OneWay}" />
 
         <TextBlock Grid.Row="0"
                    HorizontalAlignment="Center"
