@@ -1,5 +1,5 @@
 using System.Xml.Linq;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Values;
 
 namespace InternalsViewer.Query.Parsing.Plans.Predicates;
 

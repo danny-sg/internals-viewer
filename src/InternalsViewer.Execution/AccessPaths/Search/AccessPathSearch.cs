@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.Interfaces.DataAccess;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.Interfaces;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+namespace InternalsViewer.Execution.AccessPaths.Search;
 
 /// <summary>
 /// Binary search over the slots of a page

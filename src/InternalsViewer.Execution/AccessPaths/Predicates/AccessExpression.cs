@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+namespace InternalsViewer.Execution.AccessPaths.Predicates;
 
 /// <summary>
 /// A scalar expression appearing in a predicate

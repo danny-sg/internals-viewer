@@ -1,11 +1,11 @@
 using System.Data;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Internals.Metadata.Structures;
 
-namespace InternalsViewer.Internals.Tests.UnitTests.DataAccess.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
 
 public class AccessStrategyBuilderTests
 {

@@ -1,6 +1,6 @@
 using System.Xml.Linq;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Query.Parsing.Plans.Predicates;
 
 namespace InternalsViewer.Query.Parsing.Plans;
@@ -518,7 +518,8 @@ public static class ExecutionPlanParser
         return new MergeInfo
         {
             OuterKeys = outer is null ? [] : ParseKeys(outer),
-            InnerKeys = inner is null ? [] : ParseKeys(inner)
+            InnerKeys = inner is null ? [] : ParseKeys(inner),
+            ManyToMany = (bool?)merge.Attribute("ManyToMany") ?? false
         };
     }
 

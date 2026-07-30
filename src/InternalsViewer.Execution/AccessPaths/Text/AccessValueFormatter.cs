@@ -1,9 +1,9 @@
 using System.Data;
 using System.Globalization;
 using System.Text;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+namespace InternalsViewer.Execution.AccessPaths.Text;
 
 /// <summary>
 /// Renders a value the way it would be written in Transact-SQL

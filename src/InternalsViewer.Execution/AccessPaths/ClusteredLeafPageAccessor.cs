@@ -1,13 +1,13 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Interfaces.DataAccess;
+using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths;
+namespace InternalsViewer.Execution.AccessPaths;
 
 /// <summary>
 /// Adapts a decoded clustered index leaf <see cref="DataPage"/> and its records to the seek executor page contract

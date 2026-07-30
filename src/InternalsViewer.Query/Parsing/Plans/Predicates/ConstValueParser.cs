@@ -1,7 +1,7 @@
 using System.Data;
 using System.Globalization;
 using System.Text;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Values;
 
 namespace InternalsViewer.Query.Parsing.Plans.Predicates;
 

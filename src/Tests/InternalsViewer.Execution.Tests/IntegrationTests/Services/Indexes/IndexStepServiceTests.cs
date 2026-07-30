@@ -1,17 +1,17 @@
 using System.Data;
 using InternalsViewer.Internals.Connections.File;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Binding;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Binding;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
-using InternalsViewer.Internals.Services.Indexes;
+using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Internals.Tests.Helpers;
 
-namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Indexes;
+namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Indexes;
 
 public class IndexStepServiceTests(ITestOutputHelper testOutput)
 {

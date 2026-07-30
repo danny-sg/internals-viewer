@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Text;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+namespace InternalsViewer.Execution.AccessPaths.Search;
 
 public sealed record AccessStrategyPhase
 {

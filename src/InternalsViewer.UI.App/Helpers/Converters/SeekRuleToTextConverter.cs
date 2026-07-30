@@ -1,5 +1,5 @@
 using System;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Search;
 using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;

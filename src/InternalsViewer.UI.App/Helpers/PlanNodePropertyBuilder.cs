@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.UI.App.Models;
@@ -198,6 +198,11 @@ public static class PlanNodePropertyBuilder
             if (mergeInfo.InnerKeys.Count > 0)
             {
                 mergeGroup.Children.Add(new PlanNodeProperty("Inner Keys", ColumnList(mergeInfo.InnerKeys, expressions)) { IsValueMonospace = true });
+            }
+
+            if (mergeInfo.ManyToMany)
+            {
+                mergeGroup.Children.Add(BoolProperty("Many To Many", true));
             }
 
             if (mergeGroup.Children.Count > 0)

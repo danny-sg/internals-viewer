@@ -2,7 +2,7 @@ using System.Data;
 using System.Text;
 using InternalsViewer.Internals.Engine.Records;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+namespace InternalsViewer.Execution.AccessPaths.Values;
 
 /// <summary>
 /// Creates <see cref="AccessValue"/> instances from record fields

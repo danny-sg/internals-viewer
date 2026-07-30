@@ -1,10 +1,10 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.Interfaces.DataAccess;
+using InternalsViewer.Execution.AccessPaths;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.Interfaces;
 
-namespace InternalsViewer.Internals.DataAccess.Executors;
+namespace InternalsViewer.Execution.Executors;
 
 /// <summary>
 /// Executes a seek against a single page, locating an entry point then walking the range

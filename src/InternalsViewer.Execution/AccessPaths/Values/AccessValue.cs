@@ -2,7 +2,7 @@ using System.Data;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+namespace InternalsViewer.Execution.AccessPaths.Values;
 
 /// <summary>
 /// A single typed key or predicate value

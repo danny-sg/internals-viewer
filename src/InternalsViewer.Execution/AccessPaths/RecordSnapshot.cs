@@ -1,6 +1,6 @@
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths;
+namespace InternalsViewer.Execution.AccessPaths;
 
 internal static class RecordSnapshot
 {

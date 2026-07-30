@@ -1,5 +1,5 @@
 using System;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 

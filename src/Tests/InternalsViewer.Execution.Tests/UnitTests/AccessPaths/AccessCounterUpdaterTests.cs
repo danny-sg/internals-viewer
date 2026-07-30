@@ -1,8 +1,8 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.Executors;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.Executors;
 
-namespace InternalsViewer.Internals.Tests.UnitTests.DataAccess.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
 
 public class AccessCounterUpdaterTests
 {

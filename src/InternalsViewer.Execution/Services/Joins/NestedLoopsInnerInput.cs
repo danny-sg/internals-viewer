@@ -1,8 +1,8 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Internals.Services.Joins;
+namespace InternalsViewer.Execution.Services.Joins;
 
 /// <summary>
 /// Describes the inner side of a nested loops join, the access path re-executed with bound seek values for each outer row

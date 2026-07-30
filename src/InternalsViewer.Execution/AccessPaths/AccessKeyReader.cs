@@ -1,9 +1,9 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Metadata.Structures;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths;
+namespace InternalsViewer.Execution.AccessPaths;
 
 internal static class AccessKeyReader
 {

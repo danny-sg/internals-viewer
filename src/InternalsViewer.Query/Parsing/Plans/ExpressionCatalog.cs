@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.Query.Parsing.Plans;

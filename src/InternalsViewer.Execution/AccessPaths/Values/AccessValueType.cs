@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+namespace InternalsViewer.Execution.AccessPaths.Values;
 
 /// <summary>
 /// Storage strategy used by an <see cref="AccessValue"/>

@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+namespace InternalsViewer.Execution.AccessPaths.Search;
 
 /// <summary>
 /// Direction an access path travels through key order

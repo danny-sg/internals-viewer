@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Results;
+namespace InternalsViewer.Execution.AccessPaths.Results;
 
 /// <summary>
 /// Why an access path stopped producing rows

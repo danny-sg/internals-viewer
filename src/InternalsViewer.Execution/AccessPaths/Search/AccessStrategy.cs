@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+namespace InternalsViewer.Execution.AccessPaths.Search;
 
 public sealed record AccessStrategy
 {

@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Text;
 
 namespace InternalsViewer.UI.App.Models;
 

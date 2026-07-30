@@ -1,7 +1,7 @@
 using System;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Text;
 using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;

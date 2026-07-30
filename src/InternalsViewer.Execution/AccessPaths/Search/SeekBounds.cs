@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+namespace InternalsViewer.Execution.AccessPaths.Search;
 
 /// <summary>
 /// Key range for a seek

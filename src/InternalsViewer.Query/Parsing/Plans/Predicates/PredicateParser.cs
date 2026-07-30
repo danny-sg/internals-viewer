@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using System.Xml.Linq;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Predicates;
 
 namespace InternalsViewer.Query.Parsing.Plans.Predicates;
 

@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+namespace InternalsViewer.Execution.AccessPaths.Search;
 
 /// <summary>
 /// An ordered set of key column values

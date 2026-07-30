@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+namespace InternalsViewer.Execution.AccessPaths.Text;
 
 /// <summary>
 /// The role a piece of predicate text plays, used to drive formatting

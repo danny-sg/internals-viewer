@@ -21,6 +21,7 @@
                             PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
                             SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
                             SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
+                            SingleSelectedColour="{x:Bind ToWindowsColor(ViewModel.ObjectColour), Mode=OneWay}"
                             VerticalAlignment="Stretch"
                             HorizontalAlignment="Stretch" />
 

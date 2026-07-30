@@ -1,6 +1,6 @@
 using System.Data;
 using System.Text;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Query.Parsing.Plans.Predicates;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Parsing.Plans.Predicates;

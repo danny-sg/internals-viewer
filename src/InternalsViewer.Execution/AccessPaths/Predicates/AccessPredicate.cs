@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+namespace InternalsViewer.Execution.AccessPaths.Predicates;
 
 /// <summary>
 /// A predicate evaluated against a row, using three valued logic

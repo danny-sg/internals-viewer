@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+namespace InternalsViewer.Execution.AccessPaths.Text;
 
 /// <summary>
 /// A single run of predicate text together with the role it plays

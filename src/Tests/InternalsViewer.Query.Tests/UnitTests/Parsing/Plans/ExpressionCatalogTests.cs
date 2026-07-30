@@ -1,5 +1,5 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.Query.Results;
 

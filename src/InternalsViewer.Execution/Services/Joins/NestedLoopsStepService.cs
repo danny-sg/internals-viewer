@@ -1,22 +1,22 @@
 using System.Threading;
-using InternalsViewer.Internals.DataAccess.AccessPaths;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Binding;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths;
+using InternalsViewer.Execution.AccessPaths.Binding;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
-using InternalsViewer.Internals.Interfaces.Services;
-using InternalsViewer.Internals.Services.Indexes;
+using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Services.Indexes;
 
-namespace InternalsViewer.Internals.Services.Joins;
+namespace InternalsViewer.Execution.Services.Joins;
 
 /// <summary>
 /// Drives a nested loops join by pumping an outer access path and re-seeking an inner path with correlated key values for each outer row
 /// </summary>
-public sealed class NestedLoopsStepService(IndexStepService outerService, IndexStepService innerService) : IStepService
+public sealed class NestedLoopsStepService(IndexStepService outerService, IndexStepService innerService) : IJoinStepService
 {
     public const int OuterSource = 0;
 

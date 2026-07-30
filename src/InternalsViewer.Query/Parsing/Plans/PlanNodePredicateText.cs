@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Text;
 
 namespace InternalsViewer.Query.Parsing.Plans;
 

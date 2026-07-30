@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+namespace InternalsViewer.Execution.AccessPaths.Text;
 
 /// <summary>
 /// Turns predicates and seek bounds into a sequence of formatted tokens

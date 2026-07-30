@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Predicates;
 
 namespace InternalsViewer.Query.Parsing.Plans.Predicates;
 

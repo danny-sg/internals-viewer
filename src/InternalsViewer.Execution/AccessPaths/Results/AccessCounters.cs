@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Results;
+namespace InternalsViewer.Execution.AccessPaths.Results;
 
 /// <summary>
 /// Running cost and cardinality totals for an access path

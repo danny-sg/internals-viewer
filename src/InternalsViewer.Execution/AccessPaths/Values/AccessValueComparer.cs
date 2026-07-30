@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+namespace InternalsViewer.Execution.AccessPaths.Values;
 
 /// <summary>
 /// Compares <see cref="AccessValue"/> instances using index key ordering

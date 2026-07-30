@@ -1,9 +1,9 @@
 using System.Data;
 using System.Text.RegularExpressions;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
-using InternalsViewer.Internals.Interfaces.DataAccess;
+using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Execution.Interfaces;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+namespace InternalsViewer.Execution.AccessPaths.Predicates;
 
 /// <summary>
 /// Evaluates predicates against a row using SQL three stage logic (true/false/unknown)

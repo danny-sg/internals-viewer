@@ -501,7 +501,8 @@ public sealed class ExecutionPlanControl : Canvas
             }
 
             var canTrace = (!string.IsNullOrEmpty(node.Table) && OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
-                           || CorrelatedJoinResolver.Resolve(node) is not null;
+                           || CorrelatedJoinResolver.Resolve(node) is not null
+                           || MergeJoinResolver.Resolve(node) is not null;
 
             if (canTrace)
             {

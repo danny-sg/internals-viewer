@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -17,7 +17,7 @@ public sealed partial class TraceStrategyPanelView : UserControl
     }
 
     public Visibility SectionHeaderVisibility(TraceKind kind)
-        => kind == TraceKind.KeyLookup ? Visibility.Visible : Visibility.Collapsed;
+        => kind is TraceKind.KeyLookup or TraceKind.MergeJoin ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility InnerPendingVisibility(TraceKind kind, AccessStrategy? innerStrategy)
         => kind == TraceKind.KeyLookup && innerStrategy is null ? Visibility.Visible : Visibility.Collapsed;

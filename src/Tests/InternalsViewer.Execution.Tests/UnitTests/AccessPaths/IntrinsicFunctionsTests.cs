@@ -1,10 +1,10 @@
 using System.Data;
 using System.Text;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
-using InternalsViewer.Internals.Interfaces.DataAccess;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Execution.Interfaces;
 
-namespace InternalsViewer.Internals.Tests.UnitTests.DataAccess.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
 
 public class IntrinsicFunctionsTests
 {

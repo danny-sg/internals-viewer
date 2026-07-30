@@ -1,20 +1,20 @@
 using System.Threading;
-using InternalsViewer.Internals.DataAccess.AccessPaths;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.Executors;
+using InternalsViewer.Execution.AccessPaths;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.Executors;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Interfaces.DataAccess;
-using InternalsViewer.Internals.Interfaces.Services;
+using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 
-namespace InternalsViewer.Internals.Services.Allocations;
+namespace InternalsViewer.Execution.Services.Allocations;
 
 /// <summary>
 /// Drives an allocation order scan, following the IAM chain and reading allocated pages

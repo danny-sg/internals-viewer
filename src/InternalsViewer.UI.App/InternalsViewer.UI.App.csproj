@@ -534,6 +534,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\InternalsViewer.TransactionLog\InternalsViewer.TransactionLog.csproj" />
+      <ProjectReference Include="..\InternalsViewer.Execution\InternalsViewer.Execution.csproj" />
     </ItemGroup>
 
     <ItemGroup>

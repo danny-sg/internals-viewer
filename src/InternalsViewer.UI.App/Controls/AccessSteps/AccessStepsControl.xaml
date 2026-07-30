@@ -316,6 +316,53 @@
                 </Grid>
             </DataTemplate>
 
+            <DataTemplate x:Key="MergeCompareTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}"
+                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
+                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Compare" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <StackPanel Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Outer" Style="{StaticResource StepPropertyStyle}" />
+                                <TextBlock Text="{Binding OuterKey}" Style="{StaticResource StepValueStyle}" />
+                                <TextBlock Text="Inner" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                                <TextBlock Text="{Binding InnerKey}" Style="{StaticResource StepValueStyle}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding Action}" Style="{StaticResource StepPropertyStyle}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="JoinEmitTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}"
+                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
+                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="Pair" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding PairNumber}" Style="{StaticResource StepValueStyle}" Width="40" />
+                        <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
+                                BorderBrush="#0B5D0B"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="6,0,6,1"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="→ Emit"
+                                       Foreground="White"
+                                       FontSize="11" />
+                        </Border>
+                        <TextBlock Text="from buffered group"
+                                   Style="{StaticResource StepPropertyStyle}"
+                                   Margin="8,0,0,0"
+                                   Visibility="{Binding IsFromBuffer, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
             <DataTemplate x:Key="StoppedTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}"
                       Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
@@ -466,6 +513,8 @@
                 LeafLinkTemplate="{StaticResource LeafLinkTemplate}"
                 ReseekTemplate="{StaticResource ReseekTemplate}"
                 RebindTemplate="{StaticResource RebindTemplate}"
+                MergeCompareTemplate="{StaticResource MergeCompareTemplate}"
+                JoinEmitTemplate="{StaticResource JoinEmitTemplate}"
                 StoppedTemplate="{StaticResource StoppedTemplate}"
                 TruncatedTemplate="{StaticResource TruncatedTemplate}"
                 IamReadTemplate="{StaticResource IamReadTemplate}"

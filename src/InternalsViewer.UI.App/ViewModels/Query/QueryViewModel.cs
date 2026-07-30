@@ -6,7 +6,7 @@ using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
-using InternalsViewer.Internals.Services.Allocations;
+using InternalsViewer.Execution.Services.Allocations;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -391,7 +391,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        if (OperatorClassifier.IsNestedLoop(node))
+        if (MergeJoinResolver.Resolve(node) is { } mergeJoin)
+        {
+            OpenMergeJoinTrace(mergeJoin);
+
+            return;
+        }
+
+        if (OperatorClassifier.IsNestedLoop(node) || OperatorClassifier.IsMergeJoin(node))
         {
             return;
         }
@@ -523,6 +530,65 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         traceViewModel.PageNavigated += OnIndexPageNavigated;
 
         var document = new DocumentViewModel(title: $"Trace: {innerUnit.TableName} Lookup",
+                                             content: traceViewModel,
+                                             viewFactory: static () => new TraceTabView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false);
+
+        Layout.RegisterDocument(key, document);
+
+        _openTraces[key] = traceViewModel;
+
+        Layout.Show(document);
+    }
+
+    private void OpenMergeJoinTrace(MergeJoin join)
+    {
+        var outerUnit = FindAllocationUnit(join.Outer);
+
+        var innerUnit = FindAllocationUnit(join.Inner);
+
+        if (outerUnit is null || innerUnit is null)
+        {
+            Logger.LogWarning("Allocation unit not found for merge join: outer {Outer}, inner {Inner}",
+                              join.Outer.Index,
+                              join.Inner.Index);
+
+            return;
+        }
+
+        var key = $"Trace:{outerUnit.SchemaName}.{outerUnit.TableName}.{outerUnit.IndexName}~{innerUnit.TableName}.{innerUnit.IndexName}:{join.Join.NodeId}";
+
+        if (Layout.TryGetDocument(key, out var existing))
+        {
+            if (existing.Content is TraceTabViewModel { Kind: TraceKind.MergeJoin })
+            {
+                Layout.Show(existing);
+
+                return;
+            }
+
+            if (existing.Content is TraceTabViewModel stale)
+            {
+                stale.PageNavigated -= OnIndexPageNavigated;
+            }
+
+            _openTraces.Remove(key);
+
+            Layout.RemoveDocument(key, out _);
+        }
+
+        var traceViewModel = _traceTabViewModelFactory.CreateMergeJoin(Database,
+                                                                       outerUnit,
+                                                                       innerUnit,
+                                                                       join.Join,
+                                                                       Events.FirstOrDefault()?.Timestamp);
+
+        traceViewModel.PageNavigated += OnIndexPageNavigated;
+
+        var document = new DocumentViewModel(title: $"Trace: Merge {outerUnit.TableName}/{innerUnit.TableName}",
                                              content: traceViewModel,
                                              viewFactory: static () => new TraceTabView(),
                                              canClose: true,
@@ -999,7 +1065,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             var node = FindTraceOperator(viewModel);
 
-            if (node is not null && viewModel.Kind == TraceKind.KeyLookup)
+            if (node is not null && viewModel.Kind is TraceKind.KeyLookup or TraceKind.MergeJoin)
             {
                 viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, null);
 
@@ -1037,7 +1103,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private PlanNode? FindTraceOperator(TraceTabViewModel viewModel)
     {
-        if (viewModel.Kind == TraceKind.KeyLookup)
+        if (viewModel.Kind is TraceKind.KeyLookup or TraceKind.MergeJoin)
         {
             var outerUnit = viewModel.Visuals[0].AllocationUnit;
 
@@ -1045,9 +1111,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             var joins = ExecutionPlans.Where(p => !p.IsInternalPlan)
                                       .SelectMany(p => p.NodesById.Values)
-                                      .Where(n => CorrelatedJoinResolver.Resolve(n) is { } join
-                                                  && MatchesUnit(join.Outer, outerUnit)
-                                                  && MatchesUnit(join.Inner, innerUnit))
+                                      .Where(n => ResolveJoinSides(viewModel.Kind, n) is { } sides
+                                                  && MatchesUnit(sides.Outer, outerUnit)
+                                                  && MatchesUnit(sides.Inner, innerUnit))
                                       .ToList();
 
             return joins.FirstOrDefault(n => n.NodeId == viewModel.PlanNode?.NodeId) ?? joins.FirstOrDefault();
@@ -1068,6 +1134,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return NameMatches(node.Table, unit.TableName)
                && NameMatches(node.Index ?? string.Empty, unit.IndexName)
                && (string.IsNullOrEmpty(node.Schema) || NameMatches(node.Schema, unit.SchemaName));
+    }
+
+    private static (PlanNode Outer, PlanNode Inner)? ResolveJoinSides(TraceKind kind, PlanNode node)
+    {
+        if (kind == TraceKind.KeyLookup)
+        {
+            return CorrelatedJoinResolver.Resolve(node) is { } correlated ? (correlated.Outer, correlated.Inner) : null;
+        }
+
+        return MergeJoinResolver.Resolve(node) is { } merge ? (merge.Outer, merge.Inner) : null;
     }
 
     public event Action<long>? PlayheadMoveRequested;

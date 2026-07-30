@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -27,6 +27,10 @@ public class AccessStepTemplateSelector : DataTemplateSelector
     public DataTemplate ReseekTemplate { get; set; } = null!;
 
     public DataTemplate RebindTemplate { get; set; } = null!;
+
+    public DataTemplate MergeCompareTemplate { get; set; } = null!;
+
+    public DataTemplate JoinEmitTemplate { get; set; } = null!;
 
     public DataTemplate StoppedTemplate { get; set; } = null!;
 
@@ -63,6 +67,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.LeafLink => LeafLinkTemplate,
             AccessStep.Reseek => ReseekTemplate,
             AccessStep.Rebind => RebindTemplate,
+            AccessStep.MergeCompare => MergeCompareTemplate,
+            AccessStep.JoinEmit => JoinEmitTemplate,
             AccessStep.Stopped => StoppedTemplate,
             AccessStep.Truncated => TruncatedTemplate,
             AccessStep.IamRead => IamReadTemplate,

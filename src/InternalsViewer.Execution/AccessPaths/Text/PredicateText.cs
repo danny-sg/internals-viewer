@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+namespace InternalsViewer.Execution.AccessPaths.Text;
 
 /// <summary>
 /// A formatted predicate ready to be displayed

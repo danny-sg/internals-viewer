@@ -1,8 +1,8 @@
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
-using InternalsViewer.Internals.Interfaces.DataAccess;
+using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Binding;
+namespace InternalsViewer.Execution.AccessPaths.Binding;
 
 /// <summary>
 /// Exposes the fields of a record as access path values

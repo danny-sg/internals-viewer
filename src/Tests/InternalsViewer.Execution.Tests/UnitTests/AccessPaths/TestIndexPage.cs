@@ -1,15 +1,15 @@
 using System.Collections.Immutable;
 using System.Data;
 using InternalsViewer.Internals.Annotations;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Annotations;
-using InternalsViewer.Internals.Interfaces.DataAccess;
+using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Internals.Tests.UnitTests.DataAccess.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
 
 /// <summary>
 /// An in memory index page built from integer keys, used to drive access path tests

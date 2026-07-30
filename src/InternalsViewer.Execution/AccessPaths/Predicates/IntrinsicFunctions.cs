@@ -2,9 +2,9 @@ using System.Data;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+namespace InternalsViewer.Execution.AccessPaths.Predicates;
 
 public static class IntrinsicFunctions
 {

@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+namespace InternalsViewer.Execution.AccessPaths.Predicates;
 
 /// <summary>
 /// Comparison operators available to a predicate

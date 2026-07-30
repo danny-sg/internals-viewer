@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.UI.App.Controls.Predicates;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

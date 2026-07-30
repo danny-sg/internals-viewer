@@ -1,8 +1,8 @@
-﻿using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+﻿using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Internals.DataAccess.AccessPaths.Results;
+namespace InternalsViewer.Execution.AccessPaths.Results;
 
 /// <summary>
 /// A single observable action taken by an access path
@@ -128,6 +128,30 @@ public abstract record AccessStep(AccessPhase AccessPhase)
     /// A correlated seek value was bound from an outer row and the inner path will descend for it
     /// </summary>
     public sealed record Rebind(int RebindNumber, AccessKey Key) : AccessStep(AccessPhase.Descent);
+
+    /// <summary>
+    /// A merge loop compared the current key on each side and chose which side to advance
+    /// </summary>
+    public sealed record MergeCompare(int Comparison) : AccessStep(AccessPhase.Walk)
+    {
+        public AccessKey OuterKey { get; init; }
+
+        public AccessKey InnerKey { get; init; }
+
+        public string Action { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// A matching outer and inner row pair was emitted by a join
+    /// </summary>
+    public sealed record JoinEmit(int PairNumber) : AccessStep(AccessPhase.Walk)
+    {
+        public IRecord? OuterRecord { get; init; }
+
+        public IRecord? InnerRecord { get; init; }
+
+        public bool IsFromBuffer { get; init; }
+    }
 
     public sealed record IamRead(PageAddress PageAddress, int ExtentCount, int SinglePageCount) : AccessStep(AccessPhase.Allocation);
 

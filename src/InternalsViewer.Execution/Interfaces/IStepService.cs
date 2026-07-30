@@ -1,9 +1,9 @@
 using System.Threading;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Results;
-using InternalsViewer.Internals.DataAccess.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Internals.Interfaces.Services;
+namespace InternalsViewer.Execution.Interfaces;
 
 public interface IStepService
 {
