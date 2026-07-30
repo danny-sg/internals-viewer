@@ -1,9 +1,10 @@
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Text;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
 
-namespace InternalsViewer.Query.Tests.UnitTests.Parsing.Plans;
+namespace InternalsViewer.Query.Tests.UnitTests.Plans.Model;
 
 public class ExpressionCatalogTests
 {

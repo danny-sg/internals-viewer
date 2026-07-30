@@ -1,6 +1,8 @@
-using InternalsViewer.Query.Parsing.Plans;
 
-namespace InternalsViewer.Query.Tests.UnitTests.Parsing.Plans;
+using InternalsViewer.Query.Plans.Joins;
+using InternalsViewer.Query.Plans.Model;
+
+namespace InternalsViewer.Query.Tests.UnitTests.Plans.Joins;
 
 public class MergeJoinResolverTests
 {

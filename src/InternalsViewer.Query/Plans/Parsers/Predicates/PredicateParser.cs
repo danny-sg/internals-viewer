@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Xml.Linq;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 
-namespace InternalsViewer.Query.Parsing.Plans.Predicates;
+namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
 /// <summary>
 /// Builds access path predicates from a showplan ScalarOperator tree

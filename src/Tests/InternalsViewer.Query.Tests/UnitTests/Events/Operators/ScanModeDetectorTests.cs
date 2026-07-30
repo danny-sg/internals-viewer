@@ -1,10 +1,10 @@
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Events.Operators;
 

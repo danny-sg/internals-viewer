@@ -1,9 +1,12 @@
 using System.Xml.Linq;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Query.Parsing.Plans.Predicates;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.Query.Plans.Parsers.Predicates;
+using InternalsViewer.Query.Plans;
 
-namespace InternalsViewer.Query.Parsing.Plans;
+namespace InternalsViewer.Query.Plans.Parsers;
 
 public static class ExecutionPlanParser
 {

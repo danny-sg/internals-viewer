@@ -2,8 +2,9 @@ using System.Collections.Immutable;
 using System.Xml.Linq;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Query.Plans.Model;
 
-namespace InternalsViewer.Query.Parsing.Plans.Predicates;
+namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
 /// <summary>
 /// Supplies the compiled value of a plan parameter

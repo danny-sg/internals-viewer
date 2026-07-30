@@ -27,8 +27,6 @@
             <converters:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
             <converters:PfsAllocatedToTextConverter x:Key="PfsAllocatedToTextConverter" />
             <converters:PfsAllocatedToBrushConverter x:Key="PfsAllocatedToBrushConverter" />
-            <converters:StepSourceToMarginConverter x:Key="StepSourceToMarginConverter" />
-            <converters:StepSourceToBorderConverter x:Key="StepSourceToBorderConverter" />
 
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
@@ -63,10 +61,7 @@
             </Style>
 
             <DataTemplate x:Key="ReadPageTemplate" >
-                <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                         <TextBlock Text="Read Page" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -78,10 +73,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="ProbeStartTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Probe Start" Style="{StaticResource StepLabelStyle}" />
                         <StackPanel Orientation="Vertical">
@@ -104,10 +96,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="ProbeTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -137,10 +126,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="DescendTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Descend" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" Width="34" />
@@ -152,10 +138,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="ProbeResultTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Probe Result" Style="{StaticResource StepLabelStyle}" />
                         <StackPanel Orientation="Vertical">
@@ -175,10 +158,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="RowTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Row" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}"/>
@@ -186,7 +166,8 @@
                         <TextBlock Text="Outcome" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding Converter={StaticResource RowOutcomeToTextConverter}}"
                                    Style="{StaticResource StepValueStyle}" />
-                        <Border Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
+                        <Border x:Name="EmitBadge"
+                                Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
                                 Background="{ThemeResource SystemFillColorSuccessBrush}"
                                 BorderBrush="#0B5D0B"
                                 BorderThickness="1"
@@ -202,10 +183,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="RowRunTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Rows" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="Slots" Style="{StaticResource StepPropertyStyle}" />
@@ -217,14 +195,15 @@
                         <TextBlock Text="Outcome" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding Converter={StaticResource RowOutcomeToTextConverter}}"
                                    Style="{StaticResource StepValueStyle}" />
-                        <Border Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
+                        <Border x:Name="EmitBadge"
+                                Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
                                 Background="{ThemeResource SystemFillColorSuccessBrush}"
                                 BorderBrush="#0B5D0B"
                                 BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="6,0,6,1"
                                 Width="110"
-                          
+
                                 VerticalAlignment="Center">
                             <TextBlock Text="{Binding Converter={StaticResource RowEmitTextConverter}}"
                                        Foreground="White"
@@ -236,10 +215,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="RangeEndTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Range End" Style="{StaticResource StepLabelStyle}" />
                         <StackPanel Orientation="Vertical">
@@ -260,10 +236,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="LeafLinkTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Leaf Link" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="From" Style="{StaticResource StepPropertyStyle}" />
@@ -277,10 +250,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="ReseekTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Reseek" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <StackPanel Orientation="Vertical">
@@ -298,10 +268,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="RebindTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Rebind" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <StackPanel Orientation="Vertical">
@@ -317,10 +284,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="MergeCompareTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Compare" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <StackPanel Orientation="Vertical">
@@ -337,10 +301,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="JoinEmitTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="Pair" Style="{StaticResource StepPropertyStyle}" />
@@ -364,10 +325,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="StoppedTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Stopped" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="{Binding Reason, Converter={StaticResource EnumToTextConverter}}"
@@ -377,10 +335,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="TruncatedTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Opacity="0.6">
                         <TextBlock Text="{Binding Count}" FontSize="12" />
                         <TextBlock Text=" steps omitted" FontSize="12" />
@@ -389,10 +344,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="IamReadTemplate" >
-                <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                         <TextBlock Text="Read IAM" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -405,10 +357,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="IamLinkTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="IAM Link" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="From" Style="{StaticResource StepPropertyStyle}" />
@@ -420,10 +369,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="PfsReadTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Read PFS" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -434,10 +380,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="PfsCheckTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="PFS Check" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -450,10 +393,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="AdvanceTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Advance" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="{Binding Description}" Style="{StaticResource StepValueStyle}" TextWrapping="Wrap" />
@@ -462,10 +402,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="ExtentStartTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Extent" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="First Page" Style="{StaticResource StepPropertyStyle}" />
@@ -477,10 +414,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="PageSkippedTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Skip Page" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -492,10 +426,7 @@
             </DataTemplate>
 
             <DataTemplate x:Key="DefaultTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}"
-                      Margin="{Binding Source, Converter={StaticResource StepSourceToMarginConverter}}"
-                      BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                      BorderThickness="{Binding Source, Converter={StaticResource StepSourceToBorderConverter}}">
+                <Grid Style="{StaticResource StepRowStyle}">
                     <TextBlock Text="{Binding}" Style="{StaticResource StepValueStyle}" />
                 </Grid>
             </DataTemplate>

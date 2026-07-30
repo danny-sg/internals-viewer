@@ -1,10 +1,13 @@
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.Query.Plans;
 
-namespace InternalsViewer.Query.Parsing.Plans;
+namespace InternalsViewer.Query.Events.Operators;
 
 /// <summary>
 /// Builds the operator events shown on the timeline from an execution plan and its matched engine events.

@@ -1,7 +1,8 @@
 using System.Xml.Linq;
-using InternalsViewer.Query.Parsing.Plans.Predicates;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Parsers.Predicates;
 
-namespace InternalsViewer.Query.Tests.UnitTests.Parsing.Plans.Predicates;
+namespace InternalsViewer.Query.Tests.UnitTests.Plans.Parsers.Predicates;
 
 public class SeekPredicateParserTests
 {

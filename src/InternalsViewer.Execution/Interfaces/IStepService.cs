@@ -1,4 +1,3 @@
-using System.Threading;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;

@@ -1,35 +1,37 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
+using System.Threading;
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Services.Allocations;
+using InternalsViewer.Execution.Services.Indexes;
+using InternalsViewer.Execution.Services.Joins;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
-using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers.Metadata;
-using InternalsViewer.Execution.Services.Allocations;
-using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Internals.Services.Indexes;
-using InternalsViewer.Execution.Services.Joins;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Plans.Joins;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Index;
-using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -176,9 +178,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         _resultsDocument = results;
 
-        var details = new TabGroupNode(description, results, strategy);
-
-        var right = new SplitNode(Orientation.Vertical, new TabGroupNode(steps), details);
+        var right = new TabGroupNode(steps, description, results, strategy);
 
         return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, new TabGroupNode(visualDocuments), right));
     }
@@ -236,19 +236,13 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     public string InnerSectionTitle => Visuals.Count > 1 ? Visuals[1].Title : string.Empty;
 
-    public Brush? InnerAccentBrush
+    public Brush? OuterAccentBrush => Visuals.Count > 1 ? ToBrush(Visuals[0].ObjectColour) : null;
+
+    public Brush? InnerAccentBrush => Visuals.Count > 1 ? ToBrush(Visuals[1].ObjectColour) : null;
+
+    private static Brush ToBrush(System.Drawing.Color colour)
     {
-        get
-        {
-            if (Visuals.Count < 2)
-            {
-                return null;
-            }
-
-            var colour = Visuals[1].ObjectColour;
-
-            return new SolidColorBrush(Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B));
-        }
+        return new SolidColorBrush(Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B));
     }
 
     [ObservableProperty]

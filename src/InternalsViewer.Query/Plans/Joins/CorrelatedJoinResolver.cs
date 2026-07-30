@@ -1,4 +1,7 @@
-namespace InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
+
+namespace InternalsViewer.Query.Plans.Joins;
 
 /// <summary>
 /// Identifies nested loops joins whose inner side is a correlated seek, such as a key lookup

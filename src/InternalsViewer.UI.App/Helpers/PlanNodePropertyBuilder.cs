@@ -3,7 +3,8 @@ using System.Globalization;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.Helpers;

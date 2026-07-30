@@ -1,7 +1,7 @@
 using System.Xml.Linq;
 using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Query.Parsing.Plans.Predicates;
+namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
 /// <summary>
 /// Reads the compiled values of the parameters a plan was built for

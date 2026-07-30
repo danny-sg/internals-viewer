@@ -1,6 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Predicates;
 
-namespace InternalsViewer.Query.Parsing.Plans.Predicates;
+namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
 /// <summary>
 /// Translates showplan comparison and scan type values into access path equivalents

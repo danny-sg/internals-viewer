@@ -1,11 +1,14 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.Query.Plans;
 
-namespace InternalsViewer.Query.Parsing.Plans;
+namespace InternalsViewer.Query.Events.Operators;
 
 /// <summary>
 /// Associates captured storage-engine events with the physical plan operator (<see cref="PlanNode"/>)

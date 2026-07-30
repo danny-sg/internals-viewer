@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Batches;
@@ -12,7 +12,7 @@ using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Splits;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Events.Parsers;
 

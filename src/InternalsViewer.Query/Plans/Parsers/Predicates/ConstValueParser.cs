@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text;
 using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Query.Parsing.Plans.Predicates;
+namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
 /// <summary>
 /// Parses the literal text showplan places in a ConstValue attribute

@@ -3,8 +3,9 @@ using System.Xml.Linq;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Query.Plans.Joins;
 
-namespace InternalsViewer.Query.Parsing.Plans.Predicates;
+namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
 /// <summary>
 /// Builds seek bounds from the SeekKeys of a showplan seek predicate

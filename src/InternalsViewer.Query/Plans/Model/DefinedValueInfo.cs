@@ -1,6 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Predicates;
 
-namespace InternalsViewer.Query.Parsing.Plans;
+namespace InternalsViewer.Query.Plans.Model;
 
 public sealed record DefinedValueInfo
 {

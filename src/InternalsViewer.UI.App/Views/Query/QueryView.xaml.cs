@@ -1,8 +1,8 @@
-using System;
 using System.ComponentModel;
-using InternalsViewer.Query.Events;
+using System;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 

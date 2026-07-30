@@ -1,12 +1,15 @@
-﻿using System.Data;
+using System.Data;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Locks;
-using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Parsers.Xml;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Parsers;
+using InternalsViewer.Query.Plans;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 

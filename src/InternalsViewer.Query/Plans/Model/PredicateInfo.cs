@@ -1,8 +1,9 @@
 using System.Collections.Immutable;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Query.Plans.Joins;
 
-namespace InternalsViewer.Query.Parsing.Plans;
+namespace InternalsViewer.Query.Plans.Model;
 
 /// <summary>
 /// The seek ranges and residual predicate a data access operator applies

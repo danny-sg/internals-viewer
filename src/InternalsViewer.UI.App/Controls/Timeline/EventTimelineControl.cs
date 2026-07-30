@@ -1,19 +1,19 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Windows.UI;
-using InternalsViewer.UI.App.Controls.Timeline.Renderers;
-using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Media;
-using SkiaSharp.Views.Windows;
-using InternalsViewer.Query.Events.Reads;
+using System;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls.Timeline.Renderers;
+using InternalsViewer.UI.App.ViewModels.Query;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI;
+using SkiaSharp.Views.Windows;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
 

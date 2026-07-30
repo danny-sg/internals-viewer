@@ -1,7 +1,7 @@
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Tests;
 

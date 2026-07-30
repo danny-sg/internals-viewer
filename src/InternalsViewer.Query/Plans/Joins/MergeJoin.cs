@@ -1,4 +1,6 @@
-namespace InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+
+namespace InternalsViewer.Query.Plans.Joins;
 
 /// <summary>
 /// A merge join whose sides are both direct data accesses walked in join key order

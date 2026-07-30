@@ -1,7 +1,8 @@
 using System.Collections.Immutable;
 using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.Plans.Model;
 
-namespace InternalsViewer.Query.Parsing.Plans;
+namespace InternalsViewer.Query.Plans;
 
 /// <summary>
 /// Formats the predicates a plan operator applies

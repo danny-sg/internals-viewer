@@ -1,4 +1,5 @@
-using InternalsViewer.Query.Parsing.Plans;
+
+using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Events.Operators;
 

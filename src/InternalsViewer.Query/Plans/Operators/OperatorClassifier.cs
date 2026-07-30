@@ -1,4 +1,6 @@
-namespace InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+
+namespace InternalsViewer.Query.Plans.Operators;
 
 /// <summary>
 /// Classifies physical plan operators

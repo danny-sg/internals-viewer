@@ -71,6 +71,21 @@ public sealed partial class IndexControl : IDisposable
             typeof(IndexControl),
             new PropertyMetadata(null, OnPropertyChanged));
 
+    /// <summary>
+    /// Draws the lines to the selected page's children in the selection colour with a heavier stroke
+    /// </summary>
+    public bool SelectChildPath
+    {
+        get => (bool)GetValue(SelectChildPathProperty);
+        set => SetValue(SelectChildPathProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectChildPathProperty
+        = DependencyProperty.Register(nameof(SelectChildPath),
+                                      typeof(bool),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(true, OnPropertyChanged));
+
     public float? ZoomToSelectedPageAddress
     {
         get => (float?)GetValue(ZoomToSelectedPageAddressProperty);
@@ -797,14 +812,14 @@ public sealed partial class IndexControl : IDisposable
 
             if (!miniMode)
             {
-                DrawLines(canvas, 
-                          clip, 
-                          node.Node, 
-                          renderX, 
-                          renderY, 
-                          renderNextLevelStartX, 
-                          yScrollOffset, 
-                          node.Node.Parent == selectedAddress, 
+                DrawLines(canvas,
+                          clip,
+                          node.Node,
+                          renderX,
+                          renderY,
+                          renderNextLevelStartX,
+                          yScrollOffset,
+                          SelectChildPath && node.Node.Parent == selectedAddress,
                           false);
             }
         }

@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Parsing.Plans;
+namespace InternalsViewer.Query.Plans.Model;
 
 /// <summary>
 /// Interns plan handle strings to compact <see cref="short"/> ids. A plan handle is a long, opaque

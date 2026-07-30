@@ -1,8 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
 

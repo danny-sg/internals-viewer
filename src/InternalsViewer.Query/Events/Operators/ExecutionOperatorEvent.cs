@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.Events.Operators;
 

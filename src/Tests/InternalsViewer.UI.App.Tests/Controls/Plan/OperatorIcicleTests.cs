@@ -1,7 +1,7 @@
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Plan;
 
 namespace InternalsViewer.UI.App.Tests.Controls.Plan;

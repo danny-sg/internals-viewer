@@ -1,22 +1,25 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Windows.Foundation;
-using Windows.UI;
+using System;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Joins;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI;
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
-using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Parsing.Plans;
+using Microsoft.UI;
+using Windows.Foundation;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 

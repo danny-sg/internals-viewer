@@ -1,5 +1,3 @@
-using System.Threading;
-using InternalsViewer.Execution.AccessPaths;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;

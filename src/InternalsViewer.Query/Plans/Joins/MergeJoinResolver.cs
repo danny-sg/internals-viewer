@@ -1,4 +1,7 @@
-namespace InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
+
+namespace InternalsViewer.Query.Plans.Joins;
 
 /// <summary>
 /// Identifies merge joins whose sides can be traced, both inputs reading an index directly with the join keys stated

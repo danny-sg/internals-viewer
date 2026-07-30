@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Parsing.Plans;
+namespace InternalsViewer.Query.Plans.Joins;
 
 public sealed record CorrelatedSeekColumn(string Column, string OuterTable, string OuterColumn)
 {

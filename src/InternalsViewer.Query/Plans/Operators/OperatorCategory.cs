@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Parsing.Plans;
+namespace InternalsViewer.Query.Plans.Operators;
 
 public enum OperatorCategory
 {

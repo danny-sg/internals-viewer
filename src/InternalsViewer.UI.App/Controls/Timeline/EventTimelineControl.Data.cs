@@ -1,10 +1,10 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.Events;
+using System;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
 

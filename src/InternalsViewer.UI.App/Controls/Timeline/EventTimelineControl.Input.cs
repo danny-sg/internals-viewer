@@ -1,9 +1,10 @@
 using System;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Parsing.Plans;
-using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;

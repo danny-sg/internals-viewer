@@ -1,4 +1,6 @@
-namespace InternalsViewer.Query.Parsing.Plans.Predicates;
+using InternalsViewer.Query.Plans.Model;
+
+namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
 /// <summary>
 /// Element and attribute values used by showplan XML predicates

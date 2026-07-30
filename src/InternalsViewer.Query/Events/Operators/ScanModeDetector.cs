@@ -2,7 +2,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Events.Operators;
 

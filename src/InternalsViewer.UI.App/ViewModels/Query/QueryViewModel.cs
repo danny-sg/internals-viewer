@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
@@ -38,12 +38,15 @@ using InternalsViewer.Query.CallStack.Categories;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
-using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Settings;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using QueryIndexTabView = InternalsViewer.UI.App.Views.Query.Tabs.Index.QueryIndexTabView;
+using InternalsViewer.Query.Plans;
+using InternalsViewer.Query.Plans.Joins;
+using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 

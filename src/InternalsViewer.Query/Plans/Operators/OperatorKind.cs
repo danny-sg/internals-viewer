@@ -1,4 +1,6 @@
-﻿namespace InternalsViewer.Query.Parsing.Plans;
+using InternalsViewer.Query.Plans.Joins;
+
+namespace InternalsViewer.Query.Plans.Operators;
 
 public enum OperatorKind
 {
