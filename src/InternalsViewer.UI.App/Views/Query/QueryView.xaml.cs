@@ -29,7 +29,6 @@ public sealed partial class QueryView : Page, IDisposable
         EventTimeline.EventDoubleClicked += OnTimelineEventDoubleClicked;
         EventTimeline.IndexOpenRequested += OnTimelineIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested += OnTimelineExecutionPlanRequested;
-        EventTimeline.AllocationsOpenRequested += OnTimelineAllocationsOpenRequested;
         EventTimeline.TraceOpenRequested += OnTimelineTraceOpenRequested;
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
@@ -45,7 +44,6 @@ public sealed partial class QueryView : Page, IDisposable
         EventTimeline.EventDoubleClicked -= OnTimelineEventDoubleClicked;
         EventTimeline.IndexOpenRequested -= OnTimelineIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested -= OnTimelineExecutionPlanRequested;
-        EventTimeline.AllocationsOpenRequested -= OnTimelineAllocationsOpenRequested;
         EventTimeline.TraceOpenRequested -= OnTimelineTraceOpenRequested;
         EventTimeline.PlayStateChanged -= OnPlayStateChanged;
 
@@ -189,14 +187,6 @@ public sealed partial class QueryView : Page, IDisposable
     private void OnTimelineIndexOpenRequested(ExecutionOperatorEvent op)
     {
         ViewModel.OpenIndex(op);
-    }
-
-    private void OnTimelineAllocationsOpenRequested(ExecutionOperatorEvent op)
-    {
-        if (op.PlanNodeIdentifier is { } identifier)
-        {
-            ViewModel.OpenAllocations(identifier);
-        }
     }
 
     private void OnTimelineTraceOpenRequested(ExecutionOperatorEvent op)

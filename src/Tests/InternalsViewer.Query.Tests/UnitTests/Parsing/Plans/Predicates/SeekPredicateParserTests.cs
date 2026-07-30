@@ -219,4 +219,41 @@ public class SeekPredicateParserTests
         Assert.Equal(42, seek.EndValue.Values[0].Numeric);
         Assert.Equal("Id", seek.StartValue.Values[0].ColumnName);
     }
+
+    [Fact]
+    public void Correlated_Seek_Is_Recorded_Not_Bounded()
+    {
+        var seekPredicates = XElement.Parse(
+            """
+            <SeekPredicates>
+              <SeekPredicateNew>
+                <SeekKeys>
+                  <Prefix ScanType="EQ">
+                    <RangeColumns>
+                      <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Column="Id" />
+                    </RangeColumns>
+                    <RangeExpressions>
+                      <ScalarOperator ScalarString="[InternalsViewerDemo].[dbo].[ClusteredTable].[Id]">
+                        <Identifier>
+                          <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Column="Id" />
+                        </Identifier>
+                      </ScalarOperator>
+                    </RangeExpressions>
+                  </Prefix>
+                </SeekKeys>
+              </SeekPredicateNew>
+            </SeekPredicates>
+            """);
+
+        var parser = new SeekPredicateParser();
+
+        var bounds = parser.ParseSeekPredicates(seekPredicates);
+
+        Assert.Empty(bounds);
+
+        var correlated = Assert.Single(parser.CorrelatedColumns);
+
+        Assert.Equal("Id", correlated.Column);
+        Assert.Equal("ClusteredTable.Id", correlated.OuterReference);
+    }
 }

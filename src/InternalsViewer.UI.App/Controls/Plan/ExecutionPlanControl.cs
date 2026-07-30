@@ -84,6 +84,7 @@ public sealed class ExecutionPlanControl : Canvas
         PointerReleased += OnPointerReleased;
         PointerCaptureLost += OnPointerCaptureLost;
         ContextRequested += OnContextRequested;
+        DoubleTapped += OnDoubleTapped;
     }
 
     public ExecutionPlan? Plan
@@ -180,8 +181,6 @@ public sealed class ExecutionPlanControl : Canvas
 
     /// <summary>Raised when "Open Index" is chosen on a data-access node that runs against a named index.</summary>
     public event EventHandler<PlanNode>? IndexOpenRequested;
-
-    public event EventHandler<PlanNode>? AllocationsOpenRequested;
 
     public event EventHandler<PlanNode>? TraceOpenRequested;
 
@@ -469,6 +468,20 @@ public sealed class ExecutionPlanControl : Canvas
         BeginPan(e);
     }
 
+    private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        var nodeControl = FindAncestor<PlanNodeControl>(e.OriginalSource as DependencyObject);
+
+        if (nodeControl?.Node is { } node)
+        {
+            Select(nodeControl);
+
+            PropertiesOpenRequested?.Invoke(this, node);
+
+            e.Handled = true;
+        }
+    }
+
     private void OnContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
         var nodeControl = FindAncestor<PlanNodeControl>(e.OriginalSource as DependencyObject);
@@ -490,12 +503,6 @@ public sealed class ExecutionPlanControl : Canvas
             if (!string.IsNullOrEmpty(node.Table) &&
                 OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
             {
-                var openAllocations = new MenuFlyoutItem { Text = "Open Allocations" };
-
-                openAllocations.Click += (_, _) => AllocationsOpenRequested?.Invoke(this, node);
-
-                flyout.Items.Add(openAllocations);
-
                 var openTrace = new MenuFlyoutItem { Text = "Trace" };
 
                 openTrace.Click += (_, _) => TraceOpenRequested?.Invoke(this, node);

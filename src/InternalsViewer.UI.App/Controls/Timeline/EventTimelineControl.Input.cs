@@ -196,12 +196,6 @@ public sealed partial class EventTimelineControl
 
         if (op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 })
         {
-            var openAllocations = new MenuFlyoutItem { Text = "Open Allocations" };
-
-            openAllocations.Click += (_, _) => AllocationsOpenRequested?.Invoke(op);
-
-            flyout.Items.Add(openAllocations);
-
             var openTrace = new MenuFlyoutItem { Text = "Trace" };
 
             openTrace.Click += (_, _) => TraceOpenRequested?.Invoke(op);

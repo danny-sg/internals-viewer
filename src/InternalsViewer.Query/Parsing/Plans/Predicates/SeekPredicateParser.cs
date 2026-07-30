@@ -19,6 +19,10 @@ public sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = 
 {
     private ScalarOperatorParser Expressions { get; } = new(resolveOrdinal, resolveParameter);
 
+    private readonly List<CorrelatedSeekColumn> _correlatedColumns = [];
+
+    public IReadOnlyList<CorrelatedSeekColumn> CorrelatedColumns => _correlatedColumns;
+
     /// <summary>
     /// Parses every seek key held by a SeekPredicates element
     /// </summary>
@@ -115,8 +119,19 @@ public sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = 
 
         for (var index = 0; index < expressions.Count; index++)
         {
-            if (Expressions.Parse(expressions[index]) is not AccessExpression.Constant constant)
+            var parsed = Expressions.Parse(expressions[index]);
+
+            if (parsed is not AccessExpression.Constant constant)
             {
+                if (parsed is AccessExpression.Column
+                    && Expressions.ParseColumnReference(expressions[index]) is { } outerColumn)
+                {
+                    var seekColumn = columnNames is not null && index < columnNames.Count ? columnNames[index] : null;
+
+                    _correlatedColumns.Add(new CorrelatedSeekColumn(TrimName(seekColumn),
+                                                                    $"{TrimName(outerColumn.Table)}.{TrimName(outerColumn.Column)}"));
+                }
+
                 return [];
             }
 
@@ -126,6 +141,11 @@ public sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = 
         }
 
         return values.ToImmutable();
+    }
+
+    private static string TrimName(string? name)
+    {
+        return name?.Trim('[', ']') ?? string.Empty;
     }
 
     private static string? GetScanType(XElement? boundary)

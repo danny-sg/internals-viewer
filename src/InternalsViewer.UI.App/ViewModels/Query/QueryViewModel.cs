@@ -374,14 +374,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                             && a.AllocationUnitType == AllocationUnitType.InRowData);
     }
 
-    public void OpenAllocations(PlanNodeIdentifier identifier)
-    {
-        if (ResolvePlanNode(identifier) is { } node)
-        {
-            OpenAllocations(node);
-        }
-    }
-
     public void OpenTrace(PlanNodeIdentifier identifier)
     {
         if (ResolvePlanNode(identifier) is { } node)
@@ -452,22 +444,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _openTraces[key] = traceViewModel;
 
         Layout.Show(document);
-    }
-
-    public void OpenAllocations(PlanNode node)
-    {
-        var allocationUnit = FindAllocationUnit(node);
-
-        if (allocationUnit is null)
-        {
-            Logger.LogWarning("Allocation unit not found: {Schema}.{Table}.{Index}", node.Schema, node.Table, node.Index);
-
-            return;
-        }
-
-        SelectedPlanNode = node;
-
-        Layout.ShowAllocations();
     }
 
     public ExpressionCatalog? SelectedPlanExpressions

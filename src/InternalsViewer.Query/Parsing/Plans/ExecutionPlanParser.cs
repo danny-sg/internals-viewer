@@ -375,9 +375,10 @@ public static class ExecutionPlanParser
         return new PredicateInfo
         {
             SeekBounds = bounds,
+            CorrelatedSeekColumns = [.. seekParser.CorrelatedColumns],
             Residual = residual,
             HasUntranslatedPredicate = (predicateElement is not null && residual is null) ||
-                                       (seekPredicates is not null && bounds.IsDefaultOrEmpty)
+                                       (seekPredicates is not null && bounds.IsDefaultOrEmpty && seekParser.CorrelatedColumns.Count == 0)
         };
     }
 

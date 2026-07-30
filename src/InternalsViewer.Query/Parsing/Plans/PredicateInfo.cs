@@ -53,4 +53,8 @@ public sealed class PredicateInfo
     public long? RowGoal { get; set; }
 
     public bool HasSeekBounds => !SeekBounds.IsDefaultOrEmpty;
+
+    public ImmutableArray<CorrelatedSeekColumn> CorrelatedSeekColumns { get; init; } = [];
+
+    public bool IsCorrelatedSeek => !CorrelatedSeekColumns.IsDefaultOrEmpty;
 }

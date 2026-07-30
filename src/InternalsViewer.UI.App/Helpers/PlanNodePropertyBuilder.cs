@@ -101,12 +101,14 @@ public static class PlanNodePropertyBuilder
 
             var hasPredicate = predicateInfo.Residual is not null || predicateInfo.HasUntranslatedPredicate;
 
-            if (node.ScanInfo is not null && (predicateInfo.HasSeekBounds || hasPredicate))
+            var isSeek = predicateInfo.HasSeekBounds || predicateInfo.IsCorrelatedSeek;
+
+            if (node.ScanInfo is not null && (isSeek || hasPredicate))
             {
-                predicateGroup.Children.Add(new PlanNodeProperty("SARGable", predicateInfo.HasSeekBounds ? "Yes" : "No")
+                predicateGroup.Children.Add(new PlanNodeProperty("SARGable", isSeek ? "Yes" : "No")
                 {
-                    IsValueSuccess = predicateInfo.HasSeekBounds,
-                    IsValueError = !predicateInfo.HasSeekBounds
+                    IsValueSuccess = isSeek,
+                    IsValueError = !isSeek
                 });
             }
 
@@ -125,6 +127,16 @@ public static class PlanNodePropertyBuilder
                 }
 
                 predicateGroup.Children.Add(ranges);
+            }
+            else if (predicateInfo.IsCorrelatedSeek)
+            {
+                var value = string.Join(", ", predicateInfo.CorrelatedSeekColumns.Select(c => $"{c.Column} = {c.OuterReference}"));
+
+                predicateGroup.Children.Add(new PlanNodeProperty("Seek Predicates", value)
+                {
+                    IsValueMonospace = true,
+                    Tooltip = "The seek value is bound from the outer row of the join on each execution"
+                });
             }
 
             if (predicateInfo.Residual is { } residual)
@@ -269,6 +281,11 @@ public static class PlanNodePropertyBuilder
                             ?? definedValue.Expression
                             ?? string.Empty;
 
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
                 definedGroup.Children.Add(new PlanNodeProperty(name, value)
                 {
                     IsNameMonospace = true,
@@ -276,7 +293,10 @@ public static class PlanNodePropertyBuilder
                 });
             }
 
-            result.Add(definedGroup);
+            if (definedGroup.Children.Count > 0)
+            {
+                result.Add(definedGroup);
+            }
         }
 
         if (node.OutputColumns.Count > 0)
