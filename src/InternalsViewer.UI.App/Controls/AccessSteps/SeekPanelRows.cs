@@ -24,7 +24,7 @@ internal static class SeekPanelRows
     {
         var row = new Grid
         {
-            Margin = new Thickness(0, 2, 0, 4)
+            Margin = new Thickness(0, 2, 0, 12)
         };
 
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(titleWidth) });

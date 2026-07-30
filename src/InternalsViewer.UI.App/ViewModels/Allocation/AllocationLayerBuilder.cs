@@ -61,14 +61,25 @@ internal static class AllocationLayerBuilder
                 layers.Add(layer);
             }
 
-            layers.Last().AllocationChains.Add(allocationUnit.IamChain);
+            var lastLayer = layers.Last();
 
-            layers.Last()
-                  .SinglePages
-                  .AddRange(allocationUnit.IamChain
-                                          .Pages
-                                          .SelectMany(s => s.SinglePageSlots)
-                                          .Where(s => s != PageAddress.Empty));
+            lastLayer.AllocationChains.Add(allocationUnit.IamChain);
+
+            foreach (var page in allocationUnit.IamChain.Pages)
+            {
+                foreach (var slot in page.SinglePageSlots)
+                {
+                    if (slot != PageAddress.Empty)
+                    {
+                        lastLayer.SinglePages.Add(slot);
+                    }
+                }
+
+                if (page.PageAddress != PageAddress.Empty)
+                {
+                    lastLayer.SinglePages.Add(page.PageAddress);
+                }
+            }
         }
 
         var systemLayer = new AllocationLayer
@@ -85,11 +96,21 @@ internal static class AllocationLayerBuilder
         {
             systemLayer.AllocationChains.Add(systemAllocationUnit.IamChain);
 
-            systemLayer.SinglePages
-                       .AddRange(systemAllocationUnit.IamChain
-                                                     .Pages
-                                                     .SelectMany(s => s.SinglePageSlots)
-                                                     .Where(s => s != PageAddress.Empty));
+            foreach (var page in systemAllocationUnit.IamChain.Pages)
+            {
+                foreach (var slot in page.SinglePageSlots)
+                {
+                    if (slot != PageAddress.Empty)
+                    {
+                        systemLayer.SinglePages.Add(slot);
+                    }
+                }
+
+                if (page.PageAddress != PageAddress.Empty)
+                {
+                    systemLayer.SinglePages.Add(page.PageAddress);
+                }
+            }
 
             systemLayer.TotalPages += systemAllocationUnit.TotalPages;
         }

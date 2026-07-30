@@ -30,6 +30,7 @@ public sealed partial class QueryView : Page, IDisposable
         EventTimeline.IndexOpenRequested += OnTimelineIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested += OnTimelineExecutionPlanRequested;
         EventTimeline.AllocationsOpenRequested += OnTimelineAllocationsOpenRequested;
+        EventTimeline.TraceOpenRequested += OnTimelineTraceOpenRequested;
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
         Unloaded += OnUnloaded;
@@ -45,6 +46,7 @@ public sealed partial class QueryView : Page, IDisposable
         EventTimeline.IndexOpenRequested -= OnTimelineIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested -= OnTimelineExecutionPlanRequested;
         EventTimeline.AllocationsOpenRequested -= OnTimelineAllocationsOpenRequested;
+        EventTimeline.TraceOpenRequested -= OnTimelineTraceOpenRequested;
         EventTimeline.PlayStateChanged -= OnPlayStateChanged;
 
         if (_subscribedViewModel is not null)
@@ -194,6 +196,14 @@ public sealed partial class QueryView : Page, IDisposable
         if (op.PlanNodeIdentifier is { } identifier)
         {
             ViewModel.OpenAllocations(identifier);
+        }
+    }
+
+    private void OnTimelineTraceOpenRequested(ExecutionOperatorEvent op)
+    {
+        if (op.PlanNodeIdentifier is { } identifier)
+        {
+            ViewModel.OpenTrace(identifier);
         }
     }
 }

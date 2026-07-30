@@ -80,6 +80,10 @@ public static class AccessValueFactory
             return AccessValue.FromNull(dataType);
         }
 
-        return AccessValue.FromBytes(dataType, Encoding.Unicode.GetBytes(value));
+        var data = AccessValueComparer.IsCharacterType(dataType) && !AccessValueComparer.IsWideCharacterType(dataType)
+            ? Encoding.Latin1.GetBytes(value)
+            : Encoding.Unicode.GetBytes(value);
+
+        return AccessValue.FromBytes(dataType, data);
     }
 }

@@ -163,6 +163,8 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     public event Action<ExecutionOperatorEvent>? AllocationsOpenRequested;
 
+    public event Action<ExecutionOperatorEvent>? TraceOpenRequested;
+
     public List<EngineEvent> Events
     {
         get => (List<EngineEvent>)GetValue(EventsProperty);

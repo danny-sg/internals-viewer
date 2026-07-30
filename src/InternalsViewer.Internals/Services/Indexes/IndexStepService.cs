@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.DataAccess;
+using InternalsViewer.Internals.Interfaces.Services;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Structures;
@@ -18,7 +19,7 @@ namespace InternalsViewer.Internals.Services.Indexes;
 /// <summary>
 /// Drives a seek across page boundaries, loading pages as the walk descends or follows leaf links
 /// </summary>
-public sealed class IndexStepService(IPageService pageService, IRecordService recordService)
+public sealed class IndexStepService(IPageService pageService, IRecordService recordService) : IStepService
 {
     private readonly byte[] _pageBuffer = new byte[PageData.Size];
 
@@ -125,7 +126,11 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
                                              residual,
                                              rowGoalReason,
                                              Ranges,
-                                             hasUntranslatedResidual);
+                                             hasUntranslatedResidual) with
+        {
+            EntryPoint = rootPageAddress,
+            EntryPointSource = "sys.sysallocunits.pgroot"
+        };
         Direction = direction;
         Counters = default(AccessCounters).AddRangeSeek();
         IsComplete = false;
@@ -213,6 +218,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
     private async Task<AccessStep> ReseekAsync(CancellationToken cancellationToken)
     {
         RangeIndex++;
+
         Bounds = Ranges[RangeIndex];
 
         var uniqueGoal = GetRowGoal(IndexStructure, Bounds);
@@ -265,7 +271,7 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
                                                     isContinuation, 
                                                     counters: Counters,
                                                     evaluationContext: EvaluationContext)
-                                           .GetEnumerator();
+                                            .GetEnumerator();
     }
 
     private static long? GetRowGoal(IndexStructure indexStructure, SeekBounds bounds)

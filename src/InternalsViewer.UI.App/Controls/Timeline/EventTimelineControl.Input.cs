@@ -201,6 +201,12 @@ public sealed partial class EventTimelineControl
             openAllocations.Click += (_, _) => AllocationsOpenRequested?.Invoke(op);
 
             flyout.Items.Add(openAllocations);
+
+            var openTrace = new MenuFlyoutItem { Text = "Trace" };
+
+            openTrace.Click += (_, _) => TraceOpenRequested?.Invoke(op);
+
+            flyout.Items.Add(openTrace);
         }
 
         flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });

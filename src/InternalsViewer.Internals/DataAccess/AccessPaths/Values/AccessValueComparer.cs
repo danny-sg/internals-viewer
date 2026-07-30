@@ -69,7 +69,7 @@ public static class AccessValueComparer
             ? MemoryMarshal.Cast<byte, char>(right.Data.Span)
             : Encoding.Latin1.GetString(right.Data.Span).AsSpan();
 
-        return TextComparer.Compare(leftChars, rightChars, CompareOptions.IgnoreCase);
+        return TextComparer.Compare(leftChars.TrimEnd(' '), rightChars.TrimEnd(' '), CompareOptions.IgnoreCase);
     }
 
     internal static bool IsCharacterType(SqlDbType dataType)

@@ -10,6 +10,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.DataAccess;
+using InternalsViewer.Internals.Interfaces.Services;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 
@@ -18,7 +19,7 @@ namespace InternalsViewer.Internals.Services.Allocations;
 /// <summary>
 /// Drives an allocation order scan, following the IAM chain and reading allocated pages
 /// </summary>
-public sealed class AllocationStepService(IPageService pageService, IRecordService recordService)
+public sealed class AllocationStepService(IPageService pageService, IRecordService recordService) : IStepService
 {
     private readonly byte[] _pageBuffer = new byte[PageData.Size];
 
@@ -88,7 +89,11 @@ public sealed class AllocationStepService(IPageService pageService, IRecordServi
               "so the scan ends after that many rows have been output."
             : null;
 
-        Strategy = AccessStrategyBuilder.BuildAllocationScan(residual, rowGoal, rowGoalReason, hasUntranslatedResidual);
+        Strategy = AccessStrategyBuilder.BuildAllocationScan(residual, rowGoal, rowGoalReason, hasUntranslatedResidual) with
+        {
+            EntryPoint = firstIamPage,
+            EntryPointSource = "sys.sysallocunits.pgfirstiam"
+        };
 
         Counters = default;
         IsComplete = false;

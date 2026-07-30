@@ -200,16 +200,25 @@ public readonly struct AccessValue : IEquatable<AccessValue>
         {
             if (AccessValueComparer.IsWideCharacterType(DataType))
             {
-                foreach (var character in MemoryMarshal.Cast<byte, char>(Data.Span))
+                foreach (var character in MemoryMarshal.Cast<byte, char>(Data.Span).TrimEnd(' '))
                 {
                     hash.Add(char.ToUpperInvariant(character));
                 }
             }
             else
             {
-                foreach (var value in Data.Span)
+                var span = Data.Span;
+
+                var length = span.Length;
+
+                while (length > 0 && span[length - 1] == 0x20)
                 {
-                    hash.Add(char.ToUpperInvariant((char)value));
+                    length--;
+                }
+
+                for (var index = 0; index < length; index++)
+                {
+                    hash.Add(char.ToUpperInvariant((char)span[index]));
                 }
             }
 

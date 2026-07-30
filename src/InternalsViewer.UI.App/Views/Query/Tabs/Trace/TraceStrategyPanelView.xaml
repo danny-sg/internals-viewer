@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceStrategyPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
+    mc:Ignorable="d">
+
+    <accessSteps:AccessStrategyPanel FontSize="12"
+                                     Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                     Strategy="{x:Bind ViewModel.Strategy, Mode=OneWay}"
+                                     CurrentPhase="{x:Bind ViewModel.CurrentPhase, Mode=OneWay}"
+                                     Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"
+                                     IsWalkActive="{x:Bind ViewModel.IsWalkInProgress, Mode=OneWay}" />
+</UserControl>

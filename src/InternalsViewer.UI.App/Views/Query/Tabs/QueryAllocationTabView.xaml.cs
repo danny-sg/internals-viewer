@@ -37,20 +37,7 @@ public sealed partial class QueryAllocationTabView : UserControl
         }
     }
 
-    public string RunLabel(bool isRunning) => isRunning ? "Stop" : "Run";
 
-    public string RunGlyph(bool isRunning) => isRunning ? "" : "";
-
-    public Visibility EmptyStepsVisibility(int count, bool isRunningToEnd)
-        => count == 0 && !isRunningToEnd ? Visibility.Visible : Visibility.Collapsed;
-
-    private void CloseTracePane()
-    {
-        if (ViewModel is { } viewModel)
-        {
-            viewModel.AllocationTrace.IsTraceVisible = false;
-        }
-    }
 
     private void OnPageSelected(object? sender, PageAddressEventArgs e)
     {

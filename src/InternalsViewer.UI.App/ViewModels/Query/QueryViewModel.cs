@@ -42,6 +42,7 @@ using InternalsViewer.Query.Parsing.Plans;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Settings;
+using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using QueryIndexTabView = InternalsViewer.UI.App.Views.Query.Tabs.Index.QueryIndexTabView;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -54,7 +55,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                          AllocationStepService allocationStepService)
+                                          TraceTabViewModelFactory traceTabViewModelFactory)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -64,7 +65,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  pageTabViewModelFactory,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
-                                                                 allocationStepService,
+                                                                 traceTabViewModelFactory,
                                                                  database);
 }
 
@@ -233,6 +234,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         PruneClosedPages();
 
+        PruneClosedTraces();
+
         ScheduleSaveLayout();
     }
 
@@ -352,7 +355,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public AllocationTraceViewModel AllocationTrace { get; }
+    private readonly TraceTabViewModelFactory _traceTabViewModelFactory;
+
+    private readonly Dictionary<string, TraceTabViewModel> _openTraces = new();
 
     private Internals.Engine.Database.AllocationUnit? FindAllocationUnit(PlanNode node)
     {
@@ -377,7 +382,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void OpenAllocations(PlanNode node)
+    public void OpenTrace(PlanNodeIdentifier identifier)
+    {
+        if (ResolvePlanNode(identifier) is { } node)
+        {
+            OpenTrace(node);
+        }
+    }
+
+    public void OpenTrace(PlanNode node)
     {
         var allocationUnit = FindAllocationUnit(node);
 
@@ -388,13 +401,69 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        AllocationTrace.Prepare(Database,
-                                allocationUnit,
-                                node,
-                                Events.FirstOrDefault()?.Timestamp,
-                                ScanModeDetector.Detect(node, allocationUnit, Events));
+        var key = $"Trace:{allocationUnit.SchemaName}.{allocationUnit.TableName}.{allocationUnit.IndexName}:{node.NodeId}";
 
-        AllocationTrace.IsTraceVisible = true;
+        var scanMode = ScanModeDetector.Detect(node, allocationUnit, Events);
+
+        var kind = allocationUnit.IndexId == 0 || scanMode?.Mode == ScanMode.AllocationOrdered
+            ? TraceKind.Allocation
+            : TraceKind.Index;
+
+        if (Layout.TryGetDocument(key, out var existing))
+        {
+            if (existing.Content is TraceTabViewModel { } current && current.Kind == kind)
+            {
+                Layout.Show(existing);
+
+                return;
+            }
+
+            if (existing.Content is TraceTabViewModel stale)
+            {
+                stale.PageNavigated -= OnIndexPageNavigated;
+            }
+
+            _openTraces.Remove(key);
+
+            Layout.RemoveDocument(key, out _);
+        }
+
+        var traceViewModel = _traceTabViewModelFactory.Create(kind,
+                                                              Database,
+                                                              allocationUnit,
+                                                              node,
+                                                              Events.FirstOrDefault()?.Timestamp,
+                                                              scanMode);
+
+        traceViewModel.PageNavigated += OnIndexPageNavigated;
+
+        var objectName = string.IsNullOrEmpty(allocationUnit.IndexName) ? allocationUnit.TableName : allocationUnit.IndexName;
+
+        var document = new DocumentViewModel(title: $"Trace: {objectName}",
+                                             content: traceViewModel,
+                                             viewFactory: static () => new TraceTabView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false);
+
+        Layout.RegisterDocument(key, document);
+
+        _openTraces[key] = traceViewModel;
+
+        Layout.Show(document);
+    }
+
+    public void OpenAllocations(PlanNode node)
+    {
+        var allocationUnit = FindAllocationUnit(node);
+
+        if (allocationUnit is null)
+        {
+            Logger.LogWarning("Allocation unit not found: {Schema}.{Table}.{Index}", node.Schema, node.Table, node.Index);
+
+            return;
+        }
 
         SelectedPlanNode = node;
 
@@ -633,9 +702,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     public void OpenIndex(PlanNode node)
-        => OpenIndex(node.Schema, node.Table, node.Index, node);
+        => OpenIndex(node.Schema, node.Table, node.Index);
 
-    private void OpenIndex(string? schema, string? table, string? index, PlanNode? node = null)
+    private void OpenIndex(string? schema, string? table, string? index)
     {
         if (string.IsNullOrEmpty(index))
         {
@@ -649,15 +718,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         if (Layout.TryGetDocument(key, out var existing))
         {
-            var viewModel = existing.Content as IndexTabViewModel;
-
-            if (viewModel is not null)
-            {
-                viewModel.PlanNode = node;
-                viewModel.QueryTime = Events.FirstOrDefault()?.Timestamp;
-                viewModel.ScanMode = node is null ? null : ScanModeDetector.Detect(node, viewModel.AllocationUnit, Events);
-            }
-
             Layout.Show(existing);
 
             return;
@@ -681,9 +741,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         indexViewModel.RootPage = allocationUnit.RootPage;
         indexViewModel.AllocationUnit = allocationUnit;
-        indexViewModel.PlanNode = node;
-        indexViewModel.QueryTime = Events.FirstOrDefault()?.Timestamp;
-        indexViewModel.ScanMode = node is null ? null : ScanModeDetector.Detect(node, allocationUnit, Events);
 
         var document = new DocumentViewModel(title: $"Index: {index}",
                                              content: indexViewModel,
@@ -697,7 +754,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _openIndexes[key] = indexViewModel;
 
-        indexViewModel.PageNavigated += OnIndexPageNavigated;
 
         Layout.Show(document);
 
@@ -836,7 +892,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         foreach (var key in closed)
         {
-            _openIndexes[key].PageNavigated -= OnIndexPageNavigated;
 
             _openIndexes.Remove(key);
 
@@ -847,11 +902,85 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
+    private void PruneClosedTraces()
+    {
+        if (_openTraces.Count == 0)
+        {
+            return;
+        }
+
+        var closed = _openTraces.Keys
+            .Where(k => !Layout.IsShown(k))
+            .ToList();
+
+        foreach (var key in closed)
+        {
+            _openTraces[key].PageNavigated -= OnIndexPageNavigated;
+
+            _openTraces.Remove(key);
+
+            if (Layout.RemoveDocument(key, out var document))
+            {
+                document.DisposeView();
+            }
+        }
+    }
+
+    private void RefreshTraceDocuments()
+    {
+        foreach (var (key, viewModel) in _openTraces.ToList())
+        {
+            var node = FindTraceOperator(viewModel);
+
+            if (node is not null)
+            {
+                var allocationUnit = viewModel.AllocationUnit;
+
+                var scanMode = ScanModeDetector.Detect(node, allocationUnit, Events);
+
+                var kind = allocationUnit.IndexId == 0 || scanMode?.Mode == ScanMode.AllocationOrdered
+                    ? TraceKind.Allocation
+                    : TraceKind.Index;
+
+                if (kind == viewModel.Kind)
+                {
+                    viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, scanMode);
+
+                    continue;
+                }
+            }
+
+            viewModel.PageNavigated -= OnIndexPageNavigated;
+
+            _openTraces.Remove(key);
+
+            if (Layout.RemoveDocument(key, out var document))
+            {
+                document.DisposeView();
+            }
+        }
+    }
+
+    private PlanNode? FindTraceOperator(TraceTabViewModel viewModel)
+    {
+        var unit = viewModel.AllocationUnit;
+
+        var candidates = ExecutionPlans.Where(p => !p.IsInternalPlan)
+                                       .SelectMany(p => p.NodesById.Values)
+                                       .Where(n => n.ScanInfo is not null
+                                                   && NameMatches(n.Table, unit.TableName)
+                                                   && NameMatches(n.Index ?? string.Empty, unit.IndexName)
+                                                   && (string.IsNullOrEmpty(n.Schema) || NameMatches(n.Schema, unit.SchemaName)))
+                                       .ToList();
+
+        return candidates.FirstOrDefault(n => n.NodeId == viewModel.PlanNode?.NodeId) ?? candidates.FirstOrDefault();
+    }
+
     public event Action<long>? PlayheadMoveRequested;
 
     private void OnIndexPageNavigated(object? sender, PageNavigatedEventArgs e)
     {
-        var readEndUs = GetReadEndUs(e.PageAddress, e.IsReset ? null : PlayheadTimeUs);
+        var readEndUs = GetReadEndUs(e.PageAddress, e.IsReset ? null : PlayheadTimeUs, e.Selection);
 
         if (readEndUs is not null)
         {
@@ -861,9 +990,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    private long? GetReadEndUs(PageAddress pageAddress, long? afterUs)
+    private long? GetReadEndUs(PageAddress pageAddress, long? afterUs, PageReadSelection selection = PageReadSelection.Next)
     {
         long? first = null;
+        long? last = null;
         long? next = null;
 
         void Consider(long endUs)
@@ -871,6 +1001,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             if (first is null || endUs < first)
             {
                 first = endUs;
+            }
+
+            if (last is null || endUs > last)
+            {
+                last = endUs;
             }
 
             if (afterUs is { } after && endUs > after && (next is null || endUs < next))
@@ -902,7 +1037,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             }
         }
 
-        return next ?? first;
+        return selection switch
+        {
+            PageReadSelection.First => first,
+            PageReadSelection.Last => last,
+            _ => next ?? first
+        };
     }
 
     private List<PageSpan> _pageSpans = [];
@@ -942,11 +1082,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         foreach (var viewModel in _openIndexes.Values)
         {
             viewModel.PlayheadTimeUs = playheadUs;
-
-            if (viewModel.IsStepping)
-            {
-                continue;
-            }
 
             var spans = viewModel.PageSpans;
 
@@ -1002,14 +1137,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           PageTabViewModelFactory pageTabViewModelFactory,
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                          AllocationStepService allocationStepService,
+                          TraceTabViewModelFactory traceTabViewModelFactory,
                           DatabaseSource database)
     {
+        _traceTabViewModelFactory = traceTabViewModelFactory;
         Logger = logger;
         QueryRunner = queryRunner;
         BufferPoolInfoProvider = bufferPoolInfoProvider;
-        AllocationTrace = new AllocationTraceViewModel(allocationStepService);
-        AllocationTrace.PageNavigated += OnIndexPageNavigated;
         Database = database;
         _settingsService = settingsService;
         _settingsViewModel = settingsViewModel;
@@ -1178,6 +1312,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
 
+            RefreshTraceDocuments();
+
             ResultSets = results.ResultSets;
 
             ShowResultTabsForFirstRun();
@@ -1233,15 +1369,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         foreach (var indexViewModel in _openIndexes.Values)
         {
-            indexViewModel.ResetStep();
-            indexViewModel.PlanNode = null;
-            indexViewModel.QueryTime = null;
-            indexViewModel.ScanMode = null;
             indexViewModel.SelectedPageAddress = null;
             indexViewModel.PageSpans = [];
         }
-
-        AllocationTrace.Clear();
 
         _pageSpans = [];
 
@@ -1376,11 +1506,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FilteredEvents = [];
         CallStack = null;
         SelectedEvent = null;
-
-        foreach (var indexViewModel in _openIndexes.Values)
-        {
-            indexViewModel.PageNavigated -= OnIndexPageNavigated;
-        }
 
         _openIndexes.Clear();
 

@@ -9,7 +9,6 @@
     xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
-    xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
     xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     mc:Ignorable="d">
 
@@ -40,19 +39,6 @@
                     BorderThickness="0,0,0,1" 
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     Background="Transparent">
-            <AppBarElementContainer VerticalContentAlignment="Center" Name="PredicateElementContainer"  Height="40" Margin="0,0,0,0">
-                <StackPanel Orientation="Horizontal" >
-                    <Image Source="{x:Bind ViewModel.IconSource}"
-                           Name="NodeImage"
-                           Width="32"
-                           Height="32"
-                           HorizontalAlignment="Left" />
-                    <TextBlock Text="{x:Bind ViewModel.PlanNode.LogicalOperator}" Padding="0,0,8,0"/>
-                </StackPanel>
-            </AppBarElementContainer>
-
- 
-            <AppBarSeparator />
             <AppBarElementContainer>
                 <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
                                                           IsIndex="True" />
@@ -70,13 +56,6 @@
                     BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                     Background="Transparent"
                     BorderThickness="0,0,0,1">
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <ToggleButton Margin="12,0,0,0"
-                              IsChecked="{x:Bind ViewModel.IsDetailPaneVisible, Mode=TwoWay}"
-                              BorderThickness="0">
-                    <TextBlock Text="Trace" VerticalAlignment="Center" />
-                </ToggleButton>
-            </AppBarElementContainer>
             <AppBarElementContainer VerticalContentAlignment="Center">
                 <ToggleButton Margin="4,0,12,0"
                               IsChecked="{x:Bind ViewModel.IsIndexDetailsVisible, Mode=TwoWay}"
@@ -166,134 +145,21 @@
                   Visibility="{x:Bind ViewModel.DetailSplitterVisibility, Mode=OneWay}"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                   BorderThickness="1,0,0,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="{x:Bind ViewModel.TraceRowHeight, Mode=OneWay}" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="{x:Bind ViewModel.IndexDetailsRowHeight, Mode=OneWay}" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <Grid Visibility="{x:Bind ViewModel.TraceSectionVisibility, Mode=OneWay}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <CommandBar Grid.Column="0"
-                                IsOpen="False"
-                                Padding="12,0,0,0"
-                                DefaultLabelPosition="Right"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Left"
-                                VerticalContentAlignment="Top"
-                                MinHeight="0"
-                                OverflowButtonVisibility="Collapsed"
-                                BorderThickness="0,0,0,1"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                Background="{ThemeResource CommandBarBackground}">
-                        <AppBarButton Label="{x:Bind RunLabel(ViewModel.IsRunning), Mode=OneWay}"
-                                      Command="{x:Bind ViewModel.RunCommand}">
-                            <AppBarButton.Icon>
-                                <FontIcon Glyph="{x:Bind RunGlyph(ViewModel.IsRunning), Mode=OneWay}" />
-                            </AppBarButton.Icon>
-                        </AppBarButton>
-
-                        <AppBarButton Label="Step" Command="{x:Bind ViewModel.StepNextCommand}">
-                            <AppBarButton.Icon>
-                                <FontIcon Glyph="&#xE8B5;" />
-                            </AppBarButton.Icon>
-                        </AppBarButton>
-
-                        <AppBarButton Label="Run to End" Command="{x:Bind ViewModel.RunToEndCommand}">
-                            <AppBarButton.Icon>
-                                <FontIcon Glyph="&#xE893;" />
-                            </AppBarButton.Icon>
-                        </AppBarButton>
-
-                        <AppBarButton Label="Reset" Command="{x:Bind ViewModel.ResetStepCommand}">
-                            <AppBarButton.Icon>
-                                <FontIcon Glyph="&#xE72C;" />
-                            </AppBarButton.Icon>
-                        </AppBarButton>
-                    </CommandBar>
-
-                    <Button Grid.Column="1"
-                                Click="{x:Bind CloseDetailPane}"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Padding="0,0,16,0"
-                                VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xE711;" FontSize="12" />
-                    </Button>
-                </Grid>
-
-                <accessSteps:AccessStepsControl Grid.Row="1"
-                                                Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                                                Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
-                                                        Converter={StaticResource InverseBoolToVisibilityConverter}}"
-                                                StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}"
-                                                CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
-                <TextBlock Grid.Row="1"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Visibility="{x:Bind EmptyStepsVisibility(ViewModel.StepHistory.Count, ViewModel.IsRunningToEnd), Mode=OneWay}"
-                           Text="Select Run/Step/Run to end to start trace" />
-
-                <controls:GridSplitter Grid.Row="2"
-                                       Visibility="{x:Bind TraceSplitterVisibility(ViewModel.IsRunningToEnd, ViewModel.IsDetailPaneVisible, ViewModel.IsIndexDetailsVisible), Mode=OneWay}"
-                                       HorizontalAlignment="Stretch"
-                                       VerticalAlignment="Stretch"
-                                       ResizeBehavior="PreviousAndNext"
-                                       ResizeDirection="Auto"
-                                       Background="{ThemeResource ControlStrokeColorDefaultBrush}">
-                    <controls:GridSplitter.Template>
-                        <ControlTemplate TargetType="controls:GridSplitter">
-                            <Grid Background="{TemplateBinding Background}" />
-                        </ControlTemplate>
-                    </controls:GridSplitter.Template>
-                </controls:GridSplitter>
-                <TabView Grid.Row="3"
-                         VerticalAlignment="Stretch"
-                         Visibility="{x:Bind TraceDetailVisibility(ViewModel.IsRunningToEnd, ViewModel.IsIndexDetailsVisible), Mode=OneWay}"
+                <TabView VerticalAlignment="Stretch"
                          IsAddTabButtonVisible="False"
                          CanReorderTabs="False"
                          TabWidthMode="SizeToContent"
                          CanDragTabs="False">
                     <TabView.TabItems>
-                        <TabViewItem Header="Description" IsClosable="False">
-                            <accessSteps:SeekDescriptionPanel FontSize="12"
-                                                              Strategy="{x:Bind ViewModel.SeekDescription, Mode=OneWay}"
-                                                              PhysicalOperator="{x:Bind ViewModel.PlanNode.PhysicalOperator, Mode=OneWay}"
-                                                              LogicalOperator="{x:Bind ViewModel.PlanNode.LogicalOperator, Mode=OneWay}"
-                                                              IsOrdered="{x:Bind ViewModel.PlanNode.ScanInfo.IsOutputOrdered, Mode=OneWay}"
-                                                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"/>
-                        </TabViewItem>
                         <TabViewItem Header="Page Data" IsClosable="False">
                             <index:RecordGrid x:Name="RecordGrid"
                                               Records="{x:Bind ViewModel.Records, Mode=OneWay}"
                                               SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
                                               BorderThickness="0" />
                         </TabViewItem>
-
-                        <TabViewItem Header="Results" IsClosable="False">
-                            <index:RecordGrid x:Name="ResultsGrid"
-                                              HideSlotColumn="True"
-                                              Records="{x:Bind ViewModel.ResultRecords, Mode=OneWay}"
-                                              BorderThickness="0" />
-                        </TabViewItem>
-                        <TabViewItem Header="Strategy" IsClosable="False">
-                            <accessSteps:AccessStrategyPanel FontSize="12" 
-                                                           Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                                                           Strategy="{x:Bind ViewModel.Strategy, Mode=OneWay}"
-                                                           CurrentPhase="{x:Bind ViewModel.CurrentPhase, Mode=OneWay}"
-                                                           Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"
-                                                           IsWalkActive="{x:Bind ViewModel.IsWalkInProgress, Mode=OneWay}" />
-                        </TabViewItem>
-           
                     </TabView.TabItems>
                 </TabView>
-                <StackPanel Grid.Row="3"
-                            Orientation="Horizontal"
+                <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Visibility="{x:Bind ViewModel.IsRecordsLoading,
@@ -301,17 +167,6 @@
                                     Converter={StaticResource BoolToVisibilityConverter}}">
                     <ProgressRing IsActive="{x:Bind ViewModel.IsRecordsLoading, Mode=OneWay}" />
                     <TextBlock Margin="10,0,0,0" VerticalAlignment="Center">Loading...</TextBlock>
-                </StackPanel>
-                <StackPanel Grid.Row="1"
-                            Grid.RowSpan="3"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Visibility="{x:Bind ViewModel.IsRunningToEnd,
-                                    Mode=OneWay,
-                                    Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ProgressRing IsActive="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay}" />
-                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center">Running</TextBlock>
                 </StackPanel>
             </Grid>
         </Grid>

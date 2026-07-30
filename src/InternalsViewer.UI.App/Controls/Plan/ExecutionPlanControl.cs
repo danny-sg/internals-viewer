@@ -183,6 +183,8 @@ public sealed class ExecutionPlanControl : Canvas
 
     public event EventHandler<PlanNode>? AllocationsOpenRequested;
 
+    public event EventHandler<PlanNode>? TraceOpenRequested;
+
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
 
     private static void OnPlanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -493,6 +495,12 @@ public sealed class ExecutionPlanControl : Canvas
                 openAllocations.Click += (_, _) => AllocationsOpenRequested?.Invoke(this, node);
 
                 flyout.Items.Add(openAllocations);
+
+                var openTrace = new MenuFlyoutItem { Text = "Trace" };
+
+                openTrace.Click += (_, _) => TraceOpenRequested?.Invoke(this, node);
+
+                flyout.Items.Add(openTrace);
             }
 
             var openProperties = new MenuFlyoutItem { Text = $"Properties" };

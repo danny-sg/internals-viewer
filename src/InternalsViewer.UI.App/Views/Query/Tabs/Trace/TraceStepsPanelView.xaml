@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceStepsPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
+    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="StepsInverseBoolToVisibilityConverter" IsInverse="True" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <accessSteps:AccessStepsControl Grid.Row="0"
+                                        Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                        Visibility="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay,
+                                                Converter={StaticResource StepsInverseBoolToVisibilityConverter}}"
+                                        StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}"
+                                        CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}" />
+
+        <TextBlock Grid.Row="0"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Visibility="{x:Bind EmptyStepsVisibility(ViewModel.StepHistory.Count, ViewModel.IsRunningToEnd), Mode=OneWay}"
+                   Text="Select Run/Step/Run to end to start trace" />
+
+        <StackPanel Grid.Row="0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.IsRunningToEnd,
+                            Mode=OneWay,
+                            Converter={StaticResource BoolToVisibilityConverter}}">
+            <ProgressRing IsActive="{x:Bind ViewModel.IsRunningToEnd, Mode=OneWay}" />
+            <TextBlock Margin="10,0,0,0" VerticalAlignment="Center">Running</TextBlock>
+        </StackPanel>
+    </Grid>
+</UserControl>

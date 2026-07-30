@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Search;
 
@@ -26,4 +27,8 @@ public sealed record AccessStrategy
     public IReadOnlyList<string> KeyColumns { get; init; } = [];
 
     public bool? IsUnique { get; init; }
+
+    public PageAddress? EntryPoint { get; init; }
+
+    public string? EntryPointSource { get; init; }
 }

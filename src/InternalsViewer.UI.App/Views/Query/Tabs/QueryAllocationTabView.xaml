@@ -8,14 +8,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:models="using:InternalsViewer.UI.App.Models"
-    xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
-    xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
-    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
-    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     mc:Ignorable="d">
     <UserControl.Resources>
         <StackLayout Orientation="Vertical" x:Key="VerticalStackLayout" />
-        <converters:BoolToVisibilityConverter x:Key="TraceInverseBoolToVisibilityConverter" IsInverse="True" />
         <DataTemplate x:Key="AllocationFileTemplate" x:DataType="models:DatabaseFile">
             <Grid>
                 <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"
@@ -107,178 +102,15 @@
                     <TextBlock Text="Auto-Scroll" VerticalAlignment="Center" />
                 </ToggleButton>
             </AppBarElementContainer>
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <ToggleButton Margin="0,0,12,0"
-                              BorderThickness="0"
-                              IsChecked="{x:Bind ViewModel.AllocationTrace.IsTraceVisible, Mode=TwoWay}">
-                    <TextBlock Text="Trace" VerticalAlignment="Center" />
-                </ToggleButton>
-            </AppBarElementContainer>
-
-
         </CommandBar>
-        <Grid Grid.Row="1"
-              Grid.ColumnSpan="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{x:Bind ViewModel.AllocationTrace.BodyColumnWidth, Mode=OneWay}" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="{x:Bind ViewModel.AllocationTrace.TraceColumnWidth, Mode=OneWay}" />
-            </Grid.ColumnDefinitions>
-
-            <ItemsRepeater x:Name="AllocationItemRepeater"
-                           HorizontalAlignment="Stretch"
-                           VerticalAlignment="Stretch"
-                           Grid.Column="0"
-                           ItemsSource="{x:Bind ViewModel.DatabaseFiles, Mode=OneWay}"
-                           Layout="{StaticResource VerticalStackLayout}"
-                           ItemTemplate="{StaticResource AllocationFileTemplate}" />
-
-            <controls:GridSplitter Grid.Column="1"
-                                   Width="4"
-                                   HorizontalAlignment="Stretch"
-                                   VerticalAlignment="Stretch"
-                                   ResizeBehavior="PreviousAndNext"
-                                   ResizeDirection="Columns"
-                                   Visibility="{x:Bind ViewModel.AllocationTrace.TraceVisibility, Mode=OneWay}"
-                                   Background="{ThemeResource ControlStrokeColorDefaultBrush}">
-                <controls:GridSplitter.Template>
-                    <ControlTemplate TargetType="controls:GridSplitter">
-                        <Grid Background="{TemplateBinding Background}" />
-                    </ControlTemplate>
-                </controls:GridSplitter.Template>
-            </controls:GridSplitter>
-
-            <Grid Grid.Column="2"
-                  Visibility="{x:Bind ViewModel.AllocationTrace.TraceVisibility, Mode=OneWay}"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1,0,0,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <CommandBar Grid.Column="0"
-                                IsOpen="False"
-                                Padding="12,0,0,0"
-                                DefaultLabelPosition="Right"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Left"
-                                VerticalContentAlignment="Top"
-                                MinHeight="0"
-                                OverflowButtonVisibility="Collapsed"
-                                BorderThickness="0,0,0,1"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                Background="{ThemeResource CommandBarBackground}">
-                        <AppBarButton Label="{x:Bind RunLabel(ViewModel.AllocationTrace.IsRunning), Mode=OneWay}"
-                                      Command="{x:Bind ViewModel.AllocationTrace.RunCommand}">
-                            <AppBarButton.Icon>
-                                <FontIcon Glyph="{x:Bind RunGlyph(ViewModel.AllocationTrace.IsRunning), Mode=OneWay}" />
-                            </AppBarButton.Icon>
-                        </AppBarButton>
-
-                        <AppBarButton Label="Step" Command="{x:Bind ViewModel.AllocationTrace.StepNextCommand}">
-                            <AppBarButton.Icon>
-                                <FontIcon Glyph="&#xE8B5;" />
-                            </AppBarButton.Icon>
-                        </AppBarButton>
-
-                        <AppBarButton Label="Run to End" Command="{x:Bind ViewModel.AllocationTrace.RunToEndCommand}">
-                            <AppBarButton.Icon>
-                                <FontIcon Glyph="&#xE893;" />
-                            </AppBarButton.Icon>
-                        </AppBarButton>
-
-                        <AppBarButton Label="Reset" Command="{x:Bind ViewModel.AllocationTrace.ResetStepCommand}">
-                            <AppBarButton.Icon>
-                                <FontIcon Glyph="&#xE72C;" />
-                            </AppBarButton.Icon>
-                        </AppBarButton>
-                    </CommandBar>
-
-                    <Button Grid.Column="1"
-                            Click="{x:Bind CloseTracePane}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0,0,16,0"
-                            VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xE711;" FontSize="12" />
-                    </Button>
-                </Grid>
-
-                <accessSteps:AccessStepsControl Grid.Row="1"
-                                                Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                                                Visibility="{x:Bind ViewModel.AllocationTrace.IsRunningToEnd, Mode=OneWay,
-                                                        Converter={StaticResource TraceInverseBoolToVisibilityConverter}}"
-                                                StepHistory="{x:Bind ViewModel.AllocationTrace.StepHistory, Mode=OneWay}"
-                                                CurrentStep="{x:Bind ViewModel.AllocationTrace.CurrentStep, Mode=OneWay}" />
-                <TextBlock Grid.Row="1"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Visibility="{x:Bind EmptyStepsVisibility(ViewModel.AllocationTrace.StepHistory.Count, ViewModel.AllocationTrace.IsRunningToEnd), Mode=OneWay}"
-                           Text="Select Run/Step/Run to end to start trace" />
-                <StackPanel Grid.Row="1"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Visibility="{x:Bind ViewModel.AllocationTrace.IsRunningToEnd,
-                                    Mode=OneWay,
-                                    Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ProgressRing IsActive="{x:Bind ViewModel.AllocationTrace.IsRunningToEnd, Mode=OneWay}" />
-                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center">Running</TextBlock>
-                </StackPanel>
-
-                <controls:GridSplitter Grid.Row="2"
-                                       HorizontalAlignment="Stretch"
-                                       VerticalAlignment="Stretch"
-                                       ResizeBehavior="PreviousAndNext"
-                                       ResizeDirection="Rows"
-                                       Background="{ThemeResource ControlStrokeColorDefaultBrush}">
-                    <controls:GridSplitter.Template>
-                        <ControlTemplate TargetType="controls:GridSplitter">
-                            <Grid Background="{TemplateBinding Background}" Height="4" />
-                        </ControlTemplate>
-                    </controls:GridSplitter.Template>
-                </controls:GridSplitter>
-
-                <TabView Grid.Row="3"
-                         VerticalAlignment="Stretch"
-                         IsAddTabButtonVisible="False"
-                         CanReorderTabs="False"
-                         TabWidthMode="SizeToContent"
-                         CanDragTabs="False">
-                    <TabView.TabItems>
-                        <TabViewItem Header="Description" IsClosable="False">
-                            <accessSteps:SeekDescriptionPanel FontSize="12"
-                                                              Strategy="{x:Bind ViewModel.AllocationTrace.SeekDescription, Mode=OneWay}"
-                                                              PhysicalOperator="{x:Bind ViewModel.AllocationTrace.PlanNode.PhysicalOperator, Mode=OneWay}"
-                                                              LogicalOperator="{x:Bind ViewModel.AllocationTrace.PlanNode.LogicalOperator, Mode=OneWay}"
-                                                              IsOrdered="{x:Bind ViewModel.AllocationTrace.PlanNode.ScanInfo.IsOutputOrdered, Mode=OneWay}"
-                                                              Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"/>
-                        </TabViewItem>
-                        <TabViewItem Header="Results" IsClosable="False">
-                            <index:RecordGrid HideSlotColumn="True"
-                                              Records="{x:Bind ViewModel.AllocationTrace.ResultRecords, Mode=OneWay}"
-                                              BorderThickness="0" />
-                        </TabViewItem>
-                        <TabViewItem Header="Strategy" IsClosable="False">
-                            <accessSteps:AccessStrategyPanel FontSize="12"
-                                                           Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                                                           Strategy="{x:Bind ViewModel.AllocationTrace.Strategy, Mode=OneWay}"
-                                                           CurrentPhase="{x:Bind ViewModel.AllocationTrace.CurrentPhase, Mode=OneWay}"
-                                                           Counters="{x:Bind ViewModel.AllocationTrace.CurrentCounters, Mode=OneWay}"
-                                                           IsWalkActive="{x:Bind ViewModel.AllocationTrace.IsWalkInProgress, Mode=OneWay}" />
-                        </TabViewItem>
-                    </TabView.TabItems>
-                </TabView>
-            </Grid>
-        </Grid>
+        <ItemsRepeater x:Name="AllocationItemRepeater"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Stretch"
+                       Grid.Row="1"
+                       Grid.Column="0"
+                       Grid.ColumnSpan="2"
+                       ItemsSource="{x:Bind ViewModel.DatabaseFiles, Mode=OneWay}"
+                       Layout="{StaticResource VerticalStackLayout}"
+                       ItemTemplate="{StaticResource AllocationFileTemplate}" />
     </Grid>
 </UserControl>

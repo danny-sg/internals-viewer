@@ -180,6 +180,30 @@ public class IntrinsicFunctionsTests
         Assert.Equal("ab", GetString(Resolve(Function("CONCAT_WS", separator, Text("a"), Text("b")))));
     }
 
+    [Fact]
+    public void Fixed_Length_Text_Ignores_Trailing_Padding()
+    {
+        var stored = new AccessExpression.Constant(AccessValueFactory.FromText(SqlDbType.Char, "Row 5000        "));
+
+        var literal = new AccessExpression.Constant(AccessValueFactory.FromText(SqlDbType.VarChar, "Row 5000"));
+
+        var predicate = new AccessPredicate.Comparison(stored, ComparisonOperator.Equal, literal);
+
+        Assert.True(PredicateEvaluator.Evaluate(predicate, Row));
+    }
+
+    [Fact]
+    public void Narrow_Row_Text_Compares_Against_A_Wide_Literal()
+    {
+        var stored = new AccessExpression.Constant(AccessValueFactory.FromText(SqlDbType.VarChar, "Hello"));
+
+        var literal = new AccessExpression.Constant(AccessValueFactory.FromText(SqlDbType.NVarChar, "hello"));
+
+        var predicate = new AccessPredicate.Comparison(stored, ComparisonOperator.Equal, literal);
+
+        Assert.True(PredicateEvaluator.Evaluate(predicate, Row));
+    }
+
     private static AccessValue Resolve(AccessExpression expression, EvaluationContext? context = null)
     {
         return PredicateEvaluator.Resolve(expression, Row, context);

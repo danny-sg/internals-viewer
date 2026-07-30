@@ -8,6 +8,7 @@ using InternalsViewer.UI.App.Controls.Predicates;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.AccessSteps;
 
@@ -98,6 +99,31 @@ public sealed partial class AccessStrategyPanel : UserControl
             return;
         }
 
+        if (Strategy.EntryPoint is { } entryPoint)
+        {
+            var entryContent = new StackPanel { Orientation = Orientation.Horizontal };
+
+            entryContent.Children.Add(new TextBlock
+            {
+                Text = entryPoint.ToString(),
+                FontSize = FontSize
+            });
+
+            if (Strategy.EntryPointSource is { Length: > 0 } source)
+            {
+                entryContent.Children.Add(new TextBlock
+                {
+                    Text = source,
+                    FontSize = FontSize,
+                    FontFamily = new FontFamily("Consolas"),
+                    Opacity = 0.7,
+                    Margin = new Thickness(8, 0, 0, 0)
+                });
+            }
+
+            PhasesPanel.Children.Add(SeekPanelRows.TitledRow("Entry Point", 80, entryContent, semiBoldTitle: true));
+        }
+
         foreach (var phase in Strategy.Phases)
         {
             var content = new RichTextBlock
@@ -159,6 +185,7 @@ public sealed partial class AccessStrategyPanel : UserControl
         }
 
         AddCounterRow("Pages Read", c => c.PagesRead);
+        AddCounterRow("Data Read", c => FormatDataRead(c.PagesRead));
         AddCounterRow("Comparisons", c => c.Comparisons);
         AddCounterRow("Rows Read", c => c.RowsRead);
         AddCounterRow("Rows Output", c => c.RowsOutput);
@@ -186,6 +213,13 @@ public sealed partial class AccessStrategyPanel : UserControl
                 }
             }
         };
+    }
+
+    private static string FormatDataRead(long pagesRead)
+    {
+        var kb = pagesRead * 8;
+
+        return kb > 1024 ? $"{kb / 1024D:N1} MB" : $"{kb:N0} KB";
     }
 
     private void AddCounterRow(string label, Func<AccessCounters, long> get)

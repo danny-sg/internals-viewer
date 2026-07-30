@@ -29,8 +29,21 @@ public sealed partial class TabGroupView : UserControl
     {
         InitializeComponent();
 
+        Loaded += (_, _) => DockDragState.ActiveChanged += OnDragActiveChanged;
+
         Unloaded += OnUnloaded;
     }
+
+    private void OnDragActiveChanged(object? sender, EventArgs e)
+    {
+        if (!DockDragState.IsActive)
+        {
+            HideHighlight();
+        }
+    }
+
+    private bool AcceptsCurrentDrag
+        => DockDragState.Document is { } document && Dock?.FindGroup(document) is not null;
 
     public void Initialize(TabGroupNode group, DockLayoutViewModel dock)
     {
@@ -45,6 +58,8 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        DockDragState.ActiveChanged -= OnDragActiveChanged;
+
         if (Group is not null)
         {
             Group.Documents.CollectionChanged -= OnDocumentsChanged;
@@ -198,7 +213,7 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnDropOver(object sender, DragEventArgs e)
     {
-        if (!DockDragState.IsActive)
+        if (!AcceptsCurrentDrag)
         {
             return;
         }
@@ -223,7 +238,7 @@ public sealed partial class TabGroupView : UserControl
 
         HideHighlight();
 
-        if (document is not null && Group is { } group && Dock is { } dock)
+        if (document is not null && Group is { } group && Dock is { } dock && dock.FindGroup(document) is not null)
         {
             var zone = GetZone(e.GetPosition(RootArea));
 

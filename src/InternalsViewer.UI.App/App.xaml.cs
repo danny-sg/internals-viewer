@@ -78,6 +78,7 @@ public partial class App
             services.AddTransient<DatabaseTabViewModelFactory>();
             services.AddTransient<PageTabViewModelFactory>();
             services.AddTransient<IndexTabViewModelFactory>();
+            services.AddTransient<TraceTabViewModelFactory>();
             services.AddTransient<QueryViewModelFactory>();
 
             services.AddTransient<QueryRunner>();

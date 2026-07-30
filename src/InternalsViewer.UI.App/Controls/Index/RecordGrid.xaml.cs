@@ -47,6 +47,8 @@ public sealed partial class RecordGrid : IDisposable
 
     public bool HideSlotColumn { get; set; }
 
+    public bool AutoScrollToEnd { get; set; }
+
     public static readonly DependencyProperty HideSlotColumnProperty
         = DependencyProperty.Register(nameof(HideSlotColumn),
             typeof(bool),
@@ -70,6 +72,8 @@ public sealed partial class RecordGrid : IDisposable
         {
             control.SubscribeRecords();
             control.AddColumns();
+
+            control.DispatcherQueue.TryEnqueue(control.ScrollToEnd);
         }
 
         control.DispatcherQueue.TryEnqueue(control.ApplySelectedSlot);
@@ -95,6 +99,16 @@ public sealed partial class RecordGrid : IDisposable
         if (!_hasFieldColumns && Records?.Count > 0)
         {
             AddColumns();
+        }
+
+        ScrollToEnd();
+    }
+
+    private void ScrollToEnd()
+    {
+        if (AutoScrollToEnd && Records is { Count: > 0 } records)
+        {
+            DataGrid.ScrollIntoView(records[^1], null);
         }
     }
 

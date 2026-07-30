@@ -23,19 +23,6 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
 
     public IndexTabViewModel? ViewModel => DataContext as IndexTabViewModel;
 
-    public string RunLabel(bool isRunning) => isRunning ? "Stop" : "Run";
-
-    public string RunGlyph(bool isRunning) => isRunning ? "" : "";
-
-    public Visibility EmptyStepsVisibility(int stepCount, bool isRunningToEnd) =>
-        stepCount == 0 && !isRunningToEnd ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility TraceDetailVisibility(bool isRunningToEnd, bool isIndexDetailsVisible) =>
-        !isRunningToEnd && isIndexDetailsVisible ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility TraceSplitterVisibility(bool isRunningToEnd, bool isTraceVisible, bool isIndexDetailsVisible) =>
-        !isRunningToEnd && isTraceVisible && isIndexDetailsVisible ? Visibility.Visible : Visibility.Collapsed;
-
     public QueryIndexTabView()
     {
         InitializeComponent();
@@ -143,6 +130,5 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
         IndexControl.Dispose();
 
         RecordGrid.Dispose();
-        ResultsGrid.Dispose();
     }
 }

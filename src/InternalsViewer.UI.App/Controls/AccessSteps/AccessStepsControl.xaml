@@ -186,9 +186,11 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Rows" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="Slots" Style="{StaticResource StepPropertyStyle}" />
+                        <StackPanel Width="40" Orientation="Horizontal">
                         <TextBlock Text="{Binding FromSlot}" Style="{StaticResource StepValueStyle}" />
                         <TextBlock Text="-" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding ToSlot}" Style="{StaticResource StepValueStyle}" />
+                        </StackPanel>
                         <TextBlock Text="Outcome" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding Converter={StaticResource RowOutcomeToTextConverter}}"
                                    Style="{StaticResource StepValueStyle}" />
@@ -198,9 +200,12 @@
                                 BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="6,0,6,1"
+                                Width="110"
+                          
                                 VerticalAlignment="Center">
                             <TextBlock Text="{Binding Converter={StaticResource RowEmitTextConverter}}"
                                        Foreground="White"
+                                       HorizontalAlignment="Center"
                                        FontSize="11" />
                         </Border>
                     </StackPanel>
