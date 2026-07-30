@@ -52,6 +52,8 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
 
     private AccessPredicate? Residual { get; set; }
 
+    private EvaluationContext EvaluationContext { get; set; } = EvaluationContext.Now;
+
     private long? RowGoal { get; set; }
 
     private long? PlanRowGoal { get; set; }
@@ -72,9 +74,11 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
                                  ScanDirection direction,
                                  CancellationToken cancellationToken,
                                  long? rowGoal = null,
-                                 bool hasUntranslatedResidual = false)
+                                 bool hasUntranslatedResidual = false,
+                                 EvaluationContext? evaluationContext = null)
     {
         Database = database;
+        EvaluationContext = evaluationContext ?? EvaluationContext.Now;
         IndexStructure = IndexStructureProvider.GetIndexStructure(database, allocationUnitId);
 
         if (IndexStructure.IndexKeyColumns.Count > 0 && IndexStructure.IndexKeyColumns[0].IsDescending)
@@ -253,7 +257,14 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
                 throw new InvalidOperationException($"Unexpected page type {page.GetType()} at {pageAddress}")
         };
 
-        CurrentPageSteps = PageSeekExecutor.Execute(CurrentPage, Bounds, Direction, Residual, RowGoal, isContinuation, counters: Counters)
+        CurrentPageSteps = PageSeekExecutor.Execute(CurrentPage, 
+                                                    Bounds, 
+                                                    Direction, 
+                                                    Residual, 
+                                                    RowGoal, 
+                                                    isContinuation, 
+                                                    counters: Counters,
+                                                    evaluationContext: EvaluationContext)
                                            .GetEnumerator();
     }
 

@@ -198,6 +198,41 @@ public class PredicateWriterTests
         Assert.Equal("2 < 3", Text(probe));
     }
 
+    [Fact]
+    public void Function_Call_Is_Written()
+    {
+        var predicate = new AccessPredicate.Comparison(new AccessExpression.Function("UPPER", [Column(0, "Name")]),
+                                                       ComparisonOperator.Equal,
+                                                       Constant(1));
+
+        Assert.Equal("UPPER(Name) = 1", Text(predicate));
+    }
+
+    [Fact]
+    public void Function_Without_Arguments_Is_Written_With_Empty_Parentheses()
+    {
+        var predicate = new AccessPredicate.Comparison(Column(0, "Expires"),
+                                                       ComparisonOperator.GreaterThan,
+                                                       new AccessExpression.Function("GETDATE", []));
+
+        Assert.Equal("Expires > GETDATE()", Text(predicate));
+    }
+
+    [Fact]
+    public void Case_Expression_Is_Written_With_A_Chained_Else_As_A_Further_When()
+    {
+        var first = new AccessPredicate.Comparison(Column(0, "A"), ComparisonOperator.Equal, Constant(1));
+        var second = new AccessPredicate.Comparison(Column(1, "B"), ComparisonOperator.Equal, Constant(2));
+
+        var conditional = new AccessExpression.Conditional(first,
+                                                           Constant(10),
+                                                           new AccessExpression.Conditional(second, Constant(20), Constant(30)));
+
+        var predicate = new AccessPredicate.Comparison(conditional, ComparisonOperator.Equal, Constant(10));
+
+        Assert.Equal("CASE WHEN A = 1 THEN 10 WHEN B = 2 THEN 20 ELSE 30 END = 10", Text(predicate));
+    }
+
     private static AccessExpression Column(int ordinal, string name)
     {
         return new AccessExpression.Column(ordinal, name);

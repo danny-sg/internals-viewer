@@ -16,7 +16,17 @@ namespace InternalsViewer.Query.Parsing.Plans.Predicates;
 public sealed class PredicateParser(ColumnOrdinalResolver? resolveOrdinal = null,
                                     ParameterValueResolver? resolveParameter = null)
 {
-    private ScalarOperatorParser Expressions { get; } = new(resolveOrdinal, resolveParameter);
+    private ScalarOperatorParser? _expressions;
+
+    private ScalarOperatorParser Expressions => _expressions ??= new(resolveOrdinal, resolveParameter, Parse);
+
+    /// <summary>
+    /// Parses a scalar operator known to yield a value
+    /// </summary>
+    public AccessExpression? ParseExpression(XElement? scalarOperator)
+    {
+        return Expressions.Parse(scalarOperator);
+    }
 
     /// <summary>
     /// Parses the predicate held by a Predicate element

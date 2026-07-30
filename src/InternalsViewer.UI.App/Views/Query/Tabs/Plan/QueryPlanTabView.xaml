@@ -25,7 +25,7 @@
                     Padding="0"
                     VerticalAlignment="Center"
                     DefaultLabelPosition="Right"
-                    HorizontalAlignment="Left"
+                    HorizontalAlignment="Right"
                     VerticalContentAlignment="Top"
                     MinHeight="0"
                     OverflowButtonVisibility="Collapsed"
@@ -116,7 +116,8 @@
                     </Button>
                 </Grid>
                 <plan:PlanNodePropertiesView Grid.Row="1"
-                                             Node="{x:Bind ViewModel.SelectedPlanNode, Mode=OneWay}" />
+                                             Node="{x:Bind ViewModel.SelectedPlanNode, Mode=OneWay}"
+                                             EventStatistics="{x:Bind ViewModel.SelectedPlanNodeEventStatistics, Mode=OneWay}" />
             </Grid>
         </Grid>
     </Grid>

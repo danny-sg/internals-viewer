@@ -18,9 +18,18 @@ public static class PageSeekExecutor
                                                   long? rowGoal = null,
                                                   bool isContinuation = false,
                                                   AccessCounters counters = default,
-                                                  Action<AccessCounters>? onCountersChanged = null)
+                                                  Action<AccessCounters>? onCountersChanged = null,
+                                                  EvaluationContext? evaluationContext = null)
     {
-        return Walk(page, bounds, direction, residual, rowGoal, isContinuation, counters, onCountersChanged);
+        return Walk(page, 
+                    bounds, 
+                    direction, 
+                    residual, 
+                    rowGoal, 
+                    isContinuation, 
+                    counters, 
+                    onCountersChanged,
+                    evaluationContext ?? EvaluationContext.Now);
     }
 
     /// <summary>
@@ -42,7 +51,7 @@ public static class PageSeekExecutor
     ///                            (forward -> StartValue, backward -> EndValue)                         |
     ///                                                 |                                                |
     ///                                                 v                                                |
-    ///                              emit AccessStep.ProbeStart(rule, target, width)                     |
+    ///                            emit AccessStep.ProbeStart(rule, target, width)                       |
     ///                                                 |                                                |
     ///                                                 v                                                |
     ///                    +---------------- target unbounded? -------------------+                      |
@@ -129,7 +138,8 @@ public static class PageSeekExecutor
                                                 long? rowGoal,
                                                 bool isContinuation,
                                                 AccessCounters totals,
-                                                Action<AccessCounters>? onCountersChanged)
+                                                Action<AccessCounters>? onCountersChanged,
+                                                EvaluationContext evaluationContext)
     {
         var forward = direction == ScanDirection.Forward;
 
@@ -259,7 +269,7 @@ public static class PageSeekExecutor
 
             totals = Publish(totals.AddRowRead(), onCountersChanged);
 
-            var outcome = EvaluateResidual(page, cursor, residual) switch
+            var outcome = EvaluateResidual(page, cursor, residual, evaluationContext) switch
             {
                 true => RowOutcome.Match,
                 false => RowOutcome.NoMatch,
@@ -303,6 +313,16 @@ public static class PageSeekExecutor
         return bounds.CompareWidth == int.MaxValue ? target.Count : bounds.CompareWidth;
     }
 
+    /// <summary>
+    /// Checks if the key for the page/slot is within the trailing bound of the seek bounds
+    /// </summary>
+    /// <remarks>
+    /// Depends on the direction of the seek:
+    ///
+    /// Forward  -> End Value
+    /// Backward -> Start Value
+    ///     
+    /// </remarks>
     private static bool WithinTrailingBound(IIndexPageAccessor page,
                                             int slot,
                                             SeekBounds bounds,
@@ -336,13 +356,16 @@ public static class PageSeekExecutor
         return forward ? comparison < 0 : comparison > 0;
     }
 
-    private static bool? EvaluateResidual(IIndexPageAccessor page, int slot, AccessPredicate? residual)
+    private static bool? EvaluateResidual(IIndexPageAccessor page, 
+                                          int slot, 
+                                          AccessPredicate? residual, 
+                                          EvaluationContext evaluationContext)
     {
         if (residual is null or AccessPredicate.True)
         {
             return true;
         }
 
-        return PredicateEvaluator.Evaluate(residual, page.BindRow(slot));
+        return PredicateEvaluator.Evaluate(residual, page.BindRow(slot), evaluationContext);
     }
 }

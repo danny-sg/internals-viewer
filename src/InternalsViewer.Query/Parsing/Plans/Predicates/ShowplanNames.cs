@@ -17,6 +17,10 @@ internal static class ShowplanNames
     public const string ColumnReference = "ColumnReference";
     public const string Intrinsic = "Intrinsic";
     public const string Arithmetic = "Arithmetic";
+    public const string If = "IF";
+    public const string Condition = "Condition";
+    public const string Then = "Then";
+    public const string Else = "Else";
     public const string Convert = "Convert";
     public const string ParameterList = "ParameterList";
     public const string ScalarExpressionList = "ScalarExpressionList";

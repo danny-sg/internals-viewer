@@ -57,6 +57,63 @@ public static class PredicateWriter
         return tokens.ToImmutable();
     }
 
+    public static ImmutableArray<PredicateToken> Write(AccessStep.ProbeResult probeResult)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        WriteRuleCondition(tokens, probeResult.Rule, probeResult.Target, probeResult.Width);
+
+        return tokens.ToImmutable();
+    }
+
+    public static ImmutableArray<PredicateToken> Write(AccessStep.ProbeStart probeStart)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        WriteRuleCondition(tokens, probeStart.Rule, probeStart.Target, probeStart.Width);
+
+        return tokens.ToImmutable();
+    }
+
+    /// <summary>
+    /// Flattens tokens to plain text
+    /// </summary>
+    public static string ToText(ImmutableArray<PredicateToken> tokens)
+    {
+        if (tokens.IsDefaultOrEmpty)
+        {
+            return string.Empty;
+        }
+
+        return string.Concat(tokens.Select(t => t.Text));
+    }
+
+    internal static void WriteKeyValues(ImmutableArray<PredicateToken>.Builder tokens, AccessKey key, int length)
+    {
+        var isComposite = length > 1;
+
+        if (isComposite)
+        {
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
+        }
+
+        for (var index = 0; index < length; index++)
+        {
+            if (index > 0)
+            {
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
+                Space(tokens);
+            }
+
+            tokens.Add(AccessValueFormatter.Format(key[index]));
+        }
+
+        if (isComposite)
+        {
+            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
+        }
+    }
+
     private static void WriteComparedKeys(ImmutableArray<PredicateToken>.Builder tokens,
                                           in AccessKey key,
                                           in AccessKey target,
@@ -88,24 +145,6 @@ public static class PredicateWriter
         WriteKeyValues(tokens, target, length);
     }
 
-    public static ImmutableArray<PredicateToken> Write(AccessStep.ProbeResult probeResult)
-    {
-        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
-
-        WriteRuleCondition(tokens, probeResult.Rule, probeResult.Target, probeResult.Width);
-
-        return tokens.ToImmutable();
-    }
-
-    public static ImmutableArray<PredicateToken> Write(AccessStep.ProbeStart probeStart)
-    {
-        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
-
-        WriteRuleCondition(tokens, probeStart.Rule, probeStart.Target, probeStart.Width);
-
-        return tokens.ToImmutable();
-    }
-
     private static void WriteRuleCondition(ImmutableArray<PredicateToken>.Builder tokens,
                                            SeekRule? rule,
                                            in AccessKey target,
@@ -131,19 +170,6 @@ public static class PredicateWriter
         Space(tokens);
 
         WriteKeyValues(tokens, target, length);
-    }
-
-    /// <summary>
-    /// Flattens tokens to plain text
-    /// </summary>
-    public static string ToText(ImmutableArray<PredicateToken> tokens)
-    {
-        if (tokens.IsDefaultOrEmpty)
-        {
-            return string.Empty;
-        }
-
-        return string.Concat(tokens.Select(t => t.Text));
     }
 
     private static void WriteBounds(ImmutableArray<PredicateToken>.Builder tokens, SeekBounds bounds)
@@ -250,32 +276,6 @@ public static class PredicateWriter
     private static string KeyColumnName(AccessValue value, int index)
     {
         return value.ColumnName ?? $"Key{index + 1}";
-    }
-
-    internal static void WriteKeyValues(ImmutableArray<PredicateToken>.Builder tokens, AccessKey key, int length)
-    {
-        var isComposite = length > 1;
-
-        if (isComposite)
-        {
-            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
-        }
-
-        for (var index = 0; index < length; index++)
-        {
-            if (index > 0)
-            {
-                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
-                Space(tokens);
-            }
-
-            tokens.Add(AccessValueFormatter.Format(key[index]));
-        }
-
-        if (isComposite)
-        {
-            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
-        }
     }
 
     /// <summary>
@@ -449,11 +449,78 @@ public static class PredicateWriter
                 WriteExpression(tokens, arithmetic.Right);
                 break;
 
+            case AccessExpression.Function function:
+                WriteFunction(tokens, function);
+                break;
+
+            case AccessExpression.Conditional conditional:
+                WriteConditional(tokens, conditional);
+                break;
+
             default:
                 tokens.Add(new PredicateToken(PredicateTokenType.Unknown,
                                               "<unsupported>",
                                               expression.GetType().Name));
                 break;
+        }
+    }
+
+    private static void WriteFunction(ImmutableArray<PredicateToken>.Builder tokens, AccessExpression.Function function)
+    {
+        tokens.Add(new PredicateToken(PredicateTokenType.Keyword, function.Name));
+        tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
+
+        for (var index = 0; index < function.Arguments.Length; index++)
+        {
+            if (index > 0)
+            {
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
+                Space(tokens);
+            }
+
+            WriteExpression(tokens, function.Arguments[index]);
+        }
+
+        tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
+    }
+
+    private static void WriteConditional(ImmutableArray<PredicateToken>.Builder tokens, AccessExpression.Conditional conditional)
+    {
+        tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "CASE"));
+
+        var current = conditional;
+
+        while (true)
+        {
+            Space(tokens);
+            tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "WHEN"));
+            Space(tokens);
+
+            WritePredicate(tokens, current.Condition, false);
+
+            Space(tokens);
+            tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "THEN"));
+            Space(tokens);
+
+            WriteExpression(tokens, current.Then);
+
+            if (current.Else is AccessExpression.Conditional next)
+            {
+                current = next;
+
+                continue;
+            }
+
+            Space(tokens);
+            tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "ELSE"));
+            Space(tokens);
+
+            WriteExpression(tokens, current.Else);
+
+            Space(tokens);
+            tokens.Add(new PredicateToken(PredicateTokenType.Keyword, "END"));
+
+            break;
         }
     }
 

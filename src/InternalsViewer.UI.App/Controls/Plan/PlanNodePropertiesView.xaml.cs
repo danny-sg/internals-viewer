@@ -20,6 +20,18 @@ public sealed partial class PlanNodePropertiesView : UserControl
         set => SetValue(NodeProperty, value);
     }
 
+    public static readonly DependencyProperty EventStatisticsProperty =
+        DependencyProperty.Register(nameof(EventStatistics),
+                                    typeof(EventIoStatistics),
+                                    typeof(PlanNodePropertiesView),
+                                    new PropertyMetadata(null, OnNodeChanged));
+
+    public EventIoStatistics? EventStatistics
+    {
+        get => (EventIoStatistics?)GetValue(EventStatisticsProperty);
+        set => SetValue(EventStatisticsProperty, value);
+    }
+
     public PlanNodePropertiesView()
     {
         InitializeComponent();
@@ -41,10 +53,11 @@ public sealed partial class PlanNodePropertiesView : UserControl
             return;
         }
 
-        foreach (var property in PlanNodePropertyBuilder.Build(Node))
+        foreach (var property in PlanNodePropertyBuilder.Build(Node, EventStatistics))
         {
             TreeView.RootNodes.Add(ToTreeNode(property, 0));
         }
+
     }
 
     private static TreeViewNode ToTreeNode(PlanNodeProperty property, int depth)

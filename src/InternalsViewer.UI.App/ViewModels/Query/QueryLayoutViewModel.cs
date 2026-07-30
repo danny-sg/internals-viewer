@@ -183,6 +183,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     /// </summary>
     public void Show(DocumentViewModel document) => Dock.Show(document);
 
+    public void ShowExecutionPlan()
+    {
+        IsExecutionPlanVisible = true;
+
+        Show(_documentsByKey[PlanKey]);
+    }
+
     /// <summary>
     /// Whether the keyed document is currently present in the dock
     /// </summary>

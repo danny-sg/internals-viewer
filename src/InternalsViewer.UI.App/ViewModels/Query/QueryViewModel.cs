@@ -331,7 +331,38 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private ObservableCollection<ExecutionPlan> _executionPlans = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedPlanNodeEventStatistics))]
     private PlanNode? _selectedPlanNode;
+
+    /// <summary>
+    /// Read activity captured for the selected operator, aggregated from its linked read events
+    /// </summary>
+    public EventIoStatistics? SelectedPlanNodeEventStatistics
+    {
+        get
+        {
+            if (SelectedPlanNode is not { } node)
+            {
+                return null;
+            }
+
+            var reads = Events.OfType<ReadEventGroup>()
+                              .Where(e => e.PlanNodeIdentifier?.NodeId == node.NodeId)
+                              .ToList();
+
+            if (reads.Count == 0)
+            {
+                return null;
+            }
+
+            var physicalReads = reads.Count(r => r.ReadType == ReadType.NonCached);
+
+            var readAheads = reads.Where(r => r.ReadType == ReadType.NonCached && r.Pages.Count > 1)
+                                  .Sum(r => (long)r.Pages.Count);
+
+            return new EventIoStatistics(reads.Count, physicalReads, readAheads);
+        }
+    }
 
     [ObservableProperty]
     private IReadOnlyList<PlanNode> _activePlanNodes = [];
@@ -469,6 +500,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
+    [ObservableProperty]
+    private bool _isPlanPropertiesVisible;
+
+    public void OpenExecutionPlan(PlanNodeIdentifier identifier)
+    {
+        Layout.ShowExecutionPlan();
+
+        SelectPlanNode(identifier);
+
+        IsPlanPropertiesVisible = true;
+    }
+
     private readonly Dictionary<string, IndexTabViewModel> _openIndexes = new();
 
 
@@ -525,6 +568,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             var viewModel = existing.Content as IndexTabViewModel;
 
             viewModel?.PlanNode = node;
+            viewModel?.QueryTime = Events.FirstOrDefault()?.Timestamp;
 
             Layout.Show(existing);
 
@@ -550,6 +594,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         indexViewModel.RootPage = allocationUnit.RootPage;
         indexViewModel.AllocationUnit = allocationUnit;
         indexViewModel.PlanNode = node;
+        indexViewModel.QueryTime = Events.FirstOrDefault()?.Timestamp;
 
         var document = new DocumentViewModel(title: $"Index: {index}",
                                              content: indexViewModel,
@@ -1098,6 +1143,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             indexViewModel.ResetStep();
             indexViewModel.PlanNode = null;
+            indexViewModel.QueryTime = null;
             indexViewModel.SelectedPageAddress = null;
             indexViewModel.PageSpans = [];
         }

@@ -95,13 +95,13 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            FontFamily="{x:Bind ((models:PlanNodeProperty)Content).IsNameMonospace, Converter={StaticResource BoolToFontFamilyConverter}}"
                            Margin="{x:Bind ((models:PlanNodeProperty)Content).Depth, Converter={StaticResource DepthToIndentConverter}}"
-                           VerticalAlignment="Stretch"
+                           VerticalAlignment="Center"
                            TextTrimming="WordEllipsis" />
                 <TextBlock Text="{x:Bind ((models:PlanNodeProperty)Content).Value}"
                            FontSize="12"
                            FontFamily="{x:Bind ((models:PlanNodeProperty)Content).IsValueMonospace, Converter={StaticResource BoolToFontFamilyConverter}}"
                            Foreground="{x:Bind ((models:PlanNodeProperty)Content), Converter={StaticResource PlanPropertyBrushConverter}}"
-                           VerticalAlignment="Stretch"
+                           VerticalAlignment="Center"
                            TextWrapping="Wrap" />
             </controls:DataRow>
         </DataTemplate>
@@ -112,13 +112,13 @@
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Margin="{x:Bind ((models:PlanNodeProperty)Content).Depth, Converter={StaticResource DepthToIndentConverter}, ConverterParameter=4}"
-                           VerticalAlignment="Stretch"
+                           VerticalAlignment="Center"
                            TextTrimming="WordEllipsis" />
                 <predicates:PredicateTextBox Text="{x:Bind ((models:PlanNodeProperty)Content).Predicate}"
                                              TextPadding="0"
                                              HasBackground="False"
                                              HorizontalAlignment="Stretch"
-                                             VerticalAlignment="Stretch" />
+                                             VerticalAlignment="Center" />
             </controls:DataRow>
         </DataTemplate>
 
@@ -128,10 +128,10 @@
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Margin="{x:Bind ((models:PlanNodeProperty)Content).Depth, Converter={StaticResource DepthToIndentConverter}, ConverterParameter=4}"
-                           VerticalAlignment="Stretch"
+                           VerticalAlignment="Center"
                            TextTrimming="WordEllipsis" />
                 <ItemsControl ItemsSource="{x:Bind ((models:PlanNodeProperty)Content).Items}"
-                              VerticalAlignment="Stretch">
+                              VerticalAlignment="Center">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="x:String">
                             <TextBlock Text="{x:Bind}"
@@ -152,17 +152,16 @@
 
     <Grid>
         <TextBlock x:Name="PlaceholderText"
-                   Text="Select an operator to show its properties"
+                   Text="No operator selected"
                    FontSize="12"
-                   Opacity="0.6"
-                   Margin="12,8,12,8"
+                   Margin="12,30,12,8"
                    VerticalAlignment="Stretch" />
         <controls:HeaderedTreeView x:Name="TreeView"
                                    SelectionMode="None"
                                    VerticalAlignment="Stretch"
                                    ItemTemplateSelector="{StaticResource PropertyTemplateSelector}">
             <controls:HeaderedTreeView.Header>
-                <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                <Border BorderThickness="0,0,0,1">
                     <controls:DataTable ColumnSpacing="2" MinWidth="320" Margin="2">
                         <controls:DataColumn Content="Property" MinWidth="120" CanResize="True" DesiredWidth="170" />
                         <controls:DataColumn Content="Value" MinWidth="140" CanResize="True" DesiredWidth="*" />

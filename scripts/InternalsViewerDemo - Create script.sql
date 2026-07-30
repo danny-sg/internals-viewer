@@ -58,6 +58,8 @@ CREATE TABLE dbo.ClusteredTable
 );
 GO
 
+CREATE INDEX ix_ClusteredTable_CreatedDate_Desc ON dbo.ClusteredTable (CreatedDate DESC);
+
 CREATE INDEX ix_ClusteredTable_TextField 
     ON dbo.ClusteredTable (TextField);
 GO

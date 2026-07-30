@@ -1,5 +1,4 @@
 using System.Data;
-using System.Text;
 using System.Text.RegularExpressions;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 using InternalsViewer.Internals.Interfaces.DataAccess;
@@ -15,27 +14,29 @@ namespace InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 /// </remarks>
 public static class PredicateEvaluator
 {
-    public static bool? Evaluate(AccessPredicate predicate, IRowValueSource row)
+    public static bool? Evaluate(AccessPredicate predicate, IRowValueSource row, EvaluationContext? context = null)
     {
+        context ??= EvaluationContext.Now;
+
         return predicate switch
         {
-            AccessPredicate.True 
+            AccessPredicate.True
                 => true,
-            AccessPredicate.Comparison comparison 
-                => EvaluateComparison(comparison, row),
-            AccessPredicate.And and 
-                => EvaluateAnd(and, row),
-            AccessPredicate.Or or 
-                => EvaluateOr(or, row),
-            AccessPredicate.Not not 
-                => Negate(Evaluate(not.Predicate, row)),
-            AccessPredicate.IsNull isNull 
-                => Resolve(isNull.Expression, row).IsNull,
-            AccessPredicate.In inPredicate 
-                => EvaluateIn(inPredicate, row),
-            AccessPredicate.Like like 
-                => EvaluateLike(like, row),
-            _ => 
+            AccessPredicate.Comparison comparison
+                => EvaluateComparison(comparison, row, context),
+            AccessPredicate.And and
+                => EvaluateAnd(and, row, context),
+            AccessPredicate.Or or
+                => EvaluateOr(or, row, context),
+            AccessPredicate.Not not
+                => Negate(Evaluate(not.Predicate, row, context)),
+            AccessPredicate.IsNull isNull
+                => Resolve(isNull.Expression, row, context).IsNull,
+            AccessPredicate.In inPredicate
+                => EvaluateIn(inPredicate, row, context),
+            AccessPredicate.Like like
+                => EvaluateLike(like, row, context),
+            _ =>
                 throw new NotSupportedException($"Predicate {predicate.GetType().Name} is not supported.")
         };
     }
@@ -43,8 +44,10 @@ public static class PredicateEvaluator
     /// <summary>
     /// Resolves a scalar expression to a value
     /// </summary>
-    public static AccessValue Resolve(AccessExpression expression, IRowValueSource row)
+    public static AccessValue Resolve(AccessExpression expression, IRowValueSource row, EvaluationContext? context = null)
     {
+        context ??= EvaluationContext.Now;
+
         return expression switch
         {
             AccessExpression.Constant constant
@@ -52,20 +55,45 @@ public static class PredicateEvaluator
             AccessExpression.Column column
                 => row.GetValue(column.Ordinal, column.Name),
             AccessExpression.Arithmetic arithmetic
-                => ResolveArithmetic(arithmetic, row),
+                => ResolveArithmetic(arithmetic, row, context),
+            AccessExpression.Function function
+                => ResolveFunction(function, row, context),
+            AccessExpression.Conditional conditional
+                => Evaluate(conditional.Condition, row, context) == true
+                    ? Resolve(conditional.Then, row, context)
+                    : Resolve(conditional.Else, row, context),
             _ => throw new NotSupportedException(
                 $"Expression {expression.GetType().Name} is not supported.")
         };
     }
 
-    private static AccessValue ResolveArithmetic(AccessExpression.Arithmetic arithmetic, IRowValueSource row)
+    private static AccessValue ResolveFunction(AccessExpression.Function function, IRowValueSource row, EvaluationContext context)
     {
-        var left = Resolve(arithmetic.Left, row);
-        var right = Resolve(arithmetic.Right, row);
+        var arguments = new AccessValue[function.Arguments.Length];
+
+        for (var index = 0; index < function.Arguments.Length; index++)
+        {
+            arguments[index] = Resolve(function.Arguments[index], row, context);
+        }
+
+        return IntrinsicFunctions.Apply(function.Name, arguments, context);
+    }
+
+    private static AccessValue ResolveArithmetic(AccessExpression.Arithmetic arithmetic, IRowValueSource row, EvaluationContext context)
+    {
+        var left = Resolve(arithmetic.Left, row, context);
+        var right = Resolve(arithmetic.Right, row, context);
 
         if (left.IsNull || right.IsNull)
         {
             return AccessValue.Null;
+        }
+
+        if (arithmetic.Operator == ArithmeticOperator.Add
+            && IntrinsicFunctions.GetText(left) is { } leftText
+            && IntrinsicFunctions.GetText(right) is { } rightText)
+        {
+            return AccessValueFactory.FromText(SqlDbType.NVarChar, leftText + rightText);
         }
 
         if (left.Type == AccessValueType.Real || right.Type == AccessValueType.Real)
@@ -151,10 +179,10 @@ public static class PredicateEvaluator
         };
     }
 
-    private static bool? EvaluateComparison(AccessPredicate.Comparison comparison, IRowValueSource row)
+    private static bool? EvaluateComparison(AccessPredicate.Comparison comparison, IRowValueSource row, EvaluationContext context)
     {
-        var left = Resolve(comparison.Left, row);
-        var right = Resolve(comparison.Right, row);
+        var left = Resolve(comparison.Left, row, context);
+        var right = Resolve(comparison.Right, row, context);
 
         if (left.IsNull || right.IsNull)
         {
@@ -181,13 +209,13 @@ public static class PredicateEvaluator
         };
     }
 
-    private static bool? EvaluateAnd(AccessPredicate.And and, IRowValueSource row)
+    private static bool? EvaluateAnd(AccessPredicate.And and, IRowValueSource row, EvaluationContext context)
     {
         var unknown = false;
 
         foreach (var predicate in and.Predicates)
         {
-            var result = Evaluate(predicate, row);
+            var result = Evaluate(predicate, row, context);
 
             if (result == false)
             {
@@ -203,13 +231,13 @@ public static class PredicateEvaluator
         return unknown ? null : true;
     }
 
-    private static bool? EvaluateOr(AccessPredicate.Or or, IRowValueSource row)
+    private static bool? EvaluateOr(AccessPredicate.Or or, IRowValueSource row, EvaluationContext context)
     {
         var unknown = false;
 
         foreach (var predicate in or.Predicates)
         {
-            var result = Evaluate(predicate, row);
+            var result = Evaluate(predicate, row, context);
 
             if (result == true)
             {
@@ -225,9 +253,9 @@ public static class PredicateEvaluator
         return unknown ? null : false;
     }
 
-    private static bool? EvaluateIn(AccessPredicate.In inPredicate, IRowValueSource row)
+    private static bool? EvaluateIn(AccessPredicate.In inPredicate, IRowValueSource row, EvaluationContext context)
     {
-        var value = Resolve(inPredicate.Expression, row);
+        var value = Resolve(inPredicate.Expression, row, context);
 
         if (value.IsNull)
         {
@@ -238,7 +266,7 @@ public static class PredicateEvaluator
 
         foreach (var candidate in inPredicate.Values)
         {
-            var other = Resolve(candidate, row);
+            var other = Resolve(candidate, row, context);
 
             if (other.IsNull)
             {
@@ -256,16 +284,16 @@ public static class PredicateEvaluator
         return unknown ? null : false;
     }
 
-    private static bool? EvaluateLike(AccessPredicate.Like like, IRowValueSource row)
+    private static bool? EvaluateLike(AccessPredicate.Like like, IRowValueSource row, EvaluationContext context)
     {
-        var value = Resolve(like.Expression, row);
+        var value = Resolve(like.Expression, row, context);
 
         if (value.IsNull)
         {
             return null;
         }
 
-        var text = ToText(value);
+        var text = IntrinsicFunctions.GetText(value);
 
         if (text is null)
         {
@@ -283,25 +311,6 @@ public static class PredicateEvaluator
         {
             true => false,
             false => true,
-            _ => null
-        };
-    }
-
-    private static string? ToText(in AccessValue value)
-    {
-        if (value.Type != AccessValueType.Bytes)
-        {
-            return null;
-        }
-
-        return value.DataType switch
-        {
-            SqlDbType.Char
-                or SqlDbType.VarChar
-                or SqlDbType.Text
-                or SqlDbType.NChar
-                or SqlDbType.NVarChar
-                or SqlDbType.NText => Encoding.Unicode.GetString(value.Data.Span),
             _ => null
         };
     }

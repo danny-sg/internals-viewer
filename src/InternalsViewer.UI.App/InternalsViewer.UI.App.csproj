@@ -538,7 +538,6 @@
 
     <ItemGroup>
       <Folder Include="Assets\Help\images\" />
-      <Folder Include="Services\Records\" />
       <Folder Include="Views\Query\Tabs\Index\" />
       <Folder Include="Views\Query\Tabs\Plan\" />
     </ItemGroup>

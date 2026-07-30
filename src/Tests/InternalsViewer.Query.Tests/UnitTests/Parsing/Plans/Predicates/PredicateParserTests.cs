@@ -245,6 +245,78 @@ public class PredicateParserTests
         Assert.Null(Parse(Compare("EQ", arithmetic, Const("(0)"))));
     }
 
+    [Fact]
+    public void Intrinsic_Function_Is_Parsed()
+    {
+        var upper = $"""<ScalarOperator><Intrinsic FunctionName="upper">{Identifier("Name")}</Intrinsic></ScalarOperator>""";
+
+        var comparison = Assert.IsType<AccessPredicate.Comparison>(Parse(Compare("EQ", upper, Const("'A'"))));
+
+        var function = Assert.IsType<AccessExpression.Function>(comparison.Left);
+
+        Assert.Equal("UPPER", function.Name);
+        Assert.Equal("Name", Assert.IsType<AccessExpression.Column>(function.Arguments[0]).Name);
+    }
+
+    [Fact]
+    public void Getdate_Is_Parsed_Without_Arguments()
+    {
+        var getdate = """<ScalarOperator><Intrinsic FunctionName="getdate" /></ScalarOperator>""";
+
+        var comparison = Assert.IsType<AccessPredicate.Comparison>(Parse(Compare("GT", Identifier("Expires"), getdate)));
+
+        var function = Assert.IsType<AccessExpression.Function>(comparison.Right);
+
+        Assert.Equal("GETDATE", function.Name);
+        Assert.Empty(function.Arguments);
+    }
+
+    [Fact]
+    public void Unknown_Intrinsic_Function_Is_Not_Translated()
+    {
+        var newid = """<ScalarOperator><Intrinsic FunctionName="newid" /></ScalarOperator>""";
+
+        Assert.Null(Parse(Compare("EQ", Identifier("RowGuid"), newid)));
+    }
+
+    [Fact]
+    public void If_Is_Parsed_As_A_Conditional()
+    {
+        var conditional = $"""
+                           <ScalarOperator>
+                             <IF>
+                               <Condition>{Compare("EQ", Identifier("Status"), Const("(1)"))}</Condition>
+                               <Then>{Const("(10)")}</Then>
+                               <Else>{Const("(20)")}</Else>
+                             </IF>
+                           </ScalarOperator>
+                           """;
+
+        var comparison = Assert.IsType<AccessPredicate.Comparison>(Parse(Compare("EQ", conditional, Const("(10)"))));
+
+        var expression = Assert.IsType<AccessExpression.Conditional>(comparison.Left);
+
+        Assert.IsType<AccessPredicate.Comparison>(expression.Condition);
+        Assert.Equal(10, Assert.IsType<AccessExpression.Constant>(expression.Then).Value.Numeric);
+        Assert.Equal(20, Assert.IsType<AccessExpression.Constant>(expression.Else).Value.Numeric);
+    }
+
+    [Fact]
+    public void If_With_An_Untranslatable_Branch_Is_Not_Translated()
+    {
+        var conditional = $"""
+                           <ScalarOperator>
+                             <IF>
+                               <Condition>{Compare("BOGUS", Identifier("Status"), Const("(1)"))}</Condition>
+                               <Then>{Const("(10)")}</Then>
+                               <Else>{Const("(20)")}</Else>
+                             </IF>
+                           </ScalarOperator>
+                           """;
+
+        Assert.Null(Parse(Compare("EQ", conditional, Const("(10)"))));
+    }
+
     private static AccessPredicate? Parse(string xml)
     {
         return new PredicateParser(_ => 0).Parse(XElement.Parse(xml));

@@ -13,7 +13,7 @@
             <TextBlock x:Name="PlaceholderText"
                        Text="Start stepping to show the seek strategy"
                        Opacity="0.6"
-                       VerticalAlignment="Top" />
+                       VerticalAlignment="Center" />
             <StackPanel x:Name="PhasesPanel" Orientation="Vertical" />
         </Grid>
     </ScrollViewer>

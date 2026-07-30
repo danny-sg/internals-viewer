@@ -159,6 +159,8 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     /// </summary>
     public event Action<ExecutionOperatorEvent>? IndexOpenRequested;
 
+    public event Action<ExecutionOperatorEvent>? ExecutionPlanRequested;
+
     public List<EngineEvent> Events
     {
         get => (List<EngineEvent>)GetValue(EventsProperty);

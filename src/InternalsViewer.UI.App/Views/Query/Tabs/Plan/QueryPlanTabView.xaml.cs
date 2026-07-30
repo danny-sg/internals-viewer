@@ -27,14 +27,15 @@ public sealed partial class QueryPlanTabView : UserControl
         }
     }
 
-    private bool _isPropertiesPaneVisible;
-
     public bool IsPropertiesPaneVisible
     {
-        get => _isPropertiesPaneVisible;
+        get => ViewModel?.IsPlanPropertiesVisible == true;
         set
         {
-            _isPropertiesPaneVisible = value;
+            if (ViewModel is { } viewModel)
+            {
+                viewModel.IsPlanPropertiesVisible = value;
+            }
 
             Bindings.Update();
         }
@@ -117,6 +118,9 @@ public sealed partial class QueryPlanTabView : UserControl
 
         switch (e.PropertyName)
         {
+            case nameof(QueryViewModel.IsPlanPropertiesVisible):
+                Bindings.Update();
+                break;
             case nameof(QueryViewModel.SelectedPlanNode):
                 ApplyToPlans(p => p.SelectedNode = _subscribed.SelectedPlanNode);
                 break;

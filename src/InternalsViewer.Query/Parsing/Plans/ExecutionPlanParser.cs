@@ -100,7 +100,7 @@ public static class ExecutionPlanParser
         node.Outputs = ExtractTables(element);
 
         node.OutputColumns = ParseOutputColumns(element);
-        node.DefinedValues = ParseDefinedValues(element);
+        node.DefinedValues = ParseDefinedValues(element, parameters);
         node.SortColumns = ParseSortColumns(element);
         node.MergeInfo = ParseMergeInfo(element);
         node.GroupByColumns = ParseGroupBy(element);
@@ -358,9 +358,8 @@ public static class ExecutionPlanParser
         var scanElement = element.Elements()
                                  .FirstOrDefault(e => e.Name.LocalName is "IndexScan" or "TableScan" or "Filter");
 
-        var seekPredicates = scanElement?
-            .Elements()
-            .FirstOrDefault(e => e.Name.LocalName == "SeekPredicates");
+        var seekPredicates = scanElement?.Elements()
+                                         .FirstOrDefault(e => e.Name.LocalName == "SeekPredicates");
 
         var seekParser = new SeekPredicateParser(resolveOrdinal, parameters.Resolve);
 
@@ -414,31 +413,53 @@ public static class ExecutionPlanParser
         return outputList is null ? [] : ParseKeys(outputList);
     }
 
-    private static List<DefinedValueInfo> ParseDefinedValues(XElement element)
+    private static List<DefinedValueInfo> ParseDefinedValues(XElement element, PlanParameters parameters)
     {
-        var definedValues = element.Elements().FirstOrDefault(e => e.Name.LocalName == "DefinedValues");
+        var definedValues = element.Elements().FirstOrDefault(e => e.Name.LocalName == "DefinedValues")
+                            ?? element.Elements()
+                                      .SelectMany(e => e.Elements())
+                                      .FirstOrDefault(e => e.Name.LocalName == "DefinedValues");
 
         if (definedValues is null)
         {
             return [];
         }
 
+        var expressionParser = new PredicateParser(resolveParameter: parameters.Resolve);
+
         var result = new List<DefinedValueInfo>();
 
         foreach (var definedValue in definedValues.Elements().Where(e => e.Name.LocalName == "DefinedValue"))
         {
-            var column = definedValue.Elements().FirstOrDefault(e => e.Name.LocalName == "ColumnReference");
+            var columns = new List<ColumnReference>();
 
-            if (column is null)
+            foreach (var child in definedValue.Elements())
+            {
+                if (child.Name.LocalName == "ColumnReference")
+                {
+                    columns.Add(ReadColumn(child));
+                }
+                else if (child.Name.LocalName == "ValueVector")
+                {
+                    columns.AddRange(child.Elements()
+                                          .Where(e => e.Name.LocalName == "ColumnReference")
+                                          .Select(ReadColumn));
+                }
+            }
+
+            if (columns.Count == 0)
             {
                 continue;
             }
 
-            var expression = definedValue.Elements()
-                                         .FirstOrDefault(e => e.Name.LocalName == "ScalarOperator")?
-                                         .Attribute("ScalarString")?.Value;
+            var scalar = definedValue.Elements().FirstOrDefault(e => e.Name.LocalName == "ScalarOperator");
 
-            result.Add(new DefinedValueInfo(ParseKeys(definedValue)[0], expression));
+            result.Add(new DefinedValueInfo
+            {
+                Columns = columns,
+                Expression = scalar?.Attribute("ScalarString")?.Value,
+                ParsedExpression = expressionParser.ParseExpression(scalar)
+            });
         }
 
         return result;
@@ -503,8 +524,7 @@ public static class ExecutionPlanParser
     private static List<ColumnReference> ParseGroupBy(XElement element)
     {
         var groupBy = element.Elements()
-                             .FirstOrDefault(e => e.Name.LocalName == "StreamAggregate")?
-                             .Elements()
+                             .SelectMany(e => e.Elements())
                              .FirstOrDefault(e => e.Name.LocalName == "GroupBy");
 
         return groupBy is null ? [] : ParseKeys(groupBy);
@@ -517,14 +537,19 @@ public static class ExecutionPlanParser
             .. parent
                 .Descendants()
                 .Where(e => e.Name.LocalName == "ColumnReference")
-                .Select(c => new ColumnReference
-                {
-                    Database = GetAttribute("Database", c) ?? string.Empty,
-                    Schema = GetAttribute("Schema", c) ?? string.Empty,
-                    Table = GetAttribute("Table", c) ?? string.Empty,
-                    Column = GetAttribute("Column", c) ?? string.Empty
-                })
+                .Select(ReadColumn)
         ];
+    }
+
+    private static ColumnReference ReadColumn(XElement element)
+    {
+        return new ColumnReference
+        {
+            Database = GetAttribute("Database", element) ?? string.Empty,
+            Schema = GetAttribute("Schema", element) ?? string.Empty,
+            Table = GetAttribute("Table", element) ?? string.Empty,
+            Column = GetAttribute("Column", element) ?? string.Empty
+        };
     }
 
     public static HashSet<string> ExtractTables(XElement nodeElement)

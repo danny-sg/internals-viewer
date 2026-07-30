@@ -171,19 +171,28 @@ public sealed partial class EventTimelineControl
 
         var hit = HitTestRegion(position.X, position.Y);
 
-        // Only data-access operators (scan/seek/lookup) that run against a named index get the item
-        if (hit?.Event is not ExecutionOperatorEvent { Category: OperatorCategory.DataAccess, IndexName.Length: > 0 } op)
+        if (hit?.Event is not ExecutionOperatorEvent op || op.PlanNodeIdentifier is null)
         {
             return;
         }
 
         var flyout = new MenuFlyout();
 
-        var openIndex = new MenuFlyoutItem { Text = $"Open Index: {op.IndexName}" };
+        var openPlan = new MenuFlyoutItem { Text = "Execution Plan" };
 
-        openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(op);
+        openPlan.Click += (_, _) => ExecutionPlanRequested?.Invoke(op);
 
-        flyout.Items.Add(openIndex);
+        flyout.Items.Add(openPlan);
+
+        // Only data-access operators (scan/seek/lookup) that run against a named index get the item
+        if (op is { Category: OperatorCategory.DataAccess, IndexName.Length: > 0 })
+        {
+            var openIndex = new MenuFlyoutItem { Text = $"Open Index: {op.IndexName}" };
+
+            openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(op);
+
+            flyout.Items.Add(openIndex);
+        }
 
         flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
 

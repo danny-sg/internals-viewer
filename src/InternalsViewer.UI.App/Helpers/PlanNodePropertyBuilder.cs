@@ -9,7 +9,7 @@ namespace InternalsViewer.UI.App.Helpers;
 
 public static class PlanNodePropertyBuilder
 {
-    public static List<PlanNodeProperty> Build(PlanNode node)
+    public static List<PlanNodeProperty> Build(PlanNode node, EventIoStatistics? eventStatistics = null)
     {
         var result = new List<PlanNodeProperty>();
 
@@ -223,12 +223,15 @@ public static class PlanNodePropertyBuilder
             result.Add(ioGroup);
         }
 
-        if (node.OutputColumns.Count > 0)
+        if (eventStatistics is { } eventStats)
         {
-            result.Add(new PlanNodeProperty("Output Columns", string.Empty)
-            {
-                Items = [.. node.OutputColumns.Select(ColumnName)]
-            });
+            var eventGroup = new PlanNodeProperty("Event Statistics", string.Empty) { IsExpanded = false };
+
+            eventGroup.Children.Add(new PlanNodeProperty("Logical Reads", eventStats.LogicalReads.ToString("N0", CultureInfo.InvariantCulture)));
+            eventGroup.Children.Add(new PlanNodeProperty("Physical Reads", eventStats.PhysicalReads.ToString("N0", CultureInfo.InvariantCulture)));
+            eventGroup.Children.Add(new PlanNodeProperty("Read Aheads", eventStats.ReadAheads.ToString("N0", CultureInfo.InvariantCulture)));
+
+            result.Add(eventGroup);
         }
 
         if (node.DefinedValues.Count > 0)
@@ -237,10 +240,24 @@ public static class PlanNodePropertyBuilder
 
             foreach (var definedValue in node.DefinedValues)
             {
-                definedGroup.Children.Add(new PlanNodeProperty(ColumnName(definedValue.Column), definedValue.Expression ?? string.Empty) { IsNameMonospace = true, IsValueMonospace = true });
+                var name = string.Join(", ", definedValue.Columns.Select(ColumnName));
+
+                definedGroup.Children.Add(new PlanNodeProperty(name, definedValue.Expression ?? string.Empty)
+                {
+                    IsNameMonospace = true,
+                    IsValueMonospace = true
+                });
             }
 
             result.Add(definedGroup);
+        }
+
+        if (node.OutputColumns.Count > 0)
+        {
+            result.Add(new PlanNodeProperty("Output Columns", string.Empty)
+            {
+                Items = [.. node.OutputColumns.Select(ColumnName)]
+            });
         }
 
         return result;

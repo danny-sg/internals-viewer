@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Xml.Linq;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
@@ -17,11 +18,14 @@ public delegate AccessValue? ParameterValueResolver(string parameterName);
 /// Builds access path expressions from a showplan ScalarOperator tree
 /// </summary>
 public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal = null,
-                                         ParameterValueResolver? resolveParameter = null)
+                                         ParameterValueResolver? resolveParameter = null,
+                                         Func<XElement?, AccessPredicate?>? resolvePredicate = null)
 {
     private ColumnOrdinalResolver ResolveOrdinal { get; } = resolveOrdinal ?? (_ => null);
 
     private ParameterValueResolver ResolveParameter { get; } = resolveParameter ?? (_ => null);
+
+    private Func<XElement?, AccessPredicate?> ResolvePredicate { get; } = resolvePredicate ?? (_ => null);
 
     /// <summary>
     /// Parses a scalar expression, returning null when the expression is not one the access path
@@ -45,8 +49,68 @@ public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal =
             ShowplanNames.Const => ParseConstant(content),
             ShowplanNames.Identifier => ParseIdentifier(content),
             ShowplanNames.Arithmetic => ParseArithmetic(content),
+            ShowplanNames.Intrinsic => ParseFunction(content),
+            ShowplanNames.If => ParseIf(content),
             _ => null
         };
+    }
+
+    private AccessExpression? ParseFunction(XElement element)
+    {
+        var name = element.Attribute(ShowplanNames.FunctionName)?.Value;
+
+        if (name is null)
+        {
+            return null;
+        }
+
+        var operands = element.Elements()
+                              .Where(e => e.Name.LocalName == ShowplanNames.ScalarOperator)
+                              .ToList();
+
+        if (!IntrinsicFunctions.IsSupported(name, operands.Count))
+        {
+            return null;
+        }
+
+        var arguments = ImmutableArray.CreateBuilder<AccessExpression>(operands.Count);
+
+        foreach (var operand in operands)
+        {
+            var argument = Parse(operand);
+
+            if (argument is null)
+            {
+                return null;
+            }
+
+            arguments.Add(argument);
+        }
+
+        return new AccessExpression.Function(name.ToUpperInvariant(), arguments.MoveToImmutable());
+    }
+
+    private AccessExpression? ParseIf(XElement element)
+    {
+        var condition = ResolvePredicate(GetChildScalar(element, ShowplanNames.Condition));
+
+        var then = Parse(GetChildScalar(element, ShowplanNames.Then));
+        var otherwise = Parse(GetChildScalar(element, ShowplanNames.Else));
+
+        if (condition is null || then is null || otherwise is null)
+        {
+            return null;
+        }
+
+        return new AccessExpression.Conditional(condition, then, otherwise);
+    }
+
+    private static XElement? GetChildScalar(XElement element, string name)
+    {
+        return element.Elements()
+                      .FirstOrDefault(e => e.Name.LocalName == name)?
+                      .Elements()
+                      .FirstOrDefault(e => e.Name.LocalName == ShowplanNames.ScalarOperator);
     }
 
     private AccessExpression? ParseArithmetic(XElement element)

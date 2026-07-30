@@ -211,6 +211,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private PlanNode? _planNode;
 
+    public DateTime? QueryTime { get; set; }
+
     public event EventHandler<PageNavigatedEventArgs>? PageNavigated;
 
     private bool _hasNavigatedSinceReset;
@@ -452,7 +454,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                                                          ScanDirection,
                                                          CancellationToken,
                                                          predicateInfo.RowGoal,
-                                                         predicateInfo.HasUntranslatedPredicate),
+                                                         predicateInfo.HasUntranslatedPredicate,
+                                                         QueryTime is { } queryTime ? new EvaluationContext(queryTime) : null),
                        CancellationToken);
 
         Strategy = IndexStepService.Strategy;

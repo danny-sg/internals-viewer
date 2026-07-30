@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using InternalsViewer.Internals.DataAccess.AccessPaths.Values;
 
 namespace InternalsViewer.Internals.DataAccess.AccessPaths.Predicates;
@@ -18,4 +19,30 @@ public abstract record AccessExpression
     public sealed record Constant(AccessValue Value) : AccessExpression;
 
     public sealed record Arithmetic(ArithmeticOperator Operator, AccessExpression Left, AccessExpression Right) : AccessExpression;
+
+    public sealed record Function(string Name, ImmutableArray<AccessExpression> Arguments) : AccessExpression
+    {
+        public bool Equals(Function? other)
+        {
+            return other is not null
+                   && string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase)
+                   && Arguments.SequenceEqual(other.Arguments);
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = default(HashCode);
+
+            hash.Add(Name, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var argument in Arguments)
+            {
+                hash.Add(argument);
+            }
+
+            return hash.ToHashCode();
+        }
+    }
+
+    public sealed record Conditional(AccessPredicate Condition, AccessExpression Then, AccessExpression Else) : AccessExpression;
 }
