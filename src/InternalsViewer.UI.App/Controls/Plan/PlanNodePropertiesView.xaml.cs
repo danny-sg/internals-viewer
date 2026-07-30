@@ -3,7 +3,6 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 

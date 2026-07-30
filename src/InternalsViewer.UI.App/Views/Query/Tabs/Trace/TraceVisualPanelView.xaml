@@ -12,6 +12,7 @@
 
     <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
         <index:IndexControl x:Name="IndexControl"
+                            SelectChildPath="False"
                             Opacity="{x:Bind DimOpacity(ViewModel.IsDimmed), Mode=OneWay}"
                             Visibility="{x:Bind IndexVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
                             Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"

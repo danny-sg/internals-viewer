@@ -27,6 +27,8 @@
             <converters:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
             <converters:PfsAllocatedToTextConverter x:Key="PfsAllocatedToTextConverter" />
             <converters:PfsAllocatedToBrushConverter x:Key="PfsAllocatedToBrushConverter" />
+            <converters:BoolToVisibilityConverter x:Key="StepsBoolToVisibilityConverter" />
+            <converters:BoolToVisibilityConverter x:Key="StepsInverseBoolToVisibilityConverter" IsInverse="True" />
 
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
@@ -125,6 +127,66 @@
                 </Grid>
             </DataTemplate>
 
+            <DataTemplate x:Key="ProbeRunTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Probes" Style="{StaticResource StepLabelStyle}" />
+                    <ToggleButton x:Name="ProbeExpandToggle"
+                                  Grid.Column="1"
+                                  Padding="2"
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Top"
+                                  Background="Transparent"
+                                  BorderThickness="0">
+                        <FontIcon Glyph="&#xE70D;" FontSize="10" />
+                    </ToggleButton>
+                    <ItemsControl Grid.Column="2"
+                                  ItemsSource="{Binding Probes}"
+                                  VerticalAlignment="Center"
+                                  Visibility="{Binding IsChecked, ElementName=ProbeExpandToggle,
+                                          Converter={StaticResource StepsInverseBoolToVisibilityConverter}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <accessSteps:ProbeRangeBar Probe="{Binding}" Margin="0,1,4,0" HorizontalAlignment="Stretch" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl Grid.Column="2"
+                                  ItemsSource="{Binding Probes}"
+                                  Visibility="{Binding IsChecked, ElementName=ProbeExpandToggle,
+                                          Converter={StaticResource StepsBoolToVisibilityConverter}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Vertical" Margin="0,0,0,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Slot (Mid)" Style="{StaticResource StepPropertyStyle}" />
+                                        <TextBlock Text="{Binding Middle}" Style="{StaticResource StepValueStyle}" />
+
+                                        <TextBlock Text="Low" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                                        <TextBlock Text="{Binding Low}" Style="{StaticResource StepValueStyle}" />
+
+                                        <TextBlock Text="High (Exclusive)" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                                        <TextBlock Text="{Binding High}" Style="{StaticResource StepValueStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                                                                     Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
+                                        <TextBlock Text="{Binding SearchRight, Converter={StaticResource ProbeDirectionToTextConverter}}"
+                                                   Style="{StaticResource StepValueStyle}"
+                                                   Margin="8,0,0,0" />
+                                    </StackPanel>
+                                    <accessSteps:ProbeRangeBar Probe="{Binding}" Margin="0,4,4,1" HorizontalAlignment="Stretch" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </DataTemplate>
+
             <DataTemplate x:Key="DescendTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
@@ -169,14 +231,19 @@
                         <Border x:Name="EmitBadge"
                                 Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
                                 Background="{ThemeResource SystemFillColorSuccessBrush}"
-                                BorderBrush="#0B5D0B"
-                                BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="6,0,6,1"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="→ Emit"
-                                       Foreground="White"
-                                       FontSize="11" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="→ Emit"
+                                           Foreground="White"
+                                           FontSize="11" />
+                                <TextBlock x:Name="EmitSideText"
+                                           Foreground="White"
+                                           FontSize="11"
+                                           Margin="4,0,0,0"
+                                           Visibility="Collapsed" />
+                            </StackPanel>
                         </Border>
                     </StackPanel>
                 </Grid>
@@ -198,17 +265,20 @@
                         <Border x:Name="EmitBadge"
                                 Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
                                 Background="{ThemeResource SystemFillColorSuccessBrush}"
-                                BorderBrush="#0B5D0B"
-                                BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="6,0,6,1"
-                                Width="110"
-
+                                MinWidth="110"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Converter={StaticResource RowEmitTextConverter}}"
-                                       Foreground="White"
-                                       HorizontalAlignment="Center"
-                                       FontSize="11" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding Converter={StaticResource RowEmitTextConverter}}"
+                                           Foreground="White"
+                                           FontSize="11" />
+                                <TextBlock x:Name="EmitSideText"
+                                           Foreground="White"
+                                           FontSize="11"
+                                           Margin="4,0,0,0"
+                                           Visibility="Collapsed" />
+                            </StackPanel>
                         </Border>
                     </StackPanel>
                 </Grid>
@@ -307,8 +377,6 @@
                         <TextBlock Text="Pair" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding PairNumber}" Style="{StaticResource StepValueStyle}" Width="40" />
                         <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
-                                BorderBrush="#0B5D0B"
-                                BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="6,0,6,1"
                                 VerticalAlignment="Center">
@@ -436,6 +504,7 @@
                 ReadPageTemplate="{StaticResource ReadPageTemplate}"
                 ProbeStartTemplate="{StaticResource ProbeStartTemplate}"
                 ProbeTemplate="{StaticResource ProbeTemplate}"
+                ProbeRunTemplate="{StaticResource ProbeRunTemplate}"
                 DescendTemplate="{StaticResource DescendTemplate}"
                 ProbeResultTemplate="{StaticResource ProbeResultTemplate}"
                 RowTemplate="{StaticResource RowTemplate}"

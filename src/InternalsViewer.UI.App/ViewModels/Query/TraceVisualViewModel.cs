@@ -12,7 +12,6 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
 using InternalsViewer.Internals.Services.Indexes;
 using System.Drawing;
-using InternalsViewer.UI.App.Models.Index;
 using AllocationBorder = InternalsViewer.UI.App.Models.AllocationBorder;
 using AllocationBorderScope = InternalsViewer.UI.App.Models.AllocationBorderScope;
 using AllocationLayer = InternalsViewer.UI.App.Models.AllocationLayer;

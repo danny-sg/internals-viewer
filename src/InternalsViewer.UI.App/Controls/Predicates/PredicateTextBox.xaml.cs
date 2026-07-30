@@ -1,5 +1,4 @@
 using InternalsViewer.Execution.AccessPaths.Text;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;

@@ -849,6 +849,26 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private static void Append(AccessStep step, ObservableCollection<AccessStep> history)
     {
+        if (step is AccessStep.Probe probe)
+        {
+            if (history.Count > 0 && history[0] is AccessStep.ProbeRun probeRun && probeRun.Source == probe.Source)
+            {
+                history[0] = new AccessStep.ProbeRun([probe, .. probeRun.Probes])
+                {
+                    Source = probe.Source,
+                    Counters = probe.Counters
+                };
+
+                return;
+            }
+
+            step = new AccessStep.ProbeRun([probe])
+            {
+                Source = probe.Source,
+                Counters = probe.Counters
+            };
+        }
+
         if (step is AccessStep.Row row && history.Count > 0)
         {
             var latest = history[0];

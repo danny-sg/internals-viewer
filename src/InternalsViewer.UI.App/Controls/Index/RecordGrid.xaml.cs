@@ -8,7 +8,6 @@ using InternalsViewer.UI.App.Helpers.Converters;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Allocation;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Controls.Index;

@@ -1,6 +1,5 @@
 using System;
 using InternalsViewer.UI.App.Models;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;

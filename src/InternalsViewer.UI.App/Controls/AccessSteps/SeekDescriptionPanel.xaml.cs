@@ -4,7 +4,6 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.UI.App.Controls.Predicates;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Controls.AccessSteps;

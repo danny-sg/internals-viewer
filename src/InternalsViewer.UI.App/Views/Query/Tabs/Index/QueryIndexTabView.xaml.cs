@@ -8,7 +8,6 @@ using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 

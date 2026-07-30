@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using InternalsViewer.Internals.Engine.Database;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using IndexTypeEnum = InternalsViewer.Internals.Engine.Database.Enums.IndexType;
 using FontWeight = Windows.UI.Text.FontWeight;

@@ -1,7 +1,6 @@
 ﻿using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.Allocation;
-using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using System;

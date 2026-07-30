@@ -111,6 +111,7 @@
             <!--Index View-->
             <index:IndexControl x:Name="IndexControl"
                                 Grid.Column="0"
+                                SelectChildPath="False"
                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                 Visibility="{x:Bind ViewModel.IsInitialized,
                                                 Mode=OneWay,

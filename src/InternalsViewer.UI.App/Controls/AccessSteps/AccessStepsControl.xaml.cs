@@ -1,7 +1,7 @@
 using System.Collections;
 using InternalsViewer.Execution.AccessPaths.Results;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.AccessSteps;
@@ -77,7 +77,12 @@ public sealed partial class AccessStepsControl : UserControl
             _ => null
         };
 
-        UpdateEmitBadge(grid, brush as SolidColorBrush);
+        UpdateEmitBadge(grid, brush as SolidColorBrush, source);
+
+        if (grid.FindName("ProbeExpandToggle") is ToggleButton toggle)
+        {
+            toggle.IsChecked = false;
+        }
 
         if (brush is null)
         {
@@ -92,45 +97,32 @@ public sealed partial class AccessStepsControl : UserControl
         grid.BorderThickness = new Thickness(2, 0, 0, 0);
     }
 
-    private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush)
+    private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, int source)
     {
         if (grid.FindName("EmitBadge") is not Border badge)
         {
             return;
         }
 
+        if (grid.FindName("EmitSideText") is TextBlock sideText)
+        {
+            sideText.Text = source == 0 ? "Outer" : "Inner";
+            sideText.Visibility = sideBrush is null ? Visibility.Collapsed : Visibility.Visible;
+        }
+
         if (sideBrush is not null)
         {
-            badge.Tag ??= new EmitBadgeDefaults(badge.Background, badge.BorderBrush, (badge.Child as TextBlock)?.Foreground);
+            badge.Tag ??= badge.Background;
 
             badge.Background = sideBrush;
-            badge.BorderBrush = new SolidColorBrush(Darken(sideBrush.Color));
-
-            if (badge.Child is TextBlock text)
-            {
-                text.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0x20, 0x20, 0x20));
-            }
         }
-        else if (badge.Tag is EmitBadgeDefaults defaults)
+        else if (badge.Tag is Brush original)
         {
-            badge.Background = defaults.Background;
-            badge.BorderBrush = defaults.BorderBrush;
-
-            if (badge.Child is TextBlock text && defaults.Foreground is not null)
-            {
-                text.Foreground = defaults.Foreground;
-            }
+            badge.Background = original;
 
             badge.Tag = null;
         }
     }
-
-    private static Windows.UI.Color Darken(Windows.UI.Color colour)
-    {
-        return Windows.UI.Color.FromArgb(colour.A, (byte)(colour.R * 3 / 5), (byte)(colour.G * 3 / 5), (byte)(colour.B * 3 / 5));
-    }
-
-    private sealed record EmitBadgeDefaults(Brush Background, Brush BorderBrush, Brush? Foreground);
 
     /// <summary>
     /// The full history of steps taken by the access path

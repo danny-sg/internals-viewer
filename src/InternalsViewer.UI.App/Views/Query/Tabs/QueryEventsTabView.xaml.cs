@@ -1,12 +1,9 @@
 using System;
-using System.Linq;
 using Windows.System;
 using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.Transactions;
-using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Query;

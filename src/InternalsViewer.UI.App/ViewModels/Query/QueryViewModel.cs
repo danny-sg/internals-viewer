@@ -6,7 +6,6 @@ using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
-using InternalsViewer.Execution.Services.Allocations;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;

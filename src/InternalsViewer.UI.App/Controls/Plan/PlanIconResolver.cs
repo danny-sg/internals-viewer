@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System;
-using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.UI.App.Controls.Plan;

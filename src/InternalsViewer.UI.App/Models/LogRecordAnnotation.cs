@@ -1,5 +1,4 @@
 using InternalsViewer.Internals.Annotations;
-using Microsoft.UI.Xaml;
 
 namespace InternalsViewer.UI.App.Models;
 

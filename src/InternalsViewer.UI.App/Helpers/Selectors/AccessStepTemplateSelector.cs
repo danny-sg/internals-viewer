@@ -1,5 +1,4 @@
 using InternalsViewer.Execution.AccessPaths.Results;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;
@@ -11,6 +10,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
     public DataTemplate ProbeStartTemplate { get; set; } = null!;
 
     public DataTemplate ProbeTemplate { get; set; } = null!;
+
+    public DataTemplate ProbeRunTemplate { get; set; } = null!;
 
     public DataTemplate DescendTemplate { get; set; } = null!;
 
@@ -59,6 +60,7 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.ReadPage => ReadPageTemplate,
             AccessStep.ProbeStart => ProbeStartTemplate,
             AccessStep.Probe => ProbeTemplate,
+            AccessStep.ProbeRun => ProbeRunTemplate,
             AccessStep.Descend => DescendTemplate,
             AccessStep.ProbeResult => ProbeResultTemplate,
             AccessStep.Row => RowTemplate,

@@ -58,6 +58,11 @@ public abstract record AccessStep(AccessPhase AccessPhase)
     }
 
     /// <summary>
+    /// A run of consecutive binary search probes, grouped for display
+    /// </summary>
+    public sealed record ProbeRun(IReadOnlyList<Probe> Probes) : AccessStep(AccessPhase.Descent);
+
+    /// <summary>
     /// A non leaf slot was chosen and its child page will be read next
     /// </summary>
     public sealed record Descend(int Slot, PageAddress ChildPage) : AccessStep(AccessPhase.Descent);
