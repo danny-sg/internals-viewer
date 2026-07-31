@@ -2,7 +2,7 @@ using System.Data;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
+namespace InternalsViewer.Execution.Tests.Helpers;
 
 internal static class TestKey
 {

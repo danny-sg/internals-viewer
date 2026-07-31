@@ -5,7 +5,7 @@ using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Internals.Metadata.Structures;
 
-namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Search;
 
 public class AccessStrategyBuilderTests
 {

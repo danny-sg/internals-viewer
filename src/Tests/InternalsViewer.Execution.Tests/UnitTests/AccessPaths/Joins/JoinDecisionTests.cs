@@ -1,7 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Joins;
 
-namespace InternalsViewer.Execution.Tests.UnitTests.Joins;
+namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Joins;
 
 public class JoinDecisionTests
 {

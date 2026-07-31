@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
 
-namespace InternalsViewer.Execution.Tests.IntegrationTests;
+namespace InternalsViewer.Execution.Tests.Helpers;
 
 /// <summary>
 /// The demo database the integration tests read, and the structures within it they rely on

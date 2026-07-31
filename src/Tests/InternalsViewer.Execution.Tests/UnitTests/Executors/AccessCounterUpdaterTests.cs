@@ -2,7 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Executors;
 
-namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.Executors;
 
 public class AccessCounterUpdaterTests
 {

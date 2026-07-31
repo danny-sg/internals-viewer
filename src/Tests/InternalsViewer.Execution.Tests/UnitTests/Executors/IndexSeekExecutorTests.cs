@@ -7,7 +7,7 @@ using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Executors;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.Executors;
 
 public class IndexSeekExecutorTests
 {

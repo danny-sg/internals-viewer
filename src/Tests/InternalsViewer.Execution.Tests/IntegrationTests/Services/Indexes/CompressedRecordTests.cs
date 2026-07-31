@@ -7,7 +7,7 @@ using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Tests.Helpers;
 
-namespace InternalsViewer.Execution.Tests.IntegrationTests.Compression;
+namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Indexes;
 
 /// <summary>
 /// Access paths over a page compressed table, where a column taking no bytes at all means zero rather than null

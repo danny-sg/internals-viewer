@@ -5,7 +5,7 @@ using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Text;
 
 public class PredicateWriterTests
 {

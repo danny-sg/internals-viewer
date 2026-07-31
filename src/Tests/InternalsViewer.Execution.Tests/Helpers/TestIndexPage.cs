@@ -10,7 +10,7 @@ using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Annotations;
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
+namespace InternalsViewer.Execution.Tests.Helpers;
 
 /// <summary>
 /// An in memory index page built from integer keys, used to drive access path tests

@@ -1,6 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Results;
 
-namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Results;
 
 public class AccessCountersTests
 {

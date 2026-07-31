@@ -4,7 +4,7 @@ using System.Text;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
+namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Predicates;
 
 public class IntrinsicFunctionsTests
 {
