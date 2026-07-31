@@ -96,7 +96,7 @@ public sealed partial class DockHost : UserControl
             Grid.SetColumn(splitter, 1);
             Grid.SetColumn(second, 2);
 
-            splitter.Width = 6;
+            splitter.Width = 4;
             splitter.ResizeDirection = GridSplitter.GridResizeDirection.Columns;
             splitter.HorizontalAlignment = HorizontalAlignment.Center;
             splitter.VerticalAlignment = VerticalAlignment.Stretch;
@@ -111,7 +111,7 @@ public sealed partial class DockHost : UserControl
             Grid.SetRow(splitter, 1);
             Grid.SetRow(second, 2);
 
-            splitter.Height = 6;
+            splitter.Height = 4;
             splitter.ResizeDirection = GridSplitter.GridResizeDirection.Rows;
             splitter.VerticalAlignment = VerticalAlignment.Center;
             splitter.HorizontalAlignment = HorizontalAlignment.Stretch;

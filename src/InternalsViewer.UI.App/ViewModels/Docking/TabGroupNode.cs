@@ -3,13 +3,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace InternalsViewer.UI.App.ViewModels.Docking;
 
-/// <summary>A leaf in the dock tree: a tab strip hosting one or more <see cref="DocumentViewModel"/>.</summary>
 public sealed partial class TabGroupNode : LayoutNode
 {
     public ObservableCollection<DocumentViewModel> Documents { get; } = [];
 
     [ObservableProperty]
-    private DocumentViewModel? selectedDocument;
+    private DocumentViewModel? _selectedDocument;
 
     public TabGroupNode()
     {

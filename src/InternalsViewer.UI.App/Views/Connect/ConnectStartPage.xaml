@@ -129,6 +129,7 @@
                 Command="{x:Bind ViewModel.ClearRecentConnectionsCommand}"
                 Content="Clear recent"/>
         <ProgressRing Grid.Row="5"
+                      HorizontalAlignment="Left"
                       IsActive="{x:Bind ViewModel.ConnectRecentCommand.IsRunning, Mode=OneWay}"/>
     </Grid>
 </Page>

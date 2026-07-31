@@ -14,7 +14,7 @@ namespace InternalsViewer.UI.App.ViewModels.Docking;
 public sealed partial class DockLayoutViewModel : ObservableObject
 {
     [ObservableProperty]
-    private LayoutNode root;
+    private LayoutNode _root;
 
     /// <summary>Raised after the tree's shape changes (split, move between groups, collapse).</summary>
     public event EventHandler? LayoutChanged;
@@ -23,7 +23,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
     public DockLayoutViewModel(LayoutNode root)
     {
-        this.root = root;
+        _root = root;
     }
 
     private void OnLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
@@ -68,7 +68,6 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
     public bool Contains(DocumentViewModel document) => FindGroup(document) is not null;
 
-    /// <summary>Ensures <paramref name="document"/> is visible, adding it to the first group if absent, and selects it.</summary>
     public void Show(DocumentViewModel document)
     {
         if (Contains(document))
