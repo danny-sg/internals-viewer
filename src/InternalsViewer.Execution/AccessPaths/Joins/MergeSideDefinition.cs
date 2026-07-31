@@ -1,7 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Execution.Services.Joins.Definitions;
+namespace InternalsViewer.Execution.AccessPaths.Joins;
 
 /// <summary>
 /// Describes one side of a merge join, an ordered access path with the columns it joins on

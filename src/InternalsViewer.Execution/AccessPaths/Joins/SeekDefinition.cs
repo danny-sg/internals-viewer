@@ -2,7 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Execution.Services.Joins.Definitions;
+namespace InternalsViewer.Execution.AccessPaths.Joins;
 
 /// <summary>
 /// Describes the inner side of a nested loops join, the access path re-executed with bound seek values for each outer row

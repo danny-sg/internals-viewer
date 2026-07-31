@@ -1,7 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
-using InternalsViewer.Execution.Interfaces.Services.Joins;
+using InternalsViewer.Execution.Interfaces.Services.Joins.Inputs;
 using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Services.Joins.Inputs;

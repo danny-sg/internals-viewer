@@ -1,6 +1,5 @@
 
 using InternalsViewer.Execution.AccessPaths.Search;
-using InternalsViewer.Execution.Services.Joins.Inputs;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers;
 using InternalsViewer.Query.Plans;

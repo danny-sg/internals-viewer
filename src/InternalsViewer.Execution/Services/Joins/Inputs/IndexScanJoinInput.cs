@@ -1,8 +1,8 @@
+using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Services.Indexes;
-using InternalsViewer.Execution.Services.Joins.Definitions;
 using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Execution.Services.Joins.Inputs;
@@ -10,7 +10,7 @@ namespace InternalsViewer.Execution.Services.Joins.Inputs;
 /// <summary>
 /// An input that walks an index in key order, read straight through rather than restarted
 /// </summary>
-public sealed class IndexScan(IndexStepService service, ScanDefinition definition) : JoinInput
+public sealed class IndexScanJoinInput(IndexStepService service, ScanDefinition definition) : JoinInput
 {
     public override IStepService Service => service;
 

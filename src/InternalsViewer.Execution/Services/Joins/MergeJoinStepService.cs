@@ -5,7 +5,6 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Services.Indexes;
-using InternalsViewer.Execution.Services.Joins.Definitions;
 using InternalsViewer.Execution.Services.Joins.Inputs;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -55,9 +54,9 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
                                  EvaluationContext? evaluationContext = null,
                                  JoinType joinType = JoinType.Inner)
     {
-        var outer = new IndexScan(outerService, outerInput);
+        var outer = new IndexScanJoinInput(outerService, outerInput);
 
-        var inner = new IndexScan(innerService, innerInput);
+        var inner = new IndexScanJoinInput(innerService, innerInput);
 
         Outer = outer;
         Inner = inner;

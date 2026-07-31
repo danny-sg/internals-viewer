@@ -1,4 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces.Services.Joins.Inputs;
 
 namespace InternalsViewer.Execution.Interfaces.Services.Joins;
 

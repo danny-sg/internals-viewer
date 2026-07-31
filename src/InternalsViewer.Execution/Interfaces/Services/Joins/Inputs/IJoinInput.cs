@@ -1,7 +1,8 @@
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.Interfaces;
 
-namespace InternalsViewer.Execution.Interfaces.Services.Joins;
+namespace InternalsViewer.Execution.Interfaces.Services.Joins.Inputs;
 
 /// <summary>
 /// One of the two inputs a join reads from

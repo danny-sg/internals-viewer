@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.Services.Joins.Definitions;
+using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.Services.Joins.Inputs;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
@@ -167,7 +167,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
 
         await context.Service.StartAsync(context.Database,
                                          outerInput,
-                                         new RidLookup(context.Heap),
+                                         new RidLookupJoinInput(context.Heap),
                                          CancellationToken.None);
     }
 

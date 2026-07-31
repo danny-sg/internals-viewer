@@ -2,6 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces.Services.Joins;
+using InternalsViewer.Execution.Interfaces.Services.Joins.Inputs;
 using InternalsViewer.Execution.Services.Joins.Inputs;
 using InternalsViewer.Internals.Engine.Address;
 

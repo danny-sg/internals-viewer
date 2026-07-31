@@ -2,7 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Execution.Services.Joins.Definitions;
+namespace InternalsViewer.Execution.AccessPaths.Joins;
 
 /// <summary>
 /// Describes an ordered access path a join reads from, the outer side of a nested loops join or either side of a merge join

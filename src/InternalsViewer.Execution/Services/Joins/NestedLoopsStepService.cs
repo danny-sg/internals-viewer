@@ -1,9 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
-using InternalsViewer.Execution.Interfaces.Services.Joins;
 using InternalsViewer.Execution.Services.Indexes;
-using InternalsViewer.Execution.Services.Joins.Definitions;
 using InternalsViewer.Execution.Services.Joins.Inputs;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -21,9 +19,9 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     public int RebindCount { get; private set; }
 
-    private RebindableInput InnerInput { get; set; } = null!;
+    private RebindableJoinInput InnerInput { get; set; } = null!;
 
-    private IndexScan OuterInput => (IndexScan)Outer;
+    private IndexScanJoinInput OuterInput => (IndexScanJoinInput)Outer;
 
     private IRecord? CurrentOuterRecord { get; set; }
 
@@ -49,20 +47,20 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
                            JoinType joinType = JoinType.Inner)
         => StartAsync(database,
                       outerInput,
-                      new CorrelatedSeek(innerService, innerInput, evaluationContext),
+                      new CorrelatedSeekJoinInput(innerService, innerInput, evaluationContext),
                       cancellationToken,
                       evaluationContext,
                       joinType);
 
     public async Task StartAsync(DatabaseSource database,
                                  ScanDefinition outerInput,
-                                 RebindableInput inner,
+                                 RebindableJoinInput inner,
                                  CancellationToken cancellationToken,
                                  EvaluationContext? evaluationContext = null,
                                  JoinType joinType = JoinType.Inner)
     {
         Database = database;
-        Outer = new IndexScan(outerService, outerInput);
+        Outer = new IndexScanJoinInput(outerService, outerInput);
         Inner = inner;
         InnerInput = inner;
 

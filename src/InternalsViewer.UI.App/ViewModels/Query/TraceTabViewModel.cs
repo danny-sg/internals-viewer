@@ -1,6 +1,5 @@
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.Interfaces.Services.Joins;
-using InternalsViewer.Execution.Services.Joins.Definitions;
 using InternalsViewer.Execution.Services.Joins.Inputs;
 using System.Collections.Generic;
 using System.Data;
@@ -838,7 +837,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 HasUntranslatedResidual = ridOuterPredicate?.HasUntranslatedPredicate == true
             };
 
-            var heapInner = new RidLookup(HeapService!, ridJoin.Inner.PredicateInfo?.Residual);
+            var heapInner = new RidLookupJoinInput(HeapService!, ridJoin.Inner.PredicateInfo?.Residual);
 
             await Task.Run(() => ridService.StartAsync(Database,
                                                        ridOuterInput,

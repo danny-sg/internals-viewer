@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.Services.Joins.Definitions;
+using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Execution.AccessPaths.Binding;

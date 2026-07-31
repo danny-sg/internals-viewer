@@ -1,12 +1,11 @@
 using InternalsViewer.Execution.AccessPaths.Binding;
+using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces;
-using InternalsViewer.Execution.Interfaces.Services.Joins;
 using InternalsViewer.Execution.Services.Indexes;
-using InternalsViewer.Execution.Services.Joins.Definitions;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 
@@ -15,9 +14,9 @@ namespace InternalsViewer.Execution.Services.Joins.Inputs;
 /// <summary>
 /// An input that seeks an index for key values taken from the outer row, as a key lookup does
 /// </summary>
-public sealed class CorrelatedSeek(IndexStepService service,
-                                   SeekDefinition input,
-                                   EvaluationContext? evaluationContext = null) : RebindableInput
+public sealed class CorrelatedSeekJoinInput(IndexStepService service,
+                                            SeekDefinition input,
+                                            EvaluationContext? evaluationContext = null) : RebindableJoinInput
 {
     public override IStepService Service => service;
 

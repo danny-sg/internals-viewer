@@ -1,5 +1,4 @@
 using InternalsViewer.Execution.AccessPaths.Joins;
-using InternalsViewer.Execution.Services.Joins.Definitions;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Predicates;

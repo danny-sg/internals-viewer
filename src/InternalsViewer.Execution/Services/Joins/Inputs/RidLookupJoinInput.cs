@@ -2,7 +2,6 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
-using InternalsViewer.Execution.Interfaces.Services.Joins;
 using InternalsViewer.Execution.Services.Heaps;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -19,7 +18,7 @@ namespace InternalsViewer.Execution.Services.Joins.Inputs;
 /// The nonclustered index of a heap stores a row identifier in place of the clustered key, so the outer row already names the page and
 /// slot and nothing has to be searched for.
 /// </remarks>
-public sealed class RidLookup(HeapFetchStepService service, AccessPredicate? residual = null) : RebindableInput
+public sealed class RidLookupJoinInput(HeapFetchStepService service, AccessPredicate? residual = null) : RebindableJoinInput
 {
     public override IStepService Service => service;
 
