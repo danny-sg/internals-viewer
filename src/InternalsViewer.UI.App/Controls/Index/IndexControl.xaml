@@ -10,16 +10,6 @@
     SizeChanged="UserControl_SizeChanged"
     Background="Transparent"
     mc:Ignorable="d">
-    <UserControl.Resources>
-        <Style x:Key="TooltipValueStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="FontWeight" Value="Bold" />
-        </Style>
-        <Style x:Key="TooltipKeyStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Margin" Value="0,0,4,4" />
-        </Style>
-    </UserControl.Resources>
     <Grid HorizontalAlignment="Stretch"
           Background="{x:Bind Background, Mode=OneWay}">
         <Grid.ColumnDefinitions>
@@ -62,8 +52,7 @@
                IsOpen="False">
             <Grid>
                 <Border x:Name="ShadowTarget" />
-                <Border x:Name="SelectionInfoPopupBorder"
-                        CornerRadius="1">
+                <Border x:Name="SelectionInfoPopupBorder" CornerRadius="1">
                     <Border.Background>
                         <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" Opacity="0.9"/>
                     </Border.Background>

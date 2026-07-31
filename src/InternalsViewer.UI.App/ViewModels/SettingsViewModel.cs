@@ -26,7 +26,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     [ObservableProperty]
     private string _symbolsPath = DefaultSymbolsPath;
 
-    // Off = write .xel trace files to the SQL Server log directory (default); on = write them to TraceDirectory instead.
     [ObservableProperty]
     private bool _useCustomTraceDirectory;
 
@@ -36,15 +35,12 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     [ObservableProperty]
     private string _traceDirectoryStatus = string.Empty;
 
-    // Largest size (MB) a .xel trace file grows to before it rolls over (bound to a NumberBox, hence double).
     [ObservableProperty]
     private double _maxTraceSizeMb = DefaultMaxTraceSizeMb;
 
-    // Delete the .xel trace file(s) after reading — only effective with a custom trace directory. On by default.
     [ObservableProperty]
     private bool _autoDeleteTrace = true;
 
-    // The custom trace directory the app writes to, or null when the SQL Server log directory should be used.
     public string? ActiveTraceDirectory =>
         UseCustomTraceDirectory && !string.IsNullOrWhiteSpace(TraceDirectory) ? TraceDirectory : null;
 
@@ -56,8 +52,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         var bytes = GC.GetTotalMemory(false);
 
         MemoryUsage = bytes >= 1024 * 1024 * 1024
-            ? $"{bytes / 1024d / 1024d / 1024d:N2} GB"
-            : $"{bytes / 1024d / 1024d:N0} MB";
+                      ? $"{bytes / 1024d / 1024d / 1024d:N2} GB"
+                      : $"{bytes / 1024d / 1024d:N0} MB";
     }
 
     public async Task LoadAsync()
@@ -83,7 +79,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         AutoDeleteTrace = savedAutoDelete ?? true;
     }
 
-    /// <summary>Grants the local SQL Server service accounts write access to the custom trace directory, on demand.</summary>
+    /// <summary>
+    /// Grants the local SQL Server service accounts write access to the custom trace directory
+    /// </summary>
     [RelayCommand]
     private void GrantPermissions()
     {

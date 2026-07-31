@@ -6,8 +6,7 @@ namespace InternalsViewer.UI.App.ViewModels.Tabs;
 
 public partial class TabViewModel : ObservableObject, IDisposable
 {
-    [ObservableProperty]
-    private string _tabId = string.Empty;
+    public string TabId { get; } = Guid.NewGuid().ToString();
 
     [ObservableProperty]
     private string _name = string.Empty;
@@ -24,8 +23,6 @@ public partial class TabViewModel : ObservableObject, IDisposable
     protected TabViewModel()
     {
         DispatcherQueue = UiDispatcher.ForCurrentThread();
-
-        TabId = Guid.NewGuid().ToString();
     }
 
     public virtual void Dispose()

@@ -11,15 +11,33 @@ public sealed partial class TraceVisualPanelView : UserControl
     {
         InitializeComponent();
 
-        DataContextChanged += (_, _) => Bindings.Update();
+        DataContextChanged += (_, _) =>
+        {
+            Bindings.Update();
+
+            UpdateStackVisibility();
+        };
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        UpdateStackVisibility();
+
         if (ViewModel is { } viewModel)
         {
             await viewModel.LoadVisualAsync();
         }
+    }
+
+    private void UpdateStackVisibility()
+    {
+        var isVisible = ViewModel?.IsSideStackVisible == true;
+
+        StackSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        StackGrid.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+
+        SplitterRow.Height = isVisible ? GridLength.Auto : new GridLength(0);
+        StackRow.Height = isVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
     }
 
     public double DimOpacity(bool isDimmed)

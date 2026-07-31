@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.AccessPaths.Search;
 using System.Xml.Linq;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;

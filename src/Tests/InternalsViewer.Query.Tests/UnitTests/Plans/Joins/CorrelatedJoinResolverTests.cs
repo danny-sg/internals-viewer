@@ -110,6 +110,31 @@ public class CorrelatedJoinResolverTests
         Assert.Equal("ClusteredTable.Id", column.OuterReference);
     }
 
+    [Fact]
+    public void A_Rid_Lookup_Resolves_Without_A_Matchable_Correlated_Column()
+    {
+        // A heap bookmark is not a column the outer visibly carries, so it cannot be validated against its outputs
+        var inner = new PlanNode
+        {
+            NodeId = 5,
+            PhysicalOperator = "RID Lookup",
+            Table = "HeapTable",
+            ScanInfo = new ScanInfo { IsLookup = true }
+        };
+
+        var result = CorrelatedJoinResolver.Resolve(Join(Seek(), inner));
+
+        Assert.NotNull(result);
+        Assert.Same(inner, result.Inner);
+        Assert.True(CorrelatedJoinResolver.IsRidLookup(inner));
+    }
+
+    [Fact]
+    public void A_Key_Lookup_Is_Not_Taken_For_A_Rid_Lookup()
+    {
+        Assert.False(CorrelatedJoinResolver.IsRidLookup(Lookup()));
+    }
+
     private static PlanNode Lookup()
     {
         return new PlanNode

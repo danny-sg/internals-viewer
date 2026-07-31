@@ -1,7 +1,6 @@
 using System;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.UI.App.Controls.Allocation;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Controls.Index;
@@ -16,7 +15,7 @@ public class PageAddressLinkButtonColumn<T> : DataGridBoundColumn
     {
         var button = new HyperlinkButton
         {
-            Style = (Style)Application.Current.Resources["PageAddressHyperlinkButtonStyle"],
+            Style = (Style)Application.Current.Resources["PageAddressStyle"],
         };
 
         if (Binding != null)

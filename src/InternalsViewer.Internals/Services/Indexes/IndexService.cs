@@ -17,7 +17,7 @@ namespace InternalsViewer.Internals.Services.Indexes;
 /// <summary>
 /// Service to provide index structure information
 /// </summary>
-public sealed class IndexService(ILogger<IndexService> logger)
+public sealed partial class IndexService(ILogger<IndexService> logger)
 {
     private const int MaxParallelPageLoads = 16;
   
@@ -108,10 +108,7 @@ public sealed class IndexService(ILogger<IndexService> logger)
                     }
                     else if (childNode.Parent != node.PageAddress)
                     {
-                        Logger.LogDebug("Page {PageAddress} has multiple parents - keeping {Parent}, ignoring {Ignored}",
-                                        childNode.PageAddress,
-                                        childNode.Parent,
-                                        node.PageAddress);
+                        LogMultipleParents(Logger, childNode.PageAddress, childNode.Parent, node.PageAddress);
                     }
                 }
             }

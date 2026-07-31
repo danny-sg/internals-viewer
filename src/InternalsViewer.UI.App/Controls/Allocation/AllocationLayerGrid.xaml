@@ -10,14 +10,6 @@
     xmlns:system="using:System"
     x:Name="Root"
     mc:Ignorable="d">
-    <UserControl.Resources>
-        <Style x:Key="PageAddressStyle" TargetType="HyperlinkButton">
-            <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="HorizontalAlignment" Value="Right"/>
-            <Setter Property="Margin" Value="0,0,4,0"/>
-        </Style>
-    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

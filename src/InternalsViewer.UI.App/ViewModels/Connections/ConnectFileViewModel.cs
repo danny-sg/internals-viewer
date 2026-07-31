@@ -18,10 +18,10 @@ public partial class ConnectFileViewModel : ObservableValidator
 {
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
-    private string filename = string.Empty;
+    private string _filename = string.Empty;
 
     [ObservableProperty]
-    private bool isValid;
+    private bool _isValid;
 
     partial void OnFilenameChanged(string value)
     {

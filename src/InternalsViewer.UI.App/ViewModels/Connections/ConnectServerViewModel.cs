@@ -67,7 +67,8 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     public bool IsUserIdEnabled => AuthenticationType != (int)SqlAuthenticationMethod.ActiveDirectoryIntegrated;
 
 #pragma warning disable CS0618 // Type or member is obsolete
-    public bool IsPasswordEnabled => AuthenticationType is (int)SqlAuthenticationMethod.SqlPassword or (int)SqlAuthenticationMethod.ActiveDirectoryPassword;
+    public bool IsPasswordEnabled 
+        => AuthenticationType is (int)SqlAuthenticationMethod.SqlPassword or (int)SqlAuthenticationMethod.ActiveDirectoryPassword;
 #pragma warning restore CS0618 // Type or member is obsolete
 
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
@@ -76,7 +77,6 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
         base.OnPropertyChanged(e);
     }
-
 
 #pragma warning disable CS0618 // Type or member is obsolete
     public List<AuthenticationTypeOption> AuthenticationTypes =>

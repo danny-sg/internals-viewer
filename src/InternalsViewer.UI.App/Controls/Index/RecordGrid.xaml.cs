@@ -9,6 +9,7 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
@@ -54,9 +55,32 @@ public sealed partial class RecordGrid : IDisposable
             typeof(RecordGrid),
             new PropertyMetadata(false, OnPropertyChanged));
 
+    private static readonly SolidColorBrush MatchedBackground
+        = new(Windows.UI.Color.FromArgb(255, 223, 244, 223));
+
+    private static readonly SolidColorBrush MatchedForeground
+        = new(Windows.UI.Color.FromArgb(255, 11, 93, 11));
+
     public RecordGrid()
     {
         InitializeComponent();
+
+        DataGrid.LoadingRow += OnLoadingRow;
+    }
+
+    private static void OnLoadingRow(object? sender, DataGridRowEventArgs e)
+    {
+        // Rows are recycled, so a row has to be reverted rather than left with the previous row's brushes
+        if (e.Row.DataContext is IndexRecordModel { IsMatched: true })
+        {
+            e.Row.Background = MatchedBackground;
+            e.Row.Foreground = MatchedForeground;
+
+            return;
+        }
+
+        e.Row.ClearValue(BackgroundProperty);
+        e.Row.ClearValue(ForegroundProperty);
     }
 
     private ObservableCollection<IndexRecordModel>? _subscribedRecords;
@@ -100,14 +124,22 @@ public sealed partial class RecordGrid : IDisposable
             AddColumns();
         }
 
-        ScrollToEnd();
+        DispatcherQueue.TryEnqueue(ScrollToEnd);
     }
 
     private void ScrollToEnd()
     {
-        if (AutoScrollToEnd && Records is { Count: > 0 } records)
+        if (!AutoScrollToEnd || Records is not { Count: > 0 } records)
+        {
+            return;
+        }
+
+        try
         {
             DataGrid.ScrollIntoView(records[^1], null);
+        }
+        catch (InvalidOperationException)
+        {
         }
     }
 
@@ -177,7 +209,10 @@ public sealed partial class RecordGrid : IDisposable
             DataGrid.Columns.Add(column);
         }
 
-        if (Records?.Any(r => r.RowIdentifier != null && r.RowIdentifier != RowIdentifier.Empty) == true)
+        // A nonclustered index of a heap stores the row identifier as a hidden column, so it is already among the fields
+        var hasRidField = DataGrid.Columns.Any(c => c.Header as string == "RID");
+
+        if (!hasRidField && Records?.Any(r => r.RowIdentifier != null && r.RowIdentifier != RowIdentifier.Empty) == true)
         {
             var column = new DataGridTextColumn
             {

@@ -3,7 +3,7 @@ using System.Collections;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.UI.App.Controls.Allocation;
+using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Database;
 using Microsoft.UI.Xaml.Controls;

@@ -3,11 +3,6 @@ namespace InternalsViewer.Execution.AccessPaths.Results;
 /// <summary>
 /// Running cost and cardinality totals for an access path
 /// </summary>
-/// <remarks>
-/// Immutable so a total captured against a step stays fixed at the value it had when that step was
-/// produced. Executors thread a running value through the walk and publish each new total, letting a
-/// caller track counts without sharing mutable state with the executor.
-/// </remarks>
 public readonly record struct AccessCounters
 {
     /// <summary>

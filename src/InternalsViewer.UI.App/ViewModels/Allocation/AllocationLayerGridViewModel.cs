@@ -44,7 +44,7 @@ public sealed partial class AllocationLayerGridViewModel : ObservableObject
                 : filteredLayers.OrderByDescending(l => GetSortValue(l, SortProperty));
         }
 
-        DataSource = new ObservableCollection<AllocationLayer>(filteredLayers);
+        DataSource = [.. filteredLayers];
     }
 
     private static IComparable? GetSortValue(AllocationLayer layer, string property) => property switch
@@ -68,12 +68,14 @@ public sealed partial class AllocationLayerGridViewModel : ObservableObject
     {
         SortProperty = property;
         SortAscending = ascending;
+
         RefreshDataSource();
     }
 
     public void SetLayers(List<AllocationLayer> value)
     {
         Layers = value;
+
         RefreshDataSource();
     }
 }

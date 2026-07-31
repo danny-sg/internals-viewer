@@ -44,8 +44,7 @@ internal static class AllocationLayerBuilder
         foreach (var allocationUnit in allocationUnits.Values
                                                       .OrderBy(o => o.TableName)
                                                       .ThenBy(o => o.IndexName)
-                                                      .ThenBy(o => 
-                                                          o.AllocationUnitType == AllocationUnitType.InRowData ? 1 : 2)
+                                                      .ThenBy(o => o.AllocationUnitType == AllocationUnitType.InRowData ? 1 : 2)
                                                       .Where(o => !o.IsSystem))
         {
             var currentObjectName = GetCurrentObjectName(allocationUnit, separateIndexes);
@@ -150,7 +149,7 @@ internal static class AllocationLayerBuilder
             IsAllocationLayer = true,
             IsVisible = true,
             IsInverted = isInverted,
-            AllocationChains = allocations.Values.Select(s => s).Cast<IAllocationChain>().ToList(),
+            AllocationChains = [.. allocations.Values.Select(s => s)],
             Opacity = 0
         };
 
@@ -248,9 +247,7 @@ internal static class AllocationLayerBuilder
         return ColourHelpers.HsvToColor(hue, UserSaturation, UserValue);
     }
 
-    private static Color GetLayerColour(AllocationUnit allocationUnit,
-                                        int colourSlotCount,
-                                        ref int colourIndex)
+    private static Color GetLayerColour(AllocationUnit allocationUnit, int colourSlotCount, ref int colourIndex)
     {
         if (allocationUnit.IsSystem)
         {

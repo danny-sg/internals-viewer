@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Execution.AccessPaths.Search;
+﻿using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
 
@@ -89,6 +90,16 @@ public abstract record AccessStep(AccessPhase AccessPhase)
         public bool HasRange { get; init; } = true;
 
         public IRecord? EmittedRecord { get; init; }
+
+        /// <summary>
+        /// The row was read to find where a matched group ended, so it belongs to the next comparison rather than the current one
+        /// </summary>
+        public bool IsReadAhead { get; init; }
+
+        /// <summary>
+        /// The row was taken from a slot named outright rather than found by walking, so nothing was tested to reach it
+        /// </summary>
+        public bool IsFetched { get; init; }
     }
 
     public sealed record RowRun(int FromSlot, int ToSlot, RowOutcome Outcome) : AccessStep(AccessPhase.Walk)
@@ -132,7 +143,13 @@ public abstract record AccessStep(AccessPhase AccessPhase)
     /// <summary>
     /// A correlated seek value was bound from an outer row and the inner path will descend for it
     /// </summary>
-    public sealed record Rebind(int RebindNumber, AccessKey Key) : AccessStep(AccessPhase.Descent);
+    public sealed record Rebind(int RebindNumber, AccessKey Key) : AccessStep(AccessPhase.Descent)
+    {
+        /// <summary>
+        /// The row identifier bound instead of a key, when the inner side is a heap
+        /// </summary>
+        public RowIdentifier? RowIdentifier { get; init; }
+    }
 
     /// <summary>
     /// A join announced what it is about to do, narrating the start of a composed access path
@@ -149,6 +166,31 @@ public abstract record AccessStep(AccessPhase AccessPhase)
         public AccessKey InnerKey { get; init; }
 
         public string Action { get; init; } = string.Empty;
+
+        public JoinDecision? Decision { get; init; }
+    }
+
+    /// <summary>
+    /// A loop join weighed the rows a rebind returned against what the join type requires
+    /// </summary>
+    public sealed record JoinVerdict(JoinDecision Decision) : AccessStep(AccessPhase.Walk);
+
+    /// <summary>
+    /// A run of consecutive merge comparisons that advanced the same side, grouped for display
+    /// </summary>
+    public sealed record MergeCompareRun(int Comparison, int Count) : AccessStep(AccessPhase.Walk)
+    {
+        public AccessKey OuterFrom { get; init; }
+
+        public AccessKey OuterTo { get; init; }
+
+        public AccessKey InnerFrom { get; init; }
+
+        public AccessKey InnerTo { get; init; }
+
+        public string Action { get; init; } = string.Empty;
+
+        public JoinDecision? Decision { get; init; }
     }
 
     /// <summary>
@@ -161,7 +203,17 @@ public abstract record AccessStep(AccessPhase AccessPhase)
         public IRecord? InnerRecord { get; init; }
 
         public bool IsFromBuffer { get; init; }
+
+        /// <summary>
+        /// The row found no partner and reaches the output only because the join preserves its side
+        /// </summary>
+        public bool IsUnmatched { get; init; }
     }
+
+    /// <summary>
+    /// The row identifier led to a stub left behind when the row outgrew its page, so the real row is on another page
+    /// </summary>
+    public sealed record ForwardedRecord(RowIdentifier From, RowIdentifier To) : AccessStep(AccessPhase.Descent);
 
     public sealed record IamRead(PageAddress PageAddress, int ExtentCount, int SinglePageCount) : AccessStep(AccessPhase.Allocation);
 

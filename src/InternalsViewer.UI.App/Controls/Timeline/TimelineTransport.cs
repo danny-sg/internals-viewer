@@ -80,7 +80,7 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         {
             Content = new TextBlock { Text = "Threads", FontSize = 10 },
             Height = ButtonHeight,
-            Margin = new Thickness(8, 2, 0, 2),
+            Margin = new Thickness(2, 2, 0, 2),
             VerticalAlignment = VerticalAlignment.Center,
             BorderBrush = null,
             Background = new SolidColorBrush(Color.FromArgb(0, 30, 30, 30)),

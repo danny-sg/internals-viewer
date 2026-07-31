@@ -18,9 +18,7 @@ public class AllocationStepServiceTests(ITestOutputHelper testOutput)
 
     private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
 
-    private const string NumberTable = "NumberTable_Clustered";
-
-    private const int NumberTableRowCount = 10_000;
+        private const int NumberTableRowCount = DemoDatabase.ClusteredTableRowCount;
 
     [RequiresFileFact(MdfPath)]
     public async Task Allocation_Scan_Reads_Every_Row()
@@ -146,8 +144,7 @@ public class AllocationStepServiceTests(ITestOutputHelper testOutput)
 
         var database = await databaseService.LoadAsync("TestDatabase", connection, CancellationToken.None);
 
-        var unit = database.AllocationUnits.Values.Single(a => a.TableName == NumberTable
-                                                               && a.AllocationUnitType == AllocationUnitType.InRowData);
+        var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
         return new NumberTableContext(database, serviceHost.GetService<AllocationStepService>(), unit);
     }

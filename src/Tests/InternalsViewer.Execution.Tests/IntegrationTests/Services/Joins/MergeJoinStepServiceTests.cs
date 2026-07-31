@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Execution.AccessPaths.Binding;
@@ -18,9 +19,7 @@ public class MergeJoinStepServiceTests(ITestOutputHelper testOutput)
 
     private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
 
-    private const string NumberTable = "NumberTable_Clustered";
-
-    [RequiresFileFact(MdfPath)]
+        [RequiresFileFact(MdfPath)]
     public async Task Overlapping_Ranges_Emit_Matching_Pairs()
     {
         var context = await LoadNumberTableAsync();
@@ -35,6 +34,15 @@ public class MergeJoinStepServiceTests(ITestOutputHelper testOutput)
         Assert.Equal(6, pairs.Count);
         Assert.Equal(6, context.Service.PairCount);
         Assert.Equal(Enumerable.Range(105, 6).Select(v => ((long)v, (long)v)), pairs);
+
+        var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
+                                         && s.Source == MergeJoinStepService.OuterSource);
+
+        var innerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
+                                         && s.Source == MergeJoinStepService.InnerSource);
+
+        Assert.Equal(11, outerRows);
+        Assert.Equal(7, innerRows);
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
@@ -119,13 +127,12 @@ public class MergeJoinStepServiceTests(ITestOutputHelper testOutput)
 
         var database = await databaseService.LoadAsync("TestDatabase", connection, CancellationToken.None);
 
-        var unit = database.AllocationUnits.Values.Single(a => a.TableName == NumberTable
-                                                               && a.AllocationUnitType == AllocationUnitType.InRowData);
+        var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
         return new NumberTableContext(database, serviceHost.GetService<MergeJoinStepService>(), unit);
     }
 
-    private static MergeJoinSideInput SideInput(AllocationUnit unit, SeekBounds bounds)
+    private static MergeSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
         => new(unit.AllocationUnitId, unit.RootPage, [bounds], ["Id"]);
 
     private static async Task<(List<AccessStep> Steps, List<(long Outer, long Inner)> Pairs)> RunAsync(MergeJoinStepService service)

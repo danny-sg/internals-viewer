@@ -34,18 +34,18 @@ using System.Threading.Tasks;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
-using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Settings;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
-using QueryIndexTabView = InternalsViewer.UI.App.Views.Query.Tabs.Index.QueryIndexTabView;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.UI.App.Views.Query.Tabs.Index;
+using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -388,7 +388,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         if (ResolveCorrelatedJoin(node) is { } join)
         {
-            OpenKeyLookupTrace(join);
+            OpenLookupTrace(join);
 
             return;
         }
@@ -458,7 +458,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
-                                             persist: false);
+                                             persist: false,
+                                             commandsFactory: static () => new TraceTabCommands());
 
         Layout.RegisterDocument(key, document);
 
@@ -474,7 +475,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return CorrelatedJoinResolver.Resolve(node);
         }
 
-        if (node.ScanInfo?.IsLookup != true || node.PredicateInfo?.IsCorrelatedSeek != true)
+        if (!OperatorClassifier.IsLookup(node) && node.PredicateInfo?.IsCorrelatedSeek != true)
         {
             return null;
         }
@@ -487,8 +488,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                    .FirstOrDefault(j => j is not null);
     }
 
-    private void OpenKeyLookupTrace(CorrelatedJoin join)
+    /// <summary>
+    /// Opens a lookup trace, which fetches from a heap by row identifier or seeks a clustered index by key
+    /// </summary>
+    private void OpenLookupTrace(CorrelatedJoin join)
     {
+        var isRidLookup = CorrelatedJoinResolver.IsRidLookup(join.Inner);
+
         var outerUnit = FindAllocationUnit(join.Outer);
 
         var innerUnit = FindAllocationUnit(join.Inner);
@@ -502,11 +508,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
+        var kind = isRidLookup ? TraceKind.RidLookup : TraceKind.KeyLookup;
+
         var key = $"Trace:{outerUnit.SchemaName}.{outerUnit.TableName}.{outerUnit.IndexName}+{innerUnit.IndexName}:{join.Join.NodeId}";
 
         if (Layout.TryGetDocument(key, out var existing))
         {
-            if (existing.Content is TraceTabViewModel { Kind: TraceKind.KeyLookup })
+            if (existing.Content is TraceTabViewModel current && current.Kind == kind)
             {
                 Layout.Show(existing);
 
@@ -523,21 +531,28 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             Layout.RemoveDocument(key, out _);
         }
 
-        var traceViewModel = _traceTabViewModelFactory.CreateKeyLookup(Database,
-                                                                       outerUnit,
-                                                                       innerUnit,
-                                                                       join.Join,
-                                                                       Events.FirstOrDefault()?.Timestamp);
+        var traceViewModel = isRidLookup
+            ? _traceTabViewModelFactory.CreateRidLookup(Database,
+                                                        outerUnit,
+                                                        innerUnit,
+                                                        join.Join,
+                                                        Events.FirstOrDefault()?.Timestamp)
+            : _traceTabViewModelFactory.CreateKeyLookup(Database,
+                                                        outerUnit,
+                                                        innerUnit,
+                                                        join.Join,
+                                                        Events.FirstOrDefault()?.Timestamp);
 
         traceViewModel.PageNavigated += OnIndexPageNavigated;
 
-        var document = new DocumentViewModel(title: $"Trace: {innerUnit.TableName} Lookup",
+        var document = new DocumentViewModel(title: $"Trace: {innerUnit.TableName} {(isRidLookup ? "RID" : "Key")} Lookup",
                                              content: traceViewModel,
                                              viewFactory: static () => new TraceTabView(),
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
-                                             persist: false);
+                                             persist: false,
+                                             commandsFactory: static () => new TraceTabCommands());
 
         Layout.RegisterDocument(key, document);
 
@@ -596,7 +611,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
-                                             persist: false);
+                                             persist: false,
+                                             commandsFactory: static () => new TraceTabCommands());
 
         Layout.RegisterDocument(key, document);
 
@@ -791,6 +807,30 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private bool _isPlanPropertiesVisible;
 
+    private bool _isFlameGraphVisible = true;
+
+    public bool IsFlameGraphVisible
+    {
+        get => _isFlameGraphVisible;
+        set => SetProperty(ref _isFlameGraphVisible, value);
+    }
+
+    private bool _isSqlResultsVisible;
+
+    public bool IsSqlResultsVisible
+    {
+        get => _isSqlResultsVisible;
+        set => SetProperty(ref _isSqlResultsVisible, value);
+    }
+
+    private bool _isSqlMessagesVisible;
+
+    public bool IsSqlMessagesVisible
+    {
+        get => _isSqlMessagesVisible;
+        set => SetProperty(ref _isSqlMessagesVisible, value);
+    }
+
     public void OpenExecutionPlan(PlanNodeIdentifier identifier)
     {
         Layout.ShowExecutionPlan();
@@ -883,7 +923,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
-                                             persist: false);
+                                             persist: false,
+                                             commandsFactory: static () => new QueryIndexTabCommands());
 
         Layout.RegisterDocument(key, document);
 
@@ -1067,7 +1108,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             var node = FindTraceOperator(viewModel);
 
-            if (node is not null && viewModel.Kind is TraceKind.KeyLookup or TraceKind.MergeJoin)
+            if (node is not null && viewModel.Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin)
             {
                 viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, null);
 
@@ -1105,7 +1146,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private PlanNode? FindTraceOperator(TraceTabViewModel viewModel)
     {
-        if (viewModel.Kind is TraceKind.KeyLookup or TraceKind.MergeJoin)
+        if (viewModel.Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin)
         {
             var outerUnit = viewModel.Visuals[0].AllocationUnit;
 
@@ -1140,7 +1181,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private static (PlanNode Outer, PlanNode Inner)? ResolveJoinSides(TraceKind kind, PlanNode node)
     {
-        if (kind == TraceKind.KeyLookup)
+        if (kind is TraceKind.KeyLookup or TraceKind.RidLookup)
         {
             return CorrelatedJoinResolver.Resolve(node) is { } correlated ? (correlated.Outer, correlated.Inner) : null;
         }
@@ -1301,6 +1342,30 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly Dictionary<string, Color> _objectColoursByName;
 
+    // Generating the object layers walks the whole allocation map, so build them off the UI thread and
+    // apply the results back on it.
+    private async Task LoadObjectLayersAsync(DatabaseSource database)
+    {
+        try
+        {
+            var layers = await Task.Run(() => AllocationLayerBuilder.GenerateLayers(database, true, 20));
+
+            ObjectLayers = layers;
+
+            foreach (var group in layers.Where(l => !string.IsNullOrEmpty(l.Name))
+                                        .GroupBy(l => l.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                _objectColoursByName[group.Key] = group.First().Colour;
+            }
+
+            AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to generate object layers for database: {Name}", database.Name);
+        }
+    }
+
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
                           SettingsService settingsService,
@@ -1332,17 +1397,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
         ];
 
-        ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, 20);
+        ObjectLayers = [];
 
-        _objectColoursByName = ObjectLayers.Where(l => !string.IsNullOrEmpty(l.Name))
-                                           .GroupBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
-                                           .ToDictionary(g => g.Key, g => g.First().Colour, StringComparer.OrdinalIgnoreCase);
+        _objectColoursByName = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase);
 
         ExtentCount = database.GetFilePageCount(1) / 8;
 
-        AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
+        AllocationLayers = [];
 
         PfsChain = Database.Pfs[1];
+
+        _ = LoadObjectLayersAsync(database);
 
         _systemObjectIds =
         [

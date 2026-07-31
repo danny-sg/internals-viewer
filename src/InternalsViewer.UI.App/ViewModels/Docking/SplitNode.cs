@@ -21,20 +21,20 @@ public sealed partial class SplitNode : LayoutNode
     }
 
     [ObservableProperty]
-    private Orientation orientation;
+    private Orientation _orientation;
 
     [ObservableProperty]
-    private LayoutNode first;
+    private LayoutNode _first;
 
     [ObservableProperty]
-    private LayoutNode second;
+    private LayoutNode _second;
 
     /// <summary>Star weight of the first child; paired with <see cref="SecondStar"/> to size the two panes.</summary>
     [ObservableProperty]
-    private double firstStar = 1;
+    private double _firstStar = 1;
 
     [ObservableProperty]
-    private double secondStar = 1;
+    private double _secondStar = 1;
 
     partial void OnFirstChanged(LayoutNode value) => value.Parent = this;
 

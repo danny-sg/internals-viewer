@@ -25,11 +25,10 @@ public sealed class EventColourProvider
     public EventColourProvider(IReadOnlyList<ExecutionPlan> executionPlans,
                                IReadOnlyDictionary<string, Color>? objectColours = null)
     {
-        var ioNodes = executionPlans
-            .SelectMany(g => g.NodesById.Select(n => new PlanNodeIdentifier(g.PlanHandleId, n.Key)))
-            .Distinct()
-            .Select((s, i) => (Id: s, Index: i + 1))
-            .ToList();
+        var ioNodes = executionPlans.SelectMany(g => g.NodesById.Select(n => new PlanNodeIdentifier(g.PlanHandleId, n.Key)))
+                                    .Distinct()
+                                    .Select((s, i) => (Id: s, Index: i + 1))
+                                    .ToList();
 
         _ioOperatorNodes = ioNodes.ToDictionary(
             k => k.Id,

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.QuerySqlTabCommands"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <StackPanel Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Margin="0,0,8,0"
+                Spacing="4">
+        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                      IsChecked="{x:Bind ViewModel.IsSqlResultsVisible, Mode=TwoWay}">
+            <TextBlock Text="Results" VerticalAlignment="Center" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                      IsChecked="{x:Bind ViewModel.IsSqlMessagesVisible, Mode=TwoWay}">
+            <TextBlock Text="Messages" VerticalAlignment="Center" />
+        </ToggleButton>
+    </StackPanel>
+</UserControl>

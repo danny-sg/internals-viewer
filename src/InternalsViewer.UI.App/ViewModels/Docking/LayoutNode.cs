@@ -10,5 +10,5 @@ public abstract partial class LayoutNode : ObservableObject
 {
     /// <summary>The split that contains this node, or <c>null</c> when this node is the tree root.</summary>
     [ObservableProperty]
-    private SplitNode? parent;
+    private SplitNode? _parent;
 }

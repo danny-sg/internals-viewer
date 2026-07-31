@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Controls;
 

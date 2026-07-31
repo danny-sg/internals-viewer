@@ -19,6 +19,7 @@ public sealed partial class TabGroupView : UserControl
 
     private readonly Dictionary<DocumentViewModel, TabViewItem> _items = new();
 
+
     private bool _syncing;
 
     public TabGroupNode? Group { get; private set; }
@@ -29,7 +30,14 @@ public sealed partial class TabGroupView : UserControl
     {
         InitializeComponent();
 
-        Loaded += (_, _) => DockDragState.ActiveChanged += OnDragActiveChanged;
+        Loaded += (_, _) =>
+        {
+            DockDragState.ActiveChanged += OnDragActiveChanged;
+
+            // Deferred to here rather than done in BuildTabs: a dock rebuild constructs the new tree while the old
+            // one is still live, and the commands element cannot be moved out of a group that is still standing.
+            UpdateCommands();
+        };
 
         Unloaded += OnUnloaded;
     }
@@ -86,12 +94,54 @@ public sealed partial class TabGroupView : UserControl
             Tabs.TabItems.Add(item);
         }
 
-        Tabs.SelectedItem = Group.SelectedDocument is { } selected 
+        Tabs.SelectedItem = Group.SelectedDocument is { } selected
                             && _items.TryGetValue(selected, out var selectedItem)
             ? selectedItem
             : Tabs.TabItems.Count > 0 ? Tabs.TabItems[0] : null;
 
         _syncing = false;
+
+        UpdateCommands();
+    }
+
+    /// <summary>
+    /// Shows the selected document's commands in the tab strip, so a pane's own controls travel with it
+    /// rather than each view carrying a toolbar row
+    /// </summary>
+    private void UpdateCommands()
+    {
+        // Until this group is in the tree the element it wants may still belong to the group being replaced, which
+        // is only torn down once the rebuilt tree is in place. The Loaded handler picks it up again.
+        if (!IsLoaded)
+        {
+            return;
+        }
+
+        // Defer: the tab change that got us here is usually one step of a larger mutation - a dock rebuild, a group
+        // collapsing, a document closing - and the element cannot leave the strip it is in until that has finished.
+        DispatcherQueue.TryEnqueue(HostSelectedCommands);
+    }
+
+    private void HostSelectedCommands()
+    {
+        if (!IsLoaded)
+        {
+            return;
+        }
+
+        if ((Tabs.SelectedItem as TabViewItem)?.Tag is not DocumentViewModel document)
+        {
+            Tabs.TabStripFooter = null;
+            return;
+        }
+
+        // Filled before it is handed over: the strip's footer is a templated content slot, which takes a fresh
+        // element without complaint but will not have children added to what it is already holding.
+        var host = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
+
+        document.HostCommandsIn(host);
+
+        Tabs.TabStripFooter = host;
     }
 
     private static TabViewItem CreateTab(DocumentViewModel document)
@@ -128,6 +178,8 @@ public sealed partial class TabGroupView : UserControl
             _syncing = true;
             Tabs.SelectedItem = item;
             _syncing = false;
+
+            UpdateCommands();
         }
     }
 
@@ -176,6 +228,8 @@ public sealed partial class TabGroupView : UserControl
         if (Tabs.SelectedItem is TabViewItem { Tag: DocumentViewModel document })
         {
             Group.SelectedDocument = document;
+
+            UpdateCommands();
 
             Dock?.NotifySelectionChanged();
         }

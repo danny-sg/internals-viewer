@@ -119,34 +119,6 @@
 
             </CommandBar>
 
-            <CommandBar IsOpen="False"
-                        Padding="0"            
-                        VerticalAlignment="Center"
-                        DefaultLabelPosition="Right"
-                        Grid.Column="0"
-                        HorizontalAlignment="Right"
-                        VerticalContentAlignment="Top"
-                        MinHeight="0"
-                        OverflowButtonVisibility="Collapsed"
-                        Background="Transparent">
-                <!--Results Toggle-->
-                <AppBarElementContainer VerticalContentAlignment="Center">
-                    <ToggleButton IsChecked="{x:Bind IsResultsVisible, Mode=TwoWay}"
-                                  BorderThickness="0"
-                                  Margin="0,0,4,0">
-                        <TextBlock Text="Results" VerticalAlignment="Center" />
-                    </ToggleButton>
-                </AppBarElementContainer>
-
-                <!--Messages Toggle-->
-                <AppBarElementContainer VerticalContentAlignment="Center">
-                    <ToggleButton IsChecked="{x:Bind IsMessagesVisible, Mode=TwoWay}"
-                                  BorderThickness="0"
-                                  Margin="0,0,8,0">
-                        <TextBlock Text="Messages" VerticalAlignment="Center" />
-                    </ToggleButton>
-                </AppBarElementContainer>
-            </CommandBar>
         </Grid>
 
         <Grid Grid.Row="1">

@@ -1,5 +1,6 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.UI.App.Controls.Docking;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.ViewModels.Docking;
@@ -16,7 +17,8 @@ public sealed partial class DocumentViewModel : ObservableObject
                              bool canClose = true,
                              bool keepAlive = false,
                              string? key = null,
-                             bool persist = true)
+                             bool persist = true,
+                             Func<FrameworkElement>? commandsFactory = null)
     {
         Title = title;
         Content = content;
@@ -25,6 +27,7 @@ public sealed partial class DocumentViewModel : ObservableObject
         KeepAlive = keepAlive;
         Key = key ?? title;
         Persist = persist;
+        CommandsFactory = commandsFactory;
     }
 
     /// <summary>Stable identifier used to persist/restore which documents are open and where.</summary>
@@ -47,15 +50,18 @@ public sealed partial class DocumentViewModel : ObservableObject
     public Func<FrameworkElement> ViewFactory { get; }
 
     /// <summary>
+    /// Builds the commands shown in the hosting tab strip while this document is selected, if it has any
+    /// </summary>
+    public Func<FrameworkElement>? CommandsFactory { get; }
+
+    /// <summary>
     /// When true the single view instance is cached and reused across show/hide and re-layout
     /// </summary>
     public bool KeepAlive { get; }
 
-    [ObservableProperty]
-    private string _title;
+    public string Title { get; }
 
-    [ObservableProperty]
-    private bool _canClose;
+    public bool CanClose { get; }
 
     /// <summary>
     /// Returns the element to host as a tab's content, with the view's <c>DataContext</c> set to
@@ -94,6 +100,37 @@ public sealed partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Fills <paramref name="host"/> with this document's tab strip commands
+    /// </summary>
+    /// <remarks>
+    /// A fresh element every time, from <see cref="CommandsFactory"/> or from the view. Moving one element from strip
+    /// to strip is what WinUI rejects, however it is detached first, so nothing is kept to move.
+    /// </remarks>
+    public void HostCommandsIn(Panel host)
+    {
+        host.Children.Clear();
+
+        if (BuildCommands() is { } commands)
+        {
+            host.Children.Add(commands);
+        }
+    }
+
+    private FrameworkElement? BuildCommands()
+    {
+        if (CommandsFactory is { } factory)
+        {
+            var commands = factory();
+
+            commands.DataContext = Content;
+
+            return commands;
+        }
+
+        return (_cachedView as IDocumentCommands)?.CreateCommands();
+    }
+
+    /// <summary>
     /// Disposes and drops the cached view (for keep-alive documents) when the tab is closed
     /// </summary>
     public void DisposeView()
@@ -122,4 +159,22 @@ public sealed partial class DocumentViewModel : ObservableObject
                                                   string? key = null)
         where TView : FrameworkElement, new()
         => new(title, content, static () => new TView(), canClose, keepAlive, key);
+
+    /// <summary>
+    /// Convenience factory for a document that contributes <typeparamref name="TCommands"/> to its tab strip
+    /// </summary>
+    public static DocumentViewModel Create<TView, TCommands>(string title,
+                                                             object content,
+                                                             bool canClose = true,
+                                                             bool keepAlive = false,
+                                                             string? key = null)
+        where TView : FrameworkElement, new()
+        where TCommands : FrameworkElement, new()
+        => new(title,
+               content,
+               static () => new TView(),
+               canClose,
+               keepAlive,
+               key,
+               commandsFactory: static () => new TCommands());
 }

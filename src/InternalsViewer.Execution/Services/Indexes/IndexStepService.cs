@@ -1,9 +1,10 @@
-﻿using InternalsViewer.Execution.AccessPaths;
-using InternalsViewer.Execution.AccessPaths.Predicates;
+﻿using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Executors;
 using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces.Pages;
+using InternalsViewer.Execution.Pages;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -262,13 +263,13 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
         };
 
         CurrentPageSteps = IndexSeekExecutor.Execute(CurrentPage, 
-                                                    Bounds, 
-                                                    Direction, 
-                                                    Residual, 
-                                                    RowGoal, 
-                                                    isContinuation, 
-                                                    counters: Counters,
-                                                    evaluationContext: EvaluationContext)
+                                                     Bounds, 
+                                                     Direction, 
+                                                     Residual, 
+                                                     RowGoal, 
+                                                     isContinuation, 
+                                                     counters: Counters,
+                                                     evaluationContext: EvaluationContext)
                                             .GetEnumerator();
     }
 

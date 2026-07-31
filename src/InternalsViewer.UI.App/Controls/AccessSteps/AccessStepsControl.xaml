@@ -9,26 +9,29 @@
     xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
     xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
+    xmlns:trace="using:InternalsViewer.UI.App.Helpers.Converters.Trace"
     x:Name="Root"
     mc:Ignorable="d">
 
     <UserControl.Resources>
         <ResourceDictionary>
-            <converters:AccessStepToPredicateTextConverter x:Key="AccessStepToPredicateTextConverter" />
-            <converters:ProbeDirectionToTextConverter x:Key="ProbeDirectionToTextConverter" />
-            <converters:SeekRuleToTextConverter x:Key="SeekRuleToTextConverter" />
+            <trace:AccessStepToPredicateTextConverter x:Key="AccessStepToPredicateTextConverter" />
+            <trace:ProbeDirectionToTextConverter x:Key="ProbeDirectionToTextConverter" />
+            <trace:SeekRuleToTextConverter x:Key="SeekRuleToTextConverter" />
             <converters:EnumToTextConverter x:Key="EnumToTextConverter" />
-            <converters:ProbeStartToTextConverter x:Key="ProbeStartToTextConverter" />
-            <converters:RangeEndToTextConverter x:Key="RangeEndToTextConverter" />
-            <converters:ReadPageToTextConverter x:Key="ReadPageToTextConverter" />
-            <converters:RowOutcomeToTextConverter x:Key="RowOutcomeToTextConverter" />
-            <converters:RowEmitToVisibilityConverter x:Key="RowEmitToVisibilityConverter" />
-            <converters:RowEmitTextConverter x:Key="RowEmitTextConverter" />
-            <converters:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
+            <trace:ProbeStartToTextConverter x:Key="ProbeStartToTextConverter" />
+            <trace:RangeEndToTextConverter x:Key="RangeEndToTextConverter" />
+            <trace:ReadPageToTextConverter x:Key="ReadPageToTextConverter" />
+            <trace:RowOutcomeToTextConverter x:Key="RowOutcomeToTextConverter" />
+            <trace:RowEmitToVisibilityConverter x:Key="RowEmitToVisibilityConverter" />
+            <trace:RowEmitTextConverter x:Key="RowEmitTextConverter" />
+            <trace:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
             <converters:PfsAllocatedToTextConverter x:Key="PfsAllocatedToTextConverter" />
             <converters:PfsAllocatedToBrushConverter x:Key="PfsAllocatedToBrushConverter" />
             <converters:BoolToVisibilityConverter x:Key="StepsBoolToVisibilityConverter" />
             <converters:BoolToVisibilityConverter x:Key="StepsInverseBoolToVisibilityConverter" IsInverse="True" />
+            <trace:MergeCompareRunToTextConverter x:Key="MergeCompareRunToTextConverter" />
+            <converters:NullToVisibilityConverter x:Key="StepsNullToInverseVisibilityConverter" IsInverse="True" />
 
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
@@ -37,7 +40,6 @@
                 <Setter Property="VerticalAlignment" Value="Top" />
                 <Setter Property="Margin" Value="0,0,8,0" />
                 <Setter Property="Width" Value="80" />
-
             </Style>
 
             <Style x:Key="StepValueStyle" TargetType="TextBlock">
@@ -345,8 +347,13 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Outer Row" Style="{StaticResource StepPropertyStyle}" />
                                 <TextBlock Text="{Binding RebindNumber}" Style="{StaticResource StepValueStyle}" />
+                                <TextBlock Text="RID" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0"
+                                           Visibility="{Binding RowIdentifier, Converter={StaticResource NullToVisibilityConverter}}" />
+                                <TextBlock Text="{Binding RowIdentifier}" Style="{StaticResource StepValueStyle}"
+                                           Visibility="{Binding RowIdentifier, Converter={StaticResource NullToVisibilityConverter}}" />
                             </StackPanel>
                             <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                                                         Visibility="{Binding RowIdentifier, Converter={StaticResource StepsNullToInverseVisibilityConverter}}"
                                                          Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                         </StackPanel>
                     </StackPanel>
@@ -373,18 +380,87 @@
                                 <TextBlock Text="Inner" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                                 <TextBlock Text="{Binding InnerKey}" Style="{StaticResource StepValueStyle}" />
                             </StackPanel>
-                            <TextBlock Text="{Binding Action}" Style="{StaticResource StepPropertyStyle}" TextWrapping="Wrap" />
+                            <accessSteps:JoinDecisionBadge Decision="{Binding Decision}" Margin="0,2,0,0" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                <TextBlock Text="{Binding Action}"
+                                           Style="{StaticResource StepValueStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock x:Name="CompareArrow"
+                                           Text="→"
+                                           Visibility="Collapsed"
+                                           FontSize="11"
+                                           Opacity="0.6"
+                                           Margin="2,0,6,0"
+                                           VerticalAlignment="Center" />
+                                <Border x:Name="CompareBadge"
+                                        Visibility="Collapsed"
+                                        CornerRadius="4"
+                                        Padding="6,0,6,1"
+                                        VerticalAlignment="Center">
+                                    <TextBlock x:Name="CompareBadgeText" Foreground="White" FontSize="11" />
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
             </DataTemplate>
 
-            <DataTemplate x:Key="JoinEmitTemplate" >
+            <DataTemplate x:Key="MergeCompareRunTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" />
-                        <TextBlock Text="Pair" Style="{StaticResource StepPropertyStyle}" />
-                        <TextBlock Text="{Binding PairNumber}" Style="{StaticResource StepValueStyle}" Width="40" />
+                        <TextBlock Text="Compare" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="{Binding Converter={StaticResource MergeCompareRunToTextConverter}}"
+                                       Style="{StaticResource StepValueStyle}"
+                                       TextWrapping="Wrap" />
+
+                            <accessSteps:JoinDecisionBadge Decision="{Binding Decision}" Margin="0,2,0,0" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                <TextBlock Text="{Binding Action}"
+                                           Style="{StaticResource StepValueStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock x:Name="CompareArrow"
+                                           Text="→"
+                                           Visibility="Collapsed"
+                                           FontSize="11"
+                                           Opacity="0.6"
+                                           Margin="2,0,6,0"
+                                           VerticalAlignment="Center" />
+                                <Border x:Name="CompareBadge"
+                                        Visibility="Collapsed"
+                                        CornerRadius="4"
+                                        Padding="6,0,6,1"
+                                        VerticalAlignment="Center">
+                                    <TextBlock x:Name="CompareBadgeText" Foreground="White" FontSize="11" />
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="JoinVerdictTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <accessSteps:JoinDecisionBadge Decision="{Binding Decision}" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="JoinEmitTemplate" >
+                <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
+                        <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <TextBlock Text="Result:" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="✓"
+                                   Foreground="#0F7B0F"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
                         <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
                                 CornerRadius="4"
                                 Padding="6,0,6,1"
@@ -397,6 +473,17 @@
                                    Style="{StaticResource StepPropertyStyle}"
                                    Margin="8,0,0,0"
                                    Visibility="{Binding IsFromBuffer, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ForwardedRecordTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Forwarded" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <TextBlock Text="{Binding From}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="holds a stub pointing to" Style="{StaticResource StepPropertyStyle}" Margin="4,0,4,0" />
+                        <TextBlock Text="{Binding To}" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -523,7 +610,10 @@
                 ReseekTemplate="{StaticResource ReseekTemplate}"
                 RebindTemplate="{StaticResource RebindTemplate}"
                 JoinStartTemplate="{StaticResource JoinStartTemplate}"
+                JoinVerdictTemplate="{StaticResource JoinVerdictTemplate}"
+                ForwardedRecordTemplate="{StaticResource ForwardedRecordTemplate}"
                 MergeCompareTemplate="{StaticResource MergeCompareTemplate}"
+                MergeCompareRunTemplate="{StaticResource MergeCompareRunTemplate}"
                 JoinEmitTemplate="{StaticResource JoinEmitTemplate}"
                 StoppedTemplate="{StaticResource StoppedTemplate}"
                 TruncatedTemplate="{StaticResource TruncatedTemplate}"

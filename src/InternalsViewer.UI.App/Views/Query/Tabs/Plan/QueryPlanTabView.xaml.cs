@@ -14,19 +14,6 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private QueryViewModel? _subscribed;
 
-    private bool _hasFlameGraph = true;
-
-    public bool HasFlameGraph
-    {
-        get => _hasFlameGraph;
-        set
-        {
-            _hasFlameGraph = value;
-
-            ApplyToPlans(p => p.HasFlameGraph = value);
-        }
-    }
-
     public bool IsPropertiesPaneVisible
     {
         get => ViewModel?.IsPlanPropertiesVisible == true;
@@ -79,7 +66,7 @@ public sealed partial class QueryPlanTabView : UserControl
             p.ActiveNodes = ViewModel?.ActivePlanNodes;
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
             p.Events = ViewModel?.Events;
-            p.HasFlameGraph = HasFlameGraph;
+            p.HasFlameGraph = ViewModel?.IsFlameGraphVisible == true;
         });
     }
 
@@ -121,6 +108,9 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.IsPlanPropertiesVisible):
                 Bindings.Update();
                 break;
+            case nameof(QueryViewModel.IsFlameGraphVisible):
+                ApplyToPlans(p => p.HasFlameGraph = _subscribed.IsFlameGraphVisible);
+                break;
             case nameof(QueryViewModel.SelectedPlanNode):
                 ApplyToPlans(p => p.SelectedNode = _subscribed.SelectedPlanNode);
                 break;
@@ -144,7 +134,7 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.ActiveNodes = viewModel.ActivePlanNodes;
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
             planControl.Events = viewModel.Events;
-            planControl.HasFlameGraph = HasFlameGraph;
+            planControl.HasFlameGraph = viewModel.IsFlameGraphVisible;
 
             // ItemsRepeater recycles elements, so guard against subscribing the same control twice.
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;

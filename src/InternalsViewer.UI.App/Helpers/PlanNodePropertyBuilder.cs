@@ -66,7 +66,7 @@ public static class PlanNodePropertyBuilder
 
                 storageGroup.Children.Add(new PlanNodeProperty("Direction", scanInfo.IsForward == false ? "Backward" : "Forward"));
 
-                if (scanMode is { } mode)
+                if (scanMode is { } mode && OperatorClassifier.IsRead(node))
                 {
                     var modeText = mode.Mode switch
                     {

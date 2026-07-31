@@ -1,4 +1,5 @@
 
+using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers;
 using InternalsViewer.Query.Plans;

@@ -133,8 +133,6 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
-    // Cell-group outlines drawn over the map (a Tetris-piece perimeter per group). The caller supplies the cell ranges
-    // and colour; the control draws the borders (see DrawBorders). Locks are the first use — see AllocationBorder.
     public IReadOnlyList<AllocationBorder>? Borders
     {
         get => (IReadOnlyList<AllocationBorder>?)GetValue(BordersProperty);
@@ -147,8 +145,6 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnBordersChanged));
 
-    // Paint order (earliest hold first, so a later lock draws over one already held) resolved once here rather than per
-    // paint — neither the order nor a border's start changes between frames, but DrawBorders runs on every playhead tick.
     private static void OnBordersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (AllocationControl)d;
@@ -1303,29 +1299,6 @@ public sealed partial class AllocationControl : IDisposable
         AllocationCanvas.PointerEntered -= AllocationCanvas_PointerEntered;
         AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
     }
-}
-
-public sealed class PageAddressEventArgs(short fileId, int pageId, ushort? slot) : EventArgs
-{
-    public PageAddressEventArgs(short fileId, int pageId)
-        : this(fileId, pageId, null)
-    {
-    }
-
-    public PageAddressEventArgs(PageAddress pageAddress)
-        : this(pageAddress.FileId, pageAddress.PageId, null)
-    {
-    }
-
-    public short FileId { get; } = fileId;
-
-    public int PageId { get; } = pageId;
-
-    public ushort? Slot { get; init; } = slot;
-
-    public string Tag { get; set; } = string.Empty;
-
-    public PageAddress PageAddress => new(FileId, PageId);
 }
 
 public sealed class ExtentLayout

@@ -21,8 +21,6 @@
             <Setter Property="Padding" Value="8,0,0,0" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
-            <!-- Stretch so annotation rows fill the tree width and their right-aligned Offset/Length columns land
-                 on the right edge. Record rows use a left-aligned DataRow so they are unaffected. -->
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Enabled" />
@@ -123,17 +121,6 @@
             </Setter>
         </Style>
 
-        <Style x:Key="HexStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="FontFamily" Value="Consolas"/>
-        </Style>
-
-
-
-        <Style TargetType="controls:HeaderedTreeView">
-            <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
-        </Style>
-
         <DataTemplate x:Key="RecordTemplate" x:DataType="muxc:TreeViewNode">
             <controls:DataRow HorizontalAlignment="Left">
                 <Viewbox Width="16"
@@ -152,19 +139,19 @@
                               Unchecked="RecordCheckBox_Unchecked"/>
                 </Viewbox>
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Lsn}"
-                           Style="{StaticResource HexStyle}"
+                           Style="{StaticResource HexTextBlockStyle}"
                            VerticalAlignment="Center"
                            TextTrimming="WordEllipsis" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Operation}"
-                           Style="{StaticResource ListTextBlock}"
+                           Style="{StaticResource ListTextBlockStyle}"
                            TextTrimming="WordEllipsis" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Context}"
-                           Style="{StaticResource ListTextBlock}"
+                           Style="{StaticResource ListTextBlockStyle}"
                            TextTrimming="WordEllipsis" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).SlotId}"
-                           Style="{StaticResource ListTextBlock}" />
+                           Style="{StaticResource ListTextBlockStyle}" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Description}"
-                           Style="{StaticResource ListTextBlock}"
+                           Style="{StaticResource ListTextBlockStyle}"
                            TextTrimming="WordEllipsis" />
             </controls:DataRow>
         </DataTemplate>
@@ -186,17 +173,16 @@
                         Background="{x:Bind ((models:LogRecordAnnotation)Content).CategoryColour,
                                             Converter={StaticResource HexColorToBrushConverter}}">
                     <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Category}"
-                               FontSize="10"
-                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                               Style="{StaticResource TagTextBlockStyle}"/>
                 </Border>
                 <TextBlock Grid.Column="2"
                            Text="{x:Bind ((models:LogRecordAnnotation)Content).Offset}"
-                           Style="{StaticResource HexStyle}"
+                           Style="{StaticResource HexTextBlockStyle}"
                            HorizontalAlignment="Right"
                            VerticalAlignment="Center" />
                 <TextBlock Grid.Column="3"
                            Text="{x:Bind ((models:LogRecordAnnotation)Content).Length}"
-                           Style="{StaticResource HexStyle}"
+                           Style="{StaticResource HexTextBlockStyle}"
                            HorizontalAlignment="Right"
                            VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1"
@@ -206,7 +192,7 @@
                             VerticalAlignment="Center">
                     <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
                                              Converter={StaticResource MarkStyleConverter}, ConverterParameter=Name}"
-                               Style="{StaticResource ListTextBlock}"
+                               Style="{StaticResource ListTextBlockStyle}"
                                Visibility="{x:Bind ((models:LogRecordAnnotation)Content).FieldVisibility}"/>
                     <Border CornerRadius="2"
                             Padding="4,1"
@@ -215,13 +201,12 @@
                             Background="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
                                                 Converter={StaticResource MarkStyleConverter}, ConverterParameter=Back}">
                         <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Value}"
-                                   FontFamily="Consolas"
-                                   FontSize="12"
+                                   Style="{StaticResource HexTextBlockStyle}"
                                    Foreground="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
                                                        Converter={StaticResource MarkStyleConverter}, ConverterParameter=Fore}"/>
                     </Border>
                     <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Description}"
-                               Style="{StaticResource ListTextBlock}"
+                               Style="{StaticResource ListTextBlockStyle}"
                                VerticalAlignment="Center"
                                TextTrimming="WordEllipsis"
                                Visibility="{x:Bind ((models:LogRecordAnnotation)Content).DescriptionVisibility}"/>

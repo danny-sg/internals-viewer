@@ -10,7 +10,14 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
+using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.Data;
+using InternalsViewer.Internals.Engine.Records.Index;
+using InternalsViewer.Internals.Interfaces.Engine;
+using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Services.Indexes;
+using InternalsViewer.UI.App.Models.Index;
 using System.Drawing;
 using AllocationBorder = InternalsViewer.UI.App.Models.AllocationBorder;
 using AllocationBorderScope = InternalsViewer.UI.App.Models.AllocationBorderScope;
@@ -38,6 +45,13 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     public string Title { get; } = title;
 
     public int Source { get; } = source;
+
+    public bool IsSideStackVisible { get; init; }
+
+    /// <summary>
+    /// Outlines the object as soon as the map loads, for a path that never reads the IAM chain
+    /// </summary>
+    public bool ShowObjectBorderImmediately { get; init; }
 
     public DatabaseSource Database { get; } = database;
 
@@ -87,6 +101,9 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
     [ObservableProperty]
     private bool _isDimmed;
+
+    [ObservableProperty]
+    private ObservableCollection<IndexRecordModel> _sideRecords = [];
 
     private Color? _objectColour;
 
@@ -152,6 +169,13 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
                                        .ToList();
 
             _objectBorder = new AllocationBorder(AllocationBorderScope.Page, VisualFileId, Color.DimGray, ranges);
+
+            if (ShowObjectBorderImmediately)
+            {
+                _objectBorderVisible = true;
+
+                TraceBorders = [_objectBorder];
+            }
 
             IsVisualInitialized = true;
 
@@ -335,7 +359,40 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
         SelectedRowSlotCount = 0;
         TraceBorders = [];
         IsDimmed = false;
+        SideRecords = [];
     }
+
+    internal static IndexRecordModel ToRecordModel(IRecord record)
+    {
+        var rowIdentifier = GetRowIdentifier(record);
+
+        return new IndexRecordModel
+        {
+            Slot = record.Slot,
+            RowIdentifier = rowIdentifier,
+            Fields =
+            [
+                .. record.Fields.Select(f => new IndexRecordFieldModel
+                {
+                    Name = f.Name,
+                    Value = ValueOf(f, rowIdentifier),
+                    DataType = f.ColumnStructure.DataType
+                })
+            ]
+        };
+    }
+
+    /// <summary>
+    /// The text a field shows, taking the row identifier from the record for the hidden column that holds it
+    /// </summary>
+    /// <remarks>
+    /// A nonclustered index of a heap stores the row identifier in a hidden column, which the record loader reads onto the record itself
+    /// and leaves as an empty field, so the value has to be put back for display.
+    /// </remarks>
+    private static string ValueOf(RecordField field, RowIdentifier? rowIdentifier)
+        => field.ColumnStructure is IndexColumnStructure { IsRowIdentifier: true }
+            ? rowIdentifier?.ToString() ?? field.Value
+            : field.Value;
 
     private void LightenVisitedPages(List<PageSpan> spans)
     {
@@ -354,6 +411,23 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
                               colour.G + (255 - colour.G) * 3 / 4,
                               colour.B + (255 - colour.B) * 3 / 4);
     }
+
+    /// <summary>
+    /// The row identifier a record carries, which only the record formats that hold one expose
+    /// </summary>
+    /// <remarks>
+    /// A nonclustered index of a heap stores the row identifier of the row it points at, and a heap row knows its own. Neither is on
+    /// <see cref="IRecord"/>, so the format has to be asked.
+    /// </remarks>
+    internal static RowIdentifier? GetRowIdentifier(IRecord record)
+        => record switch
+        {
+            FixedVarIndexRecord index => index.Rid,
+            CdIndexRecord cdIndex => cdIndex.Rid,
+            DataRecord data => data.RowIdentifier,
+            CdRecord cd => cd.RowIdentifier,
+            _ => null
+        };
 
     private static int? GetStepSlot(AccessStep step)
     {

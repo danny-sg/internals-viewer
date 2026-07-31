@@ -1,7 +1,7 @@
+using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
 using System.Data;
 using System.Text.RegularExpressions;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Interfaces;
 
 namespace InternalsViewer.Execution.AccessPaths.Predicates;
 

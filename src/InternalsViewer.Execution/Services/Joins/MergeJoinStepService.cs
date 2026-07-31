@@ -1,13 +1,14 @@
 using InternalsViewer.Execution.AccessPaths.Binding;
+using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Execution.Services.Indexes;
+using InternalsViewer.Execution.Services.Joins.Inputs;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
-using InternalsViewer.Execution.Interfaces;
-using InternalsViewer.Execution.Services.Indexes;
 
 namespace InternalsViewer.Execution.Services.Joins;
 
@@ -19,34 +20,16 @@ namespace InternalsViewer.Execution.Services.Joins;
 /// Duplicate join keys are handled by buffering the inner group in memory, standing in for the worktable a many-to-many merge join uses,
 /// so replayed pairs are emitted without re-reading pages.
 /// </remarks>
-public sealed class MergeJoinStepService(IndexStepService outerService, IndexStepService innerService) : IJoinStepService
+public sealed class MergeJoinStepService(IndexStepService outerService, IndexStepService innerService) : JoinStepService
 {
-    public const int OuterSource = 0;
+    public override PageAddress? CurrentPageAddress
+        => Current?.Source == InnerSource ? Inner.Service.CurrentPageAddress : Outer.Service.CurrentPageAddress;
 
-    public const int InnerSource = 1;
+    private SideCursor? OuterCursor { get; set; }
 
-    public const int JoinSource = -1;
+    private SideCursor? InnerCursor { get; set; }
 
-    public IReadOnlyList<AccessStep> History => TakenSteps;
-
-    public AccessStep? Current => TakenSteps.Count == 0 ? null : TakenSteps[^1];
-
-    public bool IsComplete { get; private set; }
-
-    public PageAddress? CurrentPageAddress
-        => Current?.Source == InnerSource ? InnerService.CurrentPageAddress : OuterService.CurrentPageAddress;
-
-    public AccessStrategy? Strategy => OuterService.Strategy;
-
-    public AccessStrategy? OuterStrategy => OuterService.Strategy;
-
-    public AccessStrategy? InnerStrategy => InnerService.Strategy;
-
-    public int PairCount { get; private set; }
-
-    private IndexStepService OuterService { get; } = outerService;
-
-    private IndexStepService InnerService { get; } = innerService;
+    private List<IRecord> Group { get; } = [];
 
     private IReadOnlyList<string> OuterColumns { get; set; } = [];
 
@@ -64,14 +47,22 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
     private IAsyncEnumerator<AccessStep>? Steps { get; set; }
 
-    private List<AccessStep> TakenSteps { get; } = [];
-
     public async Task StartAsync(DatabaseSource database,
-                                 MergeJoinSideInput outerInput,
-                                 MergeJoinSideInput innerInput,
+                                 MergeSideDefinition outerInput,
+                                 MergeSideDefinition innerInput,
                                  CancellationToken cancellationToken,
-                                 EvaluationContext? evaluationContext = null)
+                                 EvaluationContext? evaluationContext = null,
+                                 JoinType joinType = JoinType.Inner)
     {
+        var outer = new IndexRangeJoinInput(outerService, outerInput);
+
+        var inner = new IndexRangeJoinInput(innerService, innerInput);
+
+        Outer = outer;
+        Inner = inner;
+
+        ResetJoin(joinType);
+
         OuterColumns = outerInput.JoinColumns;
         InnerColumns = innerInput.JoinColumns;
         CompareWidth = Math.Min(OuterColumns.Count, InnerColumns.Count);
@@ -79,40 +70,25 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
         OuterCounters = default;
         InnerCounters = default;
-        PairCount = 0;
-        IsComplete = false;
 
-        TakenSteps.Clear();
+        OuterCursor = null;
+        InnerCursor = null;
+
+        Group.Clear();
 
         if (Steps is not null)
         {
             await Steps.DisposeAsync();
         }
 
-        await OuterService.StartAsync(database,
-                                      outerInput.AllocationUnitId,
-                                      outerInput.RootPage,
-                                      outerInput.Ranges,
-                                      outerInput.Residual,
-                                      outerInput.Direction,
-                                      cancellationToken,
-                                      hasUntranslatedResidual: outerInput.HasUntranslatedResidual,
-                                      evaluationContext: evaluationContext);
+        await outer.StartAsync(database, cancellationToken, evaluationContext);
 
-        await InnerService.StartAsync(database,
-                                      innerInput.AllocationUnitId,
-                                      innerInput.RootPage,
-                                      innerInput.Ranges,
-                                      innerInput.Residual,
-                                      innerInput.Direction,
-                                      cancellationToken,
-                                      hasUntranslatedResidual: innerInput.HasUntranslatedResidual,
-                                      evaluationContext: evaluationContext);
+        await inner.StartAsync(database, cancellationToken, evaluationContext);
 
         Steps = Run().GetAsyncEnumerator(CancellationToken.None);
     }
 
-    public async Task<AccessStep?> StepNextAsync(CancellationToken cancellationToken)
+    public override async Task<AccessStep?> StepNextAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Steps is null)
         {
@@ -142,20 +118,18 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
     private async IAsyncEnumerable<AccessStep> Run()
     {
-        var outer = new SideCursor(OuterService, OuterSource, this);
+        var outer = OuterCursor = new SideCursor(Outer, OuterSource, this);
 
-        var inner = new SideCursor(InnerService, InnerSource, this);
+        var inner = InnerCursor = new SideCursor(Inner, InnerSource, this);
 
-        var keys = string.Join(", ", OuterColumns.Zip(InnerColumns, (o, i) => $"{o} = {i}"));
-
-        yield return Stamp(new AccessStep.JoinStart($"Merge join on {keys}. Reading the first outer row"), JoinSource);
+        yield return Stamp(new AccessStep.JoinStart($"Reading Outer"), JoinSource);
 
         await foreach (var step in outer.AdvanceAsync().WithCancellation(CurrentToken))
         {
             yield return step;
         }
 
-        yield return Stamp(new AccessStep.JoinStart("Reading the first inner row"), JoinSource);
+        yield return Stamp(new AccessStep.JoinStart("Reading Inner"), JoinSource);
 
         await foreach (var step in inner.AdvanceAsync().WithCancellation(CurrentToken))
         {
@@ -168,13 +142,25 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
             var innerKey = GetKey(innerRecord, InnerColumns);
 
-            var comparison = outerKey.ComparePrefix(innerKey, CompareWidth) * ComparisonSign;
+            // A null key never equals anything, so the row is unmatched whatever the other side holds
+            var comparison = HasNull(outerKey) ? -1
+                             : HasNull(innerKey) ? 1
+                             : outerKey.ComparePrefix(innerKey, CompareWidth) * ComparisonSign;
 
             if (comparison < 0)
             {
-                yield return Stamp(Compare(outerKey, innerKey, comparison, "Outer key is behind: advance outer"), JoinSource);
+                var action = "Outer < Inner";
 
-                await foreach (var step in outer.AdvanceAsync())
+                Outer.MarkState(outerRecord, JoinRowState.Finished);
+
+                yield return Stamp(Compare(outerKey, innerKey, comparison, action), JoinSource);
+
+                if (JoinType.PreservesOuter())
+                {
+                    yield return Stamp(Unmatched(outerRecord, null), JoinSource);
+                }
+
+                await foreach (var step in outer.AdvanceAsync().WithCancellation(CurrentToken))
                 {
                     yield return step;
                 }
@@ -184,7 +170,16 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
             if (comparison > 0)
             {
-                yield return Stamp(Compare(outerKey, innerKey, comparison, "Inner key is behind: advance inner"), JoinSource);
+                var action = "Inner < Outer";
+
+                Inner.MarkState(innerRecord, JoinRowState.Finished);
+
+                yield return Stamp(Compare(outerKey, innerKey, comparison, action), JoinSource);
+
+                if (JoinType.PreservesInner())
+                {
+                    yield return Stamp(Unmatched(null, innerRecord), JoinSource);
+                }
 
                 await foreach (var step in inner.AdvanceAsync().WithCancellation(CurrentToken))
                 {
@@ -194,9 +189,14 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
                 continue;
             }
 
-            yield return Stamp(Compare(outerKey, innerKey, comparison, "Keys match: collect the inner group"), JoinSource);
+            Outer.MarkMatched(outerRecord);
+            Inner.MarkMatched(innerRecord);
 
-            var group = new List<IRecord>();
+            yield return Stamp(Compare(outerKey, innerKey, comparison, "Outer = Inner"), JoinSource);
+
+            var group = Group;
+
+            group.Clear();
 
             var groupKey = innerKey;
 
@@ -204,9 +204,22 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
             {
                 group.Add(groupRecord);
 
+                Inner.MarkMatched(groupRecord);
+
+                // The advance that ends the group has read a row for the next comparison, which is held back until it can be marked as such
+                var steps = new List<AccessStep>();
+
                 await foreach (var step in inner.AdvanceAsync().WithCancellation(CurrentToken))
                 {
-                    yield return step;
+                    steps.Add(step);
+                }
+
+                var isReadAhead = inner.CurrentRecord is not { } next
+                                  || GetKey(next, InnerColumns).ComparePrefix(groupKey, CompareWidth) != 0;
+
+                foreach (var step in steps)
+                {
+                    yield return isReadAhead && step is AccessStep.Row row ? row with { IsReadAhead = true } : step;
                 }
             }
 
@@ -214,21 +227,77 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
             while (outer.CurrentRecord is { } matchRecord && GetKey(matchRecord, OuterColumns).ComparePrefix(groupKey, CompareWidth) == 0)
             {
-                foreach (var groupRecord in group)
+                Outer.MarkMatched(matchRecord);
+
+                if (JoinType.EmitsPairs())
+                {
+                    foreach (var groupRecord in group)
+                    {
+                        PairCount++;
+
+                        yield return Stamp(new AccessStep.JoinEmit(PairCount)
+                                           {
+                                               OuterRecord = matchRecord,
+                                               InnerRecord = groupRecord,
+                                               IsFromBuffer = !isFirstOuter
+                                           },
+                                           JoinSource);
+                    }
+                }
+                else if (JoinType.EmitsOuterOnMatch())
                 {
                     PairCount++;
 
-                    yield return Stamp(new AccessStep.JoinEmit(PairCount)
+                    yield return Stamp(new AccessStep.JoinEmit(PairCount) { OuterRecord = matchRecord }, JoinSource);
+                }
+                else if (JoinType.EmitsInnerOnMatch() && isFirstOuter)
+                {
+                    foreach (var groupRecord in group)
                     {
-                        OuterRecord = matchRecord,
-                        InnerRecord = groupRecord,
-                        IsFromBuffer = !isFirstOuter
-                    }, JoinSource);
+                        PairCount++;
+
+                        yield return Stamp(new AccessStep.JoinEmit(PairCount) { InnerRecord = groupRecord }, JoinSource);
+                    }
                 }
 
                 isFirstOuter = false;
 
-                await foreach (var step in outer.AdvanceAsync())
+                await foreach (var step in outer.AdvanceAsync().WithCancellation(CurrentToken))
+                {
+                    yield return step;
+                }
+            }
+
+            group.Clear();
+
+            ResetBuffers();
+        }
+
+        // An outer join has to read out the side it preserves, which is why its inputs are not left part read like an inner join's
+        if (JoinType.PreservesOuter())
+        {
+            while (outer.CurrentRecord is { } remaining)
+            {
+                Outer.MarkState(remaining, JoinRowState.Finished);
+
+                yield return Stamp(Unmatched(remaining, null), JoinSource);
+
+                await foreach (var step in outer.AdvanceAsync().WithCancellation(CurrentToken))
+                {
+                    yield return step;
+                }
+            }
+        }
+
+        if (JoinType.PreservesInner())
+        {
+            while (inner.CurrentRecord is { } remaining)
+            {
+                Inner.MarkState(remaining, JoinRowState.Finished);
+
+                yield return Stamp(Unmatched(null, remaining), JoinSource);
+
+                await foreach (var step in inner.AdvanceAsync().WithCancellation(CurrentToken))
                 {
                     yield return step;
                 }
@@ -242,13 +311,60 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
         yield return Stamp(new AccessStep.Stopped(reason), JoinSource);
     }
 
-    private static AccessStep.MergeCompare Compare(AccessKey outerKey, AccessKey innerKey, int comparison, string action)
+    private AccessStep.JoinEmit Unmatched(IRecord? outerRecord, IRecord? innerRecord)
+    {
+        PairCount++;
+
+        return new AccessStep.JoinEmit(PairCount)
+        {
+            OuterRecord = outerRecord,
+            InnerRecord = innerRecord,
+            IsUnmatched = true
+        };
+    }
+
+    private static bool HasNull(AccessKey key)
+    {
+        for (var index = 0; index < key.Count; index++)
+        {
+            if (key[index].IsNull)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Drops the rows a completed pairing consumed, keeping the row each side has already read past it
+    /// </summary>
+    private void ResetBuffers()
+    {
+        Outer.Clear();
+        Inner.Clear();
+
+        if (OuterCursor?.CurrentRecord is { } outerRecord)
+        {
+            Outer.Hold(outerRecord, JoinRowState.Pending);
+        }
+
+        if (InnerCursor?.CurrentRecord is { } innerRecord)
+        {
+            Inner.Hold(innerRecord, JoinRowState.Pending);
+        }
+    }
+
+    private AccessStep.MergeCompare Compare(AccessKey outerKey, AccessKey innerKey, int comparison, string action)
     {
         return new AccessStep.MergeCompare(comparison)
         {
             OuterKey = outerKey,
             InnerKey = innerKey,
-            Action = action
+            Action = action,
+
+            // A comparison that advances one side has proven that side's row has no partner, so it is a verdict on that row
+            Decision = JoinType.Decide(comparison <= 0, comparison >= 0)
         };
     }
 
@@ -287,7 +403,7 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
         return step with { Source = source, Counters = OuterCounters.Add(InnerCounters) };
     }
 
-    private sealed class SideCursor(IndexStepService service, int source, MergeJoinStepService owner)
+    private sealed class SideCursor(JoinInput input, int source, MergeJoinStepService owner)
     {
         public IRecord? CurrentRecord { get; private set; }
 
@@ -299,7 +415,7 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
             while (true)
             {
-                var step = await service.StepNextAsync(owner.CurrentToken);
+                var step = await input.Service.StepNextAsync(owner.CurrentToken);
 
                 if (step is null)
                 {
@@ -316,6 +432,8 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
                 if (step is AccessStep.Row { EmittedRecord: { } record })
                 {
                     CurrentRecord = record;
+
+                    input.Collect(record);
 
                     yield return owner.Stamp(step, source);
 

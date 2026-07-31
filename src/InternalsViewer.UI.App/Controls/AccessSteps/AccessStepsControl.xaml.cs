@@ -77,7 +77,9 @@ public sealed partial class AccessStepsControl : UserControl
             _ => null
         };
 
-        UpdateEmitBadge(grid, brush as SolidColorBrush, source);
+        UpdateEmitBadge(grid, brush as SolidColorBrush, source, step is AccessStep.Row { IsReadAhead: true });
+
+        UpdateCompareBadge(grid, step);
 
         if (grid.FindName("ProbeExpandToggle") is ToggleButton toggle)
         {
@@ -97,7 +99,54 @@ public sealed partial class AccessStepsControl : UserControl
         grid.BorderThickness = new Thickness(2, 0, 0, 0);
     }
 
-    private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, int source)
+    /// <summary>
+    /// Tags a merge comparison with the side it advances, in that side's colour
+    /// </summary>
+    private void UpdateCompareBadge(Grid grid, AccessStep step)
+    {
+        if (grid.FindName("CompareBadge") is not Border badge)
+        {
+            return;
+        }
+
+        var comparison = step switch
+        {
+            AccessStep.MergeCompare compare => compare.Comparison,
+            AccessStep.MergeCompareRun run => run.Comparison,
+            _ => 0
+        };
+
+        var brush = comparison < 0 ? OuterAccentBrush : InnerAccentBrush;
+
+        var arrow = grid.FindName("CompareArrow") as TextBlock;
+
+        if (comparison == 0 || brush is null)
+        {
+            badge.Visibility = Visibility.Collapsed;
+
+            if (arrow is not null)
+            {
+                arrow.Visibility = Visibility.Collapsed;
+            }
+
+            return;
+        }
+
+        if (grid.FindName("CompareBadgeText") is TextBlock text)
+        {
+            text.Text = comparison < 0 ? "Advance Outer" : "Advance Inner";
+        }
+
+        badge.Background = brush;
+        badge.Visibility = Visibility.Visible;
+
+        if (arrow is not null)
+        {
+            arrow.Visibility = Visibility.Visible;
+        }
+    }
+
+    private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, int source, bool isReadAhead)
     {
         if (grid.FindName("EmitBadge") is not Border badge)
         {
@@ -106,7 +155,9 @@ public sealed partial class AccessStepsControl : UserControl
 
         if (grid.FindName("EmitSideText") is TextBlock sideText)
         {
-            sideText.Text = source == 0 ? "Outer" : "Inner";
+            var side = source == 0 ? "Outer" : "Inner";
+
+            sideText.Text = isReadAhead ? $"{side} (read ahead)" : side;
             sideText.Visibility = sideBrush is null ? Visibility.Collapsed : Visibility.Visible;
         }
 

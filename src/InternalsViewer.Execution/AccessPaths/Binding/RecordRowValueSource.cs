@@ -1,5 +1,5 @@
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
 using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.AccessPaths.Binding;

@@ -7,57 +7,85 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d"
     Loaded="OnLoaded">
 
     <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-        <index:IndexControl x:Name="IndexControl"
-                            SelectChildPath="False"
-                            Opacity="{x:Bind DimOpacity(ViewModel.IsDimmed), Mode=OneWay}"
-                            Visibility="{x:Bind IndexVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
-                            Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
-                            Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
-                            IsZoomToFit="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}"
-                            PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
-                            PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
-                            SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
-                            SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
-                            SingleSelectedColour="{x:Bind ToWindowsColor(ViewModel.ObjectColour), Mode=OneWay}"
-                            VerticalAlignment="Stretch"
-                            HorizontalAlignment="Stretch" />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="2*" />
+            <RowDefinition x:Name="SplitterRow" Height="Auto" />
+            <RowDefinition x:Name="StackRow" Height="*" />
+        </Grid.RowDefinitions>
 
-        <StackPanel Padding="10"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Orientation="Vertical"
-                    Visibility="{x:Bind LoadingVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}">
-            <TextBlock HorizontalAlignment="Center" Text="Loading..." />
-            <ProgressBar Width="300"
-                         Margin="0,10,0,0"
-                         Visibility="{x:Bind ViewModel.IsProgressVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                         Maximum="{x:Bind ViewModel.ProgressMaximum, Mode=OneWay}"
-                         Value="{x:Bind ViewModel.LoadedPageCount, Mode=OneWay}" />
-            <TextBlock Margin="0,10,0,0"
-                       HorizontalAlignment="Center"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       Visibility="{x:Bind ViewModel.IsProgressVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                       Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}" />
-        </StackPanel>
+        <Grid Grid.Row="0">
+            <index:IndexControl x:Name="IndexControl"
+                                SelectChildPath="False"
+                                Opacity="{x:Bind DimOpacity(ViewModel.IsDimmed), Mode=OneWay}"
+                                Visibility="{x:Bind IndexVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
+                                Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
+                                Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
+                                IsZoomToFit="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}"
+                                PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
+                                PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
+                                SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
+                                SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
+                                SingleSelectedColour="{x:Bind ToWindowsColor(ViewModel.ObjectColour), Mode=OneWay}"
+                                VerticalAlignment="Stretch"
+                                HorizontalAlignment="Stretch" />
 
-        <allocation:AllocationControl Opacity="{x:Bind DimOpacity(ViewModel.IsDimmed), Mode=OneWay}"
-                                      Visibility="{x:Bind AllocationVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
-                                      ExtentCount="{x:Bind ViewModel.ExtentCount, Mode=OneWay}"
-                                      Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
-                                      Borders="{x:Bind ViewModel.TraceBorders, Mode=OneWay}"
-                                      FileId="{x:Bind ViewModel.VisualFileId, Mode=OneWay}"
-                                      BorderColor="{ThemeResource CardStrokeColorDefault}"
-                                      GridColor="{ThemeResource AllocationBorderColor}"
-                                      PfsChain="{x:Bind ViewModel.PfsChain, Mode=OneWay}"
-                                      PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
-                                      SelectedRowIdentifier="{x:Bind ViewModel.SelectedRowIdentifier, Mode=OneWay}"
-                                      SelectedRowSlotCount="{x:Bind ViewModel.SelectedRowSlotCount, Mode=OneWay}"
-                                      IsTooltipEnabled="True"
-                                      VerticalAlignment="Stretch"
-                                      HorizontalAlignment="Stretch" />
+            <StackPanel Padding="10"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Orientation="Vertical"
+                        Visibility="{x:Bind LoadingVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}">
+                <TextBlock HorizontalAlignment="Center" Text="Loading..." />
+                <ProgressBar Width="300"
+                             Margin="0,10,0,0"
+                             Visibility="{x:Bind ViewModel.IsProgressVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                             Maximum="{x:Bind ViewModel.ProgressMaximum, Mode=OneWay}"
+                             Value="{x:Bind ViewModel.LoadedPageCount, Mode=OneWay}" />
+                <TextBlock Margin="0,10,0,0"
+                           HorizontalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Visibility="{x:Bind ViewModel.IsProgressVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                           Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}" />
+            </StackPanel>
+
+            <allocation:AllocationControl Opacity="{x:Bind DimOpacity(ViewModel.IsDimmed), Mode=OneWay}"
+                                          Visibility="{x:Bind AllocationVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
+                                          ExtentCount="{x:Bind ViewModel.ExtentCount, Mode=OneWay}"
+                                          Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
+                                          Borders="{x:Bind ViewModel.TraceBorders, Mode=OneWay}"
+                                          FileId="{x:Bind ViewModel.VisualFileId, Mode=OneWay}"
+                                          BorderColor="{ThemeResource CardStrokeColorDefault}"
+                                          GridColor="{ThemeResource AllocationBorderColor}"
+                                          PfsChain="{x:Bind ViewModel.PfsChain, Mode=OneWay}"
+                                          PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
+                                          SelectedRowIdentifier="{x:Bind ViewModel.SelectedRowIdentifier, Mode=OneWay}"
+                                          SelectedRowSlotCount="{x:Bind ViewModel.SelectedRowSlotCount, Mode=OneWay}"
+                                          IsTooltipEnabled="True"
+                                          VerticalAlignment="Stretch"
+                                          HorizontalAlignment="Stretch" />
+        </Grid>
+
+        <controls:GridSplitter x:Name="StackSplitter"
+                               Grid.Row="1"
+                               Height="2"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+                               VerticalAlignment="Stretch">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
+        </controls:GridSplitter>
+
+        <index:RecordGrid x:Name="StackGrid"
+                          Grid.Row="2"
+                          HideSlotColumn="True"
+                          AutoScrollToEnd="True"
+                          Records="{x:Bind ViewModel.SideRecords, Mode=OneWay}"
+                          BorderThickness="0" />
     </Grid>
 </UserControl>

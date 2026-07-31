@@ -16,7 +16,7 @@ namespace InternalsViewer.Internals.Services.Loaders.Engine;
 /// <summary>
 /// Service responsible for loading Databases
 /// </summary>
-public sealed class DatabaseService(ILogger<DatabaseService> logger,
+public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
                                     IMetadataLoader metadataLoader,
                                     IPageService pageService,
                                     IAllocationChainService allocationChainService,
@@ -129,7 +129,7 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
 
         foreach (var file in databaseDetail.Files.Where(f => f.FileType == FileType.Rows))
         {
-            Logger.LogTrace("File Allocations: Refreshing File Id {FileId}", file.FileId);
+            LogRefreshFileAllocations(Logger, file.FileId);
 
             databaseDetail.Gam.Add(file.FileId,
                 await AllocationChainService.LoadChain(databaseDetail, file.FileId, PageType.Gam, cancellationToken));
@@ -160,9 +160,7 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
             new ParallelOptions { MaxDegreeOfParallelism = MaxParallelChainLoads },
             async (allocationUnit, _) =>
             {
-                Logger.LogDebug("Allocation Unit Id: {AllocationUnitId} - Loading from First IAM page: {FirstIamPage}",
-                                allocationUnit.AllocationUnitId,
-                                allocationUnit.FirstIamPage);
+                LogLoadIamChain(Logger, allocationUnit.AllocationUnitId, allocationUnit.FirstIamPage);
 
                 allocationUnit.IamChain = await IamChainService.LoadChain(database, 
                                                                           allocationUnit.FirstIamPage, 
@@ -181,7 +179,7 @@ public sealed class DatabaseService(ILogger<DatabaseService> logger,
 
         foreach (var file in databaseDetail.Files.Where(f => f.FileType == FileType.Rows))
         {
-            Logger.LogTrace("PFS: Refreshing File Id {FileId}", file.FileId);
+            LogRefreshPfs(Logger, file.FileId);
 
             databaseDetail.Pfs.Add(file.FileId, 
                                    await PfsChainService.LoadChain(databaseDetail, file.FileId, cancellationToken));

@@ -40,7 +40,7 @@
 
                 <toolkit:DataGridTemplateColumn Header="Event" Tag="Event">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="eventGrid:EventRow">
+                        <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <StackPanel Orientation="Horizontal" Margin="{x:Bind Indent, Mode=OneTime}" VerticalAlignment="Center">
                                 <Button Click="OnExpanderClick"
                                         Visibility="{x:Bind ExpanderVisibility, Mode=OneTime}"
@@ -61,7 +61,7 @@
 
                 <toolkit:DataGridTemplateColumn Header="Type" Tag="Type">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="eventGrid:EventRow">
+                        <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind Event.Description, Mode=OneTime}"
                                        Margin="4,0"
                                        VerticalAlignment="Center"/>
@@ -71,7 +71,7 @@
 
                 <toolkit:DataGridTemplateColumn Header="Time (ms)" Tag="TimeUs">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="eventGrid:EventRow">
+                        <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind eventGrid:EventGridFormat.TimeMs(Event.TimeUs), Mode=OneTime}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
@@ -82,7 +82,7 @@
 
                 <toolkit:DataGridTemplateColumn Header="Duration (ms)" Tag="DurationUs">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="eventGrid:EventRow">
+                        <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind eventGrid:EventGridFormat.TimeMs(Event.DurationUs), Mode=OneTime}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
@@ -93,7 +93,7 @@
 
                 <toolkit:DataGridTemplateColumn Header="Page" Tag="PageAddress">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="eventGrid:EventRow">
+                        <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <Grid>
                                 <HyperlinkButton Content="{Binding PageAddress}"
                                                  Style="{StaticResource PageAddressStyle}"
@@ -106,7 +106,7 @@
 
                 <toolkit:DataGridTemplateColumn Header="Object" Tag="Object">
                     <toolkit:DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="eventGrid:EventRow">
+                        <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind Event.ObjectName, Mode=OneTime}"
                                        Margin="4,0"
                                        VerticalAlignment="Center"/>

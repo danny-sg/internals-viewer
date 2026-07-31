@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.AccessPaths.Search;
 using System.Collections.Immutable;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Plans.Model;

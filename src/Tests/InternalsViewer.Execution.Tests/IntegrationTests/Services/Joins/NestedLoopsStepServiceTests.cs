@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Execution.AccessPaths.Binding;
@@ -19,9 +20,7 @@ public class NestedLoopsStepServiceTests(ITestOutputHelper testOutput)
 
     private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
 
-    private const string NumberTable = "NumberTable_Clustered";
-
-    [RequiresFileFact(MdfPath)]
+        [RequiresFileFact(MdfPath)]
     public async Task Rebinds_Once_Per_Outer_Row()
     {
         var context = await LoadNumberTableAsync();
@@ -134,7 +133,7 @@ public class NestedLoopsStepServiceTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        var innerInput = new NestedLoopsInnerInput(context.Unit.AllocationUnitId,
+        var innerInput = new SeekDefinition(context.Unit.AllocationUnitId,
                                                    context.Unit.RootPage,
                                                    [new CorrelationBinding("Id", "NoSuchColumn")]);
 
@@ -163,16 +162,15 @@ public class NestedLoopsStepServiceTests(ITestOutputHelper testOutput)
 
         var database = await databaseService.LoadAsync("TestDatabase", connection, CancellationToken.None);
 
-        var unit = database.AllocationUnits.Values.Single(a => a.TableName == NumberTable
-                                                               && a.AllocationUnitType == AllocationUnitType.InRowData);
+        var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
         return new NumberTableContext(database, serviceHost.GetService<NestedLoopsStepService>(), unit);
     }
 
-    private static NestedLoopsOuterInput OuterInput(AllocationUnit unit, SeekBounds bounds)
+    private static RangeDefinition OuterInput(AllocationUnit unit, SeekBounds bounds)
         => new(unit.AllocationUnitId, unit.RootPage, [bounds]);
 
-    private static NestedLoopsInnerInput InnerInput(AllocationUnit unit)
+    private static SeekDefinition InnerInput(AllocationUnit unit)
         => new(unit.AllocationUnitId, unit.RootPage, [new CorrelationBinding("Id", "Id")]);
 
     private static async Task<(List<AccessStep> Steps, List<long> InnerValues)> RunAsync(NestedLoopsStepService service)

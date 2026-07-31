@@ -1,4 +1,8 @@
+using InternalsViewer.Execution.AccessPaths.Binding;
+using InternalsViewer.Execution.Interfaces.Services.Joins;
+using InternalsViewer.Execution.Services.Joins.Inputs;
 using System.Collections.Generic;
+using System.Data;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,10 +15,12 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Services.Allocations;
+using InternalsViewer.Execution.Services.Heaps;
 using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Execution.Services.Joins;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
@@ -32,6 +38,7 @@ using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Media;
+using InternalsViewer.Execution.AccessPaths.Joins;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -40,6 +47,7 @@ public enum TraceKind
     Index,
     Allocation,
     KeyLookup,
+    RidLookup,
     MergeJoin
 }
 
@@ -83,16 +91,56 @@ public sealed class TraceTabViewModelFactory(IPageService pageService,
                                      outerUnit,
                                      indexService,
                                      $"Seek: {outerUnit.IndexName}",
-                                     NestedLoopsStepService.OuterSource),
+                                     NestedLoopsStepService.OuterSource) { IsSideStackVisible = true },
             new TraceVisualViewModel(TraceVisualKind.Index,
                                      database,
                                      innerUnit,
                                      indexService,
                                      $"Lookup: {innerUnit.IndexName}",
-                                     NestedLoopsStepService.InnerSource)
+                                     NestedLoopsStepService.InnerSource) { IsSideStackVisible = true }
         };
 
         return new TraceTabViewModel(TraceKind.KeyLookup, service, database, outerUnit, joinNode, queryTime, null, visuals);
+    }
+
+    public TraceTabViewModel CreateRidLookup(DatabaseSource database,
+                                             AllocationUnit outerUnit,
+                                             AllocationUnit heapUnit,
+                                             PlanNode joinNode,
+                                             DateTime? queryTime)
+    {
+        var service = new NestedLoopsStepService(new IndexStepService(pageService, recordService),
+                                                 new IndexStepService(pageService, recordService));
+
+        var visuals = new[]
+        {
+            new TraceVisualViewModel(TraceVisualKind.Index,
+                                     database,
+                                     outerUnit,
+                                     indexService,
+                                     $"Seek: {outerUnit.IndexName}",
+                                     NestedLoopsStepService.OuterSource) { IsSideStackVisible = true },
+            new TraceVisualViewModel(TraceVisualKind.Allocation,
+                                     database,
+                                     heapUnit,
+                                     indexService,
+                                     $"Heap: {heapUnit.TableName}",
+                                     NestedLoopsStepService.InnerSource)
+            {
+                IsSideStackVisible = true,
+                ShowObjectBorderImmediately = true
+            }
+        };
+
+        return new TraceTabViewModel(TraceKind.RidLookup,
+                                     service,
+                                     database,
+                                     outerUnit,
+                                     joinNode,
+                                     queryTime,
+                                     null,
+                                     visuals,
+                                     new HeapFetchStepService(pageService, recordService));
     }
 
     public TraceTabViewModel CreateMergeJoin(DatabaseSource database,
@@ -111,13 +159,13 @@ public sealed class TraceTabViewModelFactory(IPageService pageService,
                                      outerUnit,
                                      indexService,
                                      $"Outer: {DisplayName(outerUnit)}",
-                                     MergeJoinStepService.OuterSource),
+                                     MergeJoinStepService.OuterSource) { IsSideStackVisible = true },
             new TraceVisualViewModel(TraceVisualKind.Index,
                                      database,
                                      innerUnit,
                                      indexService,
                                      $"Inner: {DisplayName(innerUnit)}",
-                                     MergeJoinStepService.InnerSource)
+                                     MergeJoinStepService.InnerSource) { IsSideStackVisible = true }
         };
 
         return new TraceTabViewModel(TraceKind.MergeJoin, service, database, outerUnit, joinNode, queryTime, null, visuals);
@@ -140,8 +188,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
                              PlanNode? planNode,
                              DateTime? queryTime,
                              ScanModeResult? scanMode,
-                             IReadOnlyList<TraceVisualViewModel> visuals)
+                             IReadOnlyList<TraceVisualViewModel> visuals,
+                             HeapFetchStepService? heapService = null)
     {
+        HeapService = heapService;
         Kind = kind;
         StepService = stepService;
         Database = database;
@@ -180,12 +230,21 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var right = new TabGroupNode(steps, description, results, strategy);
 
-        return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, new TabGroupNode(visualDocuments), right));
+        // Each side of a join gets its own pane so both walks are visible at once, rather than tabs hiding one behind the other
+        LayoutNode visualNode = visualDocuments.Length > 1
+            ? visualDocuments.Skip(1)
+                             .Aggregate((LayoutNode)new TabGroupNode(visualDocuments[0]),
+                                        (left, document) => new SplitNode(Orientation.Horizontal, left, new TabGroupNode(document)))
+            : new TabGroupNode(visualDocuments);
+
+        return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, visualNode, right));
     }
 
     public TraceKind Kind { get; }
 
     public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
+
+    private HeapFetchStepService? HeapService { get; }
 
     private IStepService StepService { get; }
 
@@ -211,6 +270,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         OnPropertyChanged(nameof(SeekDescription));
         OnPropertyChanged(nameof(IconSource));
+        OnPropertyChanged(nameof(JoinRule));
     }
 
     public event EventHandler<PageNavigatedEventArgs>? PageNavigated;
@@ -331,7 +391,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     {
         get
         {
-            if (Kind is TraceKind.KeyLookup or TraceKind.MergeJoin)
+            if (Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin)
             {
                 if (ResolveSides() is not { } sides)
                 {
@@ -402,6 +462,29 @@ public sealed partial class TraceTabViewModel : ObservableObject
         return PlanNode is null ? null : CorrelatedJoinResolver.Resolve(PlanNode);
     }
 
+    /// <summary>
+    /// What this join requires of each side, for the rule shown alongside the operator
+    /// </summary>
+    public JoinDecision? JoinRule
+    {
+        get
+        {
+            if (PlanNode is null)
+            {
+                return null;
+            }
+
+            JoinType? joinType = Kind switch
+            {
+                TraceKind.KeyLookup or TraceKind.RidLookup => CorrelatedJoinResolver.Resolve(PlanNode)?.JoinType,
+                TraceKind.MergeJoin => MergeJoinResolver.Resolve(PlanNode)?.JoinType,
+                _ => null
+            };
+
+            return joinType?.Decide(true, true);
+        }
+    }
+
     private (PlanNode Outer, PlanNode Inner)? ResolveSides()
     {
         if (PlanNode is null)
@@ -409,7 +492,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             return null;
         }
 
-        if (Kind == TraceKind.KeyLookup)
+        if (Kind is TraceKind.KeyLookup or TraceKind.RidLookup)
         {
             return CorrelatedJoinResolver.Resolve(PlanNode) is { } correlated ? (correlated.Outer, correlated.Inner) : null;
         }
@@ -488,6 +571,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         UpdateInnerStrategy();
 
+        SyncSideBuffers();
+
         GetVisual(step.Source)?.Apply(step);
 
         CurrentStep = step;
@@ -528,6 +613,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
             visual.IsDimmed = Visuals.Count > 1
                               && isSideStep
                               && !IsStepComplete
+                              && !IsRunning
+                              && !IsRunningToEnd
                               && visual.Source != step!.Source;
         }
     }
@@ -600,6 +687,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 visual.ApplyReplay(replays[visual]);
             }
 
+            SyncSideBuffers();
+
             CurrentStep = StepService.Current;
             IsStepComplete = StepService.IsComplete;
 
@@ -632,6 +721,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
         Strategy = SeekDescription;
         InnerStrategy = null;
 
+        _syncedBuffers.Clear();
+
         foreach (var visual in Visuals)
         {
             visual.Reset();
@@ -645,21 +736,59 @@ public sealed partial class TraceTabViewModel : ObservableObject
         return Visuals.FirstOrDefault(v => v.Source == source);
     }
 
+    /// <summary>
+    /// Refreshes each side's row pane from the rows the join is currently holding
+    /// </summary>
+    /// <remarks>
+    /// Taken from the join rather than accumulated from the row steps, because only the join knows which rows it still holds - a row it
+    /// has advanced past is gone, and a row read ahead of the current key is not yet in play.
+    /// </remarks>
+    private void SyncSideBuffers()
+    {
+        if (StepService is not IJoinStepService join)
+        {
+            return;
+        }
+
+        foreach (var visual in Visuals)
+        {
+            if (!visual.IsSideStackVisible)
+            {
+                continue;
+            }
+
+            var buffer = visual.Source == NestedLoopsStepService.OuterSource ? join.Outer.Buffer : join.Inner.Buffer;
+
+            if (_syncedBuffers.TryGetValue(visual.Source, out var synced) && synced.SequenceEqual(buffer))
+            {
+                continue;
+            }
+
+            _syncedBuffers[visual.Source] = [.. buffer];
+
+            visual.SideRecords = [.. buffer.Select(ToRecordModel)];
+        }
+    }
+
+    private readonly Dictionary<int, List<JoinBufferRow>> _syncedBuffers = new();
+
+    private static IndexRecordModel ToRecordModel(JoinBufferRow row)
+    {
+        var model = ToRecordModel(row.Record);
+
+        model.IsMatched = row.IsMatched;
+
+        return model;
+    }
+
     private IndexRecordModel? ToResultModel(AccessStep step)
     {
-        if (Kind == TraceKind.MergeJoin)
+        if (Kind is TraceKind.MergeJoin or TraceKind.KeyLookup or TraceKind.RidLookup)
         {
-            return step is AccessStep.JoinEmit { OuterRecord: { } outer, InnerRecord: { } inner }
-                ? ToJoinedModel(outer, inner)
-                : null;
+            return step is AccessStep.JoinEmit emit ? ToJoinedModel(emit) : null;
         }
 
         if (step is not AccessStep.Row { EmittedRecord: { } emitted })
-        {
-            return null;
-        }
-
-        if (Kind == TraceKind.KeyLookup && step.Source != NestedLoopsStepService.InnerSource)
         {
             return null;
         }
@@ -669,7 +798,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private void UpdateInnerStrategy()
     {
-        if (InnerStrategy is null && StepService is IJoinStepService { InnerStrategy: { } inner })
+        if (InnerStrategy is null && StepService is IJoinStepService { Inner.Strategy: { } inner })
         {
             InnerStrategy = inner;
         }
@@ -683,7 +812,41 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var hasUntranslated = predicateInfo?.HasUntranslatedPredicate == true;
 
-        if (Kind == TraceKind.KeyLookup)
+        if (Kind == TraceKind.RidLookup)
+        {
+            if (ResolveJoin() is not { } ridJoin)
+            {
+                return;
+            }
+
+            var ridService = (NestedLoopsStepService)StepService;
+
+            var ridOuterPredicate = ridJoin.Outer.PredicateInfo;
+
+            var ridOuterUnit = Visuals[0].AllocationUnit;
+
+            IReadOnlyList<SeekBounds> ridRanges = ridOuterPredicate is { HasSeekBounds: true }
+                                                  ? ridOuterPredicate.SeekBounds
+                                                  : [SeekBounds.All];
+
+            var ridOuterInput = new RangeDefinition(ridOuterUnit.AllocationUnitId, ridOuterUnit.RootPage, ridRanges)
+            {
+                Residual = ridJoin.Outer.HasRedundantResidual() ? null : ridOuterPredicate?.Residual,
+                Direction = SideScanDirection(ridJoin.Outer),
+                RowGoal = ridOuterPredicate?.RowGoal,
+                HasUntranslatedResidual = ridOuterPredicate?.HasUntranslatedPredicate == true
+            };
+
+            var heapInner = new RidLookupJoinInput(HeapService!, ridJoin.Inner.PredicateInfo?.Residual);
+
+            await Task.Run(() => ridService.StartAsync(Database,
+                                                       ridOuterInput,
+                                                       heapInner,
+                                                       CancellationToken.None,
+                                                       evaluationContext,
+                                                       ridJoin.JoinType));
+        }
+        else if (Kind == TraceKind.KeyLookup)
         {
             if (ResolveJoin() is not { } join)
             {
@@ -702,7 +865,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                                     ? outerPredicate.SeekBounds
                                                     : [SeekBounds.All];
 
-            var outerInput = new NestedLoopsOuterInput(outerUnit.AllocationUnitId, outerUnit.RootPage, outerRanges)
+            var outerInput = new RangeDefinition(outerUnit.AllocationUnitId, outerUnit.RootPage, outerRanges)
             {
                 Residual = join.Outer.HasRedundantResidual() ? null : outerPredicate?.Residual,
                 Direction = SideScanDirection(join.Outer),
@@ -710,32 +873,49 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 HasUntranslatedResidual = outerPredicate?.HasUntranslatedPredicate == true
             };
 
-            var bindings = join.Inner.PredicateInfo!.CorrelatedSeekColumns
-                               .Select(c => new CorrelationBinding(c.Column, c.OuterColumn))
-                               .ToList();
+            var bindings = (join.Inner.PredicateInfo?.CorrelatedSeekColumns ?? [])
+                           .Select(c => new CorrelationBinding(c.Column, c.OuterColumn))
+                           .ToList();
 
-            var innerInput = new NestedLoopsInnerInput(innerUnit.AllocationUnitId, innerUnit.RootPage, bindings)
+            if (bindings.Count == 0)
+            {
+                return;
+            }
+
+            var innerInput = new SeekDefinition(innerUnit.AllocationUnitId, innerUnit.RootPage, bindings)
             {
                 Residual = join.Inner.PredicateInfo?.Residual,
-                RowGoal = 1
+                RowGoal = join.JoinType is JoinType.LeftSemi or JoinType.LeftAntiSemi ? 1 : null
             };
 
-            await Task.Run(() => service.StartAsync(Database, outerInput, innerInput, CancellationToken.None, evaluationContext));
+            await Task.Run(() => service.StartAsync(Database,
+                                                    outerInput,
+                                                    innerInput,
+                                                    CancellationToken.None,
+                                                    evaluationContext,
+                                                    join.JoinType));
         }
         else if (Kind == TraceKind.MergeJoin)
         {
-            if (ResolveSides() is not { } sides || PlanNode?.MergeInfo is not { } mergeInfo)
+            if (PlanNode is null
+                || MergeJoinResolver.Resolve(PlanNode) is not { } merge
+                || PlanNode.MergeInfo is not { } mergeInfo)
             {
                 return;
             }
 
             var service = (MergeJoinStepService)StepService;
 
-            var outerInput = MergeSideInput(sides.Outer, Visuals[0].AllocationUnit, mergeInfo.OuterKeys);
+            var outerInput = MergeSideInput(merge.Outer, Visuals[0].AllocationUnit, mergeInfo.OuterKeys);
 
-            var innerInput = MergeSideInput(sides.Inner, Visuals[1].AllocationUnit, mergeInfo.InnerKeys);
+            var innerInput = MergeSideInput(merge.Inner, Visuals[1].AllocationUnit, mergeInfo.InnerKeys);
 
-            await Task.Run(() => service.StartAsync(Database, outerInput, innerInput, CancellationToken.None, evaluationContext));
+            await Task.Run(() => service.StartAsync(Database,
+                                                    outerInput,
+                                                    innerInput,
+                                                    CancellationToken.None,
+                                                    evaluationContext,
+                                                    merge.JoinType));
         }
         else if (Kind == TraceKind.Allocation)
         {
@@ -778,8 +958,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
         IsStepping = true;
     }
 
-    private static MergeJoinSideInput MergeSideInput(PlanNode side,
-                                                     Internals.Engine.Database.AllocationUnit unit,
+    private static MergeSideDefinition MergeSideInput(PlanNode side,
+                                                     AllocationUnit unit,
                                                      List<ColumnReference> keys)
     {
         var predicateInfo = side.PredicateInfo;
@@ -788,7 +968,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                            ? predicateInfo.SeekBounds
                                            : [SeekBounds.All];
 
-        return new MergeJoinSideInput(unit.AllocationUnitId,
+        return new MergeSideDefinition(unit.AllocationUnitId,
                                       unit.RootPage,
                                       ranges,
                                       [.. keys.Select(k => k.Column.Trim('[', ']'))])
@@ -799,56 +979,125 @@ public sealed partial class TraceTabViewModel : ObservableObject
         };
     }
 
-    private static IndexRecordModel ToJoinedModel(IRecord outer, IRecord inner)
+    /// <summary>
+    /// Builds the joined output row from the columns the join operator states it returns
+    /// </summary>
+    /// <remarks>
+    /// The operator's output list is what the join actually hands upwards, so it fixes both the columns and their order. Anything a side
+    /// read only to do its own work, a bookmark most of all, is left out. A column the preserved side of an outer join has no row for
+    /// reads as NULL, which also keeps the grid's columns steady from row to row.
+    /// </remarks>
+    private IndexRecordModel ToJoinedModel(AccessStep.JoinEmit emit)
     {
-        var fields = new List<IndexRecordFieldModel>(
-        [
-            .. outer.Fields.Select(f => new IndexRecordFieldModel
-            {
-                Name = f.Name,
-                Value = f.Value,
-                DataType = f.ColumnStructure.DataType
-            })
-        ]);
+        var outputColumns = PlanNode?.OutputColumns ?? [];
 
-        var names = new HashSet<string>(outer.Fields.Select(f => f.Name), StringComparer.OrdinalIgnoreCase);
-
-        foreach (var field in inner.Fields)
-        {
-            fields.Add(new IndexRecordFieldModel
-            {
-                Name = names.Contains(field.Name) ? $"Inner.{field.Name}" : field.Name,
-                Value = field.Value,
-                DataType = field.ColumnStructure.DataType
-            });
-        }
+        var fields = outputColumns.Count > 0
+            ? [.. outputColumns.Select(c => ToField(emit, c))]
+            : Combine(emit);
 
         return new IndexRecordModel
         {
-            Slot = outer.Slot,
+            Slot = emit.OuterRecord?.Slot ?? emit.InnerRecord?.Slot ?? 0,
+            RowIdentifier = null,
             Fields = fields
         };
     }
 
+    private IndexRecordFieldModel ToField(AccessStep.JoinEmit emit, ColumnReference column)
+    {
+        var name = column.Column.Trim('[', ']');
+
+        var table = column.Table.Trim('[', ']');
+
+        var sides = ResolveSides();
+
+        // Where both sides carry the column, the output list says which table it came from
+        var preferInner = sides is { } resolved
+                          && !string.IsNullOrEmpty(table)
+                          && string.Equals(table, resolved.Inner.Table?.Trim('[', ']'), StringComparison.OrdinalIgnoreCase);
+
+        var field = preferInner
+            ? Find(emit.InnerRecord, name) ?? Find(emit.OuterRecord, name)
+            : Find(emit.OuterRecord, name) ?? Find(emit.InnerRecord, name);
+
+        return new IndexRecordFieldModel
+        {
+            Name = name,
+            Value = field?.Value ?? "NULL",
+            DataType = field?.ColumnStructure.DataType ?? SqlDbType.Variant
+        };
+    }
+
+    private static List<IndexRecordFieldModel> Combine(AccessStep.JoinEmit emit)
+    {
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var fields = new List<IndexRecordFieldModel>();
+
+        foreach (var record in new[] { emit.OuterRecord, emit.InnerRecord })
+        {
+            foreach (var field in record?.Fields ?? [])
+            {
+                fields.Add(new IndexRecordFieldModel
+                {
+                    Name = names.Add(field.Name) ? field.Name : $"Inner.{field.Name}",
+                    Value = field.Value,
+                    DataType = field.ColumnStructure.DataType
+                });
+            }
+        }
+
+        return fields;
+    }
+
+    private static RecordField? Find(IRecord? record, string name)
+        => record?.Fields.FirstOrDefault(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase));
+
     private static IndexRecordModel ToRecordModel(IRecord record)
     {
-        return new IndexRecordModel
-        {
-            Slot = record.Slot,
-            Fields =
-            [
-                .. record.Fields.Select(f => new IndexRecordFieldModel
-                {
-                    Name = f.Name,
-                    Value = f.Value,
-                    DataType = f.ColumnStructure.DataType
-                })
-            ]
-        };
+        return TraceVisualViewModel.ToRecordModel(record);
     }
 
     private static void Append(AccessStep step, ObservableCollection<AccessStep> history)
     {
+        if (step is AccessStep.MergeCompare { Comparison: not 0 } compare
+            && history.Count > 1
+            && history[0] is AccessStep.Row or AccessStep.RowRun)
+        {
+            if (history[1] is AccessStep.MergeCompare previous
+                && Math.Sign(previous.Comparison) == Math.Sign(compare.Comparison)
+                && StaticKeyMatches(compare.Comparison, previous.OuterKey, previous.InnerKey, compare))
+            {
+                history[1] = new AccessStep.MergeCompareRun(Math.Sign(compare.Comparison), 2)
+                {
+                    OuterFrom = previous.OuterKey,
+                    OuterTo = compare.OuterKey,
+                    InnerFrom = previous.InnerKey,
+                    InnerTo = compare.InnerKey,
+                    Action = compare.Action,
+                    Source = compare.Source,
+                    Counters = compare.Counters
+                };
+
+                return;
+            }
+
+            if (history[1] is AccessStep.MergeCompareRun run
+                && run.Comparison == Math.Sign(compare.Comparison)
+                && StaticKeyMatches(compare.Comparison, run.OuterTo, run.InnerTo, compare))
+            {
+                history[1] = run with
+                {
+                    Count = run.Count + 1,
+                    OuterTo = compare.OuterKey,
+                    InnerTo = compare.InnerKey,
+                    Counters = compare.Counters
+                };
+
+                return;
+            }
+        }
+
         if (step is AccessStep.Probe probe)
         {
             if (history.Count > 0 && history[0] is AccessStep.ProbeRun probeRun && probeRun.Source == probe.Source)
@@ -876,6 +1125,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             if (latest is AccessStep.Row previous
                 && previous.Source == row.Source
                 && previous.Outcome == row.Outcome
+                && previous.IsReadAhead == row.IsReadAhead
                 && Math.Abs(row.Slot - previous.Slot) == 1)
             {
                 history[0] = new AccessStep.RowRun(previous.Slot, row.Slot, row.Outcome)
@@ -894,6 +1144,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             if (latest is AccessStep.RowRun run
                 && run.Source == row.Source
                 && run.Outcome == row.Outcome
+                && !row.IsReadAhead
                 && Math.Abs(row.Slot - run.ToSlot) == 1)
             {
                 history[0] = run with
@@ -919,5 +1170,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private static int EmitOf(AccessStep.Row row)
     {
         return row.Outcome == RowOutcome.Match ? 1 : 0;
+    }
+
+    private static bool StaticKeyMatches(int comparison, AccessKey previousOuter, AccessKey previousInner, AccessStep.MergeCompare compare)
+    {
+        return comparison < 0 ? previousInner.Equals(compare.InnerKey) : previousOuter.Equals(compare.OuterKey);
     }
 }
