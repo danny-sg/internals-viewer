@@ -9,27 +9,28 @@
     xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
     xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
+    xmlns:trace="using:InternalsViewer.UI.App.Helpers.Converters.Trace"
     x:Name="Root"
     mc:Ignorable="d">
 
     <UserControl.Resources>
         <ResourceDictionary>
-            <converters:AccessStepToPredicateTextConverter x:Key="AccessStepToPredicateTextConverter" />
-            <converters:ProbeDirectionToTextConverter x:Key="ProbeDirectionToTextConverter" />
-            <converters:SeekRuleToTextConverter x:Key="SeekRuleToTextConverter" />
+            <trace:AccessStepToPredicateTextConverter x:Key="AccessStepToPredicateTextConverter" />
+            <trace:ProbeDirectionToTextConverter x:Key="ProbeDirectionToTextConverter" />
+            <trace:SeekRuleToTextConverter x:Key="SeekRuleToTextConverter" />
             <converters:EnumToTextConverter x:Key="EnumToTextConverter" />
-            <converters:ProbeStartToTextConverter x:Key="ProbeStartToTextConverter" />
-            <converters:RangeEndToTextConverter x:Key="RangeEndToTextConverter" />
-            <converters:ReadPageToTextConverter x:Key="ReadPageToTextConverter" />
-            <converters:RowOutcomeToTextConverter x:Key="RowOutcomeToTextConverter" />
-            <converters:RowEmitToVisibilityConverter x:Key="RowEmitToVisibilityConverter" />
-            <converters:RowEmitTextConverter x:Key="RowEmitTextConverter" />
-            <converters:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
+            <trace:ProbeStartToTextConverter x:Key="ProbeStartToTextConverter" />
+            <trace:RangeEndToTextConverter x:Key="RangeEndToTextConverter" />
+            <trace:ReadPageToTextConverter x:Key="ReadPageToTextConverter" />
+            <trace:RowOutcomeToTextConverter x:Key="RowOutcomeToTextConverter" />
+            <trace:RowEmitToVisibilityConverter x:Key="RowEmitToVisibilityConverter" />
+            <trace:RowEmitTextConverter x:Key="RowEmitTextConverter" />
+            <trace:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
             <converters:PfsAllocatedToTextConverter x:Key="PfsAllocatedToTextConverter" />
             <converters:PfsAllocatedToBrushConverter x:Key="PfsAllocatedToBrushConverter" />
             <converters:BoolToVisibilityConverter x:Key="StepsBoolToVisibilityConverter" />
             <converters:BoolToVisibilityConverter x:Key="StepsInverseBoolToVisibilityConverter" IsInverse="True" />
-            <converters:MergeCompareRunToTextConverter x:Key="MergeCompareRunToTextConverter" />
+            <trace:MergeCompareRunToTextConverter x:Key="MergeCompareRunToTextConverter" />
             <converters:NullToVisibilityConverter x:Key="StepsNullToInverseVisibilityConverter" IsInverse="True" />
 
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
@@ -39,7 +40,6 @@
                 <Setter Property="VerticalAlignment" Value="Top" />
                 <Setter Property="Margin" Value="0,0,8,0" />
                 <Setter Property="Width" Value="80" />
-
             </Style>
 
             <Style x:Key="StepValueStyle" TargetType="TextBlock">

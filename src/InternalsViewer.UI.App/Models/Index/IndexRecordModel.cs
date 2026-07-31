@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.UI.App.Models.Index;

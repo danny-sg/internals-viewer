@@ -163,7 +163,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
 
     private static async Task StartAsync(Context context, SeekBounds outerBounds)
     {
-        var outerInput = new ScanDefinition(context.Index.AllocationUnitId, context.Index.RootPage, [outerBounds]);
+        var outerInput = new RangeDefinition(context.Index.AllocationUnitId, context.Index.RootPage, [outerBounds]);
 
         await context.Service.StartAsync(context.Database,
                                          outerInput,

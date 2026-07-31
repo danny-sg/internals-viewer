@@ -10,7 +10,7 @@ namespace InternalsViewer.Execution.Services.Joins.Inputs;
 /// <summary>
 /// An input that walks an index in key order, read straight through rather than restarted
 /// </summary>
-public sealed class IndexScanJoinInput(IndexStepService service, ScanDefinition definition) : JoinInput
+public sealed class IndexRangeJoinInput(IndexStepService service, RangeDefinition definition) : JoinInput
 {
     public override IStepService Service => service;
 

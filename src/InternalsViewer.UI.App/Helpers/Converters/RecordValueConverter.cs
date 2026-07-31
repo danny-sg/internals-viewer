@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Helpers.Converters;
 
-internal class RecordValueConverter: IValueConverter
+internal sealed class RecordValueConverter: IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
     {

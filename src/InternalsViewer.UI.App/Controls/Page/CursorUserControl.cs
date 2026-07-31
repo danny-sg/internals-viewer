@@ -1,7 +1,7 @@
 ﻿using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 
-namespace InternalsViewer.UI.App.Controls;
+namespace InternalsViewer.UI.App.Controls.Page;
 
 /// <summary>
 /// User control with a public method for Change Cursor

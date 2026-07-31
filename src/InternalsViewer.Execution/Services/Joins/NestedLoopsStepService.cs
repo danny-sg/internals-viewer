@@ -10,8 +10,27 @@ using InternalsViewer.Internals.Interfaces.Engine;
 namespace InternalsViewer.Execution.Services.Joins;
 
 /// <summary>
-/// Drives a nested loops join by pumping an outer access path and restarting an inner input for each outer row
+/// Nested Loops Stepping
 /// </summary>
+/// <remarks>
+/// Nested loops join two tables by iterating over the rows of the outer table and for each row iterating over the rows of the inner table,
+/// checking for matches.
+///
+/// A rebind is performed at the start of each inner loop iteration. For CorrelatedSeekJoinInput the seek predicate is set by the rebind.
+///
+/// This service requires an outer input that can be scanned in key order, and an inner input that can be rebound for each outer row.
+/// The inner input may be a seek or a scan, but it must be rebindable.
+/// 
+/// +------------------+---------------------+-------------------------+
+/// | Join Type        | Outer Input         | Inner Input             |
+/// +------------------+---------------------+-------------------------+
+/// | Loop join        | IndexRangeJoinInput | CorrelatedSeekJoinInput |
+/// | Key lookup       | IndexRangeJoinInput | CorrelatedSeekJoinInput |
+/// | RID lookup       | IndexRangeJoinInput | RidLookupJoinInput      |
+/// +------------------+---------------------+-------------------------+
+///
+/// Note: from the perspective of the join there is no difference between a loop join and a key lookup.
+/// </remarks>
 public sealed class NestedLoopsStepService(IndexStepService outerService, IndexStepService innerService) : JoinStepService
 {
     public override PageAddress? CurrentPageAddress
@@ -21,7 +40,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     private RebindableJoinInput InnerInput { get; set; } = null!;
 
-    private IndexScanJoinInput OuterInput => (IndexScanJoinInput)Outer;
+    private IndexRangeJoinInput OuterInput => (IndexRangeJoinInput)Outer;
 
     private IRecord? CurrentOuterRecord { get; set; }
 
@@ -40,7 +59,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
     private AccessCounters CompletedInnerCounters { get; set; }
 
     public Task StartAsync(DatabaseSource database,
-                           ScanDefinition outerInput,
+                           RangeDefinition outerInput,
                            SeekDefinition innerInput,
                            CancellationToken cancellationToken,
                            EvaluationContext? evaluationContext = null,
@@ -53,14 +72,14 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
                       joinType);
 
     public async Task StartAsync(DatabaseSource database,
-                                 ScanDefinition outerInput,
+                                 RangeDefinition outerInput,
                                  RebindableJoinInput inner,
                                  CancellationToken cancellationToken,
                                  EvaluationContext? evaluationContext = null,
                                  JoinType joinType = JoinType.Inner)
     {
         Database = database;
-        Outer = new IndexScanJoinInput(outerService, outerInput);
+        Outer = new IndexRangeJoinInput(outerService, outerInput);
         Inner = inner;
         InnerInput = inner;
 

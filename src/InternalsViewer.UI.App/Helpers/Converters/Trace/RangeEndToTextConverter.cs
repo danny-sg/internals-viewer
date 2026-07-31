@@ -2,15 +2,18 @@ using System;
 using InternalsViewer.Execution.AccessPaths.Results;
 using Microsoft.UI.Xaml.Data;
 
-namespace InternalsViewer.UI.App.Helpers.Converters;
+namespace InternalsViewer.UI.App.Helpers.Converters.Trace;
 
-public sealed class RowEmitToVisibilityConverter : IValueConverter
+public sealed class RangeEndToTextConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, string language)
     {
-        return value is AccessStep.Row { Outcome: RowOutcome.Match } or AccessStep.RowRun { EmitCount: > 0 }
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        if (value is AccessStep.RangeEnd { Comparison: 0 })
+        {
+            return "Exclusive range bound";
+        }
+
+        return string.Empty;
     }
 
     public object? ConvertBack(object? value, Type targetType, object parameter, string language)

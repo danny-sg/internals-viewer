@@ -3,8 +3,7 @@ using System.Drawing;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Results;
-using InternalsViewer.UI.App.Controls.Allocation;
-using InternalsViewer.UI.App.Helpers.Converters;
+using InternalsViewer.UI.App.Helpers.Converters.Results;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 

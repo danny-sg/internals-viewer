@@ -2,7 +2,7 @@ using System;
 using InternalsViewer.Execution.AccessPaths.Search;
 using Microsoft.UI.Xaml.Data;
 
-namespace InternalsViewer.UI.App.Helpers.Converters;
+namespace InternalsViewer.UI.App.Helpers.Converters.Trace;
 
 public sealed class SeekRuleToTextConverter : IValueConverter
 {

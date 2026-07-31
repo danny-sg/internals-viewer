@@ -30,7 +30,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Interfaces\Joins\" />
       <Folder Include="Interfaces\Services\" />
     </ItemGroup>
 </Project>

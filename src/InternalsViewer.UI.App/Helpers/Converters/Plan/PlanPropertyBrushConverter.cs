@@ -2,7 +2,7 @@ using System;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Data;
 
-namespace InternalsViewer.UI.App.Helpers.Converters;
+namespace InternalsViewer.UI.App.Helpers.Converters.Plan;
 
 public sealed class PlanPropertyBrushConverter : IValueConverter
 {

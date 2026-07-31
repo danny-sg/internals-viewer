@@ -2,7 +2,7 @@
 using InternalsViewer.Internals.Engine.Parsers;
 using Microsoft.UI.Xaml.Data;
 
-namespace InternalsViewer.UI.App.Helpers.Converters;
+namespace InternalsViewer.UI.App.Helpers.Converters.Page;
 
 public sealed class PageAddressToStringConverter: IValueConverter
 {

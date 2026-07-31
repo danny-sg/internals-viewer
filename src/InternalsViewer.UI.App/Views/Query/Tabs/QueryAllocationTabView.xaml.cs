@@ -2,11 +2,11 @@ using Windows.System;
 using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.UI.App.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 

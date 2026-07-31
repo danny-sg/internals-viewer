@@ -32,8 +32,8 @@ public sealed partial class LogMessageControl : UserControl
     private Button ExpandCollapseButton { get; } = new()
     {
         Content = "Expand",
-        HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Left,
-        Visibility = Microsoft.UI.Xaml.Visibility.Collapsed
+        HorizontalAlignment = HorizontalAlignment.Left,
+        Visibility = Visibility.Collapsed
     };
 
     private bool IsExpanded { get; set; }
@@ -44,7 +44,7 @@ public sealed partial class LogMessageControl : UserControl
 
         var toolbar = new StackPanel
         {
-            Orientation = Microsoft.UI.Xaml.Controls.Orientation.Horizontal,
+            Orientation = Orientation.Horizontal,
             Spacing = 4,
             Children =
             {
@@ -78,13 +78,13 @@ public sealed partial class LogMessageControl : UserControl
 
         if (Entry is null)
         {
-            ExpandCollapseButton.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            ExpandCollapseButton.Visibility = Visibility.Collapsed;
             return;
         }
 
         if (TryGetXEventPayload(Entry, out var payload))
         {
-            ExpandCollapseButton.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+            ExpandCollapseButton.Visibility = Visibility.Visible;
             ExpandCollapseButton.Content = IsExpanded ? "Collapse" : "Expand";
 
             MessageBlock.TextWrapping = IsExpanded ? TextWrapping.Wrap : TextWrapping.NoWrap;
@@ -96,7 +96,7 @@ public sealed partial class LogMessageControl : UserControl
             return;
         }
 
-        ExpandCollapseButton.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+        ExpandCollapseButton.Visibility = Visibility.Collapsed;
         MessageBlock.TextWrapping = TextWrapping.Wrap;
         MessageBlock.TextTrimming = TextTrimming.None;
         MessageBlock.MaxLines = 0;
@@ -155,7 +155,7 @@ public sealed partial class LogMessageControl : UserControl
         }
     }
 
-    private void OnExpandCollapseClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    private void OnExpandCollapseClick(object sender, RoutedEventArgs e)
     {
         if (Entry is null || !TryGetXEventPayload(Entry, out _))
         {

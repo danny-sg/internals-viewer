@@ -2,7 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
-using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Helpers.Converters;

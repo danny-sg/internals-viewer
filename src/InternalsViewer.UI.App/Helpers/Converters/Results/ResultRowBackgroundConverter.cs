@@ -5,7 +5,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 
-namespace InternalsViewer.UI.App.Controls.Results;
+namespace InternalsViewer.UI.App.Helpers.Converters.Results;
 
 internal sealed class ResultRowBackgroundConverter : IValueConverter
 {

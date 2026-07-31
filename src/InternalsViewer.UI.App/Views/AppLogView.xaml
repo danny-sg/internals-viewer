@@ -6,11 +6,11 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:logging="using:InternalsViewer.Internals.Services.Logging"
-    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     xmlns:logControls="using:InternalsViewer.UI.App.Controls.Logging"
+    xmlns:logging1="using:InternalsViewer.UI.App.Helpers.Converters.Logging"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <converters:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter"/>
+        <logging1:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter"/>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -41,7 +41,8 @@
             <NumberBox Grid.Column="3"
                        Value="{x:Bind ViewModel.MaxLogEntries, Mode=TwoWay}"
                        Minimum="100" Maximum="10000"
-                       SmallChange="100" LargeChange="500"
+                       SmallChange="100" 
+                       LargeChange="500"
                        SpinButtonPlacementMode="Compact"
                        MinWidth="100"/>
             <TextBlock Grid.Column="4" Text="Search" VerticalAlignment="Center"

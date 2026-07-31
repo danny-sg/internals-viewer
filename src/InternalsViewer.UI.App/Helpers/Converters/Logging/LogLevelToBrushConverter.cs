@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 
-namespace InternalsViewer.UI.App.Helpers.Converters;
+namespace InternalsViewer.UI.App.Helpers.Converters.Logging;
 
 public sealed class LogLevelToBrushConverter : IValueConverter
 {

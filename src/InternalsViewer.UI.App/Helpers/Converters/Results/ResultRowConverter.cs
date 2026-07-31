@@ -2,7 +2,7 @@ using System;
 using InternalsViewer.Query.Results;
 using Microsoft.UI.Xaml.Data;
 
-namespace InternalsViewer.UI.App.Helpers.Converters;
+namespace InternalsViewer.UI.App.Helpers.Converters.Results;
 
 internal sealed class ResultRowConverter : IValueConverter
 {

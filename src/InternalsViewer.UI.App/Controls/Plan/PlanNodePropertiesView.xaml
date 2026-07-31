@@ -11,6 +11,7 @@
     xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
+    xmlns:plan="using:InternalsViewer.UI.App.Helpers.Converters.Plan"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style TargetType="controls:DataColumn">
@@ -85,7 +86,7 @@
         </Style>
 
         <converters:BoolToFontFamilyConverter x:Key="BoolToFontFamilyConverter" />
-        <converters:PlanPropertyBrushConverter x:Key="PlanPropertyBrushConverter" />
+        <plan:PlanPropertyBrushConverter x:Key="PlanPropertyBrushConverter" />
         <converters:DepthToIndentConverter x:Key="DepthToIndentConverter" />
 
         <DataTemplate x:Key="PropertyItemTemplate" x:DataType="muxc:TreeViewNode">

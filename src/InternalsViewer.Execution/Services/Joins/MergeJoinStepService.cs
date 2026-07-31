@@ -54,9 +54,9 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
                                  EvaluationContext? evaluationContext = null,
                                  JoinType joinType = JoinType.Inner)
     {
-        var outer = new IndexScanJoinInput(outerService, outerInput);
+        var outer = new IndexRangeJoinInput(outerService, outerInput);
 
-        var inner = new IndexScanJoinInput(innerService, innerInput);
+        var inner = new IndexRangeJoinInput(innerService, innerInput);
 
         Outer = outer;
         Inner = inner;
@@ -144,8 +144,8 @@ public sealed class MergeJoinStepService(IndexStepService outerService, IndexSte
 
             // A null key never equals anything, so the row is unmatched whatever the other side holds
             var comparison = HasNull(outerKey) ? -1
-                : HasNull(innerKey) ? 1
-                : outerKey.ComparePrefix(innerKey, CompareWidth) * ComparisonSign;
+                             : HasNull(innerKey) ? 1
+                             : outerKey.ComparePrefix(innerKey, CompareWidth) * ComparisonSign;
 
             if (comparison < 0)
             {

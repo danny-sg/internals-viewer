@@ -3,7 +3,6 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
-using InternalsViewer.UI.App.Controls.Allocation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 

@@ -3,21 +3,19 @@ using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Services.Markers;
 using Microsoft.UI.Xaml.Data;
 
-namespace InternalsViewer.UI.App.Helpers.Converters;
+namespace InternalsViewer.UI.App.Helpers.Converters.Plan;
 
 /// <summary>
 /// Resolves a marker style for an ItemType, returning its name or fore/back brush per the converter parameter
 /// </summary>
 /// <remarks>
-/// Reuses the same MarkStyleProvider the hex viewer's markers use, so a log record's field changes are named and
-/// coloured identically to the page's markers. Parameter selects the part: "Name", "Fore" or "Back" (default).
+/// Reuses the same MarkStyleProvider the hex viewer's markers use, so a log record's field changes are named and coloured identically to
+/// the page's markers. Parameter selects the part: "Name", "Fore" or "Back" (default).
 /// </remarks>
 public sealed class MarkStyleConverter : IValueConverter
 {
-    private MarkStyleProvider? _provider;
-
     // Created lazily on the first (bind-time) call so the theme dictionaries are ready
-    private MarkStyleProvider Provider => _provider ??= new MarkStyleProvider();
+    private MarkStyleProvider Provider => field ??= new MarkStyleProvider();
 
     public object? Convert(object value, Type targetType, object parameter, string language)
     {

@@ -263,13 +263,13 @@ public sealed class IndexStepService(IPageService pageService, IRecordService re
         };
 
         CurrentPageSteps = IndexSeekExecutor.Execute(CurrentPage, 
-                                                    Bounds, 
-                                                    Direction, 
-                                                    Residual, 
-                                                    RowGoal, 
-                                                    isContinuation, 
-                                                    counters: Counters,
-                                                    evaluationContext: EvaluationContext)
+                                                     Bounds, 
+                                                     Direction, 
+                                                     Residual, 
+                                                     RowGoal, 
+                                                     isContinuation, 
+                                                     counters: Counters,
+                                                     evaluationContext: EvaluationContext)
                                             .GetEnumerator();
     }
 

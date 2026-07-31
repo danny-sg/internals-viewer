@@ -7,7 +7,7 @@ namespace InternalsViewer.Execution.AccessPaths.Joins;
 /// <summary>
 /// Describes an ordered access path a join reads from, the outer side of a nested loops join or either side of a merge join
 /// </summary>
-public record ScanDefinition(long AllocationUnitId, PageAddress RootPage, IReadOnlyList<SeekBounds> Ranges)
+public record RangeDefinition(long AllocationUnitId, PageAddress RootPage, IReadOnlyList<SeekBounds> Ranges)
 {
     public AccessPredicate? Residual { get; init; }
 

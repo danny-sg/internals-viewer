@@ -10,4 +10,4 @@ public sealed record MergeSideDefinition(long AllocationUnitId,
                                          PageAddress RootPage,
                                          IReadOnlyList<SeekBounds> Ranges,
                                          IReadOnlyList<string> JoinColumns)
-    : ScanDefinition(AllocationUnitId, RootPage, Ranges);
+    : RangeDefinition(AllocationUnitId, RootPage, Ranges);

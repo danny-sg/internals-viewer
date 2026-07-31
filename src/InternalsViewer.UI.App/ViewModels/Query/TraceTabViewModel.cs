@@ -829,7 +829,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                                   ? ridOuterPredicate.SeekBounds
                                                   : [SeekBounds.All];
 
-            var ridOuterInput = new ScanDefinition(ridOuterUnit.AllocationUnitId, ridOuterUnit.RootPage, ridRanges)
+            var ridOuterInput = new RangeDefinition(ridOuterUnit.AllocationUnitId, ridOuterUnit.RootPage, ridRanges)
             {
                 Residual = ridJoin.Outer.HasRedundantResidual() ? null : ridOuterPredicate?.Residual,
                 Direction = SideScanDirection(ridJoin.Outer),
@@ -865,7 +865,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                                     ? outerPredicate.SeekBounds
                                                     : [SeekBounds.All];
 
-            var outerInput = new ScanDefinition(outerUnit.AllocationUnitId, outerUnit.RootPage, outerRanges)
+            var outerInput = new RangeDefinition(outerUnit.AllocationUnitId, outerUnit.RootPage, outerRanges)
             {
                 Residual = join.Outer.HasRedundantResidual() ? null : outerPredicate?.Residual,
                 Direction = SideScanDirection(join.Outer),

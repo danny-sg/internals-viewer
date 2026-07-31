@@ -2,17 +2,15 @@ using System;
 using InternalsViewer.Execution.AccessPaths.Results;
 using Microsoft.UI.Xaml.Data;
 
-namespace InternalsViewer.UI.App.Helpers.Converters;
+namespace InternalsViewer.UI.App.Helpers.Converters.Trace;
 
-public sealed class RowEmitTextConverter : IValueConverter
+public sealed class RowEmitToVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, string language)
     {
-        return value switch
-        {
-            AccessStep.RowRun run => $"→ Emit {run.EmitCount:N0} rows",
-            _ => "→ Emit row"
-        };
+        return value is AccessStep.Row { Outcome: RowOutcome.Match } or AccessStep.RowRun { EmitCount: > 0 }
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     public object? ConvertBack(object? value, Type targetType, object parameter, string language)

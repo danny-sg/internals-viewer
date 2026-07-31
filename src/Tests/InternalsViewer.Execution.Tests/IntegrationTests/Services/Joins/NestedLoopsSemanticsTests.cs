@@ -112,7 +112,7 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
 
     private static async Task StartAsync(Context context, JoinType joinType)
     {
-        var outerInput = new ScanDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(100, 109)]);
+        var outerInput = new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(100, 109)]);
 
         var innerInput = new SeekDefinition(context.Unit.AllocationUnitId,
                                                    context.Unit.RootPage,

@@ -7,7 +7,6 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Interfaces.Events;
-using InternalsViewer.UI.App.Controls.Allocation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -38,7 +37,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
     {
         var control = (EventGridControl)d;
 
-        if (!ReferenceEquals((control.DataGrid.SelectedItem as EventRow)?.Event, e.NewValue))
+        if (!ReferenceEquals((control.DataGrid.SelectedItem as EventGridRow)?.Event, e.NewValue))
         {
             control.SelectRow(e.NewValue as EngineEvent);
         }
@@ -61,8 +60,8 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         DataGrid.SelectedItem = FindRow(engineEvent);
     }
 
-    private EventRow? FindRow(EngineEvent engineEvent) =>
-        (DataGrid.ItemsSource as IEnumerable<EventRow>)?.FirstOrDefault(r => ReferenceEquals(r.Event, engineEvent));
+    private EventGridRow? FindRow(EngineEvent engineEvent) =>
+        (DataGrid.ItemsSource as IEnumerable<EventGridRow>)?.FirstOrDefault(r => ReferenceEquals(r.Event, engineEvent));
 
     public List<EngineEvent> Events
     {
@@ -130,7 +129,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
     // The grid's bound rows. Expand/collapse mutates this in place so the DataGrid keeps its scroll offset; only a
     // filter/sort/new-events change replaces it.
-    private ObservableCollection<EventRow> _rows = [];
+    private ObservableCollection<EventGridRow> _rows = [];
 
     private string? _sortTag;
     private bool _sortAscending = true;
@@ -176,7 +175,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
     {
         _selectionChanged = true;
 
-        var selected = (DataGrid.SelectedItem as EventRow)?.Event;
+        var selected = (DataGrid.SelectedItem as EventGridRow)?.Event;
 
         if (!ReferenceEquals(SelectedItem, selected))
         {
@@ -203,7 +202,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         }
     }
 
-    private static EventRow? RowFromSource(object? source)
+    private static EventGridRow? RowFromSource(object? source)
     {
         var node = source as DependencyObject;
 
@@ -218,12 +217,12 @@ public sealed partial class EventGridControl : UserControl, IDisposable
             node = VisualTreeHelper.GetParent(node);
         }
 
-        return (node as DataGridRow)?.DataContext as EventRow;
+        return (node as DataGridRow)?.DataContext as EventGridRow;
     }
 
     private void OnDataGridLoadingRow(object? sender, DataGridRowEventArgs e)
     {
-        if (e.Row.DataContext is EventRow row)
+        if (e.Row.DataContext is EventGridRow row)
         {
             _visibleRows[e.Row] = row.Event;
             ApplyHighlight(e.Row, row.Event);
@@ -232,7 +231,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
     private void OnExpanderClick(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is not EventRow { HasChildren: true } row)
+        if ((sender as FrameworkElement)?.DataContext is not EventGridRow { HasChildren: true } row)
         {
             return;
         }
@@ -261,7 +260,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
             foreach (var child in children)
             {
-                _rows.Insert(insertAt++, new EventRow(child, row.Depth + 1, hasChildren: false, isExpanded: false));
+                _rows.Insert(insertAt++, new EventGridRow(child, row.Depth + 1, hasChildren: false, isExpanded: false));
             }
         }
 
@@ -342,7 +341,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
         var filtered = ApplySort(result.ToList());
 
-        _rows = new ObservableCollection<EventRow>(BuildRows(filtered));
+        _rows = new ObservableCollection<EventGridRow>(BuildRows(filtered));
 
         DataGrid.ItemsSource = _rows;
 
@@ -350,9 +349,9 @@ public sealed partial class EventGridControl : UserControl, IDisposable
     }
 
     // Flattens the top-level events into grid rows, following each expanded read group with its child events indented.
-    private List<EventRow> BuildRows(List<EngineEvent> topLevel)
+    private List<EventGridRow> BuildRows(List<EngineEvent> topLevel)
     {
-        var rows = new List<EventRow>(topLevel.Count);
+        var rows = new List<EventGridRow>(topLevel.Count);
 
         foreach (var engineEvent in topLevel)
         {
@@ -362,7 +361,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
             var expanded = hasChildren && _expanded.Contains(engineEvent);
 
-            rows.Add(new EventRow(engineEvent, depth: 0, hasChildren, expanded));
+            rows.Add(new EventGridRow(engineEvent, depth: 0, hasChildren, expanded));
 
             if (!expanded)
             {
@@ -371,7 +370,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
             foreach (var child in children)
             {
-                rows.Add(new EventRow(child, depth: 1, hasChildren: false, isExpanded: false));
+                rows.Add(new EventGridRow(child, depth: 1, hasChildren: false, isExpanded: false));
             }
         }
 

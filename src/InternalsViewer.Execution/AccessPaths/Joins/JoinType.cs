@@ -1,4 +1,3 @@
-using InternalsViewer.Execution.AccessPaths.Joins;
 
 namespace InternalsViewer.Execution.AccessPaths.Joins;
 

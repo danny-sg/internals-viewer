@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 
-namespace InternalsViewer.UI.App.Helpers.Converters;
+namespace InternalsViewer.UI.App.Helpers.Converters.Page;
 
 /// <summary>Converts a CSS-style hex color string (e.g. "#4472C4") to a SolidColorBrush.</summary>
 public sealed class HexColorToBrushConverter : IValueConverter

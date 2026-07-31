@@ -163,7 +163,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
 
     private static async Task StartAsync(Context context, SeekBounds outerBounds)
     {
-        var outerInput = new ScanDefinition(context.Outer.AllocationUnitId, context.Outer.RootPage, [outerBounds]);
+        var outerInput = new RangeDefinition(context.Outer.AllocationUnitId, context.Outer.RootPage, [outerBounds]);
 
         var innerInput = new SeekDefinition(context.Inner.AllocationUnitId,
                                                    context.Inner.RootPage,

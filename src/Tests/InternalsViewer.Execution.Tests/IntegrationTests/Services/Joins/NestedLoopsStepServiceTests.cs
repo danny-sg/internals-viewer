@@ -167,7 +167,7 @@ public class NestedLoopsStepServiceTests(ITestOutputHelper testOutput)
         return new NumberTableContext(database, serviceHost.GetService<NestedLoopsStepService>(), unit);
     }
 
-    private static ScanDefinition OuterInput(AllocationUnit unit, SeekBounds bounds)
+    private static RangeDefinition OuterInput(AllocationUnit unit, SeekBounds bounds)
         => new(unit.AllocationUnitId, unit.RootPage, [bounds]);
 
     private static SeekDefinition InnerInput(AllocationUnit unit)

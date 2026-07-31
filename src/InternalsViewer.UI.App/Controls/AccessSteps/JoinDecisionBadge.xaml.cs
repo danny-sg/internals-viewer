@@ -1,5 +1,4 @@
 using InternalsViewer.Execution.AccessPaths.Joins;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
@@ -16,10 +15,6 @@ public sealed partial class JoinDecisionBadge : UserControl
     private static readonly SolidColorBrush MissingBrush = new(Windows.UI.Color.FromArgb(255, 168, 46, 46));
 
     private static readonly SolidColorBrush AnyBrush = new(Windows.UI.Color.FromArgb(255, 214, 214, 214));
-
-    private static readonly SolidColorBrush EmitBrush = new(Windows.UI.Color.FromArgb(255, 15, 123, 15));
-
-    private static readonly SolidColorBrush DiscardBrush = new(Windows.UI.Color.FromArgb(255, 130, 130, 130));
 
     private static readonly SolidColorBrush ChipBackground = new(Windows.UI.Color.FromArgb(255, 255, 255, 255));
 
@@ -114,8 +109,8 @@ public sealed partial class JoinDecisionBadge : UserControl
 
         ToolTipService.SetToolTip(chip,
                                   hasRow
-                                      ? $"A {Name(isInner)} row was found for this key"
-                                      : $"No {Name(isInner)} row was found for this key");
+                                      ? $"A {Label(isInner)} row was found for this key"
+                                      : $"No {Label(isInner)} row was found for this key");
 
         return chip;
     }
@@ -156,9 +151,9 @@ public sealed partial class JoinDecisionBadge : UserControl
         ToolTipService.SetToolTip(chip,
                                   rule switch
                                   {
-                                      JoinSlotRule.Present => $"This join returns a row only when there is a {Name(isInner)} row",
-                                      JoinSlotRule.Absent => $"This join returns a row only when there is no {Name(isInner)} row",
-                                      _ => $"This join returns the row whether or not there is a {Name(isInner)} row"
+                                      JoinSlotRule.Present => $"This join returns a row only when there is a {Label(isInner)} row",
+                                      JoinSlotRule.Absent => $"This join returns a row only when there is no {Label(isInner)} row",
+                                      _ => $"This join returns the row whether or not there is a {Label(isInner)} row"
                                   });
 
         return chip;
@@ -233,5 +228,5 @@ public sealed partial class JoinDecisionBadge : UserControl
         return panel;
     }
 
-    private static string Name(bool isInner) => isInner ? "inner" : "outer";
+    private static string Label(bool isInner) => isInner ? "inner" : "outer";
 }

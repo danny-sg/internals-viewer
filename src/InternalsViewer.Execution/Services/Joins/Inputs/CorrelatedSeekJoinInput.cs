@@ -7,6 +7,7 @@ using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Services.Joins.Inputs;
@@ -33,6 +34,8 @@ public sealed class CorrelatedSeekJoinInput(IndexStepService service,
                                                        int rebindNumber,
                                                        CancellationToken cancellationToken)
     {
+        GuardResidual(input.Residual, outerRecord, InnerColumns(database));
+
         var source = new RecordRowValueSource(outerRecord);
 
         var values = new AccessValue[input.Bindings.Count];
@@ -65,5 +68,19 @@ public sealed class CorrelatedSeekJoinInput(IndexStepService service,
                                  evaluationContext: evaluationContext);
 
         return new AccessStep.Rebind(rebindNumber, key);
+    }
+
+    private IReadOnlySet<string> InnerColumns(DatabaseSource database)
+    {
+        var structure = IndexStructureProvider.GetIndexStructure(database, input.AllocationUnitId);
+
+        var names = structure.Columns.Select(c => c.ColumnName);
+
+        if (structure.TableStructure is { } table)
+        {
+            names = names.Concat(table.Columns.Select(c => c.ColumnName));
+        }
+
+        return names.ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 }
