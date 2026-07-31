@@ -58,7 +58,7 @@
                     BorderThickness="0,0,0,1">
             <AppBarElementContainer VerticalContentAlignment="Center">
                 <ToggleButton Margin="4,0,12,0"
-                              IsChecked="{x:Bind ViewModel.IsIndexDetailsVisible, Mode=TwoWay}"
+                              IsChecked="{x:Bind ViewModel.IsDetailPaneVisible, Mode=TwoWay}"
                               BorderThickness="0">
                     <TextBlock Text="Details" VerticalAlignment="Center" />
                 </ToggleButton>

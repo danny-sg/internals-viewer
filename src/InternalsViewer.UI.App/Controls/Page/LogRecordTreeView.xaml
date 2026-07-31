@@ -143,11 +143,15 @@
                            VerticalAlignment="Center"
                            TextTrimming="WordEllipsis" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Operation}"
+                           Style="{StaticResource ListTextBlockStyle}"
                            TextTrimming="WordEllipsis" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Context}"
+                           Style="{StaticResource ListTextBlockStyle}"
                            TextTrimming="WordEllipsis" />
-                <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).SlotId}" />
+                <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).SlotId}"
+                           Style="{StaticResource ListTextBlockStyle}" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Description}"
+                           Style="{StaticResource ListTextBlockStyle}"
                            TextTrimming="WordEllipsis" />
             </controls:DataRow>
         </DataTemplate>
@@ -188,6 +192,7 @@
                             VerticalAlignment="Center">
                     <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
                                              Converter={StaticResource MarkStyleConverter}, ConverterParameter=Name}"
+                               Style="{StaticResource ListTextBlockStyle}"
                                Visibility="{x:Bind ((models:LogRecordAnnotation)Content).FieldVisibility}"/>
                     <Border CornerRadius="2"
                             Padding="4,1"
@@ -201,6 +206,7 @@
                                                        Converter={StaticResource MarkStyleConverter}, ConverterParameter=Fore}"/>
                     </Border>
                     <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Description}"
+                               Style="{StaticResource ListTextBlockStyle}"
                                VerticalAlignment="Center"
                                TextTrimming="WordEllipsis"
                                Visibility="{x:Bind ((models:LogRecordAnnotation)Content).DescriptionVisibility}"/>

@@ -157,6 +157,7 @@
 
                 <TextBlock Grid.Column="0" 
                            Text="{x:Bind Value}"
+                           Style="{StaticResource ListTextBlockStyle}"
                            TextTrimming="WordEllipsis"/>
 
                 <controls1:CopyButton Content="&#xE8C8;" 
@@ -214,6 +215,7 @@
                     </Grid>
                     <TextBlock Grid.Column="1"
                                Text="{x:Bind ((models:Marker)Content).Name}"
+                               Style="{StaticResource ListTextBlockStyle}"
                                Margin="4,0,0,0"
                                TextTrimming="WordEllipsis" />
                 </Grid>

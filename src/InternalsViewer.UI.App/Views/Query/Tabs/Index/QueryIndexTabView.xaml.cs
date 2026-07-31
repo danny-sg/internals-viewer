@@ -120,7 +120,6 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
         }
 
         ViewModel.IsDetailPaneVisible = false;
-        ViewModel.IsIndexDetailsVisible = false;
     }
 
     public void Dispose()

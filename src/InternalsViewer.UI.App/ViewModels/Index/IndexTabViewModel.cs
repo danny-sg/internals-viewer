@@ -117,36 +117,14 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [NotifyPropertyChangedFor(nameof(DetailSplitterVisibility))]
     private bool _isDetailPaneVisible;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(BodyColumnWidth))]
-    [NotifyPropertyChangedFor(nameof(DetailColumnWidth))]
-    [NotifyPropertyChangedFor(nameof(DetailSplitterVisibility))]
-    private bool _isIndexDetailsVisible;
-
-    private bool _isDetailsLinkPending = true;
-
-    partial void OnIsDetailPaneVisibleChanged(bool value)
-    {
-        if (value && _isDetailsLinkPending)
-        {
-            _isDetailsLinkPending = false;
-
-            IsIndexDetailsVisible = true;
-        }
-    }
-
-    partial void OnIsIndexDetailsVisibleChanged(bool value) => _isDetailsLinkPending = false;
-
-    public bool IsRightPaneVisible => IsDetailPaneVisible || IsIndexDetailsVisible;
-
     public GridLength BodyColumnWidth
-        => IsRightPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
+        => IsDetailPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
 
     public GridLength DetailColumnWidth
-        => IsRightPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+        => IsDetailPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
 
     public Visibility DetailSplitterVisibility
-        => IsRightPaneVisible ? Visibility.Visible : Visibility.Collapsed;
+        => IsDetailPaneVisible ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     private ObservableCollection<IndexRecordModel> _records = [];

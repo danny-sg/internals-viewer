@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Transactions;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Events;
 
@@ -36,9 +37,22 @@ internal static class PageSpanBuilder
             {
                 AddReadEventGroupSpans(group, e, colours, queryEndUs, maxFileId, pageSpans.Add);
             }
+
+            if (e is TransactionLogEvent logEvent)
+            {
+                AddLogEventSpan(logEvent, queryEndUs, pageSpans.Add);
+            }
         }
 
         return [.. pageSpans.OrderBy(s => s.StartUs)];
+    }
+
+    private static void AddLogEventSpan(TransactionLogEvent logEvent, long queryEndUs, Action<PageSpan> add)
+    {
+        if (logEvent.PageAddress is not null)
+        {
+            add(new PageSpan(logEvent.PageAddress.Value, logEvent.TimeUs, queryEndUs, ColourConstants.LogColour));
+        }
     }
 
     private static void AddReadEventGroupSpans(ReadEventGroup group,

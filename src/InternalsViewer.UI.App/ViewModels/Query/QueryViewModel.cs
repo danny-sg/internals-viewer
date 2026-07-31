@@ -1314,6 +1314,30 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly Dictionary<string, Color> _objectColoursByName;
 
+    // Generating the object layers walks the whole allocation map, so build them off the UI thread and
+    // apply the results back on it.
+    private async Task LoadObjectLayersAsync(DatabaseSource database)
+    {
+        try
+        {
+            var layers = await Task.Run(() => AllocationLayerBuilder.GenerateLayers(database, true, 20));
+
+            ObjectLayers = layers;
+
+            foreach (var group in layers.Where(l => !string.IsNullOrEmpty(l.Name))
+                                        .GroupBy(l => l.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                _objectColoursByName[group.Key] = group.First().Colour;
+            }
+
+            AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to generate object layers for database: {Name}", database.Name);
+        }
+    }
+
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
                           SettingsService settingsService,
@@ -1345,17 +1369,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 .Select(f => new DatabaseFile(this) { FileId = f.FileId, Size = f.Size })
         ];
 
-        ObjectLayers = AllocationLayerBuilder.GenerateLayers(database, true, 20);
+        ObjectLayers = [];
 
-        _objectColoursByName = ObjectLayers.Where(l => !string.IsNullOrEmpty(l.Name))
-                                           .GroupBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
-                                           .ToDictionary(g => g.Key, g => g.First().Colour, StringComparer.OrdinalIgnoreCase);
+        _objectColoursByName = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase);
 
         ExtentCount = database.GetFilePageCount(1) / 8;
 
-        AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
+        AllocationLayers = [];
 
         PfsChain = Database.Pfs[1];
+
+        _ = LoadObjectLayersAsync(database);
 
         _systemObjectIds =
         [
